@@ -17,3 +17,9 @@ scratch/*.png
 scratch/*.py
 scratch/*.js
 scratch/*.output
+
+# Bundles / archives
+*.zip
+
+# Machine-local Claude Code settings
+.claude/settings.local.json
