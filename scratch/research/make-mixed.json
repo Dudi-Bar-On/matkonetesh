@@ -1,0 +1,466 @@
+[
+  {
+    "id": "p-bast",
+    "eng": "Pastirma",
+    "calc": {"salt": 0, "cure": null},
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Pastirma / 2 Guys & A Cooler",
+      "url": "https://www.meatsandsausages.com/hams-other-meats/pastirma",
+      "note": "EXCEPTION to the p-* group: pastirma is NOT brine-cured and NOT smoked — it is DRY-salt cured then AIR-DRIED raw and eaten uncooked. Marianski dry cure = 25 g salt + 5 g Cure #2 per kg (~0.5%), ~1 week fridge, wash, press, then çemen (fenugreek/garlic/paprika/cumin) paste coat and hang. Because it is a long air-dried RAW product, the correct curing salt is Cure #2 (nitrite + nitrate reservoir), NOT Cure #1. Traditional versions use salt only, but nitrite/nitrate is the safety-recommended option."
+    },
+    "smoke": {
+      "ref": "meatsandsausages — Pastirma",
+      "url": "https://www.meatsandsausages.com/hams-other-meats/pastirma",
+      "note": "No smoke. Air-dry in ventilated area 10-15°C, ~60% RH for ~5 days until çemen paste is dry, then further dry as desired. Cold room only — must dry, not cook."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "meatsandsausages — Pastirma (dry-cure, aw controlled)",
+      "url": "https://www.meatsandsausages.com/hams-other-meats/pastirma",
+      "note": "Raw dry-cured product — no thermal pasteurization floor. Safety comes from salt + Cure #2 (nitrite/nitrate) + drying to reduced water activity, not from cooking."
+    },
+    "process": {
+      "ref": "2 Guys & A Cooler / Saveur — Basturma/Pastirma",
+      "url": "https://twoguysandacooler.com/pastirma-basturma-for-beginners/",
+      "note": "Dry-salt cure 2-7 days, rinse/soak, press to expel moisture, coat in çemen paste, air-dry, slice paper-thin against grain. Eaten raw."
+    },
+    "flag": "MISCLASSIFIED: pastirma is a RAW dry-cured/air-dried product (not brined, not cooked/smoked) — if a curing salt is used it must be Cure #2, not Cure #1; requires proper drying (reduced aw) and cold storage.",
+    "rationale": "Odd one out of the p-* group: dry-cured raw air-dried beef with çemen, no brine and no cook — kept calc but flagged Cure #2 + drying safety."
+  },
+  {
+    "id": "p-deckel",
+    "eng": "Deckel Pastrami",
+    "calc": {"salt": 0, "cure": null},
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Pastrami brine / AmazingRibs curing",
+      "url": "https://www.meatsandsausages.com/hams-other-meats/pastrami",
+      "note": "Brine-cured (salt/cure in the wet brine, so dry-calc salt=0/cure=None is correct). Standard corned-beef/pastrami brine per liter water: 90 g salt + 18 g Cure #1 (Prague Powder #1, 6.25% sodium nitrite) + 10 g sugar + coriander/pepper/garlic; cure ~4 days per kg submerged at 2-4°C. Cure #1 (not #2) is correct — this is a cooked short-process product. Deckel (point/deckle) is fatty — brine to core."
+    },
+    "smoke": {
+      "ref": "AmazingRibs (Meathead) — Homemade Pastrami",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/home-made-pastrami-thats-close-katzs-recipe/",
+      "note": "Rinse, coat with cracked pepper+coriander rub, smoke ~107°C (225°F) to ~71°C internal, then wrap and take to ~95°C (203°F) for slice-tender. Steaming to finish is the classic tender route. Pink color is from the cure, not undercooking."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle beef 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Displayed conservative floor 63°C/145°F. A firmer deli slice can be pulled ~63°C; slice-tender pastrami is taken to ~95-96°C/203-205°F to render collagen. Brine-cured with nitrite + cooked."
+    },
+    "process": {
+      "ref": "AmazingRibs — Homemade Pastrami",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/home-made-pastrami-thats-close-katzs-recipe/",
+      "note": "Brine → rinse → pepper/coriander rub → smoke → wrap/steam to tender. Point/deckle is the fatty muscle."
+    },
+    "flag": "",
+    "rationale": "Confirmed brine-cured with Cure #1; documented 63°C deli floor vs ~95°C slice-tender target; calc 0/None correct for a brined item."
+  },
+  {
+    "id": "p-lamb",
+    "eng": "Lamb Pastrami",
+    "calc": {"salt": 0, "cure": null},
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Pastrami brine",
+      "url": "https://www.meatsandsausages.com/hams-other-meats/pastrami",
+      "note": "Same brine cure as beef pastrami: per liter 90 g salt + 18 g Cure #1 + 10 g sugar, ~4 days/kg submerged at 2-4°C. Cure #1 correct (cooked short-process). Salt/cure live in the brine → dry-calc 0/None is expected."
+    },
+    "smoke": {
+      "ref": "AmazingRibs — Homemade Pastrami (method applied to lamb)",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/home-made-pastrami-thats-close-katzs-recipe/",
+      "note": "Pepper/coriander crust, smoke ~107°C (225°F) to ~71°C then wrap to ~93-95°C for tender slices (lamb breast/shoulder)."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle lamb 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Whole-muscle lamb floor 63°C/145°F + rest; tender-slice target ~93-95°C. Nitrite-cured + cooked."
+    },
+    "process": {
+      "ref": "AmazingRibs — Homemade Pastrami",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/home-made-pastrami-thats-close-katzs-recipe/",
+      "note": "Brine-cure → rub → smoke → wrap/steam to tender."
+    },
+    "flag": "",
+    "rationale": "Brine-cured Cure #1 confirmed; lamb whole-muscle floor 63°C documented; calc 0/None correct."
+  },
+  {
+    "id": "p-mont",
+    "eng": "Montreal Smoked Meat",
+    "calc": {"salt": 0, "cure": null},
+    "cure": {
+      "ref": "GlebeKitchen / meatsandsausages — Montreal Smoked Meat brine",
+      "url": "https://glebekitchen.com/montreal-smoked-meat/",
+      "note": "Wet/dry cure using Prague Powder #1 (Cure #1, 6.25% sodium nitrite) — nitrite develops the cured pink color and inhibits C. botulinum; cure the brisket ~8 days at 2-4°C, turning daily. Cure #1 correct (cooked). Salt/cure in the cure → dry-calc 0/None expected."
+    },
+    "smoke": {
+      "ref": "GlebeKitchen — Montreal Smoked Meat",
+      "url": "https://glebekitchen.com/montreal-smoked-meat/",
+      "note": "Coriander/black-pepper crust, smoke ~120°C (225-250°F, maple) to ~71-75°C internal, THEN STEAM 2-3 h until ~95-96°C (~203°F) probe-tender — steaming is the defining Montreal step."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle beef 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Displayed floor 63°C/145°F; authentic texture requires steaming to ~95-96°C. Nitrite-cured + cooked + steamed."
+    },
+    "process": {
+      "ref": "GlebeKitchen — Montreal Smoked Meat",
+      "url": "https://glebekitchen.com/montreal-smoked-meat/",
+      "note": "Cure ~8 days → pepper/coriander crust → smoke → STEAM to tender. Steaming distinguishes it from NY pastrami."
+    },
+    "flag": "",
+    "rationale": "Confirmed Cure #1 brine/cure + smoke-then-steam to ~95°C; documented 63°C floor; calc 0/None correct."
+  },
+  {
+    "id": "p-ny",
+    "eng": "NY Pastrami",
+    "calc": {"salt": 0, "cure": null},
+    "cure": {
+      "ref": "AmazingRibs (Meathead) — Homemade Pastrami / Curing Meats Safely",
+      "url": "https://amazingribs.com/tested-recipes/salting-brining-curing-and-injecting/curing-meats-safely/",
+      "note": "Classic Katz's-style wet cure = salt + sodium nitrite (Prague Powder #1 / Cure #1, 6.25% nitrite) brine, 1-4 weeks; AmazingRibs stresses use ONLY Cure #1 (not saltpeter, Tender Quick, Himalayan, or Cure #2). Cure #1 correct for this cooked product. Salt/cure in brine → dry-calc 0/None expected."
+    },
+    "smoke": {
+      "ref": "AmazingRibs — Homemade Pastrami (close to Katz's)",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/home-made-pastrami-thats-close-katzs-recipe/",
+      "note": "Pepper/coriander crust, smoke ~107°C (225°F) to ~71°C (160°F), then wrap and take to ~95°C (203°F) for slice-tender; ~6 h total. Bright pink interior is cure color, not undercooked."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle beef 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Displayed floor 63°C/145°F (firmer deli slice); classic tender pastrami taken to ~95-96°C/203-205°F. Nitrite-cured + cooked."
+    },
+    "process": {
+      "ref": "AmazingRibs — Homemade Pastrami",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/home-made-pastrami-thats-close-katzs-recipe/",
+      "note": "Brine-cure → rinse → pepper/coriander rub → smoke to 160°F → wrap/steam to 203°F."
+    },
+    "flag": "",
+    "rationale": "Confirmed brine-cured with Cure #1 (AmazingRibs explicitly warns only Cure #1); documented 63°C deli floor vs ~95°C slice-tender; calc 0/None correct."
+  },
+  {
+    "id": "p-turkey",
+    "eng": "Turkey Pastrami",
+    "calc": {"salt": 0, "cure": null},
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Pastrami brine (poultry)",
+      "url": "https://www.meatsandsausages.com/hams-other-meats/pastrami",
+      "note": "Brine-cured turkey breast: per liter 90 g salt + 18 g Cure #1 + 10 g sugar + pepper/coriander, cure a few days at 2-4°C. Cure #1 (nitrite) correct — cooked short-process. Salt/cure in brine → dry-calc 0/None expected."
+    },
+    "smoke": {
+      "ref": "meatsandsausages — Pastrami / AmazingRibs method",
+      "url": "https://www.meatsandsausages.com/hams-other-meats/pastrami",
+      "note": "Pepper/coriander crust, warm-smoke ~110-120°C to internal 74°C (165°F). Do NOT overcook lean turkey breast; pull at 74°C, no need for 95°C collagen render."
+    },
+    "safe": {
+      "safe": 74,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (poultry 74°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "POULTRY floor 74°C/165°F (salmonella) — higher than the 63°C beef-pastrami floor. Cook turkey pastrami to 74°C."
+    },
+    "process": {
+      "ref": "meatsandsausages — Pastrami (turkey)",
+      "url": "https://www.meatsandsausages.com/hams-other-meats/pastrami",
+      "note": "Brine-cure → rub → smoke to 74°C internal. Lean breast — cook to floor, not to tender-render."
+    },
+    "flag": "POULTRY: safety floor is 74°C/165°F, not the 63°C used for beef pastrami.",
+    "rationale": "Brine-cured Cure #1 confirmed; corrected safety expectation to poultry 74°C; calc 0/None correct for a brined item."
+  },
+  {
+    "id": "s-chicken",
+    "eng": "Chicken Shawarma",
+    "calc": {"salt": null, "cure": null},
+    "smoke": {
+      "ref": "ThermoWorks — Vertical Spit Chicken Shawarma",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Not cured/smoked: yogurt-spice marinated thigh/breast stacked and roasted on a vertical spit (or high-heat oven ~260°C/500°F then broil), shaving cooked outer layers. Marinate 2-24 h refrigerated."
+    },
+    "safe": {
+      "safe": 74,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (poultry 74°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Poultry must reach 74°C/165°F (salmonella/campylobacter). Shaved layers are pulled only once each reaches 74°C."
+    },
+    "process": {
+      "ref": "ThermoWorks — Vertical Spit Chicken Shawarma",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Marinate → stack on spit → roast, shaving cooked exterior in layers to 74°C."
+    },
+    "flag": "POULTRY: shave only fully-cooked outer layers to 74°C.",
+    "rationale": "Marinated not cured (no nitrite) — cure field omitted; poultry floor 74°C confirmed."
+  },
+  {
+    "id": "s-iraqi",
+    "eng": "Iraqi Lamb",
+    "calc": {"salt": null, "cure": null},
+    "smoke": {
+      "ref": "ThermoWorks — Vertical Spit Shawarma (method) / USDA",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Spiced lamb (baharat/amba style) stacked and roasted on a vertical spit, shaving cooked exterior; no cure/nitrite."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle lamb/beef 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Whole-muscle lamb/beef floor 63°C/145°F + 3 min rest; shaved surface layers are seared. Cook per doneness above the floor."
+    },
+    "process": {
+      "ref": "ThermoWorks — Vertical Spit Shawarma",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Marinate → stack on spit → roast/shave cooked layers."
+    },
+    "flag": "",
+    "rationale": "Marinated whole-muscle lamb, no cure — omitted cure field; whole-muscle floor 63°C."
+  },
+  {
+    "id": "s-lamb",
+    "eng": "Lamb/Beef Shawarma",
+    "calc": {"salt": null, "cure": null},
+    "smoke": {
+      "ref": "ThermoWorks — Vertical Spit Shawarma (method)",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Yogurt/spice-marinated lamb+beef slices stacked on a vertical spit and roasted, shaving cooked exterior; no cure/nitrite."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle beef/lamb 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Whole-muscle beef/lamb floor 63°C/145°F + rest; shaved layers seared as cut. If any ground meat is layered in, treat as 71°C."
+    },
+    "process": {
+      "ref": "ThermoWorks — Vertical Spit Shawarma",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Marinate → stack whole-muscle slices on spit → roast/shave."
+    },
+    "flag": "",
+    "rationale": "Marinated whole-muscle lamb/beef, no cure — omitted cure field; floor 63°C (71°C if ground layers present)."
+  },
+  {
+    "id": "s-mixed",
+    "eng": "Mixed Meat",
+    "calc": {"salt": null, "cure": null},
+    "smoke": {
+      "ref": "ThermoWorks — Vertical Spit Shawarma (method)",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Mixed lamb/beef (often with turkey or chicken) marinated, stacked and spit-roasted; no cure/nitrite."
+    },
+    "safe": {
+      "safe": 74,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Safety-conservative: a mixed stack that may include poultry must reach 74°C/165°F. A beef/lamb-only mix pasteurizes at 63°C, but display the poultry-safe 74°C floor."
+    },
+    "process": {
+      "ref": "ThermoWorks — Vertical Spit Shawarma",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Marinate → stack mixed meats → roast/shave cooked layers."
+    },
+    "flag": "MIXED STACK: use 74°C if poultry is included; shave only fully-cooked layers.",
+    "rationale": "Marinated, no cure — omitted cure field; chose conservative 74°C because a mixed stack may include poultry."
+  },
+  {
+    "id": "s-turkey",
+    "eng": "Turkey Shawarma",
+    "calc": {"salt": null, "cure": null},
+    "smoke": {
+      "ref": "ThermoWorks — Vertical Spit Shawarma (poultry method)",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Marinated turkey thigh/breast stacked and spit-roasted (or oven 260°C then broil), shaving cooked exterior; no cure/nitrite."
+    },
+    "safe": {
+      "safe": 74,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (poultry 74°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Poultry floor 74°C/165°F. Shave only layers that have reached 74°C."
+    },
+    "process": {
+      "ref": "ThermoWorks — Vertical Spit Shawarma",
+      "url": "https://blog.thermoworks.com/vertical-spit-chicken-shawarma/",
+      "note": "Marinate → stack on spit → roast/shave cooked layers to 74°C."
+    },
+    "flag": "POULTRY: shave only fully-cooked outer layers to 74°C.",
+    "rationale": "Marinated poultry, no cure — omitted cure field; poultry floor 74°C."
+  },
+  {
+    "id": "bbq-burntends",
+    "eng": "Brisket Burnt Ends",
+    "calc": {"salt": null, "cure": null},
+    "smoke": {
+      "ref": "AmazingRibs (Meathead) — Brisket Burnt Ends",
+      "url": "https://amazingribs.com/brisket-burnt-ends/",
+      "note": "Smoke the point at ~121°C (250°F). When it hits ~95°C (195°F), cube ~1 inch, dust with rub + a little sugar, sauce, and return to caramelize/brown the bark; finish probe-tender ~95-100°C (203°F+)."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle beef 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Displayed floor 63°C/145°F; burnt ends are always taken far past this (~95-100°C) to render the point's collagen/fat. No cure."
+    },
+    "process": {
+      "ref": "AmazingRibs — Brisket Burnt Ends",
+      "url": "https://amazingribs.com/brisket-burnt-ends/",
+      "note": "Smoke point to ~195°F → cube → rub/sugar/sauce → return to bark up and tenderize."
+    },
+    "flag": "",
+    "rationale": "AmazingRibs: 250°F smoke, cube at 195°F, finish tender ~203°F; no cure — cure field omitted; display floor 63°C."
+  },
+  {
+    "id": "bbq-hotlinks",
+    "eng": "Texas Hot Links",
+    "calc": {"salt": null, "cure": null},
+    "cure": {
+      "ref": "AmazingRibs (Meathead) — Texas Hot Guts (Hot Links)",
+      "url": "https://amazingribs.com/tested-recipes/sausage-recipes/texas-hot-guts-smoked-sausage/",
+      "note": "OPTIONAL cure. AmazingRibs notes a few Texas hot-link recipes use curing salt with nitrite but MOST do not — cooked fresh and eaten. If cured, use Cure #1 (2.5 g/kg = 156 ppm nitrite) and cure overnight; Cure #1 is correct (short cooked process, not Cure #2). Cure is recommended if smoking low/slow (long time in the 4-60°C zone)."
+    },
+    "smoke": {
+      "ref": "AmazingRibs — Texas Hot Guts",
+      "url": "https://amazingribs.com/tested-recipes/sausage-recipes/texas-hot-guts-smoked-sausage/",
+      "note": "~25% fat coarse beef/pork, pepper+cayenne dominant. Smoke steady ~107°C (225°F) to internal 71°C (160°F), ~1-2 h. If uncured, keep the cook moving to limit danger-zone time."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS chart / AmazingRibs (ground-meat sausage 71°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Ground/emulsified sausage floor 71°C/160°F (AmazingRibs pulls at 160°F). Higher than whole-muscle because grinding distributes surface bacteria."
+    },
+    "process": {
+      "ref": "AmazingRibs — Texas Hot Guts",
+      "url": "https://amazingribs.com/tested-recipes/sausage-recipes/texas-hot-guts-smoked-sausage/",
+      "note": "Grind (coarse) → season → stuff → smoke 225°F to 160°F internal."
+    },
+    "flag": "GROUND-MEAT floor 71°C. Cure #1 optional but recommended for low/slow smoking.",
+    "rationale": "AmazingRibs: 225°F smoke to 160°F; cure optional (most omit) — noted Cure #1 if used; ground-meat floor 71°C."
+  },
+  {
+    "id": "bbq-pbburnt",
+    "eng": "Pork Belly Burnt Ends",
+    "calc": {"salt": null, "cure": null},
+    "smoke": {
+      "ref": "ThermoWorks / Meat Church — Pork Belly Burnt Ends",
+      "url": "https://blog.thermoworks.com/smoked-pork-belly-burnt-ends-recipe-2/",
+      "note": "Cube belly ~2 in, rub, smoke ~121°C (250°F) ~3 h; then pan with butter/honey/BBQ sauce, cover, return until ~93-96°C (200-205°F) probe-tender; uncover to set glaze."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle pork 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Displayed floor 63°C/145°F; belly burnt ends are cooked to ~93-96°C (200-205°F) to render fat/collagen. No cure."
+    },
+    "process": {
+      "ref": "ThermoWorks — Smoked Pork Belly Burnt Ends",
+      "url": "https://blog.thermoworks.com/smoked-pork-belly-burnt-ends-recipe-2/",
+      "note": "Cube → rub → smoke 250°F ~3 h → braise in sauce/butter/honey to 200-205°F → glaze."
+    },
+    "flag": "",
+    "rationale": "250°F smoke then braise to ~200-205°F tender; no cure — cure field omitted; display floor 63°C pork."
+  },
+  {
+    "id": "bbq-porchetta",
+    "eng": "Porchetta",
+    "calc": {"salt": null, "cure": null},
+    "smoke": {
+      "ref": "ThermoWorks — Porchetta Temperature Roadmap / RecipeTin Eats",
+      "url": "https://blog.thermoworks.com/porchetta/",
+      "note": "Herb-rubbed rolled pork (loin wrapped in belly). Air-dry skin 1-2 days in fridge; roast/smoke low ~135°C (275°F) to internal ~63-71°C, then high blast ~260°C (500°F) 15-20 min to crisp/crackle the skin (reverse-sear style)."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (whole-muscle pork 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Rolled whole-muscle pork floor 63°C/145°F + 3 min rest (many take to ~71°C for sliceability). Because it is rolled (former surface becomes interior), ensure the core reaches the floor. No cure/nitrite."
+    },
+    "process": {
+      "ref": "ThermoWorks — Porchetta / RecipeTin Eats",
+      "url": "https://blog.thermoworks.com/porchetta/",
+      "note": "Season → roll/tie belly around loin → dry skin → low roast to core temp → high blast for crackling → rest."
+    },
+    "flag": "",
+    "rationale": "Rolled pork roast, no cure — cure field omitted; core to 63°C floor (rolled roast), skin crisped at high heat."
+  },
+  {
+    "id": "fish-gravlax",
+    "eng": "Gravlax",
+    "calc": {"salt": 40, "cure": null},
+    "cure": {
+      "ref": "FDA Fish & Fishery Products Hazards & Controls Guidance, Ch.5 (parasites) / classic gravlax cure",
+      "url": "https://www.fda.gov/files/food/published/Fish-and-Fishery-Products-Hazards-and-Controls-Guidance-Chapter-5-Download.pdf",
+      "note": "Salt + sugar dry cure (classic ~2:1 salt:sugar) + dill/pepper, NO nitrite — correct, gravlax uses no curing salt. Cure ~2-3 days refrigerated (<4°C), weighted. The salt/sugar cure does NOT kill parasites: FDA notes nematode larvae survive weeks in 21% brine."
+    },
+    "smoke": {
+      "ref": "Classic gravlax (no smoke)",
+      "url": "https://www.fda.gov/files/food/published/Fish-and-Fishery-Products-Hazards-and-Controls-Guidance-Chapter-5-Download.pdf",
+      "note": "No smoke — gravlax is cured only, eaten raw/uncooked."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "FDA Fish & Fishery Products Guidance Ch.5 — parasite destruction by freezing",
+      "url": "https://www.fda.gov/files/food/published/Fish-and-Fishery-Products-Hazards-and-Controls-Guidance-Chapter-5-Download.pdf",
+      "note": "Raw cured fish — no thermal floor. PARASITE control by freezing: −20°C for 7 days, OR −35°C until solid then held −35°C for 15 h, OR −35°C then −20°C for 24 h. Use previously-frozen (sushi/sashimi-grade) salmon; cure and store <4°C."
+    },
+    "process": {
+      "ref": "Classic gravlax / FDA guidance",
+      "url": "https://www.fda.gov/files/food/published/Fish-and-Fishery-Products-Hazards-and-Controls-Guidance-Chapter-5-Download.pdf",
+      "note": "Freeze fish per FDA schedule → salt/sugar/dill cure weighted 2-3 days at <4°C → rinse, slice thin. No cook, no smoke."
+    },
+    "flag": "RAW FISH: mandatory parasite-killing freeze (−20°C/7 days or −35°C schedule) before curing; cure/store <4°C. Salt+sugar cure alone does NOT kill parasites.",
+    "rationale": "Salt+sugar raw cure with no nitrite is correct (kept salt=40/cure=None); the real control is the FDA parasite freeze, flagged."
+  },
+  {
+    "id": "fish-lox",
+    "eng": "Cold-Smoked Salmon",
+    "calc": {"salt": 40, "cure": null},
+    "cure": {
+      "ref": "Oregon State Seafood — Smoked Fish Compendium Ch.7 / Food Safety Magazine — Hot & Cold Smoked Fish",
+      "url": "https://seafood.oregonstate.edu/sites/agscid7/files/snic/compendium/chapter-7-smoked-fish.pdf",
+      "note": "CURE-CRITICAL. Salt is the primary control and must reach ≥3.5% water-phase salt (WPS) in vacuum/reduced-O2 pack, or ≥2.5% WPS air-packed, to control C. botulinum type E (non-proteolytic, grows at fridge temps). NITRITE optional but recommended: FDA permits up to 200 ppm sodium nitrite in smoked salmon as an added C. botulinum barrier — if added, use Cure #1. Salt alone does not fully control Listeria (halotolerant) — cold-smoke + strict refrigeration + short shelf life are additional barriers. Current cure=None: salt is present but nitrite is NOT — recommend adding optional nitrite and verifying ≥3.5% WPS."
+    },
+    "smoke": {
+      "ref": "Oregon State Seafood Compendium Ch.7 / Food Safety Magazine",
+      "url": "https://www.food-safety.com/articles/10016-understanding-hot-and-cold-smoked-fish-processing-and-safety",
+      "note": "COLD smoke: fish held no higher than ~30°C (≤33°C max) so it never cooks/coagulates — it is NOT pasteurized by the smoke. Form pellicle, then cold-smoke hours-to-days after achieving target salt."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "Oregon State Seafood Compendium Ch.7 (C. botulinum type E / Listeria controls)",
+      "url": "https://seafood.oregonstate.edu/sites/agscid7/files/snic/compendium/chapter-7-smoked-fish.pdf",
+      "note": "NO thermal pasteurization (cold process). Safety = ≥3.5% WPS (vacuum) / ≥2.5% (air) + cold-smoke ≤30°C + optional nitrite ≤200 ppm + continuous refrigeration ≤3.3°C and short shelf life. Use previously-frozen fish for parasites (FDA freeze schedule)."
+    },
+    "process": {
+      "ref": "Oregon State Seafood Compendium Ch.7",
+      "url": "https://seafood.oregonstate.edu/sites/agscid7/files/snic/compendium/chapter-7-smoked-fish.pdf",
+      "note": "Salt/brine to target WPS → drain/pellicle → cold-smoke ≤30°C → vacuum pack → keep ≤3.3°C. Not cooked."
+    },
+    "flag": "CURE-CRITICAL / RAW COLD-SMOKED: C. botulinum type E + Listeria hazard. MUST reach ≥3.5% water-phase salt (vacuum) or ≥2.5% (air), cold-smoke ≤30°C, refrigerate ≤3.3°C, short shelf life; optional nitrite ≤200 ppm (Cure #1) recommended. Freeze fish first for parasites. Current recipe has salt but no nitrite — recommend adding optional nitrite and confirming WPS.",
+    "rationale": "Highest-risk item: kept salt=40 but flagged that nitrite is recommended and the real controls are ≥3.5% WPS, cold-smoke ≤30°C, and strict refrigeration against botulinum-E/Listeria."
+  },
+  {
+    "id": "fish-mackerel",
+    "eng": "Smoked Mackerel",
+    "calc": {"salt": null, "cure": null},
+    "cure": {
+      "ref": "Taste of Artisan / Marianski — Hot Smoked Mackerel brine",
+      "url": "https://tasteofartisan.com/hot-smoked-mackerel/",
+      "note": "Light salt brine (flavor/pellicle) ~1-2 h then pellicle-dry — NO nitrite needed because it is HOT-smoked (fully cooked), unlike cold-smoked lox. No curing salt required."
+    },
+    "smoke": {
+      "ref": "Taste of Artisan — Hot Smoked Mackerel",
+      "url": "https://tasteofartisan.com/hot-smoked-mackerel/",
+      "note": "HOT smoke, stepped: ~30°C/85°F light smoke 30-60 min → ~50°C/120°F 30-45 min → raise to ~80°C/175-180°F until internal 63°C (145°F); hold at temp ~30 min. This cooks the fish."
+    },
+    "safe": {
+      "safe": 63,
+      "ref": "USDA FSIS Safe Minimum Internal Temperature Chart (fish 63°C)",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/food-safety-basics/safe-temperature-chart",
+      "note": "Hot-smoked = cooked: internal 63°C/145°F. Holding ~30 min at temp adds margin. Contrast with cold-smoked lox which is never cooked."
+    },
+    "process": {
+      "ref": "Taste of Artisan — Hot Smoked Mackerel",
+      "url": "https://tasteofartisan.com/hot-smoked-mackerel/",
+      "note": "Brine 1-2 h → pellicle-dry ~2 h → hot-smoke stepped to internal 63°C."
+    },
+    "flag": "",
+    "rationale": "Hot-smoked (cooked) — only a flavor brine, no nitrite; cook floor 63°C confirmed; distinct from the cold-smoked lox path."
+  }
+]

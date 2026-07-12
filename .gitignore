@@ -1,0 +1,19 @@
+# Generated build artifact — run `python build.py` to regenerate from data.py + sources.py
+index.html
+_app_check.js
+
+# Node / Playwright
+node_modules/
+test-results/
+playwright-report/
+/playwright/.cache/
+
+# Python
+__pycache__/
+*.pyc
+
+# Scratch temp files (research provenance in scratch/research/ IS tracked)
+scratch/*.png
+scratch/*.py
+scratch/*.js
+scratch/*.output

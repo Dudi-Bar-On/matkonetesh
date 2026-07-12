@@ -1,0 +1,145 @@
+[
+  {
+    "n": 16, "eng": "Sausages (mixed, ground)",
+    "sv":    {"svt": 65, "svh": "1-2", "changed": false, "ref": "Baldwin — pasteurization backbone; ChefSteps sausage", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "60-65°C bath core for juicy ground sausage; 65°C for 1-2h fully pasteurizes ground meat (well above 54.4°C danger-zone limit, hold <4h)"},
+    "smoke": {"smt": 90, "smh": "0.75", "tgt": 71, "wood": "פקאן/תפוח", "changed": true, "ref": "AmazingRibs (Meathead) — Sausage smoke & grill methods", "url": "https://amazingribs.com/tested-recipes/sausage-recipes/sausage-smoke-and-grill-methods/", "note": "ground meat MUST reach 160°F/71°C 'for safety, but no higher for juiciness'; raised tgt 70→71 to match ground floor; hot finish 90°C ~45min"},
+    "smoke_only": {"sot": 100, "soh": "2.5", "changed": false, "ref": "AmazingRibs — Sausage smoke & grill methods", "url": "https://amazingribs.com/tested-recipes/sausage-recipes/sausage-smoke-and-grill-methods/", "note": "hot-smoke ~225°F/107°C to internal 160°F/71°C (~1h at 225°F); 100°C/2.5h low-and-slow variant reaches 71°C safely; NEVER cold-smoke raw sausage"},
+    "safe":  {"safe": 71, "ref": "AmazingRibs — ground-meat rule / USDA 160°F ground", "url": "https://amazingribs.com/tested-recipes/sausage-recipes/sausage-smoke-and-grill-methods/", "note": "GROUND meat floor 71°C/160°F — never lower; SV path pasteurizes at 65°C via hold but displayed floor stays 71 for grill/smoke-only no-hold path"},
+    "grill": {"grt": 200, "grh": "0.25", "grz": "דו-אזורי", "grillable": true, "ref": "AmazingRibs — Sausage smoke & grill methods", "url": "https://amazingribs.com/tested-recipes/sausage-recipes/sausage-smoke-and-grill-methods/", "note": "two-zone: cook on indirect (~400°F/200°C dome) to ~71°C core, then quick char on direct high heat; pull at 71°C (ground floor)"},
+    "order_svsmoke": {"sv": {"t": 65, "h": "1-2"}, "dry": {"h": "0.5"}, "smoke": {"t": 90, "h": "0.75", "cold": false}, "ref": "Baldwin + AmazingRibs", "url": "https://amazingribs.com/tested-recipes/sausage-recipes/sausage-smoke-and-grill-methods/"},
+    "order_smokesv": null,
+    "rationale": "Kept svt 65 (pasteurizes ground via hold, Baldwin) and safe 71 (ground floor, AmazingRibs). Raised smoke tgt 70→71 so the final internal target meets the mandatory ground-meat floor — a ground final target below 71 is unsafe. Never cold-smoke raw sausage."
+  },
+  {
+    "n": 69, "eng": "Beef Heart",
+    "sv":    {"svt": 55, "svh": "2", "changed": false, "ref": "Baldwin — beef core temps (medium-rare 54.5°C); anticuchos tradition", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "heart is lean muscle, best rare–medium-rare; 55°C ≈ medium-rare core, 2h tenderizes without graining"},
+    "smoke": {"smt": 120, "smh": "0.5", "tgt": 55, "wood": "אלון", "changed": false, "ref": "AmazingRibs — hot-and-fast lean muscle", "url": "https://amazingribs.com/", "note": "brief hot smoke for flavor/crust; core already 55°C, oak (אלון) is mild"},
+    "smoke_only": {"sot": 120, "soh": "0.5", "changed": false, "ref": "Hank Shaw — Anticuchos (grilled beef heart)", "url": "https://honest-food.net/anticuchos-peruanos-recipe/", "note": "heart cooks fast; short high-heat smoke/char to medium-rare, do not overcook or it turns rubbery"},
+    "safe":  {"safe": 63, "ref": "safe POLICY — whole-muscle beef 63°C/145°F (USDA)", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "heart is whole muscle → displayed floor 63°C; interior sterile so med-rare tgt 55 with seared surface is correct"},
+    "grill": {"grt": 260, "grh": "0.15", "grz": "ישיר", "grillable": true, "ref": "Hank Shaw — Anticuchos Peruanos (grilled beef heart skewers)", "url": "https://honest-food.net/anticuchos-peruanos-recipe/", "note": "direct high heat ~500°F/260°C, 3-5 min turning / ~60-90s per side on skewers, pull medium-rare ~55°C; charred outside, pink inside"},
+    "order_svsmoke": {"sv": {"t": 55, "h": "2"}, "dry": {"h": "0.5"}, "smoke": {"t": 120, "h": "0.5", "cold": false}, "ref": "Baldwin + AmazingRibs", "url": "https://douglasbaldwin.com/sous-vide.html"},
+    "order_smokesv": null,
+    "rationale": "All values well-supported; kept svt 55 (med-rare muscle per Baldwin) and safe 63 (whole-muscle policy floor). Anticuchos tradition confirms hot-fast direct grilling to medium-rare."
+  },
+  {
+    "n": 70, "eng": "Chicken Hearts",
+    "sv":    {"svt": 68, "svh": "1.5", "changed": false, "ref": "Baldwin — poultry pasteurization table", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "poultry offal; 68°C bath with ~1.5h hold pasteurizes (Baldwin poultry table: 65°C/20mm ≈ 40min), tender not chalky"},
+    "smoke": {"smt": 130, "smh": "0.4", "tgt": 68, "wood": "תפוח", "changed": false, "ref": "AmazingRibs — hot finish", "url": "https://amazingribs.com/", "note": "quick hot smoke; apple (תפוח) mild for delicate poultry"},
+    "smoke_only": {"sot": 130, "soh": "0.5", "changed": false, "ref": "Healthy Recipes / grilling guides — hearts cook fast", "url": "https://healthyrecipesblogs.com/chicken-hearts-recipe/", "note": "small pieces; no-hold path must reach poultry floor 74°C"},
+    "safe":  {"safe": 74, "ref": "safe POLICY — poultry 74°C/165°F (USDA)", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "poultry floor 74°C displayed; SV path legitimately pasteurizes at 68°C with hold (Baldwin) but grill/smoke-only no-hold must hit 74°C"},
+    "grill": {"grt": 240, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Healthy Recipes Blog / grilling guides — chicken hearts", "url": "https://healthyrecipesblogs.com/chicken-hearts-recipe/", "note": "skewer, direct high heat ~4-5 min turning; POULTRY no-hold → pull at 74°C not 68"},
+    "order_svsmoke": {"sv": {"t": 68, "h": "1.5"}, "dry": {"h": "0.3"}, "smoke": {"t": 130, "h": "0.4", "cold": false}, "ref": "Baldwin + AmazingRibs", "url": "https://douglasbaldwin.com/sous-vide.html"},
+    "order_smokesv": null,
+    "rationale": "Kept svt 68 (SV pasteurizes via hold, Baldwin poultry table) and safe 74 (poultry floor never lowered). Noted grill/smoke-only no-hold path must reach 74°C."
+  },
+  {
+    "n": 71, "eng": "Chicken Liver",
+    "sv":    {"svt": 74, "svh": "1", "changed": false, "ref": "USDA — poultry/organ; Baldwin poultry", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "chicken liver carries salmonella/campylobacter risk → cook to 74°C/165°F throughout; classic pâté doneness"},
+    "smoke": {"smt": 120, "smh": "0.3", "tgt": 74, "wood": "תפוח", "changed": false, "ref": "AmazingRibs — gentle hot finish", "url": "https://amazingribs.com/", "note": "delicate; brief mild apple smoke, do not dry out"},
+    "smoke_only": {"sot": 120, "soh": "0.4", "changed": false, "ref": "USDA poultry 165°F", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "must reach 74°C; liver overcooks quickly so keep short"},
+    "safe":  {"safe": 74, "ref": "safe POLICY — poultry 74°C/165°F (USDA)", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "poultry liver floor 74°C; no SV lowering — pathogen risk is high in chicken liver"},
+    "grill": {"grt": 230, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Grilling guides — skewered chicken livers", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "skewer, direct medium-high, quick; pull at 74°C (poultry, no hold) — just cooked through, not dry"},
+    "order_svsmoke": {"sv": {"t": 74, "h": "1"}, "dry": {"h": "0.25"}, "smoke": {"t": 120, "h": "0.3", "cold": false}, "ref": "USDA + AmazingRibs", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat"},
+    "order_smokesv": null,
+    "rationale": "All values correct; svt=tgt=safe=74 for chicken liver is mandatory (poultry salmonella/campylobacter, USDA 165°F). Nothing lowered."
+  },
+  {
+    "n": 72, "eng": "Beef Liver",
+    "sv":    {"svt": 72, "svh": "1.5", "changed": false, "ref": "USDA organ meat 160°F; Serious Eats/offal doneness", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "beef liver best cooked to medium/just-pink; 72°C keeps it above 71°C organ floor while avoiding grainy overcook"},
+    "smoke": {"smt": 120, "smh": "0.4", "tgt": 72, "wood": "אלון", "changed": false, "ref": "AmazingRibs — hot finish", "url": "https://amazingribs.com/", "note": "brief oak smoke for flavor; liver dries fast, keep short"},
+    "smoke_only": {"sot": 120, "soh": "0.5", "changed": false, "ref": "USDA organ meat 160°F", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "reach 71-72°C then pull; overcooked liver turns chalky"},
+    "safe":  {"safe": 72, "ref": "USDA — variety/organ meats 160°F/71°C", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "organ-meat floor 71°C; current 72 is conservative (≥floor) — kept"},
+    "grill": {"grt": 250, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Grilling guides — skewered/liver kebab tradition", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "thin slices/cubes, direct high heat ~1 min per side to ~72°C; do not overcook"},
+    "order_svsmoke": {"sv": {"t": 72, "h": "1.5"}, "dry": {"h": "0.3"}, "smoke": {"t": 120, "h": "0.4", "cold": false}, "ref": "USDA + AmazingRibs", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat"},
+    "order_smokesv": null,
+    "rationale": "Kept svt/tgt/safe 72 — matches USDA organ-meat floor (71°C) with a conservative round-up and beef-liver medium doneness. Documented existing values with citations."
+  },
+  {
+    "n": 73, "eng": "Lamb Liver",
+    "sv":    {"svt": 72, "svh": "1.5", "changed": false, "ref": "USDA organ meat 160°F; offal doneness", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "lamb liver same as beef liver — cook to just-set/medium, 72°C above organ floor without graining"},
+    "smoke": {"smt": 120, "smh": "0.4", "tgt": 72, "wood": "דובדבן", "changed": false, "ref": "AmazingRibs — hot finish", "url": "https://amazingribs.com/", "note": "cherry (דובדבן) mild-sweet, brief smoke; keep short"},
+    "smoke_only": {"sot": 120, "soh": "0.5", "changed": false, "ref": "USDA organ meat 160°F", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "reach ~72°C then pull"},
+    "safe":  {"safe": 72, "ref": "USDA — variety/organ meats 160°F/71°C", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "organ-meat floor 71°C; 72 conservative — kept"},
+    "grill": {"grt": 250, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Grilling guides — liver kebab (e.g. Turkish ciğer)", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "cubes/thin slices, direct high heat, seconds per side to ~72°C"},
+    "order_svsmoke": {"sv": {"t": 72, "h": "1.5"}, "dry": {"h": "0.3"}, "smoke": {"t": 120, "h": "0.4", "cold": false}, "ref": "USDA + AmazingRibs", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat"},
+    "order_smokesv": null,
+    "rationale": "Kept 72 across svt/tgt/safe — matches USDA organ floor (71°C) and lamb-liver medium doneness. Documented, no change."
+  },
+  {
+    "n": 74, "eng": "Goose Liver (foie gras)",
+    "sv":    {"svt": 65, "svh": "1", "changed": false, "ref": "ChefSteps — Foie Gras Torchon; Anova terrine", "url": "https://www.chefsteps.com/activities/foie-gras-torchon-a-flavor-packed-french-snack-your-friends-will-freak-over", "note": "foie is served gentle/mi-cuit; torchon methods run 55-60°C, a firmer cooked terrine ~65°C — kept 65 for a set terrine while minimizing fat render"},
+    "smoke": {"smt": 110, "smh": "0.3", "tgt": 65, "wood": "ללא", "changed": false, "ref": "delicate fatty liver — minimal heat", "url": "https://www.chefsteps.com/activities/foie-gras-torchon-a-flavor-packed-french-snack-your-friends-will-freak-over", "note": "very brief/low; wood ללא (none) — foie is delicate, heavy smoke overwhelms and renders fat"},
+    "smoke_only": {"sot": 110, "soh": "0.4", "changed": false, "ref": "gentle cook only", "url": "https://www.chefsteps.com/activities/foie-gras-torchon-a-flavor-packed-french-snack-your-friends-will-freak-over", "note": "keep low to avoid melting away the fat; pull ~65°C"},
+    "safe":  {"safe": 65, "ref": "Served mi-cuit (delicacy) — ChefSteps torchon", "url": "https://www.chefsteps.com/activities/foie-gras-torchon-a-flavor-packed-french-snack-your-friends-will-freak-over", "note": "foie gras is traditionally served mi-cuit BELOW the 71°C organ floor; documented as a gentle-temp delicacy (like rare foie), floor kept at its served temp 65°C"},
+    "grill": {"grt": null, "grh": null, "grz": "ישיר", "grillable": false, "ref": "Culinary practice — foie is pan-seared, not grilled", "url": "https://www.chefsteps.com/activities/foie-gras-torchon-a-flavor-packed-french-snack-your-friends-will-freak-over", "note": "NOT grilled — rendering fat flares on open grate; slices are flash pan-seared 30-45s per side in a screaming-hot dry pan"},
+    "order_svsmoke": {"sv": {"t": 65, "h": "1"}, "dry": {"h": "0.25"}, "smoke": {"t": 110, "h": "0.3", "cold": false}, "ref": "ChefSteps torchon", "url": "https://www.chefsteps.com/activities/foie-gras-torchon-a-flavor-packed-french-snack-your-friends-will-freak-over"},
+    "order_smokesv": null,
+    "rationale": "Kept svt/tgt/safe 65 — foie gras is served mi-cuit at a gentle temp (ChefSteps torchon 55-60°C, cooked terrine ~65°C), deliberately below the 71°C organ floor as a delicacy. Marked not grillable (pan-seared instead)."
+  },
+  {
+    "n": 75, "eng": "Veal Sweetbreads",
+    "sv":    {"svt": 65, "svh": "2", "changed": false, "ref": "Amazing Food Made Easy / Anova — sweetbreads", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads", "note": "sweetbreads are soaked/blanched then SV; medium ~60°C, 65°C for a firmer set that presses well; then floured & seared golden ~2 min/side"},
+    "smoke": {"smt": 120, "smh": "0.4", "tgt": 65, "wood": "אלון", "changed": false, "ref": "AmazingRibs — hot finish", "url": "https://amazingribs.com/", "note": "brief oak smoke after poach/press; then crisp sear"},
+    "smoke_only": {"sot": 120, "soh": "0.5", "changed": false, "ref": "poach-then-finish tradition", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads", "note": "poach/press first; brief smoke to warm through ~65°C"},
+    "safe":  {"safe": 65, "ref": "Poached/seared offal — cooked through at serving temp", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads", "note": "sweetbreads (thymus/pancreas) are blanched then cooked through and seared; 65°C set-and-served floor documented"},
+    "grill": {"grt": 230, "grh": "0.1", "grz": "עקיף→ישיר", "grillable": true, "ref": "Culinary practice — grilled sweetbreads (mollejas)", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads", "note": "must be soaked/blanched/pressed first; then grill direct medium-high to crisp exterior, ~2 min/side (Argentine mollejas de asador)"},
+    "order_svsmoke": {"sv": {"t": 65, "h": "2"}, "dry": {"h": "0.3"}, "smoke": {"t": 120, "h": "0.4", "cold": false}, "ref": "Amazing Food Made Easy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads"},
+    "order_smokesv": null,
+    "rationale": "Kept svt/tgt/safe 65 — sweetbreads are blanched then poached/SV to a firm set (~60-65°C per Amazing Food Made Easy) and seared; grillable after pressing (mollejas). No change."
+  },
+  {
+    "n": 76, "eng": "Lamb Sweetbreads",
+    "sv":    {"svt": 65, "svh": "2", "changed": false, "ref": "Amazing Food Made Easy / Great British Chefs — sweetbreads", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads", "note": "same as veal sweetbreads — soak/blanch then SV ~60-65°C set, then flour & sear golden"},
+    "smoke": {"smt": 120, "smh": "0.4", "tgt": 65, "wood": "דובדבן", "changed": false, "ref": "AmazingRibs — hot finish", "url": "https://amazingribs.com/", "note": "brief cherry smoke after poach; crisp sear"},
+    "smoke_only": {"sot": 120, "soh": "0.5", "changed": false, "ref": "poach-then-finish tradition", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads", "note": "poach/press first; brief smoke to ~65°C"},
+    "safe":  {"safe": 65, "ref": "Poached/seared offal — cooked through at serving temp", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads", "note": "blanched then cooked through and seared; 65°C set-and-served floor documented"},
+    "grill": {"grt": 230, "grh": "0.1", "grz": "עקיף→ישיר", "grillable": true, "ref": "Culinary practice — grilled sweetbreads", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads", "note": "soak/blanch/press first, then grill direct medium-high ~2 min/side to crisp"},
+    "order_svsmoke": {"sv": {"t": 65, "h": "2"}, "dry": {"h": "0.3"}, "smoke": {"t": 120, "h": "0.4", "cold": false}, "ref": "Amazing Food Made Easy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/sweetbreads"},
+    "order_smokesv": null,
+    "rationale": "Kept svt/tgt/safe 65 — lamb sweetbreads follow the same blanch/poach-to-set (~60-65°C) then sear method. Grillable after pressing. No change."
+  },
+  {
+    "n": 77, "eng": "Chicken Gizzards",
+    "sv":    {"svt": 90, "svh": "4", "changed": false, "ref": "Forager Chef — gizzard/heart confit; collagen breakdown", "url": "https://foragerchef.com/chicken-heart-confit/", "note": "gizzards are tough collagen — need long low cook (confit ~250°F/121°C ~3h, or SV 90°C ~4h) to turn tender; texture target, not doneness target"},
+    "smoke": {"smt": 120, "smh": "1", "tgt": 90, "wood": "תפוח", "changed": false, "ref": "AmazingRibs — low-and-slow for collagen", "url": "https://amazingribs.com/", "note": "long enough to reach tender ~90°C internal; apple smoke"},
+    "smoke_only": {"sot": 120, "soh": "4", "changed": false, "ref": "collagen breakdown needs time", "url": "https://foragerchef.com/chicken-heart-confit/", "note": "low-and-slow to ~90°C tender; short cooks leave gizzards rubbery"},
+    "safe":  {"safe": 74, "ref": "safe POLICY — poultry 74°C/165°F (USDA)", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "poultry floor 74°C; tgt 90 far exceeds it (texture-driven), floor stays 74 — never lowered"},
+    "grill": {"grt": 230, "grh": "0.15", "grz": "עקיף→ישיר", "grillable": true, "ref": "Brazilian moela / pre-cook-then-char tradition", "url": "https://foragerchef.com/chicken-heart-confit/", "note": "tough collagen — MUST be confited/braised tender first, then quick direct char; do NOT direct-grill raw (rubbery)"},
+    "order_svsmoke": {"sv": {"t": 90, "h": "4"}, "dry": {"h": "0.5"}, "smoke": {"t": 120, "h": "1", "cold": false}, "ref": "Forager Chef + AmazingRibs", "url": "https://foragerchef.com/chicken-heart-confit/"},
+    "order_smokesv": null,
+    "rationale": "Kept svt/tgt 90 (collagen tenderness target, confit/long-SV per Forager Chef) and safe 74 (poultry floor). Grill only after pre-cooking tender. No change."
+  },
+  {
+    "n": 78, "eng": "Beef Kidney",
+    "sv":    {"svt": 72, "svh": "1.5", "changed": false, "ref": "USDA organ meat 160°F; Anova beef kidney", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "kidney cooked medium/just-pink then finished; 72°C keeps it above 71°C organ floor while staying tender (overcooked kidney turns rubbery)"},
+    "smoke": {"smt": 120, "smh": "0.4", "tgt": 72, "wood": "אלון", "changed": false, "ref": "AmazingRibs — hot finish", "url": "https://amazingribs.com/", "note": "brief oak smoke; kidney firms fast, keep short"},
+    "smoke_only": {"sot": 120, "soh": "0.5", "changed": false, "ref": "USDA organ meat 160°F", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "reach ~72°C, pull while plump/firm not rubbery"},
+    "safe":  {"safe": 72, "ref": "USDA — variety/organ meats 160°F/71°C", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "organ floor 71°C; 72 conservative — kept"},
+    "grill": {"grt": 250, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Grilling guides — devilled/grilled kidneys", "url": "https://food52.com/recipes/21982-grilled-lamb-kidneys-with-crispy-sage", "note": "halve/butterfly, direct high heat ~1-2 min/side to just firm; do not overcook"},
+    "order_svsmoke": {"sv": {"t": 72, "h": "1.5"}, "dry": {"h": "0.3"}, "smoke": {"t": 120, "h": "0.4", "cold": false}, "ref": "USDA + AmazingRibs", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat"},
+    "order_smokesv": null,
+    "rationale": "Kept 72 across svt/tgt/safe — matches USDA organ floor (71°C) with conservative round-up; kidney cooked just-firm. Documented, no change."
+  },
+  {
+    "n": 79, "eng": "Lamb Kidney",
+    "sv":    {"svt": 72, "svh": "1.5", "changed": false, "ref": "USDA organ meat 160°F; grilled lamb kidney doneness", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "lamb kidney classically grilled just-pink; 72°C above organ floor while staying plump/tender"},
+    "smoke": {"smt": 120, "smh": "0.4", "tgt": 72, "wood": "דובדבן", "changed": false, "ref": "AmazingRibs — hot finish", "url": "https://amazingribs.com/", "note": "brief cherry smoke; keep short so kidney stays tender"},
+    "smoke_only": {"sot": 120, "soh": "0.5", "changed": false, "ref": "USDA organ meat 160°F", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "reach ~72°C, pull plump/firm"},
+    "safe":  {"safe": 72, "ref": "USDA — variety/organ meats 160°F/71°C", "url": "https://ask.usda.gov/s/article/What-is-the-safe-temperature-to-cook-organ-meat", "note": "organ floor 71°C; 72 conservative — kept"},
+    "grill": {"grt": 250, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Food52 — Grilled Lamb Kidneys with Crispy Sage", "url": "https://food52.com/recipes/21982-grilled-lamb-kidneys-with-crispy-sage", "note": "halve, direct high heat ~1-2 min/side, charred outside just-firm inside; overcooking makes them rubbery"},
+    "order_svsmoke": {"sv": {"t": 72, "h": "1.5"}, "dry": {"h": "0.3"}, "smoke": {"t": 120, "h": "0.4", "cold": false}, "ref": "USDA + Food52", "url": "https://food52.com/recipes/21982-grilled-lamb-kidneys-with-crispy-sage"},
+    "order_smokesv": null,
+    "rationale": "Kept 72 across svt/tgt/safe — matches USDA organ floor (71°C). Grilling confirmed direct high heat ~1-2 min/side (Food52). No change."
+  },
+  {
+    "n": 80, "eng": "Veal Brain",
+    "sv":    {"svt": 65, "svh": "1.5", "changed": false, "ref": "Offally Good Cooking — poaching brains; Julia Child", "url": "https://offallygoodcooking.com/brains/", "note": "brains are poached just below a simmer (~20 min for calf) to a custardy set, then floured & pan-fried meunière; 65°C SV core mirrors that gentle set"},
+    "smoke": {"smt": 110, "smh": "0.3", "tgt": 65, "wood": "ללא", "changed": false, "ref": "delicate — minimal heat", "url": "https://offallygoodcooking.com/brains/", "note": "very gentle/brief; wood ללא (none) — brain is fragile and mild, heavy smoke ruins it"},
+    "smoke_only": {"sot": 110, "soh": "0.4", "changed": false, "ref": "gentle warm-through only", "url": "https://offallygoodcooking.com/brains/", "note": "keep low; custardy texture, err toward gentle"},
+    "safe":  {"safe": 65, "ref": "Poached delicacy — cooked custardy at serving temp", "url": "https://offallygoodcooking.com/brains/", "note": "brains poached just below simmer to custardy set (~65°C); documented served floor, kept — a fragile poached offal, not a whole-muscle roast"},
+    "grill": {"grt": null, "grh": null, "grz": "ישיר", "grillable": false, "ref": "Culinary practice — cervelle is poached then pan-fried, not grilled", "url": "https://offallygoodcooking.com/brains/", "note": "NOT grillable — too soft/custardy for grates; classic cervelle de veau meunière is poached then floured and pan-seared in brown butter 3-4 min/side"},
+    "order_svsmoke": {"sv": {"t": 65, "h": "1.5"}, "dry": {"h": "0.25"}, "smoke": {"t": 110, "h": "0.3", "cold": false}, "ref": "Offally Good Cooking", "url": "https://offallygoodcooking.com/brains/"},
+    "order_smokesv": null,
+    "rationale": "Kept svt/tgt/safe 65 — brains are poached just below a simmer to a custardy set (Offally Good Cooking / Julia Child) then pan-fried meunière. Marked not grillable (too fragile for grates)."
+  }
+]

@@ -1,0 +1,154 @@
+[
+  {
+    "id": "m-boerewors",
+    "eng": "Boerewors",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Hank Shaw / Honest-Food — Boerewors", "url": "https://honest-food.net/boerewors-recipe/", "note": "Coarse-grind beef + pork/mutton with pork fat, toasted coriander, vinegar, nutmeg, clove; coil in wide hog casing; grill/braai fresh. Ground blend cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground-meat rule (mixed beef/pork)", "url": "https://honest-food.net/boerewors-recipe/", "note": "Mixed ground beef/pork -> 71C (160F)."},
+    "rationale": "Classic fresh braai sausage, no cure; salt 1.8% within fresh range."
+  },
+  {
+    "id": "m-brat",
+    "eng": "Bratwurst",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "meatsandsausages.com (Marianski) — Bratwurst-German", "url": "https://www.meatsandsausages.com/sausage-recipes/bratwurst", "note": "Grind pork (+veal) 3mm, season salt/white pepper/nutmeg/mace/ginger/caraway, stuff 32-36mm hog casing; fry or grill fresh. Ground pork/veal cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork/veal", "url": "https://www.meatsandsausages.com/sausage-recipes/bratwurst", "note": "Ground pork/veal -> 71C."},
+    "rationale": "Fresh German brat, uncured; salt ~1.8% in range (Marianski originals run high, 18 sensible)."
+  },
+  {
+    "id": "m-carnati",
+    "eng": "Carnati de Casa",
+    "calc": {"salt": 20, "cure": null},
+    "process": {"ref": "Cristina's Kitchen — Carnati de Casa", "url": "https://cristinaskitchen.com/homemade-romanian-sausages-carnati-de-casa/", "note": "Medium-grind pork (+beef/bacon), season salt/garlic/black pepper/cimbru(savory)/paprika, stuff hog casing; grill/fry fresh. Ground pork/beef cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork/beef", "url": "https://cristinaskitchen.com/homemade-romanian-sausages-carnati-de-casa/", "note": "Mixed ground pork/beef -> 71C."},
+    "rationale": "Fresh Romanian home sausage; salt 20 g/kg = 2.0%, top of sane fresh range but acceptable, kept."
+  },
+  {
+    "id": "m-chick",
+    "eng": "Chicken Sausage",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "Taste of Artisan — Homemade Chicken Sausage", "url": "https://tasteofartisan.com/homemade-chicken-sausage/", "note": "Grind chicken thigh (keep skin/fat for ~1.5% salt), season salt/pepper/garlic/herbs, stuff or patty; cook fresh. POULTRY -> 74C."},
+    "safe": {"safe": 74, "ref": "USDA poultry", "url": "https://tasteofartisan.com/homemade-chicken-sausage/", "note": "Ground poultry -> 74C (165F) for salmonella safety."},
+    "rationale": "Fresh poultry sausage, no cure; salt 1.6% in range; cook floor raised context poultry 74C."
+  },
+  {
+    "id": "m-chip",
+    "eng": "Breakfast Sausage",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Chef Billy Parisi — Breakfast Sausage", "url": "https://www.billyparisi.com/breakfast-sausage/", "note": "Grind pork shoulder, season sage/thyme/pepper/nutmeg/brown sugar/salt, form patties or loose; pan-fry fresh. Ground pork cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork", "url": "https://www.billyparisi.com/breakfast-sausage/", "note": "Ground pork -> 71C."},
+    "rationale": "Fresh sage breakfast sausage, uncured; salt 1.8% in range."
+  },
+  {
+    "id": "m-ital",
+    "eng": "Italian Sausage",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Don't Sweat The Recipe — Homemade Italian Sausage", "url": "https://www.dontsweattherecipe.com/italian-sausage-recipe/", "note": "Coarse-grind pork shoulder, season salt/fennel seed/black pepper/garlic (+chili for hot), optional wine; stuff hog casing; grill/fry fresh. Ground pork cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork", "url": "https://www.dontsweattherecipe.com/italian-sausage-recipe/", "note": "Ground pork -> 71C."},
+    "rationale": "Fresh fennel pork sausage, no cure; salt 1.8% in range."
+  },
+  {
+    "id": "m-merg",
+    "eng": "Merguez",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Hank Shaw / Honest-Food — Merguez", "url": "https://honest-food.net/merguez-sausage-recipe-venison/", "note": "Grind lamb (or lamb/beef) with fat, mix harissa/paprika/cumin/coriander/fennel/garlic; stuff sheep casing; grill fresh. Ground lamb/beef cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground lamb/beef", "url": "https://honest-food.net/merguez-sausage-recipe-venison/", "note": "Ground lamb/beef -> 71C."},
+    "rationale": "Fresh North African lamb sausage, uncured; salt 1.8% in range (Marianski runs 2.4%, kept 18)."
+  },
+  {
+    "id": "m-patricieni",
+    "eng": "Patricieni",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Cristina's Kitchen — Romanian fresh sausage (carnati)", "url": "https://cristinaskitchen.com/homemade-romanian-sausages-carnati-de-casa/", "note": "Coarse-grind pork with fat, garlic-forward, black pepper, summer savory (cimbru), garlic-water; stuff hog casing; grill fresh. Ground pork cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork", "url": "https://cristinaskitchen.com/homemade-romanian-sausages-carnati-de-casa/", "note": "Ground pork -> 71C."},
+    "rationale": "Fresh Romanian garlic pork sausage, no cure; salt 1.8% in range."
+  },
+  {
+    "id": "m-toul",
+    "eng": "Toulouse",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Saucisse de Toulouse", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/french/saucisse-de-toulouse", "note": "Coarse-grind pork (75% lean/25% belly), season salt/black pepper/garlic (+nutmeg), stuff 36mm hog casing coil; grill/roast fresh. Ground pork cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/french/saucisse-de-toulouse", "note": "Ground pork -> 71C."},
+    "rationale": "Classic fresh French pork sausage, uncured; source uses 1.5% salt, 18 (1.8%) still in range, kept."
+  },
+  {
+    "id": "m-weiss",
+    "eng": "Weisswurst",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Weisswurst (White Sausage)", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/weisswurst-german", "note": "Emulsify veal + pork back-fat cold, season salt/white pepper/mace/lemon/parsley/onion/cardamom; stuff 28-32mm casing; POACH ~80C water. Ground veal/pork core to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground veal/pork", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/weisswurst-german", "note": "Ground veal/pork -> 71C (poach ~35 min, water not boiling)."},
+    "rationale": "Fresh Bavarian white veal sausage, uncured (white = no nitrite); salt 1.8% in range."
+  },
+  {
+    "id": "n-alheira",
+    "eng": "Alheira",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Alheira de Mirandela", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/portuguese/alheira-de-mirandela", "note": "Cook poultry+pork in broth, shred, bind with bread soaked in broth, garlic, paprika, olive oil; stuff, light cold-smoke; then fry/grill before eating. Contains POULTRY -> 74C."},
+    "safe": {"safe": 74, "ref": "USDA poultry (poultry-based sausage)", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/portuguese/alheira-de-mirandela", "note": "Poultry-content sausage -> 74C when fried/grilled to serve."},
+    "rationale": "Portuguese bread+poultry sausage; traditionally lightly cold-smoked but eaten cooked fresh, no nitrite cure; salt 1.6% in range."
+  },
+  {
+    "id": "n-bangers",
+    "eng": "Cumberland Bangers",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Cumberland (Traditional)", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/uk/cumberland-traditional", "note": "Coarse-grind pork, season salt/black pepper/mace/sage, bind with rusk+water; stuff as coil; pan-fry/roast/grill fresh. Ground pork cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/uk/cumberland-traditional", "note": "Ground pork -> 71C."},
+    "rationale": "Fresh English banger, uncured; salt 1.6% in range."
+  },
+  {
+    "id": "n-biala",
+    "eng": "Biala Kielbasa",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Feastern Europe — Kielbasa Biala", "url": "https://feasterneurope.com/polish-sausage-kielbasa-biala/", "note": "Grind pork shoulder (>=20% fat), season salt/garlic/marjoram/pepper; stuff hog casing; boil/grill/roast fresh. No nitrite (kept cold, cooked fresh = 'white'). Ground pork cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork", "url": "https://feasterneurope.com/polish-sausage-kielbasa-biala/", "note": "Ground pork -> 71C."},
+    "rationale": "Fresh Polish white sausage; source explicitly states fresh version needs no nitrite; salt 1.8% in range."
+  },
+  {
+    "id": "n-boudin",
+    "eng": "Boudin Blanc",
+    "calc": {"salt": 15, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Boudin Blanc", "url": "https://www.meatsandsausages.com/sausage-recipes/cooked/boudin-blanc", "note": "Emulsify pork/veal + chicken breast + back-fat with onion, milk panade, egg/cream, salt/white pepper; stuff 36mm; POACH ~80C then fry/grill. Contains POULTRY -> 74C."},
+    "safe": {"safe": 74, "ref": "USDA poultry (contains chicken)", "url": "https://www.meatsandsausages.com/sausage-recipes/cooked/boudin-blanc", "note": "Common recipe includes chicken -> 74C; poach then finish."},
+    "rationale": "Fresh French white emulsion sausage, uncured; salt 1.5% in range; poultry content sets 74C floor."
+  },
+  {
+    "id": "n-boudin-caj",
+    "eng": "Cajun Boudin",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "Hank Shaw / Honest-Food — Louisiana Boudin", "url": "https://honest-food.net/cajun-boudin-sausage-recipe/", "note": "Simmer pork shoulder + pork/chicken liver + trinity till tender, grind, mix with cooked rice (~2:1) + Cajun seasoning; stuff; steam/grill to heat. Pork+liver -> 71C (74C if poultry liver)."},
+    "safe": {"safe": 71, "ref": "USDA ground pork (meat pre-cooked; 74C if poultry liver used)", "url": "https://honest-food.net/cajun-boudin-sausage-recipe/", "note": "Filling cooked in prep; serve heated to 71C, 74C if made with chicken liver."},
+    "rationale": "Fresh pork-and-rice boudin, uncured (meat fully cooked before stuffing); salt 1.6% in range."
+  },
+  {
+    "id": "n-butifarra",
+    "eng": "Butifarra Blanca",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Hank Shaw / Honest-Food — Butifarra", "url": "https://honest-food.net/butifarra-sausage-recipe/", "note": "Grind pork collar/belly/jowl, salt overnight, season salt/white pepper (+mace/nutmeg/cinnamon), stuff; grill/fry fresh. No blood, no cure. Ground pork cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork", "url": "https://honest-food.net/butifarra-sausage-recipe/", "note": "Ground pork -> 71C."},
+    "rationale": "Fresh Catalan white pork sausage, uncured; salt 1.8% in range."
+  },
+  {
+    "id": "n-chistorra",
+    "eng": "Chistorra",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Basco Fine Foods — Guide to Chistorra", "url": "https://www.bascofinefoods.com/blog/the-ultimate-guide-to-chistorra-sausage/", "note": "Fine-grind pork (or pork/beef, high fat 70-80%), season salt/garlic/paprika; thin lamb casing; grill/fry fresh. Ground pork/beef cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork/beef", "url": "https://www.bascofinefoods.com/blog/the-ultimate-guide-to-chistorra-sausage/", "note": "Ground pork/beef -> 71C."},
+    "rationale": "FLAG: traditionally a semi-/fast-cured Navarrese sausage (dried 1-5 days, some commercial versions add sodium nitrite); however it is eaten cooked fresh/grilled, so cure kept null for the fresh cook-and-eat version. Salt 1.8% in range."
+  },
+  {
+    "id": "n-chorizo-arg",
+    "eng": "Chorizo Argentino",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Hank Shaw / Honest-Food — Argentine Chorizo", "url": "https://honest-food.net/argentine-chorizo-sausages/", "note": "Grind pork + beef (~1/3 beef) with fat, season salt/sweet paprika/garlic/black pepper/oregano, red wine+vinegar; stuff; grill on parrilla fresh (unsmoked, uncured). Ground pork/beef cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork/beef", "url": "https://honest-food.net/argentine-chorizo-sausages/", "note": "Mixed ground pork/beef -> 71C."},
+    "rationale": "Fresh unsmoked grilling chorizo (choripan), no cure; salt 1.8% in range."
+  },
+  {
+    "id": "n-chorizo-mex",
+    "eng": "Chorizo Mexicano",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Chili Pepper Madness — Mexican Chorizo", "url": "https://www.chilipeppermadness.com/recipes/mexican-chorizo/", "note": "Grind pork + fat, blend with ancho/guajillo chile paste, garlic, vinegar, cumin/oregano/clove/cinnamon; rest, cook loose fresh (not dried). Ground pork cook to 71C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork", "url": "https://www.chilipeppermadness.com/recipes/mexican-chorizo/", "note": "Ground pork -> 71C."},
+    "rationale": "Fresh Mexican chorizo (vinegar/chile, cooked fresh unlike dry Spanish chorizo), no cure; salt 1.8% in range."
+  }
+]

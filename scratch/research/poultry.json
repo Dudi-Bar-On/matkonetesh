@@ -1,0 +1,189 @@
+[
+  {
+    "n": 3,
+    "eng": "Hanging Shawarma (turkey)",
+    "sv": {"svt": 74, "svh": "12", "changed": false, "ref": "Baldwin — Practical Guide to Sous Vide (poultry pasteurization)", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Stacked turkey thigh (dark meat) on a vertical spit. 74°C instantly exceeds every cell of Baldwin's poultry table (65°C/50mm = 2.25h); the long 12h hold is for collagen/tendon breakdown so slices carve tender, not for extra safety."},
+    "smoke": {"smt": 105, "smh": "1.5", "tgt": 75, "wood": "תפוח/פקאן", "changed": false, "ref": "AmazingRibs — turkey smoke restraint (smoke is a seasoning)", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/ultimate-bbq-turkey-recipe/", "note": "Post-SV hot smoke for bark; Meathead: use fruit wood sparingly on turkey. tgt 75°C keeps dark meat above the 74°C floor after the 74°C bath."},
+    "smoke_only": {"sot": 110, "soh": "3.5", "changed": false, "ref": "AmazingRibs — dark poultry to 170-175°F for collagen", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/disney-style-smoked-turkey-legs-recipe/", "note": "Low-and-slow raw spit to internal 75°C+; dark meat benefits from the extra time in the 160→175°F band to melt connective tissue."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed poultry floor 74°C (165°F). Bath already at 74°C so meat is pasteurized instantly per Baldwin's table (a 1e7:1 Salmonella reduction is reached far below this)."},
+    "order_svsmoke": {"sv": {"t": 74, "h": "12"}, "dry": {"h": "1"}, "smoke": {"t": 105, "h": "1.5", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept all values. 74°C/12h is a pasteurize-and-tenderize dark-meat cook (Baldwin) finished with light fruit-wood smoke (Meathead); safe stays at the 74°C poultry floor."
+  },
+  {
+    "n": 5,
+    "eng": "Chicken Thighs",
+    "sv": {"svt": 65, "svh": "2", "changed": false, "ref": "Baldwin — poultry pasteurization table", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Boneless thigh ~30mm: Baldwin 65°C/30mm = 1h15 to pasteurize, so 2h gives full Salmonella safety plus a tender dark-meat texture (AmazingRibs SV-que thighs = 148°F/65°C)."},
+    "smoke": {"smt": 120, "smh": "0.5", "tgt": 75, "wood": "אלון/תפוח", "changed": false, "ref": "AmazingRibs — sous-vide-que finish (~30 min smoke)", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/", "note": "After the bath, ~30 min hot smoke adds flavor with little temp rise. Oak/apple are moderate; Meathead warns hickory/pecan can overpower chicken."},
+    "smoke_only": {"sot": 130, "soh": "1.5", "changed": false, "ref": "AmazingRibs — smoke chicken at 325°F for skin", "url": "https://amazingribs.com/how-to-barbecue-chicken/", "note": "Raw thighs at ~130°C (≈265°F) to internal 75°C; dark meat is even better carried toward 175°F/79°C for collagen if you want fall-apart texture."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C. The 65°C bath pasteurizes by TIME (Baldwin table), but the grill/smoke-only path has no long hold, so displayed floor stays 74°C."},
+    "order_svsmoke": {"sv": {"t": 65, "h": "2"}, "dry": {"h": "1"}, "smoke": {"t": 120, "h": "0.5", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; 65°C/2h is well past Baldwin's 65°C/30mm=1h15 pasteurization point and matches Meathead's 148°F thigh. Safe held at 74°C floor."
+  },
+  {
+    "n": 9,
+    "eng": "Duck Breast",
+    "sv": {"svt": 63, "svh": "3", "changed": false, "ref": "Baldwin — poultry medium 60-65°C, pasteurized", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Labeled goose breast (חזה אווז). Leaner/gamier than duck, so cooked a touch past duck medium-rare: 63°C = medium. Baldwin 63°C/30mm = 1.5h, so 3h fully pasteurizes."},
+    "smoke": {"smt": 105, "smh": "0.75", "tgt": 65, "wood": "דובדבן נקי", "changed": false, "ref": "AmazingRibs — fruit wood for waterfowl breast", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/grill-roasted-peking-duck-recipe/", "note": "Clean cherry smoke; short so core stays at 65°C. tgt 65°C keeps this intact whole-muscle breast at a rosy medium."},
+    "smoke_only": {"sot": 110, "soh": "1.5", "changed": false, "ref": "AmazingRibs — keep waterfowl cooker hot to render fat/crisp skin", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/grill-roasted-peking-duck-recipe/", "note": "Score skin; ≈110°C then hot blast to crisp. Pull breast ~65°C to avoid chewy overcooking."},
+    "safe": {"safe": 74, "ref": "Baldwin poultry floor — but intact whole-muscle exception noted", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor stays 74°C for the app's grill-only path. tgt 65°C is intentionally below it: goose/duck breast is intact whole muscle (interior sterile, surface seared), so served medium is standard and safe like red meat. Do NOT raise tgt to 74."},
+    "order_svsmoke": {"sv": {"t": 63, "h": "3"}, "dry": {"h": "1"}, "smoke": {"t": 105, "h": "0.75", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values. Whole-muscle waterfowl breast exception: low tgt 65°C (medium) is correct and safe; displayed safe stays at the 74°C poultry floor per policy."
+  },
+  {
+    "n": 19,
+    "eng": "Turkey Breast",
+    "sv": {"svt": 65, "svh": "3", "changed": false, "ref": "Baldwin — light poultry medium 60-65°C, pasteurized", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Thick (≈50mm) turkey breast: Baldwin 65°C/50mm = 2.25h to pasteurize, so 3h is a safe margin while keeping white meat juicy at 65°C."},
+    "smoke": {"smt": 105, "smh": "1", "tgt": 75, "wood": "דובדבן/תפוח", "changed": false, "ref": "AmazingRibs — pull at 160°F, carryover to 165°F", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/ultimate-bbq-turkey-recipe/", "note": "Meathead: white meat ≈160°F/71°C, rest to 165°F/74°C. tgt 75°C keeps it above floor; cherry/apple, used sparingly."},
+    "smoke_only": {"sot": 110, "soh": "4", "changed": false, "ref": "AmazingRibs — turkey best at 325°F; internal 160-165°F", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/ultimate-bbq-turkey-recipe/", "note": "sot 110°C is a low-slow choice to internal 75°C; Meathead actually prefers ~325°F/163°C for better skin and a shorter time in the danger zone — consider raising for skin."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C. 65°C bath pasteurizes by time (Baldwin) but is documented in-note, not lowered, because the smoke-only path lacks the long hold."},
+    "order_svsmoke": {"sv": {"t": 65, "h": "3"}, "dry": {"h": "1"}, "smoke": {"t": 105, "h": "1", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; 65°C/3h exceeds Baldwin's 65°C/50mm=2.25h pasteurization and matches Meathead's 160→165°F carryover. Safe held at 74°C floor."
+  },
+  {
+    "n": 38,
+    "eng": "Spatchcock Chicken",
+    "sv": {"svt": 65, "svh": "2-3", "changed": false, "ref": "Baldwin — poultry pasteurized at 60-65°C by time", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Whole spatchcocked bird; thickest breast ≈40mm: Baldwin 65°C/50mm = 2.25h, so 2-3h pasteurizes throughout."},
+    "smoke": {"smt": 130, "smh": "0.75", "tgt": 74, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — spatchcock: 325°F to 160°F breast/175°F thigh", "url": "https://amazingribs.com/tested-recipes/chicken-recipes/grilled-citrus-herb-spatchcocked-chicken-recipe/", "note": "Meathead cooks spatchcock at ~325°F/163°C to breast 160°F and thigh 175°F; smt 130°C hot-finish + tgt 74°C aligns. 2-3 chunks apple/oak."},
+    "smoke_only": {"sot": 150, "soh": "1.75", "changed": false, "ref": "AmazingRibs — 325°F for spatchcock, ~1 h to 160°F breast", "url": "https://amazingribs.com/tested-recipes/chicken-recipes/grilled-citrus-herb-spatchcocked-chicken-recipe/", "note": "150°C (≈300-325°F) raw to internal 74°C; spatchcocking evens cooking so breast finishes near thigh."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; whole bird includes surfaces and joints so the conservative instant-safe number is kept."},
+    "order_svsmoke": {"sv": {"t": 65, "h": "2-3"}, "dry": {"h": "1"}, "smoke": {"t": 130, "h": "0.75", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; smoke temps and 160°F breast / 175°F thigh targets match Meathead's spatchcock recipe, SV pasteurizes per Baldwin, safe at 74°C floor."
+  },
+  {
+    "n": 39,
+    "eng": "Chicken Wings",
+    "sv": {"svt": 65, "svh": "1-2", "changed": false, "ref": "Baldwin — poultry table (thin joint)", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Wings are thin (≤20mm): Baldwin 65°C/20mm = 40 min, so 1-2h fully pasteurizes and renders the dark meat."},
+    "smoke": {"smt": 150, "smh": "0.5", "tgt": 74, "wood": "דובדבן/תפוח", "changed": false, "ref": "AmazingRibs — wings need high heat for crispy skin", "url": "https://amazingribs.com/how-to-barbecue-chicken/", "note": "Pitmasters run wings at ~350°F/177°C to crisp skin in 45-60 min; smt 150°C hot-finish with apple/cherry gets there."},
+    "smoke_only": {"sot": 150, "soh": "1.5", "changed": false, "ref": "AmazingRibs/Pitmaster — 350°F for crispy wings", "url": "https://amazingribs.com/how-to-barbecue-chicken/", "note": "Higher is better for wing skin; ~150-177°C to internal 74°C. Cornstarch/baking-powder dry brine aids crisping."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; kept conservative for the smoke-only path."},
+    "order_svsmoke": {"sv": {"t": 65, "h": "1-2"}, "dry": {"h": "0.5"}, "smoke": {"t": 150, "h": "0.5", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; thin wings pasteurize fast (Baldwin) and finish hot (~350°F) for crispy skin per Meathead. Safe at 74°C floor."
+  },
+  {
+    "n": 40,
+    "eng": "Chicken Drumsticks",
+    "sv": {"svt": 70, "svh": "2", "changed": false, "ref": "Baldwin — poultry table; dark meat wants higher", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Drumstick ≈35mm dark meat: 70°C pasteurizes in well under 1h (above Baldwin's 65°C row) and starts collagen conversion so 2h yields tender, moist meat."},
+    "smoke": {"smt": 130, "smh": "0.67", "tgt": 80, "wood": "אלון/תפוח", "changed": false, "ref": "AmazingRibs — dark meat to 175°F for render/crisp", "url": "https://amazingribs.com/how-to-barbecue-chicken/", "note": "Meathead: legs best ~175°F/79°C to render fat and crisp skin; tgt 80°C matches. Smoke at ~325°F/130-163°C."},
+    "smoke_only": {"sot": 140, "soh": "1.5", "changed": false, "ref": "AmazingRibs — 325°F browns skin, melts fat", "url": "https://amazingribs.com/how-to-barbecue-chicken/", "note": "140°C (≈285°F) raw to internal 80°C; the extended 160→175°F band liquefies connective tissue."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; tgt 80°C already exceeds it for dark-meat texture."},
+    "order_svsmoke": {"sv": {"t": 70, "h": "2"}, "dry": {"h": "1"}, "smoke": {"t": 130, "h": "0.67", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; 70°C/2h over-pasteurizes and tgt 80°C matches Meathead's 175°F dark-meat target. Safe at 74°C floor."
+  },
+  {
+    "n": 41,
+    "eng": "Chicken Breast",
+    "sv": {"svt": 65, "svh": "1.5-2", "changed": true, "ref": "AmazingRibs — tested 145/155/165°F, recommends 150°F/65.6°C; Baldwin pasteurization", "url": "https://amazingribs.com/tested-recipes/chicken-recipes/sous-vide-que-boneless-chicken-breasts/", "note": "Raised svt 63→65°C: Meathead directly tested and settled on 150°F (65.6°C) as the best moisture/texture balance. Raised svh floor to 1.5h: a 0.4kg breast is ~30-40mm and Baldwin needs 65°C/30mm = 1h15 (63°C/30mm = 1.5h), so the old 1h lower bound was borderline for Salmonella."},
+    "smoke": {"smt": 120, "smh": "0.33", "tgt": 68, "wood": "דובדבן/תפוח", "changed": false, "ref": "AmazingRibs — SV-que breast, quick sear/smoke finish", "url": "https://amazingribs.com/tested-recipes/chicken-recipes/sous-vide-que-boneless-chicken-breasts/", "note": "After the bath, ~2 min/side direct/smoke; core barely rises. tgt 68°C (≈155°F) keeps white meat just-done and juicy. Cherry/apple."},
+    "smoke_only": {"sot": 120, "soh": "1", "changed": false, "ref": "AmazingRibs — chicken at 300-325°F", "url": "https://amazingribs.com/how-to-barbecue-chicken/", "note": "Raw breast at ~120°C to internal 74°C on the no-SV path; keep it short so white meat doesn't dry."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C. tgt 68°C is below it because the 65°C bath pasteurizes by time (Baldwin), but the smoke-only path has no long hold, so the displayed floor stays 74°C."},
+    "order_svsmoke": {"sv": {"t": 65, "h": "1.5-2"}, "dry": {"h": "0.5"}, "smoke": {"t": 120, "h": "0.33", "cold": false}, "ref": "AmazingRibs — sous-vide-que boneless chicken breast", "url": "https://amazingribs.com/tested-recipes/chicken-recipes/sous-vide-que-boneless-chicken-breasts/"},
+    "order_smokesv": null,
+    "rationale": "CHANGED sv: svt 63→65°C to match Meathead's tested 150°F optimum, and svh 1-2→1.5-2 so the lower bound clears Baldwin's pasteurization time for a 30-40mm breast. Safe held at 74°C floor."
+  },
+  {
+    "n": 42,
+    "eng": "Turkey Legs",
+    "sv": {"svt": 74, "svh": "8-12", "changed": false, "ref": "Baldwin — poultry pasteurized; long hold for tendons", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Turkey legs are dense dark meat full of tendons: 74°C pasteurizes instantly, and 8-12h is needed to convert collagen so the meat pulls cleanly off the bone."},
+    "smoke": {"smt": 110, "smh": "1", "tgt": 85, "wood": "דובדבן/תפוח", "changed": false, "ref": "AmazingRibs — Disney-style legs, dark meat to ~180°F", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/disney-style-smoked-turkey-legs-recipe/", "note": "Post-SV smoke for the classic pink-ringed leg; tgt 85°C (≈185°F) fully renders tendons. Oak/apple."},
+    "smoke_only": {"sot": 120, "soh": "3", "changed": false, "ref": "AmazingRibs — legs need 3-4h for collagen to melt", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/disney-style-smoked-turkey-legs-recipe/", "note": "≈120°C raw to internal 85°C; legs take 3-4h low-and-slow to become tender."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; the 74°C bath meets it directly and tgt 85°C exceeds it."},
+    "order_svsmoke": {"sv": {"t": 74, "h": "8-12"}, "dry": {"h": "1"}, "smoke": {"t": 110, "h": "1", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; 74°C/8-12h pasteurizes and breaks down tendons, tgt 85°C matches Meathead's dark-meat leg finish. Safe at 74°C floor."
+  },
+  {
+    "n": 43,
+    "eng": "Whole Turkey",
+    "sv": {"svt": 63, "svh": "4-5", "changed": false, "ref": "Baldwin — poultry pasteurized by time at 63°C", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Whole bird (usually parted for SV); thick breast ≈50mm: Baldwin 63°C/50mm = 2.5h, so 4-5h pasteurizes even the thickest section."},
+    "smoke": {"smt": 130, "smh": "2", "tgt": 74, "wood": "תפוח/דובדבן", "changed": false, "ref": "AmazingRibs — turkey at 325°F, 160°F breast/170°F thigh", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/ultimate-bbq-turkey-recipe/", "note": "Meathead: cook at 325°F, pull ~160°F, carryover to 165°F/74°C; thigh ~170°F. Use apple/cherry sparingly ('nobody ruined a turkey by under-smoking it')."},
+    "smoke_only": {"sot": 150, "soh": "4.5", "changed": false, "ref": "AmazingRibs — 325°F is the sweet spot for whole turkey", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/ultimate-bbq-turkey-recipe/", "note": "sot 150°C (≈300-325°F) to internal 74°C; hot enough to crisp skin and shorten the danger-zone window on a big bird."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; conservative instant-safe kept for the whole-bird smoke-only path (surfaces, cavity, joints)."},
+    "order_svsmoke": {"sv": {"t": 63, "h": "4-5"}, "dry": {"h": "1"}, "smoke": {"t": 130, "h": "2", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; smoke temp and 160°F breast/170°F thigh targets match Meathead's whole-turkey guide, SV pasteurizes per Baldwin. Safe at 74°C floor."
+  },
+  {
+    "n": 44,
+    "eng": "Whole Goose",
+    "sv": {"svt": 64, "svh": "6", "changed": false, "ref": "Baldwin — poultry pasteurized by time", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Fatty whole goose; 64°C is just above Baldwin's 63°C poultry row (63°C/50mm = 2.5h), so 6h pasteurizes and begins fat softening."},
+    "smoke": {"smt": 120, "smh": "2", "tgt": 74, "wood": "תפוח/דובדבן", "changed": false, "ref": "ThermoWorks/Meathead — waterfowl: keep cooker hot, fruit wood", "url": "https://blog.thermoworks.com/how-to-roast-a-goose/", "note": "Prick skin to drain the heavy fat; breast to ~165°F/74°C. Dark meat is better toward 175°F/79°C to fully render — pull breast earlier than legs. Apple/cherry."},
+    "smoke_only": {"sot": 130, "soh": "4.5", "changed": false, "ref": "Dive Bomb / ThermoWorks — smoke goose ~300°F, render fat 3x", "url": "https://www.divebombindustries.com/blogs/news/smoking-goose-a-step-by-step-guide-for-rich-flavors", "note": "Keep it hotter (nearer 300°F) not 225°F to crisp skin; drain rendered fat several times. Internal 74°C breast, 79°C legs."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; conservative instant-safe kept for the whole-bird."},
+    "order_svsmoke": {"sv": {"t": 64, "h": "6"}, "dry": {"h": "1"}, "smoke": {"t": 120, "h": "2", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; SV pasteurizes per Baldwin and smoke plan (hot cooker, fruit wood, drain fat, 165°F breast) matches ThermoWorks/goose sources. Safe at 74°C floor."
+  },
+  {
+    "n": 45,
+    "eng": "Goose Leg (confit)",
+    "sv": {"svt": 80, "svh": "8-10", "changed": false, "ref": "Baldwin — duck/goose leg confit 80°C for 8-12h", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Baldwin explicitly gives duck/goose leg confit at 176°F/80°C for 8-12h; 8-10h is squarely in range for tender, shreddable confit."},
+    "smoke": {"smt": 110, "smh": "0.75", "tgt": 85, "wood": "דובדבן", "changed": false, "ref": "AmazingRibs — confit finish: hot indirect + sear to crisp skin", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/", "note": "After the confit bath, ~325°F indirect then a hard sear crisps the skin; tgt 85°C is already reached in the bath. Oak."},
+    "smoke_only": {"sot": 120, "soh": "2.5", "changed": false, "ref": "AmazingRibs — waterfowl legs low-and-slow to render", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/", "note": "≈120°C to internal 85°C; long enough to render fat and melt connective tissue on the leg."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; the 80°C confit bath and tgt 85°C far exceed it."},
+    "order_svsmoke": {"sv": {"t": 80, "h": "8-10"}, "dry": {"h": "0.5"}, "smoke": {"t": 110, "h": "0.75", "cold": false}, "ref": "AmazingRibs — sous-vide-que duck confit", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; matches Baldwin's 80°C/8-12h confit spec exactly, finished hot to crisp skin. Safe at 74°C floor."
+  },
+  {
+    "n": 46,
+    "eng": "Whole Duck",
+    "sv": {"svt": 64, "svh": "4-5", "changed": false, "ref": "Baldwin — poultry pasteurized by time", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "64°C just above Baldwin's 63°C row (63°C/50mm = 2.5h); 4-5h pasteurizes the parted bird and softens the fat layer."},
+    "smoke": {"smt": 130, "smh": "1.5", "tgt": 74, "wood": "דובדבן/תפוח", "changed": false, "ref": "ThermoWorks/Meathead — smoke duck at 300-325°F to 165°F, ~2.5h", "url": "https://blog.thermoworks.com/thermal-tips-smoke-duck/", "note": "Keep cooker hot (300-325°F/149-163°C) so the fat renders and skin crisps; breast to 165°F/74°C. smt 130°C matches. Apple/cherry."},
+    "smoke_only": {"sot": 140, "soh": "2.75", "changed": false, "ref": "ThermoWorks — ~300°F, internal 157-165°F, ~2.5h", "url": "https://blog.thermoworks.com/thermal-tips-smoke-duck/", "note": "sot 140°C (≈285°F) to internal 74°C; score and prick skin to drain fat. Too low (225°F) leaves skin flabby."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://blog.thermoworks.com/thermal-tips-smoke-duck/", "note": "Displayed floor 74°C (165°F) — ThermoWorks notes 157°F is a common lower target but the USDA poultry minimum is 165°F; kept conservative for the whole bird."},
+    "order_svsmoke": {"sv": {"t": 64, "h": "4-5"}, "dry": {"h": "1"}, "smoke": {"t": 130, "h": "1.5", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; smoke temp (300-325°F), ~2.5h, 165°F breast target match ThermoWorks/Meathead duck guidance, SV pasteurizes per Baldwin. Safe at 74°C floor."
+  },
+  {
+    "n": 47,
+    "eng": "Duck Leg Confit",
+    "sv": {"svt": 80, "svh": "8", "changed": false, "ref": "Baldwin — duck/goose leg confit 80°C for 8-12h", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Baldwin's confit spec is 176°F/80°C for 8-12h; 8h yields tender leg. (Meathead's alternative low route is 145°F/62.8°C for 24h — either works; this uses the traditional hot-confit temp.)"},
+    "smoke": {"smt": 110, "smh": "0.5", "tgt": 85, "wood": "דובדבן", "changed": false, "ref": "AmazingRibs — sous-vide-que duck confit finish (325°F + sear)", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/", "note": "Finish ~325°F indirect + skin-down sear ~4 min to crisp; core already at 85°C from the bath. Oak."},
+    "smoke_only": {"sot": 120, "soh": "2", "changed": false, "ref": "AmazingRibs — waterfowl leg low-and-slow to render", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/", "note": "≈120°C to internal 85°C; renders fat and melts collagen without the confit bath."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; the 80°C bath and tgt 85°C far exceed it."},
+    "order_svsmoke": {"sv": {"t": 80, "h": "8"}, "dry": {"h": "0.5"}, "smoke": {"t": 110, "h": "0.5", "cold": false}, "ref": "AmazingRibs — sous-vide-que duck confit", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; matches Baldwin's 80°C/8-12h confit spec, finished hot to crisp skin (Meathead). Safe at 74°C floor."
+  },
+  {
+    "n": 48,
+    "eng": "Duck Breast",
+    "sv": {"svt": 57, "svh": "2", "changed": false, "ref": "ChefSteps — duck breast 135°F/57°C, ~2h; Serious Eats/Anova agree", "url": "https://www.chefsteps.com/activities/duck-breast-135-f-and-duck-skin-crumble", "note": "57°C (135°F) is the standard medium-rare duck breast; ChefSteps '135°F' and Anova medium-rare recipe both use ~2h. Intact whole muscle, so served medium-rare like red meat."},
+    "smoke": {"smt": 100, "smh": "0.33", "tgt": 57, "wood": "דובדבן", "changed": false, "ref": "AmazingRibs — pull duck breast 140-143°F, no higher (chewy above)", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/grill-roasted-peking-duck-recipe/", "note": "Very short/cool smoke so the rosy 57°C core is preserved; overcooking past ~150°F makes duck breast chewy. Oak."},
+    "smoke_only": {"sot": 120, "soh": "0.75", "changed": false, "ref": "AmazingRibs — score skin, render, keep breast rosy", "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/grill-roasted-peking-duck-recipe/", "note": "Hot-and-fast ≈120°C, ~45 min, pull core ~57°C; sear skin to crisp. Interior is whole muscle so medium-rare is safe."},
+    "safe": {"safe": 74, "ref": "Baldwin poultry floor — intact whole-muscle exception noted", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor stays 74°C for the app's grill-only path, but tgt 57°C is intentionally far below it: duck breast is intact whole muscle (interior sterile, surface seared), so medium-rare is standard and safe like a steak. Do NOT raise tgt to the poultry floor."},
+    "order_svsmoke": {"sv": {"t": 57, "h": "2"}, "dry": {"h": "0.5"}, "smoke": {"t": 100, "h": "0.33", "cold": false}, "ref": "ChefSteps / AmazingRibs — sear-finish duck breast", "url": "https://www.chefsteps.com/activities/duck-breast-135-f-and-duck-skin-crumble"},
+    "order_smokesv": null,
+    "rationale": "Kept values. Whole-muscle duck-breast exception: 57°C/135°F medium-rare (ChefSteps/Serious Eats) is correct and safe; displayed safe stays at the 74°C poultry floor per policy."
+  },
+  {
+    "n": 67,
+    "eng": "Chicken Leg Quarters",
+    "sv": {"svt": 70, "svh": "2", "changed": false, "ref": "Baldwin — poultry table; dark meat higher temp", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Leg quarter dark meat: 70°C is above Baldwin's 65°C row so it pasteurizes in well under 1h; 2h begins collagen conversion for tenderness."},
+    "smoke": {"smt": 130, "smh": "0.67", "tgt": 80, "wood": "דובדבן/תפוח", "changed": false, "ref": "AmazingRibs — legs/quarters to ~175°F for render & crisp skin", "url": "https://amazingribs.com/how-to-barbecue-chicken/", "note": "Meathead: dark meat best ~175°F/79°C; tgt 80°C matches. Smoke ~325°F/130-163°C; apple/cherry (avoid strong hickory)."},
+    "smoke_only": {"sot": 140, "soh": "2", "changed": false, "ref": "AmazingRibs — 325°F browns skin, melts fat", "url": "https://amazingribs.com/how-to-barbecue-chicken/", "note": "140°C (≈285°F) raw to internal 80°C; the 160→175°F band renders connective tissue."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; tgt 80°C already exceeds it for dark-meat texture."},
+    "order_svsmoke": {"sv": {"t": 70, "h": "2"}, "dry": {"h": "1"}, "smoke": {"t": 130, "h": "0.67", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; 70°C/2h over-pasteurizes and tgt 80°C matches Meathead's 175°F dark-meat target. Safe at 74°C floor."
+  },
+  {
+    "n": 68,
+    "eng": "Turkey Wings",
+    "sv": {"svt": 74, "svh": "4", "changed": false, "ref": "Baldwin — poultry pasteurized; hold for tendons", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Turkey wings are sinewy dark meat: 74°C pasteurizes instantly and 4h softens tendons so they eat tender."},
+    "smoke": {"smt": 120, "smh": "1", "tgt": 80, "wood": "תפוח/פקאן", "changed": false, "ref": "AmazingRibs — dark poultry to ~175-180°F for render", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/disney-style-smoked-turkey-legs-recipe/", "note": "tgt 80°C (≈176°F) renders connective tissue; post-SV smoke for flavor. Apple/pecan (turkey handles a bit more smoke than chicken)."},
+    "smoke_only": {"sot": 130, "soh": "3", "changed": false, "ref": "AmazingRibs — dark turkey needs 3-4h for collagen", "url": "https://amazingribs.com/tested-recipes/turkey-recipes/disney-style-smoked-turkey-legs-recipe/", "note": "≈130°C raw to internal 80°C; several hours needed for the tendon-heavy wing to become tender."},
+    "safe": {"safe": 74, "ref": "Baldwin/USDA poultry floor", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 74°C; the 74°C bath meets it and tgt 80°C exceeds it."},
+    "order_svsmoke": {"sv": {"t": 74, "h": "4"}, "dry": {"h": "1"}, "smoke": {"t": 120, "h": "1", "cold": false}, "ref": "AmazingRibs — sous-vide-que", "url": "https://amazingribs.com/bbq-technique-and-science/sous-vide-que/"},
+    "order_smokesv": null,
+    "rationale": "Kept values; 74°C/4h pasteurizes and softens tendons, tgt 80°C matches dark-meat render. Safe at 74°C floor."
+  }
+]

@@ -1,0 +1,222 @@
+[
+  {
+    "n": 49, "eng": "Salmon Fillet",
+    "sv":    {"svt": 50, "svh": "0.75", "changed": false, "ref": "Baldwin — Practical Guide to Sous Vide (core temps); ChefSteps/Serious Eats salmon", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Salmon rare–medium-rare 43–50°C per Baldwin; 50°C = tender, just-set. ~30–45 min for a 25–30mm fillet."},
+    "smoke": {"smt": 80, "smh": "0.5", "tgt": 52, "wood": "דובדבן/תפוח", "changed": false, "ref": "AmazingRibs — hot-smoked salmon", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Low pit ~65–80°C, pull ~52°C for silky texture; fruit wood is classic for salmon."},
+    "smoke_only": {"sot": 80, "soh": "2", "changed": false, "ref": "AmazingRibs — hot-smoked salmon", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Smoke-only ~70–80°C for ~1.5–2h to core ~52°C."},
+    "safe":  {"safe": 63, "ref": "FDA cooked-fish 145°F / Baldwin fish pasteurization 55–60°C", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed conservative floor 63°C (FDA 145°F). Salmon served at 50°C is below the pasteurization floor — parasite-freeze (−20°C/7d or −35°C/15h) for raw/rare service."},
+    "grill": {"grt": 230, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/AmazingRibs grilled salmon", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Skin-side down over direct medium-high grate ~230°C, 3–4 min then flip briefly, pull ~50–52°C."},
+    "order_svsmoke": {"sv": {"t": 50, "h": "0.75"}, "dry": {"h": "0.25"}, "smoke": {"t": 80, "h": "0.5", "cold": false}, "ref": "Baldwin + AmazingRibs", "url": "https://douglasbaldwin.com/sous-vide.html"},
+    "order_smokesv": null,
+    "rationale": "Kept svt 50°C (Baldwin salmon 43–50°C rare–med-rare). Documented safe floor at 63°C with parasite-freeze note for rare service; grill numbers from Serious Eats/AmazingRibs."
+  },
+  {
+    "n": 50, "eng": "Trout",
+    "sv":    {"svt": 50, "svh": "0.5", "changed": false, "ref": "Baldwin fish core temps; ChefSteps/Serious Eats trout", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Delicate trout ~50°C, ~30 min for a thin (15–20mm) fillet; Baldwin fish med-rare 49°C."},
+    "smoke": {"smt": 80, "smh": "0.33", "tgt": 54, "wood": "דובדבן/תפוח", "changed": false, "ref": "AmazingRibs — smoked trout", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Low pit 65–80°C, pull ~54°C; fruit wood classic for trout."},
+    "smoke_only": {"sot": 80, "soh": "1.5", "changed": false, "ref": "AmazingRibs — smoked trout", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Smoke-only ~70–80°C ~1–1.5h to ~54°C core."},
+    "safe":  {"safe": 63, "ref": "FDA cooked-fish 145°F / Baldwin fish pasteurization 55–60°C", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; freshwater trout served rare should be parasite-frozen. Farmed trout lower risk but still document freeze for raw service."},
+    "grill": {"grt": 220, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/AmazingRibs whole grilled trout", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Whole/butterflied over direct medium ~220°C, ~3 min/side, pull ~54°C."},
+    "order_svsmoke": {"sv": {"t": 50, "h": "0.5"}, "dry": {"h": "0.25"}, "smoke": {"t": 80, "h": "0.33", "cold": false}, "ref": "Baldwin + AmazingRibs", "url": "https://douglasbaldwin.com/sous-vide.html"},
+    "order_smokesv": null,
+    "rationale": "Kept svt 50°C (Baldwin fish med-rare). Documented 63°C displayed floor with freeze note; grill/smoke from AmazingRibs seafood."
+  },
+  {
+    "n": 113, "eng": "Jumbo Shrimp",
+    "sv":    {"svt": 57, "svh": "0.5", "changed": true, "ref": "amazingfoodmadeeasy sous vide shrimp (Logsdon); ChefSteps shrimp", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/shrimp", "note": "Shrimp IS sous-vided: 122°F/50°C sushi-like, 132°F/55.6°C tender, 140°F/60°C firm; chose 57°C tender-firm, 15–35 min. Added real value vs prior svt=0."},
+    "smoke": {"smt": 230, "smh": "0.1", "tgt": 63, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled/smoked shrimp", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Hot finish/smoke-roast ~230°C only a few minutes; shrimp cook fast."},
+    "smoke_only": {"sot": 230, "soh": "0.1", "changed": false, "ref": "AmazingRibs — grilled shrimp", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Direct hot, ~5–6 min total until opaque."},
+    "safe":  {"safe": 63, "ref": "FDA shellfish cooked to opaque; Baldwin", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C. Sous-vide shrimp at 57°C is safe when served immediately (Baldwin fish 55–60°C pasteurization range)."},
+    "grill": {"grt": 250, "grh": "0.05", "grz": "ישיר", "grillable": true, "ref": "Kenji/Serious Eats grilled shrimp; AmazingRibs", "url": "https://food52.com/recipes/71174-j-kenji-lopez-alt-s-grilled-shrimp-scampi-ish-with-garlic-and-lemon", "note": "Skewer, direct high heat ~250°C, ~1.5 min/side to just opaque. Kenji: air-dry + baking soda for snap."},
+    "order_svsmoke": {"sv": {"t": 57, "h": "0.5"}, "dry": {"h": "0.1"}, "smoke": {"t": 100, "h": "0.15", "cold": false}, "ref": "amazingfoodmadeeasy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/shrimp"},
+    "order_smokesv": null,
+    "rationale": "Added real sous-vide step 57°C/0.5h (shrimp is genuinely sous-vided; source gives 50/55.6/60°C ladder). Kept 63°C displayed floor; grill from Kenji."
+  },
+  {
+    "n": 114, "eng": "Black Tiger Shrimp",
+    "sv":    {"svt": 57, "svh": "0.5", "changed": true, "ref": "amazingfoodmadeeasy sous vide shrimp; ChefSteps shrimp", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/shrimp", "note": "Same as jumbo shrimp: 55.6°C tender / 60°C firm; chose 57°C, 15–35 min. Added value vs prior svt=0."},
+    "smoke": {"smt": 230, "smh": "0.1", "tgt": 63, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled shrimp", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Hot finish ~230°C, a few minutes."},
+    "smoke_only": {"sot": 230, "soh": "0.1", "changed": false, "ref": "AmazingRibs — grilled shrimp", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Direct hot ~5–6 min to opaque."},
+    "safe":  {"safe": 63, "ref": "FDA shellfish / Baldwin fish 55–60°C", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; 57°C SV safe served immediately."},
+    "grill": {"grt": 250, "grh": "0.05", "grz": "ישיר", "grillable": true, "ref": "Kenji/Serious Eats grilled shrimp", "url": "https://food52.com/recipes/71174-j-kenji-lopez-alt-s-grilled-shrimp-scampi-ish-with-garlic-and-lemon", "note": "Skewer, direct high ~250°C, ~1.5 min/side to opaque."},
+    "order_svsmoke": {"sv": {"t": 57, "h": "0.5"}, "dry": {"h": "0.1"}, "smoke": {"t": 100, "h": "0.15", "cold": false}, "ref": "amazingfoodmadeeasy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/shrimp"},
+    "order_smokesv": null,
+    "rationale": "Added real sous-vide 57°C/0.5h (same shrimp source ladder). Kept 63°C floor; grill from Kenji."
+  },
+  {
+    "n": 115, "eng": "Giant Prawns",
+    "sv":    {"svt": 54, "svh": "0.75", "changed": true, "ref": "amazingfoodmadeeasy shrimp/prawn; Baldwin fish", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/shrimp", "note": "Large prawns are sous-vided a touch lower/longer than small shrimp: ~54°C (130°F) tender-succulent, ~40–45 min for jumbo size. Added value vs prior svt=0."},
+    "smoke": {"smt": 230, "smh": "0.12", "tgt": 63, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled prawns", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Hot finish ~230°C, split-shell, a few minutes."},
+    "smoke_only": {"sot": 230, "soh": "0.12", "changed": false, "ref": "AmazingRibs — grilled prawns", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Direct hot split-in-shell ~6–7 min to opaque."},
+    "safe":  {"safe": 63, "ref": "FDA shellfish / Baldwin fish 55–60°C", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; 54°C SV succulent, safe served immediately."},
+    "grill": {"grt": 240, "grh": "0.08", "grz": "ישיר", "grillable": true, "ref": "Kenji/Serious Eats + AmazingRibs", "url": "https://food52.com/recipes/71174-j-kenji-lopez-alt-s-grilled-shrimp-scampi-ish-with-garlic-and-lemon", "note": "Split lengthwise, shell-side down direct ~240°C ~3 min then flesh ~1 min, to opaque."},
+    "order_svsmoke": {"sv": {"t": 54, "h": "0.75"}, "dry": {"h": "0.15"}, "smoke": {"t": 100, "h": "0.15", "cold": false}, "ref": "amazingfoodmadeeasy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/shrimp"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 54°C/0.75h (larger prawn, succulent per source). Kept 63°C floor; grill from Kenji/AmazingRibs."
+  },
+  {
+    "n": 116, "eng": "Sea Scallops",
+    "sv":    {"svt": 50, "svh": "0.5", "changed": true, "ref": "ChefSteps scallops; Serious Eats/Anova sous vide scallops", "url": "https://www.chefsteps.com/activities/tips-tricks-the-best-way-to-cook-a-scallop", "note": "ChefSteps: 123°F/51°C, 30 min, then hard sear 20–30s/side. Scallops ARE sous-vided; set 50°C, 30 min. Added value vs prior svt=0."},
+    "smoke": {"smt": 240, "smh": "0.08", "tgt": 54, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled scallops", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Very hot brief sear to crust; keep center ~50–54°C."},
+    "smoke_only": {"sot": 240, "soh": "0.08", "changed": false, "ref": "AmazingRibs — grilled scallops", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Direct very hot, ~2 min/side, do not overcook."},
+    "safe":  {"safe": 63, "ref": "FDA shellfish / Baldwin", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C. Scallops customarily served medium (50–54°C center); safe when eaten immediately after SV/sear."},
+    "grill": {"grt": 260, "grh": "0.05", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/ChefSteps searing; AmazingRibs", "url": "https://www.chefsteps.com/activities/tips-tricks-the-best-way-to-cook-a-scallop", "note": "Pat very dry, blazing grate ~260°C, ~1.5–2 min/side to golden crust, translucent center ~50°C."},
+    "order_svsmoke": {"sv": {"t": 50, "h": "0.5"}, "dry": {"h": "0.1"}, "smoke": {"t": 240, "h": "0.05", "cold": false}, "ref": "ChefSteps + AmazingRibs", "url": "https://www.chefsteps.com/activities/tips-tricks-the-best-way-to-cook-a-scallop"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 50°C/0.5h (ChefSteps 123°F/30min). Kept 63°C displayed floor and tgt 54; hard-sear finish from ChefSteps."
+  },
+  {
+    "n": 117, "eng": "Lobster Tail",
+    "sv":    {"svt": 54, "svh": "0.75", "changed": true, "ref": "Serious Eats/Food Lab (Kenji) via Anova; amazingfoodmadeeasy lobster", "url": "https://anovaculinary.com/blogs/blog/sous-vide-lobster-guide", "note": "Kenji: 130°F/54.4°C = tender, succulent (120°F soft/translucent, 140°F traditional-steamed). Tail meat sous-vided ~45–60 min. Added value vs prior svt=0."},
+    "smoke": {"smt": 230, "smh": "0.17", "tgt": 60, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled lobster tail", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Split, brief hot finish shell-side then flesh; baste with butter."},
+    "smoke_only": {"sot": 230, "soh": "0.17", "changed": false, "ref": "AmazingRibs — grilled lobster tail", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Split, direct ~230°C ~8–10 min to opaque."},
+    "safe":  {"safe": 63, "ref": "FDA shellfish / Baldwin", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; SV tail served at 54°C tender — safe eaten immediately."},
+    "grill": {"grt": 230, "grh": "0.1", "grz": "דו-אזורי", "grillable": true, "ref": "AmazingRibs/Serious Eats grilled lobster", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Butterfly, shell-side down direct ~230°C ~5 min, flip flesh ~2–3 min, baste, pull ~54–60°C."},
+    "order_svsmoke": {"sv": {"t": 54, "h": "0.75"}, "dry": {"h": "0.15"}, "smoke": {"t": 100, "h": "0.17", "cold": false}, "ref": "Anova/Kenji + AmazingRibs", "url": "https://anovaculinary.com/blogs/blog/sous-vide-lobster-guide"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 54°C/0.75h (Kenji Food Lab 130°F tender). Kept 63°C floor; grill/finish from AmazingRibs."
+  },
+  {
+    "n": 118, "eng": "Whole Lobster",
+    "sv":    {"svt": 60, "svh": "0.75", "changed": true, "ref": "Serious Eats/Food Lab (Kenji) via Anova sous vide lobster", "url": "https://anovaculinary.com/blogs/blog/sous-vide-lobster-guide", "note": "Whole lobster: tail best ~54°C but CLAW meat only firms pleasantly ~150°F/66°C — Kenji notes claw needs a different temp. Chose 60°C compromise for whole animal, ~45 min. Added value vs prior svt=0."},
+    "smoke": {"smt": 220, "smh": "0.2", "tgt": 60, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled whole lobster", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Par-cook/split, hot finish ~220°C basting with butter."},
+    "smoke_only": {"sot": 220, "soh": "0.2", "changed": false, "ref": "AmazingRibs — grilled whole lobster", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Split whole, direct ~220°C ~12 min to opaque."},
+    "safe":  {"safe": 63, "ref": "FDA shellfish / Baldwin", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; claw meat wants ~66°C for texture (Kenji), tail lower."},
+    "grill": {"grt": 220, "grh": "0.15", "grz": "דו-אזורי", "grillable": true, "ref": "AmazingRibs grilled lobster", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Parboil briefly, split, shell-side direct ~220°C then flesh, baste, ~10–12 min total."},
+    "order_svsmoke": {"sv": {"t": 60, "h": "0.75"}, "dry": {"h": "0.15"}, "smoke": {"t": 100, "h": "0.2", "cold": false}, "ref": "Anova/Kenji + AmazingRibs", "url": "https://anovaculinary.com/blogs/blog/sous-vide-lobster-guide"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 60°C/0.75h as whole-animal compromise (Kenji: tail 54°C, claw needs ~66°C). Kept 63°C floor; grill from AmazingRibs."
+  },
+  {
+    "n": 119, "eng": "Langoustine",
+    "sv":    {"svt": 50, "svh": "0.5", "changed": true, "ref": "Serious Eats/Anova shellfish; amazingfoodmadeeasy (prawn/lobster analog)", "url": "https://anovaculinary.com/blogs/blog/sous-vide-lobster-guide", "note": "Delicate langoustine (small clawed lobster) sous-vided gently ~50°C, ~20–30 min — like lobster's soft-translucent-to-tender band; overcooks fast. Added value vs prior svt=0."},
+    "smoke": {"smt": 230, "smh": "0.1", "tgt": 60, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled langoustine/prawn", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Split, very brief hot finish; tiny tails cook in minutes."},
+    "smoke_only": {"sot": 230, "soh": "0.1", "changed": false, "ref": "AmazingRibs — grilled langoustine", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Split, direct hot ~5 min to opaque."},
+    "safe":  {"safe": 63, "ref": "FDA shellfish / Baldwin", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; served ~50°C tender, safe eaten immediately."},
+    "grill": {"grt": 240, "grh": "0.06", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/AmazingRibs grilled shellfish", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Split, shell-side down direct ~240°C ~2 min then flesh ~1 min, baste."},
+    "order_svsmoke": {"sv": {"t": 50, "h": "0.5"}, "dry": {"h": "0.1"}, "smoke": {"t": 100, "h": "0.1", "cold": false}, "ref": "Anova + AmazingRibs", "url": "https://anovaculinary.com/blogs/blog/sous-vide-lobster-guide"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 50°C/0.5h (delicate, lobster-analog soft-tender band). Kept 63°C floor; grill from AmazingRibs."
+  },
+  {
+    "n": 120, "eng": "Blue Crab",
+    "sv":    {"svt": 0, "svh": "0", "changed": false, "ref": "AmazingRibs/America's Test Kitchen grilled crab; ChefSteps", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "KEPT svt=0: whole blue crab is steamed/steam-grilled live, not sous-vided — no meaningful bag cook for a whole hard-shell crab. Cook by steam over a water pan on the grill 10–15 min until hot."},
+    "smoke": {"smt": 210, "smh": "0.25", "tgt": 60, "wood": "תפוח/אלון", "changed": false, "ref": "ATK charcoal-grilled crab; AmazingRibs", "url": "https://www.americastestkitchen.com/recipes/5132-charcoal-grilled-clams-mussels-or-oysters", "note": "Steam-grill over water pan, indirect medium ~210°C, 10–15 min until shell bright and hot."},
+    "smoke_only": {"sot": 210, "soh": "0.25", "changed": false, "ref": "ATK/AmazingRibs grilled crab", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Steam-grill ~210°C 10–15 min."},
+    "safe":  {"safe": 63, "ref": "FDA — cook crab until internal 145°F/63°C and flesh opaque", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; crab should reach opaque/pearly white throughout."},
+    "grill": {"grt": 230, "grh": "0.15", "grz": "דו-אזורי", "grillable": true, "ref": "ATK gas-grilled crab; blue crab grill method", "url": "https://www.americastestkitchen.com/recipes/5745-gas-grilled-clams-mussels-or-oysters", "note": "Water pan on direct side to steam, crabs on indirect side, lid down 10–15 min until hot."},
+    "order_svsmoke": null,
+    "order_smokesv": null,
+    "rationale": "Kept svt=0 — whole blue crab is a steam/steam-grill item, no genuine sous-vide use. Documented 63°C cooked floor and grill steam method (ATK/AmazingRibs)."
+  },
+  {
+    "n": 121, "eng": "King Crab Legs",
+    "sv":    {"svt": 0, "svh": "0", "changed": false, "ref": "Alaskan King Crab Co.; ChefSteps low-temp crab", "url": "https://www.alaskankingcrab.com/blogs/resources/how-to-cook-alaskan-king-crab", "note": "KEPT svt=0: king crab legs are sold pre-cooked/flash-frozen — the task is reheat-through, done by steam/grill/oven, not a sous-vide cook. No raw-protein SV step."},
+    "smoke": {"smt": 210, "smh": "0.15", "tgt": 60, "wood": "תפוח/אלון", "changed": false, "ref": "Grilled king crab legs method", "url": "https://bbqingwiththenolands.com/grilled-king-crab-legs/", "note": "Brush with butter/oil, grill ~150°C (300°F) ~5 min/side just to heat through; already cooked."},
+    "smoke_only": {"sot": 210, "soh": "0.15", "changed": false, "ref": "Grilled king crab legs", "url": "https://bbqingwiththenolands.com/grilled-king-crab-legs/", "note": "Reheat ~5 min/side to hot; do not overcook (dries out)."},
+    "safe":  {"safe": 63, "ref": "FDA — reheat pre-cooked crab to 145°F/63°C hot", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; product is pre-cooked, reheat to steaming/hot."},
+    "grill": {"grt": 260, "grh": "0.1", "grz": "דו-אזורי", "grillable": true, "ref": "Grilled king crab legs (300°F ~5 min/side)", "url": "https://bbqingwiththenolands.com/grilled-king-crab-legs/", "note": "Split legs, brush butter, ~150–260°C grate ~5 min/side or foil-pack indirect 10 min just to heat."},
+    "order_svsmoke": null,
+    "order_smokesv": null,
+    "rationale": "Kept svt=0 — legs come pre-cooked; only reheating is needed (steam/grill), not sous-vide. Documented 63°C reheat floor and grill method."
+  },
+  {
+    "n": 122, "eng": "Soft-Shell Crab",
+    "sv":    {"svt": 0, "svh": "0", "changed": false, "ref": "Serious Eats soft-shell crab; AmazingRibs seafood", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "KEPT svt=0: soft-shell crab is a fast dry-heat item (pan-fry/grill until crisp) — the appeal is a crisp shell, which sous-vide would defeat. No SV step used."},
+    "smoke": {"smt": 230, "smh": "0.12", "tgt": 63, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled soft-shell crab", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Direct hot ~230°C, ~3–4 min/side until crisp and opaque."},
+    "smoke_only": {"sot": 230, "soh": "0.12", "changed": false, "ref": "AmazingRibs — grilled soft-shell crab", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Direct hot ~7–8 min total to crisp/opaque."},
+    "safe":  {"safe": 63, "ref": "FDA — cook crab to 145°F/63°C opaque", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; cook until firm and opaque throughout."},
+    "grill": {"grt": 240, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/AmazingRibs grilled soft-shell crab", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Clean, brush oil, direct ~240°C ~3–4 min/side, top-shell first, until crisp."},
+    "order_svsmoke": null,
+    "order_smokesv": null,
+    "rationale": "Kept svt=0 — soft-shell crab is a crisp dry-heat fry/grill item; sous-vide is not used and would ruin the crisp shell. Documented 63°C floor and direct-grill numbers."
+  },
+  {
+    "n": 123, "eng": "Octopus",
+    "sv":    {"svt": 77, "svh": "5", "changed": true, "ref": "ChefSteps tender-silky octopus; Thomas Keller Under Pressure (77°C/5h)", "url": "https://www.chefsteps.com/activities/tender-silky-sous-vide-octopus", "note": "Octopus IS sous-vided long/hot to convert collagen: 77°C (170.6°F) for 5h (Keller); alt 76.6°C/4–8h. Added real value vs prior svt=0."},
+    "smoke": {"smt": 240, "smh": "0.17", "tgt": 75, "wood": "אלון/גפן", "changed": false, "ref": "AmazingRibs/Serious Eats grilled octopus", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "After tenderizing, char over very hot fire ~10 min for crisp edges; oak/vine wood Mediterranean-style."},
+    "smoke_only": {"sot": 240, "soh": "0.17", "changed": false, "ref": "AmazingRibs — grilled octopus (pre-boiled)", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Note: without SV, octopus must be simmer/braise-tenderized first, THEN charred ~10 min — dry high heat alone will not tenderize."},
+    "safe":  {"safe": 63, "ref": "FDA cooked seafood 145°F; Baldwin", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; octopus cooked well past that (77°C) for texture, not safety."},
+    "grill": {"grt": 260, "grh": "0.08", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/AmazingRibs charred octopus", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Pre-tenderize (SV 77°C/5h), pat dry, blazing grate ~260°C ~2–3 min/side for char; internal already ~75–77°C."},
+    "order_svsmoke": {"sv": {"t": 77, "h": "5"}, "dry": {"h": "0.25"}, "smoke": {"t": 240, "h": "0.17", "cold": false}, "ref": "ChefSteps/Keller + AmazingRibs", "url": "https://www.chefsteps.com/activities/tender-silky-sous-vide-octopus"},
+    "order_smokesv": null,
+    "rationale": "Added real sous-vide 77°C/5h (ChefSteps/Keller collagen conversion) then hot char. Kept 63°C displayed floor and tgt 75; grill char from AmazingRibs/Serious Eats."
+  },
+  {
+    "n": 124, "eng": "Squid / Calamari",
+    "sv":    {"svt": 59, "svh": "2", "changed": true, "ref": "amazingfoodmadeeasy sous vide squid", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/squid", "note": "Squid IS sous-vided to tenderize: 138°F/59°C for 2–3h (or 180°F/82°C 1h). 138°F most reliable for tender calamari; check hourly (over-long = mushy). Added value vs prior svt=0. Flash-grill remains a valid alternative."},
+    "smoke": {"smt": 250, "smh": "0.05", "tgt": 63, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs/Serious Eats grilled calamari", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Blistering hot, very brief — squid cooks in ~2 min; longer = rubbery."},
+    "smoke_only": {"sot": 250, "soh": "0.05", "changed": false, "ref": "AmazingRibs — grilled calamari (flash)", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Flash direct very hot ~2–3 min total, OR the SV-tenderize route for large/tough squid."},
+    "safe":  {"safe": 63, "ref": "FDA cooked seafood 145°F; Baldwin", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; squid safe either flash-cooked hot or SV-tenderized."},
+    "grill": {"grt": 260, "grh": "0.03", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/AmazingRibs grilled calamari", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Score, oil, blazing grate ~260°C ~1 min/side to just opaque with char; do NOT overcook."},
+    "order_svsmoke": {"sv": {"t": 59, "h": "2"}, "dry": {"h": "0.15"}, "smoke": {"t": 260, "h": "0.03", "cold": false}, "ref": "amazingfoodmadeeasy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/squid"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 59°C/2h tenderize (source: 138°F most reliable for tender calamari) with flash-grill as the alternative. Kept 63°C floor; grill from AmazingRibs/Serious Eats."
+  },
+  {
+    "n": 125, "eng": "Tuna Steak",
+    "sv":    {"svt": 45, "svh": "0.5", "changed": true, "ref": "Serious Eats/Food Lab tuna via amazingfoodmadeeasy; Kenji 115°F", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/tuna", "note": "Tuna IS sous-vided rare: 115°F/46°C moist & translucent (rare); 120°F/49°C firm/dry. Set 45°C rare, 25–45 min for 25mm. Added value vs prior svt=0."},
+    "smoke": {"smt": 250, "smh": "0.05", "tgt": 45, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs/Serious Eats seared tuna", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Sear the exterior only, rare center ~45°C; a few seconds/side over blazing heat."},
+    "smoke_only": {"sot": 250, "soh": "0.05", "changed": false, "ref": "AmazingRibs — seared tuna", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Blazing hot ~30–45s/side, rare center."},
+    "safe":  {"safe": 63, "ref": "FDA cooked-fish 145°F; Baldwin fish 55–60°C", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C. Tuna served rare at 45°C is FAR below the pasteurization floor — use sushi/sashimi-grade, parasite-frozen (−20°C/7d or −35°C/15h) fish; center is not pasteurized."},
+    "grill": {"grt": 290, "grh": "0.03", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/AmazingRibs seared tuna", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Oil, blistering grate ~290°C, ~30–45s/side for a rare (45°C) center with grill-marked crust."},
+    "order_svsmoke": {"sv": {"t": 45, "h": "0.5"}, "dry": {"h": "0.1"}, "smoke": {"t": 250, "h": "0.05", "cold": false}, "ref": "amazingfoodmadeeasy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/tuna"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 45°C/0.5h rare (Kenji 115°F/46°C rare). Kept 63°C displayed floor with explicit sashimi-grade + parasite-freeze note since 45°C center is unpasteurized."
+  },
+  {
+    "n": 126, "eng": "Swordfish Steak",
+    "sv":    {"svt": 54, "svh": "0.75", "changed": true, "ref": "Serious Eats/reluctantgourmet + amazingfoodmadeeasy swordfish", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/swordfish", "note": "Swordfish IS sous-vided: 125–130°F sweet spot (125°F/52°C tender-juicy, 130°F/54°C firm-flaky). Set 54°C, 30–45 min. Added value vs prior svt=0."},
+    "smoke": {"smt": 230, "smh": "0.1", "tgt": 60, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled swordfish", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Meaty steak, brief hot finish; keep from drying (lean-firm fish)."},
+    "smoke_only": {"sot": 230, "soh": "0.1", "changed": false, "ref": "AmazingRibs — grilled swordfish", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Direct medium-high ~230°C ~4–5 min/side to just-firm."},
+    "safe":  {"safe": 63, "ref": "FDA cooked-fish 145°F; Baldwin fish 55–60°C", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; SV swordfish served ~54°C moist — parasite-freeze if serving rare."},
+    "grill": {"grt": 250, "grh": "0.08", "grz": "ישיר", "grillable": true, "ref": "Serious Eats/AmazingRibs grilled swordfish", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Firm meaty steak takes direct high ~250°C well, ~3–4 min/side, pull ~52–54°C to stay moist."},
+    "order_svsmoke": {"sv": {"t": 54, "h": "0.75"}, "dry": {"h": "0.15"}, "smoke": {"t": 100, "h": "0.1", "cold": false}, "ref": "amazingfoodmadeeasy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/swordfish"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 54°C/0.75h (source sweet-spot 125–130°F). Kept 63°C floor and tgt 60; grill from AmazingRibs/Serious Eats."
+  },
+  {
+    "n": 127, "eng": "Halibut",
+    "sv":    {"svt": 52, "svh": "0.5", "changed": true, "ref": "Serious Eats/Anova + amazingfoodmadeeasy halibut", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/swordfish", "note": "Halibut IS sous-vided: 120°F/49°C sashimi-like, 130°F/54.4°C very moist & flaky, 140°F/60°C firm at cusp of tough. Set 52°C (lean fish dries fast), 30–45 min. Added value vs prior svt=0."},
+    "smoke": {"smt": 210, "smh": "0.12", "tgt": 58, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs — grilled halibut", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Lean/delicate — gentle finish, watch closely, keep moist."},
+    "smoke_only": {"sot": 210, "soh": "0.12", "changed": false, "ref": "AmazingRibs — grilled halibut", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Direct-medium ~210°C ~4 min/side to just-flaky; overcooks easily."},
+    "safe":  {"safe": 63, "ref": "FDA cooked-fish 145°F; Baldwin fish 55–60°C", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; SV halibut served ~52°C is below pasteurization — parasite-freeze for rare service."},
+    "grill": {"grt": 220, "grh": "0.08", "grz": "דו-אזורי", "grillable": true, "ref": "Serious Eats/AmazingRibs grilled halibut", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Lean and prone to sticking/drying — well-oiled grate, two-zone, ~220°C ~3 min/side, pull ~52–54°C."},
+    "order_svsmoke": {"sv": {"t": 52, "h": "0.5"}, "dry": {"h": "0.1"}, "smoke": {"t": 100, "h": "0.12", "cold": false}, "ref": "amazingfoodmadeeasy + AmazingRibs", "url": "https://www.amazingfoodmadeeasy.com/sous-vide-times-temperatures/how-to-sous-vide/swordfish"},
+    "order_smokesv": null,
+    "rationale": "Added sous-vide 52°C/0.5h (source 130°F very-moist band, chosen slightly lower for lean halibut). Kept 63°C floor and tgt 58; two-zone grill from AmazingRibs."
+  },
+  {
+    "n": 128, "eng": "Mussels",
+    "sv":    {"svt": 0, "svh": "0", "changed": false, "ref": "AmazingRibs smoke-catcher clambake; ATK grilled mussels", "url": "https://pitmaster.amazingribs.com/forum/excerpts-from-meathead-s-next-book/1719685-the-meathead-method-smoke-catcher-clambake", "note": "KEPT svt=0: mussels are opened by live heat/steam on the grate — they pop open when done. No sous-vide; a SV bag would not open the shells or give the smoke."},
+    "smoke": {"smt": 230, "smh": "0.1", "tgt": 63, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs smoke-catcher; ATK", "url": "https://www.americastestkitchen.com/recipes/5132-charcoal-grilled-clams-mussels-or-oysters", "note": "Direct heat, covered, until shells open: ~4–6 min for mussels. Toss wood chips for smoke."},
+    "smoke_only": {"sot": 230, "soh": "0.1", "changed": false, "ref": "ATK/AmazingRibs grilled mussels", "url": "https://www.americastestkitchen.com/recipes/5132-charcoal-grilled-clams-mussels-or-oysters", "note": "Direct hot ~4–6 min until they pop open; discard any that stay shut."},
+    "safe":  {"safe": 63, "ref": "FDA — cook shellfish until shells open and flesh is done", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; safety cue for bivalves is the shell opening. Discard unopened."},
+    "grill": {"grt": 230, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "AmazingRibs smoke-catcher; ATK grilled mussels", "url": "https://pitmaster.amazingribs.com/forum/excerpts-from-meathead-s-next-book/1719685-the-meathead-method-smoke-catcher-clambake", "note": "Place on grate curved-side down, level, direct heat, lid down, ~4–6 min until open; spoon butter, let some hit fire for smoke."},
+    "order_svsmoke": null,
+    "order_smokesv": null,
+    "rationale": "Kept svt=0 — mussels are a live-fire/steam bivalve opened by heat, no sous-vide step exists. Documented 63°C floor (shell-opening cue) and grill method (AmazingRibs/ATK)."
+  },
+  {
+    "n": 129, "eng": "Clams",
+    "sv":    {"svt": 0, "svh": "0", "changed": false, "ref": "AmazingRibs smoke-catcher clambake; ATK grilled clams", "url": "https://pitmaster.amazingribs.com/forum/excerpts-from-meathead-s-next-book/1719685-the-meathead-method-smoke-catcher-clambake", "note": "KEPT svt=0: clams open on the grate from live heat/steam — no sous-vide. Purge in ~4% saltwater first, then grill until they pop open."},
+    "smoke": {"smt": 230, "smh": "0.1", "tgt": 63, "wood": "תפוח/אלון", "changed": false, "ref": "AmazingRibs smoke-catcher; ATK", "url": "https://www.americastestkitchen.com/recipes/5132-charcoal-grilled-clams-mussels-or-oysters", "note": "Direct heat, covered, ~7–10 min until clams open (longer than mussels)."},
+    "smoke_only": {"sot": 230, "soh": "0.1", "changed": false, "ref": "ATK/AmazingRibs grilled clams", "url": "https://www.americastestkitchen.com/recipes/5132-charcoal-grilled-clams-mussels-or-oysters", "note": "Direct hot ~7–10 min until open; discard any that stay shut."},
+    "safe":  {"safe": 63, "ref": "FDA — cook shellfish until shells open", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C; shell-opening is the doneness cue. Discard unopened."},
+    "grill": {"grt": 230, "grh": "0.15", "grz": "ישיר", "grillable": true, "ref": "AmazingRibs smoke-catcher; ATK grilled clams", "url": "https://pitmaster.amazingribs.com/forum/excerpts-from-meathead-s-next-book/1719685-the-meathead-method-smoke-catcher-clambake", "note": "Purged clams on grate, direct heat, lid down, ~7–10 min until open; keep level so liquor doesn't spill, spoon butter for smoke flare."},
+    "order_svsmoke": null,
+    "order_smokesv": null,
+    "rationale": "Kept svt=0 — clams open by live heat/steam, no sous-vide step. Documented 63°C floor (shell-opening) and purge+grill method (AmazingRibs/ATK)."
+  },
+  {
+    "n": 130, "eng": "Oysters",
+    "sv":    {"svt": 0, "svh": "0", "changed": false, "ref": "AmazingRibs seafood; ATK grilled oysters", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "KEPT svt=0: oysters are grilled/roasted over live fire until they pop open (or on the half-shell with butter) — no sous-vide. Served raw or fire-roasted, never bag-cooked."},
+    "smoke": {"smt": 240, "smh": "0.1", "tgt": 63, "wood": "אלון", "changed": false, "ref": "ATK/AmazingRibs grilled oysters", "url": "https://www.americastestkitchen.com/recipes/5132-charcoal-grilled-clams-mussels-or-oysters", "note": "Direct heat, cupped-side down, ~4–6 min until they open/edges curl; oak smoke."},
+    "smoke_only": {"sot": 240, "soh": "0.1", "changed": false, "ref": "ATK/AmazingRibs grilled oysters", "url": "https://www.americastestkitchen.com/recipes/5132-charcoal-grilled-clams-mussels-or-oysters", "note": "Direct hot ~4–6 min until open; or half-shell with butter until bubbling."},
+    "safe":  {"safe": 63, "ref": "FDA — cook shellfish until shells open (raw oysters carry Vibrio risk)", "url": "https://douglasbaldwin.com/sous-vide.html", "note": "Displayed floor 63°C. Raw-served oysters must be from certified live/harvest-tagged stock; cooking to open kills Vibrio."},
+    "grill": {"grt": 240, "grh": "0.1", "grz": "ישיר", "grillable": true, "ref": "AmazingRibs/ATK grilled oysters", "url": "https://amazingribs.com/tested-recipes/seafood-recipes/", "note": "Cupped-side down on grate curved to hold liquor, direct heat, ~4–6 min until they pop open / edges curl; add butter, let it flare for smoke."},
+    "order_svsmoke": null,
+    "order_smokesv": null,
+    "rationale": "Kept svt=0 — oysters are fire-roasted/opened by heat (or served raw), no sous-vide. Documented 63°C floor with Vibrio/raw-service note and grill method (AmazingRibs/ATK)."
+  }
+]

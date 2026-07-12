@@ -1,0 +1,301 @@
+[
+  {
+    "n": 4,
+    "eng": "Lamb Shank",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "נתח קולגן עשיר; יעד פנימי ~95°C מושג רק בבישול איטי/צלייה עקיפה או ברייז. אין לצלות ישירות על אש חזקה — ייצא קשה וסיבי. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 7,
+    "eng": "Pork Ribs",
+    "grill": {
+      "grt": 115,
+      "grh": "4-6",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Last Meal Ribs / 2-Zone Setup",
+      "url": "https://amazingribs.com/best-barbecue-ribs-recipe/",
+      "note": "ניתן לגריל אבל רק בשיטת דו-אזורי/עקיף: טמפ' סורג ~107-120°C (225-250°F), 4-6 שעות עד ~95°C פנימי ובדיקת גמישות. אופציונלי סיר קצר על צד ישיר לגלייז בסוף. לא צלייה ישירה."
+    }
+  },
+  {
+    "n": 8,
+    "eng": "Pork Belly",
+    "grill": {
+      "grt": 240,
+      "grh": "0.15",
+      "grz": "ישיר",
+      "grillable": true,
+      "ref": "Chiles and Smoke — Grilled Pork Belly (smoked & seared)",
+      "url": "https://www.chilesandsmoke.com/grilled-pork-belly/",
+      "note": "נחתך לרצועות ~1.5 ס\"מ ונצלה ישירות: טמפ' סורג ~230-250°C, כ-2 דק' לצד עד קרמליזציה וקצוות פריכים. לנתח שלם עדיף בישול איטי ל-90°C פנימי (המסת קולגן) ואז סיר; רצועות דקות מגורלות ישירות."
+    }
+  },
+  {
+    "n": 13,
+    "eng": "Pork Shoulder",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "נתח קולגן/שומן עשיר לפולד-פורק; יעד ~95°C מושג רק בעישון/צלייה עקיפה איטית (8-12 שע'). אין לצלות ישירות. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 15,
+    "eng": "Lamb Shoulder",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "נתח קולגן עשיר; יעד ~95°C דורש בישול איטי/עקיף או ברייז. אין לצלות ישירות על אש חזקה. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 29,
+    "eng": "Pork Loin",
+    "grill": {
+      "grt": 260,
+      "grh": "1.0",
+      "grz": "עקיף→ישיר",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Reverse Sear / Cooking Temps",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "ריוורס-סיר: צד עקיף ~120-135°C עד ~55-57°C פנימי, אז סיר על צד ישיר חם (~260°C/500°F) עד יעד 63°C ו-crust. מנוחה 10 דק'. נתח ~1.8 ק\"ג."
+    }
+  },
+  {
+    "n": 30,
+    "eng": "Pork Tenderloin",
+    "grill": {
+      "grt": 230,
+      "grh": "0.25",
+      "grz": "ישיר",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Grilled Pork Tenderloin w/ Green Peppercorn Sauce",
+      "url": "https://amazingribs.com/tested-recipes-pork-chops-pulled-pork-ham-and-more-pork-recipes-grilled-pork-tenderloin-with-green-peppercorn-sauce/",
+      "note": "צלייה ישירה בינונית-חזקה (~230°C), כ-5 דק' לצד תוך סיבוב, עד ~60°C ומשיכה; מנוחה 10-15 דק' עד יעד 63°C. נתח דק ומהיר."
+    }
+  },
+  {
+    "n": 31,
+    "eng": "Pork Collar",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "צוואר/כתף עליונה עתיר קולגן ושומן שיש; יעד ~88°C להמסת קולגן מושג בעישון/בישול איטי, לא בצלייה ישירה. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 32,
+    "eng": "Fresh Ham",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / Safe Serving Temperatures",
+      "url": "https://amazingribs.com/technique-and-science/more-cooking-science/safe-serving-temperatures/",
+      "note": "רגל חזיר שלמה ~5 ק\"ג; יעד 71°C בצלייה/עישון עקיף איטי בלבד. עבה מדי לצלייה ישירה — החוץ יישרף לפני שהפנים יגיע ליעד. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 33,
+    "eng": "Pork Chops",
+    "grill": {
+      "grt": 260,
+      "grh": "0.5",
+      "grz": "עקיף→ישיר",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Smoked & Grilled Pork Chop (reverse sear)",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-and-grilled-pork-chop-recipe/",
+      "note": "ריוורס-סיר לצ'ופ עבה: צד עקיף בלid סגור עד ~54°C (130°F), אז סיר על צד ישיר לוהט (~260°C/500°F+) עד יעד 63°C. לצ'ופ דק אפשר ישיר בלבד ~3-4 דק' לצד."
+    }
+  },
+  {
+    "n": 34,
+    "eng": "Lamb Ribs",
+    "grill": {
+      "grt": 140,
+      "grh": "1.5-2",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "Craft Beering / AmazingRibs — Grilled & Smoked Lamb Ribs",
+      "url": "https://www.craftbeering.com/lamb-ribs-recipe-how-to-cook/",
+      "note": "ניתן לגריל אך רק דו-אזורי/עקיף: סורג ~135-150°C (275-300°F), נצלה על הצד הקר 1.5-2 שע' עד ~90°C פנימי ורכות, ואז סיר קצר על אש ישירה לפריכות. לא צלייה ישירה מלאה."
+    }
+  },
+  {
+    "n": 35,
+    "eng": "Leg of Lamb",
+    "grill": {
+      "grt": 260,
+      "grh": "1.25",
+      "grz": "עקיף→ישיר",
+      "grillable": true,
+      "ref": "ThermoWorks — Reverse-Seared Leg of Lamb",
+      "url": "https://blog.thermoworks.com/reverse-seared-leg-of-lamb/",
+      "note": "פתוח כפרפר (butterflied), דו-אזורי/ריוורס: צד עקיף ~120-135°C עד ~50°C, אז סיר על צד ישיר חם (~260°C) ~5 דק' לצד עד יעד 57°C; מנוחה 10 דק'. נתח שלם עב-בשר מתאים רק בשיטה זו, לא ישיר מלא."
+    }
+  },
+  {
+    "n": 36,
+    "eng": "Rack of Lamb",
+    "grill": {
+      "grt": 260,
+      "grh": "0.5",
+      "grz": "עקיף→ישיר",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Rack of Lamb / DadCooksDinner reverse sear",
+      "url": "https://amazingribs.com/tested-recipes/lamb-recipes/herbed-lamb-lollipops-recipe/",
+      "note": "ריוורס-סיר: צד עקיף עד ~48-50°C פנימי (~30 דק'), אז סיר על צד ישיר לוהט (~260°C) ~4 דק' סה\"כ תוך סיבוב עד יעד 56°C ו-crust; מנוחה 5-10 דק'."
+    }
+  },
+  {
+    "n": 37,
+    "eng": "Lamb Breast",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "חזה טלה שומני ועתיר קולגן; יעד ~92°C דורש בישול איטי/עקיף או ברייז להמסת רקמת חיבור. אין לצלות ישירות. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 58,
+    "eng": "Lamb Plate Ribs",
+    "grill": {
+      "grt": 120,
+      "grh": "3-4",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Smoked Lamb Ribs / 2-Zone Setup",
+      "url": "https://amazingribs.com/tested-recipes/lamb-recipes/smoked-lamb-ribs-recipe/",
+      "note": "צלעות פלייט/חזה עבות; רק דו-אזורי/עקיף: סורג ~110-135°C, 3-4 שע' עד ~92-96°C פנימי ורכות fall-off-bone, אופציונלי סיר קצר לגלייז. לא צלייה ישירה."
+    }
+  },
+  {
+    "n": 59,
+    "eng": "Lamb Neck",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "צוואר טלה עתיר קולגן ורקמת חיבור; יעד ~92°C מושג רק בברייז/בישול איטי ארוך. אין לצלות ישירות. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 60,
+    "eng": "Lamb Loin",
+    "grill": {
+      "grt": 260,
+      "grh": "0.15",
+      "grz": "ישיר",
+      "grillable": true,
+      "ref": "Vindulge — Grilled Lamb Chops (loin)",
+      "url": "https://www.vindulge.com/grilled-lamb-chops/",
+      "note": "צלייה ישירה חזקה (~260°C): ~4 דק' לצד עד ~54°C ומשיכה, מנוחה 5 דק' עד יעד 56°C (medium-rare). נתח רזה ומהיר; להיזהר מ-overcook."
+    }
+  },
+  {
+    "n": 61,
+    "eng": "Pork Cheek",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לחי חזיר עתירת קולגן; יעד ~90°C מושג רק בברייז/בישול איטי ארוך. אין לצלות ישירות — תישאר קשוחה. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 62,
+    "eng": "Pork Hock",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "קרסול/שוק חזיר עתיר קולגן, גידים ועור; יעד ~94°C דורש בישול/עישון איטי או ברייז ארוך. אין לצלות ישירות. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 63,
+    "eng": "Picnic Shoulder",
+    "grill": {
+      "grt": null,
+      "grh": null,
+      "grz": "עקיף",
+      "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Temps / collagen science",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "כתף פיקניק (חלק תחתון) עתיר קולגן ושומן; יעד ~95°C לפולד-פורק מושג בעישון/צלייה עקיפה איטית. אין לצלות ישירות. grt/grh לא רלוונטיים."
+    }
+  },
+  {
+    "n": 64,
+    "eng": "Baby Back Ribs",
+    "grill": {
+      "grt": 115,
+      "grh": "3-4",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Last Meal Ribs (baby back) / 2-Zone",
+      "url": "https://amazingribs.com/best-barbecue-ribs-recipe/",
+      "note": "רק דו-אזורי/עקיף: סורג ~107-120°C (225-250°F), 3-4 שע' עד ~92°C פנימי ובדיקת גמישות; אופציונלי סיר/גלייז קצר על צד ישיר. לא צלייה ישירה."
+    }
+  },
+  {
+    "n": 65,
+    "eng": "Pork Ear",
+    "grill": {
+      "grt": 230,
+      "grh": "0.2",
+      "grz": "ישיר",
+      "grillable": true,
+      "ref": "Great British Chefs / Arteflame — Crispy (Grilled) Pig's Ears",
+      "url": "https://arteflame.com/blogs/recipes/crispy-grilled-pig-ears-with-spicy-honey-glaze",
+      "note": "לרכך תחילה בבישול/סימור ~1.5-2 שע' עד ~78°C ורכות מלאה, לייבש היטב, ואז לצלות ישירות (~230°C) ~4-6 דק' לצד עד פריכות ושחרוריות. הגלייז רק בדקה האחרונה. הצלייה עצמה קצרה — הרכה קודמת."
+    }
+  },
+  {
+    "n": 66,
+    "eng": "Pork Tail",
+    "grill": {
+      "grt": 230,
+      "grh": "0.2",
+      "grz": "ישיר",
+      "grillable": true,
+      "ref": "Great British Chefs — pre-cook then crisp / grilled pork tails technique",
+      "url": "https://www.greatbritishchefs.com/recipes/crispy-pigs-ears-recipe",
+      "note": "לרכך תחילה בבישול איטי/סימור עד ~80°C ורכות (הרבה קולגן ועצם), לייבש, ואז לצלות ישירות (~230°C) ~5-6 דק' לצד עד פריכות ושחרוריות. הצלייה מקצרת/מפריכה בלבד לאחר הריכוך."
+    }
+  }
+]

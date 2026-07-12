@@ -1,0 +1,272 @@
+[
+  {
+    "n": 1, "eng": "Brisket",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Cooking Hot & Fast, Low & Slow, and the Reverse Sear",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: נתח קולגני עבה שדורש בישול ארוך ואיטי ל-92-96°C להמסת קולגן. גריל ישיר על אש חזקה יחרוך את החוץ בעוד הפנים נשאר קשה. עשן/צלייה ארוכה בלבד."
+    }
+  },
+  {
+    "n": 2, "eng": "Short Ribs",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Beef ribs / low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: צלעות עשירות קולגן שצריכות להגיע ל-~95°C בבישול ארוך. אש ישירה חזקה תשרוף מבלי לרכך. מיועד לעישון/בישול איטי."
+    }
+  },
+  {
+    "n": 6, "eng": "Picanha",
+    "grill": {
+      "grt": 230, "grh": "0.75", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "ThermoWorks — Grilled Picanha Roast; Meathead reverse sear",
+      "url": "https://blog.thermoworks.com/grilled-picanha-roast/",
+      "note": "שני אזורים: צלייה עקיפה ~120°C עד ליבה ~46-48°C, ואז חריכה על גחלים חמים (~230-260°C) 2-3 דק' לצד, כולל צד השומן. מושכים ב-52°C, מגיע ל-54°C אחרי מנוחה."
+    }
+  },
+  {
+    "n": 10, "eng": "Beef Cheeks",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — collagen cuts low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: לחיים הן שריר עתיר קולגן שנמס רק ב-~95°C בבישול ארוך ולח. גריל ישיר יותיר אותן קשות כגומי."
+    }
+  },
+  {
+    "n": 11, "eng": "Tomahawk",
+    "grill": {
+      "grt": 260, "grh": "0.75", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Reverse Sear method",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "צלע עבה: אזור עקיף ~120-135°C עד ליבה ~46-48°C, ואז חריכה על גריל לוהט (~260°C/500°F) 60-90 שנ' לצד. מושכים ב-52-54°C לליבה סופית 54°C (medium-rare)."
+    }
+  },
+  {
+    "n": 12, "eng": "Beef Pastrami",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Pastrami (cure → smoke → steam)",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/",
+      "note": "לא לגריל ישיר: פסטרמה מיוצרת ע\"י כבישה, עישון ואז אידוי ל-~72-90°C לריכוך. גריל אש ישירה אינו חלק מהתהליך."
+    }
+  },
+  {
+    "n": 14, "eng": "Beef Chuck",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — chuck / low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: צ'אק עתיר רקמת חיבור שדורש בישול ארוך ל-~95°C. אש ישירה תייבש ותקשה אותו."
+    }
+  },
+  {
+    "n": 17, "eng": "Kebab",
+    "grill": {
+      "grt": 230, "grh": "0.15", "grz": "ישיר", "grillable": true,
+      "ref": "Steven Raichlen — Lula Kebab (The Barbecue! Bible); ThermoWorks kebabs",
+      "url": "https://www.thermoworks.com/blogs/thermoblog/how-to-grill-killer-kebabs",
+      "note": "בשר טחון: גריל ישיר חזק (~230°C/450°F), הופכים כל 2-3 דק', 6-8 דק' סה\"כ. בשר טחון חובה ל-71°C פנימי בטיחותי (הטחינה מפזרת חיידקים בכל הנפח) — לא להגיש נא."
+    }
+  },
+  {
+    "n": 18, "eng": "Hamburger",
+    "grill": {
+      "grt": 230, "grh": "0.1", "grz": "ישיר", "grillable": true,
+      "ref": "ThermoWorks — Grilling Hamburgers; USDA FSIS",
+      "url": "https://www.thermoworks.com/blogs/thermoblog/grilling-hamburgers",
+      "note": "בשר טחון: גריל ישיר חזק (~230°C/450°F), ~3-4 דק' לצד. יעד בטיחותי 71°C פנימי (הטחינה מפזרת חיידקים). אפשר medium (55°C) רק אם הבשר טחון טרי/מפוסטר בבית — יש לציין למשתמש."
+    }
+  },
+  {
+    "n": 20, "eng": "Tri-Tip",
+    "grill": {
+      "grt": 260, "grh": "1.0", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "ThermoWorks — Tri-Tip guide; Meathead reverse sear",
+      "url": "https://www.thermoworks.com/blogs/thermoblog/tri-tip",
+      "note": "צלייה עקיפה 110-120°C עד ליבה ~48-50°C, ואז חריכה על גריל לוהט (~260°C) ~2 דק' לצד. מושכים ב-52°C, ליבה סופית ~54°C medium-rare; חותכים נגד הסיב."
+    }
+  },
+  {
+    "n": 21, "eng": "Beef Back Ribs",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — Beef ribs low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: צלעות גב עתירות קולגן שמתרככות רק ב-~95°C בעישון/בישול איטי. אש ישירה תשרוף מבלי לרכך."
+    }
+  },
+  {
+    "n": 22, "eng": "Beef Tongue",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — tough cuts low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: לשון דורשת בישול לח ארוך ל-~70°C+ וקילוף קרום לפני כל צלייה. אש ישירה על נתח גולמי לא מרככת."
+    }
+  },
+  {
+    "n": 23, "eng": "Prime Rib Roast",
+    "grill": {
+      "grt": 260, "grh": "2.5", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Science of Prime Rib, Tenderloin & Beef Roasts",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/science-cooking-prime-rib-tenderloin-and-other-beef-roasts",
+      "note": "Reverse sear צלי גדול: אזור עקיף ~110°C עד ליבה ~46-48°C (כ-15° מתחת ליעד), ואז חריכה על משטח לוהט (~260°C/500°F) לקרום. מושכים ~54°C, מנוחה מעלה ל-56°C."
+    }
+  },
+  {
+    "n": 24, "eng": "Chuck Short Ribs",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — chuck short ribs low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: צלעות צ'אק עתירות קולגן, מתרככות ל-~95°C בעישון/בישול ארוך. אש ישירה תשרוף ותשאיר קשה."
+    }
+  },
+  {
+    "n": 25, "eng": "Beef Shank",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — shank / braising cuts",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: שוק עתיר רקמת חיבור וגידים, דורש בישול לח ארוך ל-~96°C. לא מתאים לאש ישירה."
+    }
+  },
+  {
+    "n": 26, "eng": "Striploin Roast",
+    "grill": {
+      "grt": 260, "grh": "1.75", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Science of Beef Roasts (reverse sear)",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/science-cooking-prime-rib-tenderloin-and-other-beef-roasts",
+      "note": "Reverse sear: אזור עקיף ~110-120°C עד ליבה ~46-48°C, ואז חריכה על גריל לוהט (~260°C) ~1-2 דק' לצד. מושכים ~52°C, ליבה סופית 54°C medium-rare."
+    }
+  },
+  {
+    "n": 27, "eng": "Beef Tenderloin",
+    "grill": {
+      "grt": 260, "grh": "1.0", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Science of Prime Rib, Tenderloin & Beef Roasts",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/science-cooking-prime-rib-tenderloin-and-other-beef-roasts",
+      "note": "Reverse sear: אזור עקיף ~110°C עד ליבה ~46-48°C, חריכה קצרה על גריל לוהט (~260°C) 60-90 שנ' לצד (רזה, נשרף מהר). מושכים ~52°C, ליבה סופית 54°C."
+    }
+  },
+  {
+    "n": 28, "eng": "Vacío",
+    "grill": {
+      "grt": 260, "grh": "0.15", "grz": "ישיר", "grillable": true,
+      "ref": "Serious Eats / Kenji — butcher's cuts hot & fast; ThermoWorks",
+      "url": "https://blog.thermoworks.com/carne-asada-tacosgrilled/",
+      "note": "נתח בטן/flap דק: גריל ישיר חזק ולוהט (~260°C), ~3-4 דק' לצד. מושכים ב-52-54°C, ליבה סופית 56°C; חותכים דק נגד הסיב, לא מעבר ל-medium."
+    }
+  },
+  {
+    "n": 51, "eng": "Short Plate",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — plate / low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר (כנתח שלם): פלייט עתיר שומן וקולגן (מקור פסטרמי/צלעות פלייט) שדורש בישול ארוך ל-~95°C. אש ישירה על הנתח השלם לא מרככת."
+    }
+  },
+  {
+    "n": 52, "eng": "Chuck Roast",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — chuck roast low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: צלי צ'אק עתיר רקמת חיבור, מתרכך רק ב-~95°C בבישול ארוך/עישון. אש ישירה תייבש ותקשה."
+    }
+  },
+  {
+    "n": 53, "eng": "Rib Cap",
+    "grill": {
+      "grt": 260, "grh": "0.5", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "AmazingRibs (Meathead) — reverse sear; SnS reverse sear ribeye cap",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "כובע הצלע (spinalis) עשיר בשומן: אזור עקיף ~120°C עד ליבה ~46-48°C, ואז חריכה מהירה על גריל לוהט (~260°C) 45-60 שנ' לצד (שומן מבעיר להבות — להיזהר). מושכים ~52°C, ליבה 54°C."
+    }
+  },
+  {
+    "n": 54, "eng": "Top Round",
+    "grill": {
+      "grt": 260, "grh": "1.75", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Science of Beef Roasts (reverse sear)",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/science-cooking-prime-rib-tenderloin-and-other-beef-roasts",
+      "note": "צלי רזה: reverse sear באזור עקיף ~110°C עד ליבה ~50°C, ואז חריכה על גריל לוהט (~260°C) ~2 דק' לצד. מושכים ~54°C, ליבה סופית 56°C; חותכים דק מאוד נגד הסיב (רזה, נוטה להתקשות)."
+    }
+  },
+  {
+    "n": 55, "eng": "Rump Roast",
+    "grill": {
+      "grt": 260, "grh": "1.75", "grz": "עקיף→ישיר", "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Science of Beef Roasts (reverse sear)",
+      "url": "https://amazingribs.com/tested-recipes/beef-and-bison-recipes/science-cooking-prime-rib-tenderloin-and-other-beef-roasts",
+      "note": "צלי שפונדרה/rump רזה: reverse sear עקיף ~110-120°C עד ליבה ~50°C, ואז חריכה על גריל לוהט (~260°C) ~2 דק' לצד. מושכים ~54°C, ליבה סופית 56°C; פורסים דק נגד הסיב."
+    }
+  },
+  {
+    "n": 56, "eng": "Oxtail",
+    "grill": {
+      "grt": null, "grh": null, "grz": null, "grillable": false,
+      "ref": "AmazingRibs (Meathead) — braising cuts low & slow",
+      "url": "https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/",
+      "note": "לא לגריל ישיר: זנב שור עתיר קולגן וגידים סביב עצם, דורש בישול לח ארוך ל-~95°C. אש ישירה לא מרככת."
+    }
+  },
+  {
+    "n": 57, "eng": "Beef Marrow Bones",
+    "grill": {
+      "grt": 220, "grh": "0.35", "grz": "ישיר", "grillable": true,
+      "ref": "Over The Fire Cooking — Grilled Bone Marrow",
+      "url": "https://overthefirecooking.com/grilled-bone-marrow/",
+      "note": "עצמות מוח: גריל/צלייה חמה (~205-230°C / 400-450°F) 15-25 דק' עד שהמוח מזהיב ומבעבע קלות. עדיף במחבת ברזל יצוק למניעת התלקחות מהשומן הנוטף. אין יעד פנימי במעלות — סימן מוכנות הוא בעבוע."
+    }
+  },
+  {
+    "n": 108, "eng": "Hanger",
+    "grill": {
+      "grt": 260, "grh": "0.15", "grz": "ישיר", "grillable": true,
+      "ref": "Serious Eats / Kenji — butcher's cuts hot & fast; ThermoWorks",
+      "url": "https://blog.thermoworks.com/carne-asada-tacosgrilled/",
+      "note": "נתח התלייה: גריל ישיר לוהט (~260°C), ~3-4 דק' לצד. מושכים ב-52-54°C (medium-rare הוא הברירת מחדל לנתחי קצב). ליבה סופית 54°C; חותכים נגד הסיב, לא מעבר ל-medium."
+    }
+  },
+  {
+    "n": 109, "eng": "Skirt",
+    "grill": {
+      "grt": 290, "grh": "0.1", "grz": "ישיר", "grillable": true,
+      "ref": "Serious Eats / Kenji — Carne Asada (skirt); ThermoWorks",
+      "url": "https://blog.thermoworks.com/carne-asada-tacosgrilled/",
+      "note": "נתח דק מאוד: אש ישירה חזקה ולוהטת (~290°C/550°F), ~2-3 דק' לצד בלבד. מושכים ב-52°C, ליבה סופית 54°C; חותכים דק נגד הסיב. לא לעבור 57°C — מתקשה."
+    }
+  },
+  {
+    "n": 110, "eng": "Flank",
+    "grill": {
+      "grt": 260, "grh": "0.15", "grz": "ישיר", "grillable": true,
+      "ref": "Serious Eats / Kenji — butcher's cuts hot & fast; ThermoWorks",
+      "url": "https://blog.thermoworks.com/carne-asada-tacosgrilled/",
+      "note": "נתח שקד רזה: גריל ישיר לוהט (~260°C), ~3-4 דק' לצד. מושכים ב-52-54°C, ליבה סופית 54°C; פורסים דק נגד הסיב, לא מעבר ל-medium."
+    }
+  },
+  {
+    "n": 111, "eng": "Denver",
+    "grill": {
+      "grt": 260, "grh": "0.15", "grz": "ישיר", "grillable": true,
+      "ref": "Serious Eats / Kenji — hot & fast steak; ThermoWorks",
+      "url": "https://blog.thermoworks.com/carne-asada-tacosgrilled/",
+      "note": "נתח דנוור (מצוואר): גריל ישיר לוהט (~260°C), ~3-4 דק' לצד. מושכים ב-52°C, ליבה סופית 54°C medium-rare; חותכים נגד הסיב."
+    }
+  },
+  {
+    "n": 112, "eng": "Flat Iron",
+    "grill": {
+      "grt": 260, "grh": "0.15", "grz": "ישיר", "grillable": true,
+      "ref": "Serious Eats / Kenji — hot & fast steak; ThermoWorks",
+      "url": "https://blog.thermoworks.com/carne-asada-tacosgrilled/",
+      "note": "פלאט איירון (כתף): גריל ישיר לוהט (~260°C), ~3-4 דק' לצד. מושכים ב-52°C, ליבה סופית 54°C medium-rare; חותכים נגד הסיב אחרי מנוחה."
+    }
+  }
+]

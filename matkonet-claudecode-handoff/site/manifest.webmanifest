@@ -1,0 +1,33 @@
+{
+  "name": "מתכונת · מדריך האש",
+  "short_name": "מדריך האש",
+  "description": "מדריך בישול בשר: סו-ויד, עישון ושרקוטרי — 137 מתכונים ו-13 כלים.",
+  "lang": "he",
+  "dir": "rtl",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#16110d",
+  "theme_color": "#16110d",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

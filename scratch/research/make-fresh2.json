@@ -1,0 +1,164 @@
+[
+  {
+    "id": "n-lap-fresh",
+    "eng": "Lap Cheong Fresh-style",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Chinese Sausages", "url": "https://www.meatsandsausages.com/sausages-by-country/chinese-sausages", "note": "Fresh-style (cook-and-eat) adaptation of Cantonese lap cheong: sweet-salty pork, stuffed and cooked immediately (steam/pan/grill), not air-dried. Cook ground pork to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork/beef 160°F", "url": "https://www.meatsandsausages.com/sausages-by-country/chinese-sausages", "note": "cook-to 71°C (ground pork)"},
+    "flag": "Traditional lap cheong is nitrite-cured AND air-dried ~12 days at ~28-30 g/kg salt — that authentic dried version needs Cure #1/#2. The 'Fresh-style' cook-and-eat item here is correctly uncured.",
+    "rationale": "Salt 16 g/kg in range; kept cure null because item is explicitly the fresh cook-immediately version, but noted the traditional dried lap cheong is cured."
+  },
+  {
+    "id": "n-longganisa",
+    "eng": "Longganisa Hamonado",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "Foxy Folksy / Kawaling Pinoy — Longganisa (hamonado)", "url": "https://www.foxyfolksy.com/longanisa-recipe-filipino-sweet-sausage/", "note": "Hamonado = sweet fresh Filipino sausage (vs sour/fermented derecado). Fresh cook-and-eat: simmer in a little water then pan-fry/grill. Cook pork to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F", "url": "https://www.kawalingpinoy.com/longganisa/", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Hamonado is the sweet fresh (not fermented) longganisa; salt 16 g/kg in range; some recipes add optional pink salt for color but cure not required for a fresh item."
+  },
+  {
+    "id": "n-louk-hor",
+    "eng": "Loukaniko Horiatiko",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "Hank Shaw (Honest-Food) — Loukaniko", "url": "https://honest-food.net/loukaniko-traditional-greek-sausage/", "note": "Horiatiko = country/village style fresh Greek pork sausage with orange peel, garlic, fennel/coriander. Grill fresh to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F", "url": "https://honest-food.net/loukaniko-traditional-greek-sausage/", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Village fresh sausage; salt 18 g/kg within range; cure null (aged/smoked loukaniko variants exist but horiatiko is the fresh table sausage)."
+  },
+  {
+    "id": "n-makanek",
+    "eng": "Makanek",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Makanek", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/lebanese/makanek", "note": "Lebanese fresh lamb/beef sausage with warm spices, pine nuts and vinegar/wine; pan-fried or grilled. Cook to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground beef/lamb 160°F", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/lebanese/makanek", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh cook-and-eat sausage (vinegar aids preservation, not nitrite cure); salt 18 g/kg in range; cure null."
+  },
+  {
+    "id": "n-morcilla",
+    "eng": "Morcilla Argentina",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Morcilla Porteña", "url": "https://www.meatsandsausages.com/sausage-recipes/blood/morcilla-portena", "note": "Argentine blood sausage: the blood/fat/onion filling is fully cooked when made, then reheated/charred on the asado ~15 min. Reheat/cook through to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F (blood sausage reheat)", "url": "https://www.meatsandsausages.com/sausage-recipes/blood/morcilla-portena", "note": "cook-to / reheat 71°C, heated through"},
+    "flag": "",
+    "rationale": "Blood sausage is cooked, not nitrite-cured; salt 16 g/kg in range; cure null."
+  },
+  {
+    "id": "n-nurnberger",
+    "eng": "Nurnberger Bratwurst",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "meatsandsausages.com (Marianski) — Nürnberger Bratwürste", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/german/nurnberger-bratwurste", "note": "Small fresh pork bratwurst with marjoram; Marianski formula ~18 g/kg salt, no cure. Grill/pan fresh to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/german/nurnberger-bratwurste", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Classic fresh bratwurst; salt 18 g/kg matches Marianski; cure null."
+  },
+  {
+    "id": "n-parrillera",
+    "eng": "Salchicha Parrillera",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "TasteAtlas — Salchicha parrillera", "url": "https://www.tasteatlas.com/salchicha-parrillera", "note": "Thin coiled fresh Argentine pork/beef grilling sausage; cooked whole over moderate coals until colored and cooked through. Cook to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork/beef 160°F", "url": "https://www.tasteatlas.com/salchicha-parrillera", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh asado grilling sausage; salt 18 g/kg in range; cure null."
+  },
+  {
+    "id": "n-saikrok",
+    "eng": "Sai Krok Isan",
+    "calc": {"salt": 14, "cure": null},
+    "process": {"ref": "Two Guys & a Cooler / Wikipedia — Sai Krok Isan", "url": "https://twoguysandacooler.com/thai-sai-ua/", "note": "Northeastern Thai pork-and-rice sausage traditionally lacto-fermented 2-3 days at ambient temp for its sour tang, then grilled. If made as a fresh cook-immediately item, grill to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F", "url": "https://en.wikipedia.org/wiki/Sai_krok_Isan", "note": "cook-to 71°C"},
+    "flag": "Traditionally ambient-temp FERMENTED 2-3 days — if produced that way it should use Cure #2 (nitrate) and higher salt (~25-28 g/kg) for botulism safety during the ferment. Only stays uncured if made as a quick fresh sausage grilled the same day. Current salt 14 g/kg is fine for fresh but too low for a real ferment.",
+    "rationale": "Kept salt/cure as fresh (14 g/kg OK, cure null) but flagged that the authentic fermented version needs Cure #2 and more salt."
+  },
+  {
+    "id": "n-saiua",
+    "eng": "Sai Ua",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "Hot Thai Kitchen / The Meatwave — Sai Ua", "url": "https://hot-thai-kitchen.com/sai-ua/", "note": "Northern Thai fresh pork sausage with lemongrass, galangal, kaffir lime, curry paste; grilled immediately (optional 1-2 day fridge rest for flavor, not a cure). Cook to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F", "url": "https://hot-thai-kitchen.com/sai-ua/", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh grill sausage (any fridge rest is refrigerated, not an ambient ferment); salt 16 g/kg in range; cure null."
+  },
+  {
+    "id": "n-salsiccia",
+    "eng": "Salsiccia",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "meatsandsausages.com (Marianski) — Italian fresh sausage", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/italian", "note": "Italian fresh pork sausage (fennel/pepper); ~18 g/kg salt, no cure. Grill/pan fresh to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/italian", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh Italian sausage; salt 18 g/kg in range; cure null (dry-cured salsiccia secca is a separate aged product)."
+  },
+  {
+    "id": "n-sheftalia",
+    "eng": "Sheftalia",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "meatsandsausages.com / The Meatwave — Sheftalia", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/cyprusian/sheftalia", "note": "Cypriot fresh ground pork/lamb wrapped in caul fat (no casing), grilled over coals. Cook through to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork/lamb 160°F", "url": "https://meatwave.com/recipes/sheftalia-cypriot-sausages-recipe", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh caul-wrapped grill item; salt 16 g/kg in range; cure null."
+  },
+  {
+    "id": "n-sucuk-taze",
+    "eng": "Sucuk Taze",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Sucuk; Wurst Circle (taze/fresh note)", "url": "https://www.meatsandsausages.com/sausage-recipes/sucuk", "note": "'Taze' = fresh: the beef/lamb sucuk spice mix (cumin, garlic, sumac/red pepper) made WITHOUT Cure #2 and grilled/pan-fried directly like a bratwurst. Cook to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground beef 160°F", "url": "https://www.meatsandsausages.com/sausage-recipes/sucuk", "note": "cook-to 71°C"},
+    "flag": "Traditional (fermente) sucuk is dry-FERMENTED and air-dried ~1 month and MUST use Cure #2 (nitrate). This item is explicitly the 'taze' (fresh, uncured, cook-and-eat) version, so cure=null is correct — but if the catalog ever means the aged/fermented sucuk it needs Cure #2 and higher salt.",
+    "rationale": "Confirmed taze = fresh uncured variant (cure null, salt 18 g/kg in range); flagged that the traditional fermented sucuk requires Cure #2."
+  },
+  {
+    "id": "n-sundae",
+    "eng": "Sundae",
+    "calc": {"salt": 14, "cure": null},
+    "process": {"ref": "Maangchi / Travel Food Atlas — Soondae", "url": "https://www.maangchi.com/recipe/sundae-bokkeum", "note": "Korean blood sausage (pig blood, glass noodles, rice/veg in intestine) is STEAMED fully when made, then reheated/pan-fried. Reheat/cook through to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F (blood sausage reheat)", "url": "https://www.maangchi.com/recipe/sundae-bokkeum", "note": "cook-to / reheat 71°C, heated through"},
+    "flag": "",
+    "rationale": "Steamed blood sausage, cooked not cured; salt 14 g/kg in range; cure null."
+  },
+  {
+    "id": "n-thuringer",
+    "eng": "Thuringer Rostbratwurst",
+    "calc": {"salt": 18, "cure": null},
+    "process": {"ref": "meatsandsausages.com — Thüringer Rostbratwurst", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/german/thuringer-rostbratwurst", "note": "EU-protected fresh Thuringian pork bratwurst (marjoram/caraway); ~15-18 g/kg salt, no cure. Grill fresh to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground pork 160°F", "url": "https://www.meatsandsausages.com/sausage-recipes/fresh/german/thuringer-rostbratwurst", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh grilling bratwurst; salt 18 g/kg within range (sources cite 15-18); cure null."
+  },
+  {
+    "id": "m-kofta",
+    "eng": "Kofta",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "The Mediterranean Dish — Kofta Kebab", "url": "https://www.themediterraneandish.com/kofta-kebab-recipe/", "note": "Fresh ground beef/lamb with onion, parsley, warm spices; skewered and grilled ~7-8 min. Cook to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground beef/lamb 160°F", "url": "https://www.themediterraneandish.com/kofta-kebab-recipe/", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh ground-meat grill item; salt 16 g/kg in range; cure null."
+  },
+  {
+    "id": "m-lula",
+    "eng": "Lula Kebab",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "Wikipedia / All We Eat — Lula (lyulya) Kebab", "url": "https://en.wikipedia.org/wiki/Lula_kebab", "note": "Fresh minced lamb/beef kneaded and molded onto flat skewers, grilled over coals. Cook to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground lamb/beef 160°F", "url": "https://en.wikipedia.org/wiki/Lula_kebab", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh ground-meat kebab; salt 16 g/kg in range; cure null."
+  },
+  {
+    "id": "m-mici",
+    "eng": "Mici Mititei",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "Wikipedia — Mititei (mici)", "url": "https://en.wikipedia.org/wiki/Mititei", "note": "Romanian skinless grilled ground-meat rolls (beef/lamb/pork) with garlic and bicarbonate for spring; grilled fresh. Cook to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground beef/pork 160°F", "url": "https://en.wikipedia.org/wiki/Mititei", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh skinless grill item (bicarbonate is a texturizer, not a cure); salt 16 g/kg in range; cure null."
+  },
+  {
+    "id": "n-cevapi",
+    "eng": "Cevapi",
+    "calc": {"salt": 16, "cure": null},
+    "process": {"ref": "Wikipedia / Where Is My Spoon — Ćevapi", "url": "https://en.wikipedia.org/wiki/%C4%86evapi", "note": "Balkan skinless grilled minced-meat fingers (beef, often with lamb/pork), garlic and paprika; grilled fresh. Cook to 71°C."},
+    "safe": {"safe": 71, "ref": "USDA ground beef 160°F", "url": "https://en.wikipedia.org/wiki/%C4%86evapi", "note": "cook-to 71°C"},
+    "flag": "",
+    "rationale": "Fresh skinless grill item; salt 16 g/kg in range; cure null."
+  }
+]

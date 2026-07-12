@@ -1,0 +1,410 @@
+[
+  {
+    "n": 1,
+    "eng": "Beef Jerky",
+    "cure": {
+      "ref": "USDA FSIS Jerky + meatsandsausages Cure Calculator",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/meat-fish/jerky",
+      "note": "Cure #1 (6.25% sodium nitrite) optional but recommended: 2.5 g/kg = 156 ppm nitrite. USDA-cited research shows cured jerky has greater bacterial destruction than uncured. Cure #1 is correct type (short-cure/heated, not long-aged) — Cure #2 would be wrong here. Current 'optional Cure #1' text is accurate."
+    },
+    "smoke": {
+      "smt": 70,
+      "smh": "4-6",
+      "wood": "היקורי/מזקיט",
+      "ref": "USDA FSIS Jerky / NDSU jerky extension",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/meat-fish/jerky",
+      "note": "Low warm-smoke/dry chamber ~60-70°C; drying dehydrator maintains 60-70°C. This is a dry-down, not a hot cook."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA Ask-USDA: drying meat/poultry jerky temperature",
+      "url": "https://ask.usda.gov/s/article/Why-is-temperature-important-when-drying-meat-and-poultry-jerky",
+      "note": "Beef jerky must reach 71°C / 160°F (pre- or post-drying heat step) since dehydrator alone will not pasteurize before drying makes bacteria heat-resistant."
+    },
+    "age": {
+      "ref": "USDA FSIS / NDSU jerky",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/meat-fish/jerky",
+      "note": "Dry at 60-70°C to water activity aw < 0.75 for shelf stability; typical ~50% weight loss."
+    },
+    "rationale": "Cure #1 optional/recommended is correct as written; documented the USDA 71°C beef-jerky heat floor and aw<0.75 target."
+  },
+  {
+    "n": 2,
+    "eng": "Turkey Jerky",
+    "cure": {
+      "ref": "USDA FSIS Jerky (poultry) + Cure Calculator",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/meat-fish/jerky",
+      "note": "Poultry is higher-risk (salmonella). USDA-cited research: adding Cure #1 (2.5 g/kg = 156 ppm nitrite) markedly increases bacterial destruction. Current text names no cure — STRONGLY recommend adding optional Cure #1. Cure #1 (not #2) is correct."
+    },
+    "smoke": {
+      "smt": 70,
+      "smh": "4-5",
+      "wood": "תפוח/דובדבן",
+      "ref": "USDA FSIS Jerky",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/meat-fish/jerky",
+      "note": "Warm-smoke/dry ~60-70°C chamber."
+    },
+    "safe": {
+      "safe": 74,
+      "ref": "USDA Ask-USDA: poultry jerky must reach 165°F",
+      "url": "https://ask.usda.gov/s/article/Why-is-temperature-important-when-drying-meat-and-poultry-jerky",
+      "note": "Poultry jerky must reach 74°C / 165°F (higher than the 71°C beef floor) via a heat step before/after drying."
+    },
+    "age": {
+      "ref": "USDA FSIS Jerky",
+      "url": "https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/meat-fish/jerky",
+      "note": "Dry to aw < 0.75; heat to 74°C before final dry-down."
+    },
+    "cure_text_suggestion": "מרינדה דלת שומן (מומלץ Cure #1)",
+    "rationale": "FLAGGED: no cure listed for a poultry product — recommend optional Cure #1, and safety floor must be 74°C/165°F for poultry, not 70°C."
+  },
+  {
+    "n": 3,
+    "eng": "Biltong",
+    "cure": {
+      "ref": "EatCuredMeat — biltong (traditional vinegar cure)",
+      "url": "https://eatcuredmeat.com/dry-curing/how-to-cure-meat-to-make-jerky-biltong-with-pictures/",
+      "note": "Traditional biltong uses NO nitrite. Salt + vinegar (acid) lower pH and displace water; coriander/pepper for flavor. Current 'vinegar+salt+coriander+pepper' is correct and authentic — nitrite is not required for classic biltong."
+    },
+    "smoke": {
+      "smt": null,
+      "smh": "ללא עישון",
+      "wood": "ללא",
+      "ref": "EatCuredMeat — biltong",
+      "url": "https://eatcuredmeat.com/dry-curing/how-to-cure-meat-to-make-jerky-biltong-with-pictures/",
+      "note": "No smoke — biltong is air-dried only."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "EatCuredMeat / traditional method",
+      "url": "https://eatcuredmeat.com/dry-curing/how-to-cure-meat-to-make-jerky-biltong-with-pictures/",
+      "note": "Dry-cure: not cooked. Safety from salt + vinegar (low pH) + air-drying to reduced aw — no thermal pasteurization floor."
+    },
+    "age": {
+      "ref": "EatCuredMeat / traditional biltong",
+      "url": "https://eatcuredmeat.com/dry-curing/how-to-cure-meat-to-make-jerky-biltong-with-pictures/",
+      "note": "Hang in cool moving air; ~2-4 days to firm; target ~35-50% weight loss for shelf-stable result."
+    },
+    "rationale": "Correct as-is: vinegar+salt cure with no nitrite and no smoke is authentic biltong; documented weight-loss target."
+  },
+  {
+    "n": 4,
+    "eng": "Pork Bacon",
+    "cure": {
+      "ref": "AmazingRibs (Meathead) — Smoked Homemade Bacon",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-homemade-bacon/",
+      "note": "Dry cure with Prague Powder / Cure #1 (6.25% sodium nitrite) + sugar, ~7 days. 2.5 g/kg = 156 ppm nitrite. Cure #1 is correct (cooked/hot-smoked bacon, not long-aged). Current text is correct."
+    },
+    "smoke": {
+      "smt": 90,
+      "smh": "3-4",
+      "wood": "היקורי/תפוח",
+      "ref": "AmazingRibs — Smoked Homemade Bacon",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-homemade-bacon/",
+      "note": "Meathead smokes ~107°C (225°F) to internal 65.6°C, ~2 h; current 90°C warm-smoke for 3-4 h reaches the same internal target, acceptable."
+    },
+    "safe": {
+      "safe": 65,
+      "ref": "AmazingRibs — Smoked Homemade Bacon",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-homemade-bacon/",
+      "note": "Smoke to internal 65°C / 150°F — cooks and pasteurizes, safe to eat off the smoker."
+    },
+    "age": {
+      "ref": "AmazingRibs — Smoked Homemade Bacon",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-homemade-bacon/",
+      "note": "Dry cure ~7 days at 4°C (fridge), flipping daily; rinse before smoking."
+    },
+    "rationale": "Cure #1 + sugar dry cure is correct; documented AmazingRibs 65°C internal safety target."
+  },
+  {
+    "n": 5,
+    "eng": "Beef Bacon",
+    "cure": {
+      "ref": "AmazingRibs (Meathead) — bacon curing (Cure #1)",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-homemade-bacon/",
+      "note": "Cure #1 dry cure ~7 days, 2.5 g/kg = 156 ppm nitrite. Same method as pork bacon; Cure #1 correct (cooked/smoked, not aged). Current text correct."
+    },
+    "smoke": {
+      "smt": 90,
+      "smh": "3",
+      "wood": "היקורי/אלון",
+      "ref": "AmazingRibs — Smoked Homemade Bacon",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-homemade-bacon/",
+      "note": "Warm/hot smoke ~90-107°C to internal 65°C."
+    },
+    "safe": {
+      "safe": 65,
+      "ref": "AmazingRibs — Smoked Homemade Bacon",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-homemade-bacon/",
+      "note": "Internal 65°C / 150°F cooks and pasteurizes."
+    },
+    "age": {
+      "ref": "AmazingRibs — Smoked Homemade Bacon",
+      "url": "https://amazingribs.com/tested-recipes/pork-recipes/smoked-homemade-bacon/",
+      "note": "Dry cure ~7 days at 4°C; rinse before smoking."
+    },
+    "rationale": "Cure #1 correct; documented 65°C internal safety target."
+  },
+  {
+    "n": 6,
+    "eng": "Kielbasa",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — curing for sausages",
+      "url": "https://www.meatsandsausages.com/sausage-making/curing/sausages",
+      "note": "Cure #1 in the ground meat: 2.5 g/kg = 156 ppm nitrite. Correct — kielbasa is smoked and fully cooked (short process), so Cure #1 not Cure #2. Current text correct."
+    },
+    "smoke": {
+      "smt": 68,
+      "smh": "3-4",
+      "wood": "אלון/בכר/תפוח",
+      "ref": "meatsandsausages / Marianski Polish smoked sausage",
+      "url": "https://www.meatsandsausages.com/sausage-making/curing/sausages",
+      "note": "Warm-smoke rising to bring internal to ~68-71°C (154-160°F); may take hours."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA / Marianski cooked-sausage target",
+      "url": "https://www.meatsandsausages.com/sausage-making/curing/sausages",
+      "note": "Ground/emulsified meat cooked-sausage floor 71°C / 160°F (many Polish recipes pull at 154°F/68°C; conservative displayed floor 71°C)."
+    },
+    "age": {
+      "ref": "meatsandsausages / Marianski",
+      "url": "https://www.meatsandsausages.com/sausage-making/curing/sausages",
+      "note": "Cure meat 48-72 h before stuffing; not aged/dried — cooked and eaten or refrigerated."
+    },
+    "rationale": "Cure #1 in ground meat is correct for a cooked smoked kielbasa; documented cook-to floor."
+  },
+  {
+    "n": 7,
+    "eng": "Andouille",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — curing for sausages / Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-making/curing/sausages",
+      "note": "Cajun seasoning + Cure #1: 2.5 g/kg = 156 ppm nitrite. Correct — andouille is heavily smoked then cooked, a short-process product → Cure #1 not #2. Current text correct."
+    },
+    "smoke": {
+      "smt": 70,
+      "smh": "4",
+      "wood": "פקאן/היקורי",
+      "ref": "The Black Peppercorn — Smoked Andouille (stepped smoke)",
+      "url": "https://www.theblackpeppercorn.com/smoked-andouille-sausage/",
+      "note": "Traditional stepped smoke ~4 h rising 54→88°C (130→190°F), or finish in 74°C water bath, to internal ~71°C."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA cooked-sausage / Marianski",
+      "url": "https://www.meatsandsausages.com/sausage-making/curing/sausages",
+      "note": "Ground meat cooked to 71°C / 160°F internal."
+    },
+    "age": {
+      "ref": "meatsandsausages / Marianski",
+      "url": "https://www.meatsandsausages.com/sausage-making/curing/sausages",
+      "note": "Cure 48-72 h; cooked, not dry-aged."
+    },
+    "rationale": "Cajun seasoning + Cure #1 correct for a cooked smoked sausage; documented cook-to floor."
+  },
+  {
+    "n": 8,
+    "eng": "Cervelat",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Cervelat",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cervelat",
+      "note": "VERIFIED Cure #1 at 2.5 g/kg = 156 ppm nitrite (Marianski). Correct — this cervelat is a fermented SEMI-dry sausage that is COOKED (internal 60°C) and only briefly dried, so Cure #1 (not Cure #2) is right. Current text correct."
+    },
+    "smoke": {
+      "smt": 60,
+      "smh": "2-3",
+      "wood": "בכר/אלון",
+      "ref": "meatsandsausages — Cervelat",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cervelat",
+      "note": "After 24 h ferment at 38°C, warm smoke starts 43°C/12 h then rises until internal 60°C (140°F). smt~60 chamber is consistent."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "meatsandsausages — Cervelat",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cervelat",
+      "note": "Semi-dry fermented: safety from fermentation (pH drop) + Cure #1 + cook to internal 60°C, not a 71°C thermal floor. Documented, no single cook-to floor."
+    },
+    "age": {
+      "ref": "meatsandsausages — Cervelat",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cervelat",
+      "note": "Ferment 24 h at 38°C, 85-90% RH; optional dry 2 days at 16-22°C, 65-75% RH to desired weight loss; store 10-15°C, 75% RH."
+    },
+    "rationale": "Confirmed Cure #1 is correct per Marianski (fermented semi-dry, cooked to 60°C); safety is ferment+cure+cook, documented in note."
+  },
+  {
+    "n": 9,
+    "eng": "Summer Sausage",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Summer Sausage",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/summer-sausage",
+      "note": "Fermentation culture + Cure #1 at 2.5 g/kg = 156 ppm nitrite. Correct — summer sausage is a fermented SEMI-dry sausage that is cooked to ~68-71°C (short process), so Cure #1 is standard, not Cure #2. Current text correct."
+    },
+    "smoke": {
+      "smt": 68,
+      "smh": "4-6",
+      "wood": "היקורי/אלון",
+      "ref": "meatsandsausages — Summer Sausage",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/summer-sausage",
+      "note": "Ferment then warm-smoke rising to internal ~68-71°C (154-160°F)."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA / Marianski cooked semi-dry sausage",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/summer-sausage",
+      "note": "Cooked to internal 71°C / 160°F (ground meat floor); also ferment pH drop + Cure #1."
+    },
+    "age": {
+      "ref": "meatsandsausages — Summer Sausage",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/summer-sausage",
+      "note": "Ferment ~24 h warm/high-RH; brief dry/equalize. Semi-dry, not long dry-aged."
+    },
+    "rationale": "Culture + Cure #1 correct for a cooked fermented semi-dry summer sausage; documented 71°C cook floor."
+  },
+  {
+    "n": 10,
+    "eng": "Kabanos",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Kabanosy",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/kabanosy",
+      "note": "FLAG: current says 'fermentation culture + Cure #2' — WRONG per Marianski. Authoritative kabanosy is NOT fermented: cure with Cure #1 (2.5 g/kg = 156 ppm nitrite), hot-smoke then bake to internal 68-71°C (154-160°F), then OPTIONALLY semi-dry. Cooked product → Cure #1, not Cure #2. Change required. (Only a raw, uncooked, purely air-dried variant would need Cure #2 — not this cooked recipe.)"
+    },
+    "smoke": {
+      "smt": 50,
+      "smh": "2-3",
+      "wood": "בכר/אלון/שזיף",
+      "ref": "meatsandsausages — Kabanosy",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/kabanosy",
+      "note": "Hot smoke 40-50°C ~50-60 min then bake 60-90°C until internal 68-71°C (total ~70-90 min). smt 50 chamber consistent with the smoke stage."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "meatsandsausages — Kabanosy",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/kabanosy",
+      "note": "Cook to internal 68-71°C (154-160°F). Conservative ground-meat floor 71°C."
+    },
+    "age": {
+      "ref": "meatsandsausages — Kabanosy",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/kabanosy",
+      "note": "Optional semi-dry 5-7 days at 12-15°C, 75-80% RH to 45% weight loss (55% yield)."
+    },
+    "cure_text_suggestion": "Cure #1 בבשר טחון (מעושן + מבושל לפנים 71°C, אופצ' ייבוש קל)",
+    "rationale": "FLAGGED: Marianski's authoritative kabanosy uses Cure #1 and is cooked to 68-71°C, not a Cure #2 fermented dry sausage — corrected the cure type and removed the fermentation claim."
+  },
+  {
+    "n": 11,
+    "eng": "Salami",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — fermented (dry) sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Starter culture + salt + Cure #2 (6.25% nitrite + 4% nitrate) at 2.5 g/kg = 156 ppm nitrite plus a nitrate reservoir. Correct — long dry-cured/fermented salami REQUIRES Cure #2 (nitrate reservoir over weeks of drying). Current text correct."
+    },
+    "smoke": {
+      "smt": null,
+      "smh": "עישון קר אופציונאלי 12-24h",
+      "wood": "בכר",
+      "ref": "meatsandsausages — cold smoking / fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cold smoke optional at <20-22°C (part of drying cycle, not a cook). No hot smoke — must stay cold so it dries, not cooks."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "meatsandsausages — fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Dry-cure: pH/aw controlled — not cooked. Safety from ferment to pH ≤ 5.3 + Cure #2 + drying to reduced aw; no thermal floor."
+    },
+    "age": {
+      "ref": "meatsandsausages — fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Ferment 20°C, 85-90% RH ~72 h to pH≤5.3; dry 12-16°C, 80-85% RH for 2-3 months to 30-35% weight loss (shelf stable)."
+    },
+    "rationale": "Culture + salt + Cure #2 correct for a long dry-cured fermented salami; documented pH/aw safety and 30-35% weight loss."
+  },
+  {
+    "n": 12,
+    "eng": "Dry Chorizo",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Spanish Chorizo",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/chorizo",
+      "note": "Smoked pimentón + garlic + Cure #2 (nitrite+nitrate) at 2.5 g/kg = 156 ppm nitrite. Correct — dry-cured Spanish chorizo air-dries 6-8 weeks, needs Cure #2 nitrate reservoir. Current text correct."
+    },
+    "smoke": {
+      "smt": null,
+      "smh": "עישון קר אופציונאלי",
+      "wood": "אלון",
+      "ref": "meatsandsausages — Spanish Chorizo",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/chorizo",
+      "note": "Smokiness usually from pimentón; any smoke must be COLD (<22°C) so it dries rather than cooks."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "meatsandsausages — Spanish Chorizo",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/chorizo",
+      "note": "Dry-cure: pH/aw controlled — not cooked. Cure #2 + drying to reduced aw."
+    },
+    "age": {
+      "ref": "meatsandsausages — Spanish Chorizo",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/chorizo",
+      "note": "Ferment/hold 22-24°C, 85-90% RH ~48 h; dry 6-8 weeks at 12-16°C, RH stepping 85→75%; target ~30% weight loss."
+    },
+    "rationale": "Smoked paprika + garlic + Cure #2 correct for dry-cured chorizo; documented dry-cure safety and 6-8 week dry."
+  },
+  {
+    "n": 13,
+    "eng": "Landjäger",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Landjäger",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/landjager",
+      "note": "Starter culture + Cure #2 (nitrite+nitrate) at 2.5 g/kg = 156 ppm nitrite. Correct — landjäger is a fermented, pressed, air-dried semi-dry sausage, needs Cure #2 for the drying window. Current text correct."
+    },
+    "smoke": {
+      "smt": 50,
+      "smh": "6-12",
+      "wood": "בכר",
+      "ref": "meatsandsausages — Landjäger",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/landjager",
+      "note": "Marianski cold-smokes at <20°C for a few hours (to inhibit mold), then dries. If a warm-smoke ~50°C variant is intended keep short; a cold-smoke option is the traditional route."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "meatsandsausages — Landjäger",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/landjager",
+      "note": "Dry-cure/semi-dry: pH/aw controlled. Ferment pH drop + Cure #2 + drying to ~30% loss; no thermal cook floor."
+    },
+    "age": {
+      "ref": "meatsandsausages — Landjäger",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/landjager",
+      "note": "Ferment 20°C, 90-95% RH ~72 h; pressed flat; dry ~3 weeks at 12-14°C, 80-85% RH to 30% weight loss; store 10-12°C."
+    },
+    "rationale": "Culture + Cure #2 correct for a fermented dried landjäger; noted Marianski uses cold smoke <20°C, documented 30% weight loss."
+  },
+  {
+    "n": 14,
+    "eng": "Pepperoni",
+    "cure": {
+      "ref": "meatsandsausages (Marianski) — Pepperoni (slow-fermented dry)",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/pepperoni-dry",
+      "note": "Paprika + chili + starter culture + Cure #2 (nitrite+nitrate) at 2.5 g/kg = 156 ppm nitrite. Correct — slow-fermented dry pepperoni air-dries 6-8 weeks, needs Cure #2 nitrate reservoir. Current text correct."
+    },
+    "smoke": {
+      "smt": null,
+      "smh": "עישון קר אופציונאלי",
+      "wood": "אלון/ללא",
+      "ref": "meatsandsausages — Pepperoni (dry)",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/pepperoni-dry",
+      "note": "Optional cold smoke ~8 h at <22°C, treated as part of the drying/fermentation cycle, not flavoring/cooking."
+    },
+    "safe": {
+      "safe": null,
+      "ref": "meatsandsausages — Pepperoni (dry)",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/pepperoni-dry",
+      "note": "Dry-cure: pH/aw controlled — not cooked. Ferment pH drop + Cure #2 + drying to reduced aw."
+    },
+    "age": {
+      "ref": "meatsandsausages — Pepperoni (dry)",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/pepperoni-dry",
+      "note": "Ferment 20°C, 85-90% RH ~72 h; dry 12-16°C, 80-85% RH ~6-8 weeks to ~30% weight loss (shelf stable)."
+    },
+    "rationale": "Paprika/chili + culture + Cure #2 correct for a slow-fermented dry pepperoni; documented dry-cure safety and 30% weight loss."
+  }
+]

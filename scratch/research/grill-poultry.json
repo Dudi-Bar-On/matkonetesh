@@ -1,0 +1,223 @@
+[
+  {
+    "n": 3,
+    "eng": "Turkey Shawarma",
+    "grill": {
+      "grt": 220,
+      "grh": "0.6",
+      "grz": "ישיר",
+      "grillable": true,
+      "ref": "Food Network Kitchen / The Mediterranean Dish — grilled shawarma (marinated poultry, direct medium-high)",
+      "url": "https://www.themediterraneandish.com/grilled-chicken-shawarma/",
+      "note": "מרינדה ואז צלייה ישירה על אש בינונית-גבוהה (~200-230°C), הופכים כל 3-4 דק' עד ליבה 74-77°C, מנוחה ופריסה דקה. עוף/הודו שווארמה מגיע לבטיחות מלאה 75°C."
+    }
+  },
+  {
+    "n": 5,
+    "eng": "Chicken Thighs",
+    "grill": {
+      "grt": 220,
+      "grh": "0.5",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Grilled Chicken Thighs",
+      "url": "https://amazingribs.com/grilled-chicken-thighs/",
+      "note": "דו-אזורי ב-190-220°C: העור למעלה בצד עקיף 25-30 דק', ואז עור-למטה ישיר לפריכות עד ליבה 75-79°C (בשר כהה מתרכך גבוה יותר). מונע חריכה."
+    }
+  },
+  {
+    "n": 9,
+    "eng": "Duck Breast",
+    "grill": {
+      "grt": 200,
+      "grh": "0.22",
+      "grz": "ישיר",
+      "grillable": true,
+      "ref": "ThermoWorks / Serious Eats — grilled duck breast (score skin, render fat)",
+      "url": "https://blog.thermoworks.com/grilled-duck-breast/",
+      "note": "משרטטים את העור בקרוסהאץ', מתחילים עור-למטה על אש ישירה בינונית (~200°C) לרנדור השומן והקרנצ', הופכים; מושכים סביב 63-65°C ליבה. שריר שלם בטוח בדרגה זו."
+    }
+  },
+  {
+    "n": 19,
+    "eng": "Turkey Breast",
+    "grill": {
+      "grt": 230,
+      "grh": "0.8",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "Vindulge / Two Kooks — grilled turkey breast (two-zone, sear then indirect)",
+      "url": "https://www.vindulge.com/grilled-turkey-breast/",
+      "note": "חריכה ישירה קצרה עור-למטה 6-8 דק', ואז צד עקיף (כיפה ~175°C) עד ליבה 74-75°C. שריר גדול—דו-אזורי מונע יבש/חריכה."
+    }
+  },
+  {
+    "n": 38,
+    "eng": "Spatchcock Chicken",
+    "grill": {
+      "grt": 165,
+      "grh": "1.0",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Grilled Citrus Herb Spatchcocked Chicken",
+      "url": "https://amazingribs.com/tested-recipes/chicken-recipes/grilled-citrus-herb-spatchcocked-chicken-recipe/",
+      "note": "מגדירים 2-אזורים ~163°C (325°F), עוף עור-למעלה בצד עקיף כ-1 שעה עד ~71°C בחזה, ואז עור-למטה ישיר ~4 דק' לפריכות. חזה 74°C, ירכיים 78-82°C."
+    }
+  },
+  {
+    "n": 39,
+    "eng": "Chicken Wings",
+    "grill": {
+      "grt": 230,
+      "grh": "0.6",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "Serious Eats / Kenji López-Alt — grilled buffalo wings (two-zone, dry-brine)",
+      "url": "https://www.chilesandsmoke.com/grilled-chicken-wings/",
+      "note": "דריי-ברין (מלח+אבקת אפייה) ואז צד קר ~30 דק' לרנדור, חריכה ישירה 400-450°F (~230°C) לדקות אחרונות. בטיחות ב-74°C, אך מגישים כנף ב-82-85°C לרקמת חיבור רכה."
+    }
+  },
+  {
+    "n": 40,
+    "eng": "Chicken Drumsticks",
+    "grill": {
+      "grt": 220,
+      "grh": "0.7",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "101 Cooking For Two / RecipeTeacher — grilled chicken legs (two-zone)",
+      "url": "https://www.101cookingfortwo.com/art-of-drummies-grilling-chicken/",
+      "note": "עקיף תחילה לרנדור שומן תת-עורי ואז ישיר לפריכות; בשר כהה מיטבי סביב 79-85°C. עצם—דו-אזורי מונע חריכה חיצונית לפני בישול הפנים."
+    }
+  },
+  {
+    "n": 41,
+    "eng": "Chicken Breast",
+    "grill": {
+      "grt": 220,
+      "grh": "0.25",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "Serious Eats / Kenji — grilling chicken (two-zone, pull juicy breast)",
+      "url": "https://www.oxo.com/blog/cooking-and-baking/grilling-tips-food-labs-kenji-lopez-alt",
+      "note": "חזה חסר עצם דק—אש ישירה בינונית-גבוהה (~220°C) לחריכה ואז השלמה בעקיף עד ליבה 68°C לשמירת עסיסיות. בטיחות מוצגת 74°C."
+    }
+  },
+  {
+    "n": 42,
+    "eng": "Turkey Legs",
+    "grill": {
+      "grt": 175,
+      "grh": "1.75",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "Girls Can Grill / Over The Fire Cooking — grilled/BBQ turkey legs (indirect ~350°F)",
+      "url": "https://girlscangrill.com/recipe/grilled-butterflied-turkey-legs/",
+      "note": "עקיף בינוני ~175°C (350°F) למשך 1.5-2 שעות עד 79-85°C, ואז מעבר קצר לישיר לפריכות. בשר כהה סלחני—דו-אזורי."
+    }
+  },
+  {
+    "n": 43,
+    "eng": "Whole Turkey",
+    "grill": {
+      "grt": 165,
+      "grh": "3.0",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Ultimate BBQ Turkey / grill-roasted whole turkey",
+      "url": "https://amazingribs.com/tested-recipes/turkey-recipes/ultimate-bbq-turkey-recipe/",
+      "note": "צלייה עקיפה ~325-350°F (163-175°C) כ-2.5-3.5 ש' עד חזה 74°C (מושכים ~71°C, עולה במנוחה) וירך 78-82°C. עוף שלם—תמיד עקיף/דו-אזורי."
+    }
+  },
+  {
+    "n": 44,
+    "eng": "Whole Goose",
+    "grill": {
+      "grt": 160,
+      "grh": "2.75",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "Raichlen / Barbecuebible — spit/indirect roasted goose (prick skin, render fat)",
+      "url": "https://barbecuebible.com/recipe/smoked-duck-chinese-flavorings/",
+      "note": "עוף שומני—מנקבים את העור, צלייה עקיפה ~150-165°C כ-2.5-3 ש' תוך ניקוז שומן (זהירות מהתלקחות) עד חזה/ליבה 74°C, ירכיים 80°C+. עקיף/דו-אזורי."
+    }
+  },
+  {
+    "n": 45,
+    "eng": "Goose Leg",
+    "grill": {
+      "grt": 200,
+      "grh": "0.3",
+      "grz": "עקיף→ישיר",
+      "grillable": true,
+      "ref": "AmazingRibs — Sous-Vide-Que Duck/Goose Confit (crisp finish); Food Republic grilled confit",
+      "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/",
+      "note": "קונפי תחילה (בישול ארוך בשומן), ואז חימום בעקיף ~15 דק' וסיום ישיר עור-למטה ~3-4 דק' לפריכות. הליבה כבר 82-85°C מהקונפי; זהו גימור-קראנץ' בלבד."
+    }
+  },
+  {
+    "n": 46,
+    "eng": "Whole Duck",
+    "grill": {
+      "grt": 160,
+      "grh": "1.75",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "AmazingRibs (Meathead) — Grill-Roasted Peking Duck",
+      "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/grill-roasted-peking-duck-recipe/",
+      "note": "מנקבים עור, צלייה עקיפה ~300-350°F (150-175°C) כ-1.5-2 ש' לרנדור שומן ופריכות עד ליבה 74°C. ברווז שלם—עקיף/דו-אזורי, זהירות מהתלקחות שומן."
+    }
+  },
+  {
+    "n": 47,
+    "eng": "Duck Leg Confit",
+    "grill": {
+      "grt": 200,
+      "grh": "0.25",
+      "grz": "עקיף→ישיר",
+      "grillable": true,
+      "ref": "AmazingRibs — Sous-Vide-Que Duck Confit; DadCooksDinner grilled duck legs",
+      "url": "https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/",
+      "note": "לאחר קונפי—מחממים בעקיף להמסת שומן שנותר, ואז ישיר עור-למטה ~3-4 דק' עד עור מזוגג ופריך (ליבה ~68°C+ לחימום; הבשר כבר מבושל 82-85°C מהקונפי). גימור-קראנץ'."
+    }
+  },
+  {
+    "n": 48,
+    "eng": "Duck Breast",
+    "grill": {
+      "grt": 200,
+      "grh": "0.2",
+      "grz": "ישיר",
+      "grillable": true,
+      "ref": "Serious Eats / ThermoWorks — grilled duck breast, medium-rare (score, render)",
+      "url": "https://blog.thermoworks.com/grilled-duck-breast/",
+      "note": "משרטטים עור, מתחילים עור-למטה ישיר בינוני (~200°C) לרנדור, הופכים; מושכים ~54-55°C ליבה (מדיום-רייר, עולה ל-57°C במנוחה). שריר שלם—בטוח בדרגה זו."
+    }
+  },
+  {
+    "n": 67,
+    "eng": "Chicken Leg Quarters",
+    "grill": {
+      "grt": 200,
+      "grh": "0.9",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "Wholesome Yum / Ovenspiration — grilled chicken leg quarters (two-zone)",
+      "url": "https://www.wholesomeyum.com/grilled-chicken-quarters/",
+      "note": "עקיף 40-60 דק' לרנדור שומן תת-עורי, ואז ישיר 2-4 דק' לכל צד לפריכות עד 79-82°C. עצם וגדול—דו-אזורי מונע חריכה חיצונית."
+    }
+  },
+  {
+    "n": 68,
+    "eng": "Turkey Wings",
+    "grill": {
+      "grt": 200,
+      "grh": "0.9",
+      "grz": "דו-אזורי",
+      "grillable": true,
+      "ref": "Over The Fire Cooking / Girls Can Grill — grilled turkey wings (two-zone ~400°F)",
+      "url": "https://overthefirecooking.com/bbq-turkey-legs/",
+      "note": "דו-אזורי סביב ~400°F (~200°C): חריכה ישירה חיצונית ואז השלמה בעקיף עד ליבה 79-82°C. בשר כהה סלחני, דו-אזורי מונע חריכה."
+    }
+  }
+]

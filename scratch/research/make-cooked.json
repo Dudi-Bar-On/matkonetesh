@@ -1,0 +1,448 @@
+[
+  {
+    "id": "m-bolo",
+    "eng": "Bologna",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator / Curing for sausages",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1 (6.25% NaNO2): 2.5 g/kg = 156 ppm nitrite, the standard for cooked-smoked sausage. Current cure=1 g/kg ≈ 62 ppm — under-cured; raise to 2.5."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Min safe 68°C (154°F); US gov/FSIS recommends 71°C (160°F). App ground-meat floor displays 71°C. Cook to internal 68–71°C."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Stepped: dry 45–55°C (no/light smoke) 10–40 min → smoke 45–60°C 30–90 min → cook 80–85°C (or poach 80°C) until internal 68–71°C."
+    },
+    "flag": "cure was 1 g/kg (~62 ppm, under-cured) → recommend 2.5",
+    "rationale": "Emulsified cured hot-smoked sausage. Bumped cure 1→2.5 g/kg (156 ppm standard); salt 18 fine; internal 71°C per ground-meat floor."
+  },
+  {
+    "id": "m-frank",
+    "eng": "Frankfurter",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm nitrite (standard). Current cure=1 ≈ 62 ppm — under-cured; raise to 2.5."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Safe 68°C, gov 71°C; app displays 71°C ground-meat floor. Cook to 68–71°C internal."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 45–60°C 30–90 min → cook 80–85°C or poach 75–80°C to internal 68–71°C."
+    },
+    "flag": "cure was 1 g/kg (~62 ppm, under-cured) → recommend 2.5",
+    "rationale": "Emulsified cured hot-smoked frank. Cure raised 1→2.5; salt 18 kept; 71°C floor cited."
+  },
+  {
+    "id": "m-morta",
+    "eng": "Mortadella",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm nitrite. Current cure=1 ≈ 62 ppm — under-cured; raise to 2.5."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Emulsified cured sausage; internal 68–71°C. App displays 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → light smoke 45–60°C → cook 80–85°C (or steam/poach) until internal 68–71°C."
+    },
+    "flag": "cure was 1 g/kg (~62 ppm, under-cured) → recommend 2.5",
+    "rationale": "Cured emulsified sausage cooked in smoker. Cure 1→2.5; salt 18 kept; 71°C floor."
+  },
+  {
+    "id": "m-linguica",
+    "eng": "Linguiça",
+    "calc": { "salt": 20, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm nitrite. Current cure=None — a cured Portuguese sausage held warm in the smoker needs nitrite; add 2.5."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Coarse cured hot-smoked sausage; cook to 68–71°C. App displays 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → heavy smoke 50–60°C 60–120 min → cook 80–85°C until internal 68–71°C."
+    },
+    "flag": "cure was None → smoked cured sausage needs nitrite; recommend 2.5",
+    "rationale": "Portuguese hot-smoked sausage; added missing cure (None→2.5) and salt (None→20 g/kg); 71°C floor."
+  },
+  {
+    "id": "m-loukaniko",
+    "eng": "Loukaniko",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm nitrite. Current cure=None — held warm in smoker; add nitrite at 2.5."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Greek coarse cured smoked sausage; cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 45–60°C → cook 80–85°C to internal 68–71°C."
+    },
+    "flag": "cure was None → smoked sausage needs nitrite; recommend 2.5",
+    "rationale": "Greek hot-smoked sausage; added cure None→2.5 and salt None→18; 71°C floor."
+  },
+  {
+    "id": "m-snack",
+    "eng": "Snack Sticks",
+    "calc": { "salt": 20, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm nitrite. Current cure=None — long warm smoke on thin sticks strongly needs nitrite; add 2.5."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Thin cured smoked sticks; cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 50–65°C 1–3 h → cook 75–80°C until internal 68–71°C."
+    },
+    "flag": "cure was None → smoked sausage needs nitrite; recommend 2.5",
+    "rationale": "Thin snack sticks spend hours warm in the smoker; added cure None→2.5 and salt None→20; 71°C floor."
+  },
+  {
+    "id": "n-andouille",
+    "eng": "Cajun Andouille",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm nitrite. Current 2.5 is correct — no change."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → heavy smoke 55–70°C several hours → cook to internal 68–71°C."
+    },
+    "rationale": "Cure 2.5 and salt 18 already standard; documented 71°C floor and stepped hot-smoke."
+  },
+  {
+    "id": "n-bock-smoked",
+    "eng": "Geräucherte Bockwurst",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 45–60°C → cook 78–80°C to internal 68–71°C."
+    },
+    "rationale": "Smoked bockwurst; cure/salt already standard; documented safety and process."
+  },
+  {
+    "id": "n-cervelat",
+    "eng": "Cervelat",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 45–60°C → cook 78–82°C to internal 68–71°C."
+    },
+    "rationale": "Emulsified cooked-smoked cervelat; cure/salt standard; documented."
+  },
+  {
+    "id": "n-chourico",
+    "eng": "Chouriço Português",
+    "calc": { "salt": 20, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → heavy smoke 50–60°C → cook 80–85°C to internal 68–71°C."
+    },
+    "rationale": "Portuguese coarse smoked sausage; cure 2.5/salt 20 standard; documented."
+  },
+  {
+    "id": "n-kielbasa",
+    "eng": "Kielbasa Wiejska",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking / Polish smoked kielbasa",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 50–60°C 90–120 min → cook 75–80°C to internal 68–71°C."
+    },
+    "rationale": "Polish country smoked kielbasa; cure/salt standard; documented Marianski schedule."
+  },
+  {
+    "id": "n-krakowska",
+    "eng": "Kiełbasa Krakowska",
+    "calc": { "salt": 20, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 50–60°C → cook 80°C to internal 68–71°C."
+    },
+    "rationale": "Polish cooked-smoked krakowska; cure 2.5/salt 20 standard; documented."
+  },
+  {
+    "id": "n-kranjska",
+    "eng": "Kranjska Klobasa",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 50–60°C → cook 78–80°C to internal 68–71°C."
+    },
+    "rationale": "Slovenian Carniolan smoked sausage; cure/salt standard; documented."
+  },
+  {
+    "id": "n-linguica-cal",
+    "eng": "Linguiça Calabresa",
+    "calc": { "salt": 20, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → heavy smoke 50–60°C → cook 80–85°C to internal 68–71°C."
+    },
+    "rationale": "Brazilian/Portuguese calabresa-style smoked sausage; cure 2.5/salt 20 standard; documented."
+  },
+  {
+    "id": "n-summer",
+    "eng": "Summer Sausage",
+    "calc": { "salt": 20, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct (semi-dry fermented-then-cooked; Cure #1 appropriate for cook-and-hold)."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C internal (semi-dry summer sausage cooked in smoker). App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 50–65°C → gradually raise smoker to 75–80°C until internal 68–71°C."
+    },
+    "rationale": "Semi-dry cooked-smoked summer sausage; cure 2.5/salt 20 standard; documented."
+  },
+  {
+    "id": "n-bockwurst",
+    "eng": "Bockwurst",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → light smoke 45–60°C → cook/poach 75–80°C to internal 68–71°C."
+    },
+    "rationale": "Emulsified veal/pork bockwurst; cure/salt standard; documented."
+  },
+  {
+    "id": "n-cotechino",
+    "eng": "Cotechino",
+    "calc": { "salt": 22, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C internal. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking / cooking sausages",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Rind-rich Italian sausage traditionally poached; if smoked: dry 45–55°C → light smoke → cook 80°C to internal 68–71°C (long simmer to soften rind)."
+    },
+    "rationale": "Italian rind sausage; cure 2.5/salt 22 (higher for large diameter) standard; documented cook-to 71°C."
+  },
+  {
+    "id": "n-debrecener",
+    "eng": "Debrecener",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → paprika-smoke 50–60°C → cook 78–80°C to internal 68–71°C."
+    },
+    "rationale": "Hungarian paprika smoked sausage; cure/salt standard; documented."
+  },
+  {
+    "id": "n-kase",
+    "eng": "Käsekrainer",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 50–60°C → cook 75–80°C to internal 68–71°C (keep below cheese-melt scorch)."
+    },
+    "rationale": "Cheese-filled Carniolan sausage; cure/salt standard; documented, cook gently to 71°C."
+  },
+  {
+    "id": "n-knack",
+    "eng": "Knackwurst",
+    "calc": { "salt": 18, "cure": 2.5 },
+    "cure": {
+      "ref": "Marianski — meatsandsausages.com Cure Calculator",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/cure-calculator",
+      "note": "Cure #1: 2.5 g/kg = 156 ppm. Current 2.5 correct."
+    },
+    "safe": {
+      "safe": 71,
+      "ref": "USDA FSIS + Marianski (cooking sausages)",
+      "url": "https://www.meatsandsausages.com/sausage-making/cooking-meat/sausages",
+      "note": "Cook to 68–71°C. App 71°C ground-meat floor."
+    },
+    "process": {
+      "ref": "Marianski — Hot smoking",
+      "url": "https://www.meatsandsausages.com/meat-smoking/hot-smoking",
+      "note": "Dry 45–55°C → smoke 45–60°C → cook/poach 75–80°C to internal 68–71°C."
+    },
+    "rationale": "Emulsified garlic knackwurst; cure/salt standard; documented."
+  }
+]

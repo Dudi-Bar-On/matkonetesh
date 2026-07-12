@@ -1,0 +1,478 @@
+[
+  {
+    "id": "m-cacc",
+    "eng": "Cacciatore",
+    "calc": {"salt": 28, "cure": 2.5},
+    "cure": {
+      "ref": "Hank Shaw (Honest-Food) Cacciatore Salami + meatsandsausages fermented sausage",
+      "url": "https://honest-food.net/italian-cacciatore-salami/",
+      "note": "Cure #2 (6.25% nitrite + 4% nitrate) at 2.5 g/kg = 156 ppm ingoing nitrite plus a nitrate reservoir for the 2-4 week hang. CRITICAL GAP: current cure=None on a raw room-temp air-dried ground salami = direct botulism/Listeria risk. Long dry-cure REQUIRES Cure #2, not Cure #1."
+    },
+    "process": {
+      "ref": "Honest-Food / meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Ferment ~24-48 h at 20-24C, 85-90% RH with starter culture (dextrose feed) to pH <=5.3; dry 12-15C, 75-80% RH for ~2-4 weeks (32-38mm hog casing) to 30-35% weight loss."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls, no thermal floor: nitrite (Cure #2) + pH drop to <=5.3 from fermentation + aw reduction via drying to 30-35% loss. Not cooked."},
+    "flag": "SAFETY GAP: cure was None on a raw dry-fermented salami — set Cure #2 2.5 g/kg (156 ppm).",
+    "rationale": "Small Italian dry salami; missing nitrite corrected to Cure #2 156 ppm and salt raised to 2.8% for aw control."
+  },
+  {
+    "id": "m-droe",
+    "eng": "Droewors",
+    "calc": {"salt": 28, "cure": 2.5},
+    "cure": {
+      "ref": "2 Guys & A Cooler / Wikipedia Droewors",
+      "url": "https://twoguysandacooler.com/south-african-droewors/",
+      "note": "Recommend Cure #2 2.5 g/kg = 156 ppm. Traditional droewors is nitrite-free (salt + vinegar + coriander, thin fast dry) and can be shelf-stable, but current cure=1 g/kg = only ~62 ppm is a half-measure that neither follows tradition nor gives full nitrite protection for a warm-dried ground sausage. For a safety-first app, Cure #2 at 156 ppm (nitrate reservoir for the warm 3-5 day dry) is the conservative call."
+    },
+    "process": {
+      "ref": "2 Guys & A Cooler / biltong-box method",
+      "url": "https://twoguysandacooler.com/south-african-droewors/",
+      "note": "No fermentation culture; thin coils hung in warm moving air ~21-27C, 50-60% RH for 3-5 days to a dry, snappable stick (~40-50% weight loss). Vinegar assists acidification."
+    },
+    "safe": {"safe": null, "ref": "Wikipedia / traditional method", "url": "https://en.wikipedia.org/wiki/Dro%C3%ABwors", "note": "Dry-cure controls: nitrite + salt + vinegar (low pH) + rapid drying of thin coils to low aw. No thermal pasteurization step."},
+    "flag": "SAFETY GAP: cure was 1 g/kg (~62 ppm) — below standard; recommend Cure #2 2.5 g/kg (156 ppm).",
+    "rationale": "Warm-air-dried ground sausage; bumped sub-standard 62 ppm cure to full Cure #2 156 ppm and salt to 2.8%."
+  },
+  {
+    "id": "m-lapcheong",
+    "eng": "Lap Cheong",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages Lap Cheong",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/lap-cheong",
+      "note": "Recommend Cure #2 2.5 g/kg = 156 ppm (nitrate reservoir for the multi-day warm dry). Current cure=1 g/kg = ~62 ppm is below standard. Note lap cheong is a sweet sausage normally steamed/fried before eating, which lowers residual risk, but it is still air-dried warm for days as a raw product, so full nitrite protection is warranted."
+    },
+    "process": {
+      "ref": "meatsandsausages Lap Cheong / Cantonese method",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/lap-cheong",
+      "note": "No starter culture; high sugar + rice-wine. Dried warm ~45-50C for ~48 h (do not exceed 50C) or hung 3+ days at 15-20C, 60-70% RH to firm/translucent (~desired weight loss). Cooked before consumption."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages Lap Cheong", "url": "https://www.meatsandsausages.com/sausage-recipes/lap-cheong", "note": "Dry-cure controls: nitrite (Cure #2) + high sugar + salt lowering aw + drying; plus the product is cooked before eating. No pre-storage thermal pasteurization."},
+    "flag": "SAFETY GAP: cure was 1 g/kg (~62 ppm) — below standard; recommend Cure #2 2.5 g/kg (156 ppm).",
+    "rationale": "Sweet Chinese dried sausage; raised sub-standard 62 ppm cure to full Cure #2 156 ppm; salt kept ~2.5% (sugar aids aw)."
+  },
+  {
+    "id": "m-nduja",
+    "eng": "Nduja",
+    "calc": {"salt": 26, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages spreadable fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage/spreadable",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. CRITICAL GAP: current cure=None on a raw, fermented, weeks-aged spreadable Calabrian salami = botulism/Listeria risk. Nduja ferments and dries several weeks, so Cure #2 (nitrate reservoir) is required, not Cure #1."
+    },
+    "process": {
+      "ref": "meatsandsausages spreadable fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage/spreadable",
+      "note": "High-chili soft paste stuffed in casing; ferment ~24-48 h at 20-24C, 85-90% RH with culture to pH <=5.3, then dry/smoke-cure ~3-6 weeks at 12-15C, 75-85% RH. Stays spreadable but loses ~25-30%."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages spreadable fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage/spreadable", "note": "Dry-cure controls: nitrite (Cure #2) + fermentation pH drop + drying to reduced aw. High capsaicin/chili also inhibitory. Not cooked."},
+    "flag": "SAFETY GAP: cure was None on a raw fermented aged spreadable salami — set Cure #2 2.5 g/kg (156 ppm).",
+    "rationale": "Weeks-aged raw fermented paste; missing nitrite corrected to Cure #2 156 ppm, salt 2.6%."
+  },
+  {
+    "id": "m-sauci",
+    "eng": "Saucisson Sec",
+    "calc": {"salt": 28, "cure": 2.5},
+    "cure": {
+      "ref": "UMAi Dry French Dry Sausage / meatsandsausages fermented sausage",
+      "url": "https://umaidry.com/blogs/recipes/french-dry-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite plus nitrate reservoir. CRITICAL GAP: current cure=None on a slow-fermented French dry salami aged 3-6 weeks = botulism/Listeria risk. Long dry-cure REQUIRES Cure #2."
+    },
+    "process": {
+      "ref": "UMAi Dry / meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Mild slow ferment ~24-48 h at 18-22C, 85-90% RH with culture (or traditional slow acidification); dry 12-15C, 75-80% RH for 3-6 weeks to 30-35% weight loss."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + pH drop + drying to 30-35% loss lowering aw. Not cooked."},
+    "flag": "SAFETY GAP: cure was None on a slow-fermented dry salami — set Cure #2 2.5 g/kg (156 ppm).",
+    "rationale": "Classic French dry salami; missing nitrite corrected to Cure #2 156 ppm, salt 2.8%."
+  },
+  {
+    "id": "m-sopr",
+    "eng": "Soppressata",
+    "calc": {"salt": 28, "cure": 2.5},
+    "cure": {
+      "ref": "UMAi Dry Soppressata / meatsandsausages fermented sausage",
+      "url": "https://umaidry.com/blogs/recipes/homemade-salami-soppressata",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. CRITICAL GAP: current cure=None on a raw Italian dry-cured salami aged 4-8 weeks = botulism/Listeria risk. Long dry-cure REQUIRES Cure #2."
+    },
+    "process": {
+      "ref": "UMAi Dry / meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Coarse-ground, pressed; ferment ~24-48 h at 20-24C, 85-90% RH with culture to pH <=5.3; dry 12-15C, 75-80% RH for 4-8 weeks (larger casing) to 30-40% weight loss."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + fermentation pH drop + drying to 30-40% loss lowering aw. Not cooked."},
+    "flag": "SAFETY GAP: cure was None on a raw dry-cured salami — set Cure #2 2.5 g/kg (156 ppm).",
+    "rationale": "Pressed Italian dry salami; missing nitrite corrected to Cure #2 156 ppm, salt 2.8%."
+  },
+  {
+    "id": "m-sucuk",
+    "eng": "Sucuk",
+    "calc": {"salt": 28, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages Sucuk / Taste of Artisan dry-cured sujuk",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/sucuk",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir (Cure #2 recommended when aging 30+ days, which the dry version does). CRITICAL GAP: current cure=None on a raw fermented air-dried Turkish sausage = botulism/Listeria risk. Requires Cure #2 for the dry style."
+    },
+    "process": {
+      "ref": "Taste of Artisan / Turkish Food Codex pH",
+      "url": "https://tasteofartisan.com/homemade-dry-cured-sujuk/",
+      "note": "Ferment ~48 h at ~24C, 80% RH with culture to pH ~5.2-5.4; then dry/rest 5+ days at 10-16C, 65-75% RH, continuing 2-4 weeks to ~30-40% weight loss (pressed flat)."
+    },
+    "safe": {"safe": null, "ref": "Turkish Food Codex / Taste of Artisan", "url": "https://tasteofartisan.com/homemade-dry-cured-sujuk/", "note": "Dry-cure controls: nitrite (Cure #2) + fermentation to pH 5.2-5.4 + drying to reduced aw. Garlic/spices additionally inhibitory. Not cooked."},
+    "flag": "SAFETY GAP: cure was None on a raw fermented dry sausage — set Cure #2 2.5 g/kg (156 ppm).",
+    "rationale": "Turkish dry-fermented beef sausage; missing nitrite corrected to Cure #2 156 ppm, salt 2.8%."
+  },
+  {
+    "id": "n-chorizo-esp",
+    "eng": "Chorizo Curado",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages Spanish Chorizo (dry)",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/chorizo",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct as-is — dry-cured Spanish chorizo air-dries 4-8 weeks and needs the nitrate reservoir. Pimenton provides color/flavor, not preservation."
+    },
+    "process": {
+      "ref": "meatsandsausages Spanish Chorizo",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/chorizo",
+      "note": "Hold/ferment ~48 h at 22-24C, 85-90% RH; dry 12-16C, RH stepping 85->75% for 4-8 weeks to ~30% weight loss. Any smoke is cold (<22C)."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages Spanish Chorizo", "url": "https://www.meatsandsausages.com/sausage-recipes/chorizo", "note": "Dry-cure controls: nitrite (Cure #2) + pH drop + drying to reduced aw. Not cooked."},
+    "rationale": "Well-supported: Cure #2 156 ppm kept; salt held at 2.5% within dry-cure range."
+  },
+  {
+    "id": "n-csabai",
+    "eng": "Csabai Kolbasz",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages fermented sausage (Hungarian paprika dry sausage)",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — Csabai is a smoked, paprika-rich Hungarian dry-fermented sausage aged several weeks, so Cure #2 is right (cold smoke only)."
+    },
+    "process": {
+      "ref": "meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Ferment ~48 h at 18-22C, 85-90% RH with culture to pH <=5.3; cold-smoke <22C optional; dry 12-15C, 75-80% RH for 3-5 weeks to ~30-35% weight loss."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + fermentation pH drop + drying to reduced aw. Not cooked."},
+    "rationale": "Hungarian smoked dry salami; Cure #2 156 ppm confirmed; salt raised slightly to 2.5% for aw."
+  },
+  {
+    "id": "n-finocchiona",
+    "eng": "Finocchiona",
+    "calc": {"salt": 26, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages fermented sausage (Tuscan fennel salami)",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — Tuscan fennel salami dries 6-10 weeks (medium/large casing), needs Cure #2."
+    },
+    "process": {
+      "ref": "meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Mild ferment ~24-48 h at 20-24C, 85-90% RH with culture to pH <=5.3; dry 12-15C, 75-80% RH for 6-10 weeks to 30-40% weight loss. Fennel seed for flavor."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + pH drop + drying to 30-40% loss lowering aw. Not cooked."},
+    "rationale": "Tuscan fennel salami; Cure #2 156 ppm confirmed; salt 2.6% for aw control."
+  },
+  {
+    "id": "n-fuet",
+    "eng": "Fuet",
+    "calc": {"salt": 26, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages fermented sausage (Catalan fuet)",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — thin Catalan dry salami, fast but still 2-4 week hang with surface mold; Cure #2 appropriate."
+    },
+    "process": {
+      "ref": "meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Ferment ~24-48 h at 20-24C, 85-90% RH with culture to pH <=5.3; dry 12-15C, 80-85% RH for 2-4 weeks (thin 34-40mm) to ~30-35% loss; white Penicillium bloom typical."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + pH drop + rapid drying of thin casing lowering aw. Not cooked."},
+    "rationale": "Thin Catalan dry salami; Cure #2 156 ppm confirmed; salt 2.6%."
+  },
+  {
+    "id": "n-kabanos",
+    "eng": "Kabanosy",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages Kabanosy / fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/kabanosy",
+      "note": "For this DRY/fermented catalog entry, Cure #2 2.5 g/kg = 156 ppm is appropriate for the multi-week hang. (Note: Marianski's classic kabanosy is actually cooked to 68-71C and would use Cure #1; a truly raw air-dried version needs Cure #2. Confirm which the app intends.) Cure #2 2.5 kept."
+    },
+    "process": {
+      "ref": "meatsandsausages Kabanosy",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/kabanosy",
+      "note": "Thin snack sticks. Dry version: ferment/hold with culture then dry 12-15C, 75-80% RH ~1-2 weeks to ~40% weight loss (55% yield). Cold smoke optional."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages Kabanosy", "url": "https://www.meatsandsausages.com/sausage-recipes/kabanosy", "note": "Dry-cure controls (raw dry version): nitrite (Cure #2) + drying of thin sticks to low aw (~40% loss). If cooked variant, add 71C thermal step instead."},
+    "flag": "Salt was 1.8% (18 g/kg) — below the ~2.7% aw target for a dry product; raised to 2.5%.",
+    "rationale": "Kept Cure #2 156 ppm; raised low salt from 18 to 25 g/kg for aw control; flagged the cook-vs-dry ambiguity in cure note."
+  },
+  {
+    "id": "n-krakowska-pod",
+    "eng": "Krakowska Podsuszana",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages fermented / semi-dry sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir for the semi-dry (podsuszana) hang. Correct for the air-dried version. (Traditional Krakowska is often cooked+lightly dried, which would take Cure #1; the 'podsuszana' dried style justifies Cure #2.)"
+    },
+    "process": {
+      "ref": "meatsandsausages semi-dry sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Large-diameter; cure meat, stuff, cold-smoke, then dry 12-15C, 75-80% RH ~2-3 weeks to ~25-30% weight loss (semi-dry)."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages semi-dry sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry/semi-dry controls: nitrite (Cure #2) + drying to reduced aw; if a cooked variant is used add a 71C thermal step."},
+    "flag": "Salt was 2.0% (20 g/kg) — low for a dry product; raised to 2.5%.",
+    "rationale": "Semi-dry Polish sausage; Cure #2 156 ppm kept; raised salt 20->25 g/kg for aw."
+  },
+  {
+    "id": "n-kulen",
+    "eng": "Kulen",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages fermented sausage (Balkan paprika dry sausage)",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — Kulen is a spicy Croatian/Serbian smoked dry-fermented sausage aged 2-4 months, needs Cure #2."
+    },
+    "process": {
+      "ref": "meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Ferment ~48 h at 18-22C, 85-90% RH with culture to pH <=5.3; cold-smoke <22C; dry 12-15C, 75-80% RH for 8-16 weeks (large casing) to 35-40% weight loss."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + fermentation pH drop + long dry to 35-40% loss lowering aw. Paprika/chili additionally inhibitory. Not cooked."},
+    "rationale": "Balkan spicy dry salami; Cure #2 156 ppm confirmed; salt raised to 2.5% for aw."
+  },
+  {
+    "id": "n-landjager",
+    "eng": "Landjager",
+    "calc": {"salt": 26, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages Landjager",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/landjager",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — pressed, fermented, air-dried semi-dry sausage; Cure #2 for the drying window."
+    },
+    "process": {
+      "ref": "meatsandsausages Landjager",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/landjager",
+      "note": "Ferment ~72 h at 20C, 90-95% RH with culture; pressed flat in molds; cold-smoke <20C; dry ~3 weeks at 12-14C, 80-85% RH to ~30% weight loss."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages Landjager", "url": "https://www.meatsandsausages.com/sausage-recipes/landjager", "note": "Dry-cure controls: nitrite (Cure #2) + fermentation pH drop + drying to ~30% loss lowering aw. Not cooked."},
+    "rationale": "Pressed fermented dried sausage; Cure #2 156 ppm confirmed; salt 2.6%."
+  },
+  {
+    "id": "n-milano",
+    "eng": "Salame Milano",
+    "calc": {"salt": 26, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages fermented sausage (Salame Milano)",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — fine-ground Italian dry salami aged 6-10 weeks, needs Cure #2."
+    },
+    "process": {
+      "ref": "meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Fine grind (rice-grain fat); ferment ~24-48 h at 20-24C, 85-90% RH with culture to pH <=5.3; dry 12-15C, 75-80% RH for 6-10 weeks to 30-40% weight loss; Penicillium bloom."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + pH drop + long dry to 30-40% loss lowering aw. Not cooked."},
+    "rationale": "Fine Italian dry salami; Cure #2 156 ppm confirmed; salt 2.6%."
+  },
+  {
+    "id": "n-nemchua",
+    "eng": "Nem Chua",
+    "calc": {"salt": 22, "cure": null},
+    "cure": {
+      "ref": "Nem Chua safety literature / Wikipedia; meatsandsausages curing",
+      "url": "https://en.wikipedia.org/wiki/Nem_chua",
+      "note": "Recommend Cure #1 2.5 g/kg = 156 ppm nitrite (NOT Cure #2). GAP: current cure=None on a raw, room-temperature fermented pork eaten uncooked = botulism/Listeria/parasite risk. This is a SHORT-cycle (1-3 day) fresh ferment, so nitrate has no time to reduce — Cure #1 is the technically correct nitrite source; many modern/commercial recipes already add nitrite/nitrate. Traditional versions rely only on rapid strong acidification, which is not reliably safe for an app audience."
+    },
+    "process": {
+      "ref": "Nem Chua production hygiene study / eathealthy365",
+      "url": "https://eathealthy365.com/nem-chua-ingredients-a-deep-dive-into-vietnam-s-fermented-pork/",
+      "note": "Rapid lactic fermentation at ambient ~28-30C for 1-3 days to a sharp sour pH (<4.6) via native/added LAB and sugar; wrapped in leaves, eaten fresh (not dried to 30-40% loss). Keep refrigerated after souring; not shelf-stable like dry salami."
+    },
+    "safe": {"safe": null, "ref": "Nem Chua safety literature", "url": "https://www.labmanager.com/how-a-raw-pork-snack-could-help-us-keep-food-fresh-naturally-26023", "note": "Controls: nitrite (Cure #1) + fast, strong pH drop below ~4.6 from lactic fermentation (LAB also produce a bacteriocin). NOT aw-controlled (undried) and NOT cooked — safety hinges on rapid acidification; higher inherent risk than dry salami."},
+    "flag": "SAFETY GAP: cure was None on a raw uncooked fermented pork — set Cure #1 2.5 g/kg (156 ppm); short cycle means Cure #1, not #2.",
+    "rationale": "Fresh Vietnamese sour pork; added nitrite (Cure #1 156 ppm) for the short ferment; salt kept ~2.2% (this is fresh, not dried)."
+  },
+  {
+    "id": "n-pepperoni",
+    "eng": "Pepperoni",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages Pepperoni (dry)",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/pepperoni-dry",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — slow-fermented dry pepperoni air-dries 6-8 weeks, needs Cure #2."
+    },
+    "process": {
+      "ref": "meatsandsausages Pepperoni (dry)",
+      "url": "https://www.meatsandsausages.com/sausage-recipes/pepperoni-dry",
+      "note": "Ferment ~72 h at 20C, 85-90% RH with culture to pH <=5.3; optional cold smoke <22C; dry 12-16C, 80-85% RH ~6-8 weeks to ~30% weight loss."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages Pepperoni (dry)", "url": "https://www.meatsandsausages.com/sausage-recipes/pepperoni-dry", "note": "Dry-cure controls: nitrite (Cure #2) + fermentation pH drop + drying to reduced aw. Not cooked."},
+    "rationale": "Slow-fermented dry pepperoni; Cure #2 156 ppm confirmed; salt 2.5%."
+  },
+  {
+    "id": "n-salchichon",
+    "eng": "Salchichon",
+    "calc": {"salt": 26, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages fermented sausage (Spanish salchichon)",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — peppercorn-studded Spanish dry salami aged 6-10 weeks, needs Cure #2."
+    },
+    "process": {
+      "ref": "meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Ferment ~24-48 h at 20-24C, 85-90% RH with culture to pH <=5.3; dry 12-15C, 75-80% RH for 6-10 weeks to 30-40% weight loss; black pepper for flavor."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + pH drop + long dry lowering aw. Not cooked."},
+    "rationale": "Spanish peppercorn dry salami; Cure #2 156 ppm confirmed; salt 2.6%."
+  },
+  {
+    "id": "n-sremska",
+    "eng": "Sremska Kobasica",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages fermented sausage (Serbian smoked dry sausage)",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Cure #2 2.5 g/kg = 156 ppm nitrite + nitrate reservoir. Correct — Sremska is a smoked, paprika-spiced Serbian dry-fermented sausage aged several weeks, needs Cure #2 (cold smoke)."
+    },
+    "process": {
+      "ref": "meatsandsausages fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage",
+      "note": "Ferment ~48 h at 18-22C, 85-90% RH with culture to pH <=5.3; cold-smoke <22C; dry 12-15C, 75-80% RH for 3-5 weeks to ~30-35% weight loss."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage", "note": "Dry-cure controls: nitrite (Cure #2) + fermentation pH drop + drying to reduced aw. Not cooked."},
+    "rationale": "Serbian smoked dry sausage; Cure #2 156 ppm confirmed; salt raised to 2.5% for aw."
+  },
+  {
+    "id": "n-teewurst",
+    "eng": "Teewurst",
+    "calc": {"salt": 25, "cure": 2.5},
+    "cure": {
+      "ref": "meatsandsausages spreadable fermented sausage",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage/spreadable",
+      "note": "Recommend Cure #1 2.5 g/kg = 156 ppm nitrite, NOT Cure #2. Marianski is explicit: for short-cycle spreadable raw sausages the production is too brief for curing bacteria to reduce nitrate, so Cure #2's nitrate is wasted/inappropriate — use Cure #1. Current cure=2.5 (amount fine) but ensure it is Cure #1 type."
+    },
+    "process": {
+      "ref": "meatsandsausages spreadable / wurstcircle Teewurst",
+      "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage/spreadable",
+      "note": "Fine raw paste; brief ferment ~24 h at room temp, ~80% RH with fast starter culture (pH ~4.7-5.1); light cold smoke. Stays soft/spreadable, NOT dried to 30-40% loss; keep refrigerated (short shelf life)."
+    },
+    "safe": {"safe": null, "ref": "meatsandsausages spreadable fermented sausage", "url": "https://www.meatsandsausages.com/sausage-types/fermented-sausage/spreadable", "note": "Controls: nitrite (Cure #1) + salt/sugar lowering aw ~0.2 units + fast starter culture out-competing pathogens + brief pH drop. Neither cooked nor fully dried, so must be refrigerated; higher risk than dry salami."},
+    "flag": "Cure TYPE correction: this short-cycle spreadable should use Cure #1 (nitrite), not Cure #2 — nitrate cannot convert in time.",
+    "rationale": "Raw spreadable smoked sausage; amount kept 2.5 g/kg (156 ppm) but switched type to Cure #1 per Marianski for the short cycle; salt 2.5%."
+  },
+  {
+    "id": "sal-bresaola",
+    "eng": "Bresaola",
+    "calc": {"salt": 30, "cure": 2.5},
+    "cure": {
+      "ref": "2 Guys & A Cooler Bresaola / Gastrochemist whole-muscle basics",
+      "url": "https://twoguysandacooler.com/making-bresaola-better/",
+      "note": "Cure #2 recommended for this long (4-8 week) whole-muscle beef dry-cure. Standard pink-salt dose is 0.25% of meat = 2.5 g/kg = 156 ppm ingoing nitrite (EQ method). Current cure=2 g/kg (~125 ppm) is below the 0.25%/156 ppm standard — raised to 2.5 g/kg. Method: Cure #2 by EQ %, applied with the salt."
+    },
+    "process": {
+      "ref": "2 Guys & A Cooler / EatCuredMeat equilibrium curing",
+      "url": "https://eatcuredmeat.com/complete-guide-to-equilibrium-curing-meat/",
+      "note": "EQ-cure whole eye-of-round in fridge (~3C) ~2-3 weeks (7 days per 1 inch radius), turning; then dry 12-13C, 70-75% RH for 4-8 weeks to ~30-40% weight loss."
+    },
+    "safe": {"safe": null, "ref": "Gastrochemist whole-muscle cure basics", "url": "https://gastrochemist.com/whole-muscle-cure-basics/", "note": "Dry-cure controls: nitrite (Cure #2) + salt-driven aw reduction (intact muscle, no fermentation) + drying to 30-40% loss. Not cooked; whole-muscle lower interior risk than ground."},
+    "flag": "SAFETY GAP (marginal): cure was 2 g/kg (~125 ppm) — below the 0.25%/156 ppm standard; raised to 2.5 g/kg.",
+    "rationale": "Whole-muscle beef dry-cure; standardized Cure #2 to 0.25% EQ (156 ppm); salt 3% typical for bresaola."
+  },
+  {
+    "id": "sal-coppa",
+    "eng": "Coppa",
+    "calc": {"salt": 30, "cure": 2.5},
+    "cure": {
+      "ref": "Gastrochemist whole-muscle basics / EatCuredMeat EQ curing",
+      "url": "https://gastrochemist.com/whole-muscle-cure-basics/",
+      "note": "Cure #2 for the long (6-12 week) pork neck dry-cure. Standard 0.25% pink salt = 2.5 g/kg = 156 ppm ingoing nitrite (EQ). Current cure=2 g/kg (~125 ppm) below the 0.25%/156 ppm standard — raised to 2.5. Method: Cure #2 by EQ % with the salt."
+    },
+    "process": {
+      "ref": "EatCuredMeat equilibrium curing",
+      "url": "https://eatcuredmeat.com/complete-guide-to-equilibrium-curing-meat/",
+      "note": "EQ-cure pork coppa muscle in fridge ~2-3 weeks turning; case in bung; dry 12-13C, 70-75% RH for 6-12 weeks to ~30-40% weight loss."
+    },
+    "safe": {"safe": null, "ref": "Gastrochemist whole-muscle cure basics", "url": "https://gastrochemist.com/whole-muscle-cure-basics/", "note": "Dry-cure controls: nitrite (Cure #2) + salt-driven aw reduction (intact muscle) + long drying to 30-40% loss. Not cooked."},
+    "flag": "SAFETY GAP (marginal): cure was 2 g/kg (~125 ppm) — below the 0.25%/156 ppm standard; raised to 2.5 g/kg.",
+    "rationale": "Whole-muscle pork neck dry-cure; standardized Cure #2 to 0.25% EQ (156 ppm); salt 3%."
+  },
+  {
+    "id": "sal-guanciale",
+    "eng": "Guanciale",
+    "calc": {"salt": 30, "cure": 2.5},
+    "cure": {
+      "ref": "Gastrochemist whole-muscle basics / EatCuredMeat EQ curing",
+      "url": "https://gastrochemist.com/whole-muscle-cure-basics/",
+      "note": "Cure #2 for the 3-6 week pork-jowl dry-cure. Standard 0.25% pink salt = 2.5 g/kg = 156 ppm ingoing nitrite (EQ). Current cure=2 g/kg (~125 ppm) below the 0.25%/156 ppm standard — raised to 2.5. (Guanciale is normally rendered/cooked before eating, lowering residual risk, but nitrite is still warranted for the raw cure.) Method: Cure #2 by EQ %."
+    },
+    "process": {
+      "ref": "EatCuredMeat equilibrium curing",
+      "url": "https://eatcuredmeat.com/complete-guide-to-equilibrium-curing-meat/",
+      "note": "EQ dry-cure pork jowl in fridge ~1-2 weeks turning; then hang 12-13C, 70-75% RH for ~3-6 weeks to ~30% weight loss."
+    },
+    "safe": {"safe": null, "ref": "Gastrochemist whole-muscle cure basics", "url": "https://gastrochemist.com/whole-muscle-cure-basics/", "note": "Dry-cure controls: nitrite (Cure #2) + salt-driven aw reduction (intact fatty muscle) + drying; typically cooked before eating. Not thermally pasteurized during cure."},
+    "flag": "SAFETY GAP (marginal): cure was 2 g/kg (~125 ppm) — below the 0.25%/156 ppm standard; raised to 2.5 g/kg.",
+    "rationale": "Whole-muscle pork jowl dry-cure; standardized Cure #2 to 0.25% EQ (156 ppm); salt 3%."
+  },
+  {
+    "id": "sal-lonzino",
+    "eng": "Lonzino",
+    "calc": {"salt": 30, "cure": 2.5},
+    "cure": {
+      "ref": "Gastrochemist whole-muscle basics / EatCuredMeat EQ curing",
+      "url": "https://gastrochemist.com/whole-muscle-cure-basics/",
+      "note": "Cure #2 for the 4-8 week pork-loin dry-cure. Standard 0.25% pink salt = 2.5 g/kg = 156 ppm ingoing nitrite (EQ). Current cure=2 g/kg (~125 ppm) below the 0.25%/156 ppm standard — raised to 2.5. Method: Cure #2 by EQ %."
+    },
+    "process": {
+      "ref": "EatCuredMeat equilibrium curing",
+      "url": "https://eatcuredmeat.com/complete-guide-to-equilibrium-curing-meat/",
+      "note": "EQ-cure pork loin in fridge ~1-2 weeks turning; case; dry 12-13C, 70-75% RH for 4-8 weeks to ~30-40% weight loss (lean loin dries faster/case-hardens if RH low)."
+    },
+    "safe": {"safe": null, "ref": "Gastrochemist whole-muscle cure basics", "url": "https://gastrochemist.com/whole-muscle-cure-basics/", "note": "Dry-cure controls: nitrite (Cure #2) + salt-driven aw reduction (intact lean muscle) + drying to 30-40% loss. Not cooked."},
+    "flag": "SAFETY GAP (marginal): cure was 2 g/kg (~125 ppm) — below the 0.25%/156 ppm standard; raised to 2.5 g/kg.",
+    "rationale": "Whole-muscle pork loin dry-cure; standardized Cure #2 to 0.25% EQ (156 ppm); salt 3%."
+  },
+  {
+    "id": "sal-pancetta",
+    "eng": "Pancetta",
+    "calc": {"salt": 30, "cure": 2.5},
+    "cure": {
+      "ref": "Gastrochemist whole-muscle basics / EatCuredMeat EQ curing",
+      "url": "https://gastrochemist.com/whole-muscle-cure-basics/",
+      "note": "Cure #2 for the 2-4 week pork-belly dry-cure. Standard 0.25% pink salt = 2.5 g/kg = 156 ppm ingoing nitrite (EQ). Current cure=2 g/kg (~125 ppm) below the 0.25%/156 ppm standard — raised to 2.5. (Pancetta is usually cooked before eating; nitrite still needed for the raw cure.) Method: Cure #2 by EQ %."
+    },
+    "process": {
+      "ref": "EatCuredMeat equilibrium curing",
+      "url": "https://eatcuredmeat.com/complete-guide-to-equilibrium-curing-meat/",
+      "note": "EQ dry-cure pork belly in fridge ~1 week per 25mm thickness turning; rolled (arrotolata) or flat (tesa); dry 12-13C, 70-75% RH for 2-4 weeks to ~25-30% weight loss."
+    },
+    "safe": {"safe": null, "ref": "Gastrochemist whole-muscle cure basics", "url": "https://gastrochemist.com/whole-muscle-cure-basics/", "note": "Dry-cure controls: nitrite (Cure #2) + salt-driven aw reduction (intact belly) + drying; usually cooked before eating. Not pasteurized during cure."},
+    "flag": "SAFETY GAP (marginal): cure was 2 g/kg (~125 ppm) — below the 0.25%/156 ppm standard; raised to 2.5 g/kg.",
+    "rationale": "Whole-muscle pork belly dry-cure; standardized Cure #2 to 0.25% EQ (156 ppm); salt 3%."
+  },
+  {
+    "id": "sal-speck",
+    "eng": "Speck",
+    "calc": {"salt": 30, "cure": 2.5},
+    "cure": {
+      "ref": "Gastrochemist whole-muscle basics / EatCuredMeat EQ curing",
+      "url": "https://gastrochemist.com/whole-muscle-cure-basics/",
+      "note": "Cure #2 for the multi-week cold-smoked pork-leg dry-cure. Standard 0.25% pink salt = 2.5 g/kg = 156 ppm ingoing nitrite (EQ). Current cure=2 g/kg (~125 ppm) below the 0.25%/156 ppm standard — raised to 2.5. Method: Cure #2 by EQ %, with cold smoke."
+    },
+    "process": {
+      "ref": "EatCuredMeat equilibrium curing / speck tradition",
+      "url": "https://eatcuredmeat.com/complete-guide-to-equilibrium-curing-meat/",
+      "note": "EQ dry-cure deboned pork leg in fridge ~2-3 weeks turning; repeated light COLD smoke (<20C) over days; then dry 12-14C, 70-75% RH for several weeks to months to ~30-35% weight loss."
+    },
+    "safe": {"safe": null, "ref": "Gastrochemist whole-muscle cure basics", "url": "https://gastrochemist.com/whole-muscle-cure-basics/", "note": "Dry-cure controls: nitrite (Cure #2) + salt-driven aw reduction (intact muscle) + cold smoke + long drying to 30-35% loss. Not cooked."},
+    "flag": "SAFETY GAP (marginal): cure was 2 g/kg (~125 ppm) — below the 0.25%/156 ppm standard; raised to 2.5 g/kg.",
+    "rationale": "Whole-muscle cold-smoked pork-leg dry-cure; standardized Cure #2 to 0.25% EQ (156 ppm); salt 3%."
+  }
+]
