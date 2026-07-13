@@ -62,12 +62,14 @@ test('grill: grillable cuts have a numeric grill temp; non-grillable are explici
   }
 });
 
-test('MAKES cure safety: previously-uncured dry/fermented sausages now carry nitrite', async ({ page }) => {
+test('MAKES cure safety: dry/fermented sausages carry a valid nitrite cure TYPE (1 or 2)', async ({ page }) => {
   const { makes } = await getData(page);
+  // calc.cure is the cure *type* ('1' cooked/156ppm · '2' long-dried/nitrate reservoir); the dose lives in cureRate.
   const cured = ['m-cacc', 'm-nduja', 'm-sauci', 'm-sopr', 'm-sucuk', 'm-frank', 'm-bolo', 'm-morta', 'sal-bresaola', 'sal-coppa', 'm-droe'];
   for (const id of cured) {
-    const cure = makes[id]?.build?.calc?.cure;
-    expect(Number(cure), `${id}: cure must be a standard nitrite dose`).toBeGreaterThanOrEqual(2);
+    const calc = makes[id]?.build?.calc;
+    expect(['1', '2'], `${id}: cure must be a valid nitrite type`).toContain(calc?.cure);
+    expect(calc?.cureRate, `${id}: cureRate must be a real dose`).toBeGreaterThan(0);
   }
 });
 

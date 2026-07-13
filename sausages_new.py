@@ -4,8 +4,13 @@
 
 def SG(heb, eng, origin, cat, diff, desc, meat, fat, grind, salt, casing, spice, cook, smoke=None, dry=None, cure=None, sub="", variants=None, water=10):
     """מחולל מבנה build סטנדרטי לנקניק — שלבים אותנטיים פר-פרמטרים."""
+    # cure type: derive from the caller's label ('#2' → long-dried/fermented nitrate cure; else Cure #1). Rate is a fixed 2.5 g/kg.
+    _ctype = ('2' if '#2' in cure else '1') if cure else None
     # cure label: don't double-prefix when the caller already names the cure type (e.g. "Cure #2 …")
-    _cl = (cure if cure.strip().startswith('Cure') else 'Cure #1 '+cure) if cure else ''
+    _cl = (cure if cure.strip().startswith('Cure') else 'Cure #'+_ctype+' '+cure) if cure else ''
+    # safety: long-dried nitrate-cured sausages hold the cited dry-cure salt floor (28 g/kg ≈ 2.8%, Marianski / UMAKE_CALC 'dried' standard)
+    if _ctype == '2' and cat == "נקניק מיובש" and salt < 28:
+        salt = 28
     phases=[["1 · בשר ושומן", f"{meat}. יחס שומן ~{fat}. הקפא חלקית בשר, שומן וחלקי מטחנה ל-0–2°C — קור הוא הכל.", 2700],
             ["2 · טחינה", f"טחן: {grind}. עבוד מהר ושמור הכל קר.", 0],
             ["3 · תיבול ולישה", f"מלח {salt} ג׳/ק״ג{', '+_cl if cure else ''} + {spice}. הוסף {water}% מים/קרח ולוש עד עיסה דביקה (primary bind).", 900],
@@ -15,7 +20,7 @@ def SG(heb, eng, origin, cat, diff, desc, meat, fat, grind, salt, casing, spice,
     phases.append([f"{len(phases)+1} · בישול והגשה", cook, 1200])
     mats=[ "מטחנה + מכשיר מילוי", casing, f"מלח {salt} ג׳/ק״ג"]+ ([_cl] if cure else []) + ["מדחום פנימי"]
     return dict(heb=heb, eng=eng, cat=cat, diff=diff, origin=origin,
-        build=dict(intro=desc, calc=dict(salt=salt, cure=(2.5 if cure else None), sugar=0, water=water, brine=False, saltL=0, cureL=0, sugarL=0),
+        build=dict(intro=desc, calc=dict(salt=salt, cure=_ctype, cureRate=(2.5 if cure else 0), sugar=0, water=water, brine=False, saltL=0, cureL=0, sugarL=0),
             materials=mats, variants=variants or [], phases=phases), sub=sub)
 
 K32="שרוול חזיר 32 מ״מ"; K22="שרוול כבש 22 מ״מ"; K36="שרוול חזיר 36 מ״מ"
@@ -129,7 +134,7 @@ NEW_SAUSAGES={
 "n-landjager": SG("לנדייגר","Landjäger","🇩🇪🇨🇭 דרום גרמניה","נקניק מיובש",4,
  "חטיף המטיילים האלפיני: מיובש-מעושן, נלחץ לצורה שטוחה-מרובעת בין קרשים. יציב ללא קירור — מזון חיילים היסטורי.",
  "בקר 60% + חזיר 40%","25%","בינוני 6 מ״מ",22,K32,"קימל 1 ג׳, כוסברה 1 ג׳, שום 2 ג׳, פלפל 2 ג׳, סוכר 3 ג׳ + תרבית סטרטר/ק״ג",
- "חטיף כמו-שהוא — לטיולים, עם גבינה ובירה. נשמר שבועות מחוץ למקרר.",smoke="עשן קר 25° 4-6 שעות עם אשור.",dry="לחץ בין שני קרשים 24ש בקירור (הצורה השטוחה!), ואז תלה 10-14 יום ב-14° 75% לחות.",cure="2.5 ג׳/ק״ג (Cure #2 עדיף)",sub="תרבית סטרטר (T-SPX) בחנויות נקניקאות אונליין"),
+ "חטיף כמו-שהוא — לטיולים, עם גבינה ובירה. נשמר שבועות מחוץ למקרר.",smoke="עשן קר 25° 4-6 שעות עם אשור.",dry="לחץ בין שני קרשים 24ש בקירור (הצורה השטוחה!), ואז תלה 10-14 יום ב-14° 75% לחות.",cure="Cure #2 2.5 ג׳/ק״ג",sub="תרבית סטרטר (T-SPX) בחנויות נקניקאות אונליין"),
 "n-chorizo-esp": SG("צ׳וריסו ספרדי (קוראדו)","Chorizo Curado","🇪🇸 ספרד","נקניק מיובש",4,
  "האייקון האיברי: פימנטון מעושן שצובע הכל אדום עמוק. מותסס ומיובש שבועות — לטאפאס, בפרוסות דקות.",
  "חזיר (כתף) בלבד","30%","גס 8 מ״מ",24,K36,"פימנטון מעושן 25 ג׳ (!), שום 5 ג׳, אורגנו 2 ג׳, סוכר 3 ג׳ + תרבית סטרטר/ק״ג",

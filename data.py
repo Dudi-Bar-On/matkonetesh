@@ -379,6 +379,7 @@ BUILDS["cut-3"] = dict(
 def sausage_smoked(meat, cure, casing, smoke, target, note, variants):
     return dict(
       intro=note,
+      calc=dict(salt=18, cure='1', cureRate=2.5, sugar=0, water=12, brine=False, saltL=0, cureL=0, sugarL=0),
       materials=["מטחנה + מכשיר מילוי", casing, "מלח 18 ג׳/ק״ג + "+cure, "מדחום פנימי", "צ׳אנקים לעישון"],
       variants=variants,
       phases=[
@@ -396,6 +397,7 @@ def sausage_smoked(meat, cure, casing, smoke, target, note, variants):
 def sausage_dry(meat, cure, casing, ferment, dry, note, variants):
     return dict(
       intro=note+" ⚠ מוצר מיובש לא מבושל — בקרת טמפ׳, לחות ו-pH קריטית לבטיחות. עבוד נקי ובמדויק.",
+      calc=dict(salt=28, cure='2', cureRate=2.5, sugar=3, water=0, brine=False, saltL=0, cureL=0, sugarL=0),
       materials=["מטחנה + מכשיר מילוי", casing, "מלח 28–30 ג׳/ק״ג + "+cure, "תרבית התססה (Bactoferm) לפי יצרן", "מד pH + מד לחות (hygrometer) + מאזניים", "תא הבשלה: התססה ~24°C/85%; ייבוש 12–15°C/70–80%"],
       variants=variants,
       phases=[
@@ -535,7 +537,7 @@ def make(mid, heb, eng, cat, diff, build):
 
 def b_fresh(meat, casing, season, cook, note, variants, salt=18, cure=None, sugar=0):
     return dict(intro=note,
-      calc=dict(salt=salt,cure=cure,sugar=sugar,water=10,brine=False,saltL=0,cureL=0,sugarL=0),
+      calc=dict(salt=salt,cure=cure,cureRate=2.5,sugar=sugar,water=10,brine=False,saltL=0,cureL=0,sugarL=0),
       materials=["מטחנה + מכשיר מילוי", casing, "מלח "+str(salt)+" ג׳/ק״ג"+(" + Cure #1 2.5 ג׳/ק״ג" if cure=="1" else ""), "קרח כתוש 10%", "מדחום פנימי"],
       variants=variants,
       phases=[
@@ -551,7 +553,7 @@ def b_fresh(meat, casing, season, cook, note, variants, salt=18, cure=None, suga
 
 def b_emul(meat, casing, season, target, note, variants):
     return dict(intro=note+" נקניק אמולסיה: טחינה כפולה עם קרח והקצפה למרקם חלק ואחיד.",
-      calc=dict(salt=18,cure="1",sugar=2,water=20,brine=False,saltL=0,cureL=0,sugarL=0),
+      calc=dict(salt=18,cure="1",cureRate=2.5,sugar=2,water=20,brine=False,saltL=0,cureL=0,sugarL=0),
       materials=["מטחנה + מעבד מזון/קאטר", casing, "מלח 18 ג׳/ק״ג + Cure #1 2.5 ג׳/ק״ג", "קרח כתוש 15–20%", "מדחום"],
       variants=variants,
       phases=[
@@ -669,7 +671,7 @@ make("m-nduja","נדוחה",'Nduja',"נקניק מיובש",4, sausage_dry(
   [("קלאסי","המון פפריקה חריפה קלברית; מורחים על לחם.")]) )
 make("m-droe","דרוורס","Droëwors","נקניק מיובש",2, dict(
   intro="נקניק כבש/בקר דרום-אפריקאי דק ומיובש מהר, בן-דוד של בילטונג; ללא התססה — חומץ ותבלינים.",
-  calc=dict(salt=26,cure="1",sugar=0,water=0,brine=False,saltL=0,cureL=0,sugarL=0),
+  calc=dict(salt=26,cure="1",cureRate=2.5,sugar=0,water=0,brine=False,saltL=0,cureL=0,sugarL=0),
   materials=["מטחנה + מכשיר מילוי","שרוול כבש 22 מ״מ","מלח 26 ג׳/ק״ג + חומץ","כוסברה קלויה, פלפל, כמון, ציפורן","ארון ייבוש מאוורר"],
   variants=[("קלאסי","כוסברה דומיננטית, חומץ תפוחים.")],
   phases=[

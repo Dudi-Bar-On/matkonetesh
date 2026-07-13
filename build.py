@@ -93,10 +93,14 @@ try:
     for _mid, _src in MAKE_SOURCES.items():
         if _mid not in MAKES: continue
         for _k, _v in _src.items():
-            if _k == "calc":   # corrected salt/cure land in build.calc (safety audit)
-                MAKES[_mid].setdefault("build", {}).setdefault("calc", {}).update(_v)
-            else:
-                MAKES[_mid][_k] = _v
+            if _k == "calc":
+                # The cure TYPE ('1'/'2'), cureRate and salt are owned by the canonical make calc
+                # (data.py / sausages_new.py). The auto-generated sources carried a stale numeric
+                # 'cure' (2.5) that clobbered the type and silently suppressed the dried-safety
+                # warning. Ignore sources' calc here. (Wave 0 safety fix; authoritative researched-salt
+                # reconciliation via the pipeline is Wave 2b / T6.)
+                continue
+            MAKES[_mid][_k] = _v
 except ImportError:
     pass
 
@@ -1489,7 +1493,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 149 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 150 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -2111,6 +2115,10 @@ const store={
   get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
 };
+// HTML-escape helper — MUST wrap any AI-authored or user-authored text before it enters innerHTML.
+// AI answers can carry search-grounded, attacker-influenced markup; without this, "<img onerror>" would exfiltrate mk-gemkey.
+const ESC_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>ESC_MAP[c]); }
 // recipe-in-project context: when set, recipe steps read/write the project's doneSteps
 let curProject=null, pendingProject=null;
 function projById(id){ try{ return (store.get('mk-pantry')||[]).find(p=>p.id===id)||null; }catch(e){ return null; } }
@@ -4423,7 +4431,7 @@ function openAsk(){
       if(!gemKey()){ askConnect(); return; }
       const load=addAnswer(`<div class="abubble ask-loading">${badge('ai')}<span class="ask-dots">האש חושב<b>.</b><b>.</b><b>.</b></span></div>`);
       try{ const r=await askGemini(q, hist);
-        load.innerHTML=`<div class="abubble">${badge('ai')}${(r.txt||'').replace(/\n/g,'<br>')}</div>`;
+        load.innerHTML=`<div class="abubble">${badge('ai')}${esc(r.txt||'').replace(/\n/g,'<br>')}</div>`;
         if(r.chips&&r.chips.length){ load.innerHTML+=`<div class="askchips">`+r.chips.map(m=>`<button class="askhit" data-k="${m.key}">${m.heb} · ${m.cat} ▶</button>`).join("")+`</div>`; wireChips(load); }
         hist.push({role:'ai',text:r.txt||''}); scrollDown();
       }catch(err){ const code=String(err.message||err);
@@ -4976,7 +4984,7 @@ function vcRender(){
     <p class="vc-hint">${vcLang()==='en'?'🇬🇧 Voice commands: next · back · read · details · temperature · when.':'פקודות עבריות: הבא · הקודם · הקרא · פרטים · טמפרטורה · מתי.'} דיבור באנגלית מזוהה לרוב מדויק יותר.</p>
     ${aiAvail()?`<p class="vc-hint">✨ אפשר לשאול שאלות חופשיות בקול (למשל "כמה עוד זמן לחזה?") — אפשר לשאול באנגלית ולקבל תשובה בעברית.</p>
     <div class="vc-askrow"><input id="vcAskInput" placeholder="${vcAnsLang()==='en'?'Type a question…':'הקלד שאלה…'}"><button class="vc-askbtn" data-vc="asktext">${vcAnsLang()==='en'?'Ask ✨':'שאל ✨'}</button></div>
-    ${vcLastQA?`<div class="vc-qa"><div class="vc-qa-q">❓ ${vcLastQA.q}</div><div class="vc-qa-a">${vcLastQA.a}</div></div>`:''}`:''}
+    ${vcLastQA?`<div class="vc-qa"><div class="vc-qa-q">❓ ${esc(vcLastQA.q)}</div><div class="vc-qa-a">${esc(vcLastQA.a)}</div></div>`:''}`:''}
     ${gemKey()?`<div class="vc-voicerow">✨ Gemini TTS פעיל · <label>קול:</label><select id="gemVoiceSel">${GEM_VOICES.map(v=>`<option ${v===gemVoice()?'selected':''}>${v}</option>`).join('')}</select> <button class="vc-keybtn" data-vc="gemoff">נתק</button></div>`
       :`<details class="vc-gem"><summary>✨ שדרוג איכות קול — Gemini TTS (מפתח אישי · דורש Billing)</summary>
         <p>קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת יישאר קול המערכת.</p>
@@ -6345,7 +6353,7 @@ function wcimRowHTML(o){
   const emoji=meta?itemEmoji(o.cat,o.key):'🍖';
   const miss=(o.missing&&o.missing.length)?`<div class="wcim-miss">חסר: ${o.missing.join(' · ')}</div>`:'';
   const gearn=(o.gearNeed&&o.gearNeed.length)?`<div class="wcim-miss">דורש: ${o.gearNeed.join(' · ')}</div>`:'';
-  const note=o.note?`<div class="pp-desc">${o.note}</div>`:'';
+  const note=o.note?`<div class="pp-desc">${esc(o.note)}</div>`:'';
   return `<button class="pp-item" data-wcimkey="${o.key}">
     <div class="pp-item-h"><span class="pp-emoji">${emoji}</span><b>${o.heb}</b><span class="pp-diff" style="color:var(--smoke)">${o.cat}</span></div>
     ${note}${miss}${gearn}</button>`;
@@ -6483,7 +6491,7 @@ function evPlanPreviewHTML(plan){
   const appName={light:'קל',reg:'רגיל',heavy:'כבד'}[plan.appetite]||'רגיל';
   const mains=plan.keys.map(k=>{ const m=resolveItem(k); return m?`<div class="pp-item" style="cursor:default"><div class="pp-item-h"><span class="pp-emoji">${itemEmoji(m.cat,k)}</span><b>${m.heb}</b><span class="pp-diff" style="color:var(--smoke)">${m.cat}</span></div></div>`:''; }).join('');
   const chips=(arr,label)=>arr.length?`<div style="margin-top:8px"><b style="font-size:12px;color:var(--smoke)">${label}:</b> ${arr.join(' · ')}</div>`:'';
-  return `${plan.rationale?`<div class="pp-desc" style="margin-bottom:12px;font-size:13px">💡 ${plan.rationale}</div>`:''}
+  return `${plan.rationale?`<div class="pp-desc" style="margin-bottom:12px;font-size:13px">💡 ${esc(plan.rationale)}</div>`:''}
     <div class="padv-target">👥 ${plan.guests} סועדים · תיאבון ${appName}${plan.kosher?' · ✡️ כשר':''}</div>
     <div class="pp-group" style="margin-top:12px"><div class="pp-gh">🍖 מנות עיקריות · ${plan.keys.length}</div>${mains||'<div class="shop-empty">לא נבחרו מנות עיקריות.</div>'}</div>
     ${chips(plan.sides,'🥗 תוספות')}${chips(plan.drinks,'🥤 משקאות')}${chips(plan.desserts,'🍮 קינוחים')}`;
@@ -6567,7 +6575,7 @@ function seasonRecRender(key, cat, isProd, recs, backFn){
     const sel=(selectedSeasonings(key)||[]).includes(r.id);
     return `<div class="pp-item" style="cursor:default">
       <div class="pp-item-h"><span class="pp-emoji">${(typeof KIND_EMOJI!=='undefined'&&KIND_EMOJI[s.kind])||'🧂'}</span><b>${s.heb}</b>${s.origin?`<span class="pp-diff" style="color:var(--smoke)">${s.origin}</span>`:''}</div>
-      ${r.reason?`<div class="pp-desc">${r.reason}</div>`:''}
+      ${r.reason?`<div class="pp-desc">${esc(r.reason)}</div>`:''}
       <button class="cev-act" data-seasadd="${r.id}" data-seaskind="${s.kind}" style="margin-top:6px;background:${sel?'var(--fresh-l)':'none'};border:1px solid var(--fresh);color:var(--fresh)">${sel?'✓ נבחר':'＋ הוסף למופע'}</button>
     </div>`;
   }).join('');
@@ -6633,13 +6641,13 @@ async function aiDiagnose(problem){
   };
 }
 function diagnoseRender(problem, res){
-  const li=a=>a.map(x=>`<li>${x}</li>`).join('');
+  const li=a=>a.map(x=>`<li>${esc(x)}</li>`).join('');
   const anchors=res.related.map(s=>`<div class="acc" style="margin-top:8px"><div class="acc-q" style="cursor:default">${s.ic} ${s.title}</div><div class="acc-a" style="max-height:none;padding:10px 14px">${s.body}</div></div>`).join('');
   showPanel(`${toolTop('אבחון אישי','✨ נוצר ע\u05f4י AI','🩺','#a8392f')}
     <div class="panel-body">
       <div class="ai-badge">✨ אבחון AI · מבוסס על הפתרונות המאומתים באפליקציה</div>
       <div class="pp-desc" style="margin-bottom:10px">❓ ${problem}</div>
-      ${res.diagnosis?`<div class="padv-target" style="background:var(--char2)">🩺 ${res.diagnosis}</div>`:''}
+      ${res.diagnosis?`<div class="padv-target" style="background:var(--char2)">🩺 ${esc(res.diagnosis)}</div>`:''}
       ${res.causes.length?`<div class="pp-group"><div class="pp-gh">סיבות אפשריות</div><ul style="margin:0;padding-inline-start:20px;font-size:13.5px;line-height:1.7;color:var(--bone)">${li(res.causes)}</ul></div>`:''}
       ${res.fixes.length?`<div class="pp-group"><div class="pp-gh">מה לעשות</div><ul style="margin:0;padding-inline-start:20px;font-size:13.5px;line-height:1.7;color:var(--bone)">${li(res.fixes)}</ul></div>`:''}
       ${res.related.length?`<div class="pp-group"><div class="pp-gh">📖 פתרונות מאומתים רלוונטיים</div>${anchors}</div>`:''}
@@ -6799,12 +6807,12 @@ async function aiJournalInsights(){
   return { summary:(raw&&typeof raw.summary==='string')?raw.summary.slice(0,400):'', patterns:arr(raw&&raw.patterns), suggestions:sugg };
 }
 function journalInsightsRender(res){
-  const li=a=>a.map(x=>`<li>${x}</li>`).join('');
-  const sugg=res.suggestions.map(s=>`<div class="acc" style="margin-top:8px"><div class="acc-q" style="cursor:default"><b>💡 ${s.title}</b></div>${s.detail?`<div class="acc-a" style="max-height:none;padding:8px 14px;font-size:13px">${s.detail}</div>`:''}</div>`).join('');
+  const li=a=>a.map(x=>`<li>${esc(x)}</li>`).join('');
+  const sugg=res.suggestions.map(s=>`<div class="acc" style="margin-top:8px"><div class="acc-q" style="cursor:default"><b>💡 ${esc(s.title)}</b></div>${s.detail?`<div class="acc-a" style="max-height:none;padding:8px 14px;font-size:13px">${esc(s.detail)}</div>`:''}</div>`).join('');
   showPanel(`${toolTop('תובנות יומן','✨ ניתוח הבישולים שלך','📊','#1a9a7a')}
     <div class="panel-body">
       <div class="ai-badge">✨ נוצר ע\u05f4י AI · מבוסס על היומן שלך בלבד</div>
-      ${res.summary?`<div class="padv-target" style="background:var(--char2)">📊 ${res.summary}</div>`:''}
+      ${res.summary?`<div class="padv-target" style="background:var(--char2)">📊 ${esc(res.summary)}</div>`:''}
       ${res.patterns.length?`<div class="pp-group"><div class="pp-gh">דפוסים שזוהו</div><ul style="margin:0;padding-inline-start:20px;font-size:13.5px;line-height:1.7;color:var(--bone)">${li(res.patterns)}</ul></div>`:''}
       ${res.suggestions.length?`<div class="pp-group"><div class="pp-gh">הצעות שיפור</div>${sugg}</div>`:''}
     </div>`);

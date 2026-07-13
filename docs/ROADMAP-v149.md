@@ -17,8 +17,8 @@
 
 ### The business-model track (decision)
 The matkonetesh roadmap **does not wait on the matkonet PRD.** The monetization work splits by backend dependency:
-- **In matkonetesh now (standalone-safe, no backend):** affiliate/commerce links (Wave 6-Money), and the platform-agnostic **seams** (i18n provider in Wave 5; `aiJSON()` endpoint indirection in Wave 2). Content "Craft" pack soft-gating is optional and only if standalone revenue is wanted before the platform.
-- **Deferred to the matkonet platform (needs the PRD):** managed-AI paid tier, accounts + sync, B2B Pro billing, dataset licensing. See **§D**. Build a thin standalone Cloudflare Worker managed-AI proxy here *only* if revenue is needed before matkonet ships.
+- **In matkonetesh now (standalone-safe, no backend):** **only the platform-agnostic seams** — the i18n `getLang()` provider (Wave 5) and the `aiJSON()` endpoint indirection (Wave 2b). **Decision (2026-07-13): hold ALL live revenue.** No affiliate links and no content packs ship in matkonetesh before matkonet; we build only the seams so both futures stay cheap.
+- **Deferred to the matkonet platform (needs the PRD):** managed-AI paid tier, accounts + sync, B2B Pro billing, dataset licensing, **and affiliate/commerce + content packs** (held per the decision above). See **§D**.
 
 ---
 
@@ -150,13 +150,12 @@ Depends on Wave 0's `esc()`, Wave 2's T2 extraction + T1 structural completion.
 
 ---
 
-### Wave 6-Money — Standalone-safe monetization → incremental
-No backend, ships in the single file, respects the local-first ethos. Independent of everything above.
-- **Affiliate/commerce links** in the existing charcoal-supplier guide (`3881`), gear-gap purchase suggestions (`4013`), and per-make materials (`7057`) — honestly labeled.
-- **(Optional) Content "Craft" pack soft-gate** — a local license-key unlock, *only if* standalone revenue is wanted before the platform.
-- The **managed-AI seam** itself was already built in Wave 2b (the `aiJSON` endpoint indirection), so flipping to a paid managed tier later is a config change, not a rewrite.
+### Wave 6-Money — Seams only (per 2026-07-13 decision)
+**Decision: hold ALL live revenue in matkonetesh until matkonet.** No affiliate links, no content packs ship here now. The only monetization-related work done in matkonetesh is the **platform-agnostic seams**, and those live in earlier waves regardless:
+- The **`aiJSON()`/`askGemini()` endpoint-indirection seam** — built in **Wave 2b** (`GEM_MODEL`/`GEM_URL()` + a single call wrapper) so a managed tier later is a config swap.
+- The **i18n `getLang()` provider** — built in **Wave 5**, so a host can drive locale.
 
-**Verify:** affiliate links open correctly; no layout regression in the guides. **Release:** folded into whatever version is current.
+Affiliate/commerce and content packs are moved to the deferred platform backlog (**§D**) and revisited when the matkonet PRD lands.
 
 ---
 
@@ -175,7 +174,7 @@ Not built in matkonetesh. Tracked here so nothing is lost:
 ## §E · Open decisions for you
 1. **Version cadence:** ship each wave as its own release (v150…v156, more granular, faster feedback) — or batch Waves 1–2 into one bigger release? *Recommend: granular; Wave 0 alone first.*
 2. **Wave 4 split:** keep the big polish wave as one, or split content (v154) from the UX/IA consolidation (v155)? *Recommend: split — the UX builder-consolidation (UX #3) is an L and shouldn't gate the quick content fixes.*
-3. **Standalone Craft-pack revenue:** do you want any monetization live *before* matkonet (affiliate + soft-gated packs), or hold all monetization for the platform except the seams? *Recommend: affiliate only, now; hold packs.*
+3. **Standalone revenue:** ~~affiliate only vs. packs vs. hold~~ → **DECIDED 2026-07-13: seams only, hold ALL revenue** until matkonet. No affiliate or packs ship in matkonetesh now.
 4. **Kickoff:** green-light **Wave 0** now (I'll produce a detailed per-task implementation plan for it and start), and I'll draft detailed plans for later waves as we reach them.
 
 *Nothing is implemented; `main`/v149 is the stable baseline and all work is isolated on `improvements`.*
