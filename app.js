@@ -729,7 +729,7 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
     ${svgThumb(c.cat,"#"+c.n,"cut-"+c.n)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${c.cat} ${kosherTag("cut-"+c.n)}${gearTag("cut-"+c.n)}</div>
-      <h3>${c.heb}</h3>
+      <h3>${itemName(c)}</h3>
       <div class="en">${c.eng} · ${c.kg} ק״ג</div>
       ${isProduce(c)?`<div class="meta">
         <span>גריל <b>${c.sot}°</b></span>
@@ -758,7 +758,7 @@ function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=cat
     ${svgThumb(s.cat,"#"+s.n,"spec-"+s.n, s.origin)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${s.cat} ${kosherTag(key)}</div>
-      <h3>${s.heb}</h3>
+      <h3>${itemName(s)}</h3>
       <div class="en">${s.eng}${s.origin?` · ${s.origin}`:''}</div>
       <div class="meta"><span>עישון <b>${smk}</b></span>${s.tgt!=='—'&&s.tgt?`<span>יעד <b>${s.tgt}${typeof s.tgt==='number'?'°':''}</b></span>`:''}</div>
       <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(s.diff)}${ratingMini(key)}</span><span style="color:var(--smoke)">${s.wood}</span></div>
@@ -772,7 +772,7 @@ function makeCard(id,m){const nv=(m.build.variants||[]).length, col=catColor(m.c
     ${svgThumb(m.cat,null,"make-"+id, m.origin)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${m.cat} ${kosherTag(key)}</div>
-      <h3>${m.heb}</h3>
+      <h3>${itemName(m)}</h3>
       <div class="en">${m.eng}${m.origin?` · ${m.origin}`:''}</div>
       <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(m.diff)}${ratingMini(key)}</span>${nv?`<span style="color:var(--smoke)">${nv} ווריאנטים</span>`:''}</div>
       <span class="bld">🔨 בנייה מאפס</span>
@@ -967,7 +967,7 @@ function buildCatLanding(){
   const gc=g=>g.cats.reduce((s,c)=>s+(counts[c]||0),0);
   const tiles=CAT_GROUPS.filter(g=>gc(g)>0).map(g=>
     `<button class="cattile" data-tilegroup="${g.g}"><span class="ct-ic">${g.ic}</span><span class="ct-name">${g.g}</span><span class="ct-count">${gc(g)} פריטים</span></button>`).join('');
-  host.innerHTML=`<div class="cat-hero"><h3>מה <b>מדליקים</b> היום?</h3><p>בחר קטגוריה או חפש למעלה</p></div>
+  host.innerHTML=`<div class="cat-hero"><h3 data-i18n-html="home.what">מה <b>מדליקים</b> היום?</h3><p>בחר קטגוריה או חפש למעלה</p></div>
     <div class="cat-tiles">
       <button class="cattile tfav" data-tilefav><span class="ct-ic">⭐</span><span class="ct-name">מועדפים</span><span class="ct-count" id="favTileN">0 פריטים</span></button>
       ${tiles}
@@ -1189,7 +1189,7 @@ function openCut(c){
      ${headArt(c.cat)}
      <button class="x" aria-label="סגור">✕</button>
      <div class="cat" style="color:${col}">${c.cat} · נתח #${c.n}</div>
-     <h2>${c.heb}</h2>
+     <h2>${itemName(c)}</h2>
      <div class="en">${c.eng} · ${c.kg} ק״ג · רמת קושי ${dots(c.diff)}</div>
    </div>
    <div class="panel-body">
@@ -1538,7 +1538,7 @@ function openSpec(s){
      ${headArt(s.cat)}
      <button class="x" aria-label="סגור">✕</button>
      <div class="cat" style="color:${col}">${s.cat}${s.origin?` · ${s.origin}`:` · מוצר #${s.n}`}</div>
-     <h2>${s.heb}</h2>
+     <h2>${itemName(s)}</h2>
      <div class="en">${s.eng} · רמת קושי ${dots(s.diff)}</div>
    </div>
    <div class="panel-body">${s.desc?`<p class="itemdesc" data-mt>${s.desc}</p>`:''}
@@ -1582,7 +1582,7 @@ function openMake(id){
      ${headArt(m.cat)}
      <button class="x" aria-label="סגור">✕</button>
      <div class="cat" style="color:${col}">${m.cat}${m.origin?` · ${m.origin}`:''}</div>
-     <h2>${m.heb}</h2>
+     <h2>${itemName(m)}</h2>
      <div class="en">${m.eng} · רמת קושי ${dots(m.diff)}</div>
    </div>
    <div class="panel-body">${m.desc?`<p class="itemdesc" data-mt>${m.desc}</p>`:''}<div class="progress"><i id="prog"></i></div><div id="methodArea"></div><div id="extras"></div>${sourcesBlock(m)}</div>`;
@@ -1597,6 +1597,7 @@ function showPanel(html){
   lastFocus=document.activeElement;
   const p=$("#panel");p.innerHTML=html;p.classList.add("open");p.setAttribute("aria-hidden","false");
   try{ if(typeof applyI18n==='function') applyI18n(p); }catch(e){}   // Wave 5: translate any data-i18n chrome inside dynamically-rendered panels
+  try{ if(typeof tnode==='function') tnode(p); }catch(e){}           // Wave 5: dictionary-translate exact-match chrome strings in the panel
   try{ if(typeof hydrateMT==='function') hydrateMT(p); }catch(e){}   // Wave 5: async-translate any [data-mt] recipe prose behind the number-safety guard
   $("#scrim").classList.add("open");document.body.classList.add("noscroll");
   const xb=p.querySelector(".x"); if(xb) xb.addEventListener("click",closePanel);
@@ -4505,15 +4506,105 @@ function getLang(){
   const l=(typeof store!=='undefined')?store.get('mk-lang'):null; return I18N_LANGS[l]?l:'he';
 }
 function setLang(l){ if(!I18N_LANGS[l]) return; store.set('mk-lang',l); applyLang(); }
+// item display name: the item's own English name in non-Hebrew mode (no MT needed — eng is in the data)
+function itemName(m){ if(!m) return ''; if(getLang()!=='he' && m.eng) return m.eng; return m.heb||m.eng||''; }
 function t(key, fallback){ const e=I18N[key], l=getLang(); if(e){ if(e[l]!=null) return e[l]; if(e.he!=null) return e.he; } return fallback!=null?fallback:key; }
 function applyI18n(root){ const r=root||document;
   r.querySelectorAll('[data-i18n]').forEach(function(el){ const v=t(el.getAttribute('data-i18n')); if(v!=null) el.textContent=v; });
   r.querySelectorAll('[data-i18n-html]').forEach(function(el){ const v=t(el.getAttribute('data-i18n-html')); if(v!=null) el.innerHTML=v; });   // for chrome that carries inline markup (e.g. <b>)
   r.querySelectorAll('[data-i18n-ph]').forEach(function(el){ const v=t(el.getAttribute('data-i18n-ph')); if(v!=null) el.setAttribute('placeholder',v); });
 }
+// Dictionary of exact he→en UI strings. The tnode() walker below translates ANY text node / attribute
+// whose trimmed value exactly matches a key — so coverage scales without tagging every element.
+const I18N_DICT={
+  // nav + home
+  'בית':'Home','קטלוג':'Catalog','אירועים':'Events','פרויקטים':'Projects','מועדפים':'Favorites','כלים':'Tools','עוד':'More','כלי עזר':'Tools',
+  'בוקר טוב':'Good morning','צהריים טובים':'Good afternoon','ערב טוב':'Good evening','ברוך הבא':'Welcome',
+  'בוקר טוב 👋':'Good morning 👋','צהריים טובים 👋':'Good afternoon 👋','ערב טוב 👋':'Good evening 👋','ברוך הבא 👋':'Welcome 👋',
+  'מתכונת · מדריך האש':'Matkonet · Fire Guide','סו-ויד · עישון · גריל · אש':'Sous-vide · Smoking · Grill · Fire',
+  'בישול מדויק בעברית — טמפרטורה × זמן, מבשר ופירות-ים ועד גבינות וירקות.':'Precise cooking — temperature × time, from meat and seafood to cheeses and vegetables.',
+  'גלה את כל היכולות ←':'Discover all the features →','נבנה באהבה לקהילת האש ·':'Built with love for the fire community ·','דודי בר-און':'Dudi Bar-On',
+  '🌿 הכי פופולרי':'🌿 Most popular','מסלולים, כלים וכל היכולות':'Paths, tools & all the features',
+  'אשף מודרך שבונה תפריט, רשימת קניות ותוכנית עבודה — לפי מספר הסועדים והטעמים.':'A guided wizard that builds a menu, shopping list and work plan — by guest count and taste.',
+  'אותו אשף מודרך כמו אירוע — בחר מנות, שיטות ותיבול, וקבל תוכנית עבודה מלאה עם טיימרים.':'The same guided wizard as an event — pick dishes, methods and seasoning, and get a full work plan with timers.',
+  'שרקוטרי, נקניקים ועישון ארוך — בחירה מקוטלגת לפי סוג ומדינה, עם תיאור מלא לכל מלאכה וליווי צעד-אחר-צעד.':'Charcuterie, sausages and long smokes — a catalogued choice by type and country, with a full description of each craft and step-by-step guidance.',
+  'עוזר בישול חכם — זמן, טמפ׳, עץ, כמות, כשרות, ואיפה לקנות':'Smart cooking assistant — time, temp, wood, quantity, kosher, and where to buy',
+  // common actions / labels
+  'סגור':'Close','חזרה':'Back','אישור':'OK','ביטול':'Cancel','שמור':'Save','מחק':'Delete','הסר':'Remove','ערוך':'Edit','הדפס':'Print','שתף':'Share','המשך':'Continue','סיום':'Done','הכל':'All',
+  'שעת הגשה':'Serve time','הגשה':'Serving','סועדים':'guests','מנות':'dishes','שיטות':'methods','מתבלים':'seasonings','תוספות':'sides','קינוחים':'desserts','סקירה':'review','בסיס':'Basics',
+  'כשר':'Kosher','רשימת קניות':'Shopping list','גיבוי ושחזור':'Backup & restore','מתזמן ציר-זמן':'Timeline scheduler','בונה תפריט לאירוח':'Event menu builder',
+  'יומן בישולים':'Cooking journal','תזכורות':'Reminders','מצב הצילו':'Help mode','שאל את האש':'Ask the Fire','מדריך עצים':'Wood guide','מתרגם נתחים':'Cut translator',
+  'מחשבון מלח/כמויות':'Salt / quantity calculator','מתבלים ורטבים':'Seasonings & sauces','אודות והיכולות':'About & features','יציאה מהאפליקציה':'Exit the app','פרויקטים ומזווה':'Projects & pantry',
+  'תכנון ובישול':'Plan & cook','ידע ומחשבונים':'Knowledge & calculators','הנתונים שלי':'My data','אפליקציה':'App','מראה':'Appearance','🌐 שפה':'🌐 Language',
+  'תיאבון':'Appetite','קל':'Light','רגיל':'Regular','כבד':'Heavy','שם האירוע — למשל: שישי במשפחה':'Event name — e.g. Friday with the family','תיאור קצר (אופציונלי)':'Short description (optional)',
+  'פרטי האירוע':'Event details','תן שם לאירוע כדי לשמור ולחזור אליו בהמשך.':'Name the event to save it and come back later.','סועדים, תיאבון וכשרות.':'Guests, appetite and kosher.',
+  'אירוע חדש':'New event','✨ תכנן אירוע עם AI':'✨ Plan an event with AI','כל האירועים — תצוגה משולבת':'All events — combined view',
+  'סו-ויד':'Sous-vide','עישון':'Smoking','גריל':'Grill','מנוחה':'Rest','הכנה':'Prep','טיימר':'Timer','התחל':'Start','עצור':'Stop','אפס':'Reset',
+  // panel titles + subtitles (toolTop)
+  'כל הכלים של מדריך האש':'All the Fire Guide tools','כל הכלים והתכונות':'All the tools and features',
+  'מנות, תוספות, שתייה, כמויות וזמנים':'Dishes, sides, drinks, quantities and times','ייצוא וייבוא כל הנתונים שלך':'Export and import all your data',
+  'שלבי הכנה מפורטים לכל פריט, לפי שעת הגשה':'Detailed prep steps for each item, by serve time','לוח-זמנים מאוחד לאירועים מקבילים':'Unified schedule for parallel events',
+  'המזווה שלי':'My pantry','מעקב ריפוי וייבוש':'Curing & drying tracker','הציוד שלי':'My equipment','בחר מה יש לך — המתכונים יתאימו את עצמם':'Pick what you have — recipes adapt themselves',
+  'היסטוריה אישית':'Personal history','אבחון תקלה אישי':'Personal troubleshooting','תאר מה קרה — ואאבחן':'Describe what happened — and I\'ll diagnose',
+  'אבחון אישי':'Personal diagnosis','✨ מאבחן…':'✨ Diagnosing…','אבחון ופתרון תקלות — לפי נושא':'Diagnose and fix problems — by topic',
+  'איך משתמשים':'How to use','מדריך מהיר למסלולים ולכלים':'Quick guide to paths and tools','אשף פרויקט':'Project wizard','צור פרויקט מלאכה חדש':'Create a new craft project',
+  'בורגר לכל סועד':'A burger per guest','מידת עשייה, גבינה, תוספות ורוטב — אישית':'Doneness, cheese, toppings and sauce — personal',
+  'חיבור AI חכם':'Smart AI connection','מפתח Gemini חינמי · חד-פעמי · ~2 דקות':'Free Gemini key · one-time · ~2 minutes','ניהול מפתח AI':'AI key management','מפתח אחד מפעיל AI + הקראה קולית':'One key powers AI + voice read-aloud',
+  'יועץ תזמון':'Timing advisor','מה להתחיל מתי כדי לעמוד בתאריך':'What to start when to hit the date','כמה ניסיון יש לך?':'How much experience do you have?',
+  'זה קובע כמה פרטים נציג בבת אחת — תמיד אפשר לשנות אח״כ':'This sets how much detail we show at once — you can always change it later',
+  'מדריך עצים ופחמים':'Wood & charcoal guide','התאמת דלק, עוצמת עשן והיכן לקנות':'Fuel matching, smoke intensity and where to buy',
+  'מה אפשר להכין':'What can I make','ממה שיש במזווה ובציוד שלך':'From what\'s in your pantry and equipment',
+  'מחולל מתכונים':'Recipe generator','מחולל מתכונים (AI)':'Recipe generator (AI)','דורש מפתח Gemini אישי':'Requires a personal Gemini key','תאר מתכון — ואכתוב אותו':'Describe a recipe — and I\'ll write it','✨ כותב מתכון…':'✨ Writing a recipe…',
+  'הטלפון ליד המעשנת — הקראה, ניווט ופקודות':'Phone by the smoker — read-aloud, navigation and commands','כל היכולות והמדע מאחורי האפליקציה':'All the features and science behind the app',
+  'מתכנן האירוע':'Event planner','מתכנן האירוע (AI)':'Event planner (AI)','לא נמצאו מנות':'No dishes found','תאר את האירוע — ואבנה תפריט':'Describe the event — and I\'ll build a menu','✨ בונה תפריט…':'✨ Building a menu…',
+  'בשר, דגים, פירות ים וגבינות — שמות גלובליים ↔ ישראליים':'Meat, fish, seafood and cheeses — global ↔ Israeli names',
+  'פרויקט חדש':'New project','שרקוטרי · נקניקים · כבישה — בחר מלאכה':'Charcuterie · sausages · curing — pick a craft',
+  'קניות למזווה':'Pantry shopping','חומרי גלם חסרים או נמוכים':'Missing or low ingredients','קניתי — לאחסון':'Bought — to store','בחר מה קנית · יישמר במזווה כרכיב מוכן':'Pick what you bought · saved to the pantry as a ready ingredient',
+  'רמת ממשק':'Interface level','קובע כמה פרטים מוצגים ואיך תוכנית-העבודה נראית':'Sets how much detail is shown and how the work plan looks',
+  'רשימת קניות מאוחדת':'Consolidated shopping list','לכל האירועים יחד':'For all events together','שגיאה':'Error','לא נמצא':'Not found','טוען…':'Loading…',
+  // catalog / category groups
+  'קטלוג':'Catalog','בשר אדום':'Red meat','עופות':'Poultry','ים':'Sea','צמחי':'Plant','איברים':'Organs','מלאכה':'Craft','מיובש ומעושן':'Dried & smoked','גבינות':'Cheeses',
+  'מה מדליקים היום?':'What\'s cooking today?','בחר קטגוריה או חפש למעלה':'Pick a category or search above','מילון מונחים':'Glossary','שיטות, עצים ופחם':'Methods, woods & charcoal',
+  // placeholders + misc chrome
+  'דלג לתוכן':'Skip to content','חפש נתח, מוצר או שם באנגלית…':'Search a cut, product or English name…','חפש בכל הקטלוג — נתח, נקניק, ירק, מוצר…':'Search the whole catalog — cut, sausage, vegetable, product…',
+  'חפש מתבל, מרכיב או מקור…':'Search a spice, ingredient or source…','חפש מונח — עברית או אנגלית…':'Search a term — Hebrew or English…','חפש תקלה — עשן מר, שומן נמרח, pH, יבש…':'Search a problem — bitter smoke, smeared fat, pH, dry…',
+  'חפש — שם, מדינה, סוג…':'Search — name, country, type…','חפש — נקניק, גבינה, פסטרמה…':'Search — sausage, cheese, pastrami…','חפש הכל בקבוצה':'Search all in group','נקה בחירה':'Clear selection','נקה סינון':'Clear filters',
+  'איפוס תצוגה':'Reset view','הסינון נוקה':'Filters cleared','רמת פירוט:':'Detail level:','מקוצר':'Short','מלא — עצמאי להדפסה':'Full — printable','תצוגה:':'View:','התחלה מהירה:':'Quick start:',
+  'שמור אירוע':'Save event','צור תוכנית עבודה מלאה':'Generate full work plan','לכל האירועים':'For all events','מה קונים':'Shopping','כבר בעגלה':'Already in cart',
+  'המשך מהמקום שעצרת':'Resume where you left off','המשך פרויקט':'Resume project','בישול פעיל עכשיו':'Cooking now',
+  // category names (chips, tiles, item cards — recur everywhere)
+  'בקר':'Beef','חזיר':'Pork','טלה':'Lamb','עוף':'Chicken','הודו':'Turkey','אווז':'Goose','ברווז':'Duck','דג':'Fish','דג מעושן':'Smoked fish','פירות ים':'Seafood','ירקות':'Vegetables','פירות':'Fruit',
+  'איברים פנימיים':'Offal','נקניקיות':'Sausages','נקניק מעושן':'Smoked sausage','נקניק מיובש':'Dried sausage','סלומי':'Salami','פסטרמה':'Pastrami','שווארמה':'Shawarma','צלייה טחונה':'Ground grill','BBQ קלאסי':'Classic BBQ','בשר מיובש':'Jerky','בייקון':'Bacon','גבינה':'Cheese','נקניקיות מוכנות':'Ready sausages',
+  // continents
+  'אירופה':'Europe','אסיה':'Asia','אמריקה':'Americas','דרום אמריקה':'South America','מזרח תיכון':'Middle East','אפריקה':'Africa','כל היבשות':'All continents','🌍 כל היבשות':'🌍 All continents',
+  // presets + wizard
+  'מנגל מעורב':'Mixed grill','שרקוטרי':'Charcuterie','דגים':'Fish','⭐ מהמועדפים':'⭐ From favorites','המועדפים':'Favorites',
+  'אשף האירוע':'Event wizard','אשף הבישול':'Cook wizard','מה על האש?':'What\'s on the fire?','בחר מכל הקטלוג — נתחים, נקניקיות, ירקות, מוצרים. בחירה מרובה.':'Pick from the whole catalog — cuts, sausages, vegetables, products. Multiple selection.',
+  'חתונה':'Wedding','אירוע ללא שם':'Untitled event',
+  'מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.':'Matkonet · Fire Guide — built from Dudi\'s tables. Data is local, no network connection. Checklist marks are saved in the browser.'
+};
+// interpolated patterns (number + Hebrew unit) — applied to Hebrew text nodes that had no exact match
+const I18N_SUB=[
+  [/(\d+)\s*פריטים/g,'$1 items'], [/(\d+)\s*סועדים/g,'$1 guests'], [/(\d+)\s*מנות/g,'$1 dishes'],
+  [/(\d+)\s*טיימרים פעילים/g,'$1 timers running'], [/(\d+)\s*דק׳/g,'$1 min'], [/(\d+)\s*ק״ג/g,'$1 kg'],
+  [/(\d+)\s*נבחרו/g,'$1 selected'], [/(\d+)\s*מוצגים/g,'$1 shown'], [/שלב\s+(\d+\/\d+)/g,'Step $1'], [/(\d+)\s*שעות/g,'$1 hours'], [/(\d+)\s*שנבחרו/g,'$1 selected']
+];
+// walk text nodes + a few attributes, replacing whole-string exact matches with the dictionary
+function tnode(root){ if(getLang()==='he') return; const D=I18N_DICT; const r=root||document.body; if(!r) return;
+  try{ const w=document.createTreeWalker(r, NodeFilter.SHOW_TEXT, null); const list=[]; let n; while((n=w.nextNode())) list.push(n);
+    list.forEach(function(node){ const raw=node.nodeValue; if(!raw) return; const k=raw.trim(); if(!k) return;
+      const v=D[k]; if(v!=null && v!==k){ node.nodeValue=raw.replace(k, v); return; }
+      const pm=k.match(/^([^A-Za-z0-9֐-׿]+)(.+)$/);   // strip a leading emoji/symbol prefix, then match the rest (chips like "🥩 בקר", "🔥 BBQ קלאסי")
+      if(pm){ const dv=D[pm[2].trim()]; if(dv!=null){ node.nodeValue=raw.replace(k, pm[1]+dv); return; } }
+      if(/[֐-׿]/.test(raw)){ let nv=raw; for(var i=0;i<I18N_SUB.length;i++){ nv=nv.replace(I18N_SUB[i][0], I18N_SUB[i][1]); } if(nv!==raw) node.nodeValue=nv; }   // interpolated number+unit patterns
+    });
+  }catch(e){}
+  try{ r.querySelectorAll('[placeholder],[aria-label],[title]').forEach(function(el){ ['placeholder','aria-label','title'].forEach(function(a){ const raw=el.getAttribute(a); if(raw==null) return; const v=D[raw.trim()]; if(v!=null) el.setAttribute(a, v); }); }); }catch(e){}
+}
 function applyLang(){ const l=getLang();
   try{ const el=document.documentElement; el.lang=l; el.dir=(l==='he'||l==='ar')?'rtl':'ltr'; el.classList.toggle('lang-en', l!=='he'); }catch(e){}
   try{ applyI18n(); }catch(e){}
+  try{ tnode(document.body); }catch(e){}
 }
 // ── T1 · numeric-invariant guard for machine translation ─────────────────────
 // A machine translation of recipe prose is accepted ONLY if it preserves every number the source
@@ -4791,7 +4882,7 @@ function cwPaintPickList(){
     const desc=(typeof itemRichDesc==='function')?itemRichDesc(i):'';
     const sub=[org||i.cat, i.eng].filter(Boolean).join(' · ');
     return `<div class="cmore-item" data-cwpick="${i.key}" style="align-items:flex-start;${on?'border-color:var(--ember);background:linear-gradient(135deg,#fff3e8,#ffe9db)':''}">
-      <span class="mi">${ico}</span><div style="flex:1"><div style="font-weight:700">${i.heb}</div><div style="font-size:11px;color:var(--smoke);font-weight:400">${sub}</div>${desc?`<div style="font-size:11px;color:var(--bone);opacity:.75;line-height:1.5;margin-top:3px">${desc}</div>`:''}</div>
+      <span class="mi">${ico}</span><div style="flex:1"><div style="font-weight:700">${itemName(i)}</div><div style="font-size:11px;color:var(--smoke);font-weight:400">${sub}</div>${desc?`<div style="font-size:11px;color:var(--bone);opacity:.75;line-height:1.5;margin-top:3px">${desc}</div>`:''}</div>
       <span class="mg" style="color:${on?'var(--ember)':'var(--smoke)'};font-size:20px">${on?'✓':'+'}</span></div>`;
   }).join('')||'<div style="color:var(--smoke);text-align:center;padding:20px">לא נמצאו פריטים</div>');
   host.querySelectorAll('[data-cwpick]').forEach(el=>el.addEventListener('click',()=>{
@@ -6547,6 +6638,9 @@ document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('
 try{ cRefreshHome(); cNavGo('home'); }catch(e){ /* headless/init guard */ }
 try{ if(typeof startTimerWatch==='function') startTimerWatch(); }catch(e){}   // parallel multi-event alarms
 try{ if(typeof anyTimerRinging==='function' && anyTimerRinging()){ if(typeof renderAlarm==='function') renderAlarm(); if(typeof startRingLoop==='function') startRingLoop(); } }catch(e){}   // reopened while a timer is ringing → show the in-app alarm + resume the re-pulse
+// Wave 5: keep translating as the SPA re-renders. childList only (subtree) — tnode edits text values,
+// not structure, so it never re-triggers itself. Debounced; no-op in Hebrew.
+try{ let _tnTmo=null; const _mo=new MutationObserver(function(){ if(getLang()==='he') return; clearTimeout(_tnTmo); _tnTmo=setTimeout(function(){ try{ applyI18n(document.body); }catch(e){} try{ tnode(document.body); }catch(e){} }, 50); }); _mo.observe(document.body, {childList:true, subtree:true}); }catch(e){}
 try{ if(typeof requestPersist==='function') requestPersist(); }catch(e){}   // Wave C: ask for persistent storage so a live cook's data isn't evicted
 try{ document.addEventListener('pointerdown', function(){ if(typeof timerAudioPrime==='function') timerAudioPrime(); }, {once:true}); }catch(e){}   // R4: unlock audio on first gesture so timers restored after a reload still beep
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}
