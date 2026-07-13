@@ -1160,7 +1160,8 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .wp-row:hover{background:var(--char2)}
 .wp-row.wp-fire{border-right-color:#e0662e}.wp-row.wp-sv{border-right-color:#4a90c2}.wp-row.wp-smoke{border-right-color:#8a7a5c}.wp-row.wp-cook{border-right-color:#cf6a4a}.wp-row.wp-prep{border-right-color:#8fce76}.wp-row.wp-glaze{border-right-color:#d9a62b}.wp-row.wp-dry{border-right-color:#c98a1a}.wp-row.wp-serve{background:rgba(245,147,49,.08);border-right-color:var(--ember2)}
 .wp-ck{margin-top:3px;accent-color:var(--ember2)}
-.wp-time{font-family:var(--font-body);font-weight:800;font-size:calc(14px * var(--fscale));color:var(--ember2);min-width:46px}
+.wp-time{font-family:var(--font-body);font-weight:800;font-size:calc(14px * var(--fscale));color:var(--ember2);min-width:64px}
+.wp-day{display:block;font-size:calc(10px * var(--fscale));line-height:1.15;font-weight:800;color:var(--terra-d,#c9822e);white-space:nowrap}
 .wp-body{display:flex;flex-direction:column;gap:1px;font-family:var(--font-body)}
 .wp-body b{font-size:calc(13.5px * var(--fscale));font-weight:600;color:var(--bone)}
 .wp-body small{font-size:calc(11px * var(--fscale));color:var(--smoke)}
@@ -4785,6 +4786,11 @@ function renderMenu(){
 
 /* ---- cook timeline scheduler ---- */
 function fmtClock(d){ if(!d) return '—'; return d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
+// day offset of d relative to the serving day (negative = earlier calendar day)
+function tlDayOffset(d, ref){ if(!d||!ref) return 0; const a=new Date(d.getFullYear(),d.getMonth(),d.getDate()), b=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate()); return Math.round((a-b)/86400e3); }
+function tlDayLabel(n){ if(n===0) return ''; if(n===-1) return 'יום לפני'; if(n===-2) return 'יומיים לפני'; if(n<0) return `${-n} ימים לפני`; if(n===1) return 'למחרת'; return `+${n} ימים`; }
+// clock time + a "N days before" badge when the task falls on an earlier day than serving (e.g. a 30h sous-vide)
+function fmtClockRel(d, ref){ const t=fmtClock(d); const lbl=tlDayLabel(tlDayOffset(d,ref)); return lbl? `<span class="wp-day">${lbl}</span>${t}` : t; }
 function cssKey(k){ return k.replace(/[^a-zA-Z0-9_-]/g,'_'); }
 function tlState(){return store.get('mk-tlstate')||{};}
 function tlSetState(s){store.set('mk-tlstate',s);}
@@ -5214,8 +5220,8 @@ function renderTimelinePanel(){
     if(viewMode==='plan'){
       html+=workPlanHtml(computed, preheat, serve);
     } else {
-      if(preheat) html+=`<div class="tlrow tl-preheat"><span class="tl-t"><b>${fmtClock(preheat)}</b></span><span class="tl-n">🔥 הדלקת מעשנת (חימום מוקדם, 45 דק׳)</span><span class="tl-lead"></span></div>`;
-      html+=sorted.map(itemRowHtml).join('');
+      if(preheat) html+=`<div class="tlrow tl-preheat"><span class="tl-t"><b>${fmtClockRel(preheat, serve)}</b></span><span class="tl-n">🔥 הדלקת מעשנת (חימום מוקדם, 45 דק׳)</span><span class="tl-lead"></span></div>`;
+      html+=sorted.map(c=>itemRowHtml(c,serve)).join('');
       html+=`<div class="tlrow tl-serve"><span class="tl-t"><b>${$("#tlServe").value}</b></span><span class="tl-n"><b>🍽️ הגשה</b></span><span class="tl-lead"></span></div>`;
     }
     html+=`<button class="prbtn" style="position:static;margin-top:12px" data-print>⎙ הדפס ${viewMode==='plan'?'תוכנית עבודה':'לוח זמנים'}</button>`;
@@ -5313,34 +5319,34 @@ function renderTimelinePanel(){
     </div>`:'';
     return `${orderControlsHtml}<div class="tl-detailtoggle"><span>רמת פירוט:</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">מקוצר</button><button class="mchip ${detail?'on':''}" data-tldetail="full">מלא — עצמאי להדפסה</button><button class="mchip vc-launch" data-vclaunch>🎙️ מצב בישול קולי</button></div>
     <div class="tl-shaperow"><span>תצוגה:</span>${shapeBtns}</div>
-    ${renderWorkplanShape(tasks, shp, detail)}`;
+    ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
   /* v144: same computed+scheduled tasks, 3 presentation shapes (does not touch scheduling above) */
-  function renderWorkplanShape(tasks, shape, detail){
-    if(shape==='3') return renderWpHorizontal(tasks);
-    if(shape==='5') return renderWpAccordion(tasks, detail);
-    return renderWpVertical(tasks, detail);   // shape '1' — also the pre-v144 default markup, unchanged
+  function renderWorkplanShape(tasks, shape, detail, serve){
+    if(shape==='3') return renderWpHorizontal(tasks, serve);
+    if(shape==='5') return renderWpAccordion(tasks, detail, serve);
+    return renderWpVertical(tasks, detail, serve);   // shape '1' — also the pre-v144 default markup
   }
-  function renderWpVertical(tasks, detail){
+  function renderWpVertical(tasks, detail, serve){
     return `<div class="workplan ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
       <label class="wp-row wp-${tk.kind}"><input type="checkbox" class="wp-ck">
-        <span class="wp-time">${fmtClock(tk.t)}</span>
+        <span class="wp-time">${fmtClockRel(tk.t, serve)}</span>
         <span class="wp-body"><b>${tk.label}</b>${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}</span>
       </label>`).join('')}</div>`;
   }
-  function renderWpAccordion(tasks, detail){
+  function renderWpAccordion(tasks, detail, serve){
     return `<div class="workplan wp-accordion ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
       <div class="wp-acc ${i===0?'open':''}" data-wpacc="${i}">
-        <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClock(tk.t)}</span><b class="wp-atitle">${tk.label}</b><span class="wp-caret">▾</span></div>
+        <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClockRel(tk.t, serve)}</span><b class="wp-atitle">${tk.label}</b><span class="wp-caret">▾</span></div>
         <div class="wp-accb">${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${!tk.sub&&!tk.det?'<small>אין פרטים נוספים לשלב זה.</small>':''}</div>
       </div>`).join('')}</div>`;
   }
-  function renderWpHorizontal(tasks){
+  function renderWpHorizontal(tasks, serve){
     const ic={sv:'💧',smoke:'💨',cook:'🔥',rest:'⏸️',prep:'🔪',fire:'🔥',serve:'🍽️',glaze:'🍯',dry:'🌬️'};
     return `<div class="workplan wp-horiz">${tasks.map(tk=>`
-      <div class="wp-hcell wp-${tk.kind}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClock(tk.t)}</div><div class="wp-hlabel">${tk.label}</div></div>`).join('')}</div>`;
+      <div class="wp-hcell wp-${tk.kind}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClockRel(tk.t, serve)}</div><div class="wp-hlabel">${tk.label}</div></div>`).join('')}</div>`;
   }
-  function itemRowHtml(c){
+  function itemRowHtml(c, serve){
     const {m,profile,st,stages,startClock,blocked}=c;
     const scratchable=hasScratchBuild(m);
     if(blocked){
@@ -5368,13 +5374,13 @@ function renderTimelinePanel(){
       if(s.hours===0) return `<div class="tl-stage tl-stage-note">↳ ${s.label}</div>`;
       const reload=s.kind==='smoke'&&s.hours>2.5?` · ↻ הוסף עץ כל ~90 דק׳ (כ-${Math.max(1,Math.round(s.hours*60/90)-1)} פעמים)`:'';
       const hLabel=s.hours<1?Math.round(s.hours*60)+' דק׳':s.hours.toFixed(1)+'ש';
-      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClock(s.start)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span></div>`;
+      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span></div>`;
     }).join('');
     const cut=m.kind==='cut'?m.obj:null;
     const doneRef=(cut&&cut.doneness)?`<div class="tl-doneref"><b>מידות עשייה לגימור (מד-חום פנים)</b> — להתאמה אישית לכל סועד:<div class="tl-donelist">${['rare','mr','med','mw','well'].filter(k=>cut.doneness.levels[k]).map(k=>`<span class="${k===currentDoneness(cut)?'on':''}">${doneLabel(cut,k)} <b>${cut.doneness.levels[k].c}°</b></span>`).join('')}</div></div>`:'';
     return `<div class="tlcard">
       <div class="tlc-head">
-        <span class="tl-startt"><b>${fmtClock(startClock)}</b></span>
+        <span class="tl-startt"><b>${fmtClockRel(startClock, serve)}</b></span>
         <b class="tl-name">${m.heb}</b>
         ${woodNote}
         <button class="tl-expand" data-tlexp="${m.key}" data-ck="${ck}" aria-label="הרחב פירוט שלבים">▾</button>
