@@ -73,6 +73,25 @@ test('MAKES cure safety: dry/fermented sausages carry a valid nitrite cure TYPE 
   }
 });
 
+test('taxonomy: every item category is wired into CAT_GROUPS (no orphans like מעורב)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
+  await page.goto('/index.html');
+  const { grouped, cats, cut16 } = await page.evaluate(`(function(){
+    var g=new Set(); CAT_GROUPS.forEach(function(gr){ gr.cats.forEach(function(c){ g.add(c); }); });
+    var cats=new Set();
+    DATA.cuts.forEach(function(c){ cats.add(c.cat); });
+    DATA.specials.forEach(function(s){ cats.add(s.cat); });
+    Object.values(DATA.makes).forEach(function(m){ cats.add(m.cat); });
+    var cut16=DATA.cuts.find(function(c){ return c.n===16; });
+    return { grouped:[...g], cats:[...cats], cut16: cut16 && cut16.cat };
+  })()`) as any;
+  const groupedSet = new Set(grouped);
+  const orphans = (cats as string[]).filter(c => !groupedSet.has(c));
+  expect(orphans, 'categories used by items but unreachable via navigation (not in any CAT_GROUPS group)').toEqual([]);
+  expect(cats).not.toContain('מעורב');   // the phantom category is retired
+  expect(cut16).toBe('נקניקיות');          // the generic "Sausages" cut joined its family
+});
+
 test('no-regression: brisket stays within its known-good verified values', async ({ page }) => {
   const { cuts } = await getData(page);
   const b = cuts.find((c: any) => c.n === 1);
