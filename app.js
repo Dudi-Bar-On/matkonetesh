@@ -2988,6 +2988,8 @@ function aiSafetyCaveat(txt){
   const safety = /\d{2,3}\s*°|\d+\s*מעלות|\d+\s*ppm|ניטריט|Cure\s*#?[12]|קיור|ריפוי|\d+\s*ימי[םי]?\s*ייבוש|פסטור/i.test(t);
   return safety ? '<div class="ai-caveat">⚠ מספרי טמפ׳/ריפוי/בטיחות בתשובת ה-AI אינם מאומתים — אמת מול כרטיס המתכון והמחשבון באפליקציה לפני ביצוע.</div>' : '';
 }
+// UX #13: one shared AI-loading spinner (the ask flow and the ✨ AI panels used different markup).
+function aiSpinner(label){ return `<span class="wcim-loading">✨ ${esc(label||'האש חושב')}<span class="ask-dots"><b>.</b><b>.</b><b>.</b></span></span>`; }
 const AI_JSON_SYS = 'אתה מנוע-עזר בתוך אפליקציית בישול-אש ישראלית. החזר אך ורק JSON תקין (בלי Markdown, בלי טקסט לפני או אחרי). '
   + 'בחר אך ורק מתוך רשימת המפתחות (keys) שסופקה — אל תמציא מפתחות, שמות פריטים או מזהים שאינם ברשימה. '
   + 'אל תמציא מספרי בטיחות, טמפרטורות-ריפוי או ימי-ייבוש — אם נדרש מספר כזה השמט אותו והאפליקציה תחשב. '
@@ -3087,7 +3089,7 @@ function openAsk(){
     addUser(q); hist.push({role:'user',text:q});
     if(askMode()){
       if(!gemKey()){ askConnect(); return; }
-      const load=addAnswer(`<div class="abubble ask-loading">${badge('ai')}<span class="ask-dots">האש חושב<b>.</b><b>.</b><b>.</b></span></div>`);
+      const load=addAnswer(`<div class="abubble ask-loading">${badge('ai')}${aiSpinner('האש חושב')}</div>`);
       try{ const r=await askGemini(q, hist);
         load.innerHTML=`<div class="abubble">${badge('ai')}${esc(r.txt||'').replace(/\n/g,'<br>')}${aiSafetyCaveat(r.txt)}</div>`;   // AI #4: flag unverified safety numbers
         if(r.chips&&r.chips.length){ load.innerHTML+=`<div class="askchips">`+r.chips.map(m=>`<button class="askhit" data-k="${m.key}">${m.heb} · ${m.cat} ▶</button>`).join("")+`</div>`; wireChips(load); }
@@ -4160,7 +4162,7 @@ function renderTimelinePanel(){
     if(blocked){
       return `<div class="tlcard tl-blocked">
         <div class="tlc-head"><b class="tl-name">${m.heb}</b><span class="tl-badge">תהליך רב-יומי</span></div>
-        <p class="tl-note">בנייה מאפס לקטגוריה זו (${m.cat}) אורכת ימים-שבועות (כבישה/ייבוש) — לא מתאים ללוח של יום אחד. נהל אותה ב"המזווה שלי", ופה סמן "כבר מוכן" ביום הבישול/ההגשה.</p>
+        <p class="tl-note">בנייה מאפס לקטגוריה זו (${m.cat}) אורכת ימים-שבועות (כבישה/ייבוש) — מוכנה בהכנה מראש. נהל אותה ב"המזווה שלי", ופה סמן "כבר מוכן" ביום הבישול/ההגשה.</p>
         <div class="tlc-controls">
           <button class="mchip on" data-tlfresh="${m.key}">מתחיל מאפס</button>
           <button class="mchip" data-tlready="${m.key}">כבר מוכן</button>
@@ -6375,7 +6377,14 @@ function cStartNewEvent(){ setMenuCtx('event'); evGuardBeforeNew(()=>{ cwGo(0); 
 function cStartCook(){ setMenuCtx('cook'); cwGo(0); cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }
 document.querySelectorAll('[data-cgo="wizard"],[data-cnav="wizard"]').forEach(b=>{ b.replaceWith(b.cloneNode(true)); });
 document.querySelectorAll('[data-cgo="wizard"],[data-cnav="wizard"]').forEach(b=>b.addEventListener('click',cStartNewEvent));
-(()=>{ const s=$("#cHomeSearch"); if(s) s.addEventListener('click',()=>cNavGo('catalog')); })();
+// UX #12: real global search from home — typing carries the query into the catalog search and shows results
+(()=>{ const wrap=$("#cHomeSearch"); const inp=$("#cHomeSearchInput");
+  if(inp){
+    const jump=()=>{ const v=inp.value; if(typeof cNavGo==='function') cNavGo('catalog'); const q=$("#q"); if(q){ q.value=v; q.focus(); } if(typeof catView==='function') catView(v.trim()?'search':'landing'); };
+    inp.addEventListener('input', jump);
+    inp.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); jump(); } });
+  } else if(wrap){ wrap.addEventListener('click',()=>cNavGo('catalog')); }
+})();
 (()=>{ const m=$("#cHomeMore"); if(m) m.addEventListener('click',openMoreSheet); })();
 (()=>{ const a=$("#cHomeAbout"); if(a) a.addEventListener('click',()=>{ if(typeof openGuide==='function') openGuide(); }); })();
 (()=>{ const a=$("#cHomeCaps"); if(a) a.addEventListener('click',()=>{ if(typeof openAbout==='function') openAbout(); }); })();

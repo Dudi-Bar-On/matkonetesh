@@ -154,7 +154,7 @@ HTML = r"""<!DOCTYPE html>
       <div class="chome-credit-top">נבנה באהבה לקהילת האש · <b>דודי בר-און</b></div>
     </div>
   </div>
-  <div class="chome-search" id="cHomeSearch"><span class="ic">⌕</span><input placeholder="חפש הכל — נתח, נקניקייה, מתבל…" readonly></div>
+  <div class="chome-search" id="cHomeSearch"><span class="ic">⌕</span><input id="cHomeSearchInput" placeholder="חפש הכל — נתח, נקניקייה, מתבל…" autocomplete="off"></div>
   <div class="chome-hero"><div class="hi" id="cGreet">ברוך הבא 👋</div><h2>מה <b>מדליקים</b> היום?</h2></div>
   <div id="cGearBanner"></div>
   <button class="chome-ask" id="cHomeAsk"><span class="cha-ico">🔥</span><span class="cha-txt"><b>שאל את האש</b><small>עוזר בישול חכם — זמן, טמפ׳, עץ, כמות, כשרות, ואיפה לקנות</small></span><span class="cha-go">←</span></button>
@@ -315,7 +315,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 171 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 172 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
