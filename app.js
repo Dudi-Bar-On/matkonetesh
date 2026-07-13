@@ -2844,7 +2844,7 @@ function askFire(qRaw){
   const ppl=(q.match(/(\d+)\s*(אנשים|סועד|איש|נפש|מוזמנ)/)||[])[1] || (has('כמה בשר','כמה לקנות','כמות','מנה','מנות')? (q.match(/(\d+)/)||[])[1] : null);
   if(ppl && has('בשר','לקנות','כמה','כמות','מנה','מנות','אנשים','סועד')){
     const n=+ppl; const main=Math.round(n*0.35*10)/10, mix=Math.round(n*0.5*10)/10;
-    return {t:`ל-<b>${n} סועדים</b> (הערכה): מנה עיקרית בשרית ~<b>${main} ק״ג</b> (350 ג׳/סועד), ובאירוע עם מגוון בשרים ותוספות ~${mix} ק״ג סה״כ. לכמות מדויקת לפי מנה — פתח את "בונה הארוחה".`,act:(typeof openMenu==='function'?openMenu:null)};
+    return {t:`ל-<b>${n} סועדים</b> (הערכה): מנה עיקרית בשרית ~<b>${main} ק״ג</b> (350 ג׳/סועד), ובאירוע עם מגוון בשרים ותוספות ~${mix} ק״ג סה״כ. לכמות מדויקת לפי מנה — פתח את "בונה הארוחה".`,act:(typeof openBuilder==='function'?openBuilder:null)};
   }
 
   // ---- entity-based answers ----
@@ -3354,6 +3354,8 @@ function openMenu(){
    <div class="panel-body" id="menuBody"></div>`);
   renderMenu();
 }
+// UX #3: one builder — "build a menu" always routes to the guided wizard (the legacy openMenu panel is retired as an entry point).
+function openBuilder(){ if(typeof cwGo==='function' && typeof cNavGo==='function'){ cwGo(1); cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); } else if(typeof openMenu==='function'){ openMenu(); } }
 // standalone printable menu — no full builder, returns to caller screen on close
 function openMenuPrint(){
   const s=menuState();
@@ -4372,7 +4374,7 @@ function toolTop(title,sub,emoji,col){
 }
 function openTools(){
   const tools=[
-    ['🕒','מתזמן ציר-זמן',openTimeline],['🎉','בונה תפריט לאירוח',openMenu],
+    ['🕒','מתזמן ציר-זמן',openTimeline],['🎉','בונה תפריט לאירוח',openBuilder],
     ['🧫','פרויקטים ומזווה',openPantry],['📓','יומן בישולים',openJournal],
     ['⏰','תזכורות',openReminders],['🆘','מצב הצילו',openHelp],
     ['🔥','שאל את האש',openAsk],['🪵','מדריך עצים',()=>openWoods()],
@@ -4642,7 +4644,9 @@ function cwPaintPickList(){
       }));
     }
   }
-  host.innerHTML=items.map(i=>{
+  // UX #3: preset quick-starts moved into the wizard (the one feature the retired openMenu panel had). Shown only in the unfiltered list.
+  const presetBar = (!cwActiveCat && !cwCont && !cwQuery) ? `<div class="cw-presets"><span class="cw-presets-lbl">התחלה מהירה:</span>`+['מנגל מעורב','שרקוטרי','נקניקיות','דגים'].map(p=>`<button type="button" class="mchip" data-cwpreset="${p}">${p}</button>`).join('')+`<button type="button" class="mchip" data-cwpreset="__fav">⭐ מהמועדפים</button></div>` : '';
+  host.innerHTML=presetBar+(items.map(i=>{
     const on=sel.has(i.key);
     const ico=(typeof itemEmoji==='function')?itemEmoji(i.cat,i.key):'🍽️';
     const org=(typeof itemOrigin==='function')?itemOrigin(i):'';
@@ -4651,11 +4655,14 @@ function cwPaintPickList(){
     return `<div class="cmore-item" data-cwpick="${i.key}" style="align-items:flex-start;${on?'border-color:var(--ember);background:linear-gradient(135deg,#fff3e8,#ffe9db)':''}">
       <span class="mi">${ico}</span><div style="flex:1"><div style="font-weight:700">${i.heb}</div><div style="font-size:11px;color:var(--smoke);font-weight:400">${sub}</div>${desc?`<div style="font-size:11px;color:var(--bone);opacity:.75;line-height:1.5;margin-top:3px">${desc}</div>`:''}</div>
       <span class="mg" style="color:${on?'var(--ember)':'var(--smoke)'};font-size:20px">${on?'✓':'+'}</span></div>`;
-  }).join('')||'<div style="color:var(--smoke);text-align:center;padding:20px">לא נמצאו פריטים</div>';
+  }).join('')||'<div style="color:var(--smoke);text-align:center;padding:20px">לא נמצאו פריטים</div>');
   host.querySelectorAll('[data-cwpick]').forEach(el=>el.addEventListener('click',()=>{
     const k=el.dataset.cwpick; const mm=cwMenu(); const s=new Set(mm.keys||[]);
     s.has(k)?s.delete(k):s.add(k); mm.keys=[...s]; cwSave(mm); cwPaintPickList();
   }));
+  host.querySelectorAll('[data-cwpreset]').forEach(el=>el.addEventListener('click',()=>{ const p=el.dataset.cwpreset;   // UX #3: presets in the wizard
+    if(p==='__fav'){ if(typeof presetFromFavs==='function') presetFromFavs(); } else if(typeof presetMenu==='function'){ presetMenu(p); }
+    cwPaintPickList(); }));
 }
 // ── step 2: real method toggles per selected item ──
 function cwPaintMethodsFull(){
@@ -4823,7 +4830,6 @@ function cwPaintReview(){
   document.querySelectorAll('[data-cwgo]').forEach(b=>b.addEventListener('click',()=>cwGo(+b.dataset.cwgo)));
   const back=$("#cwBack"); if(back) back.addEventListener('click',()=>{ if(cWiz.step>0) cwGo(cWiz.step-1); else cNavGo('home'); });
   const gen=$("#cwGenPlan"); if(gen) gen.addEventListener('click',()=>{ const sv=$("#cwServe"); if(sv) store.set('mk-tlserve',sv.value); if(typeof openTimeline==='function') openTimeline(); });
-  const om=$("#cwOpenMenu"); if(om) om.addEventListener('click',()=>{ if(typeof openMenu==='function') openMenu(); });
   const vc=$("#cwVoice"); if(vc) vc.addEventListener('click',()=>{
     // build the work-plan tasks (openTimeline populates window._wpTasks synchronously), then launch voice
     if(typeof openTimeline==='function') openTimeline();
