@@ -35,3 +35,39 @@ test('voice-cook: a prominent timer appears with a next task and is wired for sp
   expect(sec).toBeGreaterThan(3000);
   expect(sec).toBeLessThan(3700);
 });
+
+test('work-plan PLAN view (תוכנית עבודה) also shows countdown timers', async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
+    } catch {}
+  });
+  await page.goto('/index.html');
+  await page.evaluate(`openTimeline()`);
+  await page.waitForSelector('#tlList [data-tlview="plan"]');
+  await page.click('[data-tlview="plan"]');                    // switch to the plan (work-plan) view
+  await page.waitForSelector('.workplan');
+  const timers = await page.evaluate(`document.querySelectorAll('.workplan .wp-timer .timer').length`);
+  expect(timers).toBeGreaterThan(0);
+});
+
+test('timers persist: a running voice-cook timer survives a re-render (was: reset on return)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
+  await page.goto('/index.html');
+  await page.evaluate(`(function(){ var now=Date.now(); openVoiceCook([
+    {t:new Date(now+60000), label:'עשן', kind:'smoke'},
+    {t:new Date(now+3660000), label:'עטוף', kind:'smoke'}
+  ]); })()`);
+  await page.waitForSelector('.vc-timerwrap .timer [data-play]');
+  await page.click('.vc-timerwrap .timer [data-play]');        // start it (▶ -> running)
+  // it is now persisted in mk-timers
+  const rec = await page.evaluate(`store.get('mk-timers')`) as any;
+  expect(Object.keys(rec).length).toBeGreaterThan(0);
+  // simulate leaving and returning to the screen: a full re-render
+  await page.evaluate(`vcRender()`);
+  await page.waitForSelector('.vc-timerwrap .timer [data-play]');
+  // the timer resumed running instead of resetting (play shows the pause glyph)
+  expect(await page.evaluate(`document.querySelector('.vc-timerwrap .timer [data-play]').textContent`)).toBe('❚❚');
+});
