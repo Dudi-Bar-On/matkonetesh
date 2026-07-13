@@ -17,9 +17,9 @@
 | **C** | **Storage-quota exhaustion silently kills ALL persistence mid-cook** | reliability, timing | `store.set` swallows every exception (`app.js:615`); a few journal photos fill the ~5MB budget → `mk-timers`/`mk-plan-started`/`mk-events` stop saving **with no error**; reload = live cook state gone. The one guard that checks is **dead code** (set never throws). | S–M |
 | **D** | **The operational flow has no internal-temp confirmation before serve** | safety | `itemStages`/`workPlanHtml`/`vcRender` schedule "smoke N hours → 🍽️ serve" with **no "confirm ≥ safe°C" gate** — that check lives only in the recipe *card* (`svSteps`/`soSteps`). Poultry (safe 74), pork, sausages go to guests unverified in the flow the cook actually drives. | M |
 
-### 0.2 ⚠ Regressions in the timer/multi-event work shipped **this session** (do-first hotfix)
+### 0.2 ⚠ Regressions in the timer/multi-event work shipped this session — ✅ ALL FIXED in v158
 
-The panel found **four real defects in code I shipped over the last rounds** — small fixes, high stakes:
+The panel found five real defects in code shipped over the last rounds; **all five were hotfixed in v158** (kept below for the record):
 
 - **R1 — "⏹ עצור / אפס תוכנית" wipes *every* event's timers.** `resetPlanTimers()` deletes all keys matching `/^(st-|wp|vc-)/` across the whole store (`app.js:3803`), but timer ids are scoped per event — so stopping Event A silently destroys Event B's live timers, no confirm. **Fix: scope the wipe to `evScope()`** + add undo. (1-line-ish.)
 - **R2 — `mk-tlstate` is not scoped per event.** I scoped timers + start-state per event but left method / sv↔smoke order / stage-"done" as one global record keyed by item (`app.js:3408, 3869`). Two events both serving brisket **share** method, order, and done-flags → marking A's smoke "done" marks B's; flipping B to smoke-first rewrites A's schedule *and its safety warning*. **Fix: `mk-tlstate-<scope>`** (mirror `planStartKey`).
