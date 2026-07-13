@@ -7451,8 +7451,26 @@ try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel();
 </html>"""
 
 html = HTML.replace("__DATA__", DATA_JSON)
-import os as _os
-_out = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "index.html")
-with open(_out, "w", encoding="utf-8") as f:
+import os as _os, shutil as _shutil
+_root = _os.path.dirname(_os.path.abspath(__file__))
+# 1) index.html at repo root — used by the dev server, tests, and manual upload
+with open(_os.path.join(_root, "index.html"), "w", encoding="utf-8") as f:
     f.write(html)
+# 2) dist/ — the ONLY thing Cloudflare Pages serves: index.html + flattened site assets
+#    (index.html references manifest/icons at the root level, so site/ is flattened here,
+#    and no .py source is exposed). Cloudflare Pages: build `python build.py`, output dir `dist`.
+_dist = _os.path.join(_root, "dist")
+_os.makedirs(_dist, exist_ok=True)
+with open(_os.path.join(_dist, "index.html"), "w", encoding="utf-8") as f:
+    f.write(html)
+_site = _os.path.join(_root, "site")
+_copied = []
+if _os.path.isdir(_site):
+    for _n in sorted(_os.listdir(_site)):
+        if _n.lower() in ("readme.txt", "index.html"):   # notes / stale copy — never clobber the fresh build
+            continue
+        _src = _os.path.join(_site, _n)
+        if _os.path.isfile(_src):
+            _shutil.copy2(_src, _os.path.join(_dist, _n)); _copied.append(_n)
 print("written", len(html), "bytes;", len(CUTS), "cuts", len(SPECIALS), "specials", len(GLOSSARY), "glossary")
+print("dist/ ->", ["index.html"] + _copied)

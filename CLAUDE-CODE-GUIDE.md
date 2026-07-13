@@ -18,7 +18,7 @@
 
 - **קהל:** משתמש יחיד (בעל האפליקציה) — חובב-אש מתקדם, עובד בעברית, נייד.
 - **פרטיות:** local-first. כל נתוני-המשתמש ב-`localStorage` (בלי שרת, בלי חשבון).
-- **הפצה:** Cloudflare Pages. ידנית (index.html + site/) או auto-deploy מ-GitHub (build: `python build.py`).
+- **הפצה:** Cloudflare Pages — `matkonetesh.pages.dev`. auto-deploy מ-GitHub (build: `python build.py`, output dir: `dist`) או העלאה ידנית של תוכן `dist/`.
 
 ---
 

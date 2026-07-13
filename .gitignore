@@ -1,5 +1,6 @@
-# Generated build artifact — run `python build.py` to regenerate from data.py + sources.py
+# Generated build artifacts — run `python build.py` to regenerate from data.py + sources.py
 index.html
+dist/
 _app_check.js
 
 # Node / Playwright

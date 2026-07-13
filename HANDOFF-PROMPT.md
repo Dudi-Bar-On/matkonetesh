@@ -10,7 +10,7 @@
 **"מתכונת · מדריך האש" (Matkonet)** — PWA עברית-first (RTL) לבישול-אש: סו-ויד, עישון,
 גריל, שרקוטרי. קובץ HTML יחיד (~957KB) שנוצר מ-`build.py`. קטלוג 279 פריטים + מנוע-תזמון +
 מזווה + אשף-אירוע + שכבת-AI אופציונלית (BYOK-Gemini, 7 יכולות) + ממשק קולי דו-לשוני.
-Local-first (כל הנתונים ב-localStorage). מופץ ב-Cloudflare Pages (העלאה ידנית או auto-deploy מ-GitHub).
+Local-first (כל הנתונים ב-localStorage). מופץ ב-Cloudflare Pages (`matkonetesh.pages.dev`; auto-deploy מ-GitHub — build: `python build.py`, output dir: `dist`).
 
 **בעל הפרויקט:** דודי — חובב-אש מתקדם, עובד בעברית, נייד. **עברית באדיקות בכל מקום.**
 

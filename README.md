@@ -32,12 +32,22 @@ npm install                # first time
 npx playwright test        # build -> serve -> browser: smoke + data-integrity (safety) checks
 ```
 
-## Deploy
-Hosted on **Cloudflare Pages**. Two options:
-- **Manual:** `python build.py`, then upload `index.html` + `site/` via the Cloudflare Pages dashboard
-  (Workers & Pages → Create → Pages → Upload assets), or `npx wrangler pages deploy`.
-- **Git-connected (auto-deploy):** connect this GitHub repo in Cloudflare Pages with build command
-  `python build.py` — every push to `main` rebuilds and deploys.
+## Deploy — Cloudflare Pages
+Live at **https://matkonetesh.pages.dev**. `python build.py` emits a clean **`dist/`** — `index.html`
+plus the flattened `site/` assets (manifest, icons, product.html) and **no `.py` source**. That folder
+is the entire deploy.
+
+**Git-connected auto-deploy (recommended):** in Cloudflare Pages, connect this GitHub repo with:
+| Setting | Value |
+|---|---|
+| Build command | `python build.py` |
+| Build output directory | `dist` |
+| Python version | pinned by `.python-version` (3.12); build.py has no pip dependencies |
+
+Every push to `main` rebuilds and redeploys.
+
+**Manual:** `python build.py`, then upload the **contents of `dist/`** via the Cloudflare Pages
+dashboard (Workers & Pages → project → Create deployment → Upload assets), or `npx wrangler pages deploy dist`.
 
 ## Safety principle (P3)
 Salt/cure/pasteurization/temperature safety numbers always come from a cited primary source
