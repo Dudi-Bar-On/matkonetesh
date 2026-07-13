@@ -53,6 +53,26 @@ test('work-plan PLAN view (תוכנית עבודה) also shows countdown timers'
   expect(timers).toBeGreaterThan(0);
 });
 
+test('work-plan shows a live "time until serving" bar with a progress fill', async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
+    } catch {}
+  });
+  await page.goto('/index.html');
+  await page.evaluate(`openTimeline()`);
+  await page.waitForSelector('#tlList .tlcard');
+  const bar = await page.evaluate(`(function(){ var b=document.getElementById('serveBar');
+    return { hidden:b.hidden, remain:document.getElementById('serveRemain').textContent,
+             at:document.getElementById('serveAt').textContent, fill:document.getElementById('serveFill').style.width }; })()`) as any;
+  expect(bar.hidden).toBe(false);
+  expect(bar.at).toContain('🍽️');           // serve clock time
+  expect(bar.remain).toContain('הגשה');       // "…until serving" (or "serving time reached")
+  expect(bar.fill).toMatch(/%$/);             // progress fill is a percentage width
+});
+
 test('timers persist: a running voice-cook timer survives a re-render (was: reset on return)', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
   await page.goto('/index.html');

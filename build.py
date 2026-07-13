@@ -1241,6 +1241,12 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .tl-stage{display:flex;align-items:center;flex-wrap:wrap;gap:9px;font-size:calc(12.5px * var(--fscale))}
 .tl-stage .timer{margin-inline-start:auto}
 .wp-timer{display:block;margin-top:6px}
+.serve-bar{margin:10px 0;padding:10px 12px;background:var(--tint-warm);border:1px solid var(--line2);border-radius:12px}
+.serve-lbl{display:flex;justify-content:space-between;gap:8px;font-size:calc(13px * var(--fscale));font-weight:700;color:var(--bone);margin-bottom:7px}
+.serve-track{height:8px;background:var(--line);border-radius:6px;overflow:hidden}
+.serve-fill{height:100%;background:linear-gradient(90deg,var(--fresh),var(--ember2));width:0;transition:width .5s ease}
+.serve-bar.serve-now .serve-fill{background:var(--ember)}
+.serve-bar.serve-now .serve-lbl{color:var(--ember)}
 .vc-timerwrap{margin:14px auto 6px;text-align:center;padding:20px 0}
 .vc-timerlbl{font-size:calc(13px * var(--fscale));color:var(--smoke);margin-bottom:12px}
 .vc-timerwrap .timer{display:inline-flex;justify-content:center;gap:16px;transform:scale(1.5);transform-origin:center}
@@ -1510,7 +1516,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 153 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 154 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -3095,7 +3101,7 @@ function appPrompt(msg,def,opts){ return appDialog(Object.assign({msg,input:def|
 function closePanel(){
   try{speechSynthesis.cancel();}catch(e){}
   if(typeof gemStop==='function') gemStop();
-  if(typeof vcRec!=='undefined'&&vcRec){try{vcRec.stop();}catch(e){} vcRec=null;}clearTimers();panelStack=[];$("#panel").classList.remove("open");$("#panel").setAttribute("aria-hidden","true");
+  if(typeof vcRec!=='undefined'&&vcRec){try{vcRec.stop();}catch(e){} vcRec=null;}clearTimers();if(typeof serveIv!=='undefined'&&serveIv){clearInterval(serveIv);serveIv=null;}panelStack=[];$("#panel").classList.remove("open");$("#panel").setAttribute("aria-hidden","true");
   $("#scrim").classList.remove("open");document.body.classList.remove("noscroll");
   if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}} lastFocus=null;}
 
@@ -5270,6 +5276,24 @@ function openVoiceCook(tasks){
   vcRender();
   if(vcTasks.length) vcSpeakContent(vcCurrentText(false));
 }
+// live "time until serving" bar — fills from the first cooking start toward serve time
+let serveIv=null;
+function updateServeBar(){
+  const bar=$("#serveBar"); if(!bar) return;
+  const serve=window._wpServe, start=window._wpStart;
+  if(!serve){ bar.hidden=true; return; }
+  bar.hidden=false;
+  const now=Date.now(), sv=serve.getTime(), remMs=sv-now;
+  const rem=$("#serveRemain"), at=$("#serveAt"), fill=$("#serveFill");
+  if(at) at.textContent='🍽️ '+fmtClock(serve);
+  if(remMs<=0){ if(rem) rem.textContent='🍽️ הגיע זמן ההגשה!'; if(fill) fill.style.width='100%'; bar.classList.add('serve-now'); return; }
+  bar.classList.remove('serve-now');
+  const h=Math.floor(remMs/3600e3), m=Math.floor((remMs%3600e3)/60e3);
+  if(rem) rem.textContent='⏱ עוד '+(h?h+'ש ':'')+m+' דק׳ עד ההגשה';
+  const st=start?start.getTime():sv-1, total=sv-st, elapsed=now-st;
+  if(fill) fill.style.width=(total>0?Math.max(0,Math.min(100,elapsed/total*100)):0).toFixed(1)+'%';
+}
+function startServeBar(){ if(serveIv){clearInterval(serveIv);} updateServeBar(); serveIv=setInterval(updateServeBar,30000); }
 function renderTimelinePanel(){
   const host=$("#tlBody"); if(!host) return;
   const srcKeys=[...new Set((typeof menuState==='function')?(menuState().keys||[]):[])];
@@ -5277,6 +5301,7 @@ function renderTimelinePanel(){
   const serveStr=store.get('mk-tlserve')||'19:00';
   host.innerHTML=`
     <div class="calcrow"><label>שעת הגשה</label><input type="time" id="tlServe" value="${serveStr}"><button id="tlReset" class="mreset">🗑️ איפוס בחירות</button></div>
+    <div id="serveBar" class="serve-bar" hidden><div class="serve-lbl"><span id="serveRemain"></span><span id="serveAt"></span></div><div class="serve-track"><div class="serve-fill" id="serveFill"></div></div></div>
     <button id="tlAlerts" class="tl-alerts ${store.get('mk-tlalerts')?'on':''}">🔔 <span>${store.get('mk-tlalerts')?'התראות פעילות':'הפעל התראות לשלבים'}</span></button>
     <p class="section-sub">לכל פריט: סמן אם כבר מוכן (ברירת מחדל) או מתחיל מאפס היום. שיטת הבישול נלקחת מהמתגים בכרטיסייה (⚡) — אפשר לבחור צירוף אחר כאן. לחץ ▾ לפירוט שלבים.</p>
     <div id="tlList">${items.length?'':'<div class="shop-empty">הרשימה ריקה — הוסף פריטים (כפתור ＋) או דרך בונה התפריט, ואז חזור לכאן.</div>'}</div>`;
@@ -5350,6 +5375,10 @@ function renderTimelinePanel(){
     if(typeof clearTimers==='function') clearTimers();   // stop stale intervals before re-wiring; state persists in mk-timers
     $("#tlList").innerHTML=html;
     $("#tlList").querySelectorAll('.timer').forEach(tm=>wireTimer(tm));   // live countdowns per timed stage (items + plan views)
+    { const starts=computed.filter(c=>!c.blocked&&c.startClock).map(c=>c.startClock.getTime());
+      let earliest=starts.length?new Date(Math.min(...starts)):null;
+      if(preheat && (!earliest||preheat.getTime()<earliest.getTime())) earliest=preheat;
+      window._wpServe=serve; window._wpStart=earliest; startServeBar(); }   // live time-until-serving bar
     $("#tlList").querySelectorAll('[data-tlview]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlview',b.dataset.tlview); buildList();}));
     $("#tlList").querySelectorAll('[data-tldetail]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlplandetail',b.dataset.tldetail); buildList();}));
     $("#tlList").querySelectorAll('[data-tlshape]').forEach(b=>b.addEventListener('click',()=>{setTlShape(b.dataset.tlshape); buildList();}));
