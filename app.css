@@ -1056,7 +1056,8 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .wp-accordion .wp-acc{border:1.5px solid var(--line2);border-radius:12px;margin:0 0 8px;overflow:hidden;background:var(--char)}
 .wp-acch{display:flex;align-items:center;gap:9px;padding:11px 12px;cursor:pointer}
 .wp-bar{width:4px;align-self:stretch;border-radius:3px;flex:none;min-height:18px;background:var(--line)}
-.wp-bar-sv{background:#4a90c2}.wp-bar-smoke{background:#8a7a5c}.wp-bar-cook{background:#cf6a4a}.wp-bar-rest{background:var(--smoke)}.wp-bar-prep{background:#8fce76}.wp-bar-glaze{background:#d9a62b}.wp-bar-fire{background:#e0662e}.wp-bar-serve{background:var(--ember2)}.wp-bar-dry{background:#c98a1a}
+.wp-bar-sv{background:#4a90c2}.wp-bar-smoke{background:#8a7a5c}.wp-bar-cook{background:#cf6a4a}.wp-bar-rest{background:var(--smoke)}.wp-bar-prep{background:#8fce76}.wp-bar-glaze{background:#d9a62b}.wp-bar-fire{background:#e0662e}.wp-bar-serve{background:var(--ember2)}.wp-bar-dry{background:#c98a1a}.wp-bar-bcheck{background:#c0392b}
+.wp-row.wp-bcheck{border-right-color:#c0392b;background:rgba(192,57,43,.07)}.wp-hcell.wp-bcheck .wp-hdot{color:#c0392b}
 .wp-atitle{flex:1;font-size:calc(13.5px * var(--fscale));font-weight:700;font-family:var(--font-body);color:var(--bone)}
 .wp-caret{color:var(--smoke);font-size:calc(11px * var(--fscale));transition:.2s}
 .wp-acc.open .wp-caret{transform:rotate(180deg)}
@@ -1143,6 +1144,8 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .tl-stage-l{flex:1;color:var(--ash)}
 .tl-stage-h{color:var(--smoke);font-size:calc(11.5px * var(--fscale))}
 .tl-stage-note{color:var(--smoke);font-size:calc(11.5px * var(--fscale));font-style:italic;padding-inline-start:52px}
+.tl-bcheck{color:#c0392b;font-weight:600;font-size:calc(12px * var(--fscale));padding-inline-start:52px;margin-top:2px}
+.bk-storage .kbox{font-size:calc(12.5px * var(--fscale))}
 .tl-doneref{margin-top:8px;padding-top:8px;border-top:1px dashed var(--line);font-size:calc(11.5px * var(--fscale));color:var(--ash)}
 .tl-doneref>b{color:var(--ember2);font-family:var(--font-body);font-size:calc(11.5px * var(--fscale))}
 .tl-donelist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}

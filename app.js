@@ -612,8 +612,17 @@ function soTreatText(m){
 /* ---------- checklist + timer state ---------- */
 const store={
   get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
-  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v)); return true;}catch(e){ try{mkStorageWarn(e);}catch(_){} return false; }}   // Wave C: surface quota failures instead of swallowing them silently
 };
+let _mkStorageWarned=0;
+function mkStorageWarn(e){
+  const quota = e && (e.name==='QuotaExceededError' || e.code===22 || e.code===1014 || /quota|exceeded/i.test((e.name||'')+(e.message||'')));
+  if(!quota) return;
+  const now=Date.now(); if(now-_mkStorageWarned < 60000) return; _mkStorageWarned=now;   // throttle to once/min
+  try{ if(typeof toast==='function') toast('⚠ האחסון מלא — ייתכן שנתונים חדשים לא נשמרים. ייצא גיבוי ופנה מקום (הגדרות › גיבוי ושחזור).'); }catch(_){}
+}
+async function requestPersist(){ try{ if(navigator.storage && navigator.storage.persist){ const p=navigator.storage.persisted?await navigator.storage.persisted():false; if(!p) await navigator.storage.persist(); } }catch(e){} }   // ask the browser not to evict our data under pressure
+async function storageInfo(){ try{ if(navigator.storage && navigator.storage.estimate){ const e=await navigator.storage.estimate(); const persisted=navigator.storage.persisted?await navigator.storage.persisted():false; return {usedKB:Math.round((e.usage||0)/1024), quotaMB:Math.round((e.quota||0)/1048576), persisted, pct:e.quota?Math.min(100,Math.round((e.usage/e.quota)*100)):0}; } }catch(e){} return null; }
 // HTML-escape helper — MUST wrap any AI-authored or user-authored text before it enters innerHTML.
 // AI answers can carry search-grounded, attacker-influenced markup; without this, "<img onerror>" would exfiltrate mk-gemkey.
 const ESC_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
@@ -1818,10 +1827,10 @@ $("#panel").addEventListener("keydown",e=>{
 });
 /* toast with optional undo */
 let toastTmo=null;
-function toast(msg, undoFn){
+function toast(msg, undoFn, actionLabel){
   let t=$("#toast");
   if(!t){ t=document.createElement("div"); t.id="toast"; t.className="toast"; t.setAttribute("role","status"); t.setAttribute("aria-live","polite"); document.body.appendChild(t); }
-  t.innerHTML=`<span>${msg}</span>`+(undoFn?'<button data-undo>בטל</button>':'');
+  t.innerHTML=`<span>${msg}</span>`+(undoFn?`<button data-undo>${actionLabel||'בטל'}</button>`:'');   // action label defaults to "בטל" (undo); pass e.g. "רענן עכשיו" for non-undo actions
   t.classList.add("show");
   clearTimeout(toastTmo); toastTmo=setTimeout(()=>t.classList.remove("show"),5000);
   if(undoFn){ t.querySelector("[data-undo]").addEventListener("click",()=>{ clearTimeout(toastTmo); t.classList.remove("show"); undoFn(); }); }
@@ -2050,6 +2059,10 @@ function itemStages(meta,methodKey,ready,order){
     }
   }
   if(p.restMin>0) stages.push({label:'מנוחה',hours:p.restMin/60,kind:'rest'});
+  // D1: mandatory internal-temp verification before serving — the operational-flow safety gate the
+  // recipe card always had (svSteps/soSteps) but the scheduler/plan/voice flow was missing.
+  { const sc = meta.obj ? (meta.obj.safe!=null?meta.obj.safe:meta.obj.tgt) : null;
+    if(typeof sc==='number' && sc>0) stages.push({label:`בדיקת טמפ׳ פנים — יעד ${sc}°`, hours:0, kind:'bcheck', temp:sc, note:'מד-חום בליבה לפני הגשה'}); }
   return stages;
 }
 function comboHasSvSmoke(meta,methodKey){
@@ -3633,8 +3646,10 @@ function vcAction(a){
   else if(a==='readfull') vcSpeakContent(vcCurrentText(true));
   else if(a==='qtemp'){
     const m=(t&&((t.det||'')+' '+(t.label||'')).match(/(\d{2,3})°/));
-    if(en) vcSpeak(m?`The temperature is ${m[1]} degrees.`:'No temperature for this step.', 'en');
-    else vcSpeak(m?`הטמפרטורה: ${m[1]} מעלות`:'אין טמפרטורה במשימה הזו', 'he');
+    const chamber = t && (t.kind==='smoke'||t.kind==='cook');   // matched temp is the pit/chamber, not the internal
+    const bcheck = t && t.kind==='bcheck';                       // this step IS the internal-temp check
+    if(en) vcSpeak(m?`${m[1]} degrees${bcheck?' — that is the target core temperature; check with a probe before serving':chamber?' — that is the chamber temperature; pull when the core reaches the safe internal temp':''}.`:'No temperature for this step.', 'en');
+    else vcSpeak(m?(bcheck?`טמפרטורת יעד בליבה: ${m[1]} מעלות — בדוק עם מד-חום לפני הגשה`:chamber?`טמפרטורת התא: ${m[1]} מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה`:`הטמפרטורה: ${m[1]} מעלות`):'אין טמפרטורה במשימה הזו', 'he');
   }
   else if(a==='qwhen'){
     const nx=vcTasks[vcIdx+1];
@@ -3874,7 +3889,7 @@ function renderPlanStartRow(earliest, serve, rebuild){
   const blockStart = behind && strict && !started;
   let warn='';
   if(behind){ const late=Math.round((Date.now()-earliest.getTime())/60000);
-    warn=`<div class="plan-warn">⚠ הזמן קצר — כדי להגיש ב-${fmtServe(serve)} היה צריך להתחיל ב-${fmtServe(earliest)} (לפני ${late} דק׳). דחה את ההגשה או קצר את התוכנית. <button class="mchip" data-planpush>➕ דחה הגשה ב-30 דק׳</button></div>`;
+    warn=`<div class="plan-warn">⚠ הזמן קצר — כדי להגיש ב-${fmtServe(serve)} היה צריך להתחיל ב-${fmtServe(earliest)} (לפני ${late} דק׳). דחה את ההגשה — אל תקצר שלבי בישול (עלול להשאיר את הפנים תת-מבושל ולא בטוח). <button class="mchip" data-planpush>➕ דחה הגשה ב-30 דק׳</button></div>`;
   }
   el.innerHTML=`${warn}<div class="plan-startrow">
     <button class="plan-startbtn ${started?'on':''}" data-planstart ${blockStart?'disabled':''}>${started?'⏹ עצור / אפס תוכנית':'▶ התחל תוכנית'}</button>
@@ -4010,6 +4025,7 @@ function renderTimelinePanel(){
       }
       c.stages.forEach(s=>{
         if(s.kind==='rest') tasks.push({t:s.start,label:`⏸️ מנוחה — ${name}`,sub:'',kind:'rest',det:detail?(findDetail(['מנוחה'])||''):''});
+        else if(s.kind==='bcheck') tasks.push({t:s.start,label:`🌡️ ${s.label} — ${name}`,sub:s.note||'',kind:'bcheck',det:detail?'הגש רק כשמד-חום בליבה מראה ≥ היעד — בדיקת הבטיחות לפני הגשה':''});   // D1
         else if(s.kind==='note') return;
         else if(s.kind==='dry'){
           tasks.push({t:s.start,label:`🌬️ ${s.label} — ${name}`,sub:s.note||'',kind:'dry',det:''});
@@ -4091,7 +4107,7 @@ function renderTimelinePanel(){
       </div>`).join('')}</div>`;
   }
   function renderWpHorizontal(tasks, serve){
-    const ic={sv:'💧',smoke:'💨',cook:'🔥',rest:'⏸️',prep:'🔪',fire:'🔥',serve:'🍽️',glaze:'🍯',dry:'🌬️'};
+    const ic={sv:'💧',smoke:'💨',cook:'🔥',rest:'⏸️',prep:'🔪',fire:'🔥',serve:'🍽️',glaze:'🍯',dry:'🌬️',bcheck:'🌡️'};
     return `<div class="workplan wp-horiz">${tasks.map((tk,i)=>`
       <div class="wp-hcell wp-${tk.kind}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClockRel(tk.t, serve)}</div><div class="wp-hlabel">${tk.label}</div>${tk.dur?`<div class="wp-timer">${timerHTML(tk.dur, tk.tid||('wph-'+i), tk.label)}</div>`:''}</div>`).join('')}</div>`;
   }
@@ -4120,6 +4136,7 @@ function renderTimelinePanel(){
       </div>`:'';
     const orderWarn=(showOrder && st.svSmokeOrder==='smoke-sv')?`<div class="tl-safety-warn">⚠️ <b>דורש תשומת-לב:</b> הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו — לפי טבלת פסטור מוכרת לפי עובי. בספק — עבור לסדר סו-ויד←עישון.</div>`:'';
     const stageRows=stages.map((s,si)=>{
+      if(s.kind==='bcheck') return `<div class="tl-stage tl-bcheck">🌡️ <b>${s.label}</b>${s.note?` · ${s.note}`:''}</div>`;   // D1: internal-temp safety gate
       if(s.hours===0) return `<div class="tl-stage tl-stage-note">↳ ${s.label}</div>`;
       const reload=s.kind==='smoke'&&s.hours>2.5?` · ↻ הוסף עץ כל ~90 דק׳ (כ-${Math.max(1,Math.round(s.hours*60/90)-1)} פעמים)`:'';
       const hLabel=s.hours<1?Math.round(s.hours*60)+' דק׳':s.hours.toFixed(1)+'ש';
@@ -4201,7 +4218,7 @@ function renderTimelinePanel(){
 
 /* ---- backup / restore (export-import) ---- */
 function exportData(){
-  const o={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i);o[k]=localStorage.getItem(k);}
+  const o={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); if(k==='mk-gemkey') continue; o[k]=localStorage.getItem(k);}   // Wave C: never export the paid AI key — a shared backup would leak it
   const payload={app:'matkonet',ver:1,exported:new Date().toISOString(),data:o};
   const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
   const url=URL.createObjectURL(blob), a=document.createElement('a');
@@ -4211,15 +4228,18 @@ function exportData(){
 function importData(file){
   const r=new FileReader();
   r.onload=()=>{
-    try{
-      const o=JSON.parse(r.result), d=(o&&o.data)?o.data:o;
-      if(!d||typeof d!=='object') throw 0;
-      Object.entries(d).forEach(([k,v])=>{try{localStorage.setItem(k,v);}catch(e){}});
-      favs=new Set(store.get('mk-fav')||[]);
-      applyAppearance();
-      updateFavBadge(); updateCartBadge(); render();
-      if(typeof toast==='function')toast('✓ הנתונים יובאו ושוחזרו בהצלחה');
-    }catch(e){ if(typeof toast==='function')toast('❌ הקובץ אינו גיבוי תקין של מתכונת'); }
+    let o; try{ o=JSON.parse(r.result); }catch(e){ if(typeof toast==='function')toast('❌ הקובץ אינו JSON תקין'); return; }
+    const d=(o&&o.data)?o.data:o;
+    if(!d||typeof d!=='object'||Array.isArray(d)){ if(typeof toast==='function')toast('❌ הקובץ אינו גיבוי תקין של מתכונת'); return; }
+    if(o&&o.app&&o.app!=='matkonet'){ if(typeof toast==='function')toast('❌ הגיבוי שייך לאפליקציה אחרת'); return; }
+    const keys=Object.keys(d); let ok=0, fail=0;
+    keys.forEach(k=>{ try{ localStorage.setItem(k, typeof d[k]==='string'?d[k]:JSON.stringify(d[k])); ok++; }catch(e){ fail++; } });   // Wave C: count per-key failures instead of swallowing them
+    favs=new Set(store.get('mk-fav')||[]);
+    applyAppearance(); updateFavBadge(); updateCartBadge(); render();
+    if(typeof toast==='function'){
+      if(fail>0) toast(`⚠ שוחזרו ${ok} מתוך ${keys.length} פריטים — ${fail} נכשלו (ייתכן שהאחסון מלא). ייצא-מחדש אחרי פינוי מקום.`);
+      else toast(`✓ הנתונים שוחזרו (${ok} פריטים)`);
+    }
   };
   r.onerror=()=>{ if(typeof toast==='function')toast('❌ שגיאה בקריאת הקובץ'); };
   r.readAsText(file);
@@ -4260,7 +4280,8 @@ function openBackup(){
        <label class="exbtn-lbl" for="bkImp">⬆ ייבא מקובץ</label>
        <input type="file" id="bkImp" accept="application/json,.json" hidden>
      </div>
-     <p class="section-sub" style="margin-top:12px">שים לב: ייבוא מחליף את הנתונים הנוכחיים בתוכן הקובץ.</p>
+     <p class="section-sub" style="margin-top:12px">שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI אינו נכלל בגיבוי (אבטחה) — חבר אותו מחדש לאחר שחזור.</p>
+     <div id="bkStorage" class="bk-storage" style="margin-top:14px"></div>
      <div style="border-top:1px solid var(--line);margin:18px 0 0;padding-top:16px">
        <div class="kbox k-danger"><b>אזור מסוכן</b> · איפוס-על מוחק את <b>כל</b> הנתונים שלך במכשיר הזה: מועדפים, דירוגים, הערות, יומן, מזווה, רשימת קניות, בחירות מידת-עשייה, תפריט ומתזמן. אין ביטול — כדאי לייצא גיבוי קודם.</div>
        <button id="bkWipe" class="mreset" style="margin-top:12px">🗑️ איפוס-על — מחק הכל</button>
@@ -4269,6 +4290,14 @@ function openBackup(){
   $("#bkExp").addEventListener('click',exportData);
   $("#bkImp").addEventListener('change',e=>{ if(e.target.files[0]) importData(e.target.files[0]); });
   $("#bkWipe").addEventListener('click',wipeAllData);
+  // Wave C: show real storage usage + let the user pin persistent storage (so the browser won't evict a live cook)
+  (async()=>{ const box=$("#bkStorage"); if(!box) return; const s=await storageInfo();
+    if(!s){ box.style.display='none'; return; }
+    const used = s.usedKB<1024 ? s.usedKB+' KB' : (s.usedKB/1024).toFixed(1)+' MB';
+    box.innerHTML=`<div class="kbox ${s.pct>=80?'k-danger':'k-ok'}"><b>אחסון מקומי:</b> ${used}${s.quotaMB?` מתוך ~${s.quotaMB} MB (${s.pct}%)`:''} · ${s.persisted?'קבוע ✓ (מוגן מפני מחיקה אוטומטית)':'רגיל — עלול להימחק תחת לחץ אחסון'}`+
+      (s.persisted?'':` <button class="mchip" id="bkPersist" style="margin-top:8px">🔒 הפוך לאחסון קבוע</button>`)+`</div>`;
+    const pb=$("#bkPersist"); if(pb) pb.addEventListener('click',async()=>{ await requestPersist(); toast('נשלחה בקשה לאחסון קבוע'); openBackup(); });
+  })();
 }
 function wipeAllData(){
   const btn=$("#bkWipe");
@@ -6234,6 +6263,7 @@ document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('
 })();
 try{ cRefreshHome(); cNavGo('home'); }catch(e){ /* headless/init guard */ }
 try{ if(typeof startTimerWatch==='function') startTimerWatch(); }catch(e){}   // parallel multi-event alarms
+try{ if(typeof requestPersist==='function') requestPersist(); }catch(e){}   // Wave C: ask for persistent storage so a live cook's data isn't evicted
 try{ document.addEventListener('pointerdown', function(){ if(typeof timerAudioPrime==='function') timerAudioPrime(); }, {once:true}); }catch(e){}   // R4: unlock audio on first gesture so timers restored after a reload still beep
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}
 /* T4: register the service worker in production (https only — the http test server skips it).
@@ -6243,7 +6273,9 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
     navigator.serviceWorker.register('sw.js').then(function(reg){
       mkSWReg=reg; try{ navigator.serviceWorker.ready.then(function(r){ mkSWReg=r||reg; }); }catch(e){}   // Wave A: alarms show via the SW registration (fixes the mobile new Notification() no-op)
       reg.addEventListener('updatefound',function(){ const nw=reg.installing; if(!nw) return;
-        nw.addEventListener('statechange',function(){ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof toast==='function') toast('גרסה חדשה זמינה — רענן',function(){location.reload();}); });
+        nw.addEventListener('statechange',function(){ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof toast==='function'){
+          if((typeof anyTimerActive==='function'&&anyTimerActive())||(typeof planStarted==='function'&&planStarted())) return;   // don't interrupt a live cook — the update applies on the next natural reload
+          toast('גרסה חדשה זמינה', function(){location.reload();}, 'רענן עכשיו'); } });
       });
     }).catch(function(){});
   });
