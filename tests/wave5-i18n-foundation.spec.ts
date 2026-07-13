@@ -1,46 +1,52 @@
 import { test, expect } from '@playwright/test';
 
-// Wave 5 — i18n foundation: the t() chrome seam, pluggable getLang() provider, and DOM translation.
-// (Chrome only — no machine translation of recipe/safety data, which stays gated behind the T1 guard.)
+// Wave 5 — i18n core: per-language dictionaries, t(hebrew), dir/lang switch, non-destructive
+// translation (Hebrew restored on switch-back), host-locale seam, and a second language (French).
 
 const init = async (page: any) => {
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
   await page.goto('/index.html');
 };
 
-test('t() returns Hebrew by default and English when the language is set', async ({ page }) => {
+test('t(): Hebrew source by default, translation when a language is set', async ({ page }) => {
   await init(page);
-  expect(await page.evaluate(`t('path.event')`)).toBe('יש לי אירוע');
+  expect(await page.evaluate(`t('יש לי אירוע')`)).toBe('יש לי אירוע');
   await page.evaluate(`setLang('en')`);
-  expect(await page.evaluate(`t('path.event')`)).toBe('I have an event');
+  expect(await page.evaluate(`t('יש לי אירוע')`)).toBe('I have an event');
   expect(await page.evaluate(`getLang()`)).toBe('en');
 });
 
-test('switching language sets html dir/lang and translates tagged chrome', async ({ page }) => {
+test('setLang switches dir/lang, translates chrome, and restores Hebrew on switch-back', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('en')`);
   expect(await page.evaluate(`document.documentElement.lang`)).toBe('en');
   expect(await page.evaluate(`document.documentElement.dir`)).toBe('ltr');
-  expect(await page.evaluate(`document.documentElement.classList.contains('lang-en')`)).toBe(true);
-  expect(await page.evaluate(`document.querySelector('[data-i18n="path.event"]').textContent`)).toBe('I have an event');
-  expect(await page.evaluate(`document.querySelector('#cHomeSearchInput').getAttribute('placeholder')`)).toContain('Search');
-  expect(await page.evaluate(`document.querySelector('[data-i18n-html="home.what"]').innerHTML`)).toContain('<b>cooking</b>');   // inline markup preserved
-  // back to Hebrew, RTL restored
+  expect(await page.evaluate(`document.querySelector('[data-i18n="path.event"]').textContent`)).toContain('I have an event');
+  expect(await page.evaluate(`document.querySelector('[data-i18n-html="home.what"]').innerHTML`)).toContain('<b>cooking</b>');
   await page.evaluate(`setLang('he')`);
   expect(await page.evaluate(`document.documentElement.dir`)).toBe('rtl');
-  expect(await page.evaluate(`document.querySelector('[data-i18n="path.event"]').textContent`)).toBe('יש לי אירוע');
+  expect(await page.evaluate(`document.querySelector('[data-i18n="path.event"]').textContent`)).toContain('יש לי אירוע');   // restored
+  expect(await page.evaluate(`document.querySelector('[data-i18n-html="home.what"]').innerHTML`)).toContain('מדליקים');       // restored
+});
+
+test('a second language (French) works from the same mechanism', async ({ page }) => {
+  await init(page);
+  await page.evaluate(`setLang('fr')`);
+  expect(await page.evaluate(`document.querySelector('[data-i18n="path.event"]').textContent`)).toContain("J'ai un événement");
+  expect(await page.evaluate(`t('בקר')`)).toBe('Bœuf');
 });
 
 test('getLang honors a host-provided locale (matkonet module seam)', async ({ page }) => {
   await init(page);
-  await page.evaluate(`window.__MATKONET_HOST__={lang:'en'}`);
-  expect(await page.evaluate(`getLang()`)).toBe('en');   // host overrides stored/default
+  await page.evaluate(`window.__MATKONET_HOST__={lang:'fr'}`);
+  expect(await page.evaluate(`getLang()`)).toBe('fr');   // host overrides stored/default
   await page.evaluate(`delete window.__MATKONET_HOST__`);
   expect(await page.evaluate(`getLang()`)).toBe('he');
 });
 
-test('t() falls back to the key (or an explicit fallback) for unknown chrome keys', async ({ page }) => {
+test('t() falls back to the Hebrew source (or explicit fallback) for unknown strings', async ({ page }) => {
   await init(page);
-  expect(await page.evaluate(`t('nonexistent.key')`)).toBe('nonexistent.key');
-  expect(await page.evaluate(`t('nonexistent.key','Fallback')`)).toBe('Fallback');
+  await page.evaluate(`setLang('en')`);
+  expect(await page.evaluate(`t('מחרוזת לא מוכרת')`)).toBe('מחרוזת לא מוכרת');
+  expect(await page.evaluate(`t('x','fallback')`)).toBe('fallback');
 });

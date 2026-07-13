@@ -1,0 +1,18 @@
+{
+ "__meta__": { "name": "Deutsch", "dir": "ltr" },
+ "__units__": { "פריטים": "Artikel", "סועדים": "Gäste", "מנות": "Gerichte", "טיימרים פעילים": "aktive Timer", "דק׳": "Min", "ק״ג": "kg", "נבחרו": "ausgewählt", "מוצגים": "angezeigt", "שעות": "Stunden", "שנבחרו": "ausgewählt" },
+ "__pre__": { "שלב": "Schritt" },
+ "__html__": { "home.what": "Was wird heute <b>gekocht</b>?" },
+ "בית": "Start", "קטלוג": "Katalog", "אירועים": "Events", "פרויקטים": "Projekte", "מועדפים": "Favoriten", "כלים": "Werkzeuge", "עוד": "Mehr", "כלי עזר": "Werkzeuge",
+ "בוקר טוב": "Guten Morgen", "צהריים טובים": "Guten Tag", "ערב טוב": "Guten Abend", "ברוך הבא": "Willkommen",
+ "בוקר טוב 👋": "Guten Morgen 👋", "צהריים טובים 👋": "Guten Tag 👋", "ערב טוב 👋": "Guten Abend 👋", "ברוך הבא 👋": "Willkommen 👋",
+ "מתכונת · מדריך האש": "Matkonet · Feuer-Guide", "סו-ויד · עישון · גריל · אש": "Sous-vide · Räuchern · Grill · Feuer",
+ "יש לי אירוע": "Ich habe ein Event", "בא לי לבשל משהו": "Ich möchte etwas kochen", "פרויקט מתקדם": "Fortgeschrittenes Projekt",
+ "שאל את האש": "Frag das Feuer", "❓ איך משתמשים באפליקציה": "❓ So nutzt man die App", "מסלולים, כלים וכל היכולות": "Wege, Werkzeuge und alle Funktionen",
+ "🌿 הכי פופולרי": "🌿 Am beliebtesten", "מה על האש?": "Was liegt auf dem Feuer?",
+ "בקר": "Rind", "חזיר": "Schwein", "טלה": "Lamm", "עוף": "Hähnchen", "הודו": "Pute", "אווז": "Gans", "ברווז": "Ente", "דג": "Fisch", "דג מעושן": "Räucherfisch", "פירות ים": "Meeresfrüchte", "ירקות": "Gemüse", "פירות": "Obst",
+ "איברים פנימיים": "Innereien", "נקניקיות": "Würste", "נקניק מעושן": "Rauchwurst", "נקניק מיובש": "Trockenwurst", "סלומי": "Salami", "פסטרמה": "Pastrami", "שווארמה": "Schawarma", "צלייה טחונה": "Hackgrill", "BBQ קלאסי": "Klassisches BBQ", "בשר מיובש": "Trockenfleisch", "בייקון": "Bacon", "גבינה": "Käse",
+ "אירופה": "Europa", "אסיה": "Asien", "אמריקה": "Amerika", "דרום אמריקה": "Südamerika", "מזרח תיכון": "Naher Osten", "אפריקה": "Afrika", "כל היבשות": "Alle Kontinente",
+ "מתזמן ציר-זמן": "Zeitplaner", "בונה תפריט לאירוח": "Menü-Builder", "רשימת קניות": "Einkaufsliste", "תזכורות": "Erinnerungen", "מצב הצילו": "Notfallmodus", "מתרגם נתחים": "Cut-Übersetzer", "מחשבון מלח/כמויות": "Salz-/Mengenrechner", "מתבלים ורטבים": "Gewürze und Saucen", "מדריך עצים": "Holz-Guide", "יומן בישולים": "Koch-Journal", "פרויקטים ומזווה": "Projekte und Vorrat", "גיבוי ושחזור": "Sicherung und Wiederherstellung", "אודות והיכולות": "Über und Funktionen", "יציאה מהאפליקציה": "App verlassen",
+ "שמור": "Speichern", "מחק": "Löschen", "סגור": "Schließen", "חזרה": "Zurück", "הגשה": "Servieren", "מראה": "Darstellung", "🌐 שפה": "🌐 Sprache"
+}

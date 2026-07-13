@@ -316,7 +316,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 179 · 14.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 180 · 14.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -331,10 +331,17 @@ HTML = r"""<!DOCTYPE html>
 # double-quotes need no escaping (double-quote wrapping would ~2x the raw file size).
 def _js_str(s):
     return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r").replace(" ", "\\u2028").replace(" ", "\\u2029") + "'"
-import os as _os
+import os as _os, glob as _glob
 with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.css"), encoding="utf-8") as _f: _css = _f.read()
 with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.js"), encoding="utf-8") as _f: _js = _f.read()
-html = HTML.replace("__CSS__", _css).replace("__JS__", _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")")
+# i18n: one JSON dictionary file per language under lang/ → const I18N_DICTS = {en:{…}, fr:{…}, …}
+_i18n = {}
+for _lf in sorted(_glob.glob(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "lang", "*.json"))):
+    _code = _os.path.splitext(_os.path.basename(_lf))[0]
+    with open(_lf, encoding="utf-8") as _f:
+        _i18n[_code] = json.load(_f)
+I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
+html = HTML.replace("__CSS__", _css).replace("__JS__", _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")")
 import os as _os, shutil as _shutil
 _root = _os.path.dirname(_os.path.abspath(__file__))
 # 1) index.html at repo root — used by the dev server, tests, and manual upload

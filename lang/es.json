@@ -1,0 +1,18 @@
+{
+ "__meta__": { "name": "Español", "dir": "ltr" },
+ "__units__": { "פריטים": "artículos", "סועדים": "comensales", "מנות": "platos", "טיימרים פעילים": "temporizadores activos", "דק׳": "min", "ק״ג": "kg", "נבחרו": "seleccionados", "מוצגים": "mostrados", "שעות": "horas", "שנבחרו": "seleccionados" },
+ "__pre__": { "שלב": "Paso" },
+ "__html__": { "home.what": "¿Qué se <b>cocina</b> hoy?" },
+ "בית": "Inicio", "קטלוג": "Catálogo", "אירועים": "Eventos", "פרויקטים": "Proyectos", "מועדפים": "Favoritos", "כלים": "Herramientas", "עוד": "Más", "כלי עזר": "Herramientas",
+ "בוקר טוב": "Buenos días", "צהריים טובים": "Buenas tardes", "ערב טוב": "Buenas noches", "ברוך הבא": "Bienvenido",
+ "בוקר טוב 👋": "Buenos días 👋", "צהריים טובים 👋": "Buenas tardes 👋", "ערב טוב 👋": "Buenas noches 👋", "ברוך הבא 👋": "Bienvenido 👋",
+ "מתכונת · מדריך האש": "Matkonet · Guía del Fuego", "סו-ויד · עישון · גריל · אש": "Sous-vide · Ahumado · Parrilla · Fuego",
+ "יש לי אירוע": "Tengo un evento", "בא לי לבשל משהו": "Quiero cocinar algo", "פרויקט מתקדם": "Proyecto avanzado",
+ "שאל את האש": "Pregunta al Fuego", "❓ איך משתמשים באפליקציה": "❓ Cómo usar la app", "מסלולים, כלים וכל היכולות": "Rutas, herramientas y funciones",
+ "🌿 הכי פופולרי": "🌿 Más popular", "מה על האש?": "¿Qué hay en el fuego?",
+ "בקר": "Ternera", "חזיר": "Cerdo", "טלה": "Cordero", "עוף": "Pollo", "הודו": "Pavo", "אווז": "Ganso", "ברווז": "Pato", "דג": "Pescado", "דג מעושן": "Pescado ahumado", "פירות ים": "Mariscos", "ירקות": "Verduras", "פירות": "Frutas",
+ "איברים פנימיים": "Casquería", "נקניקיות": "Salchichas", "נקניק מעושן": "Salchicha ahumada", "נקניק מיובש": "Salchicha curada", "סלומי": "Salami", "פסטרמה": "Pastrami", "שווארמה": "Shawarma", "צלייה טחונה": "Parrilla picada", "BBQ קלאסי": "BBQ clásico", "בשר מיובש": "Cecina", "בייקון": "Bacon", "גבינה": "Queso",
+ "אירופה": "Europa", "אסיה": "Asia", "אמריקה": "América", "דרום אמריקה": "Sudamérica", "מזרח תיכון": "Medio Oriente", "אפריקה": "África", "כל היבשות": "Todos los continentes",
+ "מתזמן ציר-זמן": "Planificador", "בונה תפריט לאירוח": "Creador de menú", "רשימת קניות": "Lista de compras", "תזכורות": "Recordatorios", "מצב הצילו": "Modo rescate", "מתרגם נתחים": "Traductor de cortes", "מחשבון מלח/כמויות": "Calculadora sal / cantidades", "מתבלים ורטבים": "Especias y salsas", "מדריך עצים": "Guía de maderas", "יומן בישולים": "Diario de cocción", "פרויקטים ומזווה": "Proyectos y despensa", "גיבוי ושחזור": "Copia y restauración", "אודות והיכולות": "Acerca de y funciones", "יציאה מהאפליקציה": "Salir de la app",
+ "שמור": "Guardar", "מחק": "Eliminar", "סגור": "Cerrar", "חזרה": "Atrás", "הגשה": "Servicio", "מראה": "Apariencia", "🌐 שפה": "🌐 Idioma"
+}
