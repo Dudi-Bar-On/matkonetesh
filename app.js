@@ -1492,7 +1492,7 @@ function startTimerWatch(){
       if(r && r.end && !r.fired && r.end<=now){ r.fired=1; changed=true;
         try{ timerBeep(); }catch(e){}
         mkVibrate([200,100,200,100,200]);
-        mkNotify('⏱ הטיימר הסתיים', (r.name||'טיימר בישול'), 'mk-'+k);
+        { var _en=(typeof timerEventName==='function')?timerEventName(k):''; mkNotify('⏱ הטיימר הסתיים'+(_en?' · '+_en:''), (r.name||'טיימר בישול'), 'mk-'+k); }   // E2: name which event's timer fired
       }
     });
     if(changed){ store.set('mk-timers', ts); startRingLoop(); try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} }   // F2: update the live-cook home banner when a timer fires
@@ -1636,6 +1636,10 @@ function closePanel(){
   if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}} lastFocus=null;}
 
 /* ---------- shopping list ---------- */
+// Wave E: the event cart's "bought" ticks + menu quantities are per-event — a global namespace meant
+// marking brisket bought for one event hid it from another that also needed it (→ under-buying).
+function mshopKey(text){ return 'shop:'+((typeof evScope==='function')?evScope():'cook')+':'+text; }
+function mkMenuqtyKey(){ return 'mk-menuqty-'+((typeof evScope==='function')?evScope():'cook'); }
 function shopData(){
   const meat=[], season=new Set(), wood=new Set(), coal=new Set(), equip=new Set(), items=[], seasSel=[];
   const seenSeas=new Set();
@@ -1647,7 +1651,7 @@ function shopData(){
       seasSel.push({id, heb:s.heb, kind:s.kind, ing:s.ing, sub:s.sub, for:[heb]});
     });
   };
-  const mq=store.get('mk-menuqty')||{};
+  const mq=store.get(mkMenuqtyKey())||{};
   const qkg=k=>mq[k]?` — ~${(mq[k]/1000).toFixed(1)} ק״ג <b style="color:var(--ember2)">(מהתפריט)</b>`:null;
   const ilFor=(heb,eng)=>{ const il=(typeof ILCUT!=='undefined')?ILCUT.find(r=>heb.includes(r[0].split(' ')[0])||(eng||'').toLowerCase().includes((r[1]||'').toLowerCase())):null; return il?` — 🥩 לקצב: ${il[2]}`:''; };
   // shopping list is derived from the ACTIVE event/menu (not a separate cart) — always in sync
@@ -1695,12 +1699,12 @@ function cartInventoryHTML(){
   if(!low.length) return '';
   return `<div class="shop-group"><h4>📦 מהמזווה — חסר / להשלים</h4>${low.map(i=>{
     const t=i.name+(i.low>0?` (יעד ≥${i.low} ${i.unit})`:'');
-    const done=store.get("shop:"+t)?"done":"";
+    const done=store.get(mshopKey(t))?"done":"";
     return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(t)}">${done?"✓":""}</span><span>${t} · <b style="color:var(--terra-d)">יש ${i.qty}</b></span></div>`;
   }).join('')}</div>`;
 }
 function shopLine(text){
-  const done=store.get("shop:"+text)?"done":"";
+  const done=store.get(mshopKey(text))?"done":"";
   return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(text)}">${done?"✓":""}</span><span>${text}</span></div>`;
 }
 function openCart(){
@@ -1746,7 +1750,7 @@ function openCart(){
   $("#panel").querySelectorAll("[data-rm]").forEach(b=>b.addEventListener("click",()=>{const s=menuState();s.keys=(s.keys||[]).filter(k=>k!==b.dataset.rm);saveMenu(s);updateCartBadge();render();openCart();}));
   $("#panel").querySelectorAll("[data-shopck]").forEach(sp=>sp.addEventListener("click",()=>{
     const t=decodeURIComponent(sp.dataset.shopck), row=sp.closest(".shop-line"), done=!row.classList.contains("done");
-    row.classList.toggle("done",done); sp.classList.toggle("done",done); sp.textContent=done?"✓":""; store.set("shop:"+t,done);
+    row.classList.toggle("done",done); sp.classList.toggle("done",done); sp.textContent=done?"✓":""; store.set(mshopKey(t),done);
   }));
   const clr=$("#panel").querySelector("[data-clear]");
   if(clr) clr.addEventListener("click",()=>{const s=menuState();s.keys=[];saveMenu(s);updateCartBadge();render();openCart();});
@@ -3310,7 +3314,7 @@ function resetMenu(){
   const fresh={guests:8,appetite:'reg',kosher:false,keys:[],sides:[],drinks:[],desserts:[],gpm:0};
   if(typeof menuCtx==='function' && menuCtx()==='event'){ fresh.evName=prev.evName||''; fresh.evDesc=prev.evDesc||''; fresh.evDate=prev.evDate||''; }
   saveMenu(fresh);                       // writes to the ACTIVE context (mk-menu or mk-cook)
-  store.set('mk-menuqty',{});
+  store.set(mkMenuqtyKey(),{});
   renderMenu();
   const label=(typeof menuCtx==='function'&&menuCtx()==='cook')?'הבישול אופס':'התפריט אופס — תפריט חדש';
   toast(label,()=>{ saveMenu(prev); renderMenu(); });
@@ -3361,7 +3365,7 @@ function renderMenu(){
     const raw=(budget/n)/dishYield(m); totalRaw+=raw; qtyMap[k]=Math.round(raw);
     return [`<div class="mdish"><div class="md-main"><span class="si-cat" style="color:${catColor(m.cat)}">${m.cat} ${kosherTag(k)}</span><b>${m.heb}</b><small>~${(raw/1000).toFixed(1)} ק״ג נא</small></div><div class="md-act"><button data-mswap="${i}" aria-label="החלף">↻</button><button data-mrm="${i}" aria-label="הסר">✕</button></div></div>`, raw];
   });
-  store.set('mk-menuqty', qtyMap);   // flows into the shopping list
+  store.set(mkMenuqtyKey(), qtyMap);   // flows into the shopping list (per-event scope — Wave E)
   const rawPerGuest = s.keys.length? Math.round(totalRaw/s.guests) : 0;
   const dishRows=dish.map(d=>d[0]).join("");
   const sides=pairList('side',cats), soft=pairList('soft',cats), alc=pairList('alc',cats);
@@ -4853,7 +4857,9 @@ function evActive(){ return store.get('mk-active')||null; }
 // scope for per-event timers + start-state: each event (or the 'cook' route) is an independent parallel session
 function evScope(){ return (typeof menuCtx==='function'&&menuCtx()==='cook')?'cook':(evActive()||'draft'); }
 // count of currently-running timers for a given event scope (its stage timers are keyed "st-<scope>-…")
-function evRunningCount(id){ const ts=store.get('mk-timers')||{}, now=Date.now(); let c=0; Object.keys(ts).forEach(function(k){ const r=ts[k]; if(r&&r.end&&r.end>now && k.indexOf('-'+id+'-')>=0) c++; }); return c; }
+function evRunningCount(id){ const ts=store.get('mk-timers')||{}, now=Date.now(); let c=0; Object.keys(ts).forEach(function(k){ const r=ts[k]; if(r&&r.end&&r.end>now && k.indexOf('st-'+id+'-')===0) c++; }); return c; }   // E2: exact scope-prefix, not a fragile substring match
+// resolve which event a stage-timer key (st-<scope>-…) belongs to — exact prefix, robust
+function timerEventName(key){ if(!key) return ''; const evs=evList(); for(var i=0;i<evs.length;i++){ if(String(key).indexOf('st-'+evs[i].id+'-')===0) return evs[i].name||''; } return ''; }
 function evGenId(){ return 'ev-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e4).toString(36); }
 function evMenuHasContent(m){ m=m||((typeof menuState==='function')?menuState():{keys:[]}); return (m.keys||[]).length>0; }
 function isDraft(){ return !evActive() && evMenuHasContent(); }
@@ -4923,12 +4929,24 @@ function parseServeTime(s,ev){ const p=(s||'19:00').split(':').map(Number); let 
 function combinedEventsRows(){
   const rows=[];
   evList().forEach(function(ev,ei){ const serve=parseServeTime(ev.serve, ev);
+    const evState = store.get('mk-tlstate-'+ev.id) || {};   // E3: this event's real per-item method/order/ready choices
     ((ev.menu&&ev.menu.keys)||[]).forEach(function(key){ const meta=(typeof resolveItem==='function')?resolveItem(key):null; if(!meta) return;
-      let totalH=0; try{ const profile=itemProfile(meta); const stages=itemStages(meta, profile.methods[0].key, true, svSmokeOrderDefault()); totalH=stages.reduce(function(a,s){return a+(s.hours||0);},0); }catch(e){}
-      rows.push({ev:ev, ei:ei, name:meta.heb, start:new Date(serve.getTime()-totalH*3600e3), serve:serve, totalH:totalH});
+      let totalH=0, stages=[]; const st=evState[key]||{};
+      try{ const profile=itemProfile(meta);
+        const method=st.method||profile.methods[0].key, ready=(st.ready!==false), order=st.svSmokeOrder||svSmokeOrderDefault();
+        stages=itemStages(meta, method, ready, order);
+        totalH=stages.reduce(function(a,s){return a+(s.hours||0);},0);
+      }catch(e){}
+      // schedule backward from serve to get the start clock and this item's smoke window (for equipment contention)
+      let end=serve.getTime(), smokeWin=null;
+      for(var i=stages.length-1;i>=0;i--){ const s=stages[i]; const sSt=end-(s.hours||0)*3600e3; if(s.kind==='smoke'&&!smokeWin) smokeWin={start:sSt,end:end}; end=sSt; }
+      rows.push({ev:ev, ei:ei, name:meta.heb, start:new Date(end), serve:serve, totalH:totalH, smoke:smokeWin});
     });
   });
   rows.sort(function(a,b){return a.start-b.start;});
+  // E4: single-smoker contention — smoke windows from DIFFERENT events that overlap in time
+  for(var a=0;a<rows.length;a++){ for(var b=a+1;b<rows.length;b++){ const A=rows[a],B=rows[b];
+    if(A.ev.id!==B.ev.id && A.smoke && B.smoke && A.smoke.start<B.smoke.end && B.smoke.start<A.smoke.end){ A.contention=true; B.contention=true; } } }
   return rows;
 }
 function openCombinedTimeline(){
@@ -4938,9 +4956,11 @@ function openCombinedTimeline(){
   const listHtml=rows.length?rows.map(function(r){ const col=EV_COLORS[r.ei%EV_COLORS.length];
     const day=isoDate(r.start); let head='';
     if(day!==curDay){ curDay=day; head=`<div class="cet-day">📅 ${esc(serveDayLabel(r.start))} · ${new Date(r.start).toLocaleDateString('he-IL',{day:'numeric',month:'short'})}</div>`; }   // day separator so multi-day catering doesn't collapse onto one clock
-    return `${head}<div class="cet-row ${r.start<now?'cet-past':''}" style="border-inline-start:4px solid ${col}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(r.name)}</b><small style="color:${col}">${esc(r.ev.name)} · הגשה ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+'ד':r.totalH.toFixed(1)+'ש'):''}</span></div>`;
+    return `${head}<div class="cet-row ${r.start<now?'cet-past':''} ${r.contention?'cet-clash':''}" style="border-inline-start:4px solid ${col}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(r.name)}${r.contention?' <span class="cet-warn" title="חפיפת מעשנה בין אירועים">⚠ מעשנה</span>':''}</b><small style="color:${col}">${esc(r.ev.name)} · הגשה ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+'ד':r.totalH.toFixed(1)+'ש'):''}</span></div>`;
   }).join(''):'<div class="shop-empty">אין אירועים עם מנות עדיין.</div>';
-  showPanel(`${toolTop('כל האירועים — תצוגה משולבת','לוח-זמנים מאוחד לאירועים מקבילים','🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div><p class="section-sub">זמני ההתחלה של כל המנות מכל האירועים, ממוזגים לפי שעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.</p>${listHtml}</div>`);
+  const clashN=rows.filter(function(r){return r.contention;}).length;
+  const clashNote=clashN?`<div class="cet-clashnote">⚠ <b>חפיפת מעשנה:</b> ${clashN} פריטים מאירועים שונים מתוזמנים לעשן בו-זמנית. מעשנה אחת לא תספיק — פזר את שעות ההגשה או השתמש בשתי מעשנות.</div>`:'';
+  showPanel(`${toolTop('כל האירועים — תצוגה משולבת','לוח-זמנים מאוחד לאירועים מקבילים','🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div>${clashNote}<p class="section-sub">זמני ההתחלה של כל המנות מכל האירועים, לפי השיטה שנבחרה בכל אירוע, ממוזגים לפי יום ושעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.</p>${listHtml}</div>`);
 }
 function cPaintEvents(){
   setMenuCtx('event');
