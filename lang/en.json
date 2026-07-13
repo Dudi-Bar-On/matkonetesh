@@ -16,7 +16,8 @@
   "שנבחרו": "selected"
  },
  "__pre__": {
-  "שלב": "Step"
+  "שלב": "Step",
+  "מהדורה": "Edition"
  },
  "__html__": {
   "home.what": "What's <b>cooking</b> today?"
@@ -68,8 +69,8 @@
  "מנות": "dishes",
  "שיטות": "methods",
  "מתבלים": "seasonings",
- "תוספות": "sides",
- "קינוחים": "desserts",
+ "תוספות": "Sides",
+ "קינוחים": "Desserts",
  "סקירה": "review",
  "בסיס": "Basics",
  "כשר": "Kosher",
@@ -277,5 +278,27 @@
  "📋 צור תוכנית עבודה מלאה": "📋 Generate full work plan",
  "💾 שמור אירוע": "💾 Save event",
  "🎙️ מצב בישול קולי": "🎙️ Voice-cook mode",
- "סיום · לרשימת האירועים": "Done · to the events list"
+ "סיום · לרשימת האירועים": "Done · to the events list",
+ "בחר תיבול לכל פריט — יוזרק אוטומטית לשלבי הבישול.": "Choose seasoning per item — auto-injected into the cooking steps.",
+ "בית המלאכה — בנייה מאפס": "The workshop — build from scratch",
+ "האירועים שלי": "My events",
+ "הכל מוכן — צור תוכנית עבודה כרונולוגית מלאה.": "All set — generate a full chronological work plan.",
+ "המונחים שמאחורי הטבלאות — שיטות עישון, ריפוי, סוגי עץ ופחם.": "The terms behind the tables — smoking, curing, wood and charcoal types.",
+ "כבד · 380ג׳": "Heavy · 380g",
+ "קל · 200ג׳": "Light · 200g",
+ "רגיל · 280ג׳": "Regular · 280g",
+ "לא נמצאו פריטים. נסה מילה אחרת.": "No items found. Try another word.",
+ "מילון המונחים": "The glossary",
+ "מתכונת · מדריך האש — סו-ויד ועישון": "Matkonet · Fire Guide — sous-vide & smoking",
+ "סקירה ותוכנית עבודה": "Review & work plan",
+ "פרטי מתכון": "Recipe details",
+ "ריפוי, נקניקים וגבינות": "Curing, sausages & cheeses",
+ "שיטות בישול": "Cooking methods",
+ "תוספות, שתייה וקינוחים": "Sides, drinks & desserts",
+ "שתייה": "Drinks",
+ "כשרות": "Kosher",
+ "סנן חזיר/לא-כשר": "Filter pork/non-kosher",
+ "האירוע": "The event",
+ "הגדר את הציוד שלך": "Set up your equipment",
+ "כדי שהמתכונים יתאימו למה שיש לך": "so recipes match what you have"
 }
