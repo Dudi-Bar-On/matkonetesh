@@ -2144,7 +2144,7 @@ const CAT_EMOJI={
  'פסטרמה':'🥩','שווארמה':'🌯','סלומי':'🍖','BBQ קלאסי':'🔥','צלייה טחונה':'🍔',
  'איברים פנימיים':'🫀','ירקות':'🥦','פירות':'🍑'
 };
-function foldCorner(){return false;} // v144: legacy 'vintage' theme branch retired
+function foldCorner(){return '';} // v144: legacy 'vintage' theme branch retired (must be '' — `${false}` prints "false")
 function catEmoji(c){return CAT_EMOJI[c]||'🔥';}
 const ICONS={
  steak:'<path d="M40 9c12 0 17 9 16 19-1 10-9 16-17 18-10 3-23 2-29-6-5-7-4-19 4-26 7-6 17-5 26-5z"/><path d="M21 26c9-3 19-2 25 4" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" opacity=".22"/><path d="M17 39c9 3 20 3 28-1" fill="none" stroke="#000" stroke-width="2.6" stroke-linecap="round" opacity=".22"/><path d="M30 18c-2 9-3 20 0 30" fill="none" stroke="#000" stroke-width="2.2" stroke-linecap="round" opacity=".15"/>',
