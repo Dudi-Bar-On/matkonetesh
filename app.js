@@ -4884,11 +4884,29 @@ function evSaveCurrent(name,desc,date){
   return id;
 }
 function evLoad(id){
-  setMenuCtx('event');
   const e=evList().find(x=>x.id===id); if(!e) return false;
+  // E6 (data-safety): never lose unsaved work when switching events, and make the switch explicit.
+  const curActive=(typeof evActive==='function')?evActive():null;
+  let rescued=null;
+  if(curActive && curActive!==id){
+    // leaving an active event → persist any working-menu edits back to its record (lossless, quiet)
+    try{ if(typeof evMenuHasContent==='function' && evMenuHasContent() && typeof evSaveCurrent==='function') evSaveCurrent(); }catch(_){}
+  } else if(!curActive && typeof isDraft==='function' && isDraft()){
+    // unsaved draft (no active event) → snapshot so the switch can be undone
+    try{ rescued={ menu:JSON.parse(JSON.stringify(menuState())), serve:store.get('mk-tlserve'), ctx:(typeof menuCtx==='function')?menuCtx():'event' }; }catch(_){ rescued=null; }
+  }
+  setMenuCtx('event');
   if(typeof saveMenu==='function') saveMenu(JSON.parse(JSON.stringify(e.menu))); else store.set('mk-menu',e.menu);
   if(e.serve) store.set('mk-tlserve',e.serve);
   store.set('mk-active',id);
+  if(typeof toast==='function'){
+    if(rescued) toast('עברת לאירוע: '+esc(e.name)+' · הטיוטה נשמרה', function(){   // undo → restore the rescued draft
+        setMenuCtx(rescued.ctx||'event'); if(typeof saveMenu==='function') saveMenu(rescued.menu); if(rescued.serve) store.set('mk-tlserve',rescued.serve); store.set('mk-active',null);
+        if(typeof closePanel==='function') closePanel(); if(typeof render==='function') render(); try{ if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }catch(_){}
+        if(typeof updateCartBadge==='function') updateCartBadge(); if(typeof cRefreshHome==='function') cRefreshHome();
+      }, 'שחזר טיוטה');
+    else toast('עברת לאירוע: '+esc(e.name));
+  }
   return true;
 }
 function evDelete(id){
@@ -5059,7 +5077,7 @@ function cPaintEvents(){
   const dd=$("#cEvDraftDiscard"); if(dd) dd.addEventListener('click',async()=>{ if((await appConfirm('למחוק את הטיוטה?',{okLabel:'🗑️ מחק',danger:true}))!==true) return; evClearActive(); cPaintEvents(); });
   host.querySelectorAll('[data-evload]').forEach(el=>el.addEventListener('click',ev=>{
     if(ev.target.closest('[data-evdel],[data-evplan],[data-evprint],[data-evcart]')) return;
-    const id=el.dataset.evload; if(evLoad(id)){ if(typeof toast==='function') toast('האירוע נטען · ערוך בבונה-הארוחה או באשף'); cwGo(0); cNavGo('wizard'); cwSyncFromMenu(); }
+    const id=el.dataset.evload; if(evLoad(id)){ cwGo(0); cNavGo('wizard'); cwSyncFromMenu(); }   // evLoad now shows the switch toast itself (with draft-undo when needed) — don't overwrite it
   }));
   host.querySelectorAll('[data-evplan]').forEach(el=>el.addEventListener('click',ev=>{
     ev.stopPropagation(); const id=el.dataset.evplan;
