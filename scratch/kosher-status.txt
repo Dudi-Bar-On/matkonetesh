@@ -1,0 +1,154 @@
+counts: {"kosher":127,"pork":102,"dairy":34,"shellfish":16}
+=== NON-KOSHER (pork/shellfish/treif) + DAIRY ===
+pork      cut-7            חזיר · ספייריבס / Pork Ribs
+pork      cut-8            חזיר · בטן חזיר / Pork Belly
+pork      cut-13           חזיר · כתף חזיר / Pork Shoulder
+pork      cut-16           מעורב · נקניקיות / Sausages
+pork      cut-29           חזיר · פילה חזיר / Pork Loin
+pork      cut-30           חזיר · פילה חזיר מדומה / Pork Tenderloin
+pork      cut-31           חזיר · צוואר חזיר / Pork Collar
+pork      cut-32           חזיר · רגל חזיר / Fresh Ham
+pork      cut-33           חזיר · קוטלט חזיר / Pork Chops
+pork      cut-61           חזיר · לחי חזיר / Pork Cheek (Jowl)
+pork      cut-62           חזיר · פרק חזיר / Pork Hock
+pork      cut-63           חזיר · חזה חזיר עם עצם / Picnic Shoulder
+pork      cut-64           חזיר · ריבס אמריקאי / Baby Back Ribs
+pork      cut-65           חזיר · אוזן חזיר / Pork Ear
+pork      cut-66           חזיר · זנב חזיר / Pork Tail
+dairy     cut-105          ירקות · חלומי / Grilled Halloumi
+shellfish cut-113          פירות ים · שרימפס ג'מבו / Jumbo Shrimp
+shellfish cut-114          פירות ים · שרימפס טייגר / Black Tiger Shrimp
+shellfish cut-115          פירות ים · גמברי / חסילון ענק / Giant Prawns
+shellfish cut-116          פירות ים · סקלופס / Sea Scallops
+shellfish cut-117          פירות ים · זנב לובסטר / Lobster Tail
+shellfish cut-118          פירות ים · לובסטר שלם / Whole Lobster
+shellfish cut-119          פירות ים · לנגוסטין / Langoustine
+shellfish cut-120          פירות ים · סרטן כחול / Blue Crab
+shellfish cut-121          פירות ים · רגלי סרטן מלך / King Crab Legs
+shellfish cut-122          פירות ים · סרטן רך / Soft-Shell Crab
+shellfish cut-123          פירות ים · תמנון / Octopus
+shellfish cut-124          פירות ים · קלמרי / דיונון / Squid / Calamari
+shellfish cut-126          פירות ים · דג חרב / Swordfish Steak
+shellfish cut-128          פירות ים · מולים / Mussels
+shellfish cut-129          פירות ים · צדפות (קלאמס) / Clams
+shellfish cut-130          פירות ים · אויסטרים / Oysters
+pork      make-m-brat      נקניקיות · בראטוורסט / Bratwurst
+pork      make-m-weiss     נקניקיות · וייסוורסט / Weisswurst
+pork      make-m-ital      נקניקיות · נקניק איטלקי / Italian Sausage
+pork      make-m-toul      נקניקיות · טולוז / Toulouse
+pork      make-m-chip      נקניקיות · צ׳יפולטה / ברקפסט / Breakfast Sausage
+pork      make-m-frank     נקניק מעושן · פרנקפורטר / וינר / Frankfurter
+pork      make-m-morta     נקניק מעושן · מורטדלה / Mortadella
+pork      make-m-bolo      נקניק מעושן · בולוניה / Bologna
+pork      make-m-snack     נקניק מעושן · סנאק-סטיקס / Snack Sticks
+pork      make-m-sopr      נקניק מיובש · סופרסטה / Soppressata
+pork      make-m-sauci     נקניק מיובש · סוסיסון סק / Saucisson Sec
+pork      make-m-cacc      נקניק מיובש · קצ׳טורה / Cacciatore
+pork      make-m-nduja     נקניק מיובש · נדוחה / Nduja
+pork      make-m-mici      צלייה טחונה · מיצ׳י / מיטיטֵיי / Mici / Mititei
+pork      make-m-carnati   נקניקיות · קרנאצי דה קאסה / Cârnați de Casă
+pork      make-m-patricieni נקניקיות · קרנאצי פטריצ׳ני / Patricieni
+pork      make-sal-coppa   סלומי · קופה / קפיקולה / Coppa
+pork      make-sal-pancetta סלומי · פנצ'טה / Pancetta
+pork      make-sal-guanciale סלומי · גואנצ'אלה / Guanciale
+pork      make-sal-lonzino סלומי · לונזינו / Lonzino
+pork      make-sal-speck   סלומי · שפק / Speck
+pork      make-m-loukaniko נקניק מעושן · לוקאניקו / Loukaniko
+pork      make-m-boerewors נקניקיות · בוארוורס / Boerewors
+pork      make-m-linguica  נקניק מעושן · לינגוויסה / Linguiça
+pork      make-m-lapcheong נקניק מיובש · לאפ צ'ונג / Lap Cheong
+pork      make-bbq-pbburnt BBQ קלאסי · Pork Belly Burnt Ends / Pork Belly Burnt Ends
+pork      make-bbq-porchetta BBQ קלאסי · פורקטה / Porchetta
+pork      make-bbq-hotlinks BBQ קלאסי · Texas Hot Links / Texas Hot Links
+pork      make-n-thuringer נקניקיות · טורינגר רוסטבראטוורסט / Thüringer Rostbratwurst
+pork      make-n-nurnberger נקניקיות · נירנברגר / Nürnberger Bratwurst
+pork      make-n-bockwurst נקניקיות · בוקוורסט / Bockwurst
+pork      make-n-knack     נקניקיות · קנאקוורסט / Knackwurst
+pork      make-n-kase      נקניקיות · קזקריינר / Käsekrainer
+pork      make-n-biala     נקניקיות · ביאלה (קילבסה לבנה) / Biała Kiełbasa
+pork      make-n-debrecener נקניקיות · דברצנר / Debrecener
+pork      make-n-bangers   נקניקיות · בנגרס קמברלנד / Cumberland Bangers
+pork      make-n-boudin    נקניקיות · בודן בלאן / Boudin Blanc
+pork      make-n-chorizo-arg נקניקיות · צ׳וריסו ארגנטינאי / Chorizo Argentino
+pork      make-n-parrillera נקניקיות · סלצ׳יצ׳ה פרייז׳רה / Salchicha Parrillera
+pork      make-n-morcilla  נקניקיות · מורסייה ארגנטינאית / Morcilla Argentina
+pork      make-n-chorizo-mex נקניקיות · צ׳וריסו מקסיקני / Chorizo Mexicano
+pork      make-n-butifarra נקניקיות · בוטיפרה / Butifarra Blanca
+pork      make-n-chistorra נקניקיות · צ׳יסטורה / Chistorra
+pork      make-n-sheftalia נקניקיות · שפטליה / Sheftalia
+pork      make-n-longganisa נקניקיות · לונגניסה / Longganisa Hamonado
+pork      make-n-saiua     נקניקיות · סאי אואה / Sai Ua
+pork      make-n-kielbasa  נקניק מעושן · קילבסה וייסקה / Kielbasa Wiejska
+pork      make-n-andouille נקניק מעושן · אנדואי קייג׳ני / Cajun Andouille
+pork      make-n-cervelat  נקניק מעושן · סרוולה שווייצרית / Cervelat
+pork      make-n-kranjska  נקניק מעושן · קרניסקה קלובסה / Kranjska Klobasa
+pork      make-n-chourico  נקניק מעושן · שוריסו פורטוגלי / Chouriço Português
+pork      make-n-kabanos   נקניק מיובש · קבנוס / Kabanosy
+pork      make-n-landjager נקניק מיובש · לנדייגר / Landjäger
+pork      make-n-chorizo-esp נקניק מיובש · צ׳וריסו ספרדי (קוראדו) / Chorizo Curado
+pork      make-n-fuet      נקניק מיובש · פואט / Fuet
+pork      make-n-salchichon נקניק מיובש · סלצ׳יצ׳ון / Salchichón
+pork      make-n-milano    נקניק מיובש · סלמי מילאנו / Salame Milano
+pork      make-n-finocchiona נקניק מיובש · פינוקיונה / Finocchiona
+pork      make-n-pepperoni נקניק מיובש · פפרוני / Pepperoni
+pork      make-n-kulen     נקניק מיובש · קולן / Kulen
+pork      make-n-krakowska נקניק מעושן · קרקובסקה / Kiełbasa Krakowska
+pork      make-n-sremska   נקניק מיובש · סרמסקה / Sremska Kobasica
+pork      make-n-summer    נקניק מעושן · סאמר סוסג׳ / Summer Sausage
+pork      make-n-salsiccia נקניקיות · סלסיצ׳ה / Salsiccia
+pork      make-n-cotechino נקניקיות · קוטקינו / Cotechino
+pork      make-n-sundae    נקניקיות · סונדֶה / Sundae
+pork      make-n-nemchua   נקניק מיובש · נם צ׳ואה / Nem Chua
+pork      make-n-linguica-cal נקניק מעושן · קלבריה (Calabresa) / Linguiça Calabresa
+pork      make-n-krakowska-pod נקניק מיובש · קרקובסקה מיובשת / Krakowska Podsuszana
+pork      make-n-teewurst  נקניק מיובש · טווורסט / Teewurst
+pork      make-n-louk-hor  נקניקיות · לוקאניקו כפרי / Loukaniko Horiatiko
+pork      make-n-alheira   נקניקיות · אליירה / Alheira
+pork      make-n-boudin-caj נקניקיות · בודן קייג׳ני / Cajun Boudin
+pork      make-n-bock-smoked נקניק מעושן · בוקוורסט מעושן / Geräucherte Bockwurst
+pork      make-n-lap-fresh נקניקיות · לאפ צ׳ונג טרי / Lap Cheong (Fresh-style)
+pork      make-n-csabai    נקניק מיובש · צ׳אבאי / Csabai Kolbász
+pork      make-n-saikrok   נקניקיות · סאי קרוק איסאן / Sai Krok Isan
+pork      spec-4           בייקון · בייקון חזיר / Pork Bacon
+pork      spec-6           נקניק מעושן · קילבסה / Kielbasa
+pork      spec-7           נקניק מעושן · אנדוי / Andouille
+pork      spec-8           נקניק מעושן · סרוולט / Cervelat
+pork      spec-9           נקניק מעושן · סאמר סוסג' / Summer Sausage
+pork      spec-10          נקניק מיובש · קבנוס / Kabanos
+pork      spec-11          נקניק מיובש · סלמי / Salami
+pork      spec-12          נקניק מיובש · צ'וריסו מיובש / Dry Chorizo
+pork      spec-13          נקניק מיובש · לנדיגר / Landjäger
+pork      spec-14          נקניק מיובש · פפרוני / Pepperoni
+dairy     spec-15          גבינה · גאודה מעושנת / Smoked Gouda
+dairy     spec-16          גבינה · צ'דר מעושן / Smoked Cheddar
+dairy     spec-17          גבינה · סקמורצה/מוצרלה מעושנת / Smoked Scamorza
+dairy     spec-18          גבינה · פרובולון מעושן / Smoked Provolone
+dairy     spec-19          גבינה · גבינת שמנת מעושנת / Smoked Cream Cheese
+dairy     spec-20          גבינה · צ'דר מיושן / Aged Cheddar
+dairy     spec-21          גבינה · גאודה / Gouda
+dairy     spec-22          גבינה · גאודה מיושנת / Aged Gouda
+dairy     spec-23          גבינה · גרוייר / Gruyère
+dairy     spec-24          גבינה · קומטה / Comté
+dairy     spec-25          גבינה · אמנטל / Emmental
+dairy     spec-26          גבינה · מנצ'גו / Manchego
+dairy     spec-27          גבינה · אדם / Edam
+dairy     spec-28          גבינה · קולבי ג'ק / Colby Jack
+dairy     spec-29          גבינה · מונטריי ג'ק / Monterey Jack
+dairy     spec-30          גבינה · פפר ג'ק / Pepper Jack
+dairy     spec-31          גבינה · הוורטי / Havarti
+dairy     spec-32          גבינה · אסיאגו / Asiago
+dairy     spec-33          גבינה · פרמז'ן / Parmigiano
+dairy     spec-34          גבינה · רקלט / Raclette
+dairy     spec-35          גבינה · פונטינה / Fontina
+dairy     spec-36          גבינה · טילסיט / Tilsit
+dairy     spec-37          גבינה · ז'רלסברג / Jarlsberg
+dairy     spec-38          גבינה · קנטל / Cantal
+dairy     spec-39          גבינה · גבינה כחולה / Blue Cheese
+dairy     spec-40          גבינה · אורגון בלו / Oregon Blue
+dairy     spec-41          גבינה · גורגונזולה / Gorgonzola
+dairy     spec-42          גבינה · סטילטון / Stilton
+dairy     spec-43          גבינה · רוקפור / Roquefort
+dairy     spec-44          גבינה · פיור די לטה מעושן / Smoked Fior di Latte
+dairy     spec-45          גבינה · ברי / Brie
+dairy     spec-46          גבינה · קממבר / Camembert
+dairy     spec-47          גבינה · חלומי / Halloumi

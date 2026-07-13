@@ -2293,8 +2293,7 @@ function leadForMethod(meta, fm){
 }
 function passFilters(meta){
   if(filters.fav && !isFav(meta.key)) return false;
-  if(filters.kosher && kosherStatus(meta.key)==='pork') return false;
-  if(filters.kosher && kosherStatus(meta.key)==='shellfish') return false;
+  if(filters.kosher && !isKosherOk(meta.key)) return false;   // pork / shellfish / blood
   if(filters.diff && (meta.obj.diff||meta.diff||3) > filters.diff) return false;
   if(filters.method && !itemMethods(meta).includes(filters.method)) return false;
   if(filters.time){
@@ -3251,26 +3250,46 @@ function favStar(key){return `<button class="favstar ${isFav(key)?'on':''}" data
 function ratingMini(key){const r=store.get('rating:'+key)||0;return r?`<span class="rmini" aria-label="דירוג ${r}">${'★'.repeat(r)}</span>`:'';}
 
 /* ---- kosher ---- */
+/* ── kashrut classification (species/recipe-based; not a hechsher) ──
+   Statuses: 'pork' · 'shellfish' (non-finned/scaled sea creatures + scaleless fish) ·
+             'treif' (blood) · 'dairy' (כשר חלבי) · 'kosher' (kosher species/parve).
+   pork/shellfish/treif are filtered out by the kosher filter; dairy is kept and tagged. */
+const K_FISH_OK=/(סלמון|salmon|לקס|lox|גרבלקס|gravlax|פורל|trout|טונה|tuna|הליבוט|halibut|מקרל|mackerel|בקלה|\bcod\b|סרדין|sardine|לברק|דניס|בורי|אמנון|טילפיה|tilapia|בס ים|sea ?bass)/;
+const K_FISH_NO=/(דג חרב|swordfish|שפמנון|catfish|כריש|\bshark\b|צלופח|\beel\b|sturgeon|חדקן|מרלין|marlin)/;
+// pork MEAT/FAT/charcuterie (casing mentions are stripped before this runs — casing is swappable)
+// pork MEAT/FAT/charcuterie. Hebrew relies on 'חזיר' (every pork item's meat says so);
+// Latin names cover English text. Hebrew transliterations (קופה/פנצ'טה…) are omitted — they
+// appear in generic technique notes (e.g. "roll like coppa/pancetta") and cause false positives.
+const K_PORK=/(חזיר|לחם חזיר|\bpork\b|לארד|\blard\b|pancetta|guanciale|coppa|capicola|prosciut|serrano|\bspeck\b|lonzino|nduja|jam[oó]n|culatello)/;
+const K_BLOOD=/(\bדם\b|נקניק דם|\bblood\b|morcilla|מורסי|blutwurst|בלוטו|\bsundae\b|סונדה|soondae|בלאד)/;
+// key -> status override for the few cases the rules get wrong.
+// cut-17 (Kebab): 'חזיר' appears only in a cross-reference note comparing it to mici; the dish is beef/lamb.
+const KOSHER_OVERRIDE={'cut-17':'kosher'};
+// strip pork-CASING mentions (casing is swappable) before scanning for pork MEAT — including
+// pork listed as one casing option among kosher ones, e.g. "מעי כבש/חזיר".
+function _koshBuildTxt(m){ try{ return JSON.stringify(m.build||'').replace(/(שרוול|שרוולי|מעי|קרום|עור|טבעת)[^,.;\n)"]{0,18}חזיר/g,''); }catch(e){ return ''; } }
 function kosherStatus(key){
+  if(KOSHER_OVERRIDE[key]) return KOSHER_OVERRIDE[key];
   const m=resolveItem(key); if(!m) return 'kosher';
-  const s=(m.heb+' '+m.eng).toLowerCase();
-  if(m.cat==='חזיר') return 'pork';   // the pork category is pork regardless of item name
-  // pork + pork-based charcuterie
-  if(/(חזיר|pork|bacon|בייקון|pancetta|coppa|guanciale|lardo|lonzino|speck|prosciutto|loukaniko|lingu|lap cheong|saucisson|mortadella|bratwurst|weisswurst|toulouse|chipolata|frankfurter|bologna|nduja|porchetta|capicola|cotechino|culatello)/.test(s)) return 'pork';
-  // seafood: all פירות ים are non-kosher EXCEPT fish with fins+scales (tuna, halibut)
-  if(m.cat==='פירות ים'){
-    if(/(טונה|tuna|הליבוט|halibut)/.test(s)) return 'kosher';
-    return 'shellfish';
-  }
-  // non-kosher fish (no scales): swordfish, catfish, shark, eel, sturgeon
-  if(/(דג חרב|swordfish|שפמנון|catfish|כריש|shark|צלופח|eel|sturgeon|מרלין|marlin)/.test(s)) return 'shellfish';
-  if(m.cat==='גבינה'||/cheese/.test(s)) return 'dairy';
-  return 'kosher';
+  const s=(m.heb+' '+m.eng+' '+(m.cat||'')).toLowerCase();
+  const bt=_koshBuildTxt(m).toLowerCase();          // recipe text, pork-casing stripped
+  // dairy (כשר חלבי) — cheese items (incl. halloumi mis-filed under vegetables)
+  if(m.cat==='גבינה' || /\bcheese\b|גבינ|halloumi|חלומי/.test(s)) return 'dairy';
+  // bacon: pork by default, but "beef bacon" is a kosher species
+  if(/bacon|בייקון/.test(s)) return /(בקר|beef|עגל|veal|טלה|lamb)/.test(s)?'kosher':'pork';
+  // pork by category, name, or pork meat/fat in the recipe
+  if(m.cat==='חזיר' || K_PORK.test(s) || K_PORK.test(bt)) return 'pork';
+  // blood products
+  if(K_BLOOD.test(s) || K_BLOOD.test(bt)) return 'treif';
+  // sea creatures: פירות ים is non-kosher unless a finned+scaled fish
+  if(m.cat==='פירות ים') return K_FISH_OK.test(s)?'kosher':'shellfish';
+  if(K_FISH_NO.test(s)) return 'shellfish';
+  return 'kosher';   // beef/lamb/veal, poultry, kosher fish, vegetables, fruit, parve
 }
-function kosherLabel(k){return k==='pork'?'לא כשר (חזיר)':k==='shellfish'?'לא כשר (פירות ים/דג ללא קשקשת)':k==='dairy'?'מוצר חלבי':'כשר';}
-function kosherTag(key){const k=kosherStatus(key);if(k==='pork'||k==='shellfish')return '<span class="ktag kp">לא כשר</span>';if(k==='dairy')return '<span class="ktag kd">חלבי</span>';return '';}
-// kosher-event OK = not pork and not shellfish (dairy is allowed, shown with a tag per user preference)
-function isKosherOk(key){const k=kosherStatus(key);return k!=='pork'&&k!=='shellfish';}
+function kosherLabel(k){return k==='pork'?'לא כשר (חזיר)':k==='shellfish'?'לא כשר (פירות ים / דג ללא קשקשת)':k==='treif'?'לא כשר (דם)':k==='dairy'?'כשר · חלבי':'כשר';}
+function kosherTag(key){const k=kosherStatus(key);if(k==='pork'||k==='shellfish'||k==='treif')return '<span class="ktag kp">לא כשר</span>';if(k==='dairy')return '<span class="ktag kd">כשר חלבי</span>';return '';}
+// kosher-filter OK = not pork, shellfish, or blood. Dairy is kosher (shown with a "כשר חלבי" tag).
+function isKosherOk(key){const k=kosherStatus(key);return k!=='pork'&&k!=='shellfish'&&k!=='treif';}
 /* v144: equipment-readiness tag — quiet unless gear is configured AND something's actually missing */
 function gearTag(key){
   if(!gearConfigured()) return '';
@@ -5810,7 +5829,7 @@ function cwPaintPickList(){
   if(cwActiveCat) items=items.filter(i=>i.cat===cwActiveCat);
   if(cwCont) items=items.filter(i=>((typeof itemContinent==='function')?itemContinent(i):'')===cwCont);
   if(cwQuery) items=items.filter(i=>(i.heb+' '+i.eng+' '+i.cat).toLowerCase().includes(cwQuery));
-  if(m.kosher) items=items.filter(i=>(typeof kosherStatus!=='function')||kosherStatus(i.key)!=='pork');
+  if(m.kosher) items=items.filter(i=>(typeof isKosherOk!=='function')||isKosherOk(i.key));   // pork + shellfish + blood
   const cnt=$("#cwPickCount"); if(cnt){ cnt.innerHTML=`<span>🌿 ${sel.size} נבחרו · ${items.length} מוצגים</span>${sel.size?'<button class="cwclear" id="cwClearSel">נקה בחירה</button>':''}`;
     const cb=$("#cwClearSel"); if(cb) cb.addEventListener('click',()=>{ const mm=cwMenu(); mm.keys=[]; cwSave(mm); cwPaintPickList(); }); }
   // sticky summary of what's already chosen (all categories)
@@ -6446,7 +6465,7 @@ async function aiPlanEvent(prompt){
   const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:1500});
   const wantKosher = !!(raw&&raw.kosher) || /כשר|בלי חזיר|ללא חזיר/.test(prompt);
   let keys=aiValidateKeys(raw&&raw.keys).kept;
-  if(wantKosher && typeof kosherStatus==='function') keys=keys.filter(k=>{ const st=kosherStatus(k); return st==='kosher'; });
+  if(wantKosher && typeof isKosherOk==='function') keys=keys.filter(k=>isKosherOk(k));   // drop pork/shellfish/blood
   const ns=evNameSets();
   const filt=(arr,valid)=>[...new Set((Array.isArray(arr)?arr:[]).filter(x=>valid.includes(x)))];
   return {
