@@ -142,21 +142,23 @@ function composedSteps(c, combo){
   // combinatorial compose
   const steps=[];
   const dtgt=(c.doneness&&typeof donenessTarget==='function')?donenessTarget(c):c.tgt;
-  if(offal) steps.push(["הכנה ייעודית לאיבר", offalPrep(c), 0]);
-  else if(produce) steps.push(["הכנה",`שטוף ונקה. חתוך לגודל אחיד. ${c.somid||''}`,0]);
-  else steps.push(["הכנה",`יבש היטב במגבת — משטח יבש = צריבה וקרום טובים.`,0]);
+  if(offal) steps.push([L("הכנה ייעודית לאיבר","Offal-specific prep"), offalPrep(c), 0]);
+  else if(produce) steps.push([L("הכנה","Prep"),L(`שטוף ונקה. חתוך לגודל אחיד. ${c.somid||''}`,`Rinse and clean. Cut to an even size. ${t(c.somid)||''}`),0]);
+  else steps.push([L("הכנה","Prep"),L(`יבש היטב במגבת — משטח יבש = צריבה וקרום טובים.`,`Pat thoroughly dry with a towel — a dry surface means a good sear and bark.`),0]);
   if(has('sv')){
-    steps.push(["סו-ויד",`ואקום ובשל ב-${c.svt}°C למשך ${c.svh} שעות${produce?' — הפקטין מתרכך לרכות מדויקת':c.doneness?` (יעד ${dtgt}° לפי מידת העשייה)`:''}. ${produce?'הוסף חמאה/שמן לשקית.':''}`,upperHours(c.svh)*3600]);
-    steps.push(["ייבוש מעבר",`הוצא מהשקית ויבש היטב במגבת — משטח רטוב לא נצרב ולא מעשן טוב.`,0]);
+    steps.push([L("סו-ויד","Sous-vide"),L(`ואקום ובשל ב-${c.svt}°C למשך ${c.svh} שעות${produce?' — הפקטין מתרכך לרכות מדויקת':c.doneness?` (יעד ${dtgt}° לפי מידת העשייה)`:''}. ${produce?'הוסף חמאה/שמן לשקית.':''}`,`Vacuum-seal and cook at ${c.svt}°C for ${c.svh} hours${produce?' — the pectin softens to a precise tenderness':c.doneness?` (target ${dtgt}° for your doneness)`:''}. ${produce?'Add butter/oil to the bag.':''}`),upperHours(c.svh)*3600]);
+    steps.push([L("ייבוש מעבר","Pat dry"),L(`הוצא מהשקית ויבש היטב במגבת — משטח רטוב לא נצרב ולא מעשן טוב.`,`Remove from the bag and pat thoroughly dry — a wet surface won't sear or smoke well.`),0]);
   }
   if(has('smoke')){
-    const t=has('sv')?c.smt:(c.sot||c.smt), hrs=has('sv')?c.smh:(c.soh||c.smh);
-    steps.push(["עישון",`מעשנת ${t}°C עם ${c.wood&&c.wood!=='ללא'?c.wood:'עצי פרי'} למשך ${hrs} שעות${has('sv')?' — לעשן וקרום בלבד, הבישול כבר נעשה':''}. ${!has('sv')&&c.somid&&c.somid!=='אין'?c.somid+'.':''}`,upperHours(hrs)*3600]);
+    const smkT=has('sv')?c.smt:(c.sot||c.smt), hrs=has('sv')?c.smh:(c.soh||c.smh);
+    const woodHe=c.wood&&c.wood!=='ללא'?c.wood:'עצי פרי', woodEn=c.wood&&c.wood!=='ללא'?t(c.wood):'fruit woods';
+    const midHe=(!has('sv')&&c.somid&&c.somid!=='אין')?c.somid+'.':'', midEn=(!has('sv')&&c.somid&&c.somid!=='אין')?t(c.somid)+'.':'';
+    steps.push([L("עישון","Smoke"),L(`מעשנת ${smkT}°C עם ${woodHe} למשך ${hrs} שעות${has('sv')?' — לעשן וקרום בלבד, הבישול כבר נעשה':''}. ${midHe}`,`Smoker at ${smkT}°C with ${woodEn} for ${hrs} hours${has('sv')?" — for smoke and bark only, it's already cooked":''}. ${midEn}`),upperHours(hrs)*3600]);
   }
   if(has('grill')){
-    steps.push(["גימור גריל / צריבה",`אש ישירה חמה: ${has('sv')||has('smoke')?'צריבה קצרה 1-2 דק׳/צד לקרום, צבע וטעם אש — הפנים כבר מוכן':'צלה 2-4 דק׳/צד עד מדחום '+(dtgt? (Math.max(40,dtgt-4)+'° (יעד '+dtgt+'°)') : 'מוכנות')}.`,240]);
+    steps.push([L("גימור גריל / צריבה","Grill finish / sear"),L(`אש ישירה חמה: ${has('sv')||has('smoke')?'צריבה קצרה 1-2 דק׳/צד לקרום, צבע וטעם אש — הפנים כבר מוכן':'צלה 2-4 דק׳/צד עד מדחום '+(dtgt? (Math.max(40,dtgt-4)+'° (יעד '+dtgt+'°)') : 'מוכנות')}.`,`Hot direct heat: ${has('sv')||has('smoke')?'a quick 1-2 min/side sear for crust, color and fire flavor — the inside is already done':'grill 2-4 min/side to a thermometer reading of '+(dtgt? (Math.max(40,dtgt-4)+'° (target '+dtgt+'°)') : 'doneness')}.`),240]);
   }
-  if(!produce||c.rest) steps.push(["מנוחה והגשה",`${c.rest||5} דק׳ מנוחה. ${offal?'הגש עם לימון/צ׳ימיצ׳ורי.':produce?'תבל והגש.':'פרוס נגד הסיב.'}`,(c.rest||5)*60]);
+  if(!produce||c.rest) steps.push([L("מנוחה והגשה","Rest & serve"),L(`${c.rest||5} דק׳ מנוחה. ${offal?'הגש עם לימון/צ׳ימיצ׳ורי.':produce?'תבל והגש.':'פרוס נגד הסיב.'}`,`${c.rest||5} min rest. ${offal?'Serve with lemon/chimichurri.':produce?'Season and serve.':'Slice against the grain.'}`),(c.rest||5)*60]);
   return steps;
 }
 const SMOKER_TIPS={
@@ -169,57 +171,67 @@ const SMOKER_TIPS={
   'גז (עם תיבת עשן)':'גז: הדלק מבער אחד בלבד לחום עקיף, תיבת עשן עם שבבים על המבער הפעיל, והבשר בצד הכבוי.',
   'חשמלי':'חשמלי: יציב וקל אך עשן חלש — הוסף שבבים לאורך הבישול לשמירת עשן רציף.'
 };
-function smokerTip(){ if(!gearConfigured()) return ''; const g=gearState(); return (g.smoker&&g.smoker!=='אין')?SMOKER_TIPS[g.smoker]||'':''; }
-function preheatHint(){ if(!gearConfigured()) return '45 דק׳ ייצוב'; const g=gearState(); const s=g.smoker;
-  if(s==='פלטים') return '~15 דק׳ (פלט מתחמם מהר)';
-  if(s==='גז (עם תיבת עשן)') return '~10–15 דק׳';
-  if(s==='חשמלי'||s==='ארון / קבינט') return '~20–30 דק׳';
-  if(s&&s!=='אין') return 'ארובת פחם ~30–45 דק׳';
-  return '45 דק׳ ייצוב'; }
+const SMOKER_TIPS_EN={
+  'ארון / קבינט':'Cabinet smoker: very stable temp — great for long low & slow. Use the shelves for volume. Relatively low airflow — make sure the pellicle is dry before smoking so smoke sticks.',
+  'אופסט / סטיק-ברנר':'Offset: run a small, clean fire (bluish smoke). Thick/fat side toward the firebox, and rotate the cut halfway — there is a heat gradient along the chamber.',
+  'פלטים':'Pellet: set-and-forget. For heavier smoke — add a smoke tube/maze, and run max smoke for the first two hours while the meat is cold.',
+  'קמאדו / קרמי':'Kamado: stable and efficient. Add a deflector for indirect heat, tune gently with the vents, and wait for the temp to stabilize before adding the meat.',
+  'WSM / חבית':'WSM/drum: fill the water bowl to stabilize, Minion method for the coals, and keep the bottom vents toward the fire.',
+  'קטל (ככלי עישון)':'Kettle: set up 2 zones (coals to one side), meat on the cool side, a wood chunk on the coals. Add charcoal about every ~hour.',
+  'גז (עם תיבת עשן)':'Gas: light just one burner for indirect heat, a smoke box with chips over the lit burner, and the meat on the off side.',
+  'חשמלי':'Electric: stable and easy but weak smoke — add chips throughout the cook to keep smoke continuous.'
+};
+function smokerTip(){ if(!gearConfigured()) return ''; const g=gearState(); return (g.smoker&&g.smoker!=='אין')?(getLang()==='he'?SMOKER_TIPS:SMOKER_TIPS_EN)[g.smoker]||'':''; }
+function preheatHint(){ if(!gearConfigured()) return L('45 דק׳ ייצוב','45 min to stabilize'); const g=gearState(); const s=g.smoker;
+  if(s==='פלטים') return L('~15 דק׳ (פלט מתחמם מהר)','~15 min (pellet heats fast)');
+  if(s==='גז (עם תיבת עשן)') return L('~10–15 דק׳','~10–15 min');
+  if(s==='חשמלי'||s==='ארון / קבינט') return L('~20–30 דק׳','~20–30 min');
+  if(s&&s!=='אין') return L('ארובת פחם ~30–45 דק׳','Charcoal chimney ~30–45 min');
+  return L('45 דק׳ ייצוב','45 min to stabilize'); }
 function gearMissingHelp(c, methods){
   const g=gearState();
   const items=methods.map(m=>{
     if(m==='sv'){
-      const alt=(c.sot?`עישון-בלבד (הנתח תומך: ~${c.soh}ש ב-${c.sot}°C)`:(canSmoke()?'עישון':canGrill()?'גריל עם גימור זהיר':'בישול איטי בתנור'));
-      return {ic:'🌊',name:'סו-ויד',alt,altnote:'מרקם: סו-ויד נותן אחידות פנימית; החלופה תיתן קרום/עישון חזק יותר.',buy:'סו-ויד טבילה (immersion) — קומפקטי וזול יחסית.'};
+      const alt=(c.sot?L(`עישון-בלבד (הנתח תומך: ~${c.soh}ש ב-${c.sot}°C)`,`Smoke-only (this cut supports it: ~${c.soh}h at ${c.sot}°C)`):(canSmoke()?L('עישון','Smoking'):canGrill()?L('גריל עם גימור זהיר','Grill with a careful finish'):L('בישול איטי בתנור','Slow-cook in the oven')));
+      return {ic:'🌊',name:L('סו-ויד','Sous-vide'),alt,altnote:L('מרקם: סו-ויד נותן אחידות פנימית; החלופה תיתן קרום/עישון חזק יותר.','Texture: sous-vide gives internal uniformity; the alternative gives a stronger crust/smoke.'),buy:L('סו-ויד טבילה (immersion) — קומפקטי וזול יחסית.','Immersion sous-vide — compact and relatively cheap.')};
     }
     if(m==='smoke'){
-      const alt=(canGrill()?'עישון בגריל עקיף (2-zone) עם תיבת עשן / נתחי עץ על הגחלים':(canSV()?'סו-ויד + גימור (בלי טעם עשן)':'בישול בתנור נמוך'));
-      return {ic:'💨',name:'עישון',alt,altnote:'ללא מעשנה ייעודית, גריל עקיף עם עץ נותן טעם עשן טוב.',buy:'מעשנת פחם (WSM/חבית), קמאדו, או ארון.'};
+      const alt=(canGrill()?L('עישון בגריל עקיף (2-zone) עם תיבת עשן / נתחי עץ על הגחלים','Smoke on an indirect grill (2-zone) with a smoke box / wood chunks on the coals'):(canSV()?L('סו-ויד + גימור (בלי טעם עשן)','Sous-vide + finish (no smoke flavor)'):L('בישול בתנור נמוך','Cook in a low oven')));
+      return {ic:'💨',name:L('עישון','Smoking'),alt,altnote:L('ללא מעשנה ייעודית, גריל עקיף עם עץ נותן טעם עשן טוב.','Without a dedicated smoker, an indirect grill with wood gives good smoke flavor.'),buy:L('מעשנת פחם (WSM/חבית), קמאדו, או ארון.','A charcoal smoker (WSM/drum), kamado, or cabinet.')};
     }
     if(m==='grill'){
-      const alt=(g.torch&&g.torch!=='אין')?'גימור במבער/לפיד':'צריבה במחבת ברזל-יצוק חמה מאוד';
-      return {ic:'🔥',name:'גריל',alt,altnote:'לגימור/צריבה — מחבת ברזל יצוק או מבער נותנים קרום מצוין.',buy:'גריל פחם/גז, או מבער ידני לגימור.'};
+      const alt=(g.torch&&g.torch!=='אין')?L('גימור במבער/לפיד','Finish with a torch'):L('צריבה במחבת ברזל-יצוק חמה מאוד','Sear in a very hot cast-iron pan');
+      return {ic:'🔥',name:L('גריל','Grill'),alt,altnote:L('לגימור/צריבה — מחבת ברזל יצוק או מבער נותנים קרום מצוין.','For finishing/searing — a cast-iron pan or a torch gives an excellent crust.'),buy:L('גריל פחם/גז, או מבער ידני לגימור.','A charcoal/gas grill, or a handheld torch for finishing.')};
     }
     return null;
   }).filter(Boolean);
   if(!items.length) return '';
-  return `<div class="gear-alt">${items.map(it=>`<div class="ga-row"><div class="ga-h">${it.ic} אין לך <b>${it.name}</b></div>
-    <div class="ga-line">↳ <b>חלופה:</b> ${it.alt}</div>
+  return `<div class="gear-alt">${items.map(it=>`<div class="ga-row"><div class="ga-h">${it.ic} ${L('אין לך','You have no')} <b>${it.name}</b></div>
+    <div class="ga-line">↳ <b>${L('חלופה','Alternative')}:</b> ${it.alt}</div>
     <div class="ga-sub">${it.altnote}</div>
-    <div class="ga-line">🛒 <b>לשדרוג:</b> ${it.buy}</div></div>`).join('')}
-    <div class="ga-foot">🔒 אפשר להפעיל בכל זאת (override) אם יש גישה זמנית · לעדכון הציוד: ☰ ← הציוד שלי.</div></div>`;
+    <div class="ga-line">🛒 <b>${L('לשדרוג','To upgrade')}:</b> ${it.buy}</div></div>`).join('')}
+    <div class="ga-foot">🔒 ${L('אפשר להפעיל בכל זאת (override) אם יש גישה זמנית · לעדכון הציוד: ☰ ← הציוד שלי.','You can enable it anyway (override) if you have temporary access · to update gear: ☰ ← My gear.')}</div></div>`;
 }
 function methodToggleHTML(c,key){
   const r=methodRules(c), act=ctxMethods(c,key);
-  const defs=[['sv','🌊 סו-ויד'],['smoke','💨 עישון'],['grill','🔥 גריל']];
+  const defs=[['sv',L('🌊 סו-ויד','🌊 Sous-vide')],['smoke',L('💨 עישון','💨 Smoke')],['grill',L('🔥 גריל','🔥 Grill')]];
   const offMethods=[];
   const row=`<div class="mtoggles" data-mtkey="${key}">${defs.map(([m,l])=>{
     const allowed=r.allowed.includes(m), on=act.includes(m);
     const gearOff=allowed && !gearCan(m); if(gearOff) offMethods.push(m);
     const cls=`mtoggle ${on?'on':''} ${allowed?'':'locked'} ${gearOff?'gear-off':''}`;
     const tag=gearOff?` <span class="gear-tag">🔒</span>`:'';
-    return `<button class="${cls}" data-mt="${m}" ${allowed?'':'disabled title="לא זמין לפריט זה"'}>${l}${tag}</button>`;
-  }).join('')}<span class="mtoggle-hint">שיטות פעילות — התוכנית מתעדכנת</span></div>`;
+    return `<button class="${cls}" data-mt="${m}" ${allowed?'':`disabled title="${L('לא זמין לפריט זה','Not available for this item')}"`}>${l}${tag}</button>`;
+  }).join('')}<span class="mtoggle-hint">${L('שיטות פעילות — התוכנית מתעדכנת','Active methods — the plan updates')}</span></div>`;
   let extra='';
-  if(act.includes('smoke')){ const t=smokerTip(); if(t) extra+=`<div class="smoker-tip">💡 <b>טיפ למעשנה שלך:</b> ${t}</div>`; }
+  if(act.includes('smoke')){ const tip=smokerTip(); if(tip) extra+=`<div class="smoker-tip">💡 <b>${L('טיפ למעשנה שלך','Tip for your smoker')}:</b> ${tip}</div>`; }
   extra+=gearThermoNote(c);
   return row + gearMissingHelp(c, offMethods) + extra;
 }
 function gearThermoNote(c){
   if(!gearConfigured()) return ''; const g=gearState(); const th=g.thermo;
-  if(!th || th==='אין') return `<div class="thermo-note">🌡️ <b>אין לך מדחום:</b> עבוד לפי זמן ומבחני מגע/צבע. לבטיחות (בעיקר עוף ובשר טחון) — מדחום מיידי הוא הדבר הכי מומלץ לרכוש; בלעדיו קשה לוודא ${c&&c.safe?c.safe+'°C':'טמפ׳ בטוחה'} במרכז.</div>`;
-  if(th==='בקר-מאוורר') return `<div class="thermo-note ok">🌡️ <b>בקר-מאוורר:</b> הגדר יעד פיט ופרוב בשר — הוא ישמור על הטמפ׳ ויתריע. "הגדר ולך".</div>`;
+  if(!th || th==='אין') return `<div class="thermo-note">🌡️ <b>${L('אין לך מדחום','You have no thermometer')}:</b> ${L('עבוד לפי זמן ומבחני מגע/צבע. לבטיחות (בעיקר עוף ובשר טחון) — מדחום מיידי הוא הדבר הכי מומלץ לרכוש; בלעדיו קשה לוודא','Work by time and touch/color tests. For safety (especially poultry and ground meat) — an instant-read thermometer is the top recommended buy; without it, it is hard to verify')} ${c&&c.safe?c.safe+'°C':L('טמפ׳ בטוחה','a safe temp')} ${L('במרכז','in the center')}.</div>`;
+  if(th==='בקר-מאוורר') return `<div class="thermo-note ok">🌡️ <b>${L('בקר-מאוורר','Leave-in probe')}:</b> ${L('הגדר יעד פיט ופרוב בשר — הוא ישמור על הטמפ׳ ויתריע. "הגדר ולך".','Set a pit target and a meat probe — it will hold the temp and alert you. "Set and forget."')}</div>`;
   return '';
 }
 
@@ -229,20 +241,20 @@ function isOffal(c){return c.cat==='איברים פנימיים';}
 function isGrillableMeat(c){ return !isProduce(c) && (!!c.doneness || isOffal(c)); }  // fast cuts + all offal (asado classics)
 function offalPrep(c){
   const e=c.eng||'';
-  if(e.includes('Sweetbread')) return "בלאנץ׳ 3-5 דק׳ במים רותחים עם לימון → אמבט קרח → קלף קרום → ייבוש ולחיצה קלה במקרר שעה. זה הסוד למרקם קריספי-קרמי.";
-  if(e.includes('Kidney'))     return "חצה, הסר את הליבה הלבנה, והשרה בחלב/מי-מלח 30-60 דק׳ להעדנת הטעם. יבש היטב.";
-  if(e.includes('Brain'))      return "השרה במים קרים שעה, קלף קרומים בעדינות, בלאנץ׳ קצר 2-3 דק׳ במים עם חומץ → קרח. עדין מאוד — טפל ברכות.";
-  if(e.includes('Gizzard'))    return "קורקבנים חייבים בישול-מקדים לרכות: סו-ויד 90° או בישול איטי עד רכים, רק אז לגריל לחריכה קצרה.";
-  if(e.includes('Liver'))      return "הסר קרומים וכלי דם. פרוס עבה (2 ס\"מ) כדי שלא יתייבש. אפשר השריה קצרה בחלב לעידון.";
-  return "נקה קרומים ושומן עודף, יבש היטב. חתוך לגודל אחיד.";
+  if(e.includes('Sweetbread')) return L("בלאנץ׳ 3-5 דק׳ במים רותחים עם לימון → אמבט קרח → קלף קרום → ייבוש ולחיצה קלה במקרר שעה. זה הסוד למרקם קריספי-קרמי.","Blanch 3-5 min in boiling water with lemon → ice bath → peel the membrane → dry and press lightly in the fridge for an hour. This is the secret to a crispy-creamy texture.");
+  if(e.includes('Kidney'))     return L("חצה, הסר את הליבה הלבנה, והשרה בחלב/מי-מלח 30-60 דק׳ להעדנת הטעם. יבש היטב.","Halve, remove the white core, and soak in milk/brine for 30-60 min to mellow the flavor. Pat thoroughly dry.");
+  if(e.includes('Brain'))      return L("השרה במים קרים שעה, קלף קרומים בעדינות, בלאנץ׳ קצר 2-3 דק׳ במים עם חומץ → קרח. עדין מאוד — טפל ברכות.","Soak in cold water for an hour, gently peel the membranes, blanch briefly 2-3 min in water with vinegar → ice. Very delicate — handle gently.");
+  if(e.includes('Gizzard'))    return L("קורקבנים חייבים בישול-מקדים לרכות: סו-ויד 90° או בישול איטי עד רכים, רק אז לגריל לחריכה קצרה.","Gizzards need a pre-cook to tenderize: sous-vide 90° or slow-cook until tender, only then grill for a quick sear.");
+  if(e.includes('Liver'))      return L("הסר קרומים וכלי דם. פרוס עבה (2 ס\"מ) כדי שלא יתייבש. אפשר השריה קצרה בחלב לעידון.","Remove membranes and blood vessels. Slice thick (2 cm) so it doesn't dry out. A short milk soak can mellow it.");
+  return L("נקה קרומים ושומן עודף, יבש היטב. חתוך לגודל אחיד.","Clean off membranes and excess fat, pat thoroughly dry. Cut to an even size.");
 }
 function offalDoneNote(c){
   const e=c.eng||'';
-  if(e.includes('Heart')) return `צלה חם ומהיר כמו סטייק — מדחום פנים ${c.tgt}°.`;
-  if(e.includes('Liver')||e.includes('Kidney')) return `בטיחות: בשל עד ${c.tgt}° — ללא ורוד (איבר נקבובי).`;
-  if(e.includes('Sweetbread')||e.includes('Brain')) return `צלה עד זהוב-קריספי מבחוץ וקרמי בפנים (~${c.tgt}°).`;
-  if(e.includes('Gizzard')) return `אחרי הריכוך — רק חריכה קצרה לטעם אש.`;
-  return `יעד פנים ${c.tgt}°.`;
+  if(e.includes('Heart')) return L(`צלה חם ומהיר כמו סטייק — מדחום פנים ${c.tgt}°.`,`Grill hot and fast like a steak — ${c.tgt}° internal.`);
+  if(e.includes('Liver')||e.includes('Kidney')) return L(`בטיחות: בשל עד ${c.tgt}° — ללא ורוד (איבר נקבובי).`,`Safety: cook to ${c.tgt}° — no pink (a porous organ).`);
+  if(e.includes('Sweetbread')||e.includes('Brain')) return L(`צלה עד זהוב-קריספי מבחוץ וקרמי בפנים (~${c.tgt}°).`,`Grill until golden-crispy outside and creamy inside (~${c.tgt}°).`);
+  if(e.includes('Gizzard')) return L(`אחרי הריכוך — רק חריכה קצרה לטעם אש.`,`After tenderizing — just a quick sear for fire flavor.`);
+  return L(`יעד פנים ${c.tgt}°.`,`${c.tgt}° internal target.`);
 }
 function meatGrillSteps(c){
   const dtgt=(typeof donenessTarget==='function' && c.doneness)? donenessTarget(c) : c.tgt;
@@ -250,18 +262,18 @@ function meatGrillSteps(c){
   const offal=isOffal(c);
   const steps=[];
   if(offal){
-    steps.push(["הכנה ייעודית לאיבר", offalPrep(c), 0]);
-    steps.push(["הכנה לצלייה",`שיפוד עוזר לחלקים קטנים (לבבות/כליות). את התיבול עושים קרוב לצלייה — מלח מוקדם מוציא נוזלים.`,0]);
-    steps.push(["חימום גריל",`אש ישירה חמה-בינונית. חמם שבכה 10 דק׳, נקה ושמן קלות (על האוכל, לא השבכה).`,0]);
-    steps.push(["צלייה",`צלה 2-4 דק׳/צד עד השחמה יפה. ${offalDoneNote(c)}`,300]);
-    steps.push(["הגשה",`מנוחה קצרה ${c.rest||3} דק׳. הגש עם לימון/צ׳ימיצ׳ורי — הקלאסיקה של האסאדו.`,(c.rest||3)*60]);
+    steps.push([L("הכנה ייעודית לאיבר","Offal-specific prep"), offalPrep(c), 0]);
+    steps.push([L("הכנה לצלייה","Prep for grilling"),L(`שיפוד עוזר לחלקים קטנים (לבבות/כליות). את התיבול עושים קרוב לצלייה — מלח מוקדם מוציא נוזלים.`,`A skewer helps with small pieces (hearts/kidneys). Season close to grilling — early salt draws out moisture.`),0]);
+    steps.push([L("חימום גריל","Heat the grill"),L(`אש ישירה חמה-בינונית. חמם שבכה 10 דק׳, נקה ושמן קלות (על האוכל, לא השבכה).`,`Medium-hot direct heat. Preheat the grate 10 min, clean and oil lightly (the food, not the grate).`),0]);
+    steps.push([L("צלייה","Grill"),L(`צלה 2-4 דק׳/צד עד השחמה יפה. ${offalDoneNote(c)}`,`Grill 2-4 min/side to a nice sear. ${offalDoneNote(c)}`),300]);
+    steps.push([L("הגשה","Serve"),L(`מנוחה קצרה ${c.rest||3} דק׳. הגש עם לימון/צ׳ימיצ׳ורי — הקלאסיקה של האסאדו.`,`A short ${c.rest||3} min rest. Serve with lemon/chimichurri — the asado classic.`),(c.rest||3)*60]);
     return steps;
   }
-  steps.push(["טמפרטורת חדר",`הוצא מהמקרר 30-40 דק׳ לפני. יבש היטב במגבת — משטח יבש = צריבה טובה.`,0]);
-  steps.push(["2 אזורים + חימום",`בנה שני אזורים: צד חם מאוד (ישיר, 250°+) וצד קר (עקיף). חמם את השבכה 10-15 דק׳ ונקה.`,0]);
-  steps.push(["צריבה על אש ישירה",`הנח על הצד החם וצרוב 2-4 דק׳/צד עד קרום וסימני שבכה. הפוך פעם אחת (אל תזיז מוקדם מדי).`,300]);
-  steps.push(["גמר באזור הקר + מדחום",`העבר לצד הקר וסגור מכסה. בשל עד מדחום פנים ${pull}° (יעד ${dtgt}° אחרי carryover). נתח דק — דלג ישר לכאן.`,0]);
-  steps.push(["מנוחה",`הנח לנוח ${c.rest||5} דק׳ — הטמפ׳ תעלה עוד ~3-5° והמיצים יתייצבו. פרוס נגד הסיב.`,(c.rest||5)*60]);
+  steps.push([L("טמפרטורת חדר","Room temperature"),L(`הוצא מהמקרר 30-40 דק׳ לפני. יבש היטב במגבת — משטח יבש = צריבה טובה.`,`Take out of the fridge 30-40 min ahead. Pat thoroughly dry — a dry surface means a good sear.`),0]);
+  steps.push([L("2 אזורים + חימום","2 zones + heat"),L(`בנה שני אזורים: צד חם מאוד (ישיר, 250°+) וצד קר (עקיף). חמם את השבכה 10-15 דק׳ ונקה.`,`Build two zones: a very hot side (direct, 250°+) and a cool side (indirect). Preheat the grate 10-15 min and clean.`),0]);
+  steps.push([L("צריבה על אש ישירה","Sear over direct heat"),L(`הנח על הצד החם וצרוב 2-4 דק׳/צד עד קרום וסימני שבכה. הפוך פעם אחת (אל תזיז מוקדם מדי).`,`Place on the hot side and sear 2-4 min/side to a crust and grate marks. Flip once (don't move it too early).`),300]);
+  steps.push([L("גמר באזור הקר + מדחום","Finish on the cool zone + thermometer"),L(`העבר לצד הקר וסגור מכסה. בשל עד מדחום פנים ${pull}° (יעד ${dtgt}° אחרי carryover). נתח דק — דלג ישר לכאן.`,`Move to the cool side and close the lid. Cook to ${pull}° internal (target ${dtgt}° after carryover). Thin cut — skip straight to here.`),0]);
+  steps.push([L("מנוחה","Rest"),L(`הנח לנוח ${c.rest||5} דק׳ — הטמפ׳ תעלה עוד ~3-5° והמיצים יתייצבו. פרוס נגד הסיב.`,`Let it rest ${c.rest||5} min — the temp will climb another ~3-5° and the juices will settle. Slice against the grain.`),(c.rest||5)*60]);
   return steps;
 }
 // ── context-scoped seasoning: template stays clean, instance saved per cook/event/project ──
@@ -292,23 +304,25 @@ function seasoningById(id){return (DATA.seasonings||[]).find(s=>s.id===id);}
 function injectSeasoningSteps(steps, key, tmpl){
   const src=tmpl ? (houseRubId(key)?[houseRubId(key)]:[]) : selectedSeasonings(key);
   const sel=src.map(seasoningById).filter(Boolean);
-  if(!sel.length){ const out=[...steps]; out.splice(1,0,['🧂 תיבול בסיסי',`מלח גס נדיב (ופלפל) מכל הצדדים — גם בלי ראב, מלח הוא חובה.`,0]); return out; }
+  if(!sel.length){ const out=[...steps]; out.splice(1,0,[L('🧂 תיבול בסיסי','🧂 Basic seasoning'),L(`מלח גס נדיב (ופלפל) מכל הצדדים — גם בלי ראב, מלח הוא חובה.`,`Generous coarse salt (and pepper) on all sides — even without a rub, salt is a must.`),0]); return out; }
   const out=[...steps];
   const marinades=sel.filter(s=>s.kind==='marinade');
   const rubs=sel.filter(s=>s.kind==='rub');
   const glazes=sel.filter(s=>s.kind==='glaze');
   const sauces=sel.filter(s=>s.kind==='sauce');
   let ins=1; // after first prep step
-  marinades.forEach(s=>{ out.splice(ins++,0,[`🥣 מרינדה: ${s.heb}`,`${s.ing} — ${s.use}`,0]); });
-  rubs.forEach(s=>{ out.splice(ins++,0,[`🌶️ ראב: ${s.heb}`,`${s.ing} — שפשף היטב לפני הבישול.`,0]); });
+  marinades.forEach(s=>{ out.splice(ins++,0,[L(`🥣 מרינדה: ${s.heb}`,`🥣 Marinade: ${itemName(s)}`),L(`${s.ing} — ${s.use}`,`${t(s.ing)} — ${t(s.use)}`),0]); });
+  rubs.forEach(s=>{ out.splice(ins++,0,[L(`🌶️ ראב: ${s.heb}`,`🌶️ Rub: ${itemName(s)}`),L(`${s.ing} — שפשף היטב לפני הבישול.`,`${t(s.ing)} — rub in well before cooking.`),0]); });
   // glaze before the rest step (or at end)
-  let restIdx=out.findIndex(st=>st[0].includes('מנוחה'));
+  let restIdx=out.findIndex(st=>st[0].includes('מנוחה')||st[0].toLowerCase().includes('rest'));
   if(restIdx<0) restIdx=out.length;
-  glazes.forEach(s=>{ out.splice(restIdx++,0,[`🍯 גלייז: ${s.heb}`,`${s.ing} — מברישים ב-10-15 הדקות האחרונות של הבישול, בשכבות.`,0]); });
-  sauces.forEach(s=>{ out.splice(restIdx+1,0,[`🥄 רוטב הגשה: ${s.heb}`,`${s.ing} — אפשר להכין מראש (אפילו יום קודם). הגש לצד.`,0]); restIdx++; });
+  glazes.forEach(s=>{ out.splice(restIdx++,0,[L(`🍯 גלייז: ${s.heb}`,`🍯 Glaze: ${itemName(s)}`),L(`${s.ing} — מברישים ב-10-15 הדקות האחרונות של הבישול, בשכבות.`,`${t(s.ing)} — brush on in the last 10-15 minutes of cooking, in layers.`),0]); });
+  sauces.forEach(s=>{ out.splice(restIdx+1,0,[L(`🥄 רוטב הגשה: ${s.heb}`,`🥄 Serving sauce: ${itemName(s)}`),L(`${s.ing} — אפשר להכין מראש (אפילו יום קודם). הגש לצד.`,`${t(s.ing)} — can be made ahead (even a day before). Serve on the side.`),0]); restIdx++; });
   return out;
 }
 const KIND_LABEL={rub:'ראב יבש',marinade:'מרינדה',glaze:'גלייז',sauce:'רוטב'};
+const KIND_LABEL_EN={rub:'Dry rub',marinade:'Marinade',glaze:'Glaze',sauce:'Sauce'};
+function kindLabel(k){ return (getLang()==='he'?KIND_LABEL:KIND_LABEL_EN)[k]||k; }
 const KIND_EMOJI={rub:'🌶️',marinade:'🥣',glaze:'🍯',sauce:'🥄'};
 function seasoningsFor(cat, produce){
   return (DATA.seasonings||[]).filter(s=> produce? s.produce : s.cats.includes(cat));
@@ -316,12 +330,12 @@ function seasoningsFor(cat, produce){
 function cont2color(cont){return {'אמריקה':'#c0563a','דרום אמריקה':'#4f8a3d','ישראל/מזה"ת':'#d99a2b','אפריקה':'#a24d5e','אירופה':'#7a90c2','אסיה':'#c94f6d'}[cont]||'#b5603a';}
 function seasoningDetailHTML(s){
   return `<div class="seas-detail">
-    <div class="seas-head"><span class="seas-kind" style="--sc:${cont2color(s.cont)}">${KIND_EMOJI[s.kind]} ${KIND_LABEL[s.kind]}</span><span class="seas-origin">${s.origin}</span></div>
-    <h3 class="seas-title">${s.heb} <small>${s.eng}</small></h3>
-    <div class="seas-sec"><h5>מרכיבים ויחסים</h5><p>${s.ing}</p></div>
-    <div class="seas-sec"><h5>שימוש והכנה</h5><p>${s.use}</p></div>
-    <div class="seas-sec"><h5>מתאים ל־</h5><p>${s.produce?'ירקות ופירות · ':''}${s.cats.join(' · ')}</p></div>
-    ${s.sub?`<div class="seas-sec seas-sub"><h5>⚠ תחליף בישראל</h5><p>${s.sub}</p></div>`:''}
+    <div class="seas-head"><span class="seas-kind" style="--sc:${cont2color(s.cont)}">${KIND_EMOJI[s.kind]} ${kindLabel(s.kind)}</span><span class="seas-origin">${t(s.origin)}</span></div>
+    <h3 class="seas-title">${itemName(s)}${getLang()==='he'?` <small>${s.eng}</small>`:''}</h3>
+    <div class="seas-sec"><h5>${L('מרכיבים ויחסים','Ingredients & ratios')}</h5><p>${t(s.ing)}</p></div>
+    <div class="seas-sec"><h5>${L('שימוש והכנה','Use & prep')}</h5><p>${t(s.use)}</p></div>
+    <div class="seas-sec"><h5>${L('מתאים ל־','Pairs with')}</h5><p>${s.produce?L('ירקות ופירות · ','Vegetables & fruit · '):''}${s.cats.map(x=>t(x)).join(' · ')}</p></div>
+    ${s.sub?`<div class="seas-sec seas-sub"><h5>${L('⚠ תחליף בישראל','⚠ Substitute in Israel')}</h5><p>${t(s.sub)}</p></div>`:''}
   </div>`;
 }
 let seasFilter={kind:'', cont:'', cat:'', q:'', flavor:'', base:'', heat:''};
@@ -527,21 +541,21 @@ function renderSeasonings(){
 function produceGrillSteps(c){
   const fruit=c.cat==='פירות';
   const steps=[];
-  steps.push(["הכנה",fruit?`שטוף, חצה/פרוס לפי הצורך. אין צורך בקילוף אלא אם רלוונטי.`:`שטוף ונקה. פרוס/חתך לגודל אחיד כך שלא ייפול בין השבכות (${c.somid||'ראה טיפ'}).`,0]);
-  steps.push(["שימון",`מרח שמן על הצומח (לא על השבכה!).`,0]);
-  steps.push(["חימום הגריל",`חמם גריל לחום ${c.smt>=230?'גבוה':'בינוני-גבוה'} (${c.smt}°C). ${c.wood&&c.wood!=='ללא'?`אפשר להוסיף צ'אנק ${c.wood} לניחוח עשן.`:''}`,0]);
-  steps.push(["צלייה על אש ישירה",`הנח על השבכה וצלה ${c.soh} שעות (~${Math.round(upperHours(c.soh)*60)} דק׳). ${c.somid||''}. הפוך פעם-פעמיים עד סימני חריכה ומרקם רך-נגיס.`,upperHours(c.soh)*3600]);
-  if(c.rest) steps.push(["הגשה",`הסר מהאש, ${fruit?'הגש חם עם התוספת המומלצת.':'זלף מעט שמן/לימון והגש חם או בטמפ׳ החדר.'}`,c.rest*60]);
+  steps.push([L("הכנה","Prep"),L(fruit?`שטוף, חצה/פרוס לפי הצורך. אין צורך בקילוף אלא אם רלוונטי.`:`שטוף ונקה. פרוס/חתך לגודל אחיד כך שלא ייפול בין השבכות (${c.somid||'ראה טיפ'}).`,fruit?`Rinse, halve/slice as needed. No need to peel unless relevant.`:`Rinse and clean. Slice/cut to an even size so it won't fall through the grate (${t(c.somid)||'see tip'}).`),0]);
+  steps.push([L("שימון","Oil it"),L(`מרח שמן על הצומח (לא על השבכה!).`,`Brush oil onto the produce (not the grate!).`),0]);
+  steps.push([L("חימום הגריל","Heat the grill"),L(`חמם גריל לחום ${c.smt>=230?'גבוה':'בינוני-גבוה'} (${c.smt}°C). ${c.wood&&c.wood!=='ללא'?`אפשר להוסיף צ'אנק ${c.wood} לניחוח עשן.`:''}`,`Heat the grill to ${c.smt>=230?'high':'medium-high'} (${c.smt}°C). ${c.wood&&c.wood!=='ללא'?`You can add a ${t(c.wood)} chunk for a smoky aroma.`:''}`),0]);
+  steps.push([L("צלייה על אש ישירה","Grill over direct heat"),L(`הנח על השבכה וצלה ${c.soh} שעות (~${Math.round(upperHours(c.soh)*60)} דק׳). ${c.somid||''}. הפוך פעם-פעמיים עד סימני חריכה ומרקם רך-נגיס.`,`Place on the grate and grill ${c.soh} hours (~${Math.round(upperHours(c.soh)*60)} min). ${t(c.somid)||''}. Flip once or twice until char marks and a tender bite.`),upperHours(c.soh)*3600]);
+  if(c.rest) steps.push([L("הגשה","Serve"),L(`הסר מהאש, ${fruit?'הגש חם עם התוספת המומלצת.':'זלף מעט שמן/לימון והגש חם או בטמפ׳ החדר.'}`,`Remove from the fire, ${fruit?'serve warm with the recommended pairing.':'drizzle a little oil/lemon and serve warm or at room temperature.'}`),c.rest*60]);
   return steps;
 }
 // produce: sous-vide then finish (roots/starches) — precise softening, not pasteurization
 function produceSVSteps(c){
   const steps=[];
-  steps.push(["הכנה",`שטוף, קלף אם צריך וחתך לגודל אחיד (~1-2 ס\"מ) לבישול אחיד.`,0]);
-  steps.push(["שקית עם חמאה/שמן",`סדר בשכבה אחת בשקית ואקום עם ${c.mid&&c.mid!=='אין'?c.mid:'חמאה/שמן זית ומלח'} — לצומח מוסיפים שומן לשקית (טעם עשיר יותר).`,0]);
-  steps.push(["סו-ויד לריכוך",`בשל ב-${c.svt}°C למשך ${c.svh} שעות. בטמפ׳ ~83-90° הפקטין מתרכך והצומח נהיה רך-נגיס בלי להתמסמס — שליטה מדויקת במרקם, ללא צורך בפיסטור.`,upperHours(c.svh)*3600]);
-  steps.push(["גימור באש/מחבת",`ייבש, ואז צרוב על גריל חם או במחבת עם חמאה ${c.smh} שעות (~${Math.round(upperHours(c.smh)*60)} דק׳) לצבע, קרמל וטעם עשן. ${c.somid||''}.`,upperHours(c.smh)*3600]);
-  if(c.rest) steps.push(["הגשה",`תבל לסיום (מלח/הראב שנבחר) והגש.`,c.rest*60]);
+  steps.push([L("הכנה","Prep"),L(`שטוף, קלף אם צריך וחתך לגודל אחיד (~1-2 ס\"מ) לבישול אחיד.`,`Rinse, peel if needed and cut to an even size (~1-2 cm) for even cooking.`),0]);
+  steps.push([L("שקית עם חמאה/שמן","Bag with butter/oil"),L(`סדר בשכבה אחת בשקית ואקום עם ${c.mid&&c.mid!=='אין'?c.mid:'חמאה/שמן זית ומלח'} — לצומח מוסיפים שומן לשקית (טעם עשיר יותר).`,`Arrange in a single layer in a vacuum bag with ${c.mid&&c.mid!=='אין'?t(c.mid):'butter/olive oil and salt'} — for produce, add fat to the bag (richer flavor).`),0]);
+  steps.push([L("סו-ויד לריכוך","Sous-vide to soften"),L(`בשל ב-${c.svt}°C למשך ${c.svh} שעות. בטמפ׳ ~83-90° הפקטין מתרכך והצומח נהיה רך-נגיס בלי להתמסמס — שליטה מדויקת במרקם, ללא צורך בפיסטור.`,`Cook at ${c.svt}°C for ${c.svh} hours. At ~83-90° the pectin softens and the produce becomes tender without falling apart — precise texture control, no pasteurization needed.`),upperHours(c.svh)*3600]);
+  steps.push([L("גימור באש/מחבת","Finish on fire/pan"),L(`ייבש, ואז צרוב על גריל חם או במחבת עם חמאה ${c.smh} שעות (~${Math.round(upperHours(c.smh)*60)} דק׳) לצבע, קרמל וטעם עשן. ${c.somid||''}.`,`Dry, then sear on a hot grill or in a pan with butter ${c.smh} hours (~${Math.round(upperHours(c.smh)*60)} min) for color, caramelization and smoky flavor. ${t(c.somid)||''}.`),upperHours(c.smh)*3600]);
+  if(c.rest) steps.push([L("הגשה","Serve"),L(`תבל לסיום (מלח/הראב שנבחר) והגש.`,`Season to finish (salt/the chosen rub) and serve.`),c.rest*60]);
   return steps;
 }
 // produce: low-and-slow smoking (great for cauliflower, cabbage, garlic, tomatoes, peppers)
@@ -549,64 +563,73 @@ function produceSmokeSteps(c){
   const fruit=c.cat==='פירות';
   const smokeT=Math.min(c.smt,120); // gentle smoke temp for produce
   const steps=[];
-  steps.push(["הכנה",fruit?`שטוף, חצה/פרוס. פירות עמידים (אבטיח, אננס) סופגים עשן יפה.`:`שטוף ונקה. ${c.eng.includes('Garlic')?'חתוך קצה ראש השום וחשוף את השיניים.':c.eng.includes('Cauliflower')||c.eng.includes('Cabbage')?'השאר שלם או חצה לראש/סטייק — עישון איטי חודר עמוק.':'חתוך לגודל בינוני שיחזיק על השבכה.'}`,0]);
-  steps.push(["שימון",`מרח שמן.${c.eng.includes('Garlic')?' לשום — אפשר לעטוף בנייר כסף עם שמן.':''}`,0]);
-  steps.push(["הדלקת מעשנת",`ייצב מעשנת על ${smokeT}°C (חום נמוך) עם צ'אנקים ${c.wood&&c.wood!=='ללא'?c.wood:'תפוח/דובדבן'} — עצי פרי עדינים מתאימים במיוחד לצומח.`,0]);
+  steps.push([L("הכנה","Prep"),L(fruit?`שטוף, חצה/פרוס. פירות עמידים (אבטיח, אננס) סופגים עשן יפה.`:`שטוף ונקה. ${c.eng.includes('Garlic')?'חתוך קצה ראש השום וחשוף את השיניים.':c.eng.includes('Cauliflower')||c.eng.includes('Cabbage')?'השאר שלם או חצה לראש/סטייק — עישון איטי חודר עמוק.':'חתוך לגודל בינוני שיחזיק על השבכה.'}`,fruit?`Rinse, halve/slice. Sturdy fruits (watermelon, pineapple) take smoke beautifully.`:`Rinse and clean. ${c.eng.includes('Garlic')?'Cut the top off the garlic head and expose the cloves.':c.eng.includes('Cauliflower')||c.eng.includes('Cabbage')?'Leave whole or halve into a head/steak — slow smoke penetrates deep.':'Cut to a medium size that will hold on the grate.'}`),0]);
+  steps.push([L("שימון","Oil it"),L(`מרח שמן.${c.eng.includes('Garlic')?' לשום — אפשר לעטוף בנייר כסף עם שמן.':''}`,`Brush with oil.${c.eng.includes('Garlic')?' For garlic — you can wrap in foil with oil.':''}`),0]);
+  steps.push([L("הדלקת מעשנת","Fire up the smoker"),L(`ייצב מעשנת על ${smokeT}°C (חום נמוך) עם צ'אנקים ${c.wood&&c.wood!=='ללא'?c.wood:'תפוח/דובדבן'} — עצי פרי עדינים מתאימים במיוחד לצומח.`,`Stabilize the smoker at ${smokeT}°C (low heat) with ${c.wood&&c.wood!=='ללא'?t(c.wood):'apple/cherry'} chunks — mild fruit woods suit produce especially well.`),0]);
   const smokeH=Math.max(0.5,upperHours(c.svh)); // use SV time as a proxy for gentle smoke duration
-  steps.push(["עישון איטי",`עשן ב-${smokeT}°C למשך ${smokeH.toFixed(1)}-${(smokeH*1.5).toFixed(1)} שעות עד ריכוך וספיגת עשן. ${c.eng.includes('Garlic')?'עד רך וזהוב — ממרח מדהים.':'בדוק רכות עם מזלג.'}`,smokeH*3600]);
-  steps.push(["גימור אופציונלי",`להעצמת צבע וקרמל — העבר לאש ישירה לכמה דקות בסוף, או הגש כמו שזה.`,0]);
-  if(c.rest) steps.push(["הגשה",`תבל לסיום והגש חם או בטמפ׳ החדר.`,0]);
+  steps.push([L("עישון איטי","Slow smoke"),L(`עשן ב-${smokeT}°C למשך ${smokeH.toFixed(1)}-${(smokeH*1.5).toFixed(1)} שעות עד ריכוך וספיגת עשן. ${c.eng.includes('Garlic')?'עד רך וזהוב — ממרח מדהים.':'בדוק רכות עם מזלג.'}`,`Smoke at ${smokeT}°C for ${smokeH.toFixed(1)}-${(smokeH*1.5).toFixed(1)} hours until tender and smoke-infused. ${c.eng.includes('Garlic')?'Until soft and golden — an amazing spread.':'Check tenderness with a fork.'}`),smokeH*3600]);
+  steps.push([L("גימור אופציונלי","Optional finish"),L(`להעצמת צבע וקרמל — העבר לאש ישירה לכמה דקות בסוף, או הגש כמו שזה.`,`For deeper color and caramelization — move to direct heat for a few minutes at the end, or serve as is.`),0]);
+  if(c.rest) steps.push([L("הגשה","Serve"),L(`תבל לסיום והגש חם או בטמפ׳ החדר.`,`Season to finish and serve warm or at room temperature.`),0]);
   return steps;
 }
 function svSteps(c,hintSear=true){
   const steps=[];
-  let prep="נקה, גזום עודפי שומן ויבש היטב את הבשר.";
-  if(c.eng.includes("Ribs")) prep="הסר את הקרום (membrane) מגב הצלעות ויבש היטב.";
-  if(c.rub.includes("כבישה")) prep="בצע כבישה/ריפוי לפי המתכון, שטוף ויבש לפני התיבול.";
-  steps.push(["הכנת הנתח",prep,0]);
-  steps.push(["ואקום + סו-ויד",`סגור בשקית ואקום ובשל בסו-ויד ב-${c.svt}°C למשך ${c.svh} שעות. הפסטור נמדד מהרגע שמרכז הנתח מגיע לטמפ׳ — הוסף ~20% מרווח.${c.svt<55?' ⚠ בטמפ׳ מתחת ל-55°C אין להחזיק מעבר ל-4 שעות.':''}`,upperHours(c.svh)*3600]);
-  if(PREP_TREAT.includes(c.mid)) steps.push([`טיפול: ${c.mid}`,treatText(c.mid),0]);
-  let dry="ייבש את פני הבשר היטב לפני העישון — משטח יבש סופג עשן טוב יותר.";
-  if(c.cat==="דג") dry="ייבש ליצירת pellicle (קרום דביק שסופג עשן) לפני העישון. ⚠ בטמפ׳ נמוכה — השתמש בדג סושי-גרייד או שהוקפא (-20°C, 7 ימים) לבטיחות מטפילים.";
-  steps.push(["ייבוש לפני עישון",dry,0]);
-  steps.push(["הדלקת מעשנת",`ייצב מעשנת על ${c.smt}°C עם צ'אנקים ${c.wood} ופחם ${c.coal}.`,0]);
-  steps.push(["עישון",`עשן ב-${c.smt}°C למשך ${c.smh} שעות. אין צורך בעטיפה — הבישול הושלם בסו-ויד.`,upperHours(c.smh)*3600]);
-  if(FINISH_TREAT.includes(c.mid)) steps.push([`טיפול: ${c.mid}`,treatText(c.mid),0]);
-  if(c.sear==="גלייז") steps.push(["גלייז סיום",`מרח שכבת גלייז דביקה בסוף לברק וטעם.`,0]);
-  else if(c.sear==="כן" && hintSear) steps.push(["רוצה קרום צרוב?",`💡 הנתח הזה נהנה מצריבה — הדלק את מתג 🔥 גריל והתוכנית תוסיף שלב צריבה מסודר.`,0]);
-  if(c.safe) steps.push(["בדיקת בטיחות",`ודא טמפ' פנימית: יעד מרקם ${c.tgt}°C · מינימום בטיחות ${c.safe}°C${c.cat==='דג'?' (ולדג — ראה הערת טפילים למעלה)':''}.`,0]);
-  if(c.rest) steps.push(["מנוחה",`תן מנוחה של ${c.rest} דקות לפני הפריסה.`,c.rest*60]);
+  let prep=L("נקה, גזום עודפי שומן ויבש היטב את הבשר.","Clean, trim excess fat and pat the meat thoroughly dry.");
+  if(c.eng.includes("Ribs")) prep=L("הסר את הקרום (membrane) מגב הצלעות ויבש היטב.","Remove the membrane from the back of the ribs and pat thoroughly dry.");
+  if(c.rub.includes("כבישה")) prep=L("בצע כבישה/ריפוי לפי המתכון, שטוף ויבש לפני התיבול.","Brine/cure per the recipe, rinse and dry before seasoning.");
+  steps.push([L("הכנת הנתח","Prep the cut"),prep,0]);
+  steps.push([L("ואקום + סו-ויד","Vacuum + sous-vide"),L(`סגור בשקית ואקום ובשל בסו-ויד ב-${c.svt}°C למשך ${c.svh} שעות. הפסטור נמדד מהרגע שמרכז הנתח מגיע לטמפ׳ — הוסף ~20% מרווח.${c.svt<55?' ⚠ בטמפ׳ מתחת ל-55°C אין להחזיק מעבר ל-4 שעות.':''}`,`Seal in a vacuum bag and sous-vide at ${c.svt}°C for ${c.svh} hours. Pasteurization counts from when the core reaches temp — add a ~20% margin.${c.svt<55?' ⚠ Below 55°C, do not hold beyond 4 hours.':''}`),upperHours(c.svh)*3600]);
+  if(PREP_TREAT.includes(c.mid)) steps.push([L(`טיפול: ${c.mid}`,`Treatment: ${t(c.mid)}`),treatText(c.mid),0]);
+  let dry=L("ייבש את פני הבשר היטב לפני העישון — משטח יבש סופג עשן טוב יותר.","Pat the surface thoroughly dry before smoking — a dry surface takes smoke better.");
+  if(c.cat==="דג") dry=L("ייבש ליצירת pellicle (קרום דביק שסופג עשן) לפני העישון. ⚠ בטמפ׳ נמוכה — השתמש בדג סושי-גרייד או שהוקפא (-20°C, 7 ימים) לבטיחות מטפילים.","Dry to form a pellicle (a tacky skin that takes smoke) before smoking. ⚠ At low temp — use sushi-grade fish or fish frozen (-20°C, 7 days) for parasite safety.");
+  steps.push([L("ייבוש לפני עישון","Dry before smoking"),dry,0]);
+  steps.push([L("הדלקת מעשנת","Fire up the smoker"),L(`ייצב מעשנת על ${c.smt}°C עם צ'אנקים ${c.wood} ופחם ${c.coal}.`,`Stabilize the smoker at ${c.smt}°C with ${t(c.wood)} chunks and ${t(c.coal)} charcoal.`),0]);
+  steps.push([L("עישון","Smoke"),L(`עשן ב-${c.smt}°C למשך ${c.smh} שעות. אין צורך בעטיפה — הבישול הושלם בסו-ויד.`,`Smoke at ${c.smt}°C for ${c.smh} hours. No wrap needed — cooking was completed in the sous-vide.`),upperHours(c.smh)*3600]);
+  if(FINISH_TREAT.includes(c.mid)) steps.push([L(`טיפול: ${c.mid}`,`Treatment: ${t(c.mid)}`),treatText(c.mid),0]);
+  if(c.sear==="גלייז") steps.push([L("גלייז סיום","Finishing glaze"),L(`מרח שכבת גלייז דביקה בסוף לברק וטעם.`,`Brush on a sticky glaze at the end for shine and flavor.`),0]);
+  else if(c.sear==="כן" && hintSear) steps.push([L("רוצה קרום צרוב?","Want a seared crust?"),L(`💡 הנתח הזה נהנה מצריבה — הדלק את מתג 🔥 גריל והתוכנית תוסיף שלב צריבה מסודר.`,`💡 This cut benefits from a sear — flip the 🔥 grill switch and the plan will add a proper sear step.`),0]);
+  if(c.safe) steps.push([L("בדיקת בטיחות","Safety check"),L(`ודא טמפ' פנימית: יעד מרקם ${c.tgt}°C · מינימום בטיחות ${c.safe}°C${c.cat==='דג'?' (ולדג — ראה הערת טפילים למעלה)':''}.`,`Verify internal temp: texture target ${c.tgt}°C · safety minimum ${c.safe}°C${c.cat==='דג'?' (and for fish — see the parasite note above)':''}.`),0]);
+  if(c.rest) steps.push([L("מנוחה","Rest"),L(`תן מנוחה של ${c.rest} דקות לפני הפריסה.`,`Let it rest ${c.rest} minutes before slicing.`),c.rest*60]);
   return steps;
 }
 function soSteps(c){
   const steps=[];
-  let prep="נקה, גזום ויבש היטב את הבשר.";
-  if(c.eng.includes("Ribs")) prep="הסר את הקרום מגב הצלעות ויבש.";
-  if(c.rub.includes("כבישה")) prep="בצע כבישה/ריפוי, שטוף ויבש.";
-  steps.push(["הכנת הנתח",prep,0]);
-  steps.push(["הדלקת מעשנת",`ייצב מעשנת על ${c.sot}°C עם צ'אנקים ${c.wood} ופחם ${c.coal}.`,0]);
-  steps.push(["עישון",`עשן ב-${c.sot}°C למשך ${c.soh} שעות עד טמפ' פנימית ${c.tgt}°C.${c.tgt>=88?` אפשר גם 'חם ומהיר' (120–135°C) כדי לפרוץ את ה'סטָאל' מהר יותר ולבנות קרום.`:''}`,upperHours(c.soh)*3600]);
-  if(c.somid && c.somid!=="אין") steps.push([`טיפול: ${c.somid}`,soTreatText(c.somid)+(c.somid==='מריחה'||c.somid==='ריסוס'?' (ריסוס נוזל הוא אופציונלי-אסתטי — משפיע מעט על הטעם ומקרר קלות את הקרום).':''),0]);
-  if(c.sear==="כן") steps.push(["רוצה קרום צרוב?",`💡 הנתח הזה נהנה מצריבה — הדלק את מתג 🔥 גריל לשלב צריבה מסודר בסוף.`,0]);
-  if(c.safe) steps.push(["בדיקת בטיחות",`יעד ${c.tgt}°C · מינימום בטיחות ${c.safe}°C.`,0]);
-  if(c.rest) steps.push(["מנוחה",`מנוחה ${c.rest} דקות לפני הפריסה.${c.tgt>=90?` לנתחי קולגן — החזקה ארוכה בקופסת בידוד (cambro/צידנית) של שעה+ משפרת מאוד עסיסיות.`:''}`,c.rest*60]);
+  let prep=L("נקה, גזום ויבש היטב את הבשר.","Clean, trim and pat the meat thoroughly dry.");
+  if(c.eng.includes("Ribs")) prep=L("הסר את הקרום מגב הצלעות ויבש.","Remove the membrane from the back of the ribs and dry.");
+  if(c.rub.includes("כבישה")) prep=L("בצע כבישה/ריפוי, שטוף ויבש.","Brine/cure, rinse and dry.");
+  steps.push([L("הכנת הנתח","Prep the cut"),prep,0]);
+  steps.push([L("הדלקת מעשנת","Fire up the smoker"),L(`ייצב מעשנת על ${c.sot}°C עם צ'אנקים ${c.wood} ופחם ${c.coal}.`,`Stabilize the smoker at ${c.sot}°C with ${t(c.wood)} chunks and ${t(c.coal)} charcoal.`),0]);
+  steps.push([L("עישון","Smoke"),L(`עשן ב-${c.sot}°C למשך ${c.soh} שעות עד טמפ' פנימית ${c.tgt}°C.${c.tgt>=88?` אפשר גם 'חם ומהיר' (120–135°C) כדי לפרוץ את ה'סטָאל' מהר יותר ולבנות קרום.`:''}`,`Smoke at ${c.sot}°C for ${c.soh} hours to ${c.tgt}°C internal.${c.tgt>=88?` You can also go 'hot and fast' (120–135°C) to power through the stall faster and build a crust.`:''}`),upperHours(c.soh)*3600]);
+  if(c.somid && c.somid!=="אין") steps.push([L(`טיפול: ${c.somid}`,`Treatment: ${t(c.somid)}`),soTreatText(c.somid)+(c.somid==='מריחה'||c.somid==='ריסוס'?L(' (ריסוס נוזל הוא אופציונלי-אסתטי — משפיע מעט על הטעם ומקרר קלות את הקרום).',' (spritzing liquid is optional-aesthetic — it affects flavor slightly and cools the bark a touch).'):''),0]);
+  if(c.sear==="כן") steps.push([L("רוצה קרום צרוב?","Want a seared crust?"),L(`💡 הנתח הזה נהנה מצריבה — הדלק את מתג 🔥 גריל לשלב צריבה מסודר בסוף.`,`💡 This cut benefits from a sear — flip the 🔥 grill switch for a proper sear step at the end.`),0]);
+  if(c.safe) steps.push([L("בדיקת בטיחות","Safety check"),L(`יעד ${c.tgt}°C · מינימום בטיחות ${c.safe}°C.`,`Target ${c.tgt}°C · safety minimum ${c.safe}°C.`),0]);
+  if(c.rest) steps.push([L("מנוחה","Rest"),L(`מנוחה ${c.rest} דקות לפני הפריסה.${c.tgt>=90?` לנתחי קולגן — החזקה ארוכה בקופסת בידוד (cambro/צידנית) של שעה+ משפרת מאוד עסיסיות.`:''}`,`Rest ${c.rest} minutes before slicing.${c.tgt>=90?` For collagen cuts — a long hold in an insulated box (cambro/cooler) of an hour+ greatly improves juiciness.`:''}`),c.rest*60]);
   return steps;
 }
 function treatText(m){
-  const map={"צינון":"צנן/החזק את הנתח לפני שלב העישון.","צינון מלא":"צנן את הנתח לחלוטין (אפילו לילה) — מקל על קרום וצריבה.",
+  const he={"צינון":"צנן/החזק את הנתח לפני שלב העישון.","צינון מלא":"צנן את הנתח לחלוטין (אפילו לילה) — מקל על קרום וצריבה.",
    "ייבוש":"ייבש את פני הבשר/העור לקראת העישון.","ייבוש עור":"ייבש את העור היטב לעור פריך.",
    "קילוף קרום":"קלף את הקרום החיצוני של הלשון לאחר הבישול.","דקירת עור+ניקוז":"נקב את העור ונקז שומן עודף.",
    "חריטת עור":"חרוט את שכבת השומן בתבנית מעוינים.","ניקוז שומן":"נקז את השומן הנמס במהלך העישון.","הפיכת עור":"הפוך לצריבת העור בצד מטה."};
-  return map[m]||m;
+  const en={"צינון":"Chill/hold the cut before the smoking step.","צינון מלא":"Chill the cut completely (even overnight) — helps bark and searing.",
+   "ייבוש":"Dry the surface of the meat/skin ahead of smoking.","ייבוש עור":"Dry the skin thoroughly for crisp skin.",
+   "קילוף קרום":"Peel the outer membrane of the tongue after cooking.","דקירת עור+ניקוז":"Prick the skin and drain excess fat.",
+   "חריטת עור":"Score the fat layer in a diamond pattern.","ניקוז שומן":"Drain the fat rendered during smoking.","הפיכת עור":"Flip to sear the skin side down."};
+  return (getLang()==='he'?he:en)[m]||t(m);
 }
 function soTreatText(m){
-  if(m.startsWith("עטיפה")) return `ב'סטָאל' עטוף בנייר כסף/קצבים (${m}) כדי לעבור מהר ולשמר לחות.`;
-  const map={"שיטת 3-2-1":"3 שעות עישון גלוי, 2 שעות עטוף עם נוזל, 1 שעה גלוי עם גלייז.",
+  if(m.startsWith("עטיפה")) return L(`ב'סטָאל' עטוף בנייר כסף/קצבים (${m}) כדי לעבור מהר ולשמר לחות.`,`At the stall, wrap in foil/butcher paper (${t(m)}) to push through faster and hold moisture.`);
+  const he={"שיטת 3-2-1":"3 שעות עישון גלוי, 2 שעות עטוף עם נוזל, 1 שעה גלוי עם גלייז.",
    "שיטת 2-2-1":"2 שעות גלוי, 2 שעות עטוף עם נוזל, 1 שעה גלוי עם גלייז (לצלעות דקות).",
    "גלייז בסיום":"מרח גלייז דביק ב-30 הדקות האחרונות.","מריחה":"רסס/מרח נוזל לשמירת לחות וצבע.",
    "הפיכה":"הפוך באמצע לעישון אחיד.","סיבוב שיפוד":"סובב את השיפוד לעישון אחיד מכל הצדדים.",
    "עטיפת חזה":"עטוף את החזה בנייר כסף כשמגיע ליעד, להגן מייבוש.","דקירת עור+ניקוז":"נקב עור ונקז שומן.","דקירת עור":"נקב את העור לשחרור שומן."};
-  return map[m]||m;
+  const en={"שיטת 3-2-1":"3 hours smoking uncovered, 2 hours wrapped with liquid, 1 hour uncovered with glaze.",
+   "שיטת 2-2-1":"2 hours uncovered, 2 hours wrapped with liquid, 1 hour uncovered with glaze (for thin ribs).",
+   "גלייז בסיום":"Brush on a sticky glaze in the last 30 minutes.","מריחה":"Spritz/brush liquid to keep moisture and color.",
+   "הפיכה":"Flip halfway for even smoking.","סיבוב שיפוד":"Rotate the skewer for even smoking on all sides.",
+   "עטיפת חזה":"Wrap the brisket in foil when it hits target, to protect from drying.","דקירת עור+ניקוז":"Prick the skin and drain fat.","דקירת עור":"Prick the skin to release fat."};
+  return (getLang()==='he'?he:en)[m]||t(m);
 }
 
 /* ---------- checklist + timer state ---------- */
@@ -1188,38 +1211,38 @@ function openCut(c){
    <div class="panel-top" style="--c:${col}">
      ${headArt(c.cat)}
      <button class="x" aria-label="סגור">✕</button>
-     <div class="cat" style="color:${col}">${c.cat} · נתח #${c.n}</div>
+     <div class="cat" style="color:${col}">${t(c.cat)} · ${L('נתח','Cut')} #${c.n}</div>
      <h2>${itemName(c)}</h2>
-     <div class="en">${c.eng} · ${c.kg} ק״ג · רמת קושי ${dots(c.diff)}</div>
+     <div class="en">${c.eng} · ${c.kg} ${L('ק״ג','kg')} · ${L('רמת קושי','difficulty')} ${dots(c.diff)}</div>
    </div>
    <div class="panel-body">
      ${c.desc?`<p class="itemdesc" data-mt>${c.desc}</p>`:''}
      <div class="statline">
        ${isProduce(c)?`
-       <div class="stat"><div class="l">גריל</div><div class="v">${c.sot}°<small> / ${Math.round(upperHours(c.soh)*60)}ד'</small></div></div>
-       <div class="stat"><div class="l">סו-ויד</div><div class="v">${c.svt}°<small> / ${c.svh}ש</small></div></div>
-       <div class="stat"><div class="l">גימור</div><div class="v">${c.smt}°</div></div>
-       <div class="stat"><div class="l">קושי</div><div class="v">${dots(c.diff)}</div></div>
+       <div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.sot}°<small> / ${Math.round(upperHours(c.soh)*60)}${L("ד'",'m')}</small></div></div>
+       <div class="stat"><div class="l">${L('סו-ויד','Sous-vide')}</div><div class="v">${c.svt}°<small> / ${c.svh}${L('ש','h')}</small></div></div>
+       <div class="stat"><div class="l">${L('גימור','Finish')}</div><div class="v">${c.smt}°</div></div>
+       <div class="stat"><div class="l">${L('קושי','Difficulty')}</div><div class="v">${dots(c.diff)}</div></div>
        `:`
-       <div class="stat"><div class="l">סו-ויד</div><div class="v">${c.svt}°<small> / ${c.svh}ש</small></div></div>
-       <div class="stat"><div class="l">עישון</div><div class="v">${c.smt}°<small> / ${c.smh}ש</small></div></div>
-       ${(c.grt!=null||c.grillable===false)?`<div class="stat"><div class="l">גריל</div><div class="v">${c.grillable===false?'—':`${c.grt}°<small> / ${c.grh}ש</small>`}</div></div>`:''}
-       <div class="stat"><div class="l">יעד מרקם</div><div class="v" id="tgtStat">${c.tgt}°</div></div>
-       ${c.safe?`<div class="stat"><div class="l">בטיחות</div><div class="v">${c.safe}°</div></div>`:''}
-       <div class="stat"><div class="l">חוסך מעשנת</div><div class="v" style="color:#a7d086">${c.saved}ש</div></div>
+       <div class="stat"><div class="l">${L('סו-ויד','Sous-vide')}</div><div class="v">${c.svt}°<small> / ${c.svh}${L('ש','h')}</small></div></div>
+       <div class="stat"><div class="l">${L('עישון','Smoke')}</div><div class="v">${c.smt}°<small> / ${c.smh}${L('ש','h')}</small></div></div>
+       ${(c.grt!=null||c.grillable===false)?`<div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.grillable===false?'—':`${c.grt}°<small> / ${c.grh}${L('ש','h')}</small>`}</div></div>`:''}
+       <div class="stat"><div class="l">${L('יעד מרקם','Texture target')}</div><div class="v" id="tgtStat">${c.tgt}°</div></div>
+       ${c.safe?`<div class="stat"><div class="l">${L('בטיחות','Safety')}</div><div class="v">${c.safe}°</div></div>`:''}
+       <div class="stat"><div class="l">${L('חוסך מעשנת','Smoker saved')}</div><div class="v" style="color:#a7d086">${c.saved}${L('ש','h')}</div></div>
        `}
      </div>
      ${donenessSelector(c)}
      ${methodToggleHTML(c,key)}
-     ${build?'<div class="tabs"><div class="tab" data-tab="build">🔨 בנייה מאפס</div><div class="tab on" data-tab="method">📋 תוכנית בישול</div></div>':''}
+     ${build?`<div class="tabs"><div class="tab" data-tab="build">🔨 ${L('בנייה מאפס','Build from scratch')}</div><div class="tab on" data-tab="method">📋 ${L('תוכנית בישול','Cooking plan')}</div></div>`:''}
      <div class="progress"><i id="prog"></i></div>
      <div id="methodArea"></div>
 
      <div class="var">
-       <h4>${isProduce(c)?'טיפים':'ווריאנט תיבול חלופי'}</h4>
-       ${isProduce(c)?`<div class="varitem"><div class="vt">טיפ הכנה</div><p>${c.somid||'—'}. ${c.wood&&c.wood!=='ללא'?`לניחוח עשן: ${c.wood}.`:''}</p></div>`
-       :`<div class="varitem"><div class="vt">${altR[0]}</div><p>${altR[1]}</p></div>
-       <div class="varitem"><div class="vt">🪵 עץ מומלץ</div><p>${c.wood}.</p></div>`}
+       <h4>${isProduce(c)?L('טיפים','Tips'):L('ווריאנט תיבול חלופי','Alternative seasoning variant')}</h4>
+       ${isProduce(c)?`<div class="varitem"><div class="vt">${L('טיפ הכנה','Prep tip')}</div><p>${t(c.somid)||'—'}. ${c.wood&&c.wood!=='ללא'?`${L('לניחוח עשן','For smoky aroma')}: ${t(c.wood)}.`:''}</p></div>`
+       :`<div class="varitem"><div class="vt">${t(altR[0])}</div><p>${t(altR[1])}</p></div>
+       <div class="varitem"><div class="vt">🪵 ${L('עץ מומלץ','Recommended wood')}</div><p>${t(c.wood)}.</p></div>`}
      </div>
      ${seasPickerHTML(key, c.cat, isProduce(c), curProject?'edit':'view')}
 
@@ -1227,25 +1250,25 @@ function openCut(c){
      <div id="extras"></div>
 
      <div class="raw">
-       <h4 style="font-family:'Heebo';font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember2);margin:0 0 8px">נתוני גלם מהטבלה</h4>
+       <h4 style="font-family:'Heebo';font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember2);margin:0 0 8px">${L('נתוני גלם מהטבלה','Raw data from the table')}</h4>
        ${isProduce(c)?`<table>
-        <tr><td>גריל / אש ישירה</td><td>${c.sot}°C · ~${Math.round(upperHours(c.soh)*60)} דק'</td></tr>
-        <tr><td>סו-ויד (ריכוך)</td><td>${c.svt}°C · ${c.svh} שעות</td></tr>
-        <tr><td>גימור לאחר סו-ויד</td><td>${c.smt}°C · ~${Math.round(upperHours(c.smh)*60)} דק'</td></tr>
-        <tr><td>ראב הבית (תבנית)</td><td>${c.rub}</td></tr>
-        <tr><td>טיפ הכנה</td><td>${c.somid||'—'}</td></tr>
-        <tr><td>עץ לעשן (אופציונלי)</td><td>${c.wood}</td></tr>
-        <tr><td>רמת קושי</td><td>${c.diff} / 5</td></tr>
+        <tr><td>${L('גריל / אש ישירה','Grill / direct heat')}</td><td>${c.sot}°C · ~${Math.round(upperHours(c.soh)*60)} ${L("דק'",'min')}</td></tr>
+        <tr><td>${L('סו-ויד (ריכוך)','Sous-vide (soften)')}</td><td>${c.svt}°C · ${c.svh} ${L('שעות','hours')}</td></tr>
+        <tr><td>${L('גימור לאחר סו-ויד','Finish after sous-vide')}</td><td>${c.smt}°C · ~${Math.round(upperHours(c.smh)*60)} ${L("דק'",'min')}</td></tr>
+        <tr><td>${L('ראב הבית (תבנית)','House rub (template)')}</td><td>${c.rub}</td></tr>
+        <tr><td>${L('טיפ הכנה','Prep tip')}</td><td>${c.somid||'—'}</td></tr>
+        <tr><td>${L('עץ לעשן (אופציונלי)','Wood for smoke (optional)')}</td><td>${c.wood}</td></tr>
+        <tr><td>${L('רמת קושי','Difficulty')}</td><td>${c.diff} / 5</td></tr>
        </table>`:`<table>
-        <tr><td>טמפ' / זמן סו-ויד</td><td>${c.svt}°C · ${c.svh} שעות</td></tr>
-        <tr><td>טמפ' / זמן עישון (סו-ויד+עישון)</td><td>${c.smt}°C · ${c.smh} שעות</td></tr>
-        <tr><td>טמפ' / זמן עישון בלבד</td><td>${c.sot}°C · ${c.soh} שעות</td></tr>
-        ${grillLine(c)?`<tr><td>גריל (טמפ' / זמן / אזור)</td><td>${grillLine(c)}</td></tr>`:''}
-        <tr><td>טמפ' יעד (מרקם) / בטיחות</td><td>${c.tgt}°C${c.safe?` / ${c.safe}°C`:''}</td></tr>
-        <tr><td>צריבה</td><td>${c.sear}</td></tr>
-        <tr><td>טיפול באמצע (סו-ויד+עישון)</td><td>${c.mid}</td></tr>
-        <tr><td>טיפול / עטיפה (עישון בלבד)</td><td>${c.somid}</td></tr>
-        <tr><td>זמן מנוחה</td><td>${c.rest} דק'</td></tr>
+        <tr><td>${L("טמפ' / זמן סו-ויד",'Sous-vide temp / time')}</td><td>${c.svt}°C · ${c.svh} ${L('שעות','hours')}</td></tr>
+        <tr><td>${L("טמפ' / זמן עישון (סו-ויד+עישון)",'Smoke temp / time (sous-vide+smoke)')}</td><td>${c.smt}°C · ${c.smh} ${L('שעות','hours')}</td></tr>
+        <tr><td>${L("טמפ' / זמן עישון בלבד",'Smoke-only temp / time')}</td><td>${c.sot}°C · ${c.soh} ${L('שעות','hours')}</td></tr>
+        ${grillLine(c)?`<tr><td>${L("גריל (טמפ' / זמן / אזור)",'Grill (temp / time / zone)')}</td><td>${grillLine(c)}</td></tr>`:''}
+        <tr><td>${L("טמפ' יעד (מרקם) / בטיחות",'Target temp (texture) / safety')}</td><td>${c.tgt}°C${c.safe?` / ${c.safe}°C`:''}</td></tr>
+        <tr><td>${L('צריבה','Sear')}</td><td>${c.sear}</td></tr>
+        <tr><td>${L('טיפול באמצע (סו-ויד+עישון)','Mid-cook treatment (sous-vide+smoke)')}</td><td>${c.mid}</td></tr>
+        <tr><td>${L('טיפול / עטיפה (עישון בלבד)','Treatment / wrap (smoke-only)')}</td><td>${c.somid}</td></tr>
+        <tr><td>${L('זמן מנוחה','Rest time')}</td><td>${c.rest} ${L("דק'",'min')}</td></tr>
         <tr><td>מרינדה / ראב</td><td>${c.rub}</td></tr>
         <tr><td>צ'אנקים / עץ</td><td>${c.wood}</td></tr>
         <tr><td>פחם מומלץ</td><td>${c.coal}</td></tr>
@@ -1262,14 +1285,14 @@ function openCut(c){
   function comboNote(combo){
     const has=m=>combo.includes(m);
     const parts=[];
-    if(has('sv')) parts.push('🌊 סו-ויד — בישול מדויק באמבט');
-    if(has('smoke')) parts.push('💨 עישון — טעם עשן וקרום');
-    if(has('grill')) parts.push('🔥 גריל — צריבה וטעם אש');
+    if(has('sv')) parts.push(L('🌊 סו-ויד — בישול מדויק באמבט','🌊 Sous-vide — precise water-bath cooking'));
+    if(has('smoke')) parts.push(L('💨 עישון — טעם עשן וקרום','💨 Smoking — smoke flavor and bark'));
+    if(has('grill')) parts.push(L('🔥 גריל — צריבה וטעם אש','🔥 Grill — sear and fire flavor'));
     let extra='';
-    if(has('sv')&&has('smoke')&&has('grill')) extra=' המסלול המלא: דיוק, עשן, וצריבה קצרה לקרום בסוף.';
-    else if(has('sv')&&has('grill')&&!has('smoke')) extra=' הצירוף המנצח למידת עשייה מושלמת עם קרום.';
-    else if(has('sv')&&has('smoke')) extra=` חוסך כ-${c.saved||1} שעות מעשנת.`;
-    else if(has('smoke')&&has('grill')) extra=' reverse-sear קלאסי: עשן איטי ואז צריבה.';
+    if(has('sv')&&has('smoke')&&has('grill')) extra=L(' המסלול המלא: דיוק, עשן, וצריבה קצרה לקרום בסוף.',' The full route: precision, smoke, and a quick sear for crust at the end.');
+    else if(has('sv')&&has('grill')&&!has('smoke')) extra=L(' הצירוף המנצח למידת עשייה מושלמת עם קרום.',' The winning combo for perfect doneness with a crust.');
+    else if(has('sv')&&has('smoke')) extra=L(` חוסך כ-${c.saved||1} שעות מעשנת.`,` Saves about ${c.saved||1} smoker hours.`);
+    else if(has('smoke')&&has('grill')) extra=L(' reverse-sear קלאסי: עשן איטי ואז צריבה.',' Classic reverse-sear: slow smoke then sear.');
     return parts.join(' + ')+'.'+extra;
   }
   function paintMethod(){
@@ -1308,6 +1331,7 @@ function openCut(c){
     t.classList.add("on");clearTimers();paint(t.dataset.tab);
   }));
   paintMethod();
+  _mkMethodRepaint=paintMethod;   // i18n: let a language switch regenerate these steps
   wireDoneness(c);
   $("#panel").querySelectorAll('[data-seas]').forEach(b=>b.addEventListener('click',()=>openFrom(()=>openCut(c), ()=>{
     const s=(DATA.seasonings||[]).find(x=>x.id===b.dataset.seas); if(!s) return;
@@ -1523,33 +1547,36 @@ function renderAlarm(){
 
 function openSpec(s){
   curProject=pendingProject; pendingProject=null;
-  const smk = s.smt? `${s.smt}°C · ${s.smh} שעות` : s.smh;
+  const smk = s.smt? `${s.smt}°C · ${s.smh} ${L('שעות','hours')}` : t(s.smh);
   const build=DATA.builds["spec-"+s.n];
-  const steps=[];
-  if(s.cure&&s.cure!=='—') steps.push(["ריפוי / כבישה",s.cure,0]);
-  if(s.smt) steps.push(["עישון",`עשן ב-${s.smt}°C למשך ${s.smh} שעות${typeof s.tgt==='number'?` עד ${s.tgt}°C פנימי`:''}.`,upperHours(s.smh)*3600]);
-  else steps.push(["עישון / ייבוש",s.smh,0]);
-  if(s.age&&s.age!=='—') steps.push(["ייבוש / הבשלה",s.age,0]);
-  steps.push(["הערת מקצוע",s.note,0]);
+  function buildSteps(){
+    const steps=[];
+    if(s.cure&&s.cure!=='—') steps.push([L("ריפוי / כבישה","Cure / brine"),t(s.cure),0]);
+    if(s.smt) steps.push([L("עישון","Smoke"),L(`עשן ב-${s.smt}°C למשך ${s.smh} שעות${typeof s.tgt==='number'?` עד ${s.tgt}°C פנימי`:''}.`,`Smoke at ${s.smt}°C for ${s.smh} hours${typeof s.tgt==='number'?` until ${s.tgt}°C internal`:''}.`),upperHours(s.smh)*3600]);
+    else steps.push([L("עישון / ייבוש","Smoke / dry"),t(s.smh),0]);
+    if(s.age&&s.age!=='—') steps.push([L("ייבוש / הבשלה","Dry / age"),t(s.age),0]);
+    steps.push([L("הערת מקצוע","Pro note"),t(s.note),0]);
+    return steps;
+  }
   const key=`spec-${s.n}`;
   const col=catColor(s.cat);
   const html=`
    <div class="panel-top" style="--c:${col}">
      ${headArt(s.cat)}
      <button class="x" aria-label="סגור">✕</button>
-     <div class="cat" style="color:${col}">${s.cat}${s.origin?` · ${s.origin}`:` · מוצר #${s.n}`}</div>
+     <div class="cat" style="color:${col}">${t(s.cat)}${s.origin?` · ${t(s.origin)}`:` · ${L('מוצר','Product')} #${s.n}`}</div>
      <h2>${itemName(s)}</h2>
-     <div class="en">${s.eng} · רמת קושי ${dots(s.diff)}</div>
+     <div class="en">${s.eng} · ${L('רמת קושי','difficulty')} ${dots(s.diff)}</div>
    </div>
    <div class="panel-body">${s.desc?`<p class="itemdesc" data-mt>${s.desc}</p>`:''}
      <div class="statline">
-       <div class="stat"><div class="l">עישון</div><div class="v" style="font-size:15px">${smk}</div></div>
-       <div class="stat"><div class="l">יעד / הבשלה</div><div class="v" style="font-size:15px">${typeof s.tgt==='number'?s.tgt+'°':(s.age!=='—'?s.age:s.tgt)}</div></div>
-       <div class="stat"><div class="l">עץ</div><div class="v" style="font-size:15px">${s.wood}</div></div>
+       <div class="stat"><div class="l">${L('עישון','Smoke')}</div><div class="v" style="font-size:15px">${smk}</div></div>
+       <div class="stat"><div class="l">${L('יעד / הבשלה','Target / age')}</div><div class="v" style="font-size:15px">${typeof s.tgt==='number'?s.tgt+'°':(s.age!=='—'?t(s.age):s.tgt)}</div></div>
+       <div class="stat"><div class="l">${L('עץ','Wood')}</div><div class="v" style="font-size:15px">${t(s.wood)}</div></div>
      </div>
      ${build?`<div class="tabs">
-       <div class="tab on" data-tab="build">בנייה מאפס</div>
-       <div class="tab" data-tab="quick">סקירה מהירה</div>
+       <div class="tab on" data-tab="build">${L('בנייה מאפס','Build from scratch')}</div>
+       <div class="tab" data-tab="quick">${L('סקירה מהירה','Quick overview')}</div>
      </div>`:''}
      <div class="progress"><i id="prog"></i></div>
      <div id="methodArea"></div>
@@ -1559,16 +1586,18 @@ function openSpec(s){
   showPanel(html);
   fillExtras(key);
   function quick(){
-    $("#methodArea").innerHTML=`<div class="method-note">${s.note}</div><div class="steps">`+
+    const steps=buildSteps();
+    $("#methodArea").innerHTML=`<div class="method-note">${t(s.note)}</div><div class="steps">`+
       steps.map((st,i)=>stepHTML(key,'one',i,st)).join("")+`</div>`;
     wireSteps(key,'one',steps);
+    _mkMethodRepaint=quick;   // i18n: regenerate these steps on a language switch
   }
   if(build){
     renderBuildInto("#methodArea", key+"-b", build);
     $("#panel").querySelectorAll(".tab").forEach(t=>t.addEventListener("click",()=>{
       $("#panel").querySelectorAll(".tab").forEach(x=>x.classList.remove("on"));
       t.classList.add("on");clearTimers();
-      if(t.dataset.tab==='build') renderBuildInto("#methodArea", key+"-b", build); else quick();
+      if(t.dataset.tab==='build'){ _mkMethodRepaint=null; renderBuildInto("#methodArea", key+"-b", build); } else quick();
     }));
   } else { quick(); }
 }
@@ -1581,9 +1610,9 @@ function openMake(id){
    <div class="panel-top" style="--c:${col}">
      ${headArt(m.cat)}
      <button class="x" aria-label="סגור">✕</button>
-     <div class="cat" style="color:${col}">${m.cat}${m.origin?` · ${m.origin}`:''}</div>
+     <div class="cat" style="color:${col}">${t(m.cat)}${m.origin?` · ${t(m.origin)}`:''}</div>
      <h2>${itemName(m)}</h2>
-     <div class="en">${m.eng} · רמת קושי ${dots(m.diff)}</div>
+     <div class="en">${m.eng} · ${L('רמת קושי','difficulty')} ${dots(m.diff)}</div>
    </div>
    <div class="panel-body">${m.desc?`<p class="itemdesc" data-mt>${m.desc}</p>`:''}<div class="progress"><i id="prog"></i></div><div id="methodArea"></div><div id="extras"></div>${sourcesBlock(m)}</div>`;
   showPanel(html);
@@ -1595,6 +1624,7 @@ let lastFocus=null;
 let panelStack=[];        // stack of reopener functions for back-navigation
 function showPanel(html){
   lastFocus=document.activeElement;
+  _mkMethodRepaint=null;   // i18n: clear any prior recipe-repaint hook; a recipe panel re-registers its own below
   const p=$("#panel");p.innerHTML=html;p.classList.add("open");p.setAttribute("aria-hidden","false");
   try{ if(typeof applyI18n==='function') applyI18n(p); }catch(e){}   // Wave 5: translate any data-i18n chrome inside dynamically-rendered panels
   try{ if(typeof tnode==='function') tnode(p); }catch(e){}           // Wave 5: dictionary-translate exact-match chrome strings in the panel
@@ -2120,6 +2150,7 @@ function itemRichDesc(meta){
   if(!o.build&&!o.desc&&meta.key&&typeof resolveItem==='function'){ const r=resolveItem(meta.key); if(r) o=r.obj||r; }
   const bld=o.build||{};
   let d=bld.intro||o.desc||o.note||o.somid||'';
+  try{ if(typeof getLang==='function' && getLang()!=='he'){ const dd=(typeof getDict==='function')?getDict():null; if(dd && dd[d]!=null) d=dd[d]; } }catch(e){}   // i18n: pre-translated description (then truncate the translation)
   d=String(d).replace(/\s+/g,' ').trim();
   if(d.length>150) d=d.slice(0,148).replace(/[,\s]+\S*$/,'')+'…';
   return d;
@@ -4489,6 +4520,11 @@ function setLang(l){ if(!I18N_LANGS[l]) return; store.set('mk-lang',l); applyLan
 function getDict(){ return (getLang()==='he')?null:(I18N_DICTS[getLang()]||{}); }
 function itemName(m){ if(!m) return ''; if(getLang()!=='he' && m.eng) return m.eng; return m.heb||m.eng||''; }
 function t(heb, fallback){ const d=getDict(); if(d && d[heb]!=null) return d[heb]; return (fallback!=null?fallback:heb); }
+// Generation-time i18n for dynamically-built recipe prose (steps/notes/tips): the Hebrew string is
+// authored inline with its English counterpart; the active language picks which one is emitted. Falls
+// back to `en` for any non-Hebrew language (French/German/Spanish get English until localized, and the
+// online MT layer can still translate that). Interpolated Hebrew param values should be wrapped in t().
+function L(he, en){ return getLang()==='he' ? he : (en!=null?en:he); }
 function _reEsc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 function applyI18n(root){ const d=getDict(); if(!d) return; const H=d.__html__||{}; const r=root||document;
   r.querySelectorAll('[data-i18n-html]').forEach(function(el){ const v=H[el.getAttribute('data-i18n-html')]; if(v!=null){ if(el._mkHtml===undefined) el._mkHtml=el.innerHTML; el.innerHTML=v; } });   // remember Hebrew original for restore
@@ -4514,12 +4550,20 @@ function restoreHe(root){ const r=root||document.body; if(!r) return;
   try{ const w=document.createTreeWalker(r, NodeFilter.SHOW_TEXT, null); let n; while((n=w.nextNode())){ if(n._mkO!==undefined && n.nodeValue!==n._mkO){ n.nodeValue=n._mkO; } } }catch(e){}
   try{ r.querySelectorAll('[data-i18n-html]').forEach(function(el){ if(el._mkHtml!==undefined) el.innerHTML=el._mkHtml; }); }catch(e){}
   try{ r.querySelectorAll('[placeholder],[aria-label],[title]').forEach(function(el){ ['placeholder','aria-label','title'].forEach(function(a){ if(el['_mko_'+a]!==undefined) el.setAttribute(a, el['_mko_'+a]); }); }); }catch(e){}
+  try{ r.querySelectorAll('[data-mt]').forEach(function(el){ if(el._mkMt!==undefined){ el.textContent=el._mkMt; el._mtDone=0; } }); }catch(e){}   // restore data-mt prose
 }
+// set by an open recipe panel (openCut/openSpec) so applyLang can regenerate its steps in the active
+// language — recipe steps are built at generation time (L()), not dict-translated, so a language switch
+// must re-run the generator rather than rely on tnode/hydrateMT.
+let _mkMethodRepaint=null;
 function applyLang(){ const l=getLang(); const d=(l==='he')?null:(I18N_DICTS[l]||{}); const dir=d?((d.__meta__||{}).dir||'ltr'):'rtl';
   try{ const el=document.documentElement; el.lang=l; el.dir=dir; el.classList.toggle('lang-en', l!=='he'); }catch(e){}
+  try{ if(_mkMethodRepaint && document.getElementById('methodArea')) _mkMethodRepaint(); }catch(e){}   // regenerate open recipe steps in the active language
   if(l==='he'){ try{ restoreHe(); }catch(e){} return; }   // restore originals, then stop (no dict)
   try{ applyI18n(); }catch(e){}
   try{ tnode(document.body); }catch(e){}
+  try{ document.querySelectorAll('[data-mt]').forEach(function(el){ el._mtDone=0; }); }catch(e){}   // allow prose to re-translate into the new language
+  try{ hydrateMT(document.body); }catch(e){}
 }
 // ── T1 · numeric-invariant guard for machine translation ─────────────────────
 // A machine translation of recipe prose is accepted ONLY if it preserves every number the source
@@ -4562,10 +4606,12 @@ async function mtTranslate(src, lang){
 // Data-MT hydration: async-translate any [data-mt] prose element into the active language behind the
 // guard (mirrors the data-i18n chrome walker, but for recipe prose that must go through mtTranslate).
 // No-op in Hebrew; without an AI key mtTranslate returns the Hebrew source, so this degrades safely.
-function hydrateMT(root){ if(getLang()==='he') return; const r=root||document;
+function hydrateMT(root){ if(getLang()==='he') return; const d=getDict(); const r=root||document;
   r.querySelectorAll('[data-mt]').forEach(function(el){ if(el._mtDone) return; el._mtDone=1;
-    const src=el.getAttribute('data-mt')||el.textContent||'';
-    Promise.resolve().then(function(){ return mtTranslate(src, getLang()); }).then(function(out){ if(out && out!==el.textContent) el.textContent=out; }).catch(function(){});
+    const src=(el._mkMt!==undefined)?el._mkMt:(el.getAttribute('data-mt')||el.textContent||'');
+    if(el._mkMt===undefined) el._mkMt=src;   // remember Hebrew original
+    if(d && d[src]!=null){ el.textContent=d[src]; return; }                 // pre-translated (offline, no key)
+    Promise.resolve().then(function(){ return mtTranslate(src, getLang()); }).then(function(out){ if(out && out!==el.textContent) el.textContent=out; }).catch(function(){});   // else machine-translate (guarded)
   });
 }
 function applyAppearance(){
@@ -4795,7 +4841,7 @@ function cwPaintPickList(){
     const ico=(typeof itemEmoji==='function')?itemEmoji(i.cat,i.key):'🍽️';
     const org=(typeof itemOrigin==='function')?itemOrigin(i):'';
     const desc=(typeof itemRichDesc==='function')?itemRichDesc(i):'';
-    const sub=[org||i.cat, i.eng].filter(Boolean).join(' · ');
+    const sub=[org||(typeof t==='function'?t(i.cat):i.cat), i.eng].filter(Boolean).join(' · ');   // i18n: translate the category
     return `<div class="cmore-item" data-cwpick="${i.key}" style="align-items:flex-start;${on?'border-color:var(--ember);background:linear-gradient(135deg,#fff3e8,#ffe9db)':''}">
       <span class="mi">${ico}</span><div style="flex:1"><div style="font-weight:700">${itemName(i)}</div><div style="font-size:11px;color:var(--smoke);font-weight:400">${sub}</div>${desc?`<div style="font-size:11px;color:var(--bone);opacity:.75;line-height:1.5;margin-top:3px">${desc}</div>`:''}</div>
       <span class="mg" style="color:${on?'var(--ember)':'var(--smoke)'};font-size:20px">${on?'✓':'+'}</span></div>`;

@@ -317,7 +317,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 183 · 14.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 184 · 14.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -337,10 +337,19 @@ with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.css")
 with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.js"), encoding="utf-8") as _f: _js = _f.read()
 # i18n: one JSON dictionary file per language under lang/ → const I18N_DICTS = {en:{…}, fr:{…}, …}
 _i18n = {}
+_i18n_data = {}   # <code>.data.json = bulk prose (item descriptions) merged into <code>
 for _lf in sorted(_glob.glob(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "lang", "*.json"))):
-    _code = _os.path.splitext(_os.path.basename(_lf))[0]
+    _bn = _os.path.basename(_lf)
+    if _bn.endswith(".data.json"):
+        _i18n_data.setdefault(_bn[:-len(".data.json")], []).append(_lf); continue
+    _code = _os.path.splitext(_bn)[0]
     with open(_lf, encoding="utf-8") as _f:
         _i18n[_code] = json.load(_f)
+for _code, _dfs in _i18n_data.items():
+    if _code in _i18n:
+        for _df in _dfs:
+            with open(_df, encoding="utf-8") as _f:
+                _i18n[_code].update(json.load(_f))
 I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
 html = HTML.replace("__CSS__", _css).replace("__JS__", _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")")
 import os as _os, shutil as _shutil
