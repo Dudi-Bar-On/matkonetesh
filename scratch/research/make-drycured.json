@@ -283,7 +283,7 @@
   {
     "id": "n-nemchua",
     "eng": "Nem Chua",
-    "calc": {"salt": 22, "cure": null},
+    "calc": {"salt": 22, "cure": 2.5},
     "cure": {
       "ref": "Nem Chua safety literature / Wikipedia; meatsandsausages curing",
       "url": "https://en.wikipedia.org/wiki/Nem_chua",

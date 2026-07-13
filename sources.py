@@ -4113,8 +4113,7 @@ MAKE_SOURCES = {'m-bolo': {'src': {'safe': {'ref': 'USDA FSIS + Marianski (cooki
                                            'sour pH (<4.6) via native/added LAB and sugar; wrapped in leaves, eaten '
                                            'fresh (not dried to 30-40% loss). Keep refrigerated after souring; not '
                                            'shelf-stable like dry salami.'},
-                       'verified': '2026-07-12'},
-               'calc': {'salt': 22}},
+                       'verified': '2026-07-12'}},
  'n-pepperoni': {'src': {'safe': {'ref': 'meatsandsausages Pepperoni (dry)',
                                   'url': 'https://www.meatsandsausages.com/sausage-recipes/pepperoni-dry',
                                   'note': 'Dry-cure controls: nitrite (Cure #2) + fermentation pH drop + drying to '

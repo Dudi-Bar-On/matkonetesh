@@ -18,12 +18,16 @@ USDA FSIS (charcuterie cure). Tests: `npx playwright test` — **8/8 green**.
 
 ---
 
-## ⚠️ 1. NEEDS YOUR DECISION — Nem Chua
-Traditional Vietnamese fermented raw pork is made **without nitrite**. The audit recommends adding
-**Cure #1** (156 ppm) because an app audience can't reliably achieve the rapid acidification the
-traditional method depends on (botulism/Listeria/parasite risk on raw room-temp pork). I did **not**
-apply it — the recipe stays traditional (`cure=None`) and the recommendation lives in its source note.
-**Decide:** add Cure #1 for safety, or keep traditional? (One word and I'll set it.)
+## 1. Nem Chua — RESOLVED (Cure #1 added, your decision)
+Traditional Vietnamese fermented raw pork is often made without nitrite, but an app audience can't
+reliably achieve the rapid acidification it depends on (botulism/Listeria/parasite risk on raw
+room-temp pork). Per your call, **Cure #1 (2.5 g/kg = 156 ppm) is now applied** — set natively in the
+recipe (salt 20→22, materials show "Cure #1 2.5 ג׳/ק״ג", calculator computes it).
+
+**Also fixed (safety-labeling):** `SG()` hardcoded a "Cure #1" prefix, so the ~15 dry-cured sausages
+that use **Cure #2** were rendering "**Cure #1 Cure #2** 2.5" — a misleading/contradictory cure label.
+Now they correctly show just "Cure #2 2.5". Using the wrong cure type is a real safety issue, so this
+matters beyond cosmetics.
 
 ---
 

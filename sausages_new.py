@@ -4,14 +4,16 @@
 
 def SG(heb, eng, origin, cat, diff, desc, meat, fat, grind, salt, casing, spice, cook, smoke=None, dry=None, cure=None, sub="", variants=None, water=10):
     """מחולל מבנה build סטנדרטי לנקניק — שלבים אותנטיים פר-פרמטרים."""
+    # cure label: don't double-prefix when the caller already names the cure type (e.g. "Cure #2 …")
+    _cl = (cure if cure.strip().startswith('Cure') else 'Cure #1 '+cure) if cure else ''
     phases=[["1 · בשר ושומן", f"{meat}. יחס שומן ~{fat}. הקפא חלקית בשר, שומן וחלקי מטחנה ל-0–2°C — קור הוא הכל.", 2700],
             ["2 · טחינה", f"טחן: {grind}. עבוד מהר ושמור הכל קר.", 0],
-            ["3 · תיבול ולישה", f"מלח {salt} ג׳/ק״ג{', Cure #1 '+cure if cure else ''} + {spice}. הוסף {water}% מים/קרח ולוש עד עיסה דביקה (primary bind).", 900],
+            ["3 · תיבול ולישה", f"מלח {salt} ג׳/ק״ג{', '+_cl if cure else ''} + {spice}. הוסף {water}% מים/קרח ולוש עד עיסה דביקה (primary bind).", 900],
             ["4 · מילוי", f"מלא ל{casing}. הימנע מכיסי אוויר, דקור בועות במחט. פתל לחוליות.", 1800]]
     if smoke: phases.append(["5 · עישון", smoke, 7200])
     if dry: phases.append([f"{len(phases)+1} · ייבוש/הבשלה", dry, 0])
     phases.append([f"{len(phases)+1} · בישול והגשה", cook, 1200])
-    mats=[ "מטחנה + מכשיר מילוי", casing, f"מלח {salt} ג׳/ק״ג"]+ (["Cure #1 "+cure] if cure else []) + ["מדחום פנימי"]
+    mats=[ "מטחנה + מכשיר מילוי", casing, f"מלח {salt} ג׳/ק״ג"]+ ([_cl] if cure else []) + ["מדחום פנימי"]
     return dict(heb=heb, eng=eng, cat=cat, diff=diff, origin=origin,
         build=dict(intro=desc, calc=dict(salt=salt, cure=(2.5 if cure else None), sugar=0, water=water, brine=False, saltL=0, cureL=0, sugarL=0),
             materials=mats, variants=variants or [], phases=phases), sub=sub)
@@ -185,9 +187,9 @@ NEW_SAUSAGES={
  water=0,sub="אטריות זכוכית (dangmyeon) בחנויות אסייתיות; דם → מקצבייה בהזמנה"),
 "n-nemchua": SG("נם צ׳ואה","Nem Chua","🇻🇳 וייטנאם","נקניק מיובש",4,
  "הנקניקייה החמצמצה של וייטנאם: מותססת חי 3-5 ימים בעלי בננה — חמוצה וקפיצית. חטיף רחוב אגדי.",
- "חזיר רזה טחון דק מאוד 90% + עור חזיר מבושל פרוס 10%","10%","דק מאוד (אמולסיה)",20,"עטיפת עלי בננה, קוביות קטנות","שום, סוכר, צ׳ילי, פלפל שחור שלם/ק״ג — התססה טבעית",
+ "חזיר רזה טחון דק מאוד 90% + עור חזיר מבושל פרוס 10%","10%","דק מאוד (אמולסיה)",22,"עטיפת עלי בננה, קוביות קטנות","שום, סוכר, צ׳ילי, פלפל שחור שלם/ק״ג — התססה טבעית",
  "תסס 3-5 ימים בטמפ׳ חדר עד חמצמצות (חומצה לקטית = בטיחות). לזהירים — צלייה קצרה.",
- water=0,dry="התססה 3-5 ימים בטמפ׳ חדר.",sub="עלי בננה בחנויות אסייתיות; להתססה בטוחה השתמש בסטרטר מסחרי"),
+ water=0,dry="התססה 3-5 ימים בטמפ׳ חדר.",cure="2.5 ג׳/ק״ג",sub="עלי בננה בחנויות אסייתיות; להתססה בטוחה השתמש בסטרטר מסחרי (וניטריט Cure #1 לבטיחות)"),
 "n-linguica-cal": SG("קלבריה (Calabresa)","Linguiça Calabresa","🇧🇷 ברזיל","נקניק מעושן",2,
  "הלינגוויסה הברזילאית החריפה בהשראה קלבּרֵזית: פפריקה, צ׳ילי ושום, מעושנת. כוכבת הפיצה והפיז׳ואדה.",
  "חזיר 80% + בקר 20%","25%","בינוני 8 מ״מ",20,"מעי חזיר 32-34 מ״מ","פפריקה מעושנת 12 ג׳, פתיתי צ׳ילי 6 ג׳, שום 4 ג׳, אורגנו, פלפל שחור/ק״ג",
