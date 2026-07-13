@@ -1193,7 +1193,7 @@ function openCut(c){
      <div class="en">${c.eng} · ${c.kg} ק״ג · רמת קושי ${dots(c.diff)}</div>
    </div>
    <div class="panel-body">
-     ${c.desc?`<p class="itemdesc">${c.desc}</p>`:''}
+     ${c.desc?`<p class="itemdesc" data-mt>${c.desc}</p>`:''}
      <div class="statline">
        ${isProduce(c)?`
        <div class="stat"><div class="l">גריל</div><div class="v">${c.sot}°<small> / ${Math.round(upperHours(c.soh)*60)}ד'</small></div></div>
@@ -1520,7 +1520,7 @@ function openSpec(s){
      <h2>${s.heb}</h2>
      <div class="en">${s.eng} · רמת קושי ${dots(s.diff)}</div>
    </div>
-   <div class="panel-body">${s.desc?`<p class="itemdesc">${s.desc}</p>`:''}
+   <div class="panel-body">${s.desc?`<p class="itemdesc" data-mt>${s.desc}</p>`:''}
      <div class="statline">
        <div class="stat"><div class="l">עישון</div><div class="v" style="font-size:15px">${smk}</div></div>
        <div class="stat"><div class="l">יעד / הבשלה</div><div class="v" style="font-size:15px">${typeof s.tgt==='number'?s.tgt+'°':(s.age!=='—'?s.age:s.tgt)}</div></div>
@@ -1564,7 +1564,7 @@ function openMake(id){
      <h2>${m.heb}</h2>
      <div class="en">${m.eng} · רמת קושי ${dots(m.diff)}</div>
    </div>
-   <div class="panel-body">${m.desc?`<p class="itemdesc">${m.desc}</p>`:''}<div class="progress"><i id="prog"></i></div><div id="methodArea"></div><div id="extras"></div>${sourcesBlock(m)}</div>`;
+   <div class="panel-body">${m.desc?`<p class="itemdesc" data-mt>${m.desc}</p>`:''}<div class="progress"><i id="prog"></i></div><div id="methodArea"></div><div id="extras"></div>${sourcesBlock(m)}</div>`;
   showPanel(html);
   renderBuildInto("#methodArea", "make-"+id, m.build);
   fillExtras("make-"+id);
@@ -1576,6 +1576,7 @@ function showPanel(html){
   lastFocus=document.activeElement;
   const p=$("#panel");p.innerHTML=html;p.classList.add("open");p.setAttribute("aria-hidden","false");
   try{ if(typeof applyI18n==='function') applyI18n(p); }catch(e){}   // Wave 5: translate any data-i18n chrome inside dynamically-rendered panels
+  try{ if(typeof hydrateMT==='function') hydrateMT(p); }catch(e){}   // Wave 5: async-translate any [data-mt] recipe prose behind the number-safety guard
   $("#scrim").classList.add("open");document.body.classList.add("noscroll");
   const xb=p.querySelector(".x"); if(xb) xb.addEventListener("click",closePanel);
   const top=p.querySelector(".panel-top");
@@ -4530,6 +4531,15 @@ async function mtTranslate(src, lang){
   const g=mtGuard(src, out);   // T1 gate: reject a translation that mangled a number
   if(g.ok){ cache[key]=g.text; try{ if(Object.keys(cache).length<3000) store.set('mk-mtcache',cache); }catch(e){} }
   return g.text;
+}
+// Data-MT hydration: async-translate any [data-mt] prose element into the active language behind the
+// guard (mirrors the data-i18n chrome walker, but for recipe prose that must go through mtTranslate).
+// No-op in Hebrew; without an AI key mtTranslate returns the Hebrew source, so this degrades safely.
+function hydrateMT(root){ if(getLang()==='he') return; const r=root||document;
+  r.querySelectorAll('[data-mt]').forEach(function(el){ if(el._mtDone) return; el._mtDone=1;
+    const src=el.getAttribute('data-mt')||el.textContent||'';
+    Promise.resolve().then(function(){ return mtTranslate(src, getLang()); }).then(function(out){ if(out && out!==el.textContent) el.textContent=out; }).catch(function(){});
+  });
 }
 function applyAppearance(){
   const el=document.documentElement;
