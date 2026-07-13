@@ -4122,7 +4122,7 @@ function renderTimelinePanel(){
     </div>`:'';
     const _blk=computed.filter(c=>c.blocked).map(c=>esc(c.m.heb));   // F4: multi-day items are excluded from the timed plan — surface them as a prep-ahead advisory instead of dropping them silently
     return `${_blk.length?`<div class="wp-advisory">📋 <b>הכנה מראש (רב-יומי):</b> ${_blk.join(', ')} — תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.</div>`:''}${orderControlsHtml}<div class="tl-detailtoggle"><span>רמת פירוט:</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">מקוצר</button><button class="mchip ${detail?'on':''}" data-tldetail="full">מלא — עצמאי להדפסה</button><button class="mchip vc-launch" data-vclaunch>🎙️ מצב בישול קולי</button></div>
-    <div class="tl-shaperow"><span>תצוגה:</span>${shapeBtns}</div>
+    <details class="tl-shapedet"><summary>תצוגה: ${SHAPE_NAMES[shp]||''} <span class="tl-shapehint">▾ שנה</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
     ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
   /* v144: same computed+scheduled tasks, 3 presentation shapes (does not touch scheduling above) */
@@ -4373,22 +4373,30 @@ function toolTop(title,sub,emoji,col){
   return `<div class="panel-top" style="--c:${col||'var(--ember)'}"><button class="x" aria-label="סגור">✕</button><div class="cat" style="color:${col||'var(--ember)'}">${emoji||'🧰'} כלי עזר</div><h2>${title}</h2><div class="en">${sub||''}</div></div>`;
 }
 function openTools(){
-  const tools=[
-    ['🕒','מתזמן ציר-זמן',openTimeline],['🎉','בונה תפריט לאירוח',openBuilder],
-    ['🧫','פרויקטים ומזווה',openPantry],['📓','יומן בישולים',openJournal],
-    ['⏰','תזכורות',openReminders],['🆘','מצב הצילו',openHelp],
-    ['🔥','שאל את האש',openAsk],['🪵','מדריך עצים',()=>openWoods()],
-    ['🥩','מתרגם נתחים',openCutTrans],['🧮','מחשבון מלח/כמויות',openCalc],
-    ['🧂','מתבלים ורטבים',()=>openSeasonings()],
-    ['💾','גיבוי ושחזור',openBackup],['🛒','רשימת קניות',openCart],
-    ['ℹ️','אודות והיכולות',()=>{location.href='product.html';}],
-    ['🚪','יציאה מהאפליקציה',exitApp]
+  // UX #10: grouped by noun instead of a flat 15-tool grid
+  const groups=[
+    ['תכנון ובישול', [
+      ['🕒','מתזמן ציר-זמן',openTimeline],['🎉','בונה תפריט לאירוח',openBuilder],
+      ['🛒','רשימת קניות',openCart],['⏰','תזכורות',openReminders],['🆘','מצב הצילו',openHelp]
+    ]],
+    ['ידע ומחשבונים', [
+      ['🔥','שאל את האש',openAsk],['🥩','מתרגם נתחים',openCutTrans],['🧮','מחשבון מלח/כמויות',openCalc],
+      ['🪵','מדריך עצים',()=>openWoods()],['🧂','מתבלים ורטבים',()=>openSeasonings()]
+    ]],
+    ['הנתונים שלי', [
+      ['🧫','פרויקטים ומזווה',openPantry],['📓','יומן בישולים',openJournal],['💾','גיבוי ושחזור',openBackup]
+    ]],
+    ['אפליקציה', [
+      ['ℹ️','אודות והיכולות',()=>{location.href='product.html';}],['🚪','יציאה מהאפליקציה',exitApp]
+    ]]
   ];
-  showPanel(`${toolTop('כלים','כל הכלים של מדריך האש','🧰','#b5603a')}
-   <div class="panel-body"><div class="toolgrid">${tools.map((t,i)=>`<button class="toolbtn" data-tool="${i}"><span>${t[0]}</span>${t[1]}</button>`).join("")}</div></div>`);
+  const flat=[]; groups.forEach(g=>g[1].forEach(t=>flat.push(t)));
+  const body=groups.map(g=>`<div class="toolgroup"><h4 class="toolgroup-h">${g[0]}</h4><div class="toolgrid">`+
+    g[1].map(t=>`<button class="toolbtn" data-tool="${flat.indexOf(t)}"><span>${t[0]}</span>${t[1]}</button>`).join('')+`</div></div>`).join('');
+  showPanel(`${toolTop('כלים','כל הכלים של מדריך האש','🧰','#b5603a')}<div class="panel-body">${body}</div>`);
   $("#panel").querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
-    const fn=tools[+b.dataset.tool][2];
-    if(fn===exitApp || tools[+b.dataset.tool][1]==='אודות והיכולות'){ fn(); return; } // these leave the app
+    const t=flat[+b.dataset.tool], fn=t[2];
+    if(fn===exitApp || t[1]==='אודות והיכולות'){ fn(); return; } // these leave the app
     openFrom(openTools, fn);
   }));
 }

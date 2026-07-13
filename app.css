@@ -793,6 +793,8 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .butchernote{background:var(--char2);border:1px dashed var(--line);border-radius:9px;padding:11px;margin:8px 0;font-size:calc(14px * var(--fscale));line-height:1.6}
 
 .toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.toolgroup{margin-bottom:16px}
+.toolgroup-h{margin:0 0 2px;font-size:calc(12px * var(--fscale));font-weight:800;color:var(--smoke);letter-spacing:.02em}
 .toolbtn{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--char2);border:1px solid var(--line);color:var(--bone);border-radius:12px;padding:16px 10px;font-size:calc(13px * var(--fscale));text-align:center}
 .toolbtn span{font-size:calc(26px * var(--fscale))}
 .toolbtn:hover{border-color:var(--ember);background:var(--char3)}
@@ -1061,6 +1063,12 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .tl-detailtoggle{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-family:var(--font-body);font-size:calc(12.5px * var(--fscale));color:var(--smoke)}
 /* v144: shape-switch row + 3 work-plan presentation shapes */
 .tl-shaperow{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:12px;font-family:var(--font-body);font-size:calc(12px * var(--fscale));color:var(--smoke)}
+.tl-shapedet{margin-bottom:12px;font-family:var(--font-body);font-size:calc(12px * var(--fscale))}
+.tl-shapedet>summary{cursor:pointer;color:var(--smoke);list-style:none;padding:4px 0;font-weight:700}
+.tl-shapedet>summary::-webkit-details-marker{display:none}
+.tl-shapedet[open]>summary{margin-bottom:8px}
+.tl-shapehint{color:var(--ember2);font-weight:700;font-size:calc(11px * var(--fscale))}
+.tl-shapedet .tl-shaperow{margin-bottom:0}
 .shp-btn{font-size:calc(12px * var(--fscale))!important}
 .rec-tag{display:inline-block;font-size:calc(9.5px * var(--fscale));font-weight:800;color:#fff;background:var(--fresh);padding:1px 7px;border-radius:999px;margin-inline-start:4px;vertical-align:middle}
 /* shape 5 — accordion */

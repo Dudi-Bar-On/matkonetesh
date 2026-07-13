@@ -84,9 +84,11 @@ test('timer sync: a stage timer shares state across plan<->items views (shared s
 
 test('all 3 plan shapes (vertical/accordion/horizontal) render timers', async ({ page }) => {
   await openPlan(page);
+  await page.evaluate(`document.querySelector('#tlList .tl-shapedet').open=true`);   // UX #7: shape controls now live behind a details toggle
   await page.click('[data-tlshape="5"]');   // accordion
   await page.waitForSelector('.wp-accordion');
   expect(await page.evaluate(`document.querySelectorAll('.wp-accordion .timer').length`)).toBeGreaterThan(0);
+  await page.evaluate(`document.querySelector('#tlList .tl-shapedet').open=true`);   // re-render collapsed it — reopen
   await page.click('[data-tlshape="3"]');   // horizontal
   await page.waitForSelector('.wp-horiz');
   expect(await page.evaluate(`document.querySelectorAll('.wp-horiz .timer').length`)).toBeGreaterThan(0);
