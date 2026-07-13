@@ -92,6 +92,22 @@ test('all 3 plan shapes (vertical/accordion/horizontal) render timers', async ({
   expect(await page.evaluate(`document.querySelectorAll('.wp-horiz .timer').length`)).toBeGreaterThan(0);
 });
 
+test('voice-cook shows a "running now" strip for parallel timers, tappable to jump', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
+  await page.goto('/index.html');
+  await page.evaluate(`(function(){ var now=Date.now();
+    store.set('mk-timers', { 'st-a-0':{end:now+3600000}, 'st-b-0':{end:now+1800000} });   // two timers running
+    openVoiceCook([
+      {t:new Date(now+60000), label:'עשן חזה', kind:'smoke', tid:'st-a-0', dur:3600},
+      {t:new Date(now+600000), label:'סו-ויד צלעות', kind:'sv', tid:'st-b-0', dur:1800}
+    ]);
+  })()`);
+  await page.waitForSelector('.vc-running .vc-runchip');
+  expect(await page.evaluate(`document.querySelectorAll('.vc-running .vc-runchip').length`)).toBe(2);   // both parallel timers listed
+  await page.click('[data-vcjump="1"]');                                                               // jump to the 2nd
+  expect(await page.evaluate(`document.querySelector('.vc-label').textContent`)).toContain('צלעות');
+});
+
 test('start plan: timers are gated until "התחל תוכנית" is pressed', async ({ page }) => {
   await page.addInitScript(() => {
     try {
@@ -107,7 +123,7 @@ test('start plan: timers are gated until "התחל תוכנית" is pressed', as
   expect(await page.evaluate(`document.getElementById('tlList').classList.contains('plan-idle')`)).toBe(true);   // timers disabled
   await page.click('#planStartRow .plan-startbtn');
   expect(await page.evaluate(`document.getElementById('tlList').classList.contains('plan-idle')`)).toBe(false);  // now enabled
-  expect(await page.evaluate(`store.get('mk-plan-started')`)).toBeTruthy();
+  expect(await page.evaluate(`planStarted()`)).toBe(true);   // per-event start state (scoped key)
 });
 
 test('feasibility: strict mode warns + blocks starting when the plan cannot finish by serve time', async ({ page }) => {

@@ -1254,9 +1254,15 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .plan-strict{display:flex;align-items:center;gap:6px;font-size:calc(12px * var(--fscale));color:var(--smoke)}
 .plan-warn{background:var(--tint-warn);color:var(--tint-warn-ink);border:1px solid var(--line2);border-radius:10px;padding:9px 11px;font-size:calc(12.5px * var(--fscale));margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
 .plan-idle .timer button{opacity:.4;pointer-events:none}
+.cev-running{background:var(--tint-warn);color:var(--tint-warn-ink)}
+.cev-live{background:var(--fresh-l);color:var(--fresh)}
 .vc-timerwrap{margin:14px auto 6px;text-align:center;padding:20px 0}
 .vc-timerlbl{font-size:calc(13px * var(--fscale));color:var(--smoke);margin-bottom:12px}
 .vc-timerwrap .timer{display:inline-flex;justify-content:center;gap:16px;transform:scale(1.5);transform-origin:center}
+.vc-running{margin:8px 0;padding:10px;background:var(--tint-warn);border:1px solid var(--line2);border-radius:12px}
+.vc-running-lbl{font-size:calc(12px * var(--fscale));font-weight:700;color:var(--tint-warn-ink);margin-bottom:6px}
+.vc-runchip{display:inline-block;margin:3px;padding:7px 11px;border-radius:9px;border:1px solid var(--line2);background:var(--char2);color:var(--bone);font-size:calc(12.5px * var(--fscale));font-weight:700;cursor:pointer}
+.vc-runchip.on{border-color:var(--ember);color:var(--ember)}
 .tl-stage-t{min-width:52px;color:var(--ember2);font-weight:700}
 .tl-stage-l{flex:1;color:var(--ash)}
 .tl-stage-h{color:var(--smoke);font-size:calc(11.5px * var(--fscale))}
@@ -1523,7 +1529,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 155 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 156 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -2906,7 +2912,7 @@ function stepHTML(key,which,i,s){
    </div>`;
 }
 function timerHTML(sec, id, name){
-  return `<div class="timer" data-sec="${sec}" data-left="${sec}"${id?` data-tid="${esc(id)}"`:''}${name?` title="${esc(name)}"`:''} role="timer">
+  return `<div class="timer" data-sec="${sec}" data-left="${sec}"${id?` data-tid="${esc(id)}"`:''}${name?` title="${esc(name)}" data-name="${esc(name)}"`:''} role="timer">
      <button data-play aria-label="הפעל טיימר">▶</button>
      <span class="tt">${fmt(sec)}</span>
      <span class="tt-alert" role="alert" aria-live="assertive"></span>
@@ -2962,10 +2968,10 @@ function wireTimer(tm, opts){
   const done=()=>{ stop(); play.textContent="▶"; play.setAttribute('aria-label','הפעל טיימר'); tm.classList.add("ringing"); tt.textContent="סיום!"; if(al) al.textContent="הטיימר הסתיים!"; };
   const tick=()=>{ left=Math.round((endsAt-Date.now())/1000);
     if(opts.warnSec && left===opts.warnSec && opts.onWarn){ try{opts.onWarn(left);}catch(e){} }
-    if(left<=0){ done(); _timerSet(id,{end:endsAt}); timerBeep(); if(opts.onEnd){ try{opts.onEnd();}catch(e){} } return; }
+    if(left<=0){ done(); timerBeep(); _timerSet(id,{end:endsAt,name:tm.dataset.name||'',fired:1}); if(opts.onEnd){ try{opts.onEnd();}catch(e){} } return; }
     tt.textContent=fmt(left); };
   const run=()=>{ play.textContent="❚❚"; play.setAttribute('aria-label','השהה טיימר'); tm.classList.remove("ringing"); if(al) al.textContent=""; stop(); iv=setInterval(tick,250); timers["t"+Math.random()]=iv; tick(); };
-  const startFresh=()=>{ timerAudioPrime(); endsAt=Date.now()+left*1000; _timerSet(id,{end:endsAt}); run(); };
+  const startFresh=()=>{ timerAudioPrime(); endsAt=Date.now()+left*1000; _timerSet(id,{end:endsAt,name:tm.dataset.name||''}); run(); };
   const pause=()=>{ stop(); left=Math.max(0,Math.round((endsAt-Date.now())/1000)); idle(left); _timerSet(id,{left:left}); };
   // restore prior state on (re-)wire: running keeps counting, paused shows the remaining time, finished shows סיום
   const rec=_timerGet(id);
@@ -2976,6 +2982,22 @@ function wireTimer(tm, opts){
   tm.addEventListener("click", e=>e.preventDefault());   // tapping the timer must not toggle a parent <label> (plan-view rows)
 }
 function clearTimers(){Object.values(timers).forEach(clearInterval);timers={};}
+// global alarm watcher: fires the beep + a notification for ANY expiring timer across all events,
+// even when its screen isn't open — essential for parallel multi-event cooking.
+let mkTimerWatch=null;
+function startTimerWatch(){
+  if(mkTimerWatch) return;
+  mkTimerWatch=setInterval(function(){
+    const ts=store.get('mk-timers')||{}, now=Date.now(); let changed=false;
+    Object.keys(ts).forEach(function(k){ const r=ts[k];
+      if(r && r.end && !r.fired && r.end<=now){ r.fired=1; changed=true;
+        try{ timerBeep(); }catch(e){}
+        if(('Notification' in window) && Notification.permission==='granted'){ try{ new Notification('⏱ הטיימר הסתיים', {body:(r.name||'טיימר בישול'), icon:'icon-192.png'}); }catch(e){} }
+      }
+    });
+    if(changed) store.set('mk-timers', ts);
+  }, 1000);
+}
 
 function openSpec(s){
   curProject=pendingProject; pendingProject=null;
@@ -5061,6 +5083,12 @@ function vcRender(){
       const nx=vcTasks[vcIdx+1]; if(!nx||!(t.t instanceof Date)||!(nx.t instanceof Date)) return ''; const d=Math.round((nx.t-t.t)/1000); if(d<=0||d>24*3600) return '';
       return `<div class="vc-timerwrap"><div class="vc-timerlbl">⏱ טיימר — עד המשימה הבאה (${fmtClock(nx.t)})</div>${timerHTML(d, 'vc-'+(t.t?t.t.getTime():vcIdx))}</div>`;
     })()}
+    ${(function(){
+      const ts=store.get('mk-timers')||{}, now=Date.now();
+      const runners=vcTasks.map((tk,i)=>({tk,i})).filter(o=>o.tk.tid && ts[o.tk.tid] && ts[o.tk.tid].end && ts[o.tk.tid].end>now);
+      if(runners.length<2) return '';   // the current task's timer is already prominent; strip is for 2+ in parallel
+      return `<div class="vc-running"><div class="vc-running-lbl">🔴 רצים במקביל (${runners.length})</div>${runners.map(o=>{ const rem=Math.round((ts[o.tk.tid].end-now)/1000); return `<button class="vc-runchip ${o.i===vcIdx?'on':''}" data-vcjump="${o.i}">${esc(stripEmoji(o.tk.label))} · ${fmt(rem)}</button>`; }).join('')}</div>`;
+    })()}
     <div class="vc-btns">
       <button class="vc-big" data-vc="prev">⏮ הקודם</button>
       <button class="vc-big vc-main" data-vc="read">🔊 הקרא</button>
@@ -5094,6 +5122,7 @@ function vcRender(){
       :(vcVoices.length===0&&!gemKey()?'<p class="vc-hint">⚠ לא נמצא קול עברי במכשיר — באנדרואיד: הגדרות ← ניהול כללי ← המרת טקסט לדיבור ← התקן/בחר "שירותי הדיבור של Google" עם עברית.</p>':'')}`
    :'<div class="shop-empty">אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.</div>';
   host.querySelectorAll('[data-vc]').forEach(b=>b.addEventListener('click',()=>vcAction(b.dataset.vc)));
+  host.querySelectorAll('[data-vcjump]').forEach(b=>b.addEventListener('click',()=>{ vcIdx=+b.dataset.vcjump; vcRender(); vcSpeakContent(vcCurrentText(false)); }));   // jump to a parallel running timer
   // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
   { const tm=host.querySelector('.vc-timerwrap .timer'); if(tm){ const total=+tm.dataset.sec; const warnAt=total>150?120:(total>60?30:0);
       wireTimer(tm, { warnSec:warnAt,
@@ -5305,8 +5334,9 @@ function updateServeBar(){
   if(fill) fill.style.width=(total>0?Math.max(0,Math.min(100,elapsed/total*100)):0).toFixed(1)+'%';
 }
 function startServeBar(){ if(serveIv){clearInterval(serveIv);} updateServeBar(); serveIv=setInterval(updateServeBar,30000); }
-function planStarted(){ return !!store.get('mk-plan-started'); }
-function setPlanStarted(v){ store.set('mk-plan-started', v||null); }
+function planStartKey(){ return 'mk-plan-started-'+(typeof evScope==='function'?evScope():'cook'); }   // per-event start state
+function planStarted(){ return !!store.get(planStartKey()); }
+function setPlanStarted(v){ store.set(planStartKey(), v||null); }
 function resetPlanTimers(){ const ts=store.get('mk-timers')||{}; Object.keys(ts).forEach(k=>{ if(/^(st-|wp|vc-)/.test(k)) delete ts[k]; }); store.set('mk-timers',ts); }
 // "Start plan" gate + feasibility guard: warns (or, if strict mode is on, blocks) when the plan can't finish by serve time
 function renderPlanStartRow(earliest, serve, rebuild){
@@ -5373,7 +5403,7 @@ function renderTimelinePanel(){
       let stages=[], startClock=null;
       if(!blocked){
         stages=itemStages(m,st.method,st.ready,st.svSmokeOrder);
-        stages.forEach((s,si)=>{ s.tid='st-'+m.key+'-'+si; });   // canonical per-stage timer id (shared across items/plan/voice views)
+        stages.forEach((s,si)=>{ s.tid='st-'+evScope()+'-'+m.key+'-'+si; });   // canonical per-stage timer id — scoped per event so parallel events don't collide
         let end=serve;
         for(let i=stages.length-1;i>=0;i--){
           const s=stages[i]; const start=new Date(end.getTime()-s.hours*3600e3);
@@ -6240,6 +6270,10 @@ function cRefreshHome(){
 function evList(){ const l=store.get('mk-events'); return Array.isArray(l)?l:[]; }
 function evSaveList(l){ store.set('mk-events', l); }
 function evActive(){ return store.get('mk-active')||null; }
+// scope for per-event timers + start-state: each event (or the 'cook' route) is an independent parallel session
+function evScope(){ return (typeof menuCtx==='function'&&menuCtx()==='cook')?'cook':(evActive()||'draft'); }
+// count of currently-running timers for a given event scope (its stage timers are keyed "st-<scope>-…")
+function evRunningCount(id){ const ts=store.get('mk-timers')||{}, now=Date.now(); let c=0; Object.keys(ts).forEach(function(k){ const r=ts[k]; if(r&&r.end&&r.end>now && k.indexOf('-'+id+'-')>=0) c++; }); return c; }
 function evGenId(){ return 'ev-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e4).toString(36); }
 function evMenuHasContent(m){ m=m||((typeof menuState==='function')?menuState():{keys:[]}); return (m.keys||[]).length>0; }
 function isDraft(){ return !evActive() && evMenuHasContent(); }
@@ -6329,7 +6363,7 @@ function cPaintEvents(){
     const dateStr=e.date?new Date(e.date).toLocaleDateString('he-IL',{day:'numeric',month:'short'}):'';
     return `<div class="cevcard ${isAct?'active':''}">
       <div class="cev-main" data-evload="${e.id}">
-        <div class="cev-name">${e.name}${isAct?' <span class="cev-badge">פעיל</span>':''}</div>
+        <div class="cev-name">${e.name}${isAct?' <span class="cev-badge">פעיל</span>':''}${(function(){ const rc=evRunningCount(e.id); return rc?` <span class="cev-badge cev-running">🔴 ${rc} טיימרים רצים</span>`:(store.get('mk-plan-started-'+e.id)?' <span class="cev-badge cev-live">▶ פעילה</span>':''); })()}</div>
         ${e.desc?`<div class="cev-desc">${e.desc}</div>`:''}
         <div class="cev-meta">${dateStr?`📅 ${dateStr} · `:''}🍽️ ${n} מנות · 👥 ${e.menu&&e.menu.guests||8}${e.serve?' · ⏰ '+e.serve:''}</div>
         <div class="cev-actions">
@@ -7642,6 +7676,7 @@ document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('
   }catch(e){ /* non-fatal */ }
 })();
 try{ cRefreshHome(); cNavGo('home'); }catch(e){ /* headless/init guard */ }
+try{ if(typeof startTimerWatch==='function') startTimerWatch(); }catch(e){}   // parallel multi-event alarms
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}
 /* T4: register the service worker in production (https only — the http test server skips it).
    Prompts a refresh when a new build has been fetched and is waiting. */
