@@ -4441,6 +4441,42 @@ function themeKey(){ const t=store.get('mk-theme'); return THEMES[t]?t:'cream'; 
 function fontPairKey(){ const f=store.get('mk-fontpair'); return FONT_PAIRS[f]?f:'current'; }
 function fontScale(){ const s=+store.get('mk-fontscale'); return FONT_SCALES.includes(s)?s:1; }
 const THEME_SCHEME={cream:'light',charcoal:'dark',walnut:'light',slate:'light'};   // native form-control rendering hint
+/* ═══ i18n foundation (Wave 5) ═══════════════════════════════════════════════
+   Hand-authored keyed CHROME table + a pluggable language provider. This layer
+   translates UI chrome only — NO safety numbers, NO machine translation. MT of
+   recipe/data prose is gated behind the numeric-invariant safety guard (T1) and
+   is deliberately NOT done here. getLang() is host-pluggable so matkonet can drive
+   the locale (the platform module seam). */
+const I18N_LANGS={ he:'עברית', en:'English' };
+const I18N={
+  'path.event':      {he:'יש לי אירוע', en:'I have an event'},
+  'path.cook':       {he:'בא לי לבשל משהו', en:'I want to cook something'},
+  'path.project':    {he:'פרויקט מתקדם', en:'Advanced project'},
+  'home.ask':        {he:'שאל את האש', en:'Ask the Fire'},
+  'home.what':       {he:'מה <b>מדליקים</b> היום?', en:"What's <b>cooking</b> today?"},
+  'home.how':        {he:'❓ איך משתמשים באפליקציה', en:'❓ How to use the app'},
+  'search.ph':       {he:'חפש הכל — נתח, נקניקייה, מתבל…', en:'Search everything — cut, sausage, spice…'},
+  'ap.lang':         {he:'🌐 שפה', en:'🌐 Language'},
+  'ap.theme':        {he:'🎨 ערכת גוונים', en:'🎨 Color theme'},
+  'ap.fonts':        {he:'🔤 זיווג פונטים', en:'🔤 Font pairing'},
+  'ap.size':         {he:'🔠 גודל טקסט', en:'🔠 Text size'},
+  'ap.title':        {he:'מראה', en:'Appearance'}
+};
+function getLang(){
+  try{ if(typeof window!=='undefined' && window.__MATKONET_HOST__ && window.__MATKONET_HOST__.lang && I18N_LANGS[window.__MATKONET_HOST__.lang]) return window.__MATKONET_HOST__.lang; }catch(e){}   // host-driven locale (matkonet module seam)
+  const l=(typeof store!=='undefined')?store.get('mk-lang'):null; return I18N_LANGS[l]?l:'he';
+}
+function setLang(l){ if(!I18N_LANGS[l]) return; store.set('mk-lang',l); applyLang(); }
+function t(key, fallback){ const e=I18N[key], l=getLang(); if(e){ if(e[l]!=null) return e[l]; if(e.he!=null) return e.he; } return fallback!=null?fallback:key; }
+function applyI18n(root){ const r=root||document;
+  r.querySelectorAll('[data-i18n]').forEach(function(el){ const v=t(el.getAttribute('data-i18n')); if(v!=null) el.textContent=v; });
+  r.querySelectorAll('[data-i18n-html]').forEach(function(el){ const v=t(el.getAttribute('data-i18n-html')); if(v!=null) el.innerHTML=v; });   // for chrome that carries inline markup (e.g. <b>)
+  r.querySelectorAll('[data-i18n-ph]').forEach(function(el){ const v=t(el.getAttribute('data-i18n-ph')); if(v!=null) el.setAttribute('placeholder',v); });
+}
+function applyLang(){ const l=getLang();
+  try{ const el=document.documentElement; el.lang=l; el.dir=(l==='he'||l==='ar')?'rtl':'ltr'; el.classList.toggle('lang-en', l!=='he'); }catch(e){}
+  try{ applyI18n(); }catch(e){}
+}
 function applyAppearance(){
   const el=document.documentElement;
   el.classList.remove('light','t-vintage','t-gold');   // clear dead legacy classes permanently
@@ -4457,6 +4493,7 @@ function setTheme(k){ if(!THEMES[k]) return; store.set('mk-theme',k); applyAppea
 function setFontPair(k){ if(!FONT_PAIRS[k]) return; store.set('mk-fontpair',k); applyAppearance(); }
 function setFontScale(n){ if(!FONT_SCALES.includes(n)) return; store.set('mk-fontscale',n); applyAppearance(); }
 applyAppearance();
+try{ applyLang(); }catch(e){}   // Wave 5: set html lang/dir + translate tagged chrome on boot
 /* ── v144: UI levels (beginner/mid/pro) + per-level default work-plan shape ── */
 const UI_LEVELS={
   beginner:{ name:'מתחיל', desc:'הדרכה צעד-אחר-צעד, פחות מספרים בבת אחת' },
@@ -4508,13 +4545,16 @@ function openAppearance(){
   const themeBtns=Object.entries(THEMES).map(([k,t])=>`<button class="ap-opt ${k===themeKey()?'on':''}" data-aptheme="${k}">${swatch(t)}${t.name}</button>`).join('');
   const fontBtns=Object.entries(FONT_PAIRS).map(([k,f])=>`<button class="ap-opt ${k===fontPairKey()?'on':''}" data-apfont="${k}" style="font-family:${f.display}">${f.name}</button>`).join('');
   const scaleBtns=FONT_SCALES.map(s=>`<button class="ap-opt ${s===fontScale()?'on':''}" data-apscale="${s}">${FONT_SCALE_LABELS[s]}</button>`).join('');
-  showPanel(`${toolTop('מראה','גוונים, פונט וגודל טקסט — הבחירה שלך נשמרת','🎨','#c8542f')}
+  const langBtns=Object.entries(I18N_LANGS).map(([k,n])=>`<button class="ap-opt ${k===getLang()?'on':''}" data-aplang="${k}">${n}</button>`).join('');   // Wave 5: language switcher
+  showPanel(`${toolTop(t('ap.title'),'גוונים, פונט, שפה — הבחירה שלך נשמרת','🎨','#c8542f')}
     <div class="panel-body">
-      <div class="ap-lbl">🎨 ערכת גוונים</div>
+      <div class="ap-lbl">${t('ap.lang')}</div>
+      <div class="ap-opts">${langBtns}</div>
+      <div class="ap-lbl">${t('ap.theme')}</div>
       <div class="ap-opts">${themeBtns}</div>
-      <div class="ap-lbl">🔤 זיווג פונטים</div>
+      <div class="ap-lbl">${t('ap.fonts')}</div>
       <div class="ap-opts">${fontBtns}</div>
-      <div class="ap-lbl">🔠 גודל טקסט</div>
+      <div class="ap-lbl">${t('ap.size')}</div>
       <div class="ap-opts">${scaleBtns}</div>
       <div class="ap-note">◐ ניגודיות גבוהה פעילה תמיד — קריאוּת מיטבית ליד האש, בכל ערכת גוון.</div>
       <div class="ap-preview"><div class="ap-pt">חזה בקר מעושן</div><div class="ap-pb">כ-28 שעות · דוגמת תצוגה חיה לבחירה שלך.</div></div>
@@ -4523,6 +4563,7 @@ function openAppearance(){
   pnl.querySelectorAll('[data-aptheme]').forEach(b=>b.addEventListener('click',()=>{ setTheme(b.dataset.aptheme); openAppearance(); }));
   pnl.querySelectorAll('[data-apfont]').forEach(b=>b.addEventListener('click',()=>{ setFontPair(b.dataset.apfont); openAppearance(); }));
   pnl.querySelectorAll('[data-apscale]').forEach(b=>b.addEventListener('click',()=>{ setFontScale(+b.dataset.apscale); openAppearance(); }));
+  pnl.querySelectorAll('[data-aplang]').forEach(b=>b.addEventListener('click',()=>{ setLang(b.dataset.aplang); openAppearance(); }));   // Wave 5: switch language
 }
 $("#themeBtn").addEventListener('click',openAppearance);
 

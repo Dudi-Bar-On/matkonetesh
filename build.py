@@ -155,19 +155,19 @@ HTML = r"""<!DOCTYPE html>
       <div class="chome-credit-top">נבנה באהבה לקהילת האש · <b>דודי בר-און</b></div>
     </div>
   </div>
-  <div class="chome-search" id="cHomeSearch"><span class="ic">⌕</span><input id="cHomeSearchInput" placeholder="חפש הכל — נתח, נקניקייה, מתבל…" autocomplete="off"></div>
-  <div class="chome-hero"><div class="hi" id="cGreet">ברוך הבא 👋</div><h2>מה <b>מדליקים</b> היום?</h2></div>
+  <div class="chome-search" id="cHomeSearch"><span class="ic">⌕</span><input id="cHomeSearchInput" data-i18n-ph="search.ph" placeholder="חפש הכל — נתח, נקניקייה, מתבל…" autocomplete="off"></div>
+  <div class="chome-hero"><div class="hi" id="cGreet">ברוך הבא 👋</div><h2 data-i18n-html="home.what">מה <b>מדליקים</b> היום?</h2></div>
   <div id="cGearBanner"></div>
-  <button class="chome-ask" id="cHomeAsk"><span class="cha-ico">🔥</span><span class="cha-txt"><b>שאל את האש</b><small>עוזר בישול חכם — זמן, טמפ׳, עץ, כמות, כשרות, ואיפה לקנות</small></span><span class="cha-go">←</span></button>
+  <button class="chome-ask" id="cHomeAsk"><span class="cha-ico">🔥</span><span class="cha-txt"><b data-i18n="home.ask">שאל את האש</b><small>עוזר בישול חכם — זמן, טמפ׳, עץ, כמות, כשרות, ואיפה לקנות</small></span><span class="cha-go">←</span></button>
   <div class="cpaths">
-    <div class="cpath event" data-cgo="wizard"><span class="ptag">🌿 הכי פופולרי</span><span class="pico">🎉</span><h3>יש לי אירוע</h3><p>אשף מודרך שבונה תפריט, רשימת קניות ותוכנית עבודה — לפי מספר הסועדים והטעמים.</p><span class="go">←</span></div>
-    <div class="cpath quick" id="cPathCook"><span class="pico">🔥</span><h3>בא לי לבשל משהו</h3><p>אותו אשף מודרך כמו אירוע — בחר מנות, שיטות ותיבול, וקבל תוכנית עבודה מלאה עם טיימרים.</p><span class="go">←</span></div>
-    <div class="cpath project" id="cPathProj"><span class="pico">🧪</span><h3>פרויקט מתקדם</h3><p>שרקוטרי, נקניקים ועישון ארוך — בחירה מקוטלגת לפי סוג ומדינה, עם תיאור מלא לכל מלאכה וליווי צעד-אחר-צעד.</p><span class="go">←</span></div>
+    <div class="cpath event" data-cgo="wizard"><span class="ptag">🌿 הכי פופולרי</span><span class="pico">🎉</span><h3 data-i18n="path.event">יש לי אירוע</h3><p>אשף מודרך שבונה תפריט, רשימת קניות ותוכנית עבודה — לפי מספר הסועדים והטעמים.</p><span class="go">←</span></div>
+    <div class="cpath quick" id="cPathCook"><span class="pico">🔥</span><h3 data-i18n="path.cook">בא לי לבשל משהו</h3><p>אותו אשף מודרך כמו אירוע — בחר מנות, שיטות ותיבול, וקבל תוכנית עבודה מלאה עם טיימרים.</p><span class="go">←</span></div>
+    <div class="cpath project" id="cPathProj"><span class="pico">🧪</span><h3 data-i18n="path.project">פרויקט מתקדם</h3><p>שרקוטרי, נקניקים ועישון ארוך — בחירה מקוטלגת לפי סוג ומדינה, עם תיאור מלא לכל מלאכה וליווי צעד-אחר-צעד.</p><span class="go">←</span></div>
   </div>
   <div class="cnext cnext-live" id="cCooking" hidden><span class="nico">🔥</span><div style="flex:1"><div class="nt">בישול פעיל עכשיו</div><div class="nm" id="cCookingM"></div></div><span class="ng">←</span></div>
   <div class="cnext" id="cResume" hidden><span class="nico">📋</span><div style="flex:1"><div class="nt">המשך מהמקום שעצרת</div><div class="nm" id="cResumeM"></div></div><span class="ng">←</span></div>
   <div class="cnext" id="cResumeProj" hidden><span class="nico">🧫</span><div style="flex:1"><div class="nt">המשך פרויקט</div><div class="nm" id="cResumeProjM"></div></div><span class="ng">←</span></div>
-  <button class="chome-about" id="cHomeAbout"><span>❓ איך משתמשים באפליקציה</span><span class="cha-sub">מסלולים, כלים וכל היכולות</span></button>
+  <button class="chome-about" id="cHomeAbout"><span data-i18n="home.how">❓ איך משתמשים באפליקציה</span><span class="cha-sub">מסלולים, כלים וכל היכולות</span></button>
 </div>
 
 <!-- ═══ WIZARD (full 6-step) ═══ -->
@@ -316,7 +316,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 173 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 174 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
