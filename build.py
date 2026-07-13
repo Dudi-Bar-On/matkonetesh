@@ -822,6 +822,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .exaddmenu{display:block;width:100%;min-height:44px;margin-bottom:10px;padding:11px;border-radius:10px;font-weight:700;font-size:calc(14px * var(--fscale));background:var(--fresh-l);color:var(--fresh);border:1px solid var(--fresh);cursor:pointer}
 .exaddmenu.on{background:var(--fresh);color:#fff}
 :focus-visible{outline:2px solid var(--ember)!important;outline-offset:2px}
+.tt-alert{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .ktag{display:inline-block;font-family:var(--font-body);font-size:calc(9.5px * var(--fscale));font-weight:700;padding:1px 6px;border-radius:999px;vertical-align:middle;margin-inline-start:4px}
 .ktag.kp{background:rgba(200,60,40,.16);color:#e07a5f;border:1px solid rgba(200,60,40,.4)}
 .ktag.kd{background:rgba(80,140,200,.16);color:#7fb0d8;border:1px solid rgba(80,140,200,.4)}
@@ -2881,12 +2882,22 @@ function stepHTML(key,which,i,s){
    </div>`;
 }
 function timerHTML(sec){
-  return `<div class="timer" data-sec="${sec}" data-left="${sec}">
-     <button data-play>▶</button>
+  return `<div class="timer" data-sec="${sec}" data-left="${sec}" role="timer">
+     <button data-play aria-label="הפעל טיימר">▶</button>
      <span class="tt">${fmt(sec)}</span>
-     <button class="rst" data-reset>↻</button>
+     <span class="tt-alert" role="alert" aria-live="assertive"></span>
+     <button class="rst" data-reset aria-label="אפס טיימר">↻</button>
    </div>`;
 }
+let mkAudioCtx=null;
+// unlock audio inside a user gesture (the play tap) so the completion alarm can actually sound
+function timerAudioPrime(){ try{ const AC=window.AudioContext||window.webkitAudioContext; if(!AC) return; if(!mkAudioCtx) mkAudioCtx=new AC(); if(mkAudioCtx.state==='suspended') mkAudioCtx.resume(); }catch(e){} }
+// real audible alarm — three short 880Hz beeps (was: new AudioContext() that produced no sound)
+function timerBeep(){ try{ if(!mkAudioCtx) timerAudioPrime(); if(!mkAudioCtx) return; if(mkAudioCtx.state==='suspended') mkAudioCtx.resume();
+  const ctx=mkAudioCtx, t0=ctx.currentTime;
+  [0,0.35,0.7].forEach(function(t){ const o=ctx.createOscillator(), g=ctx.createGain(); o.type='sine'; o.frequency.value=880; o.connect(g); g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001,t0+t); g.gain.exponentialRampToValueAtTime(0.3,t0+t+0.02); g.gain.exponentialRampToValueAtTime(0.0001,t0+t+0.3); o.start(t0+t); o.stop(t0+t+0.32); });
+  }catch(e){} }
 function wireSteps(key,which,steps){
   const area=$("#methodArea");
   area.querySelectorAll(".step").forEach(st=>{
@@ -2913,17 +2924,20 @@ function wireTimer(tm){
   let left=+tm.dataset.left, sec=+tm.dataset.sec, iv=null;
   const tt=tm.querySelector(".tt"), play=tm.querySelector("[data-play]");
   play.addEventListener("click",()=>{
-    if(iv){clearInterval(iv);iv=null;play.textContent="▶";return;}
-    play.textContent="❚❚";
+    timerAudioPrime();
+    if(iv){clearInterval(iv);iv=null;play.textContent="▶";play.setAttribute('aria-label','הפעל טיימר');return;}
+    play.textContent="❚❚";play.setAttribute('aria-label','השהה טיימר');
     iv=setInterval(()=>{
       left--;tt.textContent=fmt(Math.max(0,left));
-      if(left<=0){clearInterval(iv);iv=null;play.textContent="▶";tm.classList.add("ringing");tt.textContent="סיום!";
-        try{new AudioContext();}catch(e){}}
+      if(left<=0){clearInterval(iv);iv=null;play.textContent="▶";play.setAttribute('aria-label','הפעל טיימר');tm.classList.add("ringing");tt.textContent="סיום!";
+        const al=tm.querySelector(".tt-alert"); if(al) al.textContent="הטיימר הסתיים!";
+        timerBeep();}
     },1000);
     timers["t"+Math.random()]=iv;
   });
   tm.querySelector("[data-reset]").addEventListener("click",()=>{
-    if(iv){clearInterval(iv);iv=null;}left=sec;play.textContent="▶";tm.classList.remove("ringing");tt.textContent=fmt(sec);
+    if(iv){clearInterval(iv);iv=null;}left=sec;play.textContent="▶";play.setAttribute('aria-label','הפעל טיימר');tm.classList.remove("ringing");tt.textContent=fmt(sec);
+    const al=tm.querySelector(".tt-alert"); if(al) al.textContent="";
   });
 }
 function clearTimers(){Object.values(timers).forEach(clearInterval);timers={};}
