@@ -3780,6 +3780,41 @@ function openVoiceCook(tasks){
   vcRender();
   if(vcTasks.length) vcSpeakContent(vcCurrentText(false));
 }
+// ── serve time as a full datetime (Wave B: night / next-day cooks) ──────────────
+// serve is no longer clock-only-anchored-to-today. The day resolves from: an explicit
+// date picker (per scope) → the event's own date → today (rolling to tomorrow only when
+// the clock has already passed), so an 18h brisket served tomorrow schedules correctly.
+function isoDate(d){ return d.getFullYear()+'-'+('0'+(d.getMonth()+1)).slice(-2)+'-'+('0'+d.getDate()).slice(-2); }
+function serveDateKey(){ return 'mk-tlservedate-'+(typeof evScope==='function'?evScope():'cook'); }
+function serveBaseDate(){
+  const explicit=store.get(serveDateKey());
+  if(explicit){
+    const sc=(typeof evScope==='function')?evScope():'cook';
+    const isEvent=(sc!=='cook'&&sc!=='draft');
+    if(isEvent || explicit>=isoDate(new Date())) return explicit;   // events keep their date (even historical); ad-hoc plans drop a stale past one
+    store.set(serveDateKey(),null);
+  }
+  try{ const m=(typeof menuState==='function')?menuState():null; if(m&&m.evDate) return m.evDate; }catch(e){}
+  return '';   // no anchor → today (with roll-forward in serveDateTime)
+}
+function serveDateTime(){
+  const t=(store.get('mk-tlserve')||'19:00').split(':').map(Number);
+  const base=serveBaseDate();
+  let d;
+  if(base){ d=new Date(base+'T00:00:00'); d.setHours(t[0]||0,t[1]||0,0,0); }
+  else { d=new Date(); d.setHours(t[0]||0,t[1]||0,0,0); if(d.getTime()<Date.now()) d.setDate(d.getDate()+1); }   // clock already passed today → tomorrow
+  return d;
+}
+function serveDayLabel(d){
+  const t0=new Date(); t0.setHours(0,0,0,0);
+  const dd=new Date(d); dd.setHours(0,0,0,0);
+  const diff=Math.round((dd.getTime()-t0.getTime())/86400e3);
+  if(diff===0) return 'היום'; if(diff===1) return 'מחר'; if(diff===-1) return 'אתמול';
+  if(diff>1 && diff<7) return d.toLocaleDateString('he-IL',{weekday:'long'});
+  return d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
+}
+// clock, with a day tag prefixed only when the serve day isn't today (so "19:00" stays terse, "מחר 12:00" is explicit)
+function fmtServe(d){ if(!d) return ''; const t0=new Date(); t0.setHours(0,0,0,0); const dd=new Date(d); dd.setHours(0,0,0,0); return (dd.getTime()===t0.getTime()?'':serveDayLabel(d)+' ')+fmtClock(d); }
 // live "time until serving" bar — fills from the first cooking start toward serve time
 let serveIv=null;
 function updateServeBar(){
@@ -3789,7 +3824,7 @@ function updateServeBar(){
   bar.hidden=false;
   const now=Date.now(), sv=serve.getTime(), remMs=sv-now;
   const rem=$("#serveRemain"), at=$("#serveAt"), fill=$("#serveFill");
-  if(at) at.textContent='🍽️ '+fmtClock(serve);
+  if(at) at.textContent='🍽️ '+fmtServe(serve);
   if(remMs<=0){ if(rem) rem.textContent='🍽️ הגיע זמן ההגשה!'; if(fill) fill.style.width='100%'; bar.classList.add('serve-now'); return; }
   bar.classList.remove('serve-now');
   const h=Math.floor(remMs/3600e3), m=Math.floor((remMs%3600e3)/60e3);
@@ -3811,7 +3846,7 @@ function renderPlanStartRow(earliest, serve, rebuild){
   const blockStart = behind && strict && !started;
   let warn='';
   if(behind){ const late=Math.round((Date.now()-earliest.getTime())/60000);
-    warn=`<div class="plan-warn">⚠ הזמן קצר — כדי להגיש ב-${fmtClock(serve)} היה צריך להתחיל ב-${fmtClock(earliest)} (לפני ${late} דק׳). דחה את ההגשה או קצר את התוכנית. <button class="mchip" data-planpush>➕ דחה הגשה ב-30 דק׳</button></div>`;
+    warn=`<div class="plan-warn">⚠ הזמן קצר — כדי להגיש ב-${fmtServe(serve)} היה צריך להתחיל ב-${fmtServe(earliest)} (לפני ${late} דק׳). דחה את ההגשה או קצר את התוכנית. <button class="mchip" data-planpush>➕ דחה הגשה ב-30 דק׳</button></div>`;
   }
   el.innerHTML=`${warn}<div class="plan-startrow">
     <button class="plan-startbtn ${started?'on':''}" data-planstart ${blockStart?'disabled':''}>${started?'⏹ עצור / אפס תוכנית':'▶ התחל תוכנית'}</button>
@@ -3820,15 +3855,16 @@ function renderPlanStartRow(earliest, serve, rebuild){
   const list=$("#tlList"); if(list) list.classList.toggle('plan-idle', !started);   // timers disabled until the plan is started
   const sb=el.querySelector('[data-planstart]'); if(sb) sb.addEventListener('click',()=>{ if(planStarted()){ const removed=resetPlanTimers(); setPlanStarted(null); rebuild(); if(typeof toast==='function' && Object.keys(removed).length) toast('התוכנית אופסה', ()=>{ const t2=store.get('mk-timers')||{}; Object.assign(t2,removed); store.set('mk-timers',t2); setPlanStarted(Date.now()); rebuild(); }); } else { setPlanStarted(Date.now()); if(behind && typeof toast==='function') toast('התחלת עם לחץ-זמן — עקוב אחרי הטיימרים'); rebuild(); } });   // R1: scoped reset + undo
   const stc=el.querySelector('[data-planstrict]'); if(stc) stc.addEventListener('change',()=>{ store.set('mk-plan-strict', stc.checked); rebuild(); });
-  const pp=el.querySelector('[data-planpush]'); if(pp) pp.addEventListener('click',()=>{ const inp=$("#tlServe"); if(!inp) return; const p=inp.value.split(':').map(Number); const d=new Date(); d.setHours(p[0],p[1]+30,0,0); const nv=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); inp.value=nv; store.set('mk-tlserve',nv); rebuild(); });
+  const pp=el.querySelector('[data-planpush]'); if(pp) pp.addEventListener('click',()=>{ const inp=$("#tlServe"); if(!inp) return; const d=serveDateTime(); d.setMinutes(d.getMinutes()+30); const nv=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); inp.value=nv; store.set('mk-tlserve',nv); store.set(serveDateKey(), isoDate(d)); rebuild(); });   // push on the full datetime so a past-midnight bump rolls the day, not wraps into today
 }
 function renderTimelinePanel(){
   const host=$("#tlBody"); if(!host) return;
   const srcKeys=[...new Set((typeof menuState==='function')?(menuState().keys||[]):[])];
   const items=srcKeys.map(resolveItem).filter(Boolean);
   const serveStr=store.get('mk-tlserve')||'19:00';
+  const serveDateStr=isoDate(serveDateTime());
   host.innerHTML=`
-    <div class="calcrow"><label>שעת הגשה</label><input type="time" id="tlServe" value="${serveStr}"><button id="tlReset" class="mreset">🗑️ איפוס בחירות</button></div>
+    <div class="calcrow"><label>הגשה</label><input type="time" id="tlServe" value="${serveStr}"><input type="date" id="tlServeDate" value="${serveDateStr}" title="יום ההגשה"><button id="tlReset" class="mreset">🗑️ איפוס בחירות</button></div>
     <div id="serveBar" class="serve-bar" hidden><div class="serve-lbl"><span id="serveRemain"></span><span id="serveAt"></span></div><div class="serve-track"><div class="serve-fill" id="serveFill"></div></div></div>
     <div id="planStartRow"></div>
     <button id="tlAlerts" class="tl-alerts ${store.get('mk-tlalerts')?'on':''}">🔔 <span>${store.get('mk-tlalerts')?'התראות פעילות':'הפעל התראות לשלבים'}</span></button>
@@ -3836,6 +3872,7 @@ function renderTimelinePanel(){
     <div id="tlList">${items.length?'':'<div class="shop-empty">הרשימה ריקה — הוסף פריטים (כפתור ＋) או דרך בונה התפריט, ואז חזור לכאן.</div>'}</div>`;
   const si=$("#tlServe");
   if(si) si.addEventListener('input',()=>{store.set('mk-tlserve',si.value); buildList();});
+  { const sd=$("#tlServeDate"); if(sd) sd.addEventListener('change',()=>{ store.set(serveDateKey(), sd.value||null); buildList(); }); }   // pick the serve day (night / next-day cooks)
   { const ta=$("#tlAlerts"); if(ta) ta.addEventListener('click',async()=>{
       const on=!store.get('mk-tlalerts');
       if(on){ if(!('Notification' in window)){ toast('הדפדפן לא תומך בהתראות'); return; }
@@ -3851,8 +3888,8 @@ function renderTimelinePanel(){
     }); }
   function buildList(){
     if(!items.length) return;
-    const [hh,mm]=$("#tlServe").value.split(':').map(Number);
-    const serve=new Date(); serve.setHours(hh,mm,0,0);
+    const serve=serveDateTime();
+    { const sd=$("#tlServeDate"); if(sd) sd.value=isoDate(serve); }   // keep the date picker in sync with the (possibly rolled) serve day
     const allState=tlState();
     const computed=items.map(m=>{
       const profile=itemProfile(m);
@@ -3899,7 +3936,7 @@ function renderTimelinePanel(){
     } else {
       if(preheat) html+=`<div class="tlrow tl-preheat"><span class="tl-t"><b>${fmtClockRel(preheat, serve)}</b></span><span class="tl-n">🔥 הדלקת מעשנת (חימום מוקדם, 45 דק׳)</span><span class="tl-lead"></span></div>`;
       html+=sorted.map(c=>itemRowHtml(c,serve)).join('');
-      html+=`<div class="tlrow tl-serve"><span class="tl-t"><b>${$("#tlServe").value}</b></span><span class="tl-n"><b>🍽️ הגשה</b></span><span class="tl-lead"></span></div>`;
+      html+=`<div class="tlrow tl-serve"><span class="tl-t"><b>${fmtServe(serve)}</b></span><span class="tl-n"><b>🍽️ הגשה</b></span><span class="tl-lead"></span></div>`;
     }
     html+=`<button class="prbtn" style="position:static;margin-top:12px" data-print>⎙ הדפס ${viewMode==='plan'?'תוכנית עבודה':'לוח זמנים'}</button>`;
     if(typeof clearTimers==='function') clearTimers();   // stop stale intervals before re-wiring; state persists in mk-timers
@@ -4803,10 +4840,10 @@ function evGuardBeforeNew(proceed){
 // ── events screen ──
 // combined multi-event timeline: every event's item-start actions merged onto one color-coded schedule
 const EV_COLORS=['#e76f51','#1a9a7a','#3550c7','#b5603a','#7a5cc2','#2f6070','#c77d2a'];
-function parseServeTime(s){ const p=(s||'19:00').split(':').map(Number); const d=new Date(); d.setHours(p[0]||19,p[1]||0,0,0); return d; }
+function parseServeTime(s,ev){ const p=(s||'19:00').split(':').map(Number); let d; if(ev&&ev.date){ d=new Date(ev.date+'T00:00:00'); } else { d=new Date(); if(((p[0]||19)*60+(p[1]||0))*60e3 + new Date().setHours(0,0,0,0) < Date.now()) d.setDate(d.getDate()+1); } d.setHours(p[0]||19,p[1]||0,0,0); return d; }   // event → its real date; ad-hoc → today, rolled to tomorrow if the clock passed
 function combinedEventsRows(){
   const rows=[];
-  evList().forEach(function(ev,ei){ const serve=parseServeTime(ev.serve);
+  evList().forEach(function(ev,ei){ const serve=parseServeTime(ev.serve, ev);
     ((ev.menu&&ev.menu.keys)||[]).forEach(function(key){ const meta=(typeof resolveItem==='function')?resolveItem(key):null; if(!meta) return;
       let totalH=0; try{ const profile=itemProfile(meta); const stages=itemStages(meta, profile.methods[0].key, true, svSmokeOrderDefault()); totalH=stages.reduce(function(a,s){return a+(s.hours||0);},0); }catch(e){}
       rows.push({ev:ev, ei:ei, name:meta.heb, start:new Date(serve.getTime()-totalH*3600e3), serve:serve, totalH:totalH});
@@ -4818,8 +4855,11 @@ function combinedEventsRows(){
 function openCombinedTimeline(){
   const evs=evList(), rows=combinedEventsRows(), now=new Date();
   const legend=evs.map(function(ev,ei){ return `<span class="cet-leg"><span class="cet-dot" style="background:${EV_COLORS[ei%EV_COLORS.length]}"></span>${esc(ev.name)} · ${ev.serve||'19:00'}${evRunningCount(ev.id)?` · 🔴 ${evRunningCount(ev.id)}`:''}</span>`; }).join('');
+  let curDay=null;
   const listHtml=rows.length?rows.map(function(r){ const col=EV_COLORS[r.ei%EV_COLORS.length];
-    return `<div class="cet-row ${r.start<now?'cet-past':''}" style="border-inline-start:4px solid ${col}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(r.name)}</b><small style="color:${col}">${esc(r.ev.name)} · הגשה ${r.ev.serve||'19:00'}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+'ד':r.totalH.toFixed(1)+'ש'):''}</span></div>`;
+    const day=isoDate(r.start); let head='';
+    if(day!==curDay){ curDay=day; head=`<div class="cet-day">📅 ${esc(serveDayLabel(r.start))} · ${new Date(r.start).toLocaleDateString('he-IL',{day:'numeric',month:'short'})}</div>`; }   // day separator so multi-day catering doesn't collapse onto one clock
+    return `${head}<div class="cet-row ${r.start<now?'cet-past':''}" style="border-inline-start:4px solid ${col}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(r.name)}</b><small style="color:${col}">${esc(r.ev.name)} · הגשה ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+'ד':r.totalH.toFixed(1)+'ש'):''}</span></div>`;
   }).join(''):'<div class="shop-empty">אין אירועים עם מנות עדיין.</div>';
   showPanel(`${toolTop('כל האירועים — תצוגה משולבת','לוח-זמנים מאוחד לאירועים מקבילים','🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div><p class="section-sub">זמני ההתחלה של כל המנות מכל האירועים, ממוזגים לפי שעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.</p>${listHtml}</div>`);
 }
