@@ -53,6 +53,80 @@ test('work-plan PLAN view (תוכנית עבודה) also shows countdown timers'
   expect(timers).toBeGreaterThan(0);
 });
 
+async function openPlan(page: any) {
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
+    } catch {}
+  });
+  await page.goto('/index.html');
+  await page.evaluate(`openTimeline()`);
+  await page.waitForSelector('#tlList [data-tlview="plan"]');
+  await page.click('[data-tlview="plan"]');
+  await page.waitForSelector('.workplan');
+}
+
+test('timer sync: a stage timer shares state across plan<->items views (shared st- tid)', async ({ page }) => {
+  await openPlan(page);
+  await page.click('#planStartRow .plan-startbtn');                             // start the plan (timers are gated until then)
+  await page.waitForSelector('.workplan .timer[data-tid^="st-"]');
+  const tid = await page.evaluate(`document.querySelector('.workplan .timer[data-tid^="st-"]').dataset.tid`) as string;
+  await page.click(`.workplan .timer[data-tid="${tid}"] [data-play]`);          // start this stage timer in the plan view
+  const rec = await page.evaluate(`store.get('mk-timers')[${JSON.stringify(tid)}]`) as any;
+  expect(rec && rec.end).toBeTruthy();
+  await page.click('[data-tlview="items"]');                                     // switch to the items view
+  await page.waitForSelector(`.tl-stage .timer[data-tid="${tid}"]`, { state: 'attached' });  // stage detail may be collapsed (in DOM, hidden)
+  // the SAME stage timer is running there (resumed from shared state), not reset
+  expect(await page.evaluate(`document.querySelector('.tl-stage .timer[data-tid="${tid}"] [data-play]').textContent`)).toBe('❚❚');
+});
+
+test('all 3 plan shapes (vertical/accordion/horizontal) render timers', async ({ page }) => {
+  await openPlan(page);
+  await page.click('[data-tlshape="5"]');   // accordion
+  await page.waitForSelector('.wp-accordion');
+  expect(await page.evaluate(`document.querySelectorAll('.wp-accordion .timer').length`)).toBeGreaterThan(0);
+  await page.click('[data-tlshape="3"]');   // horizontal
+  await page.waitForSelector('.wp-horiz');
+  expect(await page.evaluate(`document.querySelectorAll('.wp-horiz .timer').length`)).toBeGreaterThan(0);
+});
+
+test('start plan: timers are gated until "התחל תוכנית" is pressed', async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
+      localStorage.setItem('mk-tlserve', JSON.stringify('23:59'));   // far enough that the plan is feasible mid-day
+    } catch {}
+  });
+  await page.goto('/index.html');
+  await page.evaluate(`openTimeline()`);
+  await page.waitForSelector('#planStartRow .plan-startbtn');
+  expect(await page.evaluate(`document.getElementById('tlList').classList.contains('plan-idle')`)).toBe(true);   // timers disabled
+  await page.click('#planStartRow .plan-startbtn');
+  expect(await page.evaluate(`document.getElementById('tlList').classList.contains('plan-idle')`)).toBe(false);  // now enabled
+  expect(await page.evaluate(`store.get('mk-plan-started')`)).toBeTruthy();
+});
+
+test('feasibility: strict mode warns + blocks starting when the plan cannot finish by serve time', async ({ page }) => {
+  await page.addInitScript(() => {
+    try {
+      localStorage.clear();
+      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
+      localStorage.setItem('mk-tlserve', JSON.stringify('00:01'));   // serve already in the past -> plan is behind
+      localStorage.setItem('mk-plan-strict', JSON.stringify(true));
+    } catch {}
+  });
+  await page.goto('/index.html');
+  await page.evaluate(`openTimeline()`);
+  await page.waitForSelector('#planStartRow .plan-startbtn');
+  expect(await page.evaluate(`!!document.querySelector('#planStartRow .plan-warn')`)).toBe(true);            // warning shown
+  expect(await page.evaluate(`document.querySelector('#planStartRow .plan-startbtn').disabled`)).toBe(true); // start blocked in strict mode
+});
+
 test('work-plan shows a live "time until serving" bar with a progress fill', async ({ page }) => {
   await page.addInitScript(() => {
     try {

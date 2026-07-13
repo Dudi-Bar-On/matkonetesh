@@ -1247,6 +1247,13 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .serve-fill{height:100%;background:linear-gradient(90deg,var(--fresh),var(--ember2));width:0;transition:width .5s ease}
 .serve-bar.serve-now .serve-fill{background:var(--ember)}
 .serve-bar.serve-now .serve-lbl{color:var(--ember)}
+.plan-startrow{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:8px 0}
+.plan-startbtn{padding:10px 18px;border-radius:12px;border:1.5px solid var(--fresh);background:var(--fresh);color:#fff;font-weight:700;font-size:calc(14.5px * var(--fscale));cursor:pointer}
+.plan-startbtn.on{background:var(--ember);border-color:var(--ember)}
+.plan-startbtn:disabled{opacity:.45;cursor:not-allowed}
+.plan-strict{display:flex;align-items:center;gap:6px;font-size:calc(12px * var(--fscale));color:var(--smoke)}
+.plan-warn{background:var(--tint-warn);color:var(--tint-warn-ink);border:1px solid var(--line2);border-radius:10px;padding:9px 11px;font-size:calc(12.5px * var(--fscale));margin-bottom:8px;display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.plan-idle .timer button{opacity:.4;pointer-events:none}
 .vc-timerwrap{margin:14px auto 6px;text-align:center;padding:20px 0}
 .vc-timerlbl{font-size:calc(13px * var(--fscale));color:var(--smoke);margin-bottom:12px}
 .vc-timerwrap .timer{display:inline-flex;justify-content:center;gap:16px;transform:scale(1.5);transform-origin:center}
@@ -1516,7 +1523,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 154 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 155 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -2898,8 +2905,8 @@ function stepHTML(key,which,i,s){
      </div>
    </div>`;
 }
-function timerHTML(sec, id){
-  return `<div class="timer" data-sec="${sec}" data-left="${sec}"${id?` data-tid="${esc(id)}"`:''} role="timer">
+function timerHTML(sec, id, name){
+  return `<div class="timer" data-sec="${sec}" data-left="${sec}"${id?` data-tid="${esc(id)}"`:''}${name?` title="${esc(name)}"`:''} role="timer">
      <button data-play aria-label="הפעל טיימר">▶</button>
      <span class="tt">${fmt(sec)}</span>
      <span class="tt-alert" role="alert" aria-live="assertive"></span>
@@ -5049,7 +5056,11 @@ function vcRender(){
       ${t.sub?`<div class="vc-sub">${t.sub}</div>`:''}
       ${t.det?`<div class="vc-det">${t.det}</div>`:''}
     </div>
-    ${(function(){ const nx=vcTasks[vcIdx+1]; if(!nx||!(t.t instanceof Date)||!(nx.t instanceof Date)) return ''; const d=Math.round((nx.t-t.t)/1000); if(d<=0||d>24*3600) return ''; return `<div class="vc-timerwrap"><div class="vc-timerlbl">⏱ טיימר — עד המשימה הבאה (${fmtClock(nx.t)})</div>${timerHTML(d, 'vc-'+(t.t?t.t.getTime():vcIdx))}</div>`; })()}
+    ${(function(){
+      if(t.dur && t.tid){ return `<div class="vc-timerwrap"><div class="vc-timerlbl">⏱ ${esc(stripEmoji(t.label))}</div>${timerHTML(t.dur, t.tid, t.label)}</div>`; }   // synced with the work-plan stage timer
+      const nx=vcTasks[vcIdx+1]; if(!nx||!(t.t instanceof Date)||!(nx.t instanceof Date)) return ''; const d=Math.round((nx.t-t.t)/1000); if(d<=0||d>24*3600) return '';
+      return `<div class="vc-timerwrap"><div class="vc-timerlbl">⏱ טיימר — עד המשימה הבאה (${fmtClock(nx.t)})</div>${timerHTML(d, 'vc-'+(t.t?t.t.getTime():vcIdx))}</div>`;
+    })()}
     <div class="vc-btns">
       <button class="vc-big" data-vc="prev">⏮ הקודם</button>
       <button class="vc-big vc-main" data-vc="read">🔊 הקרא</button>
@@ -5294,6 +5305,29 @@ function updateServeBar(){
   if(fill) fill.style.width=(total>0?Math.max(0,Math.min(100,elapsed/total*100)):0).toFixed(1)+'%';
 }
 function startServeBar(){ if(serveIv){clearInterval(serveIv);} updateServeBar(); serveIv=setInterval(updateServeBar,30000); }
+function planStarted(){ return !!store.get('mk-plan-started'); }
+function setPlanStarted(v){ store.set('mk-plan-started', v||null); }
+function resetPlanTimers(){ const ts=store.get('mk-timers')||{}; Object.keys(ts).forEach(k=>{ if(/^(st-|wp|vc-)/.test(k)) delete ts[k]; }); store.set('mk-timers',ts); }
+// "Start plan" gate + feasibility guard: warns (or, if strict mode is on, blocks) when the plan can't finish by serve time
+function renderPlanStartRow(earliest, serve, rebuild){
+  const el=$("#planStartRow"); if(!el) return;
+  const started=planStarted();
+  const behind = !!(earliest && Date.now() > earliest.getTime());
+  const strict = !!store.get('mk-plan-strict');
+  const blockStart = behind && strict && !started;
+  let warn='';
+  if(behind){ const late=Math.round((Date.now()-earliest.getTime())/60000);
+    warn=`<div class="plan-warn">⚠ הזמן קצר — כדי להגיש ב-${fmtClock(serve)} היה צריך להתחיל ב-${fmtClock(earliest)} (לפני ${late} דק׳). דחה את ההגשה או קצר את התוכנית. <button class="mchip" data-planpush>➕ דחה הגשה ב-30 דק׳</button></div>`;
+  }
+  el.innerHTML=`${warn}<div class="plan-startrow">
+    <button class="plan-startbtn ${started?'on':''}" data-planstart ${blockStart?'disabled':''}>${started?'⏹ עצור / אפס תוכנית':'▶ התחל תוכנית'}</button>
+    <label class="plan-strict"><input type="checkbox" data-planstrict ${strict?'checked':''}> חסום כשאין מספיק זמן</label>
+  </div>`;
+  const list=$("#tlList"); if(list) list.classList.toggle('plan-idle', !started);   // timers disabled until the plan is started
+  const sb=el.querySelector('[data-planstart]'); if(sb) sb.addEventListener('click',()=>{ if(planStarted()){ setPlanStarted(null); resetPlanTimers(); } else { setPlanStarted(Date.now()); if(behind) toast('התחלת עם לחץ-זמן — עקוב אחרי הטיימרים'); } rebuild(); });
+  const stc=el.querySelector('[data-planstrict]'); if(stc) stc.addEventListener('change',()=>{ store.set('mk-plan-strict', stc.checked); rebuild(); });
+  const pp=el.querySelector('[data-planpush]'); if(pp) pp.addEventListener('click',()=>{ const inp=$("#tlServe"); if(!inp) return; const p=inp.value.split(':').map(Number); const d=new Date(); d.setHours(p[0],p[1]+30,0,0); const nv=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); inp.value=nv; store.set('mk-tlserve',nv); rebuild(); });
+}
 function renderTimelinePanel(){
   const host=$("#tlBody"); if(!host) return;
   const srcKeys=[...new Set((typeof menuState==='function')?(menuState().keys||[]):[])];
@@ -5302,6 +5336,7 @@ function renderTimelinePanel(){
   host.innerHTML=`
     <div class="calcrow"><label>שעת הגשה</label><input type="time" id="tlServe" value="${serveStr}"><button id="tlReset" class="mreset">🗑️ איפוס בחירות</button></div>
     <div id="serveBar" class="serve-bar" hidden><div class="serve-lbl"><span id="serveRemain"></span><span id="serveAt"></span></div><div class="serve-track"><div class="serve-fill" id="serveFill"></div></div></div>
+    <div id="planStartRow"></div>
     <button id="tlAlerts" class="tl-alerts ${store.get('mk-tlalerts')?'on':''}">🔔 <span>${store.get('mk-tlalerts')?'התראות פעילות':'הפעל התראות לשלבים'}</span></button>
     <p class="section-sub">לכל פריט: סמן אם כבר מוכן (ברירת מחדל) או מתחיל מאפס היום. שיטת הבישול נלקחת מהמתגים בכרטיסייה (⚡) — אפשר לבחור צירוף אחר כאן. לחץ ▾ לפירוט שלבים.</p>
     <div id="tlList">${items.length?'':'<div class="shop-empty">הרשימה ריקה — הוסף פריטים (כפתור ＋) או דרך בונה התפריט, ואז חזור לכאן.</div>'}</div>`;
@@ -5338,6 +5373,7 @@ function renderTimelinePanel(){
       let stages=[], startClock=null;
       if(!blocked){
         stages=itemStages(m,st.method,st.ready,st.svSmokeOrder);
+        stages.forEach((s,si)=>{ s.tid='st-'+m.key+'-'+si; });   // canonical per-stage timer id (shared across items/plan/voice views)
         let end=serve;
         for(let i=stages.length-1;i>=0;i--){
           const s=stages[i]; const start=new Date(end.getTime()-s.hours*3600e3);
@@ -5378,7 +5414,7 @@ function renderTimelinePanel(){
     { const starts=computed.filter(c=>!c.blocked&&c.startClock).map(c=>c.startClock.getTime());
       let earliest=starts.length?new Date(Math.min(...starts)):null;
       if(preheat && (!earliest||preheat.getTime()<earliest.getTime())) earliest=preheat;
-      window._wpServe=serve; window._wpStart=earliest; startServeBar(); }   // live time-until-serving bar
+      window._wpServe=serve; window._wpStart=earliest; startServeBar(); renderPlanStartRow(earliest, serve, buildList); }   // live serve bar + start/feasibility controls
     $("#tlList").querySelectorAll('[data-tlview]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlview',b.dataset.tlview); buildList();}));
     $("#tlList").querySelectorAll('[data-tldetail]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlplandetail',b.dataset.tldetail); buildList();}));
     $("#tlList").querySelectorAll('[data-tlshape]').forEach(b=>b.addEventListener('click',()=>{setTlShape(b.dataset.tlshape); buildList();}));
@@ -5434,7 +5470,7 @@ function renderTimelinePanel(){
               det=(det?det+' ':'')+`[מידות: ${dn}]`;
             }
           }
-          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:s.note||'',kind:s.kind,det,dur:Math.round(s.hours*3600)});
+          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:s.note||'',kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid});
         }
       });
       const sel2=sel.filter(s=>s.kind==='glaze');
@@ -5484,20 +5520,20 @@ function renderTimelinePanel(){
     return `<div class="workplan ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
       <label class="wp-row wp-${tk.kind}"><input type="checkbox" class="wp-ck">
         <span class="wp-time">${fmtClockRel(tk.t, serve)}</span>
-        <span class="wp-body"><b>${tk.label}</b>${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur,'wpv-'+i)}</span>`:''}</span>
+        <span class="wp-body"><b>${tk.label}</b>${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpv-'+i), tk.label)}</span>`:''}</span>
       </label>`).join('')}</div>`;
   }
   function renderWpAccordion(tasks, detail, serve){
     return `<div class="workplan wp-accordion ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
       <div class="wp-acc ${i===0?'open':''}" data-wpacc="${i}">
         <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClockRel(tk.t, serve)}</span><b class="wp-atitle">${tk.label}</b><span class="wp-caret">▾</span></div>
-        <div class="wp-accb">${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${!tk.sub&&!tk.det?'<small>אין פרטים נוספים לשלב זה.</small>':''}</div>
+        <div class="wp-accb">${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${!tk.sub&&!tk.det?'<small>אין פרטים נוספים לשלב זה.</small>':''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpa-'+i), tk.label)}</span>`:''}</div>
       </div>`).join('')}</div>`;
   }
   function renderWpHorizontal(tasks, serve){
     const ic={sv:'💧',smoke:'💨',cook:'🔥',rest:'⏸️',prep:'🔪',fire:'🔥',serve:'🍽️',glaze:'🍯',dry:'🌬️'};
-    return `<div class="workplan wp-horiz">${tasks.map(tk=>`
-      <div class="wp-hcell wp-${tk.kind}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClockRel(tk.t, serve)}</div><div class="wp-hlabel">${tk.label}</div></div>`).join('')}</div>`;
+    return `<div class="workplan wp-horiz">${tasks.map((tk,i)=>`
+      <div class="wp-hcell wp-${tk.kind}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClockRel(tk.t, serve)}</div><div class="wp-hlabel">${tk.label}</div>${tk.dur?`<div class="wp-timer">${timerHTML(tk.dur, tk.tid||('wph-'+i), tk.label)}</div>`:''}</div>`).join('')}</div>`;
   }
   function itemRowHtml(c, serve){
     const {m,profile,st,stages,startClock,blocked}=c;
@@ -5527,7 +5563,7 @@ function renderTimelinePanel(){
       if(s.hours===0) return `<div class="tl-stage tl-stage-note">↳ ${s.label}</div>`;
       const reload=s.kind==='smoke'&&s.hours>2.5?` · ↻ הוסף עץ כל ~90 דק׳ (כ-${Math.max(1,Math.round(s.hours*60/90)-1)} פעמים)`:'';
       const hLabel=s.hours<1?Math.round(s.hours*60)+' דק׳':s.hours.toFixed(1)+'ש';
-      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span>${timerHTML(Math.round(s.hours*3600), 'wpi-'+m.key+'-'+si)}</div>`;
+      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span>${timerHTML(Math.round(s.hours*3600), s.tid||('wpi-'+m.key+'-'+si), s.label+' · '+m.heb)}</div>`;
     }).join('');
     const cut=m.kind==='cut'?m.obj:null;
     const doneRef=(cut&&cut.doneness)?`<div class="tl-doneref"><b>מידות עשייה לגימור (מד-חום פנים)</b> — להתאמה אישית לכל סועד:<div class="tl-donelist">${['rare','mr','med','mw','well'].filter(k=>cut.doneness.levels[k]).map(k=>`<span class="${k===currentDoneness(cut)?'on':''}">${doneLabel(cut,k)} <b>${cut.doneness.levels[k].c}°</b></span>`).join('')}</div></div>`:'';
