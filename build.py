@@ -2131,6 +2131,8 @@ const store={
 // AI answers can carry search-grounded, attacker-influenced markup; without this, "<img onerror>" would exfiltrate mk-gemkey.
 const ESC_MAP={'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'};
 function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,c=>ESC_MAP[c]); }
+// perf #4: debounce the search input so a keystroke doesn't rebuild ~279 cards synchronously each time
+function debounce(fn,ms){ let t; return function(){ const a=arguments,c=this; clearTimeout(t); t=setTimeout(function(){fn.apply(c,a);},ms); }; }
 // recipe-in-project context: when set, recipe steps read/write the project's doneSteps
 let curProject=null, pendingProject=null;
 function projById(id){ try{ return (store.get('mk-pantry')||[]).find(p=>p.id===id)||null; }catch(e){ return null; } }
@@ -3282,7 +3284,7 @@ function toast(msg, undoFn){
   clearTimeout(toastTmo); toastTmo=setTimeout(()=>t.classList.remove("show"),5000);
   if(undoFn){ t.querySelector("[data-undo]").addEventListener("click",()=>{ clearTimeout(toastTmo); t.classList.remove("show"); undoFn(); }); }
 }
-$("#q").addEventListener("input",()=>catView());
+$("#q").addEventListener("input",debounce(()=>catView(),120));
 
 /* quick-nav jump */
 /* =====================================================================
@@ -3310,7 +3312,10 @@ function isFav(k){return favs.has(k);}
 function toggleFav(k){favs.has(k)?favs.delete(k):favs.add(k);store.set('mk-fav',[...favs]);updateFavBadge();render();}
 function updateFavBadge(){const e=$("#favN");if(e)e.textContent=favs.size;}
 function favStar(key){return `<button class="favstar ${isFav(key)?'on':''}" data-fav="${key}" aria-pressed="${isFav(key)}" aria-label="${isFav(key)?'הסר ממועדפים':'הוסף למועדפים'}">${isFav(key)?'★':'☆'}</button>`;}
-function ratingMini(key){const r=store.get('rating:'+key)||0;return r?`<span class="rmini" aria-label="דירוג ${r}">${'★'.repeat(r)}</span>`:'';}
+// perf #4: read all ratings once into a Map instead of a synchronous localStorage.get per card, per render
+let _ratings=null;
+function ratingsMap(){ if(_ratings) return _ratings; _ratings=new Map(); try{ const ks=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('rating:')===0) ks.push(k); } ks.forEach(function(k){ const v=store.get(k)||0; if(v) _ratings.set(k.slice(7),v); }); }catch(e){} return _ratings; }
+function ratingMini(key){const r=ratingsMap().get(key)||0;return r?`<span class="rmini" aria-label="דירוג ${r}">${'★'.repeat(r)}</span>`:'';}
 
 /* ---- kosher ---- */
 /* ── kashrut classification (species/recipe-based; not a hechsher) ──
@@ -3331,7 +3336,11 @@ const KOSHER_OVERRIDE={'cut-17':'kosher'};
 // strip pork-CASING mentions (casing is swappable) before scanning for pork MEAT — including
 // pork listed as one casing option among kosher ones, e.g. "מעי כבש/חזיר".
 function _koshBuildTxt(m){ try{ return JSON.stringify(m.build||'').replace(/(שרוול|שרוולי|מעי|קרום|עור|טבעת)[^,.;\n)"]{0,18}חזיר/g,''); }catch(e){ return ''; } }
-function kosherStatus(key){
+// perf #4: memoize kosher classification — inputs are static per item (only static KOSHER_OVERRIDE),
+// so the ~6 regex tests per card per render collapse to one compute per key.
+const _kosherCache={};
+function kosherStatus(key){ const c=_kosherCache[key]; if(c!==undefined) return c; return _kosherCache[key]=kosherStatusRaw(key); }
+function kosherStatusRaw(key){
   if(KOSHER_OVERRIDE[key]) return KOSHER_OVERRIDE[key];
   const m=resolveItem(key); if(!m) return 'kosher';
   const s=(m.heb+' '+m.eng+' '+(m.cat||'')).toLowerCase();
@@ -3632,7 +3641,7 @@ function fillExtras(key){
     if(typeof wireSeasPicker==='function') wireSeasPicker(host, key, meta.cat||(meta.obj&&meta.obj.cat), isProd, 'edit', null, backFn); }
   host.querySelector('[data-exfav]').addEventListener('click',()=>{toggleFav(key);fillExtras(key);});
   host.querySelectorAll('[data-rate] .star').forEach(s=>s.addEventListener('click',()=>{
-    const n=+s.dataset.n, cur=store.get('rating:'+key)||0; store.set('rating:'+key,cur===n?0:n); fillExtras(key); render();
+    const n=+s.dataset.n, cur=store.get('rating:'+key)||0; store.set('rating:'+key,cur===n?0:n); _ratings=null; fillExtras(key); render();
   }));
   const ta=host.querySelector('[data-note]'); let tmo;
   ta.addEventListener('input',()=>{clearTimeout(tmo);tmo=setTimeout(()=>store.set('note:'+key,ta.value),350);});
@@ -5621,7 +5630,7 @@ function wipeAllData(){
   const snapshot={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); snapshot[k]=localStorage.getItem(k);}
   const keys=Object.keys(snapshot);
   keys.forEach(k=>{ if(k.startsWith('mk-')||k.startsWith('note:')||k.startsWith('rating:')||k.startsWith('shop:')||k.startsWith('done:')) localStorage.removeItem(k); });
-  favs=new Set(); cart=new Set(); activeCats.clear(); activeGroup=null;
+  favs=new Set(); cart=new Set(); _ratings=null; activeCats.clear(); activeGroup=null;
   filters={fav:false,kosher:false,method:'',diff:0,time:0};
   const qq=$("#q"); if(qq) qq.value="";
   syncChips(); buildFilterBar(); updateCartBadge(); updateFavBadge(); render();
@@ -7547,7 +7556,9 @@ try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel();
 </body>
 </html>"""
 
-html = HTML.replace("__DATA__", DATA_JSON)
+# perf #2: emit `const DATA = JSON.parse("…")` — a JSON string parses ~1.5-2x faster than an
+# equivalent 888KB JS object literal on the main thread (measurable cold-start win on mobile).
+html = HTML.replace("__DATA__", "JSON.parse(" + json.dumps(DATA_JSON) + ")")
 import os as _os, shutil as _shutil
 _root = _os.path.dirname(_os.path.abspath(__file__))
 # 1) index.html at repo root — used by the dev server, tests, and manual upload
