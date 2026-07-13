@@ -143,7 +143,7 @@ The panel found five real defects in code shipped over the last rounds; **all fi
 
 **Wave B — the two platform P0s:**
 - **B (overnight time model):** ✅ **DONE (v159)** — `serveDateTime()` resolves the serve day (explicit picker → `ev.date` → today, rolling to tomorrow when the clock passed); date picker added; serve bar / feasibility / "+30m" / combined view all datetime-aware with day labels. Unblocks every long cook.
-- **A (background alarms):** *next* — `navigator.wakeLock` while a plan runs (S, restores the only reliable path) → SW `showNotification` + `notificationclick` (M, fixes the mobile no-op) → looping alarm + `vibrate` + acknowledge (S). Plus an honest in-app caveat until push lands.
+- **A (background alarms):** ✅ **DONE (v160)** — screen `wakeLock` held while timers run/ring (re-acquired on visibility); alarms route through the SW registration (`registration.showNotification` + `notificationclick`, fixing the mobile no-op); fire vibrates + re-pulses until acknowledged; honest in-app caveat that background delivery isn't guaranteed without a push server.
 
 **Wave C — stop silent data loss (C):** make `store.set` surface quota failures; `navigator.storage.persist()`; fix `importData` to validate + report partial restores; correct the refresh-toast label.
 
