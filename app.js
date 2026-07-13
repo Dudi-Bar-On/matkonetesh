@@ -4800,6 +4800,28 @@ function evGuardBeforeNew(proceed){
   evNewDraft(); proceed&&proceed();
 }
 // ── events screen ──
+// combined multi-event timeline: every event's item-start actions merged onto one color-coded schedule
+const EV_COLORS=['#e76f51','#1a9a7a','#3550c7','#b5603a','#7a5cc2','#2f6070','#c77d2a'];
+function parseServeTime(s){ const p=(s||'19:00').split(':').map(Number); const d=new Date(); d.setHours(p[0]||19,p[1]||0,0,0); return d; }
+function combinedEventsRows(){
+  const rows=[];
+  evList().forEach(function(ev,ei){ const serve=parseServeTime(ev.serve);
+    ((ev.menu&&ev.menu.keys)||[]).forEach(function(key){ const meta=(typeof resolveItem==='function')?resolveItem(key):null; if(!meta) return;
+      let totalH=0; try{ const profile=itemProfile(meta); const stages=itemStages(meta, profile.methods[0].key, true, svSmokeOrderDefault()); totalH=stages.reduce(function(a,s){return a+(s.hours||0);},0); }catch(e){}
+      rows.push({ev:ev, ei:ei, name:meta.heb, start:new Date(serve.getTime()-totalH*3600e3), serve:serve, totalH:totalH});
+    });
+  });
+  rows.sort(function(a,b){return a.start-b.start;});
+  return rows;
+}
+function openCombinedTimeline(){
+  const evs=evList(), rows=combinedEventsRows(), now=new Date();
+  const legend=evs.map(function(ev,ei){ return `<span class="cet-leg"><span class="cet-dot" style="background:${EV_COLORS[ei%EV_COLORS.length]}"></span>${esc(ev.name)} · ${ev.serve||'19:00'}${evRunningCount(ev.id)?` · 🔴 ${evRunningCount(ev.id)}`:''}</span>`; }).join('');
+  const listHtml=rows.length?rows.map(function(r){ const col=EV_COLORS[r.ei%EV_COLORS.length];
+    return `<div class="cet-row ${r.start<now?'cet-past':''}" style="border-inline-start:4px solid ${col}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(r.name)}</b><small style="color:${col}">${esc(r.ev.name)} · הגשה ${r.ev.serve||'19:00'}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+'ד':r.totalH.toFixed(1)+'ש'):''}</span></div>`;
+  }).join(''):'<div class="shop-empty">אין אירועים עם מנות עדיין.</div>';
+  showPanel(`${toolTop('כל האירועים — תצוגה משולבת','לוח-זמנים מאוחד לאירועים מקבילים','🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div><p class="section-sub">זמני ההתחלה של כל המנות מכל האירועים, ממוזגים לפי שעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.</p>${listHtml}</div>`);
+}
 function cPaintEvents(){
   setMenuCtx('event');
   const host=$("#cEvBody"); if(!host) return;
@@ -4840,9 +4862,11 @@ function cPaintEvents(){
   }).join('');
   if(list.length){
     html+=`<button class="cwclear" id="cEvDelAll" style="margin:14px auto 0;display:block">מחק את כל האירועים</button>`;
+    html=`<button class="ccta" id="cetOpen" style="margin:0 0 12px;padding:11px">🗂️ תצוגה משולבת — כל האירועים המקבילים</button>`+html;
   }
   host.innerHTML=html;
   // wire
+  { const co=$("#cetOpen"); if(co) co.addEventListener('click',()=>openCombinedTimeline()); }
   const ds=$("#cEvDraftSave"); if(ds) ds.addEventListener('click',async()=>{ const nm=await appPrompt('שם לאירוע:','',{placeholder:'למשל: שישי במשפחה',okLabel:'💾 שמור'}); if(nm===null||nm===false) return; evSaveCurrent(nm||'אירוע ללא שם'); cPaintEvents(); if(typeof toast==='function') toast('האירוע נשמר'); });
   const dd=$("#cEvDraftDiscard"); if(dd) dd.addEventListener('click',async()=>{ if((await appConfirm('למחוק את הטיוטה?',{okLabel:'🗑️ מחק',danger:true}))!==true) return; evClearActive(); cPaintEvents(); });
   host.querySelectorAll('[data-evload]').forEach(el=>el.addEventListener('click',ev=>{
