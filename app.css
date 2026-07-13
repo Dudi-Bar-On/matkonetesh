@@ -96,8 +96,9 @@ body.capp{padding-bottom:82px}
 .ctile .tbar{position:absolute;top:0;right:0;width:5px;height:100%;background:var(--tc,var(--ember2))}
 /* wizard */
 .cwprog{display:flex;gap:6px;padding:0 16px 18px}
-.cwseg{flex:1;height:5px;border-radius:3px;background:var(--line2)}
+.cwseg{flex:1;height:7px;border-radius:3px;background:var(--line2);appearance:none;border:none;padding:0;cursor:pointer;transition:background .15s}
 .cwseg.done{background:var(--ember)}.cwseg.cur{background:var(--ember2)}
+.cwseg:hover{filter:brightness(1.15)}.cwseg:focus-visible{outline:2px solid var(--ember2);outline-offset:2px}
 .cwstep{display:none;padding:0 16px}.cwstep.on{display:block;animation:cFade .3s}
 .cwq{font-family:var(--font-display);font-size:calc(22px * var(--fscale));margin-bottom:5px;color:var(--bone);font-weight:400}
 .cwsub{font-size:calc(13.5px * var(--fscale));color:var(--ash);margin-bottom:20px;line-height:1.5}

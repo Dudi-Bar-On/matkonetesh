@@ -233,8 +233,8 @@ HTML = r"""<!DOCTYPE html>
       <input id="cwServe" type="time" value="19:00" style="width:100%;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:16px">
     </div>
     <div id="cwReview"></div>
-    <button class="ccta" id="cwSaveEvent">💾 שמור אירוע</button>
     <button class="ccta" id="cwGenPlan">📋 צור תוכנית עבודה מלאה</button>
+    <button class="ccta ghost" id="cwSaveEvent">💾 שמור אירוע</button>
     <button class="ccta ghost" id="cwVoice">🎙️ מצב בישול קולי</button>
     <button class="ccta ghost" data-cgo="events">סיום · לרשימת האירועים</button>
   </div>
@@ -315,7 +315,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 169 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 170 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>

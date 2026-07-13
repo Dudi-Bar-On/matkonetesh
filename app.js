@@ -4558,7 +4558,9 @@ function cwPaintProg(){
   const cook=(typeof menuCtx==='function'&&menuCtx()==='cook');
   const vis=cook?[0,1,2,3,5]:[0,1,2,3,4,5];
   const cur=vis.indexOf(cWiz.step);
-  host.innerHTML=vis.map((_,i)=>`<div class="cwseg ${i<cur?'done':''} ${i===cur?'cur':''}"></div>`).join('');
+  const LBL=['בסיס','מנות','שיטות','מתבלים','תוספות','סקירה'];   // UX #14: clickable, labeled steps
+  host.innerHTML=vis.map((st,i)=>`<button type="button" class="cwseg ${i<cur?'done':''} ${i===cur?'cur':''}" data-cwseg="${st}" title="${LBL[st]||''}" aria-label="שלב ${i+1}: ${LBL[st]||''}"></button>`).join('');
+  host.querySelectorAll('[data-cwseg]').forEach(el=>el.addEventListener('click',()=>{ cwGo(+el.dataset.cwseg); }));
 }
 function cwGo(n){
   n=Math.max(0,Math.min(CW_STEPS-1,n));
