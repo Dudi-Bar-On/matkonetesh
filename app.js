@@ -4004,6 +4004,7 @@ function renderTimelinePanel(){
     $("#tlList").querySelectorAll('[data-tldetail]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlplandetail',b.dataset.tldetail); buildList();}));
     $("#tlList").querySelectorAll('[data-tlshape]').forEach(b=>b.addEventListener('click',()=>{setTlShape(b.dataset.tlshape); buildList();}));
     $("#tlList").querySelectorAll('.wp-acch').forEach(h=>h.addEventListener('click',()=>{ const acc=h.parentElement; if(acc) acc.classList.toggle('open'); }));
+    $("#tlList").querySelectorAll('.wp-ck[data-wpck]').forEach(cb=>cb.addEventListener('change',()=>{ const k=decodeURIComponent(cb.dataset.wpck); store.set(k, cb.checked||null); const row=cb.closest('.wp-row'); if(row) row.classList.toggle('wp-done', cb.checked); }));   // F: persist plan check state
     { const vb=$("#tlList").querySelector('[data-vclaunch]'); if(vb) vb.addEventListener('click',()=>openFrom(openTimeline,()=>openVoiceCook(window._wpTasks||[]))); }
     wireRows();
   }
@@ -4104,11 +4105,15 @@ function renderTimelinePanel(){
     return renderWpVertical(tasks, detail, serve);   // shape '1' — also the pre-v144 default markup
   }
   function renderWpVertical(tasks, detail, serve){
-    return `<div class="workplan ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
-      <label class="wp-row wp-${tk.kind}"><input type="checkbox" class="wp-ck">
-        <span class="wp-time">${fmtClockRel(tk.t, serve)}</span>
+    const sc=(typeof evScope==='function')?evScope():'cook';
+    const now=Date.now(); const nextIdx=tasks.findIndex(t=>t.t&&t.t.getTime()>now);   // F: first upcoming task = "now/next" cue
+    return `<div class="workplan ${detail?'wp-full':''}">${tasks.map((tk,i)=>{
+      const key='wpck:'+sc+':'+tk.label; const done=store.get(key);   // F: persist check state across rebuilds by task identity (scope+label)
+      const cue = i===nextIdx?'wp-next':'';
+      return `<label class="wp-row wp-${tk.kind} ${done?'wp-done':''} ${cue}"><input type="checkbox" class="wp-ck" data-wpck="${encodeURIComponent(key)}" ${done?'checked':''}>
+        <span class="wp-time">${cue?'<span class="wp-nowtag">הבא</span>':''}${fmtClockRel(tk.t, serve)}</span>
         <span class="wp-body"><b>${tk.label}</b>${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpv-'+i), tk.label)}</span>`:''}</span>
-      </label>`).join('')}</div>`;
+      </label>`;}).join('')}</div>`;
   }
   function renderWpAccordion(tasks, detail, serve){
     return `<div class="workplan wp-accordion ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
@@ -4949,6 +4954,47 @@ function combinedEventsRows(){
     if(A.ev.id!==B.ev.id && A.smoke && B.smoke && A.smoke.start<B.smoke.end && B.smoke.start<A.smoke.end){ A.contention=true; B.contention=true; } } }
   return rows;
 }
+// Wave E5: consolidated shopping across ALL events — one trip, quantities summed, per-event breakdown.
+function crossEventShopData(){
+  const evs=evList(); const map={}; const woods={}, coals={};
+  evs.forEach(function(ev){
+    const mq=store.get('mk-menuqty-'+ev.id)||{};
+    ((ev.menu&&ev.menu.keys)||[]).forEach(function(key){
+      const meta=(typeof resolveItem==='function')?resolveItem(key):null; if(!meta) return;
+      const c=meta.obj||{};
+      const kg = mq[key]? mq[key]/1000 : (c.kg||0);
+      if(!map[key]) map[key]={key:key, name:meta.heb, eng:meta.eng, cat:meta.cat, totalKg:0, events:[]};
+      map[key].totalKg += kg; map[key].events.push({name:ev.name, kg:kg});
+      if(c.wood) String(c.wood).split('/').forEach(function(w){ w=w.trim(); if(w&&w!=='ללא') woods[w]=1; });
+      if(c.coal) coals[c.coal]=1;
+    });
+  });
+  return {items:Object.keys(map).map(function(k){return map[k];}), woods:Object.keys(woods), coals:Object.keys(coals), eventCount:evs.length};
+}
+function openCrossEventCart(){
+  const d=crossEventShopData();
+  if(!d.items.length){ showPanel(`${toolTop('רשימת קניות מאוחדת','לכל האירועים יחד','🛒','#4f8a3d')}<div class="panel-body"><div class="shop-empty">אין פריטים באירועים עדיין.</div></div>`); return; }
+  const byCat={}; d.items.forEach(function(it){ (byCat[it.cat]=byCat[it.cat]||[]).push(it); });
+  const xline=function(text, sub){ const k='xshop:'+text; const done=store.get(k)?'done':''; return `<div class="shop-line ${done}"><span class="cbx ${done}" data-xshop="${encodeURIComponent(text)}">${done?'✓':''}</span><span>${esc(text)}${sub?` <small style="color:var(--smoke)">· ${esc(sub)}</small>`:''}</span></div>`; };
+  const groups=Object.keys(byCat).map(function(cat){
+    return `<div class="shop-group"><h4>${esc(cat)}</h4>`+byCat[cat].map(function(it){
+      const qty = it.totalKg? `~${it.totalKg.toFixed(1)} ק״ג` : '';
+      const brk = it.events.length>1? it.events.map(function(e){return e.name+(e.kg?` ${e.kg.toFixed(1)}ק״ג`:'');}).join(' + ') : '';
+      return xline(`${it.name} (${it.eng})${qty?' — '+qty:''}`, brk);
+    }).join('')+`</div>`;
+  }).join('');
+  const woodG = d.woods.length? `<div class="shop-group"><h4>🪵 עצים</h4>`+d.woods.map(function(w){return xline(w);}).join('')+`</div>` : '';
+  const coalG = d.coals.length? `<div class="shop-group"><h4>⚫ פחם</h4>`+d.coals.map(function(c){return xline(c);}).join('')+`</div>` : '';
+  showPanel(`${toolTop('רשימת קניות מאוחדת','כל '+d.eventCount+' האירועים יחד — כמויות מסוכמות','🛒','#4f8a3d')}
+    <div class="panel-body">
+      <div class="kbox k-ok">רשימה אחת לכל האירועים — כמויות מסוכמות עם פירוט לכל אירוע. תבלינים ותוספות ספציפיים נמצאים בעגלה של כל אירוע.</div>
+      ${groups}${woodG}${coalG}
+    </div>`);
+  $("#panel").querySelectorAll('[data-xshop]').forEach(function(sp){ sp.addEventListener('click',function(){
+    const t=decodeURIComponent(sp.dataset.xshop), row=sp.closest('.shop-line'), done=!row.classList.contains('done');
+    row.classList.toggle('done',done); sp.classList.toggle('done',done); sp.textContent=done?'✓':''; store.set('xshop:'+t,done);
+  }); });
+}
 function openCombinedTimeline(){
   const evs=evList(), rows=combinedEventsRows(), now=new Date();
   const legend=evs.map(function(ev,ei){ return `<span class="cet-leg"><span class="cet-dot" style="background:${EV_COLORS[ei%EV_COLORS.length]}"></span>${esc(ev.name)} · ${ev.serve||'19:00'}${evRunningCount(ev.id)?` · 🔴 ${evRunningCount(ev.id)}`:''}</span>`; }).join('');
@@ -4960,7 +5006,9 @@ function openCombinedTimeline(){
   }).join(''):'<div class="shop-empty">אין אירועים עם מנות עדיין.</div>';
   const clashN=rows.filter(function(r){return r.contention;}).length;
   const clashNote=clashN?`<div class="cet-clashnote">⚠ <b>חפיפת מעשנה:</b> ${clashN} פריטים מאירועים שונים מתוזמנים לעשן בו-זמנית. מעשנה אחת לא תספיק — פזר את שעות ההגשה או השתמש בשתי מעשנות.</div>`:'';
-  showPanel(`${toolTop('כל האירועים — תצוגה משולבת','לוח-זמנים מאוחד לאירועים מקבילים','🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div>${clashNote}<p class="section-sub">זמני ההתחלה של כל המנות מכל האירועים, לפי השיטה שנבחרה בכל אירוע, ממוזגים לפי יום ושעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.</p>${listHtml}</div>`);
+  const shopBtn = evs.length? `<button class="mchip" id="cetShop" style="margin-bottom:10px">🛒 רשימת קניות מאוחדת</button>` : '';
+  showPanel(`${toolTop('כל האירועים — תצוגה משולבת','לוח-זמנים מאוחד לאירועים מקבילים','🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div>${clashNote}${shopBtn}<p class="section-sub">זמני ההתחלה של כל המנות מכל האירועים, לפי השיטה שנבחרה בכל אירוע, ממוזגים לפי יום ושעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.</p>${listHtml}</div>`);
+  { const b=$("#cetShop"); if(b) b.addEventListener('click', openCrossEventCart); }
 }
 function cPaintEvents(){
   setMenuCtx('event');
