@@ -46,8 +46,9 @@ is the entire deploy.
 
 Every push to `main` rebuilds and redeploys.
 
-**Manual:** `python build.py`, then upload the **contents of `dist/`** via the Cloudflare Pages
-dashboard (Workers & Pages → project → Create deployment → Upload assets), or `npx wrangler pages deploy dist`.
+**Manual / CLI:** `python build.py`, then either upload the **contents of `dist/`** via the Cloudflare
+Pages dashboard (Workers & Pages → project → Create deployment → Upload assets), or run
+`npx wrangler pages deploy` — `wrangler.toml` already sets the project name and `dist` output dir.
 
 ## Safety principle (P3)
 Salt/cure/pasteurization/temperature safety numbers always come from a cited primary source
