@@ -3069,7 +3069,7 @@ function openAsk(){
        <button class="ask-modebtn ${!aiOn?'on':''}" data-askmode="local">⚡ מנוע מקומי</button>
        <button class="ask-modebtn ${aiOn?'on':''}" data-askmode="ai">🤖 AI חכם${hasKey?'':' <span class="ask-lock">🔑</span>'}</button>
      </div>
-     <div id="askthread" class="askthread"></div>
+     <div id="askthread" class="askthread" role="log" aria-live="polite" aria-atomic="false"></div>
      <div class="askex" id="askex">${examples.map(x=>`<button class="askex-chip" data-ex="${x}">${x}</button>`).join('')}</div>
      <div class="askrow"><input id="askq" placeholder="שאל שאלה…" autocomplete="off"><button id="askgo">שאל</button><button id="askclear" class="askclear" title="שיחה חדשה" hidden>🗑</button></div>
      <div id="askhint" class="ask-hint">${aiOn?(hasKey?'🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג. <button class="ask-link" data-askmode="disc">נתק מפתח</button>':'🤖 מצב AI נבחר — צריך לחבר מפתח חינמי (חד-פעמי).'):'⚡ מנוע מקומי — מיידי, פרטי, בלי רשת. עונה מעל נתוני הקטלוג שלך.'}</div>

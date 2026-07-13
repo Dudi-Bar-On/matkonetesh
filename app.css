@@ -793,6 +793,8 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .butchernote{background:var(--char2);border:1px dashed var(--line);border-radius:9px;padding:11px;margin:8px 0;font-size:calc(14px * var(--fscale));line-height:1.6}
 
 .toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
+.skip-link{position:fixed;top:-60px;inset-inline-start:8px;z-index:9999;background:var(--ember2);color:#fff;padding:10px 16px;border-radius:0 0 10px 10px;font-weight:800;font-size:calc(13px * var(--fscale));transition:top .15s;text-decoration:none}
+.skip-link:focus{top:0;outline:2px solid #fff;outline-offset:-4px}
 .toolgroup{margin-bottom:16px}
 .toolgroup-h{margin:0 0 2px;font-size:calc(12px * var(--fscale));font-weight:800;color:var(--smoke);letter-spacing:.02em}
 .toolbtn{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--char2);border:1px solid var(--line);color:var(--bone);border-radius:12px;padding:16px 10px;font-size:calc(13px * var(--fscale));text-align:center}

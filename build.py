@@ -136,6 +136,7 @@ HTML = r"""<!DOCTYPE html>
 <style>__CSS__</style>
 </head>
 <body class="capp">
+<a href="#mainContent" class="skip-link">דלג לתוכן</a>
 <div class="glow"></div>
 <header class="hero">
   <div class="kick">סו-ויד · עישון · גריל · אש</div>
@@ -260,7 +261,7 @@ HTML = r"""<!DOCTYPE html>
   </div>
 </div>
 
-<main>
+<main id="mainContent" tabindex="-1">
   <!-- landing: category tiles -->
   <div id="catLanding"></div>
 
@@ -315,7 +316,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 172 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 173 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
