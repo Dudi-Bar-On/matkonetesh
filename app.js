@@ -1378,8 +1378,8 @@ function stepHTML(key,which,i,s){
   return `<div class="step ${ck}" data-i="${i}">
      <button class="cbx ${ck}" data-ck>${ck?'✓':''}</button>
      <div class="step-main">
-       <div class="step-t">${t}</div>
-       <div class="step-c">${c}</div>
+       <div class="step-t" data-mt>${t}</div>
+       <div class="step-c" data-mt>${c}</div>
        ${sec?timerHTML(sec, key+'-'+which+'-'+i):''}
      </div>
    </div>`;
@@ -4495,7 +4495,8 @@ function tnode(root){ const d=getDict(); if(!d) return; const U=d.__units__||{},
     return nv; };
   const set=function(node, val){ if(node._mkO===undefined) node._mkO=node.nodeValue; node.nodeValue=val; };   // non-destructive: keep the Hebrew original
   try{ const w=document.createTreeWalker(r, NodeFilter.SHOW_TEXT, null); const list=[]; let n; while((n=w.nextNode())) list.push(n);
-    list.forEach(function(node){ const raw=(node._mkO!==undefined)?node._mkO:node.nodeValue; if(!raw) return; const k=raw.trim(); if(!k) return;   // always translate FROM the Hebrew original
+    list.forEach(function(node){ if(node.parentElement && node.parentElement.closest && node.parentElement.closest('[data-mt]')) return;   // leave data-mt prose to the guarded MT
+      const raw=(node._mkO!==undefined)?node._mkO:node.nodeValue; if(!raw) return; const k=raw.trim(); if(!k) return;   // always translate FROM the Hebrew original
       const v=d[k]; if(v!=null && v!==k){ set(node, raw.replace(k, v)); return; }
       const pm=k.match(/^([^A-Za-z0-9֐-׿]+)(.+)$/); if(pm){ const dv=d[pm[2].trim()]; if(dv!=null){ set(node, raw.replace(k, pm[1]+dv)); return; } }
       if(/[֐-׿]/.test(raw)){ const nv=interp(raw); if(nv!==raw) set(node, nv); }
