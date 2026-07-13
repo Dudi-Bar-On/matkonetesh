@@ -1575,14 +1575,15 @@ let panelStack=[];        // stack of reopener functions for back-navigation
 function showPanel(html){
   lastFocus=document.activeElement;
   const p=$("#panel");p.innerHTML=html;p.classList.add("open");p.setAttribute("aria-hidden","false");
+  try{ if(typeof applyI18n==='function') applyI18n(p); }catch(e){}   // Wave 5: translate any data-i18n chrome inside dynamically-rendered panels
   $("#scrim").classList.add("open");document.body.classList.add("noscroll");
   const xb=p.querySelector(".x"); if(xb) xb.addEventListener("click",closePanel);
   const top=p.querySelector(".panel-top");
   p.scrollTop=0; const body=p.querySelector(".panel-body"); if(body) body.scrollTop=0;
   if(panelStack.length && top && !top.querySelector(".backbtn")){
     const bb=document.createElement("button");
-    bb.className="backbtn"; bb.type="button"; bb.textContent="→ חזרה לחלון הקודם";
-    bb.setAttribute("aria-label","חזרה לחלון הקודם");
+    bb.className="backbtn"; bb.type="button"; bb.textContent=(typeof t==='function'?t('panel.back'):"→ חזרה לחלון הקודם");
+    bb.setAttribute("aria-label",(typeof t==='function'?t('panel.backA'):"חזרה לחלון הקודם"));
     bb.addEventListener("click",panelBack);
     top.appendChild(bb);   // in panel-top: always a direct child, never wiped by body re-render
   }
@@ -4460,7 +4461,22 @@ const I18N={
   'ap.theme':        {he:'🎨 ערכת גוונים', en:'🎨 Color theme'},
   'ap.fonts':        {he:'🔤 זיווג פונטים', en:'🔤 Font pairing'},
   'ap.size':         {he:'🔠 גודל טקסט', en:'🔠 Text size'},
-  'ap.title':        {he:'מראה', en:'Appearance'}
+  'ap.title':        {he:'מראה', en:'Appearance'},
+  'panel.back':      {he:'→ חזרה לחלון הקודם', en:'← Back'},
+  'panel.backA':     {he:'חזרה לחלון הקודם', en:'Back to previous window'},
+  'wiz.title':       {he:'אשף האירוע', en:'Event wizard'},
+  'wiz.evhead':      {he:'פרטי האירוע', en:'Event details'},
+  'wiz.basics':      {he:'בסיס', en:'Basics'},
+  'wiz.appetite':    {he:'🍽️ תיאבון', en:'🍽️ Appetite'},
+  'wiz.next.dishes': {he:'המשך לבחירת מנות ←', en:'Next: choose dishes →'},
+  'wiz.next.methods':{he:'המשך לשיטות ←', en:'Next: methods →'},
+  'wiz.next.seas':   {he:'המשך למתבלים ←', en:'Next: seasonings →'},
+  'wiz.next.extras': {he:'המשך לתוספות וקינוחים ←', en:'Next: sides & desserts →'},
+  'wiz.next.review': {he:'סקירה ותוכנית ←', en:'Review & plan →'},
+  'wiz.genplan':     {he:'📋 צור תוכנית עבודה מלאה', en:'📋 Generate full work plan'},
+  'wiz.saveevent':   {he:'💾 שמור אירוע', en:'💾 Save event'},
+  'wiz.voice':       {he:'🎙️ מצב בישול קולי', en:'🎙️ Voice-cook mode'},
+  'wiz.toevents':    {he:'סיום · לרשימת האירועים', en:'Done · to the events list'}
 };
 function getLang(){
   try{ if(typeof window!=='undefined' && window.__MATKONET_HOST__ && window.__MATKONET_HOST__.lang && I18N_LANGS[window.__MATKONET_HOST__.lang]) return window.__MATKONET_HOST__.lang; }catch(e){}   // host-driven locale (matkonet module seam)

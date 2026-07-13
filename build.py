@@ -189,7 +189,7 @@ HTML = r"""<!DOCTYPE html>
       <span class="cmethod" data-app="light">קל · 200ג׳</span><span class="cmethod on" data-app="reg">רגיל · 280ג׳</span><span class="cmethod" data-app="heavy">כבד · 380ג׳</span>
     </div></div>
     <div class="cscard"><h4>✡️ כשרות</h4><div class="cmethods"><span class="cmethod fresh" id="cwKosher" data-on="0">🥩 סנן חזיר/לא-כשר</span></div></div>
-    <button class="ccta" data-cwgo="1">המשך לבחירת מנות ←</button>
+    <button class="ccta" data-cwgo="1" data-i18n="wiz.next.dishes">המשך לבחירת מנות ←</button>
   </div>
 
   <!-- step 1: pick from full catalog -->
@@ -201,21 +201,21 @@ HTML = r"""<!DOCTYPE html>
     <div id="cwPickCount" style="display:flex;align-items:center;justify-content:space-between;font-family:'Heebo';font-size:12px;color:var(--fresh);font-weight:700;margin-bottom:8px"></div>
     <div id="cwPickSel" class="cwpick-sel"></div>
     <div id="cwPickList" style="max-height:48vh;overflow-y:auto;padding-bottom:6px"></div>
-    <button class="ccta" data-cwgo="2">המשך לשיטות ←</button>
+    <button class="ccta" data-cwgo="2" data-i18n="wiz.next.methods">המשך לשיטות ←</button>
   </div>
 
   <!-- step 2: real method toggles per item -->
   <div class="cwstep" data-cwstep="2">
     <div class="cwq">שיטות בישול</div><div class="cwsub">לכל פריט — בחר שיטה (סו-ויד / עישון / גריל). נשמר במנוע האמיתי.</div>
     <div id="cwMethodsFull"></div>
-    <button class="ccta" data-cwgo="3">המשך למתבלים ←</button>
+    <button class="ccta" data-cwgo="3" data-i18n="wiz.next.seas">המשך למתבלים ←</button>
   </div>
 
   <!-- step 3: seasonings per item -->
   <div class="cwstep" data-cwstep="3">
     <div class="cwq">מתבלים ורטבים</div><div class="cwsub">בחר תיבול לכל פריט — יוזרק אוטומטית לשלבי הבישול.</div>
     <div id="cwSeasFull"></div>
-    <button class="ccta" data-cwgo="4">המשך לתוספות וקינוחים ←</button>
+    <button class="ccta" data-cwgo="4" data-i18n="wiz.next.extras">המשך לתוספות וקינוחים ←</button>
   </div>
 
   <!-- step 4: sides + drinks -->
@@ -224,7 +224,7 @@ HTML = r"""<!DOCTYPE html>
     <div class="cscard"><h4>🥗 תוספות</h4><div id="cwSides" class="cmethods" style="flex-direction:column;align-items:stretch;gap:8px"></div></div>
     <div class="cscard"><h4>🥤 שתייה</h4><div id="cwDrinks" class="cmethods" style="flex-direction:column;align-items:stretch;gap:8px"></div></div>
     <div class="cscard"><h4>🍮 קינוחים</h4><div id="cwDesserts" class="cmethods" style="flex-wrap:wrap"></div></div>
-    <button class="ccta" data-cwgo="5">סקירה ותוכנית ←</button>
+    <button class="ccta" data-cwgo="5" data-i18n="wiz.next.review">סקירה ותוכנית ←</button>
   </div>
 
   <!-- step 5: review + serve time + generate real plan -->
@@ -234,10 +234,10 @@ HTML = r"""<!DOCTYPE html>
       <input id="cwServe" type="time" value="19:00" style="width:100%;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:16px">
     </div>
     <div id="cwReview"></div>
-    <button class="ccta" id="cwGenPlan">📋 צור תוכנית עבודה מלאה</button>
-    <button class="ccta ghost" id="cwSaveEvent">💾 שמור אירוע</button>
-    <button class="ccta ghost" id="cwVoice">🎙️ מצב בישול קולי</button>
-    <button class="ccta ghost" data-cgo="events">סיום · לרשימת האירועים</button>
+    <button class="ccta" id="cwGenPlan" data-i18n="wiz.genplan">📋 צור תוכנית עבודה מלאה</button>
+    <button class="ccta ghost" id="cwSaveEvent" data-i18n="wiz.saveevent">💾 שמור אירוע</button>
+    <button class="ccta ghost" id="cwVoice" data-i18n="wiz.voice">🎙️ מצב בישול קולי</button>
+    <button class="ccta ghost" data-cgo="events" data-i18n="wiz.toevents">סיום · לרשימת האירועים</button>
   </div>
 </div>
 
@@ -316,7 +316,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 174 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 175 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
