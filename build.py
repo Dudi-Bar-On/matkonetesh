@@ -821,6 +821,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .addcart:hover{border-color:var(--fresh)}
 .exaddmenu{display:block;width:100%;min-height:44px;margin-bottom:10px;padding:11px;border-radius:10px;font-weight:700;font-size:calc(14px * var(--fscale));background:var(--fresh-l);color:var(--fresh);border:1px solid var(--fresh);cursor:pointer}
 .exaddmenu.on{background:var(--fresh);color:#fff}
+:focus-visible{outline:2px solid var(--ember)!important;outline-offset:2px}
 .ktag{display:inline-block;font-family:var(--font-body);font-size:calc(9.5px * var(--fscale));font-weight:700;padding:1px 6px;border-radius:999px;vertical-align:middle;margin-inline-start:4px}
 .ktag.kp{background:rgba(200,60,40,.16);color:#e07a5f;border:1px solid rgba(200,60,40,.4)}
 .ktag.kd{background:rgba(80,140,200,.16);color:#7fb0d8;border:1px solid rgba(80,140,200,.4)}
@@ -1354,7 +1355,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 
 <!-- ═══ WIZARD (full 6-step) ═══ -->
 <div class="screen" id="scr-wizard">
-  <div class="cshead"><button class="back" id="cwBack">→</button><h2 id="cwTitle">אשף האירוע</h2><span class="step" id="cwLbl">שלב 1/6</span></div>
+  <div class="cshead"><button class="back" id="cwBack" aria-label="חזרה">→</button><h2 id="cwTitle">אשף האירוע</h2><span class="step" id="cwLbl">שלב 1/6</span></div>
   <div class="cwprog" id="cwProg"></div>
 
   <!-- step 0: event identity + basics -->
@@ -2220,7 +2221,7 @@ function headArt(cat){return `<div class="phead-ico">${svgRaw(iconType(cat))}</d
 
 /* ---------- render cards ---------- */
 function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
-  return `<article class="card" data-n="${c.n}" data-kind="cut">
+  return `<article class="card" data-n="${c.n}" data-kind="cut" tabindex="0" role="button" aria-label="${c.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(c.cat,"#"+c.n,"cut-"+c.n)}
     <div class="cbody">
@@ -2249,7 +2250,7 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
   </article>`;
 }
 function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=catColor(s.cat), key="spec-"+s.n;
-  return `<article class="card" data-n="${s.n}" data-kind="spec">
+  return `<article class="card" data-n="${s.n}" data-kind="spec" tabindex="0" role="button" aria-label="${s.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(s.cat,"#"+s.n,"spec-"+s.n, s.origin)}
     <div class="cbody">
@@ -2263,7 +2264,7 @@ function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=cat
   </article>`;
 }
 function makeCard(id,m){const nv=(m.build.variants||[]).length, col=catColor(m.cat), key="make-"+id;
-  return `<article class="card" data-mid="${id}" data-kind="make">
+  return `<article class="card" data-mid="${id}" data-kind="make" tabindex="0" role="button" aria-label="${m.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(m.cat,null,"make-"+id, m.origin)}
     <div class="cbody">
@@ -3217,6 +3218,31 @@ document.addEventListener("click",e=>{
 });
 $("#scrim").addEventListener("click",closePanel);
 document.addEventListener("keydown",e=>{if(e.key==="Escape")closePanel();});
+/* a11y: keyboard operability for non-native interactive surfaces. Enter/Space on a focused
+   card / home-path / wizard chip synthesizes a click, routing through the existing handlers. */
+document.addEventListener("keydown",e=>{
+  if(e.key!=="Enter" && e.key!==" ") return;
+  const t=e.target; if(!t||!t.closest) return;
+  if(t.closest('button,a[href],input,select,textarea')) return;   // native controls handle their own keys
+  const act=t.closest('.card,.cpath,.cnext,[data-cgo],[data-cwm],[data-app],.chip,.cmethod,[data-cwpick]');
+  if(!act) return; e.preventDefault(); act.click();
+});
+/* a11y: make those surfaces focusable + announced; keep aria-pressed synced with the .on toggle class.
+   (Cards carry tabindex/role in their own template — the high-count path — so they stay out of this observer.) */
+(function(){
+  const BTN='.cpath,.cnext,[data-cgo],[data-cwm],[data-app],.chip,.cmethod,[data-cwpick]';
+  const PRESS='.chip,.cmethod,[data-app],.tab,.vc-langbtn';
+  function enh(el){
+    if(el.matches(BTN)){ if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0'); if(!el.hasAttribute('role')) el.setAttribute('role','button'); }
+    if(el.matches(PRESS)) el.setAttribute('aria-pressed', el.classList.contains('on')?'true':'false');
+  }
+  function scan(n){ if(!n||n.nodeType!==1) return; if(n.matches) enh(n); if(n.querySelectorAll) n.querySelectorAll(BTN+','+PRESS).forEach(enh); }
+  scan(document.body);
+  new MutationObserver(ms=>ms.forEach(m=>{
+    if(m.type==='childList') m.addedNodes.forEach(scan);
+    else if(m.target&&m.target.matches&&m.target.matches(PRESS)) m.target.setAttribute('aria-pressed', m.target.classList.contains('on')?'true':'false');
+  })).observe(document.body,{childList:true,subtree:true,attributes:true,attributeFilter:['class']});
+})();
 /* focus trap inside the open panel */
 $("#panel").addEventListener("keydown",e=>{
   if(e.key!=="Tab") return;
