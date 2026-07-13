@@ -4,6 +4,14 @@
 
 > **Reading:** **§A** program principles + the business-track decision. **§B** the dependency spine (what unblocks what). **§C** the waves, each with its findings, effort, verification, and release. **§D** the deferred matkonet-platform backlog. **§E** open decisions.
 
+> **Implementation status (as of v168, single `main` branch):**
+> - ✅ **Wave 0** (v150) · **Wave 1** (v151) · **Wave 2a/2b** (v152 + CSS/JS extraction v157) — done.
+> - ✅ **Wave 3 AI track** (v168): centralized `gemFetch` transport — API key moved to the `x-goog-api-key` **header** (out of the URL), **AbortController timeout**, transient-**retry with backoff**, and the **`GEM_URL` endpoint-indirection seam** (AI #8 / money seam); a **numeric-invariant safety guard** flags unverified temp/cure/nitrite numbers in AI answers (AI #4); a standing **disclaimer** on open Q&A (AI #7).
+> - 🟡 **Wave 3 PWA track**: `storage.persist()` + validated import + quota surfacing done (Ops Wave C); remaining — `mk-schema` migration runner, maskable icon, manifest `shortcuts`/`screenshots`.
+> - ❌ **Wave 4** (content polish + the UX/IA overhaul, incl. consolidating the two menu builders) — **not started** (seasoning dedup is done in `build.py`).
+> - ❌ **Wave 5** (multilingual i18n) — **not started**.
+> - Separately, the entire **OPERATIONS-v157** analysis (Waves A–F, v158–v167) shipped: night/next-day datetime, background alarms, data-loss guards, the internal-temp safety gate, pro multi-event, and workflow legibility.
+
 ---
 
 ## §A · Program principles

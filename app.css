@@ -728,6 +728,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .ask-modebtn.on{background:var(--char2);color:var(--ember);box-shadow:0 1px 4px rgba(210,105,30,.12)}
 .ask-lock{font-size:calc(10px * var(--fscale))}
 .ask-hint{font-size:calc(12px * var(--fscale));color:var(--smoke);margin-top:12px;line-height:1.5;background:var(--char2);border-radius:10px;padding:10px}
+.ai-caveat{margin-top:8px;padding:7px 10px;background:rgba(192,57,43,.1);border:1px solid rgba(192,57,43,.4);border-radius:8px;font-size:calc(11.5px * var(--fscale));line-height:1.45;color:var(--bone)}
 .ask-link{background:none;border:none;color:var(--ember);font-weight:700;cursor:pointer;font-size:calc(12px * var(--fscale));text-decoration:underline;padding:0}
 .ask-src{display:inline-block;font-size:calc(10px * var(--fscale));font-weight:800;border-radius:999px;padding:2px 7px;margin-inline-end:7px;vertical-align:middle}
 .ask-src.ai{background:var(--tint-info);color:var(--tint-info-ink)}

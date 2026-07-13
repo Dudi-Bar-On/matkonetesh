@@ -2905,6 +2905,33 @@ function askContextFor(q){
   }).join('\n');
   return {ctx,ents:ents.map(m=>({key:m.key,heb:m.heb,cat:m.cat}))};
 }
+// ── centralized Gemini transport (AI #2 timeout · #3 retry/backoff · #9 key-in-header) + the
+//    AI #8 endpoint-indirection seam: one place to point at a managed proxy later (monetization seam).
+const GEM_HOST='https://generativelanguage.googleapis.com/v1beta/models/';
+const GEM_MODEL='gemini-2.5-flash';
+function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
+async function gemFetch(model, body, opts){
+  opts=opts||{}; const key=opts.key||gemKey(); if(!key) throw new Error('no-key');
+  const timeout=opts.timeout||25000, tries=(opts.retries!=null?opts.retries:1)+1;
+  let lastErr;
+  for(let i=0;i<tries;i++){
+    if(i){ await new Promise(res=>setTimeout(res, 500*Math.pow(2,i-1))); }   // backoff: 500ms, 1s, ...
+    const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+    const to=ctl?setTimeout(function(){ try{ctl.abort();}catch(e){} }, timeout):null;
+    try{
+      const r=await fetch(GEM_URL(model), {method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':key}, body:JSON.stringify(body), signal:ctl?ctl.signal:undefined});
+      if(to) clearTimeout(to);
+      if(r.ok) return r;
+      if(i<tries-1 && [429,500,502,503,504].indexOf(r.status)>=0){ lastErr=new Error('api-'+r.status); continue; }   // retry only transient statuses
+      throw new Error('api-'+r.status);
+    }catch(e){ if(to) clearTimeout(to);
+      const transient=(e&&e.name==='AbortError')||/networkerror|failed to fetch|load failed/i.test((e&&e.message)||'');
+      if(i<tries-1 && transient){ lastErr=e; continue; }
+      throw (e&&e.name==='AbortError') ? new Error('timeout') : e;
+    }
+  }
+  throw lastErr||new Error('gem-failed');
+}
 async function askGemini(qRaw, history){
   const key=gemKey(); if(!key) throw new Error('no-key');
   const q=(qRaw||'').trim();
@@ -2919,8 +2946,7 @@ async function askGemini(qRaw, history){
     tools:[{google_search:{}}],
     generationConfig:{temperature:0.8,maxOutputTokens:1600,thinkingConfig:{thinkingBudget:0}}
   };
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,{
-    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json();
   const cand=j.candidates&&j.candidates[0];
@@ -2929,10 +2955,7 @@ async function askGemini(qRaw, history){
   return {txt,chips:ents};
 }
 async function askValidateKey(key){
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({contents:[{parts:[{text:'שלום'}]}],generationConfig:{maxOutputTokens:20,thinkingConfig:{thinkingBudget:0}}})});
-  return r.ok;
+  try{ await gemFetch(GEM_MODEL, {contents:[{parts:[{text:'שלום'}]}],generationConfig:{maxOutputTokens:20,thinkingConfig:{thinkingBudget:0}}}, {key, retries:0, timeout:12000}); return true; }catch(e){ return false; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -2957,6 +2980,14 @@ function aiStripFences(t){
   return s.trim();
 }
 
+// AI #4/#7 · numeric-invariant guard over AI prose. The model can state a fabricated safety number;
+// when an answer carries temperature / cure / nitrite / dry-day figures, flag them as unverified and
+// point back to the app's cited data + calculator. (We flag rather than redact so cited numbers survive.)
+function aiSafetyCaveat(txt){
+  const t=String(txt||'');
+  const safety = /\d{2,3}\s*°|\d+\s*מעלות|\d+\s*ppm|ניטריט|Cure\s*#?[12]|קיור|ריפוי|\d+\s*ימי[םי]?\s*ייבוש|פסטור/i.test(t);
+  return safety ? '<div class="ai-caveat">⚠ מספרי טמפ׳/ריפוי/בטיחות בתשובת ה-AI אינם מאומתים — אמת מול כרטיס המתכון והמחשבון באפליקציה לפני ביצוע.</div>' : '';
+}
 const AI_JSON_SYS = 'אתה מנוע-עזר בתוך אפליקציית בישול-אש ישראלית. החזר אך ורק JSON תקין (בלי Markdown, בלי טקסט לפני או אחרי). '
   + 'בחר אך ורק מתוך רשימת המפתחות (keys) שסופקה — אל תמציא מפתחות, שמות פריטים או מזהים שאינם ברשימה. '
   + 'אל תמציא מספרי בטיחות, טמפרטורות-ריפוי או ימי-ייבוש — אם נדרש מספר כזה השמט אותו והאפליקציה תחשב. '
@@ -2978,8 +3009,7 @@ async function aiJSON(opts){
     generationConfig:{temperature,maxOutputTokens:maxTokens,thinkingConfig:{thinkingBudget:0},responseMimeType:'application/json'}
   });
   const callOnce=async(body)=>{
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,{
-      method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
     if(!r.ok) throw new Error('api-'+r.status);
     const j=await r.json();
     const cand=j.candidates&&j.candidates[0];
@@ -3040,7 +3070,7 @@ function openAsk(){
      <div id="askthread" class="askthread"></div>
      <div class="askex" id="askex">${examples.map(x=>`<button class="askex-chip" data-ex="${x}">${x}</button>`).join('')}</div>
      <div class="askrow"><input id="askq" placeholder="שאל שאלה…" autocomplete="off"><button id="askgo">שאל</button><button id="askclear" class="askclear" title="שיחה חדשה" hidden>🗑</button></div>
-     <div id="askhint" class="ask-hint">${aiOn?(hasKey?'🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. <button class="ask-link" data-askmode="disc">נתק מפתח</button>':'🤖 מצב AI נבחר — צריך לחבר מפתח חינמי (חד-פעמי).'):'⚡ מנוע מקומי — מיידי, פרטי, בלי רשת. עונה מעל נתוני הקטלוג שלך.'}</div>
+     <div id="askhint" class="ask-hint">${aiOn?(hasKey?'🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג. <button class="ask-link" data-askmode="disc">נתק מפתח</button>':'🤖 מצב AI נבחר — צריך לחבר מפתח חינמי (חד-פעמי).'):'⚡ מנוע מקומי — מיידי, פרטי, בלי רשת. עונה מעל נתוני הקטלוג שלך.'}</div>
    </div>`);
   const pnl=$("#panel"), thread=$("#askthread");
   const badge=src=>src==='ai'?'<span class="ask-src ai">🤖 AI</span>':'<span class="ask-src loc">⚡ מקומי</span>';
@@ -3059,7 +3089,7 @@ function openAsk(){
       if(!gemKey()){ askConnect(); return; }
       const load=addAnswer(`<div class="abubble ask-loading">${badge('ai')}<span class="ask-dots">האש חושב<b>.</b><b>.</b><b>.</b></span></div>`);
       try{ const r=await askGemini(q, hist);
-        load.innerHTML=`<div class="abubble">${badge('ai')}${esc(r.txt||'').replace(/\n/g,'<br>')}</div>`;
+        load.innerHTML=`<div class="abubble">${badge('ai')}${esc(r.txt||'').replace(/\n/g,'<br>')}${aiSafetyCaveat(r.txt)}</div>`;   // AI #4: flag unverified safety numbers
         if(r.chips&&r.chips.length){ load.innerHTML+=`<div class="askchips">`+r.chips.map(m=>`<button class="askhit" data-k="${m.key}">${m.heb} · ${m.cat} ▶</button>`).join("")+`</div>`; wireChips(load); }
         hist.push({role:'ai',text:r.txt||''}); scrollDown();
       }catch(err){ const code=String(err.message||err);
@@ -3525,10 +3555,7 @@ async function gemSpeak(text, lang){
   const clean=speechText(text, lang||vcAnsLang());
   let buf=gemCache.get(clean+gemVoice());
   if(!buf){
-    const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-tts:generateContent?key=${encodeURIComponent(key)}`,{
-      method:'POST',headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{text:clean}]}],
-        generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:gemVoice()}}}}})});
+    const r=await gemFetch('gemini-2.5-flash-preview-tts', {contents:[{parts:[{text:clean}]}], generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:gemVoice()}}}}}, {timeout:20000});
     if(!r.ok){ let reason=''; try{const eb=await r.json(); reason=(eb.error&&eb.error.message)||'';}catch(_){}
       console.warn('Gemini TTS error',r.status,reason); throw new Error('api-'+r.status+(reason?': '+reason:'')); }
     const j=await r.json();
@@ -3691,8 +3718,7 @@ async function vcTranslateToEn(text){
   const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking-instruction text to natural spoken English. Reply with ONLY the English translation, no quotes, no notes.'}]},
     contents:[{role:'user',parts:[{text:src}]}],
     generationConfig:{temperature:0.2,maxOutputTokens:300,thinkingConfig:{thinkingBudget:0}} };
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,{
-    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json(); const cand=j.candidates&&j.candidates[0];
   const out=(cand&&cand.content&&(cand.content.parts||[]).map(p=>p.text||'').join('').trim())||src;
@@ -3755,8 +3781,7 @@ async function vcAskAI(question){
     contents:[{role:'user',parts:[{text:userText}]}],
     tools:[{google_search:{}}],
     generationConfig:{temperature:0.6,maxOutputTokens:400,thinkingConfig:{thinkingBudget:0}} };
-  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${encodeURIComponent(key)}`,{
-    method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+  const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json(); const cand=j.candidates&&j.candidates[0];
   const txt=cand&&cand.content&&(cand.content.parts||[]).map(p=>p.text||'').join('').trim();
