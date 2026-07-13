@@ -4419,7 +4419,8 @@ function openTools(){
   const flat=[]; groups.forEach(g=>g[1].forEach(t=>flat.push(t)));
   const body=groups.map(g=>`<div class="toolgroup"><h4 class="toolgroup-h">${g[0]}</h4><div class="toolgrid">`+
     g[1].map(t=>`<button class="toolbtn" data-tool="${flat.indexOf(t)}"><span>${t[0]}</span>${t[1]}</button>`).join('')+`</div></div>`).join('');
-  showPanel(`${toolTop('כלים','כל הכלים של מדריך האש','🧰','#b5603a')}<div class="panel-body">${body}</div>`);
+  showPanel(`${toolTop('כלים','כל הכלים של מדריך האש','🧰','#b5603a')}<div class="panel-body"><div class="lang-lbl">🌐 ${t('🌐 שפה')}</div>${langRowHtml()}${body}</div>`);
+  wireLangRow($("#panel"));
   $("#panel").querySelectorAll('[data-tool]').forEach(b=>b.addEventListener('click',()=>{
     const t=flat[+b.dataset.tool], fn=t[2];
     if(fn===exitApp || t[1]==='אודות והיכולות'){ fn(); return; } // these leave the app
@@ -4476,6 +4477,10 @@ const THEME_SCHEME={cream:'light',charcoal:'dark',walnut:'light',slate:'light'};
 // lang/<code>.json file. getLang() is host-pluggable (matkonet module seam).
 const I18N_DICTS = __I18N_DICTS__;
 const I18N_LANGS = (function(){ const o={he:'עברית'}; try{ Object.keys(I18N_DICTS).forEach(function(k){ o[k]=((I18N_DICTS[k]||{}).__meta__||{}).name||k; }); }catch(e){} return o; })();
+const LANG_FLAG = {he:'🇮🇱', en:'🇬🇧', fr:'🇫🇷', de:'🇩🇪', es:'🇪🇸', ar:'🇸🇦', ru:'🇷🇺', it:'🇮🇹'};
+function langFlag(k){ return LANG_FLAG[k]||'🌐'; }
+function langRowHtml(){ return `<div class="lang-row" role="group" aria-label="Language">`+Object.keys(I18N_LANGS).map(function(k){ return `<button class="lang-flag ${k===getLang()?'on':''}" data-setlang="${k}" title="${I18N_LANGS[k]}" aria-label="${I18N_LANGS[k]}" aria-pressed="${k===getLang()}"><span class="lf-emoji">${langFlag(k)}</span><span class="lf-name">${I18N_LANGS[k]}</span></button>`; }).join('')+`</div>`; }
+function wireLangRow(root){ (root||document).querySelectorAll('[data-setlang]').forEach(function(b){ b.addEventListener('click',function(){ setLang(b.dataset.setlang); }); }); }
 function getLang(){
   try{ if(typeof window!=='undefined' && window.__MATKONET_HOST__ && window.__MATKONET_HOST__.lang && I18N_LANGS[window.__MATKONET_HOST__.lang]) return window.__MATKONET_HOST__.lang; }catch(e){}
   const l=(typeof store!=='undefined')?store.get('mk-lang'):null; return I18N_LANGS[l]?l:'he';
@@ -4631,7 +4636,7 @@ function openAppearance(){
   const themeBtns=Object.entries(THEMES).map(([k,t])=>`<button class="ap-opt ${k===themeKey()?'on':''}" data-aptheme="${k}">${swatch(t)}${t.name}</button>`).join('');
   const fontBtns=Object.entries(FONT_PAIRS).map(([k,f])=>`<button class="ap-opt ${k===fontPairKey()?'on':''}" data-apfont="${k}" style="font-family:${f.display}">${f.name}</button>`).join('');
   const scaleBtns=FONT_SCALES.map(s=>`<button class="ap-opt ${s===fontScale()?'on':''}" data-apscale="${s}">${FONT_SCALE_LABELS[s]}</button>`).join('');
-  const langBtns=Object.entries(I18N_LANGS).map(([k,n])=>`<button class="ap-opt ${k===getLang()?'on':''}" data-aplang="${k}">${n}</button>`).join('');   // Wave 5: language switcher
+  const langBtns=langRowHtml();   // Wave 5: flag language switcher
   showPanel(`${toolTop(t('מראה'),'גוונים, פונט, שפה — הבחירה שלך נשמרת','🎨','#c8542f')}
     <div class="panel-body">
       <div class="ap-lbl">${t('🌐 שפה')}</div>
@@ -4649,7 +4654,7 @@ function openAppearance(){
   pnl.querySelectorAll('[data-aptheme]').forEach(b=>b.addEventListener('click',()=>{ setTheme(b.dataset.aptheme); openAppearance(); }));
   pnl.querySelectorAll('[data-apfont]').forEach(b=>b.addEventListener('click',()=>{ setFontPair(b.dataset.apfont); openAppearance(); }));
   pnl.querySelectorAll('[data-apscale]').forEach(b=>b.addEventListener('click',()=>{ setFontScale(+b.dataset.apscale); openAppearance(); }));
-  pnl.querySelectorAll('[data-aplang]').forEach(b=>b.addEventListener('click',()=>{ setLang(b.dataset.aplang); openAppearance(); }));   // Wave 5: switch language
+  wireLangRow(pnl);   // Wave 5: flag language switcher
 }
 $("#themeBtn").addEventListener('click',openAppearance);
 
@@ -6513,6 +6518,8 @@ document.querySelectorAll('[data-cgo="wizard"],[data-cnav="wizard"]').forEach(b=
   } else if(wrap){ wrap.addEventListener('click',()=>cNavGo('catalog')); }
 })();
 (()=>{ const m=$("#cHomeMore"); if(m) m.addEventListener('click',openMoreSheet); })();
+function openLangMenu(){ showPanel(`${toolTop(t('🌐 שפה'),t('בחר שפה'),'🌐','#5a7d8c')}<div class="panel-body">${langRowHtml()}</div>`); wireLangRow($("#panel")); }
+(()=>{ const lb=$("#cHomeLang"); if(lb) lb.addEventListener('click',openLangMenu); })();
 (()=>{ const a=$("#cHomeAbout"); if(a) a.addEventListener('click',()=>{ if(typeof openGuide==='function') openGuide(); }); })();
 (()=>{ const a=$("#cHomeCaps"); if(a) a.addEventListener('click',()=>{ if(typeof openAbout==='function') openAbout(); }); })();
 (()=>{ const host=$("#cGearBanner"); if(host && typeof gearConfigured==='function' && !gearConfigured()){

@@ -804,6 +804,13 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .mka-stop,.mka-stopall{background:#fff;color:#c0392b;border:none;border-radius:9px;padding:8px 14px;font-weight:800;font-size:calc(13px * var(--fscale));cursor:pointer;white-space:nowrap}
 .mka-stopall{width:100%;margin-top:10px;background:rgba(0,0,0,.22);color:#fff}
 .mka-stop:active,.mka-stopall:active{transform:scale(.96)}
+.lang-lbl{font-size:calc(12px * var(--fscale));font-weight:800;color:var(--smoke);margin:0 0 6px}
+.lang-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
+.lang-flag{display:flex;align-items:center;gap:7px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:9px 13px;cursor:pointer;font-family:var(--font-body);color:var(--bone);font-size:calc(13.5px * var(--fscale));font-weight:600}
+.lang-flag .lf-emoji{font-size:calc(19px * var(--fscale));line-height:1}
+.lang-flag.on{border-color:var(--ember2);background:rgba(245,147,49,.12);font-weight:800}
+.lang-flag:focus-visible{outline:2px solid var(--ember2);outline-offset:2px}
+.capp-lang-corner{position:absolute;top:14px;inset-inline-start:16px;font-size:19px}
 .toolgroup{margin-bottom:16px}
 .toolgroup-h{margin:0 0 2px;font-size:calc(12px * var(--fscale));font-weight:800;color:var(--smoke);letter-spacing:.02em}
 .toolbtn{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--char2);border:1px solid var(--line);color:var(--bone);border-radius:12px;padding:16px 10px;font-size:calc(13px * var(--fscale));text-align:center}
