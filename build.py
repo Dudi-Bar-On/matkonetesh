@@ -1509,7 +1509,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 151 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 152 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
