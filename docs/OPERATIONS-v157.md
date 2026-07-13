@@ -139,11 +139,11 @@ The panel found five real defects in code shipped over the last rounds; **all fi
 
 ## §7 · Do-first shortlist
 
-**Wave A — hotfix the session's regressions (S, ship immediately):** R1 (scope `resetPlanTimers` + undo), R2 (`mk-tlstate-<scope>`), R4 (prime audio on first post-load gesture), R5 (voice-warn latch + `<=`). Small, and they're defects in what's already live.
+**Wave A — hotfix the session's regressions (S, ship immediately):** ✅ **DONE (v158)** — R1 (scope `resetPlanTimers` + undo), R2 (`mk-tlstate-<scope>`), R3 (stable stage ids), R4 (prime audio on first post-load gesture), R5 (voice-warn latch + `<=`).
 
 **Wave B — the two platform P0s:**
-- **B (overnight time model):** serve as a full datetime (reuse `ev.date`), roll to next day when past, show the serve day. Unblocks every long cook. **M**
-- **A (background alarms):** `navigator.wakeLock` while a plan runs (S, restores the only reliable path) → SW `showNotification` + `notificationclick` (M, fixes the mobile no-op) → looping alarm + `vibrate` + acknowledge (S). Plus an honest in-app caveat until push lands.
+- **B (overnight time model):** ✅ **DONE (v159)** — `serveDateTime()` resolves the serve day (explicit picker → `ev.date` → today, rolling to tomorrow when the clock passed); date picker added; serve bar / feasibility / "+30m" / combined view all datetime-aware with day labels. Unblocks every long cook.
+- **A (background alarms):** *next* — `navigator.wakeLock` while a plan runs (S, restores the only reliable path) → SW `showNotification` + `notificationclick` (M, fixes the mobile no-op) → looping alarm + `vibrate` + acknowledge (S). Plus an honest in-app caveat until push lands.
 
 **Wave C — stop silent data loss (C):** make `store.set` surface quota failures; `navigator.storage.persist()`; fix `importData` to validate + report partial restores; correct the refresh-toast label.
 
