@@ -122,7 +122,7 @@ HTML = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>מתכונת · מדריך האש — סו-ויד ועישון</title>
 <link rel="manifest" href="manifest.webmanifest">
-<meta name="theme-color" content="#16110d">
+<meta name="theme-color" content="#fdf6ec">
 <meta name="color-scheme" content="light dark">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -5715,6 +5715,7 @@ function applyAppearance(){
   const th=THEMES[themeKey()].t;
   Object.entries(th).forEach(([k,v])=>el.style.setProperty(k,v));
   el.style.setProperty('color-scheme', THEME_SCHEME[themeKey()]||'light');   // v144: stop the browser from auto-dark-moding inputs against our own theme
+  try{ const _mt=document.querySelector('meta[name="theme-color"]'); if(_mt) _mt.setAttribute('content', THEMES[themeKey()].t['--char']); }catch(e){}  // PWA #3: status-bar tint tracks the active theme
   const fp=FONT_PAIRS[fontPairKey()];
   el.style.setProperty('--font-display', fp.display);
   el.style.setProperty('--font-body', fp.body);
@@ -7552,13 +7553,27 @@ document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('
 })();
 try{ cRefreshHome(); cNavGo('home'); }catch(e){ /* headless/init guard */ }
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}
+/* T4: register the service worker in production (https only — the http test server skips it).
+   Prompts a refresh when a new build has been fetched and is waiting. */
+if('serviceWorker' in navigator && location.protocol==='https:'){
+  window.addEventListener('load',function(){
+    navigator.serviceWorker.register('sw.js').then(function(reg){
+      reg.addEventListener('updatefound',function(){ const nw=reg.installing; if(!nw) return;
+        nw.addEventListener('statechange',function(){ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof toast==='function') toast('גרסה חדשה זמינה — רענן',function(){location.reload();}); });
+      });
+    }).catch(function(){});
+  });
+}
 </script>
 </body>
 </html>"""
 
-# perf #2: emit `const DATA = JSON.parse("…")` — a JSON string parses ~1.5-2x faster than an
-# equivalent 888KB JS object literal on the main thread (measurable cold-start win on mobile).
-html = HTML.replace("__DATA__", "JSON.parse(" + json.dumps(DATA_JSON) + ")")
+# perf #2: emit `const DATA = JSON.parse('…')` — a JSON string parses ~1.5-2x faster than an
+# equivalent 888KB JS object literal on the main thread. Wrap in SINGLE quotes so the JSON's own
+# double-quotes need no escaping (double-quote wrapping would ~2x the raw file size).
+def _js_str(s):
+    return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r").replace(" ", "\\u2028").replace(" ", "\\u2029") + "'"
+html = HTML.replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")")
 import os as _os, shutil as _shutil
 _root = _os.path.dirname(_os.path.abspath(__file__))
 # 1) index.html at repo root — used by the dev server, tests, and manual upload
@@ -7580,5 +7595,29 @@ if _os.path.isdir(_site):
         _src = _os.path.join(_site, _n)
         if _os.path.isfile(_src):
             _shutil.copy2(_src, _os.path.join(_dist, _n)); _copied.append(_n)
+# service worker (T4): precache the shell so the app works offline (phone-by-the-smoker).
+# cache name keyed on a content hash so every build invalidates cleanly.
+import hashlib as _hashlib
+_ver = _hashlib.md5(html.encode("utf-8")).hexdigest()[:8]
+_sw = """const CACHE='mk-%s';
+const SHELL=['./','index.html','manifest.webmanifest','icon-192.png','icon-512.png'];
+self.addEventListener('install',function(e){ self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(function(c){return c.addAll(SHELL).catch(function(){});})); });
+self.addEventListener('activate',function(e){ e.waitUntil(caches.keys().then(function(ks){return Promise.all(ks.filter(function(k){return k!==CACHE;}).map(function(k){return caches.delete(k);}));}).then(function(){return self.clients.claim();})); });
+self.addEventListener('fetch',function(e){
+  var req=e.request; if(req.method!=='GET') return;
+  var url; try{ url=new URL(req.url); }catch(_){ return; }
+  if(url.origin!==location.origin) return;                 // leave cross-origin (fonts/AI) alone
+  if(req.mode==='navigate' || url.pathname==='/' || url.pathname.slice(-11)==='/index.html'){
+    e.respondWith(fetch(req).then(function(r){ var cp=r.clone(); caches.open(CACHE).then(function(c){c.put(req,cp);}); return r; }).catch(function(){ return caches.match(req).then(function(m){return m||caches.match('index.html');}); }));
+  } else {
+    e.respondWith(caches.match(req).then(function(m){ return m||fetch(req).then(function(r){ var cp=r.clone(); caches.open(CACHE).then(function(c){c.put(req,cp);}); return r; }); }));
+  }
+});
+""" % _ver
+with open(_os.path.join(_dist, "sw.js"), "w", encoding="utf-8") as f:
+    f.write(_sw)
+# _headers (PWA #5 / perf #8): revalidate the single HTML + manifest + sw; long-cache immutable icons.
+with open(_os.path.join(_dist, "_headers"), "w", encoding="utf-8") as f:
+    f.write("/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/sw.js\n  Cache-Control: no-cache\n/*.png\n  Cache-Control: public, max-age=31536000, immutable\n")
 print("written", len(html), "bytes;", len(CUTS), "cuts", len(SPECIALS), "specials", len(GLOSSARY), "glossary")
 print("dist/ ->", ["index.html"] + _copied)
