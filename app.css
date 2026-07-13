@@ -73,6 +73,10 @@ body.capp{padding-bottom:82px}
 .cnext .nico{font-size:calc(28px * var(--fscale))}.cnext .nt{font-size:calc(11.5px * var(--fscale));color:var(--ash);font-family:var(--font-body)}
 .cnext .nm{font-size:calc(15px * var(--fscale));font-weight:700;margin-top:2px;color:var(--bone)}
 .cnext .ng{color:var(--ember);font-size:calc(19px * var(--fscale))}
+.cnext-live{border-color:var(--ember2);background:rgba(245,147,49,.09)}
+.cnext-live.cnext-ring{border-color:#c0392b;background:rgba(192,57,43,.1);animation:cnextpulse 1.4s ease-in-out infinite}
+@keyframes cnextpulse{0%,100%{opacity:1}50%{opacity:.72}}
+.wp-advisory{margin:0 0 12px;padding:10px 12px;background:rgba(217,166,43,.1);border:1px solid rgba(217,166,43,.4);border-radius:10px;font-size:calc(12.5px * var(--fscale));line-height:1.5;color:var(--bone)}
 .cnext[hidden]{display:none}
 /* section head (sub-screens) */
 .cshead{display:flex;align-items:center;gap:10px;padding:16px 16px 14px}

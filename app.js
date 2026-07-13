@@ -1032,12 +1032,13 @@ function wireCalcBox(root, calc){
       const meat=mw?Math.max(0,parseFloat(mw.value)||0):0;
       if(meat>0){
         const suggestL=Math.ceil(meat/1000*10)/10; // ~1L per kg to submerge
-        const totalKg=(meat+x*1000)/1000; const eqSalt=totalKg*1000*0.028; // 2.8% equilibrium of meat+water
+        const totalKg=(meat+x*1000)/1000; const eqSalt=totalKg*1000*0.028; // grams: 2.8% equilibrium salt of (meat+water)
         h+=`<div class="cl cl-note"><span>שיטת שיווי-משקל (מומלץ, מדויק):</span></div>`;
         h+=line('מים מומלצים לכיסוי', suggestL+' ליטר', '≈1 ל׳/ק״ג בשר בשקית ואקום');
-        h+=line('מלח לשיווי-משקל', fmtG(eqSalt/1000), '2.8% ממשקל בשר+מים');
+        h+=line('מלח לשיווי-משקל', fmtG(eqSalt), '2.8% ממשקל בשר+מים');   // D4: eqSalt is already grams — the previous /1000 showed ~1000× too little
+        if(calc.cureL) h+=line('Cure #1 לשיווי-משקל', fmtG(totalKg*2.5), '2.5 ג׳/ק״ג בשר+מים ≈156ppm');   // D4: equilibrium nitrite dose — was left at the per-liter dip rate → unvalidated in the one calc where it's acutely dangerous
       }
-      note.textContent='תמלחת כבישה — שקלו לכסות את הנתח. שיטת שיווי-משקל (בשקית ואקום עם מעט מים) בטוחה מפני מליחות-יתר. כבישה ~24ש לכל 1 ס״מ עובי.';
+      note.textContent='תמלחת כבישה — שקלו לכסות את הנתח. שיטת שיווי-משקל (בשקית ואקום עם מעט מים) בטוחה מפני מליחות-יתר, ומינון ה-Cure מחושב לפי המשקל הכולל (בטוח). כבישה ~24ש לכל 1 ס״מ עובי.';
     } else {
       h+=line('מלח', fmtG(x*calc.salt/1000), calc.salt+' ג׳/ק״ג');
       if(calc.cure) h+=line('Cure #'+calc.cure, fmtG(x*(calc.cureRate||2.5)/1000), (calc.cureRate||2.5)+' ג׳/ק״ג');
@@ -1494,7 +1495,7 @@ function startTimerWatch(){
         mkNotify('⏱ הטיימר הסתיים', (r.name||'טיימר בישול'), 'mk-'+k);
       }
     });
-    if(changed){ store.set('mk-timers', ts); startRingLoop(); }
+    if(changed){ store.set('mk-timers', ts); startRingLoop(); try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} }   // F2: update the live-cook home banner when a timer fires
     syncWakeLock();
   }, 1000);
 }
@@ -2058,6 +2059,9 @@ function itemStages(meta,methodKey,ready,order){
       stages.push({label:m.label,hours:m.hours,kind:'cook',note:m.note});
     }
   }
+  // D3: sous-vide pasteurization is timed from when the CORE reaches temp — the card said "+20%" but the
+  // scheduler didn't; flag the come-up on every sv stage so thick items aren't scheduled under-held.
+  stages.forEach(s=>{ if(s.kind==='sv' && !/הפסטור נמדד/.test(s.note||'')){ const cu='הפסטור נמדד מרגע שהליבה מגיעה לטמפ׳ — לנתח עבה הוסף זמן עלייה'; s.note = s.note ? s.note+' · '+cu : cu; } });
   if(p.restMin>0) stages.push({label:'מנוחה',hours:p.restMin/60,kind:'rest'});
   // D1: mandatory internal-temp verification before serving — the operational-flow safety gate the
   // recipe card always had (svSteps/soSteps) but the scheduler/plan/voice flow was missing.
@@ -3889,7 +3893,7 @@ function renderPlanStartRow(earliest, serve, rebuild){
   const blockStart = behind && strict && !started;
   let warn='';
   if(behind){ const late=Math.round((Date.now()-earliest.getTime())/60000);
-    warn=`<div class="plan-warn">⚠ הזמן קצר — כדי להגיש ב-${fmtServe(serve)} היה צריך להתחיל ב-${fmtServe(earliest)} (לפני ${late} דק׳). דחה את ההגשה — אל תקצר שלבי בישול (עלול להשאיר את הפנים תת-מבושל ולא בטוח). <button class="mchip" data-planpush>➕ דחה הגשה ב-30 דק׳</button></div>`;
+    warn=`<div class="plan-warn">⚠ הזמן קצר — כדי להגיש ב-${fmtServe(serve)} היה צריך להתחיל ב-${fmtServe(earliest)} (לפני ${late} דק׳). דחה את ההגשה — אל תקצר שלבי בישול (עלול להשאיר את הפנים תת-מבושל ולא בטוח). <button class="mchip" data-planpush>➕ דחה הגשה ב-30 דק׳</button> <button class="mchip" data-planreschedule>▶ תזמן מחדש מעכשיו</button></div>`;
   }
   el.innerHTML=`${warn}<div class="plan-startrow">
     <button class="plan-startbtn ${started?'on':''}" data-planstart ${blockStart?'disabled':''}>${started?'⏹ עצור / אפס תוכנית':'▶ התחל תוכנית'}</button>
@@ -3899,6 +3903,7 @@ function renderPlanStartRow(earliest, serve, rebuild){
   const sb=el.querySelector('[data-planstart]'); if(sb) sb.addEventListener('click',()=>{ if(planStarted()){ const removed=resetPlanTimers(); setPlanStarted(null); rebuild(); if(typeof toast==='function' && Object.keys(removed).length) toast('התוכנית אופסה', ()=>{ const t2=store.get('mk-timers')||{}; Object.assign(t2,removed); store.set('mk-timers',t2); setPlanStarted(Date.now()); rebuild(); }); } else { setPlanStarted(Date.now()); if(behind && typeof toast==='function') toast('התחלת עם לחץ-זמן — עקוב אחרי הטיימרים'); rebuild(); } });   // R1: scoped reset + undo
   const stc=el.querySelector('[data-planstrict]'); if(stc) stc.addEventListener('change',()=>{ store.set('mk-plan-strict', stc.checked); rebuild(); });
   const pp=el.querySelector('[data-planpush]'); if(pp) pp.addEventListener('click',()=>{ const inp=$("#tlServe"); if(!inp) return; const d=serveDateTime(); d.setMinutes(d.getMinutes()+30); const nv=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); inp.value=nv; store.set('mk-tlserve',nv); store.set(serveDateKey(), isoDate(d)); rebuild(); });   // push on the full datetime so a past-midnight bump rolls the day, not wraps into today
+  const prb=el.querySelector('[data-planreschedule]'); if(prb) prb.addEventListener('click',()=>{ if(!earliest) return; const span=serve.getTime()-earliest.getTime(); const ns=new Date(Date.now()+span+60000); store.set('mk-tlserve', ('0'+ns.getHours()).slice(-2)+':'+('0'+ns.getMinutes()).slice(-2)); store.set(serveDateKey(), isoDate(ns)); rebuild(); });   // F1: shift serve so the plan starts now (earliest→now) instead of only nudging +30m
 }
 function renderTimelinePanel(){
   const host=$("#tlBody"); if(!host) return;
@@ -3975,8 +3980,9 @@ function renderTimelinePanel(){
     }
     const viewMode=store.get('mk-tlview')||'items';
     let html=`<div class="tl-viewtoggle"><button class="mchip ${viewMode==='items'?'on':''}" data-tlview="items">📦 לפי פריט</button><button class="mchip ${viewMode==='plan'?'on':''}" data-tlview="plan">📋 תוכנית עבודה</button></div>`;
+    const _wpHtml=workPlanHtml(computed, preheat, serve);   // F5: always build the plan (populates window._wpTasks for voice cook even when the items view is showing)
     if(viewMode==='plan'){
-      html+=workPlanHtml(computed, preheat, serve);
+      html+=_wpHtml;
     } else {
       if(preheat) html+=`<div class="tlrow tl-preheat"><span class="tl-t"><b>${fmtClockRel(preheat, serve)}</b></span><span class="tl-n">🔥 הדלקת מעשנת (חימום מוקדם, 45 דק׳)</span><span class="tl-lead"></span></div>`;
       html+=sorted.map(c=>itemRowHtml(c,serve)).join('');
@@ -4082,7 +4088,8 @@ function renderTimelinePanel(){
         <select data-tlorder="${c.m.key}">${Object.entries(SV_SMOKE_ORDERS).map(([k,o])=>`<option value="${k}" ${k===c.st.svSmokeOrder?'selected':''}>${o.name}</option>`).join('')}</select>
       </div>${c.st.svSmokeOrder==='smoke-sv'?`<div class="tl-safety-warn">⚠️ <b>${c.m.heb}:</b> הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו. בספק — עבור לסדר סו-ויד←עישון.</div>`:''}`).join('')}
     </div>`:'';
-    return `${orderControlsHtml}<div class="tl-detailtoggle"><span>רמת פירוט:</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">מקוצר</button><button class="mchip ${detail?'on':''}" data-tldetail="full">מלא — עצמאי להדפסה</button><button class="mchip vc-launch" data-vclaunch>🎙️ מצב בישול קולי</button></div>
+    const _blk=computed.filter(c=>c.blocked).map(c=>esc(c.m.heb));   // F4: multi-day items are excluded from the timed plan — surface them as a prep-ahead advisory instead of dropping them silently
+    return `${_blk.length?`<div class="wp-advisory">📋 <b>הכנה מראש (רב-יומי):</b> ${_blk.join(', ')} — תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.</div>`:''}${orderControlsHtml}<div class="tl-detailtoggle"><span>רמת פירוט:</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">מקוצר</button><button class="mchip ${detail?'on':''}" data-tldetail="full">מלא — עצמאי להדפסה</button><button class="mchip vc-launch" data-vclaunch>🎙️ מצב בישול קולי</button></div>
     <div class="tl-shaperow"><span>תצוגה:</span>${shapeBtns}</div>
     ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
@@ -4822,6 +4829,20 @@ function cRefreshHome(){
       const pr=(typeof projProgress==='function')?projProgress(p):null;
       if(pm) pm.textContent=`${p.name}${pr?' · '+(pr.day||pr.label):''}${pr&&pr.ready?' · מוכן ✓':''}`;
     } else pbox.hidden=true;
+  }
+  // F2: live-cook banner — a plan started (any event/scope) or timers running/ringing
+  { const cb=$("#cCooking");
+    if(cb){
+      let anyStarted=false; try{ for(let i=0;i<localStorage.length;i++){ const kk=localStorage.key(i)||''; if(kk.indexOf('mk-plan-started-')===0 && store.get(kk)){ anyStarted=true; break; } } }catch(e){}
+      const ts=store.get('mk-timers')||{}, now=Date.now(); let running=0, ringing=0;
+      Object.keys(ts).forEach(k=>{ const r=ts[k]; if(r&&r.end){ if(r.fired) ringing++; else if(r.end>now) running++; } });
+      const live = anyStarted || running>0 || ringing>0;
+      if(live){ cb.hidden=false; const cm=$("#cCookingM");
+        if(cm) cm.textContent = ringing? `⏰ ${ringing} טיימרים הסתיימו — הקש` : running? `${running} טיימרים פעילים · הקש לתוכנית` : 'תוכנית פעילה · הקש לתוכנית';
+        cb.classList.toggle('cnext-ring', ringing>0);
+        cb.onclick=()=>{ if(typeof openTimeline==='function') openTimeline(); };
+      } else cb.hidden=true;
+    }
   }
   const g=$("#cGreet"); if(g){ const h=new Date().getHours(); g.textContent=(h<12?'בוקר טוב':h<18?'צהריים טובים':'ערב טוב')+' 👋'; }
 }
