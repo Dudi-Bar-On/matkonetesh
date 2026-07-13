@@ -315,7 +315,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 159 · 13.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 160 · 13.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -373,6 +373,11 @@ self.addEventListener('fetch',function(e){
     e.respondWith(caches.match(req).then(function(m){ return m||fetch(req).then(function(r){ var cp=r.clone(); caches.open(CACHE).then(function(c){c.put(req,cp);}); return r; }); }));
   }
 });
+// Wave A: background-resilient alarms. The page shows notifications via registration.showNotification
+// (works on Android where new Notification() is a no-op); the page can also post {type:'notify'} as a
+// fallback path, and a tap focuses/opens the app instead of spawning a new tab.
+self.addEventListener('message',function(e){ var d=e.data||{}; if(d && d.type==='notify'){ e.waitUntil(self.registration.showNotification(d.title||'\\u23f1 \\u05d8\\u05d9\\u05d9\\u05de\\u05e8', {body:d.body||'', icon:'icon-192.png', badge:'icon-192.png', tag:d.tag||'mk-timer', renotify:true, requireInteraction:true, vibrate:[200,100,200,100,200]})); } });
+self.addEventListener('notificationclick',function(e){ e.notification.close(); e.waitUntil(self.clients.matchAll({type:'window',includeUncontrolled:true}).then(function(cs){ for(var i=0;i<cs.length;i++){ if('focus' in cs[i]) return cs[i].focus(); } if(self.clients.openWindow) return self.clients.openWindow('./'); })); });
 """ % _ver
 with open(_os.path.join(_dist, "sw.js"), "w", encoding="utf-8") as f:
     f.write(_sw)

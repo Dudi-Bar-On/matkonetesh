@@ -1448,6 +1448,32 @@ function clearTimers(){Object.values(timers).forEach(clearInterval);timers={};}
 // global alarm watcher: fires the beep + a notification for ANY expiring timer across all events,
 // even when its screen isn't open — essential for parallel multi-event cooking.
 let mkTimerWatch=null;
+// ── Wave A: background-resilient alarms ──────────────────────────────────────
+// A timer only ticks while the page runs, so an alarm can be missed at the smoker. Three
+// layers guard against that: a screen wake-lock keeps the page alive; alarms route through
+// the service-worker registration so they actually appear on Android/iOS (where a bare
+// new Notification() is a no-op); and a fired timer re-pulses (beep+vibrate) until it's
+// acknowledged. None of this guarantees delivery on a fully-killed page without a push
+// server — the alerts toggle says so honestly.
+let mkSWReg=null, mkWakeLock=null, mkRingIv=null;
+function mkNotify(title, body, tag){
+  try{ if(mkSWReg && mkSWReg.showNotification && ('Notification' in window) && Notification.permission==='granted'){
+    mkSWReg.showNotification(title, {body:body||'', icon:'icon-192.png', badge:'icon-192.png', tag:tag||'mk-timer', renotify:true, requireInteraction:true, vibrate:[200,100,200,100,200]});
+    return true; } }catch(e){}
+  try{ if(('Notification' in window) && Notification.permission==='granted'){ new Notification(title,{body:body||'',icon:'icon-192.png'}); return true; } }catch(e){}   // desktop fallback
+  return false;
+}
+function mkVibrate(pat){ try{ if(navigator.vibrate) navigator.vibrate(pat||[200,100,200]); }catch(e){} }
+async function acquireWakeLock(){ try{ if('wakeLock' in navigator && !mkWakeLock){ mkWakeLock=await navigator.wakeLock.request('screen'); mkWakeLock.addEventListener('release',function(){ mkWakeLock=null; }); } }catch(e){ mkWakeLock=null; } }
+function releaseWakeLock(){ try{ if(mkWakeLock){ var w=mkWakeLock; mkWakeLock=null; w.release(); } }catch(e){} }
+function anyTimerActive(){ const ts=store.get('mk-timers')||{}; return Object.keys(ts).some(function(k){ return ts[k]&&ts[k].end&&!ts[k].fired; }); }
+function anyTimerRinging(){ const ts=store.get('mk-timers')||{}; return Object.keys(ts).some(function(k){ return ts[k]&&ts[k].fired; }); }
+function syncWakeLock(){ if(anyTimerActive()||anyTimerRinging()) acquireWakeLock(); else releaseWakeLock(); }
+function startRingLoop(){ if(mkRingIv) return; mkRingIv=setInterval(function(){
+    if(!anyTimerRinging()){ clearInterval(mkRingIv); mkRingIv=null; releaseWakeLock(); return; }
+    if(document.visibilityState==='visible'){ try{ timerBeep(); }catch(e){} mkVibrate([300,150,300]); }   // re-pulse a fired-but-unacknowledged alarm every few seconds
+  }, 4000); }
+try{ document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible' && (anyTimerActive()||anyTimerRinging())) acquireWakeLock(); }); }catch(e){}   // wake-lock drops when hidden — re-take it on return
 function startTimerWatch(){
   if(mkTimerWatch) return;
   mkTimerWatch=setInterval(function(){
@@ -1455,10 +1481,12 @@ function startTimerWatch(){
     Object.keys(ts).forEach(function(k){ const r=ts[k];
       if(r && r.end && !r.fired && r.end<=now){ r.fired=1; changed=true;
         try{ timerBeep(); }catch(e){}
-        if(('Notification' in window) && Notification.permission==='granted'){ try{ new Notification('⏱ הטיימר הסתיים', {body:(r.name||'טיימר בישול'), icon:'icon-192.png'}); }catch(e){} }
+        mkVibrate([200,100,200,100,200]);
+        mkNotify('⏱ הטיימר הסתיים', (r.name||'טיימר בישול'), 'mk-'+k);
       }
     });
-    if(changed) store.set('mk-timers', ts);
+    if(changed){ store.set('mk-timers', ts); startRingLoop(); }
+    syncWakeLock();
   }, 1000);
 }
 
@@ -3878,7 +3906,8 @@ function renderTimelinePanel(){
       if(on){ if(!('Notification' in window)){ toast('הדפדפן לא תומך בהתראות'); return; }
         let perm=Notification.permission; if(perm==='default') perm=await Notification.requestPermission();
         if(perm!=='granted'){ toast('צריך לאשר התראות בדפדפן'); return; }
-        toast('התראות יופעלו כל עוד האפליקציה פתוחה'); }
+        try{ acquireWakeLock(); }catch(e){}
+        toast('התראות פעילות — השאר את האפליקציה פתוחה (המסך יישאר דלוק). התראות רקע אינן מובטחות'); }
       store.set('mk-tlalerts',on); buildList();
       ta.classList.toggle('on',on); ta.querySelector('span').textContent=on?'התראות פעילות':'הפעל התראות לשלבים';
     }); }
@@ -3925,7 +3954,7 @@ function renderTimelinePanel(){
     // in-session reminders (work while app is open)
     tlTimers.forEach(t=>clearTimeout(t)); tlTimers=[];
     if(store.get('mk-tlalerts') && ('Notification' in window) && Notification.permission==='granted'){
-      const now=Date.now(); const fire=(when,title,body)=>{ const ms=when.getTime()-now; if(ms>0&&ms<24*3600e3) tlTimers.push(setTimeout(()=>{ try{new Notification(title,{body,icon:'icon-192.png'});}catch(e){} },ms)); };
+      const now=Date.now(); const fire=(when,title,body)=>{ const ms=when.getTime()-now; if(ms>0&&ms<24*3600e3) tlTimers.push(setTimeout(()=>{ mkNotify(title, body, 'mk-stage'); },ms)); };
       if(preheat) fire(preheat,'🔥 זמן להדליק',`הדלק את המעשנת — ${preheatHint()} לפני העישון הראשון`);
       sorted.forEach(c=>{ if(!c.blocked&&c.startClock) fire(c.startClock,'⏰ '+stripEmoji(c.m.heb),'הזמן להתחיל: '+c.m.heb); });
     }
@@ -6212,6 +6241,7 @@ try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel();
 if('serviceWorker' in navigator && location.protocol==='https:'){
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('sw.js').then(function(reg){
+      mkSWReg=reg; try{ navigator.serviceWorker.ready.then(function(r){ mkSWReg=r||reg; }); }catch(e){}   // Wave A: alarms show via the SW registration (fixes the mobile new Notification() no-op)
       reg.addEventListener('updatefound',function(){ const nw=reg.installing; if(!nw) return;
         nw.addEventListener('statechange',function(){ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof toast==='function') toast('גרסה חדשה זמינה — רענן',function(){location.reload();}); });
       });
