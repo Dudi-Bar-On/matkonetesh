@@ -130,7 +130,7 @@ function aiAvail(){ return !!gemKey(); }
 | v130 | R3.1 · פיצ'ר 6 | ~15 (schema-validation/salt-calc/guardrails) |
 | v131 | R3.2 · פיצ'ר 7 | ~8 |
 
-**כל גרסה:** rebuild + DATA-verify + node --check + סוויטה מלאה (יחידה + E2E) + audit נקי + zip + Netlify. שום פיצ'ר לא נשלח בלי בדיקות-רגרסיה ייעודיות.
+**כל גרסה:** rebuild + DATA-verify + node --check + סוויטה מלאה (יחידה + E2E) + audit נקי + Cloudflare Pages. שום פיצ'ר לא נשלח בלי בדיקות-רגרסיה ייעודיות.
 
 ## חלק ה' — קונבנציות-בדיקה לפיצ'רי-AI (מחייב)
 

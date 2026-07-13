@@ -10,7 +10,7 @@
 **"מתכונת · מדריך האש" (Matkonet)** — PWA עברית-first (RTL) לבישול-אש: סו-ויד, עישון,
 גריל, שרקוטרי. קובץ HTML יחיד (~957KB) שנוצר מ-`build.py`. קטלוג 279 פריטים + מנוע-תזמון +
 מזווה + אשף-אירוע + שכבת-AI אופציונלית (BYOK-Gemini, 7 יכולות) + ממשק קולי דו-לשוני.
-Local-first (כל הנתונים ב-localStorage). מופץ ב-Netlify (`matkonetesh.netlify.app`, העלאה ידנית).
+Local-first (כל הנתונים ב-localStorage). מופץ ב-Cloudflare Pages (העלאה ידנית או auto-deploy מ-GitHub).
 
 **בעל הפרויקט:** דודי — חובב-אש מתקדם, עובד בעברית, נייד. **עברית באדיקות בכל מקום.**
 
@@ -111,7 +111,7 @@ python3 build.py                    # data.py → index.html
 python3 -c "import re;h=open('index.html',encoding='utf-8').read();open('/tmp/app.js','w').write(h[h.index('<script>')+8:h.rindex('</script>')])" && node --check /tmp/app.js
 # הקמת Playwright (ראה CLAUDE-CODE-GUIDE.md):
 npm init -y && npm i -D @playwright/test && npx playwright install chromium
-# הפצה: העלה ידנית index.html + site/ ל-Netlify (אין auto-deploy)
+# הפצה: Cloudflare Pages — ידנית (index.html + site/) או auto-deploy מ-GitHub (build: python build.py)
 ```
 
 **מהדורה נוכחית: 146. הבא: 147.**

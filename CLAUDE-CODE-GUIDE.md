@@ -18,7 +18,7 @@
 
 - **קהל:** משתמש יחיד (בעל האפליקציה) — חובב-אש מתקדם, עובד בעברית, נייד.
 - **פרטיות:** local-first. כל נתוני-המשתמש ב-`localStorage` (בלי שרת, בלי חשבון).
-- **הפצה:** Netlify — `matkonetesh.netlify.app`. **אין auto-deploy**; מעלים ידנית.
+- **הפצה:** Cloudflare Pages. ידנית (index.html + site/) או auto-deploy מ-GitHub (build: `python build.py`).
 
 ---
 
@@ -268,7 +268,7 @@ npx playwright test
 npx playwright test --ui              # מצב אינטראקטיבי
 npx playwright show-report
 
-# הפצה: העלה ידנית את index.html + נכסי site/ ל-Netlify (אין auto-deploy)
+# הפצה: Cloudflare Pages — ידנית (index.html + site/) או auto-deploy מ-GitHub (build: python build.py)
 ```
 
 ---

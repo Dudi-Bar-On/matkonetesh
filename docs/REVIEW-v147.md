@@ -117,4 +117,4 @@ data (enforced by a test); never for ground meat or thin cuts.
 - [x] Source panel live in-app with clickable links
 - [x] Playwright suite green (8/8); `python build.py` + `node --check` clean
 - [x] v147 packaged (`index.html`)
-- [ ] **Your sign-off** + Nem Chua decision → then manual Netlify upload of `index.html` + `site/`
+- [ ] **Your sign-off** → deploy to Cloudflare Pages (`python build.py`, then upload `index.html` + `site/`, or git-connected auto-deploy)

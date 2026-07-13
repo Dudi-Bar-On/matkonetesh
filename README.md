@@ -33,7 +33,11 @@ npx playwright test        # build -> serve -> browser: smoke + data-integrity (
 ```
 
 ## Deploy
-Manual upload of `index.html` + `site/` assets to Netlify (no auto-deploy).
+Hosted on **Cloudflare Pages**. Two options:
+- **Manual:** `python build.py`, then upload `index.html` + `site/` via the Cloudflare Pages dashboard
+  (Workers & Pages → Create → Pages → Upload assets), or `npx wrangler pages deploy`.
+- **Git-connected (auto-deploy):** connect this GitHub repo in Cloudflare Pages with build command
+  `python build.py` — every push to `main` rebuilds and deploys.
 
 ## Safety principle (P3)
 Salt/cure/pasteurization/temperature safety numbers always come from a cited primary source
