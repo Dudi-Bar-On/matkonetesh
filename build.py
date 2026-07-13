@@ -3383,11 +3383,17 @@ function itemStages(meta,methodKey,ready,order){
   if(m.combo){ // engine combo entry (cuts)
     const hasSV=m.combo.includes('sv'), hasSmoke=m.combo.includes('smoke');
     if(hasSV && hasSmoke && order==='smoke-sv'){
-      const coldT=coldSmokeTemp(m.smTemp);
-      const coldHrs=Math.max(2, Math.round((m.smHours||2)*0.6));
-      stages.push({label:`עישון קר ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:'על בשר גולמי — טבעת עשן מרבית'});
+      // v147 (P3): use the CITED reverse-order data (order_smokesv) when present — never a formula for
+      // safety-relevant temps/times. Fall back to the conservative computed values only if data is missing.
+      const os=(meta.obj&&meta.obj.order_smokesv)||{}, osm=os.smoke||{}, osv=os.sv||{};
+      const coldT=(osm.t!=null)?osm.t:coldSmokeTemp(m.smTemp);
+      const coldHrs=(osm.h!=null)?upperHours(osm.h):Math.max(2, Math.round((m.smHours||2)*0.6));
+      const svT=(osv.t!=null)?osv.t:m.svTemp;
+      const svH=(osv.h!=null)?upperHours(osv.h):m.svHours;
+      const cited=(osm.t!=null && osv.t!=null);
+      stages.push({label:`עישון קר ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:'על בשר גולמי — טבעת עשן מרבית'+(cited?' · מקור מצוטט':'')});
       stages.push({label:'איטום ומעבר לסו-ויד',hours:0,kind:'note'});
-      stages.push({label:`סו-ויד ${m.svTemp}° (כולל פסטור)`,hours:m.svHours,kind:'sv',safety:'pasteur'});
+      stages.push({label:`סו-ויד ${svT}° (כולל פסטור)`,hours:svH,kind:'sv',safety:'pasteur'});
     } else {
       if(hasSV){
         stages.push({label:`סו-ויד ${m.svTemp}°`,hours:m.svHours,kind:'sv'});
@@ -3416,10 +3422,11 @@ function itemStages(meta,methodKey,ready,order){
 function comboHasSvSmoke(meta,methodKey){
   const p=itemProfile(meta); if(!p) return false;
   const m=p.methods.find(x=>x.key===methodKey)||p.methods[0];
-  // v145 safety gate: the reversed (smoke→sv) order relies on svHours as a pasteurization-capable duration.
-  // Below ~1h there's no meaningful standalone sv treatment in the data — don't offer the order choice at all
-  // rather than risk showing a near-zero "includes pasteurization" claim for delicate/quick items.
-  return !!(m.combo && m.combo.includes('sv') && m.combo.includes('smoke') && (m.svHours||0)>=1);
+  if(!(m.combo && m.combo.includes('sv') && m.combo.includes('smoke'))) return false;
+  // v147 (P3): offer the reverse (smoke→sv) order ONLY when the item carries CITED, pasteurize-safe
+  // reverse-order data (order_smokesv). No cited data → sv→smoke only; never a generic svHours>=1 guess.
+  const os=meta.obj&&meta.obj.order_smokesv;
+  return !!(os && os.smoke && os.sv && os.sv.pasteurize===true);
 }
 
 /* ---- per-recipe extras (notes/rating/kosher/actions) ---- */
