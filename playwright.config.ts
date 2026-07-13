@@ -18,7 +18,9 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
   ],
   webServer: {
-    command: `python build.py && python -m http.server ${PORT}`,
+    // build, then serve the clean deploy folder (dist/) so tests exercise the real artifact
+    // and the manifest/icons resolve (no 404 noise)
+    command: `python build.py && python -m http.server ${PORT} --directory dist`,
     url: `http://localhost:${PORT}/index.html`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,

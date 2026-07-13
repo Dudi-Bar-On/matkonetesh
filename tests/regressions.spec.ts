@@ -68,3 +68,46 @@ test('AI recipe generator: mocked recipe → unverified badge → save → appea
   const savedCount = await page.evaluate(`Object.keys(umakes()).length`);
   expect(savedCount).toBeGreaterThan(0);
 });
+
+test('bilingual voice: the answer follows the selected answer-language (text Q&A)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('mk-gemkey', JSON.stringify('TEST')); } catch {} }); // aiAvail() -> ask row shows
+  await page.goto('/index.html');
+  await page.evaluate(`openVoiceCook([{t:new Date(), label:'עישון 105°', sub:'', kind:'smoke', det:''}])`);
+  await expect(page.locator('#vcAskInput')).toBeVisible();
+  // mock the AI answer to echo the CURRENT answer-language (string form so bare vcAnsLang resolves in-page)
+  await page.evaluate(`window.__vcAskMock = function(q){ return vcAnsLang()==='en' ? 'ANSWER_IN_ENGLISH' : 'TESHUVA_BEIVRIT'; }`);
+
+  await page.click('[data-vc="anslang-en"]');
+  await page.fill('#vcAskInput', 'how long to rest the brisket?');
+  await page.click('[data-vc="asktext"]');
+  await expect(page.locator('#panel')).toContainText('ANSWER_IN_ENGLISH');
+
+  await page.click('[data-vc="anslang-he"]');
+  await page.fill('#vcAskInput', 'כמה זמן מנוחה?');
+  await page.click('[data-vc="asktext"]');
+  await expect(page.locator('#panel')).toContainText('TESHUVA_BEIVRIT');
+});
+
+test('method sync: choosing sous-vide for an item puts a sous-vide step in the work plan', async ({ page }) => {
+  await page.goto('/index.html');
+  await page.evaluate(`(function(){
+    saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-83'],sides:[],drinks:[],desserts:[],gpm:0});
+    store.set(methodKeyFor('cut-83'), ['sv','grill']);   // eggplant: sous-vide + grill
+    store.set('mk-tlview','plan');
+    openTimeline();
+  })()`);
+  await expect(page.locator('#panel .workplan')).toContainText('סו-ויד');
+});
+
+test('event planner double-guard: AI-returned pork is dropped for a kosher request', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.setItem('mk-gemkey', JSON.stringify('TEST')); } catch {} });
+  await page.goto('/index.html');
+  // AI returns a kosher plan that (wrongly) includes pork ribs (cut-7) alongside kosher brisket (cut-1)
+  await page.evaluate(() => {
+    (window as any).__aiMock = { guests: 10, appetite: 'reg', kosher: true,
+      keys: ['cut-1', 'cut-7'], sides: [], drinks: [], desserts: [], rationale: 'test' };
+  });
+  const keys = await page.evaluate(`aiPlanEvent('תכנן אירוע כשר').then(function(p){ return p.keys; })`) as string[];
+  expect(keys).toContain('cut-1');        // kosher beef kept
+  expect(keys).not.toContain('cut-7');    // pork dropped by the second kosher guard
+});
