@@ -4493,6 +4493,44 @@ function applyLang(){ const l=getLang();
   try{ const el=document.documentElement; el.lang=l; el.dir=(l==='he'||l==='ar')?'rtl':'ltr'; el.classList.toggle('lang-en', l!=='he'); }catch(e){}
   try{ applyI18n(); }catch(e){}
 }
+// ── T1 · numeric-invariant guard for machine translation ─────────────────────
+// A machine translation of recipe prose is accepted ONLY if it preserves every number the source
+// carries — a dropped or altered cure/temperature/time figure could be dangerous. Any mismatch →
+// reject the translation and fall back to the (correct) Hebrew source. This is the gate that must
+// pass before any DATA (recipe) translation ships.
+function mtNumSig(text){
+  // sorted multiset of every number in the text (temps, doses, times, %). Commas→dots so "1,5"=="1.5".
+  const nums=(String(text||'').match(/\d+(?:[.,]\d+)?/g)||[]).map(function(n){ return n.replace(',', '.'); });
+  return nums.map(Number).sort(function(a,b){return a-b;}).join('|');
+}
+function mtSafe(src, translated){ return mtNumSig(src)===mtNumSig(translated); }   // every source number must survive, and none may be invented
+// return the translation if it passed the numeric guard, else the safe original (with a flag)
+function mtGuard(src, translated){ return mtSafe(src, translated) ? {text:translated, ok:true} : {text:src, ok:false}; }
+function mtHash(s){ let h=0; s=String(s); for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h.toString(36); }
+// Machine-translate Hebrew recipe prose → target language, GATED by the numeric guard and cached
+// (per lang+content). Any translation that changes numbers is rejected in favor of the Hebrew source.
+async function mtTranslate(src, lang){
+  src=String(src||''); lang=lang||getLang();
+  if(!src.trim() || lang==='he') return src;
+  const cache=store.get('mk-mtcache')||{}, key=lang+':'+mtHash(src);
+  if(cache[key]!=null) return cache[key];
+  let out=null;
+  try{
+    if(typeof window!=='undefined' && window.__mtMock!==undefined && window.__mtMock!==null){
+      out=(typeof window.__mtMock==='function'?window.__mtMock(src,lang):window.__mtMock);   // test seam
+    } else if(typeof gemFetch==='function' && gemKey()){
+      const LANGNAME={en:'English',ar:'Arabic',ru:'Russian',es:'Spanish',fr:'French',de:'German'}[lang]||lang;
+      const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking text to '+LANGNAME+'. Keep ALL numbers, temperatures, times and units EXACTLY as written — never change, add, or drop a number. Reply with ONLY the translation, no notes.'}]},
+        contents:[{role:'user',parts:[{text:src}]}], generationConfig:{temperature:0.2,maxOutputTokens:600,thinkingConfig:{thinkingBudget:0}} };
+      const r=await gemFetch(GEM_MODEL, body, {timeout:20000}); const j=await r.json();
+      const cand=j.candidates&&j.candidates[0]; out=cand&&cand.content&&(cand.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();
+    }
+  }catch(e){ return src; }   // network/quota failure → safe Hebrew fallback
+  if(out==null || out==='') return src;
+  const g=mtGuard(src, out);   // T1 gate: reject a translation that mangled a number
+  if(g.ok){ cache[key]=g.text; try{ if(Object.keys(cache).length<3000) store.set('mk-mtcache',cache); }catch(e){} }
+  return g.text;
+}
 function applyAppearance(){
   const el=document.documentElement;
   el.classList.remove('light','t-vintage','t-gold');   // clear dead legacy classes permanently
