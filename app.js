@@ -1495,9 +1495,30 @@ function startTimerWatch(){
         { var _en=(typeof timerEventName==='function')?timerEventName(k):''; mkNotify('⏱ הטיימר הסתיים'+(_en?' · '+_en:''), (r.name||'טיימר בישול'), 'mk-'+k); }   // E2: name which event's timer fired
       }
     });
-    if(changed){ store.set('mk-timers', ts); startRingLoop(); try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} }   // F2: update the live-cook home banner when a timer fires
+    if(changed){ store.set('mk-timers', ts); startRingLoop(); try{ if(typeof renderAlarm==='function') renderAlarm(); }catch(e){} try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} }   // F2: home banner + the global in-app alarm
     syncWakeLock();
   }, 1000);
+}
+// ── In-app alarm banner ──────────────────────────────────────────────────────
+// A fixed overlay listing every RINGING (fired) timer with a Stop button, shown on any screen — so
+// an alarm can be seen and silenced from inside the app, not only by finding its specific timer.
+function _ringingTimers(){ const ts=store.get('mk-timers')||{};
+  return Object.keys(ts).filter(function(k){ return ts[k]&&ts[k].fired; }).map(function(k){ return {id:k, name:(ts[k].name||'טיימר בישול'), ev:(typeof timerEventName==='function'?timerEventName(k):'')}; }); }
+function ackAlarm(id){ const ts=store.get('mk-timers')||{};
+  if(id){ delete ts[id]; } else { Object.keys(ts).forEach(function(k){ if(ts[k]&&ts[k].fired) delete ts[k]; }); }
+  store.set('mk-timers', ts);
+  if(!anyTimerRinging() && mkRingIv){ clearInterval(mkRingIv); mkRingIv=null; }   // last one acknowledged → stop the re-pulse loop
+  try{ renderAlarm(); }catch(e){} try{ syncWakeLock(); }catch(e){} try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){}
+}
+function renderAlarm(){
+  const ring=_ringingTimers(); let el=document.getElementById('mkAlarm');
+  if(!ring.length){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='mkAlarm'; el.className='mk-alarm'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label','טיימר הסתיים'); document.body.appendChild(el); }
+  el.innerHTML=`<div class="mka-head">⏰ <b>${ring.length>1?ring.length+' טיימרים הסתיימו':'טיימר הסתיים'}</b></div>`+
+    ring.map(function(r){ return `<div class="mka-row"><span class="mka-name">${esc(r.name)}${r.ev?` <small>· ${esc(r.ev)}</small>`:''}</span><button class="mka-stop" data-alarmstop="${encodeURIComponent(r.id)}">🔕 עצור</button></div>`; }).join('')+
+    (ring.length>1?`<button class="mka-stopall" data-alarmstopall>🔕 עצור הכל</button>`:'');
+  el.querySelectorAll('[data-alarmstop]').forEach(function(b){ b.addEventListener('click',function(){ ackAlarm(decodeURIComponent(b.dataset.alarmstop)); }); });
+  const sa=el.querySelector('[data-alarmstopall]'); if(sa) sa.addEventListener('click',function(){ ackAlarm(); });
 }
 
 function openSpec(s){
@@ -6525,6 +6546,7 @@ document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('
 })();
 try{ cRefreshHome(); cNavGo('home'); }catch(e){ /* headless/init guard */ }
 try{ if(typeof startTimerWatch==='function') startTimerWatch(); }catch(e){}   // parallel multi-event alarms
+try{ if(typeof anyTimerRinging==='function' && anyTimerRinging()){ if(typeof renderAlarm==='function') renderAlarm(); if(typeof startRingLoop==='function') startRingLoop(); } }catch(e){}   // reopened while a timer is ringing → show the in-app alarm + resume the re-pulse
 try{ if(typeof requestPersist==='function') requestPersist(); }catch(e){}   // Wave C: ask for persistent storage so a live cook's data isn't evicted
 try{ document.addEventListener('pointerdown', function(){ if(typeof timerAudioPrime==='function') timerAudioPrime(); }, {once:true}); }catch(e){}   // R4: unlock audio on first gesture so timers restored after a reload still beep
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}

@@ -795,6 +795,15 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .toolgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:6px}
 .skip-link{position:fixed;top:-60px;inset-inline-start:8px;z-index:9999;background:var(--ember2);color:#fff;padding:10px 16px;border-radius:0 0 10px 10px;font-weight:800;font-size:calc(13px * var(--fscale));transition:top .15s;text-decoration:none}
 .skip-link:focus{top:0;outline:2px solid #fff;outline-offset:-4px}
+.mk-alarm{position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:10000;width:min(440px,calc(100% - 24px));background:#c0392b;color:#fff;border-radius:14px;box-shadow:0 8px 30px rgba(0,0,0,.4);padding:14px 16px;animation:mkapulse 1.2s ease-in-out infinite}
+@keyframes mkapulse{0%,100%{box-shadow:0 8px 26px rgba(192,57,43,.5)}50%{box-shadow:0 10px 44px rgba(192,57,43,.92)}}
+.mka-head{font-size:calc(15px * var(--fscale));font-weight:800;margin-bottom:6px}
+.mka-row{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:7px 0;border-top:1px solid rgba(255,255,255,.25)}
+.mka-name{flex:1;font-weight:700;font-size:calc(13.5px * var(--fscale));line-height:1.35}
+.mka-name small{font-weight:400;opacity:.85}
+.mka-stop,.mka-stopall{background:#fff;color:#c0392b;border:none;border-radius:9px;padding:8px 14px;font-weight:800;font-size:calc(13px * var(--fscale));cursor:pointer;white-space:nowrap}
+.mka-stopall{width:100%;margin-top:10px;background:rgba(0,0,0,.22);color:#fff}
+.mka-stop:active,.mka-stopall:active{transform:scale(.96)}
 .toolgroup{margin-bottom:16px}
 .toolgroup-h{margin:0 0 2px;font-size:calc(12px * var(--fscale));font-weight:800;color:var(--smoke);letter-spacing:.02em}
 .toolbtn{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--char2);border:1px solid var(--line);color:var(--bone);border-radius:12px;padding:16px 10px;font-size:calc(13px * var(--fscale));text-align:center}
