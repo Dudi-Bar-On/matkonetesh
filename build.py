@@ -815,6 +815,12 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
   background:rgba(0,0,0,.28);color:#ffd66e;font-size:calc(16px * var(--fscale));line-height:26px;cursor:pointer;z-index:3;padding:0;backdrop-filter:blur(2px)}
 .favstar.on{background:rgba(0,0,0,.4);color:#ffcf3f}
 .favstar:hover{border-color:#ffcf3f}
+.addcart{position:absolute;top:9px;inset-inline-start:9px;min-width:34px;height:34px;border-radius:9px;border:1px solid rgba(255,255,255,.4);
+  background:rgba(0,0,0,.32);color:#fff;font-size:calc(17px * var(--fscale));line-height:32px;cursor:pointer;z-index:3;padding:0 6px;backdrop-filter:blur(2px)}
+.addcart.on{background:var(--fresh);color:#fff;border-color:var(--fresh)}
+.addcart:hover{border-color:var(--fresh)}
+.exaddmenu{display:block;width:100%;min-height:44px;margin-bottom:10px;padding:11px;border-radius:10px;font-weight:700;font-size:calc(14px * var(--fscale));background:var(--fresh-l);color:var(--fresh);border:1px solid var(--fresh);cursor:pointer}
+.exaddmenu.on{background:var(--fresh);color:#fff}
 .ktag{display:inline-block;font-family:var(--font-body);font-size:calc(9.5px * var(--fscale));font-weight:700;padding:1px 6px;border-radius:999px;vertical-align:middle;margin-inline-start:4px}
 .ktag.kp{background:rgba(200,60,40,.16);color:#e07a5f;border:1px solid rgba(200,60,40,.4)}
 .ktag.kd{background:rgba(80,140,200,.16);color:#7fb0d8;border:1px solid rgba(80,140,200,.4)}
@@ -2131,6 +2137,9 @@ function menuHasKey(key){ return (((typeof menuState==='function')&&menuState().
 /* state util: context-aware add/remove of an item in the active plan (no direct UI caller; used programmatically) */
 function toggleCart(key){ const s=menuState(); s.keys=s.keys||[]; const i=s.keys.indexOf(key); if(i>=0)s.keys.splice(i,1); else s.keys.push(key); saveMenu(s); updateCartBadge(); render(); }
 function updateCartBadge(){ const e=$("#cartN"); if(e) e.textContent=(((typeof menuState==='function')&&menuState().keys)||[]).length; }
+/* add-to-menu affordance (UX): a real control wired to the existing toggleCart, on every card + the item panel */
+function addMenuBtn(key){ const on=menuHasKey(key); const lbl=on?'הסר מהתפריט':'הוסף לתפריט'; return `<button class="addcart ${on?'on':''}" data-addmenu="${key}" aria-pressed="${on}" aria-label="${lbl}" title="${lbl}">${on?'✓':'＋'}</button>`; }
+function syncAddMenuBtn(btn){ if(!btn) return; const on=menuHasKey(btn.dataset.addmenu); btn.classList.toggle('on',on); btn.setAttribute('aria-pressed',on); const lbl=on?'הסר מהתפריט':'הוסף לתפריט'; btn.setAttribute('aria-label',lbl); if(btn.hasAttribute('data-full')){ btn.textContent=on?'✓ בתפריט':'＋ הוסף לתפריט'; } else { btn.setAttribute('title',lbl); btn.textContent=on?'✓':'＋'; } }
 
 function fmt(s){const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=Math.floor(s%60);
   return (h?h+":":"")+String(m).padStart(h?2:1,'0')+":"+String(x).padStart(2,'0');}
@@ -2212,7 +2221,7 @@ function headArt(cat){return `<div class="phead-ico">${svgRaw(iconType(cat))}</d
 /* ---------- render cards ---------- */
 function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
   return `<article class="card" data-n="${c.n}" data-kind="cut">
-    ${foldCorner()}${favStar(key)}
+    ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(c.cat,"#"+c.n,"cut-"+c.n)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${c.cat} ${kosherTag("cut-"+c.n)}${gearTag("cut-"+c.n)}</div>
@@ -2241,7 +2250,7 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
 }
 function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=catColor(s.cat), key="spec-"+s.n;
   return `<article class="card" data-n="${s.n}" data-kind="spec">
-    ${foldCorner()}${favStar(key)}
+    ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(s.cat,"#"+s.n,"spec-"+s.n, s.origin)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${s.cat} ${kosherTag(key)}</div>
@@ -2255,7 +2264,7 @@ function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=cat
 }
 function makeCard(id,m){const nv=(m.build.variants||[]).length, col=catColor(m.cat), key="make-"+id;
   return `<article class="card" data-mid="${id}" data-kind="make">
-    ${foldCorner()}${favStar(key)}
+    ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(m.cat,null,"make-"+id, m.origin)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${m.cat} ${kosherTag(key)}</div>
@@ -3198,6 +3207,8 @@ function paintGloss(){
 document.addEventListener("click",e=>{
   const fav=e.target.closest("[data-fav]");
   if(fav){ e.stopPropagation(); toggleFav(fav.dataset.fav); return; }
+  const addm=e.target.closest("[data-addmenu]");
+  if(addm){ e.stopPropagation(); e.preventDefault(); if(typeof toggleCart==='function') toggleCart(addm.dataset.addmenu); syncAddMenuBtn(addm); if(typeof toast==='function') toast(menuHasKey(addm.dataset.addmenu)?'✓ נוסף לתפריט':'הוסר מהתפריט'); return; }
   const card=e.target.closest(".card");if(!card)return;
   if(card.dataset.kind==="make"){ openMake(card.dataset.mid); return; }
   const n=+card.dataset.n;
@@ -3553,6 +3564,7 @@ function fillExtras(key){
   const note=store.get('note:'+key)||'', rate=store.get('rating:'+key)||0;
   const projBanner=curProject?(()=>{ const p=projById(curProject); return p?`<div class="proj-banner">🧫 בתוך פרויקט: <b>${p.name}</b> · סימוני השלבים נשמרים בפרויקט</div>`:''; })():'';
   host.innerHTML=`<div class="exbox">${projBanner}
+     <button class="exaddmenu ${menuHasKey(key)?'on':''}" data-addmenu="${key}" data-full aria-pressed="${menuHasKey(key)}" aria-label="${menuHasKey(key)?'הסר מהתפריט':'הוסף לתפריט'}">${menuHasKey(key)?'✓ בתפריט':'＋ הוסף לתפריט'}</button>
      <div class="exrow">
        <button class="exfav ${isFav(key)?'on':''}" data-exfav>${isFav(key)?'★ במועדפים':'☆ הוסף למועדפים'}</button>
        <div class="exrate" data-rate>${[1,2,3,4,5].map(n=>`<span class="star ${n<=rate?'on':''}" data-n="${n}">★</span>`).join('')}</div>
@@ -6019,7 +6031,7 @@ function cwPaintReview(){
   </div>`;
   // seed resume for home
   const firstName=keys.length?(resolveItem(keys[0])||{}).heb:'ארוחה';
-  store.set('mk-cresume',{title:(firstName||'ארוחה')+(keys.length>1?' ועוד':''), serv:m.guests||8, ts:Date.now()});
+  store.set('mk-cresume',{title:(firstName||'ארוחה')+(keys.length>1?' ועוד':''), serv:m.guests||8, ctx:(typeof menuCtx==='function'?menuCtx():'event'), step:cWiz.step, ts:Date.now()});
 }
 // wire wizard controls
 (function(){
@@ -6062,10 +6074,11 @@ function cwPaintProteins(){ /* legacy no-op retained */ }
 function cwUpdateHint(){ /* legacy no-op */ }
 function cRefreshHome(){
   const r=store.get('mk-cresume'); const box=$("#cResume"); if(!box) return;
-  // validate: only show resume if there's actual event-menu content (not stale)
-  const evMenu=store.get('mk-menu')||{keys:[]};
-  const hasDraft=(evMenu.keys||[]).length>0;
-  if(r&&r.title&&hasDraft){ box.hidden=false; const m=$("#cResumeM"); if(m) m.textContent=`${r.title} · ${r.serv} סועדים`; }
+  // validate against the store for the SAVED context (cook -> mk-cook, event -> mk-menu), not always mk-menu
+  const savedCtx=(r&&r.ctx==='cook')?'cook':'event';
+  const savedMenu=store.get(savedCtx==='cook'?'mk-cook':'mk-menu')||{keys:[]};
+  const hasDraft=(savedMenu.keys||[]).length>0;
+  if(r&&r.title&&hasDraft){ box.hidden=false; const m=$("#cResumeM"); if(m) m.textContent=`${r.title} · ${r.serv} סועדים${savedCtx==='cook'?' · בישול':''}`; }
   else { box.hidden=true; if(!hasDraft&&r) store.set('mk-cresume',null); }
   // last active project
   const pbox=$("#cResumeProj");
@@ -7459,7 +7472,7 @@ document.querySelectorAll('[data-cgo="wizard"],[data-cnav="wizard"]').forEach(b=
    const b=$("#gearBanner"); if(b) b.addEventListener('click',()=>{ if(typeof openGear==='function') openGear(); });
 } })();
 (()=>{ const a=$("#cHomeAsk"); if(a) a.addEventListener('click',()=>{ if(typeof openAsk==='function') openAsk(); }); })();
-(()=>{ const r=$("#cResume"); if(r) r.addEventListener('click',()=>cNavGo('events')); })();
+(()=>{ const r=$("#cResume"); if(r) r.addEventListener('click',()=>{ const d=store.get('mk-cresume')||{}; if(typeof setMenuCtx==='function') setMenuCtx(d.ctx||'event'); if(typeof cwGo==='function') cwGo(typeof d.step==='number'?d.step:5); if(typeof cNavGo==='function') cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }); })();
 (()=>{ const r=$("#cResumeProj"); if(r) r.addEventListener('click',()=>cNavGo('projects')); })();
 (()=>{ const c=$("#cPathCook"); if(c) c.addEventListener('click',cStartCook); })();
 (()=>{ const c=$("#cPathProj"); if(c) c.addEventListener('click',()=>{ if(typeof openProjectPicker==='function') openProjectPicker(); else cNavGo('projects'); }); })();
