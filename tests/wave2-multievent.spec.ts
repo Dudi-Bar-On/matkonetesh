@@ -39,6 +39,26 @@ test('dashboard: the events list shows a running-timer badge per event', async (
   expect(await page.evaluate(`document.querySelector('.cev-running').textContent`)).toContain('2');
 });
 
+test('R2: tlState (method/order/stage-done) is isolated per event', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
+  await page.goto('/index.html');
+  await page.evaluate(`(function(){ setMenuCtx('event'); store.set('mk-active','ev-A'); tlSetState({'cut-1':{method:'sv',ready:false}}); })()`);
+  expect(await page.evaluate(`(function(){ store.set('mk-active','ev-A'); return (tlState()['cut-1']||{}).method; })()`)).toBe('sv');
+  expect(await page.evaluate(`(function(){ store.set('mk-active','ev-B'); return Object.keys(tlState()).length; })()`)).toBe(0);   // event B independent
+});
+
+test('R1: resetPlanTimers clears only the current event, not parallel events', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
+  await page.goto('/index.html');
+  await page.evaluate(`(function(){ var f=Date.now()+1e6;
+    store.set('mk-timers', {'st-ev-A-cut-1-smoke':{end:f}, 'st-ev-B-cut-1-smoke':{end:f}});
+    setMenuCtx('event'); store.set('mk-active','ev-A'); resetPlanTimers();
+  })()`);
+  const keys = await page.evaluate(`Object.keys(store.get('mk-timers')||{})`) as string[];
+  expect(keys).not.toContain('st-ev-A-cut-1-smoke');   // this event cleared
+  expect(keys).toContain('st-ev-B-cut-1-smoke');        // the parallel event survives
+});
+
 test('global alarm: an expired timer is detected + fired even without its screen open (parallel events)', async ({ page }) => {
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
   await page.goto('/index.html');

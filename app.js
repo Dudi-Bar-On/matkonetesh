@@ -1425,23 +1425,23 @@ function wireTimer(tm, opts){
   opts=opts||{};
   const id=tm.dataset.tid||'', sec=+tm.dataset.sec;
   const tt=tm.querySelector(".tt"), play=tm.querySelector("[data-play]"), al=tm.querySelector(".tt-alert");
-  let iv=null, endsAt=0, left=+tm.dataset.left;
+  let iv=null, endsAt=0, left=+tm.dataset.left, warned=false;
   const stop=()=>{ if(iv){clearInterval(iv);iv=null;} };
   const idle=l=>{ play.textContent="▶"; play.setAttribute('aria-label','הפעל טיימר'); tt.textContent=fmt(Math.max(0,l)); };
   const done=()=>{ stop(); play.textContent="▶"; play.setAttribute('aria-label','הפעל טיימר'); tm.classList.add("ringing"); tt.textContent="סיום!"; if(al) al.textContent="הטיימר הסתיים!"; };
   const tick=()=>{ left=Math.round((endsAt-Date.now())/1000);
-    if(opts.warnSec && left===opts.warnSec && opts.onWarn){ try{opts.onWarn(left);}catch(e){} }
+    if(opts.warnSec && !warned && left<=opts.warnSec && left>0 && opts.onWarn){ warned=true; try{opts.onWarn(left);}catch(e){} }   // R5: one-shot latch (was left===warnSec — stuttered ~4x / could skip)
     if(left<=0){ done(); timerBeep(); _timerSet(id,{end:endsAt,name:tm.dataset.name||'',fired:1}); if(opts.onEnd){ try{opts.onEnd();}catch(e){} } return; }
     tt.textContent=fmt(left); };
   const run=()=>{ play.textContent="❚❚"; play.setAttribute('aria-label','השהה טיימר'); tm.classList.remove("ringing"); if(al) al.textContent=""; stop(); iv=setInterval(tick,250); timers["t"+Math.random()]=iv; tick(); };
-  const startFresh=()=>{ timerAudioPrime(); endsAt=Date.now()+left*1000; _timerSet(id,{end:endsAt,name:tm.dataset.name||''}); run(); };
+  const startFresh=()=>{ warned=false; timerAudioPrime(); endsAt=Date.now()+left*1000; _timerSet(id,{end:endsAt,name:tm.dataset.name||''}); run(); };
   const pause=()=>{ stop(); left=Math.max(0,Math.round((endsAt-Date.now())/1000)); idle(left); _timerSet(id,{left:left}); };
   // restore prior state on (re-)wire: running keeps counting, paused shows the remaining time, finished shows סיום
   const rec=_timerGet(id);
   if(rec){ if(rec.end!=null){ if(rec.end-Date.now()<-12*3600e3){ _timerSet(id,null); } else { endsAt=rec.end; left=Math.round((endsAt-Date.now())/1000); if(left<=0) done(); else run(); } }
     else if(typeof rec.left==='number'){ left=rec.left; idle(left); } }
   play.addEventListener("click",()=>{ if(iv){ pause(); return; } if(tm.classList.contains('ringing')){ tm.classList.remove('ringing'); left=sec; } startFresh(); });
-  tm.querySelector("[data-reset]").addEventListener("click",()=>{ stop(); left=sec; endsAt=0; tm.classList.remove("ringing"); if(al) al.textContent=""; idle(sec); _timerSet(id,null); });
+  tm.querySelector("[data-reset]").addEventListener("click",()=>{ stop(); left=sec; endsAt=0; warned=false; tm.classList.remove("ringing"); if(al) al.textContent=""; idle(sec); _timerSet(id,null); });
   tm.addEventListener("click", e=>e.preventDefault());   // tapping the timer must not toggle a parent <label> (plan-view rows)
 }
 function clearTimers(){Object.values(timers).forEach(clearInterval);timers={};}
@@ -3405,8 +3405,9 @@ function tlDayLabel(n){ if(n===0) return ''; if(n===-1) return 'יום לפני'
 // clock time + a "N days before" badge when the task falls on an earlier day than serving (e.g. a 30h sous-vide)
 function fmtClockRel(d, ref){ const t=fmtClock(d); const lbl=tlDayLabel(tlDayOffset(d,ref)); return lbl? `<span class="wp-day">${lbl}</span>${t}` : t; }
 function cssKey(k){ return k.replace(/[^a-zA-Z0-9_-]/g,'_'); }
-function tlState(){return store.get('mk-tlstate')||{};}
-function tlSetState(s){store.set('mk-tlstate',s);}
+function tlStateKey(){ return 'mk-tlstate-'+(typeof evScope==='function'?evScope():'cook'); }   // R2: per-event method/order/stage-done
+function tlState(){return store.get(tlStateKey())||store.get('mk-tlstate')||{};}   // falls back to the legacy global once (migration)
+function tlSetState(s){store.set(tlStateKey(),s);}
 
 function openTimeline(){
   showPanel(`${toolTop('מתזמן ציר-זמן','שלבי הכנה מפורטים לכל פריט, לפי שעת הגשה','🕒','#cf6a4a')}
@@ -3800,7 +3801,7 @@ function startServeBar(){ if(serveIv){clearInterval(serveIv);} updateServeBar();
 function planStartKey(){ return 'mk-plan-started-'+(typeof evScope==='function'?evScope():'cook'); }   // per-event start state
 function planStarted(){ return !!store.get(planStartKey()); }
 function setPlanStarted(v){ store.set(planStartKey(), v||null); }
-function resetPlanTimers(){ const ts=store.get('mk-timers')||{}; Object.keys(ts).forEach(k=>{ if(/^(st-|wp|vc-)/.test(k)) delete ts[k]; }); store.set('mk-timers',ts); }
+function resetPlanTimers(){ const sc=evScope(); const ts=store.get('mk-timers')||{}; const removed={}; Object.keys(ts).forEach(k=>{ if(k.indexOf('st-'+sc+'-')===0){ removed[k]=ts[k]; delete ts[k]; } }); store.set('mk-timers',ts); return removed; }   // R1: only THIS event's timers
 // "Start plan" gate + feasibility guard: warns (or, if strict mode is on, blocks) when the plan can't finish by serve time
 function renderPlanStartRow(earliest, serve, rebuild){
   const el=$("#planStartRow"); if(!el) return;
@@ -3817,7 +3818,7 @@ function renderPlanStartRow(earliest, serve, rebuild){
     <label class="plan-strict"><input type="checkbox" data-planstrict ${strict?'checked':''}> חסום כשאין מספיק זמן</label>
   </div>`;
   const list=$("#tlList"); if(list) list.classList.toggle('plan-idle', !started);   // timers disabled until the plan is started
-  const sb=el.querySelector('[data-planstart]'); if(sb) sb.addEventListener('click',()=>{ if(planStarted()){ setPlanStarted(null); resetPlanTimers(); } else { setPlanStarted(Date.now()); if(behind) toast('התחלת עם לחץ-זמן — עקוב אחרי הטיימרים'); } rebuild(); });
+  const sb=el.querySelector('[data-planstart]'); if(sb) sb.addEventListener('click',()=>{ if(planStarted()){ const removed=resetPlanTimers(); setPlanStarted(null); rebuild(); if(typeof toast==='function' && Object.keys(removed).length) toast('התוכנית אופסה', ()=>{ const t2=store.get('mk-timers')||{}; Object.assign(t2,removed); store.set('mk-timers',t2); setPlanStarted(Date.now()); rebuild(); }); } else { setPlanStarted(Date.now()); if(behind && typeof toast==='function') toast('התחלת עם לחץ-זמן — עקוב אחרי הטיימרים'); rebuild(); } });   // R1: scoped reset + undo
   const stc=el.querySelector('[data-planstrict]'); if(stc) stc.addEventListener('change',()=>{ store.set('mk-plan-strict', stc.checked); rebuild(); });
   const pp=el.querySelector('[data-planpush]'); if(pp) pp.addEventListener('click',()=>{ const inp=$("#tlServe"); if(!inp) return; const p=inp.value.split(':').map(Number); const d=new Date(); d.setHours(p[0],p[1]+30,0,0); const nv=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); inp.value=nv; store.set('mk-tlserve',nv); rebuild(); });
 }
@@ -3866,7 +3867,7 @@ function renderTimelinePanel(){
       let stages=[], startClock=null;
       if(!blocked){
         stages=itemStages(m,st.method,st.ready,st.svSmokeOrder);
-        stages.forEach((s,si)=>{ s.tid='st-'+evScope()+'-'+m.key+'-'+si; });   // canonical per-stage timer id — scoped per event so parallel events don't collide
+        { const _kc={}; stages.forEach((s)=>{ const n=(_kc[s.kind]=(_kc[s.kind]||0)+1); s.tid='st-'+evScope()+'-'+m.key+'-'+s.kind+(n>1?n:''); }); }   // R3: stable per-stage id (kind-based, not array index) so a mid-cook method change doesn't remap a running timer
         let end=serve;
         for(let i=stages.length-1;i>=0;i--){
           const s=stages[i]; const start=new Date(end.getTime()-s.hours*3600e3);
@@ -6164,6 +6165,7 @@ document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('
 })();
 try{ cRefreshHome(); cNavGo('home'); }catch(e){ /* headless/init guard */ }
 try{ if(typeof startTimerWatch==='function') startTimerWatch(); }catch(e){}   // parallel multi-event alarms
+try{ document.addEventListener('pointerdown', function(){ if(typeof timerAudioPrime==='function') timerAudioPrime(); }, {once:true}); }catch(e){}   // R4: unlock audio on first gesture so timers restored after a reload still beep
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}
 /* T4: register the service worker in production (https only — the http test server skips it).
    Prompts a refresh when a new build has been fetched and is waiting. */
