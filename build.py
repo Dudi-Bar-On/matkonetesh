@@ -1238,7 +1238,11 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .tlc-controls select{background:var(--char);border:1px solid var(--line);color:var(--bone);border-radius:8px;padding:6px 9px;font-family:var(--font-body);font-size:calc(12.5px * var(--fscale))}
 .tl-pantrybtn{background:rgba(200,150,80,.12);border:1px solid rgba(200,150,80,.35);color:#c89650;border-radius:999px;padding:7px 12px;font-family:var(--font-body);font-weight:700;font-size:calc(12.5px * var(--fscale));cursor:pointer}
 .tl-stages{margin-top:10px;padding-top:8px;border-top:1px dashed var(--line);display:flex;flex-direction:column;gap:5px}
-.tl-stage{display:flex;align-items:center;gap:9px;font-size:calc(12.5px * var(--fscale))}
+.tl-stage{display:flex;align-items:center;flex-wrap:wrap;gap:9px;font-size:calc(12.5px * var(--fscale))}
+.tl-stage .timer{margin-inline-start:auto}
+.vc-timerwrap{margin:14px auto 6px;text-align:center;padding:20px 0}
+.vc-timerlbl{font-size:calc(13px * var(--fscale));color:var(--smoke);margin-bottom:12px}
+.vc-timerwrap .timer{display:inline-flex;justify-content:center;gap:16px;transform:scale(1.5);transform-origin:center}
 .tl-stage-t{min-width:52px;color:var(--ember2);font-weight:700}
 .tl-stage-l{flex:1;color:var(--ash)}
 .tl-stage-h{color:var(--smoke);font-size:calc(11.5px * var(--fscale))}
@@ -2926,7 +2930,9 @@ function updateProg(key,which,total){
   else { for(let i=0;i<total;i++)if(cardGet(`${key}-${which}-${i}`))done++; }
   const p=$("#prog");if(p)p.style.width=(done/total*100)+"%";
 }
-function wireTimer(tm){
+// opts (optional): { warnSec, onWarn(left), onEnd } — used by the voice-cook timer for spoken alerts.
+function wireTimer(tm, opts){
+  opts=opts||{};
   let left=+tm.dataset.left, sec=+tm.dataset.sec, iv=null;
   const tt=tm.querySelector(".tt"), play=tm.querySelector("[data-play]");
   play.addEventListener("click",()=>{
@@ -2935,9 +2941,10 @@ function wireTimer(tm){
     play.textContent="❚❚";play.setAttribute('aria-label','השהה טיימר');
     iv=setInterval(()=>{
       left--;tt.textContent=fmt(Math.max(0,left));
+      if(opts.warnSec && left===opts.warnSec && opts.onWarn){ try{opts.onWarn(left);}catch(e){} }
       if(left<=0){clearInterval(iv);iv=null;play.textContent="▶";play.setAttribute('aria-label','הפעל טיימר');tm.classList.add("ringing");tt.textContent="סיום!";
         const al=tm.querySelector(".tt-alert"); if(al) al.textContent="הטיימר הסתיים!";
-        timerBeep();}
+        timerBeep(); if(opts.onEnd){ try{opts.onEnd();}catch(e){} }}
     },1000);
     timers["t"+Math.random()]=iv;
   });
@@ -5026,6 +5033,7 @@ function vcRender(){
       ${t.sub?`<div class="vc-sub">${t.sub}</div>`:''}
       ${t.det?`<div class="vc-det">${t.det}</div>`:''}
     </div>
+    ${(function(){ const nx=vcTasks[vcIdx+1]; if(!nx||!(t.t instanceof Date)||!(nx.t instanceof Date)) return ''; const d=Math.round((nx.t-t.t)/1000); if(d<=0||d>24*3600) return ''; return `<div class="vc-timerwrap"><div class="vc-timerlbl">⏱ טיימר — עד המשימה הבאה (${fmtClock(nx.t)})</div>${timerHTML(d)}</div>`; })()}
     <div class="vc-btns">
       <button class="vc-big" data-vc="prev">⏮ הקודם</button>
       <button class="vc-big vc-main" data-vc="read">🔊 הקרא</button>
@@ -5059,6 +5067,11 @@ function vcRender(){
       :(vcVoices.length===0&&!gemKey()?'<p class="vc-hint">⚠ לא נמצא קול עברי במכשיר — באנדרואיד: הגדרות ← ניהול כללי ← המרת טקסט לדיבור ← התקן/בחר "שירותי הדיבור של Google" עם עברית.</p>':'')}`
    :'<div class="shop-empty">אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.</div>';
   host.querySelectorAll('[data-vc]').forEach(b=>b.addEventListener('click',()=>vcAction(b.dataset.vc)));
+  // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
+  { const tm=host.querySelector('.vc-timerwrap .timer'); if(tm){ const total=+tm.dataset.sec; const warnAt=total>150?120:(total>60?30:0);
+      wireTimer(tm, { warnSec:warnAt,
+        onWarn:function(left){ const min=Math.round(left/60); vcSpeak(vcAnsLang()==='en'?(left>=60?min+' minutes left':'less than a minute left'):(left>=60?'עוד כ-'+min+' דקות':'עוד פחות מדקה')); },
+        onEnd:function(){ vcSpeak(vcAnsLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.'); } }); } }
   { const ai=host.querySelector('#vcAskInput'); if(ai) ai.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const q=ai.value.trim(); if(q) vcAskFlow(q); } }); }
   { const vs=host.querySelector('#vcVoiceSel'); if(vs) vs.addEventListener('change',()=>{ store.set('mk-vcvoice',vs.value); vcSpeak('זה הקול הנבחר. נשמע טוב?'); }); }
   { const gs=host.querySelector('#gemVoiceSel'); if(gs) gs.addEventListener('change',()=>{ store.set('mk-gemvoice',gs.value); vcSpeak('שלום! זה הקול החדש של ההקראה. נשמע טוב?'); }); }
@@ -5325,6 +5338,7 @@ function renderTimelinePanel(){
     }
     html+=`<button class="prbtn" style="position:static;margin-top:12px" data-print>⎙ הדפס ${viewMode==='plan'?'תוכנית עבודה':'לוח זמנים'}</button>`;
     $("#tlList").innerHTML=html;
+    $("#tlList").querySelectorAll('.timer').forEach(tm=>wireTimer(tm));   // live countdowns per timed stage
     $("#tlList").querySelectorAll('[data-tlview]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlview',b.dataset.tlview); buildList();}));
     $("#tlList").querySelectorAll('[data-tldetail]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlplandetail',b.dataset.tldetail); buildList();}));
     $("#tlList").querySelectorAll('[data-tlshape]').forEach(b=>b.addEventListener('click',()=>{setTlShape(b.dataset.tlshape); buildList();}));
@@ -5473,7 +5487,7 @@ function renderTimelinePanel(){
       if(s.hours===0) return `<div class="tl-stage tl-stage-note">↳ ${s.label}</div>`;
       const reload=s.kind==='smoke'&&s.hours>2.5?` · ↻ הוסף עץ כל ~90 דק׳ (כ-${Math.max(1,Math.round(s.hours*60/90)-1)} פעמים)`:'';
       const hLabel=s.hours<1?Math.round(s.hours*60)+' דק׳':s.hours.toFixed(1)+'ש';
-      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span></div>`;
+      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span>${timerHTML(Math.round(s.hours*3600))}</div>`;
     }).join('');
     const cut=m.kind==='cut'?m.obj:null;
     const doneRef=(cut&&cut.doneness)?`<div class="tl-doneref"><b>מידות עשייה לגימור (מד-חום פנים)</b> — להתאמה אישית לכל סועד:<div class="tl-donelist">${['rare','mr','med','mw','well'].filter(k=>cut.doneness.levels[k]).map(k=>`<span class="${k===currentDoneness(cut)?'on':''}">${doneLabel(cut,k)} <b>${cut.doneness.levels[k].c}°</b></span>`).join('')}</div></div>`:'';
