@@ -98,3 +98,23 @@ test('W1-P3: the calculator deep-link from a strong caveat opens the calculator'
   await page.waitForSelector('#panel h2');
   expect(await page.evaluate(`document.querySelector('#panel h2').textContent`)).toContain('Calculators');
 });
+
+test('W1-P4: safety questions always attach the vetted SAFETY_FACTS grounding (even with no catalog match)', async ({ page }) => {
+  await bootAI(page);
+  // intent detection
+  expect(await page.evaluate(`askSafetyIntent('how much Cure #1 for salami')`)).toBe(true);
+  expect(await page.evaluate(`askSafetyIntent('what temp is safe for chicken')`)).toBe(true);
+  expect(await page.evaluate(`askSafetyIntent('where to buy quality charcoal')`)).toBe(false);
+  // grounding attached with NO catalog-item match (the old free-generation hole)
+  const ctx = await page.evaluate(`askContextFor('how much Cure #1 for 2kg salami').ctx`) as string;
+  expect(ctx).toContain('156ppm');
+  expect(ctx).toContain('Cure #1');
+  // non-safety, non-entity → still empty
+  expect(await page.evaluate(`askContextFor('where to buy quality charcoal').ctx`)).toBe('');
+  // the grounding rides into the Ask prompt
+  const body = await capAfter(page, `askGemini('how much cure for salami')`);
+  expect(body.contents[body.contents.length-1].parts[0].text).toContain('156ppm');
+  // and it composes with the P3 guard: a fabricated dose is ungrounded, the vetted one is not
+  expect(await page.evaluate(`aiUngroundedSafety('use 250 ppm nitrite', SAFETY_FACTS()).length`)).toBe(1);
+  expect(await page.evaluate(`aiUngroundedSafety('use 156 ppm nitrite', SAFETY_FACTS()).length`)).toBe(0);
+});

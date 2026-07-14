@@ -2999,15 +2999,32 @@ function askFire(qRaw){
 /* ---- Ask the Fire: AI mode (BYOK Gemini) — optional layer over the local engine ---- */
 function askMode(){ const v=store.get('mk-askai'); if(v==='1')return true; if(v==='0')return false; return gemKey()?true:false; } // default ON only if a key already exists (e.g. from TTS)
 function setAskMode(on){ store.set('mk-askai', on?'1':'0'); }
+// W1-P4: does the question touch a food-safety topic (cure/nitrite/salt%/temp-safety/botulism/pasteurization/mold/ferment/pH/aw)?
+function askSafetyIntent(q){
+  return /ריפוי|קיור|\bcure\b|ניטריט|nitrite|מלח ורוד|pink salt|כמה מלח|salt\s*%|\bcure\s*#|בוטוליזם|botulism|פסטור|pasteur|עובש|mold|תסיס|ferment|טמפ.*בטוח|safe.*temp|temp.*safe|\bsafe\b.*(eat|chicken|poultry|pork|meat|נתח)|פנים.*°|internal.*temp|water[-\s]*activity|\baw\b|\bpH\b/i.test(String(q||''));
+}
+// The app's vetted safety anchors + the directive to defer exact doses to the calculator (never invent). Matches the calculator constants.
+function SAFETY_FACTS(){
+  return 'נתוני בטיחות מאומתים של האפליקציה (השתמש אך ורק במספרים אלה; אם המספר הדרוש אינו כאן — הפנה את המשתמש לפתוח את המחשבון באפליקציה ואל תמציא מספר):\n'
+    +'• Cure #1 (מוצרים מבושלים / כבישה קצרה): 2.5 ג׳/ק״ג בשר ≈ 156ppm ניטריט (תקני ובטוח).\n'
+    +'• Cure #2: למוצרים מיובשים / לא-מבושלים (סלמי, נקניק יבש) — דיוק המינון קריטי לבטיחות.\n'
+    +'• טמפ׳ פנים בטוחות: עוף/הודו 74°C · בשר טחון 71°C · נתח שלם/דג 63°C.\n'
+    +'• מוצר יבש / מעושן-קר / יציב-מדף חייב ניטריט (Cure) — היעדרו = סכנת בוטוליזם.\n'
+    +'• סלמי מיובש: יעד איבוד משקל ~35% לפני אכילה (קירוב לפעילות-מים בטוחה).\n'
+    +'• תסיסה בטוחה דורשת תרבית-מוצא ובקרת pH; אין לתסוס בטמפ׳ חדר ללא בקרה.\n'
+    +'המחשבון של האפליקציה מחשב את המינון המדויק לפי המשקל — הפנה את המשתמש אליו.';
+}
 function askContextFor(q){
   const ents=askFindEntity((q||'').toLowerCase()).slice(0,3);
-  if(!ents.length) return {ctx:'',ents:[]};
-  const ctx='נתונים רלוונטיים מהקטלוג של האפליקציה:\n'+ents.map(e=>{const o=e.obj;
+  let ctx='';
+  if(ents.length){ ctx='נתונים רלוונטיים מהקטלוג של האפליקציה:\n'+ents.map(e=>{const o=e.obj;
     if(e.kind==='cut') return `• ${e.heb} (${e.cat}): סו-ויד ${o.svt}°C/${o.svh}ש · עישון ${o.smt}°C/${o.smh}ש · עישון-בלבד ${o.sot}°C/${o.soh}ש · יעד ${donenessTarget(o)}°C · בטיחות ${o.safe||63}°C · עץ ${o.wood||'-'} · ראב ${o.rub||'-'}${o.doneness?' · מידות: '+Object.entries(o.doneness.levels).map(([k,v])=>(v.heb||k)+' '+v.c+'°C').join('/'):''}`;
     if(e.kind==='spec') return `• ${e.heb} (${e.cat}): ריפוי ${o.cure||'-'} · עישון ${o.smt||'-'}°C/${o.smh||'-'}ש · יישון ${o.age||'-'} · עץ ${o.wood||'-'}${o.note?' · '+o.note:''}`;
     return `• ${e.heb} (${e.cat}): מתכון בנייה-מאפס.`;
-  }).join('\n');
-  return {ctx,ents:ents.map(m=>({key:m.key,heb:m.heb,cat:m.cat}))};
+  }).join('\n'); }
+  // W1-P4: safety questions ALWAYS get the vetted anchors, even with no catalog-item match (closes the "how much Cure #1 for salami?" free-generation hole)
+  if(askSafetyIntent(q)) ctx=(ctx?ctx+'\n\n':'')+SAFETY_FACTS();
+  return {ctx, ents:ents.map(m=>({key:m.key,heb:m.heb,cat:m.cat}))};
 }
 // ── centralized Gemini transport (AI #2 timeout · #3 retry/backoff · #9 key-in-header) + the
 //    AI #8 endpoint-indirection seam: one place to point at a managed proxy later (monetization seam).
