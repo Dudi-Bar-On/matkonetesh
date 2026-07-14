@@ -103,3 +103,35 @@ test('active hub: timer focus works in the WORK-PLAN view too (exact timer eleme
   const tid = await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); if(!f) return 'NONE'; const t=f.querySelector('[data-tid]'); return t?t.getAttribute('data-tid'):(f.getAttribute('data-tid')||'NO-TID'); })()`);
   expect(tid).toBe('st-ev-a-cut-1-smoke');
 });
+
+test('work-plan shows an event-identity banner (which event you are in)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'Friday BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1']}}])); } catch {} });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openTimeline==='function'`);
+  await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
+  await page.waitForSelector('#tlBody .tl-evbanner');
+  expect(await page.evaluate(`document.querySelector('#tlBody .tl-evbanner b').textContent`)).toBe('Friday BBQ');
+});
+
+test('floating Active-now shortcut: shows while cooking, opens the hub, hides with panels / when idle', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof syncActiveFab==='function'`);
+  // idle → hidden
+  expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(true);
+  // a running timer → shown on the home screen
+  await page.evaluate(`(function(){ store.set('mk-timers',{'st-ev-a-cut-1-smoke':{end:Date.now()+3600000,name:'x'}}); cNavGo('home'); })()`);
+  await page.waitForSelector('#cActiveFab:not([hidden])');
+  // shown on other screens too
+  await page.evaluate(`cNavGo('catalog')`);
+  expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(false);
+  // tap → Active-now hub opens, and the fab hides while the panel is up
+  await page.click('#cActiveFab');
+  await page.waitForSelector('#panel.open .active-sec');
+  expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(true);
+  // close + clear timers → hidden
+  await page.evaluate(`(function(){ closePanel(); store.set('mk-timers',{}); cNavGo('home'); })()`);
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(true);
+});

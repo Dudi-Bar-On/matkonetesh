@@ -1533,7 +1533,7 @@ function startTimerWatch(){
         { var _en=(typeof timerEventName==='function')?timerEventName(k):''; mkNotify('⏱ הטיימר הסתיים'+(_en?' · '+_en:''), (r.name||'טיימר בישול'), 'mk-'+k); }   // E2: name which event's timer fired
       }
     });
-    if(changed){ store.set('mk-timers', ts); startRingLoop(); try{ if(typeof renderAlarm==='function') renderAlarm(); }catch(e){} try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} }   // F2: home banner + the global in-app alarm
+    if(changed){ store.set('mk-timers', ts); startRingLoop(); try{ if(typeof renderAlarm==='function') renderAlarm(); }catch(e){} try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){} }   // F2: home banner + the global in-app alarm + the floating active shortcut
     syncWakeLock();
   }, 1000);
 }
@@ -1546,7 +1546,7 @@ function ackAlarm(id){ const ts=store.get('mk-timers')||{};
   if(id){ delete ts[id]; } else { Object.keys(ts).forEach(function(k){ if(ts[k]&&ts[k].fired) delete ts[k]; }); }
   store.set('mk-timers', ts);
   if(!anyTimerRinging() && mkRingIv){ clearInterval(mkRingIv); mkRingIv=null; }   // last one acknowledged → stop the re-pulse loop
-  try{ renderAlarm(); }catch(e){} try{ syncWakeLock(); }catch(e){} try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){}
+  try{ renderAlarm(); }catch(e){} try{ syncWakeLock(); }catch(e){} try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){}
 }
 function renderAlarm(){
   const ring=_ringingTimers(); let el=document.getElementById('mkAlarm');
@@ -1644,6 +1644,7 @@ function showPanel(html){
   try{ if(typeof tnode==='function') tnode(p); }catch(e){}           // Wave 5: dictionary-translate exact-match chrome strings in the panel
   try{ if(typeof hydrateMT==='function') hydrateMT(p); }catch(e){}   // Wave 5: async-translate any [data-mt] recipe prose behind the number-safety guard
   $("#scrim").classList.add("open");document.body.classList.add("noscroll");
+  try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){}   // hide the floating shortcut while a panel is open
   const xb=p.querySelector(".x"); if(xb) xb.addEventListener("click",closePanel);
   const top=p.querySelector(".panel-top");
   p.scrollTop=0; const body=p.querySelector(".panel-body"); if(body) body.scrollTop=0;
@@ -1701,7 +1702,8 @@ function closePanel(){
   if(typeof gemStop==='function') gemStop();
   if(typeof vcRec!=='undefined'&&vcRec){try{vcRec.stop();}catch(e){} vcRec=null;}clearTimers();if(typeof serveIv!=='undefined'&&serveIv){clearInterval(serveIv);serveIv=null;}panelStack=[];$("#panel").classList.remove("open");$("#panel").setAttribute("aria-hidden","true");
   $("#scrim").classList.remove("open");document.body.classList.remove("noscroll");
-  if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}} lastFocus=null;}
+  if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}} lastFocus=null;
+  try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){} }
 
 /* ---------- shopping list ---------- */
 // Wave E: the event cart's "bought" ticks + menu quantities are per-event — a global namespace meant
@@ -4094,6 +4096,22 @@ function renderPlanStartRow(earliest, serve, rebuild){
   const pp=el.querySelector('[data-planpush]'); if(pp) pp.addEventListener('click',()=>{ const inp=$("#tlServe"); if(!inp) return; const d=serveDateTime(); d.setMinutes(d.getMinutes()+30); const nv=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); inp.value=nv; store.set('mk-tlserve',nv); store.set(serveDateKey(), isoDate(d)); rebuild(); });   // push on the full datetime so a past-midnight bump rolls the day, not wraps into today
   const prb=el.querySelector('[data-planreschedule]'); if(prb) prb.addEventListener('click',()=>{ if(!earliest) return; const span=serve.getTime()-earliest.getTime(); const ns=new Date(Date.now()+span+60000); store.set('mk-tlserve', ('0'+ns.getHours()).slice(-2)+':'+('0'+ns.getMinutes()).slice(-2)); store.set(serveDateKey(), isoDate(ns)); rebuild(); });   // F1: shift serve so the plan starts now (earliest→now) instead of only nudging +30m
 }
+// identity banner at the top of the work plan so it's always clear WHICH event you're in
+function tlEventBanner(){
+  try{
+    const ctx=(typeof menuCtx==='function')?menuCtx():'event';
+    if(ctx==='cook') return `<div class="tl-evbanner"><span class="tl-evb-ic">🔥</span><b>${L('בישול מהיר','Quick cook')}</b></div>`;
+    const id=(typeof evActive==='function')?evActive():null;
+    const evs=(typeof evList==='function')?evList():[];
+    const idx=id?evs.findIndex(function(e){return e.id===id;}):-1;
+    if(idx>=0){ const ev=evs[idx], col=EV_COLORS[idx%EV_COLORS.length], en=(typeof getLang==='function'&&getLang()!=='he');
+      const dateStr=ev.date?new Date(ev.date).toLocaleDateString(en?'en-US':'he-IL',{weekday:'short',day:'numeric',month:'short'}):'';
+      const g=(ev.menu&&ev.menu.guests)||8;
+      return `<div class="tl-evbanner" style="border-inline-start:5px solid ${col}"><b style="color:${col}">${esc(ev.name)}</b><small>${dateStr?esc(dateStr)+' · ':''}👥 ${g} · ${L('הגשה','Serve')} ${ev.serve||store.get('mk-tlserve')||'19:00'}</small></div>`;
+    }
+    return `<div class="tl-evbanner"><span class="tl-evb-ic">📝</span><b>${L('טיוטה — לא נשמרה','Draft — not saved')}</b></div>`;
+  }catch(e){ return ''; }
+}
 function renderTimelinePanel(){
   const host=$("#tlBody"); if(!host) return;
   const srcKeys=[...new Set((typeof menuState==='function')?(menuState().keys||[]):[])];
@@ -4101,6 +4119,7 @@ function renderTimelinePanel(){
   const serveStr=store.get('mk-tlserve')||'19:00';
   const serveDateStr=isoDate(serveDateTime());
   host.innerHTML=`
+    ${tlEventBanner()}
     <div class="calcrow"><label>${L('הגשה','Serve')}</label><input type="time" id="tlServe" value="${serveStr}"><input type="date" id="tlServeDate" value="${serveDateStr}" title="${L('יום ההגשה','Serve day')}"><button id="tlReset" class="mreset">🗑️ ${L('איפוס בחירות','Reset choices')}</button></div>
     <div id="serveBar" class="serve-bar" hidden><div class="serve-lbl"><span id="serveRemain"></span><span id="serveAt"></span></div><div class="serve-track"><div class="serve-fill" id="serveFill"></div></div></div>
     <div id="planStartRow"></div>
@@ -4863,6 +4882,7 @@ function cNavGo(s){
   if(s==='events') cPaintEvents();
   if(s==='projects') cPaintProjects();
   if(s==='home') cRefreshHome();
+  try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){}
   if(typeof window.scrollTo==='function') window.scrollTo(0,0);
 }
 // wizard state — now backed by the REAL menu engine
@@ -5206,6 +5226,19 @@ function cRefreshHome(){
   }
   const g=$("#cGreet"); if(g){ const h=new Date().getHours(); g.textContent=(h<12?'בוקר טוב':h<18?'צהריים טובים':'ערב טוב')+' 👋'; }
 }
+// shared "is something cooking?" state (started plans + running/ringing timers)
+function _liveCookState(){
+  let anyStarted=false; try{ for(let i=0;i<localStorage.length;i++){ const kk=localStorage.key(i)||''; if(kk.indexOf('mk-plan-started-')===0 && store.get(kk)){ anyStarted=true; break; } } }catch(e){}
+  const ts=store.get('mk-timers')||{}, now=Date.now(); let running=0, ringing=0;
+  Object.keys(ts).forEach(function(k){ const r=ts[k]; if(r&&r.end){ if(r.fired) ringing++; else if(r.end>now) running++; } });
+  return {anyStarted:anyStarted, running:running, ringing:ringing, live:(anyStarted||running>0||ringing>0)};
+}
+// floating shortcut to the Active-now hub — visible on any screen while cooking, hidden when a panel is open
+function syncActiveFab(){ try{ const fab=$("#cActiveFab"); if(!fab) return; const s=_liveCookState();
+  const panelOpen=document.body.classList.contains('noscroll');
+  if(s.live && !panelOpen){ fab.hidden=false; const t=$("#cActiveFabT"); if(t) t.textContent = s.ringing? (L('הסתיים','Done')+' '+s.ringing) : (s.running? (s.running+' '+L('פעילים','running')) : L('פעיל עכשיו','Active now')); fab.classList.toggle('caf-ring', s.ringing>0); }
+  else fab.hidden=true;
+}catch(e){} }
 // ═══════════ "Active now" hub — every ongoing timer / plan / long-term project in one place, each with a jump-back ═══════════
 function _openItemByKey(key){ try{ const it=(typeof resolveItem==='function')?resolveItem(key):null; if(!it) return false;
   if(it.kind==='cut'&&typeof openCut==='function') openCut(it.obj);
@@ -6828,6 +6861,8 @@ function openMoreSheet(){
 // wire nav + home controls
 document.querySelectorAll('[data-cnav]').forEach(b=>b.addEventListener('click',()=>cNavGo(b.dataset.cnav)));
 document.querySelectorAll('[data-cgo]').forEach(b=>b.addEventListener('click',()=>cNavGo(b.dataset.cgo)));
+// floating Active-now shortcut: click → hub; keep it in sync on boot + a slow tick (for ringing while idle on a screen)
+(()=>{ const fab=$("#cActiveFab"); if(fab) fab.addEventListener('click',()=>{ if(typeof openActive==='function') openActive(); }); try{ if(typeof syncActiveFab==='function'){ syncActiveFab(); setInterval(syncActiveFab, 5000); } }catch(e){} })();
 // "יש לי אירוע" path + FAB → start a NEW clean event (guard unsaved draft)
 function cStartNewEvent(){ setMenuCtx('event'); evGuardBeforeNew(()=>{ cwGo(0); cNavGo('wizard'); cwSyncFromMenu(); }); }
 function cStartCook(){ setMenuCtx('cook'); cwGo(0); cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }

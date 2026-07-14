@@ -273,6 +273,13 @@ body.capp{padding-bottom:82px}
 .cmore-item .mg{margin-inline-start:auto;color:var(--smoke)}
 /* hide bottom nav when a modal panel is open (so its action/print row isn't covered) */
 body.noscroll .cnav{display:none}
+body.noscroll .cactive-fab{display:none}
+/* floating Active-now shortcut — sits above the nav, shown only while cooking */
+.cactive-fab{position:fixed;inset-inline-end:16px;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:45;display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,var(--ember2),var(--ember));color:#fff;border:none;border-radius:999px;padding:11px 16px;font-family:var(--font-body);font-weight:800;font-size:calc(13.5px * var(--fscale));box-shadow:0 6px 18px rgba(231,111,81,.42);cursor:pointer}
+.cactive-fab .caf-ic{font-size:calc(16px * var(--fscale))}
+.cactive-fab.caf-ring{animation:cafpulse 1.2s ease-in-out infinite}
+@keyframes cafpulse{0%,100%{box-shadow:0 6px 18px rgba(231,111,81,.42)}50%{box-shadow:0 6px 26px rgba(231,111,81,.75),0 0 0 4px rgba(231,111,81,.22)}}
+@media (prefers-reduced-motion:reduce){.cactive-fab.caf-ring{animation:none}}
 .panel-body{padding-bottom:calc(40px + env(safe-area-inset-bottom,0px))}
 /* hide legacy hero/glow in capp mode */
 body.capp .hero, body.capp .glow{display:none}
@@ -1154,6 +1161,10 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 }
 .tlrow.tl-preheat .tl-n{color:var(--ember2);font-weight:700}
 /* timeline item cards (process-stage model) */
+.tl-evbanner{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;background:var(--char2);border:1px solid var(--line2);border-radius:12px;padding:10px 13px;margin-bottom:12px}
+.tl-evbanner b{font-family:var(--font-display);font-weight:400;font-size:calc(19px * var(--fscale));line-height:1.1}
+.tl-evbanner small{color:var(--ash);font-size:calc(12.5px * var(--fscale))}
+.tl-evbanner .tl-evb-ic{font-size:calc(17px * var(--fscale))}
 .tlcard{background:var(--char2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:9px}
 .tlcard.tl-blocked{border-color:rgba(200,150,80,.3);background:rgba(200,150,80,.05)}
 .tl-focus{border-radius:12px;outline:2px solid var(--ember);outline-offset:1px;box-shadow:0 0 0 4px rgba(231,111,81,.28);animation:tlfocus 1.3s ease-out}

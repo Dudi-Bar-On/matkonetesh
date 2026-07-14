@@ -302,6 +302,8 @@ HTML = r"""<!DOCTYPE html>
   <div id="cProjBody" style="padding:0 16px"></div>
 </div>
 
+<!-- floating "Active now" shortcut — shows on any screen while something is cooking -->
+<button class="cactive-fab" id="cActiveFab" aria-label="פעיל עכשיו" hidden><span class="caf-ic">🔥</span><span class="caf-t" id="cActiveFabT">פעיל עכשיו</span></button>
 <!-- ═══ bottom nav ═══ -->
 <div class="cnav">
   <button class="on" data-cnav="home"><span class="ni">🏠</span>בית</button>
@@ -312,7 +314,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 203 · 14.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 204 · 14.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
