@@ -31,20 +31,20 @@ test('expand-all / collapse-all toggles the whole plan', async ({ page }) => {
   expect(await page.evaluate(`Array.from(document.querySelectorAll('#tlList .tl-stages')).filter(s=>getComputedStyle(s).display!=='none').length`)).toBe(0);
 });
 
-test('voice cook has a jump-to-item selector', async ({ page }) => {
+test('voice cook has a jump-to-step selector that lists every task and jumps directly', async ({ page }) => {
   await init(page, ['cut-1','cut-2']);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
   await page.waitForSelector('#tlList');
   await page.evaluate(`(function(){ closePanel(); openVoiceCook(window._wpTasks||[]); })()`);
   await page.waitForSelector('#vcBody');
-  expect(await page.evaluate(`!!document.querySelector('#vcItemJump')`)).toBe(true);
-  const opts = await page.evaluate(`Array.from(document.querySelectorAll('#vcItemJump option')).map(o=>o.textContent)`) as string[];
-  expect(opts.length).toBeGreaterThanOrEqual(2);
-  // selecting an item jumps vcIdx to that item's first task
-  const before = await page.evaluate(`vcIdx`);
-  await page.selectOption('#vcItemJump', { index: 1 });
+  expect(await page.evaluate(`!!document.querySelector('#vcStepJump')`)).toBe(true);
+  const nTasks = await page.evaluate(`vcTasks.length`) as number;
+  const opts = await page.evaluate(`Array.from(document.querySelectorAll('#vcStepJump option')).length`) as number;
+  expect(opts).toBe(nTasks);   // every step is listed, not just items
+  // selecting a step jumps vcIdx straight to it
+  await page.selectOption('#vcStepJump', { index: 4 });
   await page.waitForTimeout(150);
-  expect(await page.evaluate(`typeof vcIdx==='number'`)).toBe(true);
+  expect(await page.evaluate(`vcIdx`)).toBe(4);
 });
 
 test('selecting a different item in the work-plan persists it across a view switch', async ({ page }) => {

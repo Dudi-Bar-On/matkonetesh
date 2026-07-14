@@ -3734,13 +3734,6 @@ function vcCurrentText(full){
   if(t.sub) s+=' '+t.sub+'.';
   return s;
 }
-// unique items in the current work-plan (for the voice "jump to item" selector) → {idx: first task index, nm: name}
-function vcItems(){
-  const seen={}, out=[];
-  (vcTasks||[]).forEach(function(tk,i){ if(!tk||!tk.tid) return; const ik=(typeof timerItemKey==='function')?timerItemKey(tk.tid):''; if(!ik || seen[ik]) return;
-    const m=(typeof resolveItem==='function')?resolveItem(ik):null; const nm=m?(typeof itemName==='function'?itemName(m):m.heb):''; if(!nm) return; seen[ik]=1; out.push({idx:i, nm:nm, ik:ik}); });
-  return out;
-}
 function vcRender(){
   const host=$("#vcBody"); if(!host) return;
   if(typeof clearTimers==='function') clearTimers();   // stop stale intervals; timers restore from mk-timers
@@ -3775,8 +3768,7 @@ function vcRender(){
       <button class="vc-q" data-vc="qwhen">⏰ ${L('מתי הבא?','When is the next?')}</button>
       <button class="vc-q ${vcRec?'on':''}" data-vc="mic">${vcRec?'🎙️ '+L('מאזין… (אמור: הבא / חזור / הקרא)','Listening… (say: next / back / read)'):'🎙️ '+L('פקודות קוליות','Voice commands')}</button>
     </div>
-    ${(function(){ const its=vcItems(); if(its.length<2) return ''; const curIk=(vcTasks[vcIdx]&&vcTasks[vcIdx].tid&&typeof timerItemKey==='function')?timerItemKey(vcTasks[vcIdx].tid):'';
-      return `<div class="vc-jumprow"><label>🎯 ${L('קפוץ לפריט:','Jump to item:')}</label><select id="vcItemJump">${its.map(it=>`<option value="${it.idx}" ${it.ik===curIk?'selected':''}>${esc(it.nm)}</option>`).join('')}</select></div>`; })()}
+    ${vcTasks.length>2?`<div class="vc-jumprow"><label>🎯 ${L('קפוץ לשלב:','Jump to step:')}</label><select id="vcStepJump">${vcTasks.map((tk,i)=>`<option value="${i}" ${i===vcIdx?'selected':''}>${esc(fmtClock(tk.t)+' · '+stripEmoji(tk.label))}</option>`).join('')}</select></div>`:''}
     <p class="vc-hint">💡 ${L('מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: "הבא", "הקודם", "הקרא שוב", "פרטים".','Big screen, big buttons — meant to stand by the smoker. Commands: "next", "back", "read again", "details".')}</p>
     <div class="vc-langrow">
       <span class="vc-langlbl">🎙️ ${L('שפת דיבור:','Speech language:')}</span>
@@ -3800,7 +3792,7 @@ function vcRender(){
    :`<div class="shop-empty">${L('אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.','No tasks — build a work plan in the scheduler, then come back.')}</div>`;
   host.querySelectorAll('[data-vc]').forEach(b=>b.addEventListener('click',()=>vcAction(b.dataset.vc)));
   host.querySelectorAll('[data-vcjump]').forEach(b=>b.addEventListener('click',()=>{ vcIdx=+b.dataset.vcjump; vcRender(); vcSpeakContent(vcCurrentText(false)); }));   // jump to a parallel running timer
-  { const js=host.querySelector('#vcItemJump'); if(js) js.addEventListener('change',function(){ const i=parseInt(js.value,10); if(!isNaN(i)){ vcIdx=i; vcRender(); vcSpeakContent(vcCurrentText(false)); } }); }   // jump to a chosen work-plan item
+  { const js=host.querySelector('#vcStepJump'); if(js) js.addEventListener('change',function(){ const i=parseInt(js.value,10); if(!isNaN(i)&&i>=0&&i<vcTasks.length){ vcIdx=i; vcRender(); vcSpeakContent(vcCurrentText(false)); } }); }   // shortcut: jump straight to any work-plan step
   // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
   { const tm=host.querySelector('.vc-timerwrap .timer'); if(tm){ const total=+tm.dataset.sec; const warnAt=total>150?120:(total>60?30:0);
       wireTimer(tm, { warnSec:warnAt,
@@ -3826,8 +3818,9 @@ function vcAction(a){
   }
   else if(a==='qwhen'){
     const nx=vcTasks[vcIdx+1];
-    if(en) vcSpeakContent(nx?`המשימה הבאה בשעה ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'זו המשימה האחרונה');
-    else vcSpeak(nx?`המשימה הבאה בשעה ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'זו המשימה האחרונה', 'he');
+    const say=en?(nx?`Next task at ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'That was the last task.')
+               :(nx?`המשימה הבאה בשעה ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'זו המשימה האחרונה');
+    vcSpeak(say, vcAnsLang());   // build in the answer language, speak directly (same voice as the other buttons)
   }
   else if(a==='mic') vcToggleMic();
   else if(a==='asktext'){ const inp=$("#vcAskInput"); const q=inp&&inp.value.trim(); if(q) vcAskFlow(q); }
@@ -3865,9 +3858,11 @@ async function vcTranslateToEn(text){
 // speak app CONTENT (task steps), translating to English when the answer language is English
 async function vcSpeakContent(text){
   const ansL=vcAnsLang();
-  if(ansL!=='en'){ vcSpeak(text, 'he'); return; }
-  if(!aiAvail()){ // can't translate without a key — speak Hebrew content, flag it
-    if(typeof toast==='function') toast('תרגום לאנגלית דורש מפתח AI — מקריא בעברית');
+  const contentHe=(typeof getLang!=='function')||getLang()==='he';   // vcTasks content is built in the UI language
+  if(ansL!=='en'){ vcSpeak(text, ansL); return; }                    // Hebrew answers → speak as-is
+  if(!contentHe){ vcSpeak(text, 'en'); return; }                     // content is already English → speak directly (no translation, no key needed) — keeps every button on the same voice
+  if(!aiAvail()){ // Hebrew content + English answers, but no key to translate — read the Hebrew, flag it
+    if(typeof toast==='function') toast(L('תרגום לאנגלית דורש מפתח AI — מקריא בעברית','English translation needs an AI key — reading in Hebrew'));
     vcSpeak(text, 'he'); return;
   }
   try{ const en=await vcTranslateToEn(text); vcSpeak(en, 'en'); }
