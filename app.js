@@ -476,8 +476,8 @@ function wireSeasPicker(host, key, cat, isProd, mode, onChange, backFn){
 function openSeasonings(presetCat, ctxKey){
   seasCtxKey=ctxKey||null;
   const ctxMeta=seasCtxKey?resolveItem(seasCtxKey):null;
-  const sub=(DATA.seasonings||[]).length+' מתכונים מ-6 יבשות'+(ctxMeta?` · ＋ מוסיף אל: ${ctxMeta.heb||seasCtxKey}`:' · סינון לפי סוג, מדינה, טעם, בסיס וחריפות');
-  showPanel(`${toolTop('מתבלים ורטבים',sub,'🧂','#b5603a')}
+  const sub=(DATA.seasonings||[]).length+' '+L('מתכונים מ-6 יבשות','recipes from 6 continents')+(ctxMeta?` · ＋ ${L('מוסיף אל','adding to')}: ${(typeof itemName==='function'?itemName(ctxMeta):ctxMeta.heb)||seasCtxKey}`:' · '+L('סינון לפי סוג, מדינה, טעם, בסיס וחריפות','filter by type, country, flavor, base and heat'));
+  showPanel(`${toolTop(L('מתבלים ורטבים','Seasonings & sauces'),sub,'🧂','#b5603a')}
     <div class="panel-body" id="seasBody"></div>`);
   seasFilter={kind:'', cont:'', cat:(presetCat&&presetCat!=='__all')?presetCat:'', q:'', flavor:'', base:'', heat:''};
   renderSeasonings();
@@ -486,7 +486,7 @@ function openSeasoningDetail(id, backCat){
   const keepCtx=seasCtxKey;
   openFrom(()=>openSeasonings(backCat, keepCtx), ()=>{
     const s=(DATA.seasonings||[]).find(x=>x.id===id); if(!s) return;
-    showPanel(`${toolTop(s.heb, s.eng+' · '+s.origin, KIND_EMOJI[s.kind], cont2color(s.cont))}<div class="panel-body">${seasoningDetailHTML(s)}</div>`);
+    showPanel(`${toolTop(itemName(s), s.eng+' · '+t(s.origin), KIND_EMOJI[s.kind], cont2color(s.cont))}<div class="panel-body">${seasoningDetailHTML(s)}</div>`);
   });
 }
 function renderSeasonings(){
@@ -503,24 +503,24 @@ function renderSeasonings(){
     if(q && !(s.heb+' '+s.eng+' '+s.ing+' '+s.origin).toLowerCase().includes(q)) return false;
     return true;
   });
-  const kinds=[['','הכל'],['rub','🌶️ ראבים'],['marinade','🥣 מרינדות'],['glaze','🍯 גלייזים'],['sauce','🥄 רטבים']];
+  const kinds=[['',L('הכל','All')],['rub',L('🌶️ ראבים','🌶️ Rubs')],['marinade',L('🥣 מרינדות','🥣 Marinades')],['glaze',L('🍯 גלייזים','🍯 Glazes')],['sauce',L('🥄 רטבים','🥄 Sauces')]];
   const conts=['','אמריקה','דרום אמריקה','ישראל/מזה"ת','אפריקה','אירופה','אסיה'];
   host.innerHTML=`
-    <div class="searchbar" style="margin-bottom:10px"><input id="seasQ" type="search" placeholder="חפש מתבל, מרכיב או מקור…" value="${seasFilter.q||''}"><span class="ic">⌕</span></div>
+    <div class="searchbar" style="margin-bottom:10px"><input id="seasQ" type="search" placeholder="${L('חפש מתבל, מרכיב או מקור…','Search a seasoning, ingredient or origin…')}" value="${seasFilter.q||''}"><span class="ic">⌕</span></div>
     <div class="chips">${kinds.map(([k,l])=>`<span class="chip ${seasFilter.kind===k?'on':''}" data-sk="${k}">${l}</span>`).join('')}</div>
-    <div class="chips" style="margin-top:6px">${conts.map(c=>`<span class="chip ${seasFilter.cont===c?'on':''}" data-scont="${c}">${c||'כל היבשות'}</span>`).join('')}</div>
-    <div class="chips" style="margin-top:6px">${[['','כל טעם'],...SPK_FLAVORS.map(f=>[f,f])].map(([v,l])=>`<span class="chip ${seasFilter.flavor===v?'on':''}" data-sflav="${v}">👅 ${l}</span>`).join('')}</div>
-    <div class="chips" style="margin-top:6px">${[['','כל בסיס'],...SPK_BASES.map(x=>[x,x])].map(([v,l])=>`<span class="chip ${seasFilter.base===v?'on':''}" data-sbase="${v}">🧪 ${l}</span>`).join('')}${[['','כל חריפות'],...SPK_HEAT.map(([v,l])=>[String(v),l])].map(([v,l])=>`<span class="chip ${String(seasFilter.heat)===v?'on':''}" data-sheat="${v}">${l}</span>`).join('')}</div>
-    ${seasFilter.cat?`<div class="count">מסונן ל: ${seasFilter.cat==='__produce'?'ירקות/פירות':seasFilter.cat} · <button class="linklike" data-seasclear>נקה</button></div>`:''}
-    <div class="count">${list.length} מתבלים</div>
+    <div class="chips" style="margin-top:6px">${conts.map(c=>`<span class="chip ${seasFilter.cont===c?'on':''}" data-scont="${c}">${c?t(c):L('כל היבשות','All continents')}</span>`).join('')}</div>
+    <div class="chips" style="margin-top:6px">${[['',L('כל טעם','Any flavor')],...SPK_FLAVORS.map(f=>[f,t(f)])].map(([v,l])=>`<span class="chip ${seasFilter.flavor===v?'on':''}" data-sflav="${v}">👅 ${l}</span>`).join('')}</div>
+    <div class="chips" style="margin-top:6px">${[['',L('כל בסיס','Any base')],...SPK_BASES.map(x=>[x,t(x)])].map(([v,l])=>`<span class="chip ${seasFilter.base===v?'on':''}" data-sbase="${v}">🧪 ${l}</span>`).join('')}${[['',L('כל חריפות','Any heat')],...SPK_HEAT.map(([v,l])=>[String(v),heatLabel(v,l)])].map(([v,l])=>`<span class="chip ${String(seasFilter.heat)===v?'on':''}" data-sheat="${v}">${l}</span>`).join('')}</div>
+    ${seasFilter.cat?`<div class="count">${L('מסונן ל','Filtered to')}: ${seasFilter.cat==='__produce'?L('ירקות/פירות','Vegetables/fruit'):t(seasFilter.cat)} · <button class="linklike" data-seasclear>${L('נקה','Clear')}</button></div>`:''}
+    <div class="count">${list.length} ${L('מתבלים','seasonings')}</div>
     <div class="seas-grid">${list.map(s=>{
       const sel=seasCtxKey?selectedSeasonings(seasCtxKey).includes(s.id):false;
-      const add=seasCtxKey?`<button class="seas-cardadd ${sel?'sel':''}" data-scadd="${s.id}" data-sckind="${s.kind}" title="${sel?'הסר מהמופע':'הוסף למופע'}">${sel?'✓':'＋'}</button>`:'';
+      const add=seasCtxKey?`<button class="seas-cardadd ${sel?'sel':''}" data-scadd="${s.id}" data-sckind="${s.kind}" title="${sel?L('הסר מהמופע','Remove from instance'):L('הוסף למופע','Add to instance')}">${sel?'✓':'＋'}</button>`:'';
       return `<div class="seas-cardwrap">${add}<button class="seas-card ${sel?'sel':''}" data-seas="${s.id}" style="--sc:${cont2color(s.cont)}">
-      <div class="seas-card-top"><span>${KIND_EMOJI[s.kind]}</span><span class="seas-card-origin">${s.origin}</span></div>
-      <b>${s.heb}</b><small>${s.eng}</small>
-      <span class="seas-card-kind">${KIND_LABEL[s.kind]}${s.sub?' · ⚠ תחליף':''}</span>
-    </button></div>`;}).join('')||'<div class="shop-empty">לא נמצאו מתבלים בסינון הזה</div>'}</div>`;
+      <div class="seas-card-top"><span>${KIND_EMOJI[s.kind]}</span><span class="seas-card-origin">${t(s.origin)}</span></div>
+      <b>${itemName(s)}</b>${getLang()==='he'?`<small>${s.eng}</small>`:''}
+      <span class="seas-card-kind">${kindLabel(s.kind)}${s.sub?' · ⚠ '+L('תחליף','substitute'):''}</span>
+    </button></div>`;}).join('')||`<div class="shop-empty">${L('לא נמצאו מתבלים בסינון הזה','No seasonings found for this filter')}</div>`}</div>`;
   const sq=$("#seasQ"); if(sq) sq.addEventListener('input',()=>{seasFilter.q=sq.value; renderSeasonings();});
   host.querySelectorAll('[data-sk]').forEach(b=>b.addEventListener('click',()=>{seasFilter.kind=b.dataset.sk; renderSeasonings();}));
   host.querySelectorAll('[data-scont]').forEach(b=>b.addEventListener('click',()=>{seasFilter.cont=b.dataset.scont; renderSeasonings();}));
@@ -1185,7 +1185,7 @@ function srcRow(label, o){
   if(!o) return '';
   if(o.ref==='UNVERIFIED') return `<tr><td>${label}</td><td style="color:var(--terra-d,#c9822e)">⚠ ${L('טרם אומת ממקור','Not yet source-verified')}</td></tr>`;
   const link=o.url?` <a href="${o.url}" target="_blank" rel="noopener" style="color:var(--ember2);text-decoration:none">↗</a>`:'';
-  const note=o.note?`<div style="font-size:.82em;opacity:.7;margin-top:2px">${o.note}</div>`:'';
+  const note=o.note?`<div style="font-size:.82em;opacity:.7;margin-top:2px" data-mt>${o.note}</div>`:'';
   return `<tr><td>${label}</td><td>${o.ref||'—'}${link}${note}</td></tr>`;
 }
 function sourcesBlock(c){
@@ -1276,10 +1276,10 @@ function openCut(c){
         <tr><td>${L('טיפול באמצע (סו-ויד+עישון)','Mid-cook treatment (sous-vide+smoke)')}</td><td>${c.mid}</td></tr>
         <tr><td>${L('טיפול / עטיפה (עישון בלבד)','Treatment / wrap (smoke-only)')}</td><td>${c.somid}</td></tr>
         <tr><td>${L('זמן מנוחה','Rest time')}</td><td>${c.rest} ${L("דק'",'min')}</td></tr>
-        <tr><td>מרינדה / ראב</td><td>${c.rub}</td></tr>
-        <tr><td>צ'אנקים / עץ</td><td>${c.wood}</td></tr>
-        <tr><td>פחם מומלץ</td><td>${c.coal}</td></tr>
-        <tr><td>רמת קושי</td><td>${c.diff} / 5</td></tr>
+        <tr><td>${L('מרינדה / ראב','Marinade / rub')}</td><td>${c.rub}</td></tr>
+        <tr><td>${L("צ'אנקים / עץ",'Chunks / wood')}</td><td>${c.wood}</td></tr>
+        <tr><td>${L('פחם מומלץ','Recommended charcoal')}</td><td>${c.coal}</td></tr>
+        <tr><td>${L('רמת קושי','Difficulty')}</td><td>${c.diff} / 5</td></tr>
        </table>`}
      </div>
      ${sourcesBlock(c)}
@@ -1772,33 +1772,33 @@ function openCart(){
   const d=shopData();
   const grp=(t,a)=> a.length? `<div class="shop-group"><h4>${t}</h4>${a.map(shopLine).join("")}</div>`:"";
   const itemsHTML=d.items.length
-    ? `<div class="shop-items">`+d.items.map(it=>`<div class="shop-item"><div><div class="si-cat">${it.cat}</div><h5>${it.name}</h5></div><button class="rm" data-rm="${it.key}" aria-label="הסר">×</button></div>`).join("")+`</div>`
-    : `<div class="shop-empty">הרשימה ריקה.<br>הוסף מנות לאירוע (באשף או בכפתור ＋ שעל הכרטיסים) והן יופיעו כאן אוטומטית.</div>`;
+    ? `<div class="shop-items">`+d.items.map(it=>`<div class="shop-item"><div><div class="si-cat">${t(it.cat)}</div><h5>${t(it.name)}</h5></div><button class="rm" data-rm="${it.key}" aria-label="${L('הסר','Remove')}">×</button></div>`).join("")+`</div>`
+    : `<div class="shop-empty">${L('הרשימה ריקה.','The list is empty.')}<br>${L('הוסף מנות לאירוע (באשף או בכפתור ＋ שעל הכרטיסים) והן יופיעו כאן אוטומטית.','Add dishes to the event (in the wizard or with the ＋ button on the cards) and they will appear here automatically.')}</div>`;
   const html=`
    <div class="panel-top">
-     <button class="x" aria-label="סגור">✕</button>
-     <div class="cat">${(typeof menuCtx==='function'&&menuCtx()==='cook')?'🔥 בישול מהיר':'🎉 '+((menuState().evName||'תכנון אירוע'))}</div>
-     <h2>רשימת קניות</h2>
-     <div class="en">${d.items.length} פריטים נבחרו</div>
+     <button class="x" aria-label="${L('סגור','Close')}">✕</button>
+     <div class="cat">${(typeof menuCtx==='function'&&menuCtx()==='cook')?L('🔥 בישול מהיר','🔥 Quick cook'):'🎉 '+((menuState().evName||L('תכנון אירוע','Event planning')))}</div>
+     <h2>${L('רשימת קניות','Shopping list')}</h2>
+     <div class="en">${d.items.length} ${L('פריטים נבחרו','items selected')}</div>
    </div>
    <div class="panel-body">
      ${itemsHTML}
      ${d.items.length?`
-       ${grp("בשר ודגים", d.meat)}
-       ${grp("תיבול · ראב · מרינדה", d.season)}
-       ${d.seasSel&&d.seasSel.length?`<div class="shop-group"><h4>🧂 למתבלים ורטבים שנבחרו</h4>${d.seasSel.map(s=>`
-         <div class="shop-seas"><div class="ss-head">${KIND_EMOJI[s.kind]} <b>${s.heb}</b> <small>· ל${s.for.join(', ')}</small></div>
-         ${shopLine(`מרכיבים: ${s.ing}`)}${s.sub?`<div class="ss-sub">⚠ תחליף בישראל: ${s.sub}</div>`:''}</div>`).join('')}</div>`:''}
-       ${grp("🥗 תוספות · שתייה · קינוחים", d.extras)}
-       ${grp("עץ לעישון", d.wood)}
-       ${grp("פחם", d.coal)}
+       ${grp(L("בשר ודגים","Meat & fish"), d.meat)}
+       ${grp(L("תיבול · ראב · מרינדה","Seasoning · rub · marinade"), d.season)}
+       ${d.seasSel&&d.seasSel.length?`<div class="shop-group"><h4>🧂 ${L('למתבלים ורטבים שנבחרו','For the chosen seasonings & sauces')}</h4>${d.seasSel.map(s=>`
+         <div class="shop-seas"><div class="ss-head">${KIND_EMOJI[s.kind]} <b>${itemName(s)}</b> <small>· ${L('ל','for ')}${s.for.join(', ')}</small></div>
+         ${shopLine(`${L('מרכיבים','Ingredients')}: ${t(s.ing)}`)}${s.sub?`<div class="ss-sub">⚠ ${L('תחליף בישראל','Substitute in Israel')}: ${t(s.sub)}</div>`:''}</div>`).join('')}</div>`:''}
+       ${grp(L("🥗 תוספות · שתייה · קינוחים","🥗 Sides · drinks · desserts"), d.extras)}
+       ${grp(L("עץ לעישון","Smoking wood"), d.wood)}
+       ${grp(L("פחם","Charcoal"), d.coal)}
        ${(()=>{ if(!d.equip.length) return '';
          const inv=(typeof invList==='function'&&invList())||[];
          const invHas=(name)=>inv.some(i=>i.qty>0 && (i.name.includes(String(name).split(/[0-9(]/)[0].trim())|| String(name).includes(i.name.split(' ')[0])));
          const need=d.equip.filter(m=>!invHas(m)), have=d.equip.filter(m=>invHas(m));
-         let html=`<div class="shop-group"><h4>ציוד וחומרי ריפוי</h4>`;
+         let html=`<div class="shop-group"><h4>${L('ציוד וחומרי ריפוי','Equipment & curing supplies')}</h4>`;
          html+=need.map(shopLine).join('');
-         html+=have.map(m=>`<div class="shop-line have"><span class="cbx-have">✓</span><span>${m} · <b style="color:var(--good)">יש במזווה</b></span></div>`).join('');
+         html+=have.map(m=>`<div class="shop-line have"><span class="cbx-have">✓</span><span>${t(m)} · <b style="color:var(--good)">${L('יש במזווה','in pantry')}</b></span></div>`).join('');
          return html+`</div>`;
        })()}
        ${cartInventoryHTML()}
@@ -1976,7 +1976,7 @@ function kosherStatusRaw(key){
   if(K_FISH_NO.test(s)) return 'shellfish';
   return 'kosher';   // beef/lamb/veal, poultry, kosher fish, vegetables, fruit, parve
 }
-function kosherLabel(k){return k==='pork'?'לא כשר (חזיר)':k==='shellfish'?'לא כשר (פירות ים / דג ללא קשקשת)':k==='treif'?'לא כשר (דם)':k==='dairy'?'כשר · חלבי':'כשר';}
+function kosherLabel(k){return k==='pork'?L('לא כשר (חזיר)','Non-kosher (pork)'):k==='shellfish'?L('לא כשר (פירות ים / דג ללא קשקשת)','Non-kosher (shellfish / finless fish)'):k==='treif'?L('לא כשר (דם)','Non-kosher (blood)'):k==='dairy'?L('כשר · חלבי','Kosher · dairy'):L('כשר','Kosher');}
 function kosherTag(key){const k=kosherStatus(key);if(k==='pork'||k==='shellfish'||k==='treif')return '<span class="ktag kp">לא כשר</span>';if(k==='dairy')return '<span class="ktag kd">כשר חלבי</span>';return '';}
 // kosher-filter OK = not pork, shellfish, or blood. Dairy is kosher (shown with a "כשר חלבי" tag).
 function isKosherOk(key){const k=kosherStatus(key);return k!=='pork'&&k!=='shellfish'&&k!=='treif';}
@@ -1993,12 +1993,12 @@ function gearTag(key){
 function kosherSub(key){
   const m=resolveItem(key); if(!m||kosherStatus(key)!=='pork') return null;
   const s=(m.eng||'').toLowerCase();
-  if(s.includes('bacon')) return 'בייקון בקר/הודו';
-  if(/pancetta|coppa|guanciale|lardo|lonzino|speck|prosciutto|culatella|culatello/.test(s)) return 'ברזאולה/פסטרמה-הודו (בקר/הודו) או טלה מיובש';
-  if(/salami|saucisson|soppressata|nduja|cacciatore|pepperoni|mortadella|bologna/.test(s)) return 'גרסת בקר/הודו + שומן בקר; שרוול בקר/צלולוז';
-  if(/sausage|bratwurst|weisswurst|toulouse|chipolata|frankfurter|kielbasa|lingu|loukaniko/.test(s)) return 'בקר/עוף/הודו + שומן בקר/כבש';
-  if(s.includes('porchetta')) return 'רולדת בקר/הודו עם שומר ושום';
-  return 'בקר, טלה או הודו; שומן בקר/כבש במקום שומן חזיר';
+  if(s.includes('bacon')) return L('בייקון בקר/הודו','Beef/turkey bacon');
+  if(/pancetta|coppa|guanciale|lardo|lonzino|speck|prosciutto|culatella|culatello/.test(s)) return L('ברזאולה/פסטרמה-הודו (בקר/הודו) או טלה מיובש','Bresaola/turkey-pastrami (beef/turkey) or dry-cured lamb');
+  if(/salami|saucisson|soppressata|nduja|cacciatore|pepperoni|mortadella|bologna/.test(s)) return L('גרסת בקר/הודו + שומן בקר; שרוול בקר/צלולוז','Beef/turkey version + beef fat; beef/cellulose casing');
+  if(/sausage|bratwurst|weisswurst|toulouse|chipolata|frankfurter|kielbasa|lingu|loukaniko/.test(s)) return L('בקר/עוף/הודו + שומן בקר/כבש','Beef/chicken/turkey + beef/lamb fat');
+  if(s.includes('porchetta')) return L('רולדת בקר/הודו עם שומר ושום','Beef/turkey roulade with fennel and garlic');
+  return L('בקר, טלה או הודו; שומן בקר/כבש במקום שומן חזיר','Beef, lamb or turkey; beef/lamb fat instead of pork fat');
 }
 
 /* ---- timeline lead time ---- */
@@ -2039,8 +2039,8 @@ function comboMethodEntry(c, combo, isCard){
   if(combo.includes('smoke')) { smH=combo.includes('sv')?upperHours(c.smh):upperHours(c.soh||c.smh); hours+=smH; }
   if(combo.includes('grill')) hours+=0.3;
   const dtgt=(typeof donenessTarget==='function' && c.doneness)? donenessTarget(c) : c.tgt;
-  const tgtLabel=c.doneness?`יעד פנים ${dtgt}° (${doneLabel(c,currentDoneness(c))})`:`יעד ${c.tgt}°`;
-  return {key:'c:'+combo.slice().sort().join('_'),label,tempC:combo.includes('sv')?`${c.svt}°`:(combo.includes('smoke')?`${c.sot||c.smt}°`:'אש'),
+  const tgtLabel=c.doneness?`${L('יעד פנים','internal target')} ${dtgt}° (${doneLabel(c,currentDoneness(c))})`:`${L('יעד','target')} ${c.tgt}°`;
+  return {key:'c:'+combo.slice().sort().join('_'),label,tempC:combo.includes('sv')?`${c.svt}°`:(combo.includes('smoke')?`${c.sot||c.smt}°`:L('אש','fire')),
     hours,note:tgtLabel,svHours:svH,smHours:smH,svTemp:c.svt,smTemp:combo.includes('sv')?c.smt:(c.sot||c.smt),combo};
 }
 function itemProfile(meta){
@@ -2059,12 +2059,12 @@ function itemProfile(meta){
   if(meta.kind==='spec'){
     const s=meta.obj;
     return {multiDay:false, buildMin:15, restMin:15,
-      methods:[{key:'smoke',label:'עישון',tempC:s.smt?`${s.smt}°`:'?',hours:upperHours(s.smh)||3,note:s.tgt&&s.tgt!=='—'?`יעד ${s.tgt}`:'',smHours:upperHours(s.smh)||3,smTemp:s.smt}],
+      methods:[{key:'smoke',label:L('עישון','Smoke'),tempC:s.smt?`${s.smt}°`:'?',hours:upperHours(s.smh)||3,note:s.tgt&&s.tgt!=='—'?`${L('יעד','target')} ${t(s.tgt)}`:'',smHours:upperHours(s.smh)||3,smTemp:s.smt}],
       wood:s.wood};
   }
   // make
   const prof=MAKE_COOK[meta.cat];
-  if(!prof) return {multiDay:false,buildMin:30,restMin:10,methods:[{key:'cook',label:'בישול',tempC:'?',hours:1,note:''}]};
+  if(!prof) return {multiDay:false,buildMin:30,restMin:10,methods:[{key:'cook',label:L('בישול','Cook'),tempC:'?',hours:1,note:''}]};
   return prof;
 }
 function leadHours(meta){
@@ -2075,9 +2075,11 @@ function leadHours(meta){
 /* build the ordered stage list for one item, working back from a method+ready state */
 /* ── v144: sv/smoke order — two schools of thought, user-selectable per item ── */
 const SV_SMOKE_ORDERS={
-  'sv-smoke':{ name:'סו-ויד ← עישון', desc:'בטוח כברירת־מחדל: מתבשל לדיוק ומפוסטר בסו-ויד, ואז מקבל טעם וקראסט בעישון-גימור חם.' },
-  'smoke-sv':{ name:'עישון ← סו-ויד', desc:'אסכולה מתקדמת: עישון קר על בשר גולמי לטבעת-עשן מרבית, ואז סו-ויד לדיוק ולפסטור מלא.' }
+  'sv-smoke':{ name:'סו-ויד ← עישון', nameEn:'Sous-vide → smoke', desc:'בטוח כברירת־מחדל: מתבשל לדיוק ומפוסטר בסו-ויד, ואז מקבל טעם וקראסט בעישון-גימור חם.', descEn:'Safe by default: cooked to precision and pasteurized in the sous-vide, then gets flavor and crust in a hot finishing smoke.' },
+  'smoke-sv':{ name:'עישון ← סו-ויד', nameEn:'Smoke → sous-vide', desc:'אסכולה מתקדמת: עישון קר על בשר גולמי לטבעת-עשן מרבית, ואז סו-ויד לדיוק ולפסטור מלא.', descEn:'Advanced school: cold smoke on raw meat for a maximal smoke ring, then sous-vide for precision and full pasteurization.' }
 };
+function svOrderName(k){ const o=SV_SMOKE_ORDERS[k]||{}; return getLang()==='he'?o.name:(o.nameEn||o.name); }
+function svOrderDesc(k){ const o=SV_SMOKE_ORDERS[k]||{}; return getLang()==='he'?o.desc:(o.descEn||o.desc); }
 function svSmokeOrderDefault(){ return 'sv-smoke'; }
 // app-computed (not AI, not user-typed) conservative cold-smoke temperature ceiling for the smoke-before-sv order
 function coldSmokeTemp(hotTemp){ const t=Math.round((hotTemp||110)*0.55); return Math.max(45, Math.min(70, t)); }
@@ -2088,7 +2090,7 @@ function itemStages(meta,methodKey,ready,order){
   const p=itemProfile(meta); if(!p) return [];
   const m=p.methods.find(x=>x.key===methodKey)||p.methods[0];
   const stages=[];
-  if(!ready && !p.multiDay && p.buildMin>0) stages.push({label:'הכנה/בנייה',hours:p.buildMin/60,kind:'prep'});
+  if(!ready && !p.multiDay && p.buildMin>0) stages.push({label:L('הכנה/בנייה','Prep/build'),hours:p.buildMin/60,kind:'prep'});
   if(m.combo){ // engine combo entry (cuts)
     const hasSV=m.combo.includes('sv'), hasSmoke=m.combo.includes('smoke');
     if(hasSV && hasSmoke && order==='smoke-sv'){
@@ -2100,24 +2102,24 @@ function itemStages(meta,methodKey,ready,order){
       const svT=(osv.t!=null)?osv.t:m.svTemp;
       const svH=(osv.h!=null)?upperHours(osv.h):m.svHours;
       const cited=(osm.t!=null && osv.t!=null);
-      stages.push({label:`עישון קר ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:'על בשר גולמי — טבעת עשן מרבית'+(cited?' · מקור מצוטט':'')});
-      stages.push({label:'איטום ומעבר לסו-ויד',hours:0,kind:'note'});
-      stages.push({label:`סו-ויד ${svT}° (כולל פסטור)`,hours:svH,kind:'sv',safety:'pasteur'});
+      stages.push({label:`${L('עישון קר','Cold smoke')} ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:L('על בשר גולמי — טבעת עשן מרבית','on raw meat — maximal smoke ring')+(cited?' · '+L('מקור מצוטט','cited source'):'')});
+      stages.push({label:L('איטום ומעבר לסו-ויד','Seal and move to sous-vide'),hours:0,kind:'note'});
+      stages.push({label:`${L('סו-ויד','Sous-vide')} ${svT}° (${L('כולל פסטור','incl. pasteurization')})`,hours:svH,kind:'sv',safety:'pasteur'});
     } else {
       if(hasSV){
-        stages.push({label:`סו-ויד ${m.svTemp}°`,hours:m.svHours,kind:'sv'});
+        stages.push({label:`${L('סו-ויד','Sous-vide')} ${m.svTemp}°`,hours:m.svHours,kind:'sv'});
         if(hasSmoke){
           const dryH=drySurfaceHours(m.svHours);
-          const dryLbl=dryH<1?'ניגוב יבש (קצר)':'ייבוש במקרר (ללא כיסוי)';
-          const dryNote=dryH<1?'נגב היטב מנוזלים — לא נדרש זמן ממושך למנה קלה זו':'קריטי לקבלת קראסט';
+          const dryLbl=dryH<1?L('ניגוב יבש (קצר)','Pat dry (short)'):L('ייבוש במקרר (ללא כיסוי)','Fridge-dry (uncovered)');
+          const dryNote=dryH<1?L('נגב היטב מנוזלים — לא נדרש זמן ממושך למנה קלה זו','Pat well of liquids — no long time needed for this light dish'):L('קריטי לקבלת קראסט','critical for a good crust');
           stages.push({label:dryLbl,hours:dryH,kind:'dry',note:dryNote});
         }
       }
-      if(hasSmoke) stages.push({label:`עישון ${m.smTemp}°`,hours:m.smHours,kind:'smoke',temp:m.smTemp,note:m.note});
+      if(hasSmoke) stages.push({label:`${L('עישון','Smoke')} ${m.smTemp}°`,hours:m.smHours,kind:'smoke',temp:m.smTemp,note:m.note});
     }
-    if(m.combo.includes('grill')) stages.push({label:m.combo.length===1?'גריל / אש ישירה':'גימור גריל (צריבה)',hours:0.3,kind:'cook',note:m.combo.length===1?m.note:''});
+    if(m.combo.includes('grill')) stages.push({label:m.combo.length===1?L('גריל / אש ישירה','Grill / direct heat'):L('גימור גריל (צריבה)','Grill finish (sear)'),hours:0.3,kind:'cook',note:m.combo.length===1?m.note:''});
   } else {
-    if(m.svHours){ stages.push({label:`סו-ויד ${m.svTemp}°`,hours:m.svHours,kind:'sv'}); stages.push({label:'העברה למעשנת',hours:0,kind:'note'}); }
+    if(m.svHours){ stages.push({label:`${L('סו-ויד','Sous-vide')} ${m.svTemp}°`,hours:m.svHours,kind:'sv'}); stages.push({label:L('העברה למעשנת','Move to smoker'),hours:0,kind:'note'}); }
     if(m.smHours||m.hours){
       const hrs=m.smHours||m.hours;
       stages.push({label:`${m.label} ${m.tempC||''}`.trim(),hours:hrs,kind:m.key.includes('smoke')||m.key==='sv'||m.key==='so'||m.key==='hot'||m.key==='cold'?'smoke':'cook',temp:m.smTemp,note:m.note});
@@ -2127,12 +2129,12 @@ function itemStages(meta,methodKey,ready,order){
   }
   // D3: sous-vide pasteurization is timed from when the CORE reaches temp — the card said "+20%" but the
   // scheduler didn't; flag the come-up on every sv stage so thick items aren't scheduled under-held.
-  stages.forEach(s=>{ if(s.kind==='sv' && !/הפסטור נמדד/.test(s.note||'')){ const cu='הפסטור נמדד מרגע שהליבה מגיעה לטמפ׳ — לנתח עבה הוסף זמן עלייה'; s.note = s.note ? s.note+' · '+cu : cu; } });
-  if(p.restMin>0) stages.push({label:'מנוחה',hours:p.restMin/60,kind:'rest'});
+  stages.forEach(s=>{ if(s.kind==='sv' && !/הפסטור נמדד|pasteurization is timed/.test(s.note||'')){ const cu=L('הפסטור נמדד מרגע שהליבה מגיעה לטמפ׳ — לנתח עבה הוסף זמן עלייה','pasteurization is timed from when the core reaches temp — for a thick cut add come-up time'); s.note = s.note ? s.note+' · '+cu : cu; } });
+  if(p.restMin>0) stages.push({label:L('מנוחה','Rest'),hours:p.restMin/60,kind:'rest'});
   // D1: mandatory internal-temp verification before serving — the operational-flow safety gate the
   // recipe card always had (svSteps/soSteps) but the scheduler/plan/voice flow was missing.
   { const sc = meta.obj ? (meta.obj.safe!=null?meta.obj.safe:meta.obj.tgt) : null;
-    if(typeof sc==='number' && sc>0) stages.push({label:`בדיקת טמפ׳ פנים — יעד ${sc}°`, hours:0, kind:'bcheck', temp:sc, note:'מד-חום בליבה לפני הגשה'}); }
+    if(typeof sc==='number' && sc>0) stages.push({label:`${L('בדיקת טמפ׳ פנים — יעד','Internal temp check — target')} ${sc}°`, hours:0, kind:'bcheck', temp:sc, note:L('מד-חום בליבה לפני הגשה','thermometer in the core before serving')}); }
   return stages;
 }
 function comboHasSvSmoke(meta,methodKey){
@@ -2688,46 +2690,46 @@ function openAbout(){
   const nTotal=nCuts+nMakes+nSpec, nSeas=(DATA.seasonings||[]).length;
   const nSea=(DATA.cuts||[]).filter(c=>c.cat==='פירות ים').length;
   const nCheese=(DATA.specials||[]).filter(s=>s.cat==='גבינה').length;
-  const stat=(n,l)=>`<div class="ab-stat"><div class="ab-n">${n}</div><div class="ab-l">${l}</div></div>`;
-  const feat=(ic,t,b)=>`<div class="ab-feat"><div class="ab-fico">${ic}</div><div><h4>${t}</h4><p>${b}</p></div></div>`;
-  const tool=(ic,t,b)=>`<div class="ab-tool"><div class="ab-tico">${ic}</div><h5>${t}</h5><p>${b}</p></div>`;
-  const fact=(v,k,d)=>`<div class="ab-fact"><div class="ab-fv">${v}</div><div class="ab-fk">${k}</div><div class="ab-fd">${d}</div></div>`;
+  const stat=(n,l)=>`<div class="ab-stat"><div class="ab-n">${n}</div><div class="ab-l" data-mt>${l}</div></div>`;
+  const feat=(ic,t,b)=>`<div class="ab-feat"><div class="ab-fico">${ic}</div><div><h4 data-mt>${t}</h4><p data-mt>${b}</p></div></div>`;
+  const tool=(ic,t,b)=>`<div class="ab-tool"><div class="ab-tico">${ic}</div><h5 data-mt>${t}</h5><p data-mt>${b}</p></div>`;
+  const fact=(v,k,d)=>`<div class="ab-fact"><div class="ab-fv">${v}</div><div class="ab-fk" data-mt>${k}</div><div class="ab-fd" data-mt>${d}</div></div>`;
   const cats=['בקר','טלה','חזיר','עוף','הודו','דג','איברים פנימיים','ירקות','פירות','נקניקיות','נקניק מעושן','פסטרמה','שווארמה','סלומי','BBQ קלאסי','פירות ים','גבינה','דג מעושן','בשר מיובש','ברווז','אווז','נקניק מיובש','בייקון'];
   const html=`${toolTop('מתכונת · מדריך האש','כל היכולות והמדע מאחורי האפליקציה','🔥','#e07a52')}
    <div class="panel-body ab-body">
-     <p class="ab-thesis">בישול מדויק מתחיל בעברית. אפליקציה אחת ל<b>סו-ויד</b>, <b>עישון</b>, <b>גריל</b> ו<b>שרקוטרי</b> — מבשר, דגים ופירות-ים ועד גבינות וירקות, מהחומר-גלם ועד הצלחת.</p>
+     <p class="ab-thesis" data-mt>בישול מדויק מתחיל בעברית. אפליקציה אחת ל<b>סו-ויד</b>, <b>עישון</b>, <b>גריל</b> ו<b>שרקוטרי</b> — מבשר, דגים ופירות-ים ועד גבינות וירקות, מהחומר-גלם ועד הצלחת.</p>
 
-     <div class="ab-eyebrow">הרעיון</div>
-     <h3 class="ab-h">כל בישול הוא טמפרטורה × זמן</h3>
-     <p class="ab-p">המדריך נבנה סביב התובנה הזו: לכל פריט יש כמה דרכים — <b>סו-ויד + עישון</b> שחוסך שעות ליד המעשנת, <b>עישון בלבד</b> לטעם עמוק, או <b>גריל / אש ישירה</b> לצומח. כל מתכון נותן את כולן, עם זמנים, טמפרטורות, בורר <b>מידת-עשייה</b> מדויק לכל סועד, ובורר <b>תיבול</b> — ראב, מרינדה, רוטב או גלייז מתוך מאגר של ${nSeas} מתכוני מתבלים.</p>
+     <div class="ab-eyebrow" data-mt>הרעיון</div>
+     <h3 class="ab-h" data-mt>כל בישול הוא טמפרטורה × זמן</h3>
+     <p class="ab-p" data-mt>המדריך נבנה סביב התובנה הזו: לכל פריט יש כמה דרכים — <b>סו-ויד + עישון</b> שחוסך שעות ליד המעשנת, <b>עישון בלבד</b> לטעם עמוק, או <b>גריל / אש ישירה</b> לצומח. כל מתכון נותן את כולן, עם זמנים, טמפרטורות, בורר <b>מידת-עשייה</b> מדויק לכל סועד, ובורר <b>תיבול</b> — ראב, מרינדה, רוטב או גלייז מתוך מאגר של ${nSeas} מתכוני מתבלים.</p>
      <div class="ab-stats">${stat(nTotal,'נתחים ופריטים')}${stat('25','קטגוריות')}${stat(nMakes,'בנייות מאפס')}${stat('56','בוררי מידת-עשייה')}</div>
 
-     <div class="ab-eyebrow">הספרייה</div>
-     <h3 class="ab-h">מבשר ועד תאנים על האש — ספרייה שלמה</h3>
-     <p class="ab-p">${nTotal} פריטים ב-25 קטגוריות: בשר בקר, טלה וחזיר, עוף, הודו, ברווז ואווז, דגים ו<b>${nSea} פירות-ים</b> (שרימפס, סרטן, קלמארי, צדפות), <b>איברים פנימיים</b> (לב, כבד, שקדים), ו<b>ירקות ופירות</b> על הגריל, בעישון ובסו-ויד. ועוד ${nSpec} מוצרים מיוחדים — בהם <b>${nCheese} גבינות</b> — ו-${nMakes} מתכוני בנייה-מאפס: נקניקים, פסטרמות, שווארמות, סלומי, דגים מעושנים וקלאסיקות BBQ.</p>
-     <div class="ab-cats">${cats.map(c=>`<span class="ab-cat">${c}</span>`).join('')}</div>
+     <div class="ab-eyebrow" data-mt>הספרייה</div>
+     <h3 class="ab-h" data-mt>מבשר ועד תאנים על האש — ספרייה שלמה</h3>
+     <p class="ab-p" data-mt>${nTotal} פריטים ב-25 קטגוריות: בשר בקר, טלה וחזיר, עוף, הודו, ברווז ואווז, דגים ו<b>${nSea} פירות-ים</b> (שרימפס, סרטן, קלמארי, צדפות), <b>איברים פנימיים</b> (לב, כבד, שקדים), ו<b>ירקות ופירות</b> על הגריל, בעישון ובסו-ויד. ועוד ${nSpec} מוצרים מיוחדים — בהם <b>${nCheese} גבינות</b> — ו-${nMakes} מתכוני בנייה-מאפס: נקניקים, פסטרמות, שווארמות, סלומי, דגים מעושנים וקלאסיקות BBQ.</p>
+     <div class="ab-cats">${cats.map(c=>`<span class="ab-cat">${t(c)}</span>`).join('')}</div>
      ${feat('🎯','שיטה מדויקת לכל פריט','סו-ויד+עישון, עישון בלבד, וגריל/אש-ישירה לצומח — עם צ׳קליסט, טיימרים וסרגל התקדמות.')}
      ${feat('🥩','מידת עשייה מבוססת-מחקר','בורר נא→עשוי ל-56 נתחים, עם טמפ׳ מדויקת לכל סועד — סולם נפרד לבקר, עוף, דג, פירות-ים ואיברים.')}
      ${feat('🧮','מחשבונים ונתוני גלם','מחשבון כמויות לפי סוג מנה (בשר/דג/פירות-ים/גבינה/ירקות/קינוח), מחשבון מלח/Cure ותמלחת שיווי-משקל, וכל הטמפרטורות והזמנים.')}
      ${feat('🔧','הציוד שלי — מתכונים שמתאימים אליך','הגדר מה יש לך (מעשנה/גריל/סו-ויד/ואקום/מטחנה/מילוי/משקל ועוד). שיטות ללא ציוד מסומנות עם חלופה מיידית והצעת רכישה, טיפים לפי סוג המעשנה, וברירת-מחדל חכמה.')}
 
-     <div class="ab-eyebrow">טעם ודלק</div>
-     <h3 class="ab-h">התיבול והאש — לא מחשבה שאחרי</h3>
+     <div class="ab-eyebrow" data-mt>טעם ודלק</div>
+     <h3 class="ab-h" data-mt>התיבול והאש — לא מחשבה שאחרי</h3>
      ${feat('🧂',`${nSeas} מתכוני מתבלים לפי מדינות`,'ראב, מרינדה, רוטב וגלייז מכל העולם — קנזס-סיטי, קרוליינה, בולגוגי, יקיטורי, צ׳ימיצ׳ורי, ג׳רק, שרמולה, טום, סחוג, אל-פסטור, צ׳אר-סיו ועוד — עם מרכיבים והוראות הכנה, מסונן לפי מדינה, ונבחר בתוך המתכון.')}
      ${feat('🔥','מדריך 15 סוגי פחם — והיכן לקנות בישראל','קברצ׳ו לבן ואדום, מרבו, גואייקן, בינשוטן, קוקוס, היקורי, מסקיט, הדרים ועוד — עם חום, זמן בערה, פרופיל עשן, וספק ישראלי לכל סוג (חזן גחלים, פחם, BBQ\'NMORE, קוקו גריל ועוד).')}
      ${feat('🛒','מזווה — מחסן רכיבים + קניות חכמות','עוקב אחרי פרויקטים (ייבוש/כבישה), ומשמש כמחסן רכיבים: מייצרים מאפס או קונים מוכן ומאחסנים, מוסיפים שלב סיום (עישון לגבינה קנויה), וכשמגיע המועד מגשרים ישירות לאירוע/בישול — הפריט נכנס לתוכנית כ"רק סיום" או "מוכן להגשה". כולל 24 חומרי-גלם ומעקב מלאי.')}
      ${feat('✡️','כשרות','כל פריט מסומן (כשר · לא כשר · חלבי), עם סינון "כשר בלבד" לקטלוג ולאירוע.')}
 
-     <div class="ab-eyebrow">מלאכות מאפס</div>
-     <h3 class="ab-h">נקניקים, קבב וגבינות — מאפס עד הצלחת</h3>
+     <div class="ab-eyebrow" data-mt>מלאכות מאפס</div>
+     <h3 class="ab-h" data-mt>נקניקים, קבב וגבינות — מאפס עד הצלחת</h3>
      ${feat('🍖',`בנייה מאפס — ${nMakes} מלאכות`,'טחינה→תיבול→קישור→מילוי→בישול, שלב-אחר-שלב עם טיימרים. הבורר מקוטלג לפי סוג, מדינה ויבשת (🇩🇪🇮🇹🇫🇷), עם תיאור מלא לכל פריט — נקניקיות, קבב, שווארמה, פסטרמה, סלומי, דגים מעושנים וגבינות.')}
      ${feat('🌡️','בישול נכון לכל נקניק','טמפ׳-יעד פנימית לכל מתכון (71° לבשר, 74° לעוף), עם פוץ׳ עדין / סו-ויד / גריל לפי עובי — והדקיקות (מרגז) בגריל מהיר כמסורתי. כולל הנחיות אחסון והכנה-מראש לכל נקניקייה טרייה.')}
      ${feat('🔪','שלוש דרכים לכל מלאכה','לכל פריט בתוכנית: "מוכן לגמרי" · "הוכן מראש — רק סיום" · "מאפס היום". מייצרים ומאחסנים במועד אחד, מסיימים ומגישים באחר — הפיצול אוטומטי בגבול היישון.')}
      ${feat('🍔','בונה בורגר לכל סועד','מידת-עשייה, גבינה (מעל / ממולא Juicy Lucy), תוספות, רוטב ולחמנייה — אישית לכל סועד. תוכנית העבודה מקבצת קציצות לפי מידה ומרכיבה אישית בהגשה.')}
 
-     <div class="ab-eyebrow">בינה מלאכותית · מפתח אישי</div>
-     <h3 class="ab-h">7 יכולות AI — מעוגנות בקטלוג, בטיחות מהאפליקציה</h3>
-     <p class="ab-p">חבר מפתח <b>Gemini</b> אישי (חינם, נשמר רק במכשירך) ותקבל שכבת-AI חכמה. עיקרון-על: ה-AI בוחר <b>אך ורק מתוך הקטלוג</b> — לעולם לא ממציא פריטים, ו<b>מספרי הבטיחות (מלח/ריפוי/טמפ׳) מגיעים תמיד מהאפליקציה</b>, לא מה-AI. הכל אופציונלי — בלי מפתח, הכל עובד עם מנועים מקומיים.</p>
+     <div class="ab-eyebrow" data-mt>בינה מלאכותית · מפתח אישי</div>
+     <h3 class="ab-h" data-mt>7 יכולות AI — מעוגנות בקטלוג, בטיחות מהאפליקציה</h3>
+     <p class="ab-p" data-mt>חבר מפתח <b>Gemini</b> אישי (חינם, נשמר רק במכשירך) ותקבל שכבת-AI חכמה. עיקרון-על: ה-AI בוחר <b>אך ורק מתוך הקטלוג</b> — לעולם לא ממציא פריטים, ו<b>מספרי הבטיחות (מלח/ריפוי/טמפ׳) מגיעים תמיד מהאפליקציה</b>, לא מה-AI. הכל אופציונלי — בלי מפתח, הכל עובד עם מנועים מקומיים.</p>
      ${feat('🎉','מתכנן אירוע בשפה חופשית','"מנגל בשרי ל-10 בלי חזיר" → תפריט מאוזן שנטען לאשף. עם הגנת-כשרות כפולה: פריט לא-כשר נזרק באפליקציה גם אם ה-AI הציע אותו.')}
      ${feat('🍳','מה אפשר להכין ממה שיש','מצליב את חומרי-המדף במזווה והציוד שלך מול המתכונים — "אפשר עכשיו" מול "כמעט, חסר מעט". עובד גם בלי מפתח (חישוב מקומי).')}
      ${feat('🗓️','יועץ תזמון (תכנון-אחורה)','בחר תאריך-יעד → מה להתחיל ומתי. משכי-הייצור מחושבים מנתוני האפליקציה; ה-AI מנמק ובוחר, אבל התאריכים תמיד מהאפליקציה.')}
@@ -2737,8 +2739,8 @@ function openAbout(){
      ${feat('📊','תובנות יומן','ניתוח היסטוריית הבישולים שלך — דפוסים והצעות שיפור, מעוגן ברשומות האמיתיות בלבד.')}
      ${feat('🎙️','ממשק קולי דו-לשוני עם AI','ליד המעשנת: שאל שאלות חופשיות בקול, בעברית או באנגלית (זיהוי מדויק יותר) — אפשר לשאול באנגלית ולקבל תשובה בעברית, בהקראה ובכתב, מעוגן בשלב הבישול הנוכחי.')}
 
-     <div class="ab-eyebrow">הכלים</div>
-     <h3 class="ab-h">לא רק מתכונים — מערכת לניהול בישול</h3>
+     <div class="ab-eyebrow" data-mt>הכלים</div>
+     <h3 class="ab-h" data-mt>לא רק מתכונים — מערכת לניהול בישול</h3>
      <div class="ab-tools">
        ${tool('⭐','מועדפים','שמירה וסינון מהיר של המתכונים שחוזרים אליהם.')}
        ${tool('🕒','מתזמן ציר-זמן','שעת הגשה → מתי להתחיל כל פריט, עם התראות בזמן אמת.')}
@@ -2758,37 +2760,37 @@ function openAbout(){
        ${tool('💾','גיבוי ושחזור','ייצוא וייבוא כל הנתונים שלך לקובץ.')}
      </div>
 
-     <div class="ab-eyebrow">המדע</div>
-     <h3 class="ab-h">מדויק במקום שזה חשוב — בטיחות</h3>
-     <p class="ab-p">המתכונים מעוגנים במקורות מקצועיים (USDA/FSIS, Douglas Baldwin, AmazingRibs). המספרים אינם קישוט — הם ההבדל בין מוצר בטוח ללא-בטוח.</p>
+     <div class="ab-eyebrow" data-mt>המדע</div>
+     <h3 class="ab-h" data-mt>מדויק במקום שזה חשוב — בטיחות</h3>
+     <p class="ab-p" data-mt>המתכונים מעוגנים במקורות מקצועיים (USDA/FSIS, Douglas Baldwin, AmazingRibs). המספרים אינם קישוט — הם ההבדל בין מוצר בטוח ללא-בטוח.</p>
      <div class="ab-facts">
        ${fact('≤5.3','pH בהתססה','מחסום הבטיחות הראשון בנקניק מיובש.')}
        ${fact('120<small>ppm</small>','ניטריט בבייקון','תקן USDA — נמוך מ-156 הרגיל.')}
        ${fact('×0.62','משקל יעד','ירידת 35–40% = מוכנות אמיתית, לא זמן.')}
        ${fact('0.85','פעילות מים (Aw)','הסף שמתחתיו חיידקים לא משגשגים.')}
      </div>
-     <p class="ab-p">ועוד: פסטור לפי זמן×טמפ׳ ממרכז הנתח, "כלל 4 השעות", הקפאת דג מפני טפילים, פריצת הסטָאל ב-Texas Crutch, גבינות ב-≤25°C, ובילטונג בייבוש חם — לא קר. לאיברים: כבד וכליות עד-סוף, לב חם-ומהיר כמו סטייק. לצומח אין בטיחות-פנים — רק שליטה במרקם.</p>
+     <p class="ab-p" data-mt>ועוד: פסטור לפי זמן×טמפ׳ ממרכז הנתח, "כלל 4 השעות", הקפאת דג מפני טפילים, פריצת הסטָאל ב-Texas Crutch, גבינות ב-≤25°C, ובילטונג בייבוש חם — לא קר. לאיברים: כבד וכליות עד-סוף, לב חם-ומהיר כמו סטייק. לצומח אין בטיחות-פנים — רק שליטה במרקם.</p>
 
-     <div class="ab-eyebrow">איך זה בנוי</div>
-     <h3 class="ab-h">קובץ אחד. בלי שרת. הנתונים שלך נשארים אצלך.</h3>
+     <div class="ab-eyebrow" data-mt>איך זה בנוי</div>
+     <h3 class="ab-h" data-mt>קובץ אחד. בלי שרת. הנתונים שלך נשארים אצלך.</h3>
      ${feat('📦','עצמאי לחלוטין','HTML יחיד שרץ בכל דפדפן — בלי התקנה, בלי חשבון, בלי שרת.')}
      ${feat('📲','מותקן כאפליקציה','אייקון אש על מסך הבית, פתיחה במסך מלא — PWA אמיתי.')}
      ${feat('🔒','פרטי כברירת מחדל','מועדפים, יומן, מזווה והערות נשמרים מקומית במכשיר בלבד — עם ייצוא/ייבוא.')}
      ${feat('⎙','הדפסה ל-PDF','כל מתכון, תפריט, לוח-זמנים או רשימה — מודפסים נקי בלחיצה.')}
      ${feat('♿','נגיש ו-RTL','עברית-first, ניווט מקלדת, מלכודת-מיקוד, וכיבוד reduced-motion.')}
 
-     <div class="ab-eyebrow">לאן זה הולך</div>
-     <h3 class="ab-h">מהמדריך אל מתכונת המלאה</h3>
+     <div class="ab-eyebrow" data-mt>לאן זה הולך</div>
+     <h3 class="ab-h" data-mt>מהמדריך אל מתכונת המלאה</h3>
      <div class="ab-road">
-       <div class="ab-step now"><span class="ab-ph">עכשיו</span><b>מדריך האש + שכבת AI</b> — ${nTotal} פריטים, ${nMakes} בנייות-מאפס, מידות-עשייה מבוססות-מחקר, 7 יכולות AI וממשק קולי דו-לשוני.</div>
-       <div class="ab-step"><span class="ab-ph">הבא</span><b>אופליין מלא</b> — עבודה גם בלי רשת, פונטים מקומיים, ותזכורות-רקע.</div>
-       <div class="ab-step"><span class="ab-ph">החזון</span><b>מתכונת בענן</b> — חשבונות, סנכרון בין מכשירים, והרחבת שכבת ה-AI.</div>
+       <div class="ab-step now" data-mt><span class="ab-ph">עכשיו</span><b>מדריך האש + שכבת AI</b> — ${nTotal} פריטים, ${nMakes} בנייות-מאפס, מידות-עשייה מבוססות-מחקר, 7 יכולות AI וממשק קולי דו-לשוני.</div>
+       <div class="ab-step" data-mt><span class="ab-ph">הבא</span><b>אופליין מלא</b> — עבודה גם בלי רשת, פונטים מקומיים, ותזכורות-רקע.</div>
+       <div class="ab-step" data-mt><span class="ab-ph">החזון</span><b>מתכונת בענן</b> — חשבונות, סנכרון בין מכשירים, והרחבת שכבת ה-AI.</div>
      </div>
 
      <div class="ab-credits">
-       <div class="ab-mk">מתכונת · <span>האש</span></div>
-       <p>בישול מדויק, בעברית. מבשר ועד ירקות — מהחומר-גלם ועד הצלחת.</p>
-       <div class="ab-by">פותח ועוצב על-ידי <b>דודי בר-און</b><br><a href="mailto:dudi.bar.on@gmail.com">dudi.bar.on@gmail.com</a></div>
+       <div class="ab-mk">${L('מתכונת','Matkonet')} · <span>${L('האש','Fire')}</span></div>
+       <p data-mt>בישול מדויק, בעברית. מבשר ועד ירקות — מהחומר-גלם ועד הצלחת.</p>
+       <div class="ab-by">${L('פותח ועוצב על-ידי','Developed and designed by')} <b>${L('דודי בר-און','Dudi Bar-On')}</b><br><a href="mailto:dudi.bar.on@gmail.com">dudi.bar.on@gmail.com</a></div>
        <div class="ab-ver" id="abVer"></div>
      </div>
    </div>`;
@@ -2798,10 +2800,10 @@ function openAbout(){
 
 // how-to usage guide (distinct from the SOS/troubleshooting panel)
 function openGuide(){
-  const sec=(ic,title,body)=>`<div class="guide-sec"><h4>${ic} ${title}</h4><div class="guide-body">${body}</div></div>`;
-  const html=`${toolTop('איך משתמשים','מדריך מהיר למסלולים ולכלים','❓','#c77a3a')}
+  const sec=(ic,title,body)=>`<div class="guide-sec"><h4>${ic} <span data-mt>${title}</span></h4><div class="guide-body" data-mt>${body}</div></div>`;
+  const html=`${toolTop(L('איך משתמשים','How to use'),L('מדריך מהיר למסלולים ולכלים','A quick guide to the paths and tools'),'❓','#c77a3a')}
    <div class="panel-body">
-   <p class="guide-intro">מתכונת · מדריך האש בנוי סביב <b>שלושה מסלולים</b>. בחר לפי מה שאתה צריך עכשיו:</p>
+   <p class="guide-intro" data-mt>מתכונת · מדריך האש בנוי סביב <b>שלושה מסלולים</b>. בחר לפי מה שאתה צריך עכשיו:</p>
    ${sec('🎉','יש לי אירוע','תכנון ארוחה מרובת-מנות. אשף בן 6 שלבים: סועדים ותיאבון, מנות מהקטלוג, תיבול לכל מנה, תוספות, 40 משקאות (כולל חריפים וקוקטיילים) וקינוחים (אש, קלאסיקות ומגש פירות עונתי לפי תאריך האירוע) → תפריט, כמויות מחושבות לכל פריט, רשימת קניות ותוכנית עבודה. אפשר לשמור ולנהל כמה אירועים.')}
    ${sec('🍳','בא לי לבשל משהו','מסלול מהיר לפריט בודד. נכנס ישר לקטלוג — בוחר נתח/מוצר, ומקבל מתכון מלא: טמפ׳ וזמן, בורר מידת-עשייה לכל סועד, בורר תיבול (ראב/מרינדה/רוטב/גלייז), ורשימת קניות ספציפית למתכון.')}
    ${sec('🧫','פרויקט מתקדם','לתהליכים ארוכים — ייבוש, ריפוי, התססה. מעקב אחרי שלבים, משקל-יעד מול משקל נוכחי, ופס התקדמות. כאן נמצא גם <b>המזווה</b>: חומרי גלם (שרוולים, מלחי ריפוי, תבלינים, עצים) עם מעקב מלאי ורשימת קניות אוטומטית למה שחסר.')}
@@ -2809,8 +2811,8 @@ function openGuide(){
    ${sec('🧂','תיבול חכם — תבנית ↔ מופע','289 מתכוני ראב · מרינדה · גלייז · רוטב מרחבי העולם, עם מקור, מרכיבים והוראות. לכל מתכון "ראב בית" מובנה שנבחר כברירת מחדל, והתאמה אישית נעשית בביצוע — באשף האירוע, בתוכנית העבודה או בפרויקט — ונשמרת לאותו הקשר בלבד (אירוע/בישול/פרויקט), כך שהמתכון בקטלוג תמיד נשאר נקי. בורר עם 5 צירי סינון: מומלצים, מדינה, גוון-טעם, בסיס וחריפות.')}
    ${sec('🔥','עצים ופחמים','מדריך 15 סוגי פחם (קברצ׳ו, מרבו, בינשוטן, קוקוס, הדרים ועוד) — עם חום, זמן בערה, פרופיל עשן, והיכן לקנות בישראל. נגיש מתפריט ☰ ← "סוגי עץ".')}
    ${sec('🔥','שאל את האש','עוזר בישול שעונה על זמן, טמפ׳, עץ, כמות, כשרות ותקלות. שני מצבים: <b>מנוע מקומי</b> (מיידי, אופליין) או <b>AI חכם</b> (Gemini) עם חיפוש באינטרנט — עונה גם על איפה לקנות פחם/ציוד, מחירים וספקים, ותומך בשאלות המשך. כל תשובה מסומנת במקורה. נגיש בכפתור בולט בראש דף הבית.')}${sec('🆘','נתקעת?','ב-☰ ← "מצב הצילו (תקלות)": 41 פתרונות ב-9 נושאים מתקפלים (אש/עשן, בשר, נקניקים, ייבוש, גבינות, דגים, צומח, בטיחות) + חיפוש.')}
-   <p class="guide-foot">טיפ: כל בחירה שאתה עושה (מועדפים, מידת-עשייה, תיבול, מלאי) נשמרת אוטומטית במכשיר שלך.</p>
-   <button class="guide-about-link" id="cGuideAbout">ℹ️ אודות — כל היכולות והמדע מאחורי האפליקציה ←</button>
+   <p class="guide-foot" data-mt>טיפ: כל בחירה שאתה עושה (מועדפים, מידת-עשייה, תיבול, מלאי) נשמרת אוטומטית במכשיר שלך.</p>
+   <button class="guide-about-link" id="cGuideAbout">ℹ️ ${L('אודות — כל היכולות והמדע מאחורי האפליקציה ←','About — all the capabilities and science behind the app →')}</button>
    </div>`;
   showPanel(html);
   const ga=$("#cGuideAbout"); if(ga) ga.addEventListener('click',()=>{ if(typeof closePanel==='function') closePanel(); setTimeout(openAbout,60); });
@@ -3547,7 +3549,7 @@ function renderMenu(){
 function fmtClock(d){ if(!d) return '—'; return d.toLocaleTimeString('he-IL',{hour:'2-digit',minute:'2-digit'}); }
 // day offset of d relative to the serving day (negative = earlier calendar day)
 function tlDayOffset(d, ref){ if(!d||!ref) return 0; const a=new Date(d.getFullYear(),d.getMonth(),d.getDate()), b=new Date(ref.getFullYear(),ref.getMonth(),ref.getDate()); return Math.round((a-b)/86400e3); }
-function tlDayLabel(n){ if(n===0) return ''; if(n===-1) return 'יום לפני'; if(n===-2) return 'יומיים לפני'; if(n<0) return `${-n} ימים לפני`; if(n===1) return 'למחרת'; return `+${n} ימים`; }
+function tlDayLabel(n){ if(n===0) return ''; if(n===-1) return L('יום לפני','day before'); if(n===-2) return L('יומיים לפני','2 days before'); if(n<0) return L(`${-n} ימים לפני`,`${-n} days before`); if(n===1) return L('למחרת','next day'); return L(`+${n} ימים`,`+${n} days`); }
 // clock time + a "N days before" badge when the task falls on an earlier day than serving (e.g. a 30h sous-vide)
 function fmtClockRel(d, ref){ const t=fmtClock(d); const lbl=tlDayLabel(tlDayOffset(d,ref)); return lbl? `<span class="wp-day">${lbl}</span>${t}` : t; }
 function cssKey(k){ return k.replace(/[^a-zA-Z0-9_-]/g,'_'); }
@@ -3556,7 +3558,7 @@ function tlState(){return store.get(tlStateKey())||store.get('mk-tlstate')||{};}
 function tlSetState(s){store.set(tlStateKey(),s);}
 
 function openTimeline(){
-  showPanel(`${toolTop('מתזמן ציר-זמן','שלבי הכנה מפורטים לכל פריט, לפי שעת הגשה','🕒','#cf6a4a')}
+  showPanel(`${toolTop(L('מתזמן ציר-זמן','Timeline scheduler'),L('שלבי הכנה מפורטים לכל פריט, לפי שעת הגשה','Detailed prep steps per item, by serve time'),'🕒','#cf6a4a')}
    <div class="panel-body" id="tlBody"></div>`);
   renderTimelinePanel();
 }
@@ -3952,9 +3954,10 @@ function serveDayLabel(d){
   const t0=new Date(); t0.setHours(0,0,0,0);
   const dd=new Date(d); dd.setHours(0,0,0,0);
   const diff=Math.round((dd.getTime()-t0.getTime())/86400e3);
-  if(diff===0) return 'היום'; if(diff===1) return 'מחר'; if(diff===-1) return 'אתמול';
-  if(diff>1 && diff<7) return d.toLocaleDateString('he-IL',{weekday:'long'});
-  return d.toLocaleDateString('he-IL',{weekday:'short',day:'numeric',month:'short'});
+  const _loc=(getLang&&getLang()!=='he')?'en-US':'he-IL';
+  if(diff===0) return L('היום','Today'); if(diff===1) return L('מחר','Tomorrow'); if(diff===-1) return L('אתמול','Yesterday');
+  if(diff>1 && diff<7) return d.toLocaleDateString(_loc,{weekday:'long'});
+  return d.toLocaleDateString(_loc,{weekday:'short',day:'numeric',month:'short'});
 }
 // clock, with a day tag prefixed only when the serve day isn't today (so "19:00" stays terse, "מחר 12:00" is explicit)
 function fmtServe(d){ if(!d) return ''; const t0=new Date(); t0.setHours(0,0,0,0); const dd=new Date(d); dd.setHours(0,0,0,0); return (dd.getTime()===t0.getTime()?'':serveDayLabel(d)+' ')+fmtClock(d); }
@@ -3968,10 +3971,10 @@ function updateServeBar(){
   const now=Date.now(), sv=serve.getTime(), remMs=sv-now;
   const rem=$("#serveRemain"), at=$("#serveAt"), fill=$("#serveFill");
   if(at) at.textContent='🍽️ '+fmtServe(serve);
-  if(remMs<=0){ if(rem) rem.textContent='🍽️ הגיע זמן ההגשה!'; if(fill) fill.style.width='100%'; bar.classList.add('serve-now'); return; }
+  if(remMs<=0){ if(rem) rem.textContent=L('🍽️ הגיע זמן ההגשה!','🍽️ Serve time is here!'); if(fill) fill.style.width='100%'; bar.classList.add('serve-now'); return; }
   bar.classList.remove('serve-now');
   const h=Math.floor(remMs/3600e3), m=Math.floor((remMs%3600e3)/60e3);
-  if(rem) rem.textContent='⏱ עוד '+(h?h+'ש ':'')+m+' דק׳ עד ההגשה';
+  if(rem) rem.textContent='⏱ '+L('עוד ','')+(h?h+L('ש ','h '):'')+m+' '+L('דק׳ עד ההגשה','min to serve');
   const st=start?start.getTime():sv-1, total=sv-st, elapsed=now-st;
   if(fill) fill.style.width=(total>0?Math.max(0,Math.min(100,elapsed/total*100)):0).toFixed(1)+'%';
 }
@@ -3989,11 +3992,11 @@ function renderPlanStartRow(earliest, serve, rebuild){
   const blockStart = behind && strict && !started;
   let warn='';
   if(behind){ const late=Math.round((Date.now()-earliest.getTime())/60000);
-    warn=`<div class="plan-warn">⚠ הזמן קצר — כדי להגיש ב-${fmtServe(serve)} היה צריך להתחיל ב-${fmtServe(earliest)} (לפני ${late} דק׳). דחה את ההגשה — אל תקצר שלבי בישול (עלול להשאיר את הפנים תת-מבושל ולא בטוח). <button class="mchip" data-planpush>➕ דחה הגשה ב-30 דק׳</button> <button class="mchip" data-planreschedule>▶ תזמן מחדש מעכשיו</button></div>`;
+    warn=`<div class="plan-warn">${L(`⚠ הזמן קצר — כדי להגיש ב-${fmtServe(serve)} היה צריך להתחיל ב-${fmtServe(earliest)} (לפני ${late} דק׳). דחה את ההגשה — אל תקצר שלבי בישול (עלול להשאיר את הפנים תת-מבושל ולא בטוח).`,`⚠ Time is short — to serve at ${fmtServe(serve)} you should have started at ${fmtServe(earliest)} (${late} min ago). Push the serve time — don't shorten cooking stages (it may leave the inside undercooked and unsafe).`)} <button class="mchip" data-planpush>➕ ${L('דחה הגשה ב-30 דק׳','Push serve by 30 min')}</button> <button class="mchip" data-planreschedule>▶ ${L('תזמן מחדש מעכשיו','Reschedule from now')}</button></div>`;
   }
   el.innerHTML=`${warn}<div class="plan-startrow">
-    <button class="plan-startbtn ${started?'on':''}" data-planstart ${blockStart?'disabled':''}>${started?'⏹ עצור / אפס תוכנית':'▶ התחל תוכנית'}</button>
-    <label class="plan-strict"><input type="checkbox" data-planstrict ${strict?'checked':''}> חסום כשאין מספיק זמן</label>
+    <button class="plan-startbtn ${started?'on':''}" data-planstart ${blockStart?'disabled':''}>${started?L('⏹ עצור / אפס תוכנית','⏹ Stop / reset plan'):L('▶ התחל תוכנית','▶ Start plan')}</button>
+    <label class="plan-strict"><input type="checkbox" data-planstrict ${strict?'checked':''}> ${L('חסום כשאין מספיק זמן','Block when there isn’t enough time')}</label>
   </div>`;
   const list=$("#tlList"); if(list) list.classList.toggle('plan-idle', !started);   // timers disabled until the plan is started
   const sb=el.querySelector('[data-planstart]'); if(sb) sb.addEventListener('click',()=>{ if(planStarted()){ const removed=resetPlanTimers(); setPlanStarted(null); rebuild(); if(typeof toast==='function' && Object.keys(removed).length) toast('התוכנית אופסה', ()=>{ const t2=store.get('mk-timers')||{}; Object.assign(t2,removed); store.set('mk-timers',t2); setPlanStarted(Date.now()); rebuild(); }); } else { setPlanStarted(Date.now()); if(behind && typeof toast==='function') toast('התחלת עם לחץ-זמן — עקוב אחרי הטיימרים'); rebuild(); } });   // R1: scoped reset + undo
@@ -4008,12 +4011,12 @@ function renderTimelinePanel(){
   const serveStr=store.get('mk-tlserve')||'19:00';
   const serveDateStr=isoDate(serveDateTime());
   host.innerHTML=`
-    <div class="calcrow"><label>הגשה</label><input type="time" id="tlServe" value="${serveStr}"><input type="date" id="tlServeDate" value="${serveDateStr}" title="יום ההגשה"><button id="tlReset" class="mreset">🗑️ איפוס בחירות</button></div>
+    <div class="calcrow"><label>${L('הגשה','Serve')}</label><input type="time" id="tlServe" value="${serveStr}"><input type="date" id="tlServeDate" value="${serveDateStr}" title="${L('יום ההגשה','Serve day')}"><button id="tlReset" class="mreset">🗑️ ${L('איפוס בחירות','Reset choices')}</button></div>
     <div id="serveBar" class="serve-bar" hidden><div class="serve-lbl"><span id="serveRemain"></span><span id="serveAt"></span></div><div class="serve-track"><div class="serve-fill" id="serveFill"></div></div></div>
     <div id="planStartRow"></div>
-    <button id="tlAlerts" class="tl-alerts ${store.get('mk-tlalerts')?'on':''}">🔔 <span>${store.get('mk-tlalerts')?'התראות פעילות':'הפעל התראות לשלבים'}</span></button>
-    <p class="section-sub">לכל פריט: סמן אם כבר מוכן (ברירת מחדל) או מתחיל מאפס היום. שיטת הבישול נלקחת מהמתגים בכרטיסייה (⚡) — אפשר לבחור צירוף אחר כאן. לחץ ▾ לפירוט שלבים.</p>
-    <div id="tlList">${items.length?'':'<div class="shop-empty">הרשימה ריקה — הוסף פריטים (כפתור ＋) או דרך בונה התפריט, ואז חזור לכאן.</div>'}</div>`;
+    <button id="tlAlerts" class="tl-alerts ${store.get('mk-tlalerts')?'on':''}">🔔 <span>${store.get('mk-tlalerts')?L('התראות פעילות','Alerts on'):L('הפעל התראות לשלבים','Enable stage alerts')}</span></button>
+    <p class="section-sub">${L('לכל פריט: סמן אם כבר מוכן (ברירת מחדל) או מתחיל מאפס היום. שיטת הבישול נלקחת מהמתגים בכרטיסייה (⚡) — אפשר לבחור צירוף אחר כאן. לחץ ▾ לפירוט שלבים.','For each item: mark whether it is already made (default) or made from scratch today. The cooking method is taken from the switches on the card (⚡) — you can pick a different combo here. Tap ▾ for step details.')}</p>
+    <div id="tlList">${items.length?'':`<div class="shop-empty">${L('הרשימה ריקה — הוסף פריטים (כפתור ＋) או דרך בונה התפריט, ואז חזור לכאן.','The list is empty — add items (the ＋ button) or via the menu builder, then come back here.')}</div>`}</div>`;
   const si=$("#tlServe");
   if(si) si.addEventListener('input',()=>{store.set('mk-tlserve',si.value); buildList();});
   { const sd=$("#tlServeDate"); if(sd) sd.addEventListener('change',()=>{ store.set(serveDateKey(), sd.value||null); buildList(); }); }   // pick the serve day (night / next-day cooks)
@@ -4071,20 +4074,20 @@ function renderTimelinePanel(){
     tlTimers.forEach(t=>clearTimeout(t)); tlTimers=[];
     if(store.get('mk-tlalerts') && ('Notification' in window) && Notification.permission==='granted'){
       const now=Date.now(); const fire=(when,title,body)=>{ const ms=when.getTime()-now; if(ms>0&&ms<24*3600e3) tlTimers.push(setTimeout(()=>{ mkNotify(title, body, 'mk-stage'); },ms)); };
-      if(preheat) fire(preheat,'🔥 זמן להדליק',`הדלק את המעשנת — ${preheatHint()} לפני העישון הראשון`);
-      sorted.forEach(c=>{ if(!c.blocked&&c.startClock) fire(c.startClock,'⏰ '+stripEmoji(c.m.heb),'הזמן להתחיל: '+c.m.heb); });
+      if(preheat) fire(preheat,L('🔥 זמן להדליק','🔥 Time to light up'),L(`הדלק את המעשנת — ${preheatHint()} לפני העישון הראשון`,`Fire up the smoker — ${preheatHint()} before the first smoke`));
+      sorted.forEach(c=>{ if(!c.blocked&&c.startClock){ const nm=(typeof itemName==='function'?itemName(c.m):c.m.heb); fire(c.startClock,'⏰ '+stripEmoji(nm),L('הזמן להתחיל: ','Time to start: ')+nm); } });
     }
     const viewMode=store.get('mk-tlview')||'items';
-    let html=`<div class="tl-viewtoggle"><button class="mchip ${viewMode==='items'?'on':''}" data-tlview="items">📦 לפי פריט</button><button class="mchip ${viewMode==='plan'?'on':''}" data-tlview="plan">📋 תוכנית עבודה</button></div>`;
+    let html=`<div class="tl-viewtoggle"><button class="mchip ${viewMode==='items'?'on':''}" data-tlview="items">📦 ${L('לפי פריט','By item')}</button><button class="mchip ${viewMode==='plan'?'on':''}" data-tlview="plan">📋 ${L('תוכנית עבודה','Work plan')}</button></div>`;
     const _wpHtml=workPlanHtml(computed, preheat, serve);   // F5: always build the plan (populates window._wpTasks for voice cook even when the items view is showing)
     if(viewMode==='plan'){
       html+=_wpHtml;
     } else {
-      if(preheat) html+=`<div class="tlrow tl-preheat"><span class="tl-t"><b>${fmtClockRel(preheat, serve)}</b></span><span class="tl-n">🔥 הדלקת מעשנת (חימום מוקדם, 45 דק׳)</span><span class="tl-lead"></span></div>`;
+      if(preheat) html+=`<div class="tlrow tl-preheat"><span class="tl-t"><b>${fmtClockRel(preheat, serve)}</b></span><span class="tl-n">🔥 ${L('הדלקת מעשנת (חימום מוקדם, 45 דק׳)','Fire up the smoker (preheat, 45 min)')}</span><span class="tl-lead"></span></div>`;
       html+=sorted.map(c=>itemRowHtml(c,serve)).join('');
-      html+=`<div class="tlrow tl-serve"><span class="tl-t"><b>${fmtServe(serve)}</b></span><span class="tl-n"><b>🍽️ הגשה</b></span><span class="tl-lead"></span></div>`;
+      html+=`<div class="tlrow tl-serve"><span class="tl-t"><b>${fmtServe(serve)}</b></span><span class="tl-n"><b>🍽️ ${L('הגשה','Serve')}</b></span><span class="tl-lead"></span></div>`;
     }
-    html+=`<button class="prbtn" style="position:static;margin-top:12px" data-print>⎙ הדפס ${viewMode==='plan'?'תוכנית עבודה':'לוח זמנים'}</button>`;
+    html+=`<button class="prbtn" style="position:static;margin-top:12px" data-print>⎙ ${L('הדפס','Print')} ${viewMode==='plan'?L('תוכנית עבודה','work plan'):L('לוח זמנים','schedule')}</button>`;
     if(typeof clearTimers==='function') clearTimers();   // stop stale intervals before re-wiring; state persists in mk-timers
     $("#tlList").innerHTML=html;
     $("#tlList").querySelectorAll('.timer').forEach(tm=>wireTimer(tm));   // live countdowns per timed stage (items + plan views)
@@ -4105,7 +4108,7 @@ function renderTimelinePanel(){
     const tasks=[];
     computed.forEach(c=>{
       if(c.blocked) return;
-      const name=c.m.heb;
+      const name=(typeof itemName==='function'?itemName(c.m):c.m.heb);
       // ── from-scratch build phases (make-recipes + ground-meat cuts), split-aware ──
       { const sb2=itemScratchBuild(c.m); const stg=c.st.stage||(c.st.ready?'ready':'scratch');
         if(sb2 && stg!=='ready'){ makeBuildTasks(sb2, c.startClock, name, detail, stg).forEach(t=>tasks.push(t)); } }
@@ -4118,17 +4121,18 @@ function renderTimelinePanel(){
         const hit=cardSteps.find(s=>kw.some(k=>s[0].includes(k)));
         return hit? hit[1] : ''; };
       const sel=selectedSeasonings(c.m.key).map(seasoningById).filter(Boolean);
-      sel.filter(s=>s.kind==='sauce').forEach(s=>tasks.push({t:new Date(c.startClock.getTime()-30*60e3),label:`🥄 הכן רוטב ${s.heb} — ${name}`,sub:'אפשר גם יום קודם',kind:'prep',det:detail?`${s.ing} · ${s.use}${s.sub?` · ⚠ תחליף: ${s.sub}`:''}`:''}));
-      sel.filter(s=>s.kind==='marinade').forEach(s=>tasks.push({t:new Date(c.startClock.getTime()-2*3600e3),label:`🥣 השרה במרינדת ${s.heb} — ${name}`,sub:'לפחות שעתיים לפני, עדיף יותר',kind:'prep',det:detail?`${s.ing} · ${s.use}${s.sub?` · ⚠ תחליף: ${s.sub}`:''}`:''}));
-      sel.filter(s=>s.kind==='rub').forEach(s=>tasks.push({t:new Date(c.startClock.getTime()-40*60e3),label:`🌶️ שפשף ראב ${s.heb} — ${name}`,sub:'',kind:'prep',det:detail?`${s.ing} · ${s.use}${s.sub?` · ⚠ תחליף: ${s.sub}`:''}`:''}));
+      const _det=(s)=>`${t(s.ing)} · ${t(s.use)}${s.sub?` · ⚠ ${L('תחליף','substitute')}: ${t(s.sub)}`:''}`;
+      sel.filter(s=>s.kind==='sauce').forEach(s=>tasks.push({t:new Date(c.startClock.getTime()-30*60e3),label:`🥄 ${L('הכן רוטב','Make sauce')} ${itemName(s)} — ${name}`,sub:L('אפשר גם יום קודם','can be made a day ahead'),kind:'prep',det:detail?_det(s):''}));
+      sel.filter(s=>s.kind==='marinade').forEach(s=>tasks.push({t:new Date(c.startClock.getTime()-2*3600e3),label:`🥣 ${L('השרה במרינדת','Marinate in')} ${itemName(s)} — ${name}`,sub:L('לפחות שעתיים לפני, עדיף יותר','at least two hours ahead, more is better'),kind:'prep',det:detail?_det(s):''}));
+      sel.filter(s=>s.kind==='rub').forEach(s=>tasks.push({t:new Date(c.startClock.getTime()-40*60e3),label:`🌶️ ${L('שפשף ראב','Rub with')} ${itemName(s)} — ${name}`,sub:'',kind:'prep',det:detail?_det(s):''}));
       if(c.m.key==='cut-18'){ burgerPlanTasks(burgerDiners(), c.startClock, serve, name, detail).forEach(t=>tasks.push(t)); }
       if(detail){
-        const prepDet=findDetail(['הכנה','הכנת הנתח','טמפרטורת חדר','הכנה ייעודית']);
-        if(prepDet) tasks.push({t:new Date(c.startClock.getTime()-20*60e3),label:`🔪 הכנה — ${name}`,sub:'',kind:'prep',det:prepDet});
+        const prepDet=findDetail(['הכנה','הכנת הנתח','טמפרטורת חדר','הכנה ייעודית','Prep','Room temperature']);
+        if(prepDet) tasks.push({t:new Date(c.startClock.getTime()-20*60e3),label:`🔪 ${L('הכנה','Prep')} — ${name}`,sub:'',kind:'prep',det:prepDet});
       }
       c.stages.forEach(s=>{
-        if(s.kind==='rest') tasks.push({t:s.start,label:`⏸️ מנוחה — ${name}`,sub:'',kind:'rest',det:detail?(findDetail(['מנוחה'])||''):''});
-        else if(s.kind==='bcheck') tasks.push({t:s.start,label:`🌡️ ${s.label} — ${name}`,sub:s.note||'',kind:'bcheck',det:detail?'הגש רק כשמד-חום בליבה מראה ≥ היעד — בדיקת הבטיחות לפני הגשה':''});   // D1
+        if(s.kind==='rest') tasks.push({t:s.start,label:`⏸️ ${L('מנוחה','Rest')} — ${name}`,sub:'',kind:'rest',det:detail?(findDetail(['מנוחה','Rest'])||''):''});
+        else if(s.kind==='bcheck') tasks.push({t:s.start,label:`🌡️ ${s.label} — ${name}`,sub:s.note||'',kind:'bcheck',det:detail?L('הגש רק כשמד-חום בליבה מראה ≥ היעד — בדיקת הבטיחות לפני הגשה','Serve only when the core thermometer reads ≥ target — the safety check before serving'):''});   // D1
         else if(s.kind==='note') return;
         else if(s.kind==='dry'){
           tasks.push({t:s.start,label:`🌬️ ${s.label} — ${name}`,sub:s.note||'',kind:'dry',det:''});
@@ -4136,17 +4140,17 @@ function renderTimelinePanel(){
         else{
           let det='';
           if(detail){
-            if(s.kind==='sv') det=findDetail(['סו-ויד','ואקום']);
+            if(s.kind==='sv') det=findDetail(['סו-ויד','ואקום','Sous-vide','Vacuum']);
             else if(s.kind==='smoke'){
-              det=findDetail(['עישון']);
+              det=findDetail(['עישון','Smoke']);
               const wd=c.m.kind==='cut'?c.m.obj.wood:(c.profile&&c.profile.wood);
               const cl=c.m.kind==='cut'?c.m.obj.coal:'';
-              if(wd&&wd!=='ללא'&&!(det||'').includes(wd)) det=(det?det+' ':'')+`[🪵 עץ: ${wd}${cl?` · פחם: ${cl}`:''}]`;
+              if(wd&&wd!=='ללא'&&!(det||'').includes(wd)) det=(det?det+' ':'')+`[🪵 ${L('עץ','Wood')}: ${t(wd)}${cl?` · ${L('פחם','charcoal')}: ${t(cl)}`:''}]`;
             }
-            else det=findDetail(['גימור גריל','צריבה','צלייה','גריל']);
+            else det=findDetail(['גימור גריל','צריבה','צלייה','גריל','Grill','sear','Sear']);
             if(s.kind!=='smoke'&&c.m.kind==='cut'&&c.m.obj.doneness){
               const dn=['rare','mr','med','mw','well'].filter(k=>c.m.obj.doneness.levels[k]).map(k=>`${doneLabel(c.m.obj,k)} ${c.m.obj.doneness.levels[k].c}°`).join(' · ');
-              det=(det?det+' ':'')+`[מידות: ${dn}]`;
+              det=(det?det+' ':'')+`[${L('מידות','Doneness')}: ${dn}]`;
             }
           }
           tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:s.note||'',kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid});
@@ -4154,40 +4158,40 @@ function renderTimelinePanel(){
       });
       const sel2=sel.filter(s=>s.kind==='glaze');
       const lastCook=c.stages.filter(s=>s.kind!=='rest'&&s.kind!=='note').pop();
-      if(lastCook) sel2.forEach(s=>tasks.push({t:new Date(lastCook.end.getTime()-15*60e3),label:`🍯 הברש גלייז ${s.heb} — ${name}`,sub:'10-15 דק׳ אחרונות, בשכבות',kind:'glaze',det:detail?`${s.ing}${s.sub?` · ⚠ תחליף: ${s.sub}`:''}`:''}));
+      if(lastCook) sel2.forEach(s=>tasks.push({t:new Date(lastCook.end.getTime()-15*60e3),label:`🍯 ${L('הברש גלייז','Brush glaze')} ${itemName(s)} — ${name}`,sub:L('10-15 דק׳ אחרונות, בשכבות','last 10-15 min, in layers'),kind:'glaze',det:detail?`${t(s.ing)}${s.sub?` · ⚠ ${L('תחליף','substitute')}: ${t(s.sub)}`:''}`:''}));
     });
     // ── mise-en-place clustering: group flexible prep tasks of the same type (2+) ──
-    const clusterDefs=[['🥄 הכן רוטב','🥄 הכנת רטבים (mise en place)'],['🥣 השרה במרינדת','🥣 השריית מרינדות'],['🌶️ שפשף ראב','🌶️ הכנת ושפשוף ראבים'],['🍯 הברש גלייז',null]]; // glaze stays clock-bound!
+    const clusterDefs=[['🥄',L('🥄 הכנת רטבים (mise en place)','🥄 Make sauces (mise en place)')],['🥣',L('🥣 השריית מרינדות','🥣 Marinades')],['🌶️',L('🌶️ הכנת ושפשוף ראבים','🌶️ Rubs — mix and apply')],['🍯',null]]; // glaze stays clock-bound!
     for(const [prefix,title] of clusterDefs){
       if(!title) continue;
       const grp=tasks.filter(t=>t.label.startsWith(prefix));
       if(grp.length>=2){
         const earliest=new Date(Math.min(...grp.map(t=>t.t.getTime())));
         const merged={t:earliest,kind:'prep',label:title,
-          sub:'ריכוז פעולות דומות — הכל ברצף אחד',
+          sub:L('ריכוז פעולות דומות — הכל ברצף אחד','similar tasks grouped — all in one go'),
           det:grp.map(t=>`• ${t.label.replace(prefix,'').replace(/^[: ]+/,'')}${t.det?` — ${t.det}`:''}`).join('<br>')};
         for(const t of grp){ const i=tasks.indexOf(t); if(i>=0) tasks.splice(i,1); }
         tasks.push(merged);
       }
     }
-    if(preheat) tasks.push({t:preheat,label:'🔥 הדלקת מעשנת (חימום מוקדם)',sub:preheatHint(),kind:'fire',det:''});
-    tasks.push({t:serve,label:'🍽️ הגשה',sub:'',kind:'serve',det:''});
+    if(preheat) tasks.push({t:preheat,label:L('🔥 הדלקת מעשנת (חימום מוקדם)','🔥 Fire up the smoker (preheat)'),sub:preheatHint(),kind:'fire',det:''});
+    tasks.push({t:serve,label:L('🍽️ הגשה','🍽️ Serve'),sub:'',kind:'serve',det:''});
     tasks.sort((a,b)=>a.t-b.t);
     window._wpTasks=tasks;   // for voice cook mode
     const shp=tlShape();
-    const shapeBtns=Object.entries(SHAPE_NAMES).map(([k,n])=>`<button class="mchip shp-btn ${k===shp?'on':''}" data-tlshape="${k}">${n}</button>`).join('');
+    const shapeBtns=Object.entries(SHAPE_NAMES).map(([k,n])=>`<button class="mchip shp-btn ${k===shp?'on':''}" data-tlshape="${k}">${shapeName(k)}</button>`).join('');
     // v144 (bug-fix): sv/smoke order must be reachable from the PLAN view too, not only the per-item schedule card
     const orderItems=computed.filter(c=>!c.blocked && comboHasSvSmoke(c.m, c.st.method));
     const orderControlsHtml=orderItems.length?`<div class="tl-orderstrip">
-      <div class="tl-orderstrip-lbl">🔄 סדר בישול (סו-ויד/עישון):</div>
+      <div class="tl-orderstrip-lbl">🔄 ${L('סדר בישול (סו-ויד/עישון):','Cook order (sous-vide/smoke):')}</div>
       ${orderItems.map(c=>`<div class="tl-order tl-order-plan">
-        <span class="tl-order-lbl">${c.m.heb}:</span>
-        <select data-tlorder="${c.m.key}">${Object.entries(SV_SMOKE_ORDERS).map(([k,o])=>`<option value="${k}" ${k===c.st.svSmokeOrder?'selected':''}>${o.name}</option>`).join('')}</select>
-      </div>${c.st.svSmokeOrder==='smoke-sv'?`<div class="tl-safety-warn">⚠️ <b>${c.m.heb}:</b> הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו. בספק — עבור לסדר סו-ויד←עישון.</div>`:''}`).join('')}
+        <span class="tl-order-lbl">${itemName(c.m)}:</span>
+        <select data-tlorder="${c.m.key}">${Object.entries(SV_SMOKE_ORDERS).map(([k,o])=>`<option value="${k}" ${k===c.st.svSmokeOrder?'selected':''}>${svOrderName(k)}</option>`).join('')}</select>
+      </div>${c.st.svSmokeOrder==='smoke-sv'?`<div class="tl-safety-warn">⚠️ <b>${itemName(c.m)}:</b> ${L('הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the cold smoke <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full. When in doubt — switch to the sous-vide→smoke order.')}</div>`:''}`).join('')}
     </div>`:'';
-    const _blk=computed.filter(c=>c.blocked).map(c=>esc(c.m.heb));   // F4: multi-day items are excluded from the timed plan — surface them as a prep-ahead advisory instead of dropping them silently
-    return `${_blk.length?`<div class="wp-advisory">📋 <b>הכנה מראש (רב-יומי):</b> ${_blk.join(', ')} — תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.</div>`:''}${orderControlsHtml}<div class="tl-detailtoggle"><span>רמת פירוט:</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">מקוצר</button><button class="mchip ${detail?'on':''}" data-tldetail="full">מלא — עצמאי להדפסה</button><button class="mchip vc-launch" data-vclaunch>🎙️ מצב בישול קולי</button></div>
-    <details class="tl-shapedet"><summary>תצוגה: ${SHAPE_NAMES[shp]||''} <span class="tl-shapehint">▾ שנה</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
+    const _blk=computed.filter(c=>c.blocked).map(c=>esc(itemName(c.m)));   // F4: multi-day items are excluded from the timed plan — surface them as a prep-ahead advisory instead of dropping them silently
+    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
+    <details class="tl-shapedet"><summary>${L('תצוגה','View')}: ${shapeName(shp)} <span class="tl-shapehint">▾ ${L('שנה','change')}</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
     ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
   /* v144: same computed+scheduled tasks, 3 presentation shapes (does not touch scheduling above) */
@@ -4203,7 +4207,7 @@ function renderTimelinePanel(){
       const key='wpck:'+sc+':'+tk.label; const done=store.get(key);   // F: persist check state across rebuilds by task identity (scope+label)
       const cue = i===nextIdx?'wp-next':'';
       return `<label class="wp-row wp-${tk.kind} ${done?'wp-done':''} ${cue}"><input type="checkbox" class="wp-ck" data-wpck="${encodeURIComponent(key)}" ${done?'checked':''}>
-        <span class="wp-time">${cue?'<span class="wp-nowtag">הבא</span>':''}${fmtClockRel(tk.t, serve)}</span>
+        <span class="wp-time">${cue?`<span class="wp-nowtag">${L('הבא','Next')}</span>`:''}${fmtClockRel(tk.t, serve)}</span>
         <span class="wp-body"><b>${tk.label}</b>${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpv-'+i), tk.label)}</span>`:''}</span>
       </label>`;}).join('')}</div>`;
   }
@@ -4211,7 +4215,7 @@ function renderTimelinePanel(){
     return `<div class="workplan wp-accordion ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
       <div class="wp-acc ${i===0?'open':''}" data-wpacc="${i}">
         <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClockRel(tk.t, serve)}</span><b class="wp-atitle">${tk.label}</b><span class="wp-caret">▾</span></div>
-        <div class="wp-accb">${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${!tk.sub&&!tk.det?'<small>אין פרטים נוספים לשלב זה.</small>':''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpa-'+i), tk.label)}</span>`:''}</div>
+        <div class="wp-accb">${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${!tk.sub&&!tk.det?`<small>${L('אין פרטים נוספים לשלב זה.','No further details for this step.')}</small>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpa-'+i), tk.label)}</span>`:''}</div>
       </div>`).join('')}</div>`;
   }
   function renderWpHorizontal(tasks, serve){
@@ -4224,54 +4228,54 @@ function renderTimelinePanel(){
     const scratchable=hasScratchBuild(m);
     if(blocked){
       return `<div class="tlcard tl-blocked">
-        <div class="tlc-head"><b class="tl-name">${m.heb}</b><span class="tl-badge">תהליך רב-יומי</span></div>
-        <p class="tl-note">בנייה מאפס לקטגוריה זו (${m.cat}) אורכת ימים-שבועות (כבישה/ייבוש) — מוכנה בהכנה מראש. נהל אותה ב"המזווה שלי", ופה סמן "כבר מוכן" ביום הבישול/ההגשה.</p>
+        <div class="tlc-head"><b class="tl-name">${itemName(m)}</b><span class="tl-badge">${L('תהליך רב-יומי','Multi-day process')}</span></div>
+        <p class="tl-note">${L(`בנייה מאפס לקטגוריה זו (${m.cat}) אורכת ימים-שבועות (כבישה/ייבוש) — מוכנה בהכנה מראש. נהל אותה ב"המזווה שלי", ופה סמן "כבר מוכן" ביום הבישול/ההגשה.`,`Building this category (${t(m.cat)}) from scratch takes days to weeks (curing/drying) — it's ready via prep-ahead. Manage it in "My pantry", and here mark "already made" on the cook/serve day.`)}</p>
         <div class="tlc-controls">
-          <button class="mchip on" data-tlfresh="${m.key}">מתחיל מאפס</button>
-          <button class="mchip" data-tlready="${m.key}">כבר מוכן</button>
-          <button class="tl-pantrybtn" data-tlpantry>🧫 פתח את המזווה שלי</button>
+          <button class="mchip on" data-tlfresh="${m.key}">${L('מתחיל מאפס','From scratch')}</button>
+          <button class="mchip" data-tlready="${m.key}">${L('כבר מוכן','Already made')}</button>
+          <button class="tl-pantrybtn" data-tlpantry>🧫 ${L('פתח את המזווה שלי','Open my pantry')}</button>
         </div>
       </div>`;
     }
-    const methodOpts=profile.methods.length>1?`<select data-tlmethod="${m.key}">${profile.methods.map(mm=>`<option value="${mm.key}" ${mm.key===st.method?'selected':''}>${mm.label}</option>`).join('')}</select>`:'';
-    const woodNote=profile.wood?`<span class="tl-wood">🪵 ${profile.wood}</span>`:'';
+    const methodOpts=profile.methods.length>1?`<select data-tlmethod="${m.key}">${profile.methods.map(mm=>`<option value="${mm.key}" ${mm.key===st.method?'selected':''}>${t(mm.label)}</option>`).join('')}</select>`:'';
+    const woodNote=profile.wood?`<span class="tl-wood">🪵 ${t(profile.wood)}</span>`:'';
     const ck=cssKey(m.key);
     // v144: sv/smoke order — only relevant when this item's chosen method actually combines both
     const showOrder=comboHasSvSmoke(m, st.method);
     const orderRow=showOrder?`<div class="tl-order">
-        <span class="tl-order-lbl">סדר בישול:</span>
-        <select data-tlorder="${m.key}">${Object.entries(SV_SMOKE_ORDERS).map(([k,o])=>`<option value="${k}" ${k===st.svSmokeOrder?'selected':''}>${o.name}</option>`).join('')}</select>
+        <span class="tl-order-lbl">${L('סדר בישול','Cook order')}:</span>
+        <select data-tlorder="${m.key}">${Object.entries(SV_SMOKE_ORDERS).map(([k,o])=>`<option value="${k}" ${k===st.svSmokeOrder?'selected':''}>${svOrderName(k)}</option>`).join('')}</select>
       </div>`:'';
-    const orderWarn=(showOrder && st.svSmokeOrder==='smoke-sv')?`<div class="tl-safety-warn">⚠️ <b>דורש תשומת-לב:</b> הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו — לפי טבלת פסטור מוכרת לפי עובי. בספק — עבור לסדר סו-ויד←עישון.</div>`:'';
+    const orderWarn=(showOrder && st.svSmokeOrder==='smoke-sv')?`<div class="tl-safety-warn">⚠️ <b>${L('דורש תשומת-לב:','Needs attention:')}</b> ${L('הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו — לפי טבלת פסטור מוכרת לפי עובי. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the cold smoke <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full — per a recognized pasteurization table by thickness. When in doubt — switch to the sous-vide→smoke order.')}</div>`:'';
     const stageRows=stages.map((s,si)=>{
       if(s.kind==='bcheck') return `<div class="tl-stage tl-bcheck">🌡️ <b>${s.label}</b>${s.note?` · ${s.note}`:''}</div>`;   // D1: internal-temp safety gate
       if(s.hours===0) return `<div class="tl-stage tl-stage-note">↳ ${s.label}</div>`;
-      const reload=s.kind==='smoke'&&s.hours>2.5?` · ↻ הוסף עץ כל ~90 דק׳ (כ-${Math.max(1,Math.round(s.hours*60/90)-1)} פעמים)`:'';
-      const hLabel=s.hours<1?Math.round(s.hours*60)+' דק׳':s.hours.toFixed(1)+'ש';
-      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span>${timerHTML(Math.round(s.hours*3600), s.tid||('wpi-'+m.key+'-'+si), s.label+' · '+m.heb)}</div>`;
+      const reload=s.kind==='smoke'&&s.hours>2.5?` · ↻ ${L('הוסף עץ כל','add wood every')} ~90 ${L('דק׳','min')} (${L('כ-','~')}${Math.max(1,Math.round(s.hours*60/90)-1)} ${L('פעמים','times')})`:'';
+      const hLabel=s.hours<1?Math.round(s.hours*60)+' '+L('דק׳','min'):s.hours.toFixed(1)+L('ש','h');
+      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span>${timerHTML(Math.round(s.hours*3600), s.tid||('wpi-'+m.key+'-'+si), s.label+' · '+itemName(m))}</div>`;
     }).join('');
     const cut=m.kind==='cut'?m.obj:null;
-    const doneRef=(cut&&cut.doneness)?`<div class="tl-doneref"><b>מידות עשייה לגימור (מד-חום פנים)</b> — להתאמה אישית לכל סועד:<div class="tl-donelist">${['rare','mr','med','mw','well'].filter(k=>cut.doneness.levels[k]).map(k=>`<span class="${k===currentDoneness(cut)?'on':''}">${doneLabel(cut,k)} <b>${cut.doneness.levels[k].c}°</b></span>`).join('')}</div></div>`:'';
+    const doneRef=(cut&&cut.doneness)?`<div class="tl-doneref"><b>${L('מידות עשייה לגימור (מד-חום פנים)','Finishing doneness levels (internal thermometer)')}</b> — ${L('להתאמה אישית לכל סועד:','to customize per guest:')}<div class="tl-donelist">${['rare','mr','med','mw','well'].filter(k=>cut.doneness.levels[k]).map(k=>`<span class="${k===currentDoneness(cut)?'on':''}">${doneLabel(cut,k)} <b>${cut.doneness.levels[k].c}°</b></span>`).join('')}</div></div>`:'';
     return `<div class="tlcard">
       <div class="tlc-head">
         <span class="tl-startt"><b>${fmtClockRel(startClock, serve)}</b></span>
-        <b class="tl-name">${m.heb}</b>
+        <b class="tl-name">${itemName(m)}</b>
         ${woodNote}
-        <button class="tl-expand" data-tlexp="${m.key}" data-ck="${ck}" aria-label="הרחב פירוט שלבים">▾</button>
+        <button class="tl-expand" data-tlexp="${m.key}" data-ck="${ck}" aria-label="${L('הרחב פירוט שלבים','Expand step details')}">▾</button>
       </div>
       <div class="tlc-controls">
         ${scratchable?`
-          <button class="mchip ${st.stage==='ready'?'on':''}" data-tlstage="ready" data-k="${m.key}">${st.stage==='ready'?'✓ ':''}מוכן לגמרי</button>
-          <button class="mchip ${st.stage==='prepped'?'on':''}" data-tlstage="prepped" data-k="${m.key}">${st.stage==='prepped'?'✓ ':''}הוכן מראש · רק סיום</button>
-          <button class="mchip ${st.stage==='scratch'?'on':''}" data-tlstage="scratch" data-k="${m.key}">${st.stage==='scratch'?'✓ ':''}🧫 מאפס היום</button>
+          <button class="mchip ${st.stage==='ready'?'on':''}" data-tlstage="ready" data-k="${m.key}">${st.stage==='ready'?'✓ ':''}${L('מוכן לגמרי','Fully ready')}</button>
+          <button class="mchip ${st.stage==='prepped'?'on':''}" data-tlstage="prepped" data-k="${m.key}">${st.stage==='prepped'?'✓ ':''}${L('הוכן מראש · רק סיום','Prepped ahead · finish only')}</button>
+          <button class="mchip ${st.stage==='scratch'?'on':''}" data-tlstage="scratch" data-k="${m.key}">${st.stage==='scratch'?'✓ ':''}🧫 ${L('מאפס היום','From scratch today')}</button>
         `:`
-          <button class="mchip ${st.ready?'on':''}" data-tlready="${m.key}">${st.ready?'✓ ':''}כבר מוכן</button>
-          <button class="mchip ${!st.ready?'on':''}" data-tlfresh="${m.key}">${!st.ready?'✓ ':''}מתחיל מאפס</button>
+          <button class="mchip ${st.ready?'on':''}" data-tlready="${m.key}">${st.ready?'✓ ':''}${L('כבר מוכן','Already made')}</button>
+          <button class="mchip ${!st.ready?'on':''}" data-tlfresh="${m.key}">${!st.ready?'✓ ':''}${L('מתחיל מאפס','From scratch')}</button>
         `}
         ${methodOpts}
         ${orderRow}
-        <button class="mchip ${(window._tlSeasOpen&&window._tlSeasOpen.has(m.key))?'on':''}" data-tlseas="${m.key}" data-ck="${ck}">🧂 תיבול${(()=>{const n=selectedSeasonings(m.key).length;return n?` (${n})`:'';})()}</button>
-        ${m.key==='cut-18'?`<button class="mchip" data-tlburger>🍔 בורגרים (${burgerDiners().length})</button>`:''}
+        <button class="mchip ${(window._tlSeasOpen&&window._tlSeasOpen.has(m.key))?'on':''}" data-tlseas="${m.key}" data-ck="${ck}">🧂 ${L('תיבול','Seasoning')}${(()=>{const n=selectedSeasonings(m.key).length;return n?` (${n})`:'';})()}</button>
+        ${m.key==='cut-18'?`<button class="mchip" data-tlburger>🍔 ${L('בורגרים','Burgers')} (${burgerDiners().length})</button>`:''}
       </div>
       ${orderWarn}
       <div class="tl-seas" id="tlseas-${ck}" style="display:${(window._tlSeasOpen&&window._tlSeasOpen.has(m.key))?'block':'none'}"></div>
@@ -4356,21 +4360,21 @@ function importData(file){
 function openGear(){
   const g=gearState();
   const groups=GEAR_GROUPS.map(grp=>`
-    <div class="gear-group"><h4>${grp.g}</h4>
-      ${grp.items.map(it=>`<div class="gear-row"><label>${it.label}</label>
-        <select data-gear="${it.id}">${it.opts.map(o=>`<option ${((g[it.id]||it.opts[0])===o)?'selected':''}>${o}</option>`).join('')}</select>
+    <div class="gear-group"><h4>${t(grp.g)}</h4>
+      ${grp.items.map(it=>`<div class="gear-row"><label>${t(it.label)}</label>
+        <select data-gear="${it.id}">${it.opts.map(o=>`<option value="${o}" ${((g[it.id]||it.opts[0])===o)?'selected':''}>${t(o)}</option>`).join('')}</select>
       </div>`).join('')}
     </div>`).join('');
-  showPanel(`${toolTop('הציוד שלי','בחר מה יש לך — המתכונים יתאימו את עצמם','🔧','#5a7d8c')}
+  showPanel(`${toolTop(L('הציוד שלי','My gear'),L('בחר מה יש לך — המתכונים יתאימו את עצמם','Pick what you have — recipes adapt themselves'),'🔧','#5a7d8c')}
    <div class="panel-body">
-     <p class="section-sub" style="margin-bottom:12px">האפליקציה תסמן שיטות שאין לך ציוד עבורן ותציע חלופות. תמיד אפשר להפעיל בכל זאת (override).</p>
+     <p class="section-sub" style="margin-bottom:12px">${L('האפליקציה תסמן שיטות שאין לך ציוד עבורן ותציע חלופות. תמיד אפשר להפעיל בכל זאת (override).','The app will flag methods you have no gear for and suggest alternatives. You can always enable them anyway (override).')}</p>
      ${groups}
      <div id="gearSummary" class="gear-summary"></div>
-     <button class="akc-back" id="gearDone">✓ שמור וסגור</button>
+     <button class="akc-back" id="gearDone">✓ ${L('שמור וסגור','Save and close')}</button>
    </div>`);
   const pnl=$("#panel");
   const line=(ok,txt)=>`<span class="gcap ${ok?'ok':'no'}">${ok?'✓':'✕'} ${txt}</span>`;
-  const refreshSummary=()=>{ const el=$("#gearSummary"); if(el) el.innerHTML=`<b>יכולות בישול פעילות:</b><div class="gcaps">${line(canSV(),'סו-ויד')}${line(canSmoke(),'עישון')}${line(canGrill(),'גריל')}</div>`; };
+  const refreshSummary=()=>{ const el=$("#gearSummary"); if(el) el.innerHTML=`<b>${L('יכולות בישול פעילות','Active cooking capabilities')}:</b><div class="gcaps">${line(canSV(),L('סו-ויד','Sous-vide'))}${line(canSmoke(),L('עישון','Smoking'))}${line(canGrill(),L('גריל','Grill'))}</div>`; };
   pnl.querySelectorAll('[data-gear]').forEach(sel=>sel.addEventListener('change',()=>{
     const gg=gearState(); gg[sel.dataset.gear]=sel.value; saveGear(gg); gearSetConfigured();
     const b=$("#gearBanner"); if(b) b.remove();
@@ -4380,19 +4384,19 @@ function openGear(){
   refreshSummary();
 }
 function openBackup(){
-  showPanel(`${toolTop('גיבוי ושחזור','ייצוא וייבוא כל הנתונים שלך','💾','#6a8caf')}
+  showPanel(`${toolTop(L('גיבוי ושחזור','Backup & restore'),L('ייצוא וייבוא כל הנתונים שלך','Export and import all your data'),'💾','#6a8caf')}
    <div class="panel-body">
-     <div class="kbox k-ok">כל הנתונים שלך (מועדפים, יומן, מזווה, הערות, דירוגים, רשימות וצ׳קליסטים) נשמרים <b>רק בדפדפן הזה</b>. ייצא קובץ גיבוי כדי לא לאבד אותם בניקוי דפדפן או במעבר מכשיר.</div>
+     <div class="kbox k-ok">${L('כל הנתונים שלך (מועדפים, יומן, מזווה, הערות, דירוגים, רשימות וצ׳קליסטים) נשמרים <b>רק בדפדפן הזה</b>. ייצא קובץ גיבוי כדי לא לאבד אותם בניקוי דפדפן או במעבר מכשיר.','All your data (favorites, journal, pantry, notes, ratings, lists and checklists) is stored <b>only in this browser</b>. Export a backup file so you don’t lose it when clearing the browser or switching devices.')}</div>
      <div class="exactions" style="margin-top:14px">
-       <button id="bkExp">⬇ ייצא קובץ גיבוי</button>
-       <label class="exbtn-lbl" for="bkImp">⬆ ייבא מקובץ</label>
+       <button id="bkExp">⬇ ${L('ייצא קובץ גיבוי','Export backup file')}</button>
+       <label class="exbtn-lbl" for="bkImp">⬆ ${L('ייבא מקובץ','Import from file')}</label>
        <input type="file" id="bkImp" accept="application/json,.json" hidden>
      </div>
-     <p class="section-sub" style="margin-top:12px">שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI אינו נכלל בגיבוי (אבטחה) — חבר אותו מחדש לאחר שחזור.</p>
+     <p class="section-sub" style="margin-top:12px">${L('שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI אינו נכלל בגיבוי (אבטחה) — חבר אותו מחדש לאחר שחזור.','Note: import merges the data from the file — existing keys are overwritten, and anything not in the file stays. The AI key isn’t included in the backup (security) — reconnect it after restoring.')}</p>
      <div id="bkStorage" class="bk-storage" style="margin-top:14px"></div>
      <div style="border-top:1px solid var(--line);margin:18px 0 0;padding-top:16px">
-       <div class="kbox k-danger"><b>אזור מסוכן</b> · איפוס-על מוחק את <b>כל</b> הנתונים שלך במכשיר הזה: מועדפים, דירוגים, הערות, יומן, מזווה, רשימת קניות, בחירות מידת-עשייה, תפריט ומתזמן. אין ביטול — כדאי לייצא גיבוי קודם.</div>
-       <button id="bkWipe" class="mreset" style="margin-top:12px">🗑️ איפוס-על — מחק הכל</button>
+       <div class="kbox k-danger">${L('<b>אזור מסוכן</b> · איפוס-על מוחק את <b>כל</b> הנתונים שלך במכשיר הזה: מועדפים, דירוגים, הערות, יומן, מזווה, רשימת קניות, בחירות מידת-עשייה, תפריט ומתזמן. אין ביטול — כדאי לייצא גיבוי קודם.','<b>Danger zone</b> · a full reset erases <b>all</b> your data on this device: favorites, ratings, notes, journal, pantry, shopping list, doneness choices, menu and scheduler. No undo — best to export a backup first.')}</div>
+       <button id="bkWipe" class="mreset" style="margin-top:12px">🗑️ ${L('איפוס-על — מחק הכל','Full reset — erase everything')}</button>
      </div>
    </div>`);
   $("#bkExp").addEventListener('click',exportData);
@@ -4402,8 +4406,8 @@ function openBackup(){
   (async()=>{ const box=$("#bkStorage"); if(!box) return; const s=await storageInfo();
     if(!s){ box.style.display='none'; return; }
     const used = s.usedKB<1024 ? s.usedKB+' KB' : (s.usedKB/1024).toFixed(1)+' MB';
-    box.innerHTML=`<div class="kbox ${s.pct>=80?'k-danger':'k-ok'}"><b>אחסון מקומי:</b> ${used}${s.quotaMB?` מתוך ~${s.quotaMB} MB (${s.pct}%)`:''} · ${s.persisted?'קבוע ✓ (מוגן מפני מחיקה אוטומטית)':'רגיל — עלול להימחק תחת לחץ אחסון'}`+
-      (s.persisted?'':` <button class="mchip" id="bkPersist" style="margin-top:8px">🔒 הפוך לאחסון קבוע</button>`)+`</div>`;
+    box.innerHTML=`<div class="kbox ${s.pct>=80?'k-danger':'k-ok'}"><b>${L('אחסון מקומי','Local storage')}:</b> ${used}${s.quotaMB?` ${L('מתוך','of')} ~${s.quotaMB} MB (${s.pct}%)`:''} · ${s.persisted?L('קבוע ✓ (מוגן מפני מחיקה אוטומטית)','Persistent ✓ (protected from automatic eviction)'):L('רגיל — עלול להימחק תחת לחץ אחסון','Standard — may be evicted under storage pressure')}`+
+      (s.persisted?'':` <button class="mchip" id="bkPersist" style="margin-top:8px">🔒 ${L('הפוך לאחסון קבוע','Make storage persistent')}</button>`)+`</div>`;
     const pb=$("#bkPersist"); if(pb) pb.addEventListener('click',async()=>{ await requestPersist(); toast('נשלחה בקשה לאחסון קבוע'); openBackup(); });
   })();
 }
@@ -4647,6 +4651,8 @@ const UI_LEVELS={
 };
 const LEVEL_SHAPE={beginner:'5', mid:'1', pro:'3'};   // 5=צירים מתקפלים · 1=קו-זמן אנכי · 3=צעדים אופקי
 const SHAPE_NAMES={'5':'צירים מתקפלים','1':'קו-זמן אנכי','3':'צעדים אופקי'};
+const SHAPE_NAMES_EN={'5':'Collapsible accordion','1':'Vertical timeline','3':'Horizontal steps'};
+function shapeName(k){ return (getLang()==='he'?SHAPE_NAMES:SHAPE_NAMES_EN)[k]||k; }
 function uiLevel(){ const l=store.get('mk-uilevel'); return UI_LEVELS[l]?l:'mid'; }
 function setUiLevel(l){ if(!UI_LEVELS[l]) return; store.set('mk-uilevel',l); }
 function tlShapeOverride(){ const s=store.get('mk-tlshape'); return SHAPE_NAMES[s]?s:null; }
@@ -4657,7 +4663,7 @@ function openUiLevel(){
   const lvlBtns=Object.entries(UI_LEVELS).map(([k,l])=>`<button class="ap-opt lvl-opt ${k===uiLevel()?'on':''}" data-lvl="${k}">${l.name}</button>`).join('');
   const shapeBtns=Object.entries(SHAPE_NAMES).map(([k,n])=>{
     const isRec=k===LEVEL_SHAPE[uiLevel()];
-    return `<button class="ap-opt ${k===tlShape()?'on':''}" data-shp="${k}">${n}${isRec?' <span class="rec-tag">מומלץ</span>':''}</button>`;
+    return `<button class="ap-opt ${k===tlShape()?'on':''}" data-shp="${k}">${shapeName(k)}${isRec?` <span class="rec-tag">${L('מומלץ','recommended')}</span>`:''}</button>`;
   }).join('');
   showPanel(`${toolTop('רמת ממשק','קובע כמה פרטים מוצגים ואיך תוכנית-העבודה נראית','🧭','#5a7d8c')}
     <div class="panel-body">
@@ -4780,9 +4786,9 @@ function cwGo(n){
 function cwPaintBasics(){
   const m=cwMenu();
   const cook=(typeof menuCtx==='function'&&menuCtx()==='cook');
-  const t=$("#cwTitle"); if(t) t.textContent=cook?'🔥 אשף בישול':'🎉 אשף האירוע';
+  const t=$("#cwTitle"); if(t) t.textContent=cook?L('🔥 אשף בישול','🔥 Cook wizard'):L('🎉 אשף האירוע','🎉 Event wizard');
   ['cwEvHead','cwEvSub','cwEvCard'].forEach(id=>{ const el=document.getElementById(id); if(el) el.style.display=cook?'none':''; });
-  const v=$("#cServVal"); if(v) v.innerHTML=(m.guests||8)+'<small>סועדים</small>';
+  const v=$("#cServVal"); if(v) v.innerHTML=(m.guests||8)+`<small>${L('סועדים','guests')}</small>`;
   document.querySelectorAll('#cwAppetite .cmethod').forEach(b=>b.classList.toggle('on',b.dataset.app===(m.appetite||'reg')));
   const k=$("#cwKosher"); if(k){ k.dataset.on=m.kosher?'1':'0'; k.classList.toggle('on',!!m.kosher); }
 }
@@ -4804,13 +4810,13 @@ function cwPaintPicker(){
   const chips=$("#cwCatChips");
   if(chips){
     const cats=cwAllCats();
-    chips.innerHTML=`<span class="chip ${!cwActiveCat?'on':''}" data-cwcat="">הכל</span>`+cats.map(c=>`<span class="chip ${cwActiveCat===c?'on':''}" data-cwcat="${c}">${(typeof catEmoji==='function'?catEmoji(c):'')} ${c}</span>`).join('');
+    chips.innerHTML=`<span class="chip ${!cwActiveCat?'on':''}" data-cwcat="">${L('הכל','All')}</span>`+cats.map(c=>`<span class="chip ${cwActiveCat===c?'on':''}" data-cwcat="${c}">${(typeof catEmoji==='function'?catEmoji(c):'')} ${t(c)}</span>`).join('');
     chips.querySelectorAll('[data-cwcat]').forEach(el=>el.addEventListener('click',()=>{ cwActiveCat=el.dataset.cwcat||null; cwCont=''; cwPaintPicker(); }));
     // continent sub-filter — shows when the active category has origins (sausages etc.)
     const catItems=cwAllItems().filter(i=>!cwActiveCat||i.cat===cwActiveCat);
     const conts=[...new Set(catItems.map(i=>(typeof itemContinent==='function')?itemContinent(i):'').filter(Boolean))];
     const crow=$("#cwContChips");
-    if(crow){ if(conts.length>1){ crow.style.display=''; crow.innerHTML=[['','🌍 כל היבשות'],...conts.map(c=>[c,c])].map(([v,l])=>`<span class="chip ${cwCont===v?'on':''}" data-cwcont="${v}">${l}</span>`).join('');
+    if(crow){ if(conts.length>1){ crow.style.display=''; crow.innerHTML=[['',L('🌍 כל היבשות','🌍 All continents')],...conts.map(c=>[c,t(c)])].map(([v,l])=>`<span class="chip ${cwCont===v?'on':''}" data-cwcont="${v}">${l}</span>`).join('');
       crow.querySelectorAll('[data-cwcont]').forEach(el=>el.addEventListener('click',()=>{ cwCont=el.dataset.cwcont; cwPaintPicker(); })); } else { crow.style.display='none'; crow.innerHTML=''; } }
   }
   const sb=$("#cwSearch"); if(sb&&!sb._wired){ sb._wired=1; sb.addEventListener('input',()=>{ cwQuery=sb.value.trim().toLowerCase(); cwPaintPickList(); }); }
@@ -4824,7 +4830,7 @@ function cwPaintPickList(){
   if(cwCont) items=items.filter(i=>((typeof itemContinent==='function')?itemContinent(i):'')===cwCont);
   if(cwQuery) items=items.filter(i=>(i.heb+' '+i.eng+' '+i.cat).toLowerCase().includes(cwQuery));
   if(m.kosher) items=items.filter(i=>(typeof isKosherOk!=='function')||isKosherOk(i.key));   // pork + shellfish + blood
-  const cnt=$("#cwPickCount"); if(cnt){ cnt.innerHTML=`<span>🌿 ${sel.size} נבחרו · ${items.length} מוצגים</span>${sel.size?'<button class="cwclear" id="cwClearSel">נקה בחירה</button>':''}`;
+  const cnt=$("#cwPickCount"); if(cnt){ cnt.innerHTML=`<span>🌿 ${sel.size} ${L('נבחרו','selected')} · ${items.length} ${L('מוצגים','shown')}</span>${sel.size?`<button class="cwclear" id="cwClearSel">${L('נקה בחירה','Clear selection')}</button>`:''}`;
     const cb=$("#cwClearSel"); if(cb) cb.addEventListener('click',()=>{ const mm=cwMenu(); mm.keys=[]; cwSave(mm); cwPaintPickList(); }); }
   // sticky summary of what's already chosen (all categories)
   const selBar=$("#cwPickSel");
@@ -4833,8 +4839,8 @@ function cwPaintPickList(){
     if(!chosen.length){ selBar.innerHTML=''; selBar.classList.remove('on'); }
     else{
       selBar.classList.add('on');
-      selBar.innerHTML=`<div class="cwsel-title">כבר בעגלה (${chosen.length}):</div><div class="cwsel-chips">`+
-        chosen.map(k=>{ const meta=resolveItem(k); const heb=meta?(meta.heb||(meta.obj&&meta.obj.heb)||k):k;
+      selBar.innerHTML=`<div class="cwsel-title">${L('כבר בעגלה','Already in cart')} (${chosen.length}):</div><div class="cwsel-chips">`+
+        chosen.map(k=>{ const meta=resolveItem(k); const heb=meta?((typeof itemName==='function'?itemName(meta):null)||meta.heb||(meta.obj&&meta.obj.heb)||k):k;
           const ico=(typeof itemEmoji==='function'&&meta)?itemEmoji(meta.cat||(meta.obj&&meta.obj.cat),k):'🍽️';
           return `<span class="cwsel-chip" data-cwunpick="${k}">${ico} ${heb} <b>✕</b></span>`; }).join('')+`</div>`;
       selBar.querySelectorAll('[data-cwunpick]').forEach(el=>el.addEventListener('click',()=>{
@@ -4843,17 +4849,17 @@ function cwPaintPickList(){
     }
   }
   // UX #3: preset quick-starts moved into the wizard (the one feature the retired openMenu panel had). Shown only in the unfiltered list.
-  const presetBar = (!cwActiveCat && !cwCont && !cwQuery) ? `<div class="cw-presets"><span class="cw-presets-lbl">התחלה מהירה:</span>`+['מנגל מעורב','שרקוטרי','נקניקיות','דגים'].map(p=>`<button type="button" class="mchip" data-cwpreset="${p}">${p}</button>`).join('')+`<button type="button" class="mchip" data-cwpreset="__fav">⭐ מהמועדפים</button></div>` : '';
+  const presetBar = (!cwActiveCat && !cwCont && !cwQuery) ? `<div class="cw-presets"><span class="cw-presets-lbl">${L('התחלה מהירה','Quick start')}:</span>`+['מנגל מעורב','שרקוטרי','נקניקיות','דגים'].map(p=>`<button type="button" class="mchip" data-cwpreset="${p}">${t(p)}</button>`).join('')+`<button type="button" class="mchip" data-cwpreset="__fav">⭐ ${L('מהמועדפים','From favorites')}</button></div>` : '';
   host.innerHTML=presetBar+(items.map(i=>{
     const on=sel.has(i.key);
     const ico=(typeof itemEmoji==='function')?itemEmoji(i.cat,i.key):'🍽️';
     const org=(typeof itemOrigin==='function')?itemOrigin(i):'';
     const desc=(typeof itemRichDesc==='function')?itemRichDesc(i):'';
-    const sub=[org||(typeof t==='function'?t(i.cat):i.cat), i.eng].filter(Boolean).join(' · ');   // i18n: translate the category
+    const sub=[(org?(typeof t==='function'?t(org):org):(typeof t==='function'?t(i.cat):i.cat)), i.eng].filter(Boolean).join(' · ');   // i18n: translate the origin/category
     return `<div class="cmore-item" data-cwpick="${i.key}" style="align-items:flex-start;${on?'border-color:var(--ember);background:linear-gradient(135deg,#fff3e8,#ffe9db)':''}">
       <span class="mi">${ico}</span><div style="flex:1"><div style="font-weight:700">${itemName(i)}</div><div style="font-size:11px;color:var(--smoke);font-weight:400">${sub}</div>${desc?`<div style="font-size:11px;color:var(--bone);opacity:.75;line-height:1.5;margin-top:3px">${desc}</div>`:''}</div>
       <span class="mg" style="color:${on?'var(--ember)':'var(--smoke)'};font-size:20px">${on?'✓':'+'}</span></div>`;
-  }).join('')||'<div style="color:var(--smoke);text-align:center;padding:20px">לא נמצאו פריטים</div>');
+  }).join('')||`<div style="color:var(--smoke);text-align:center;padding:20px">${L('לא נמצאו פריטים','No items found')}</div>`);
   host.querySelectorAll('[data-cwpick]').forEach(el=>el.addEventListener('click',()=>{
     const k=el.dataset.cwpick; const mm=cwMenu(); const s=new Set(mm.keys||[]);
     s.has(k)?s.delete(k):s.add(k); mm.keys=[...s]; cwSave(mm); cwPaintPickList();
@@ -4866,14 +4872,14 @@ function cwPaintPickList(){
 function cwPaintMethodsFull(){
   const host=$("#cwMethodsFull"); if(!host) return;
   const m=cwMenu(); const keys=(m.keys||[]);
-  if(!keys.length){ host.innerHTML='<div style="color:var(--smoke);text-align:center;padding:16px">לא נבחרו מנות. חזור לשלב הקודם.</div>'; return; }
+  if(!keys.length){ host.innerHTML=`<div style="color:var(--smoke);text-align:center;padding:16px">${L('לא נבחרו מנות. חזור לשלב הקודם.','No dishes selected. Go back to the previous step.')}</div>`; return; }
   const rows=keys.map(key=>{
     const meta=resolveItem(key); if(!meta) return '';
-    const c=meta.obj||meta; const heb=meta.heb||c.heb||key;
+    const c=meta.obj||meta; const heb=(typeof itemName==='function'?itemName(meta):null)||meta.heb||c.heb||key;
     // items that support method toggles are cuts/makes with methodRules
-    if(typeof methodRules!=='function'||meta.kind==='spec'){ return `<div class="cscard"><h4>${heb}</h4><div style="font-size:12px;color:var(--smoke)">מוצר מוכן — ללא שיטת בישול</div></div>`; }
+    if(typeof methodRules!=='function'||meta.kind==='spec'){ return `<div class="cscard"><h4>${heb}</h4><div style="font-size:12px;color:var(--smoke)">${L('מוצר מוכן — ללא שיטת בישול','Ready product — no cooking method')}</div></div>`; }
     const cur=(typeof activeMethods==='function')?activeMethods(c,key):['grill'];
-    const MET=[['sv','🌊 סו-ויד'],['smoke','💨 עישון'],['grill','🔥 גריל']];
+    const MET=[['sv',L('🌊 סו-ויד','🌊 Sous-vide')],['smoke',L('💨 עישון','💨 Smoke')],['grill',L('🔥 גריל','🔥 Grill')]];
     const chips=MET.map(([mk,lbl])=>{
       const valid=(typeof validCombo==='function')?validCombo(c,cur.includes(mk)?cur:[...cur,mk]):true;
       return `<span class="cmethod ${cur.includes(mk)?'on':''}" data-cwm="${key}" data-cwmk="${mk}">${lbl}</span>`;
@@ -4901,16 +4907,16 @@ function cwSeasFull_desc(s){
 }
 function cwPaintSeasFull(){
   const host=$("#cwSeasFull"); if(!host) return;
-  { const nb=document.querySelector('[data-cwstep="3"] [data-cwgo="4"]'); if(nb) nb.textContent=(typeof menuCtx==='function'&&menuCtx()==='cook')?'המשך לסקירה ותוכנית ←':'המשך לתוספות וקינוחים ←'; }
+  { const nb=document.querySelector('[data-cwstep="3"] [data-cwgo="4"]'); if(nb) nb.textContent=(typeof menuCtx==='function'&&menuCtx()==='cook')?L('המשך לסקירה ותוכנית ←','Continue to review & plan →'):L('המשך לתוספות וקינוחים ←','Continue to sides & desserts →'); }
   const m=cwMenu(); const keys=(m.keys||[]);
-  if(!keys.length){ host.innerHTML='<div class="cscard"><h4>אין מנות</h4><div style="font-size:12.5px;color:var(--smoke)">חזור לשלב "מה על האש" ובחר פריטים.</div></div>'; return; }
+  if(!keys.length){ host.innerHTML=`<div class="cscard"><h4>${L('אין מנות','No dishes')}</h4><div style="font-size:12.5px;color:var(--smoke)">${L('חזור לשלב "מה על האש" ובחר פריטים.','Go back to the "what’s on the fire" step and pick items.')}</div></div>`; return; }
   host.innerHTML=keys.map(key=>{
     const meta=resolveItem(key); if(!meta) return '';
-    const c=meta.obj||meta; const heb=meta.heb||c.heb||key;
+    const c=meta.obj||meta; const heb=(typeof itemName==='function'?itemName(meta):null)||meta.heb||c.heb||key;
     const isProd=(typeof isProduce==='function')&&meta.kind==='cut'&&isProduce(c);
     const list=(typeof seasoningsFor==='function')?seasoningsFor(meta.cat||c.cat,isProd):[];
-    if(!list.length) return `<div class="cscard"><h4>${(typeof itemEmoji==='function'?itemEmoji(meta.cat||c.cat,key):'')} ${heb}</h4><div style="font-size:12px;color:var(--smoke)">אין מתבלים ייעודיים לפריט זה</div></div>`;
-    const burgerBtn=key==='cut-18'?`<button class="mchip" data-cwburger style="margin:2px 0 8px">🍔 בנה את הבורגר — גבינה, תוספות ורטבים</button>`:'';
+    if(!list.length) return `<div class="cscard"><h4>${(typeof itemEmoji==='function'?itemEmoji(meta.cat||c.cat,key):'')} ${heb}</h4><div style="font-size:12px;color:var(--smoke)">${L('אין מתבלים ייעודיים לפריט זה','No dedicated seasonings for this item')}</div></div>`;
+    const burgerBtn=key==='cut-18'?`<button class="mchip" data-cwburger style="margin:2px 0 8px">🍔 ${L('בנה את הבורגר — גבינה, תוספות ורטבים','Build the burger — cheese, toppings and sauces')}</button>`:'';
     return `<div class="cscard"><h4>${(typeof itemEmoji==='function'?itemEmoji(meta.cat||c.cat,key):'')} ${heb}</h4>${burgerBtn}${seasPickerHTML(key, meta.cat||c.cat, isProd, 'edit')}</div>`;
   }).join('');
   keys.forEach(key=>{
@@ -4952,7 +4958,7 @@ function cwPaintSidesDrinks(){
   if(sh && typeof SIDES!=='undefined'){
     const sel=new Set(m.sides||[]);
     const av=SIDES.filter(s=>match(s.t));
-    sh.innerHTML=av.map(s=>`<span class="cmethod ${sel.has(s.n)?'on':''}" data-cwside="${s.n}">${sel.has(s.n)?'✓ ':''}${s.n}</span>`).join('')||'<div style="color:var(--smoke);font-size:12px">בחר מנות קודם</div>';
+    sh.innerHTML=av.map(s=>`<span class="cmethod ${sel.has(s.n)?'on':''}" data-cwside="${s.n}">${sel.has(s.n)?'✓ ':''}${t(s.n)}</span>`).join('')||`<div style="color:var(--smoke);font-size:12px">${L('בחר מנות קודם','Pick dishes first')}</div>`;
     sh.querySelectorAll('[data-cwside]').forEach(el=>el.addEventListener('click',()=>{
       const mm=cwMenu(); const s=new Set(mm.sides||[]); const n=el.dataset.cwside;
       s.has(n)?s.delete(n):s.add(n); mm.sides=[...s]; cwSave(mm); cwPaintSidesDrinks();
@@ -4962,12 +4968,12 @@ function cwPaintSidesDrinks(){
   if(dh && typeof DRINKS!=='undefined'){
     const sel=new Set(m.drinks||[]);
     const av=DRINKS.filter(s=>match(s.t));
-    const SUBS=[['soft','🥤 רכה'],['beer','🍺 בירה'],['wine','🍷 יין'],['spirit','🥃 חריף'],['cocktail','🍸 קוקטיילים']];
-    const chip=s=>`<span class="cmethod ${sel.has(s.n)?'on':''}" data-cwdrink="${s.n}">${sel.has(s.n)?'✓ ':''}${s.n}</span>`;
+    const SUBS=[['soft',L('🥤 רכה','🥤 Soft')],['beer',L('🍺 בירה','🍺 Beer')],['wine',L('🍷 יין','🍷 Wine')],['spirit',L('🥃 חריף','🥃 Spirits')],['cocktail',L('🍸 קוקטיילים','🍸 Cocktails')]];
+    const chip=s=>`<span class="cmethod ${sel.has(s.n)?'on':''}" data-cwdrink="${s.n}">${sel.has(s.n)?'✓ ':''}${t(s.n)}</span>`;
     const html=SUBS.map(([sub,label])=>{ const grp=av.filter(d=>(d.sub||d.k)===sub); if(!grp.length) return '';
       return `<div class="cwd-sub"><div class="cwd-lbl">${label}</div><div class="cmethods" style="flex-wrap:wrap">${grp.map(chip).join('')}</div></div>`;
     }).join('');
-    dh.innerHTML=html||'<div style="color:var(--smoke);font-size:12px">בחר מנות קודם</div>';
+    dh.innerHTML=html||`<div style="color:var(--smoke);font-size:12px">${L('בחר מנות קודם','Pick dishes first')}</div>`;
     dh.querySelectorAll('[data-cwdrink]').forEach(el=>el.addEventListener('click',()=>{
       const mm=cwMenu(); const s=new Set(mm.drinks||[]); const n=el.dataset.cwdrink;
       s.has(n)?s.delete(n):s.add(n); mm.drinks=[...s]; cwSave(mm); cwPaintSidesDrinks();
@@ -4976,8 +4982,8 @@ function cwPaintSidesDrinks(){
   const dsh=$("#cwDesserts");
   if(dsh && typeof DESSERTS!=='undefined'){
     const sel=new Set(m.desserts||[]);
-    let html=DESSERTS.map(d=>`<span class="cmethod ${sel.has(d.n)?'on':''}" data-cwdessert="${d.n}">${sel.has(d.n)?'✓ ':''}${d.fire?'🔥 ':''}${d.n}</span>`).join('');
-    html+=`<div class="cwd-sub" style="width:100%"><div class="cwd-lbl">🍑 פירות טריים — ${eventSeason()}${m.evDate?' (לפי תאריך האירוע)':' (החודש)'}</div><span class="cmethod ${sel.has('__fruit')?'on':''}" data-cwdessert="__fruit">${sel.has('__fruit')?'✓ ':''}🍉 מגש פירות העונה: ${seasonalFruitList().join(' · ')}</span></div>`;
+    let html=DESSERTS.map(d=>`<span class="cmethod ${sel.has(d.n)?'on':''}" data-cwdessert="${d.n}">${sel.has(d.n)?'✓ ':''}${d.fire?'🔥 ':''}${t(d.n)}</span>`).join('');
+    html+=`<div class="cwd-sub" style="width:100%"><div class="cwd-lbl">🍑 ${L('פירות טריים','Fresh fruit')} — ${t(eventSeason())}${m.evDate?L(' (לפי תאריך האירוע)',' (by event date)'):L(' (החודש)',' (this month)')}</div><span class="cmethod ${sel.has('__fruit')?'on':''}" data-cwdessert="__fruit">${sel.has('__fruit')?'✓ ':''}🍉 ${L('מגש פירות העונה','Seasonal fruit platter')}: ${seasonalFruitList().map(x=>t(x)).join(' · ')}</span></div>`;
     dsh.innerHTML=html;
     dsh.querySelectorAll('[data-cwdessert]').forEach(el=>el.addEventListener('click',()=>{
       const mm=cwMenu(); const s=new Set(mm.desserts||[]); const n=el.dataset.cwdessert;
@@ -4996,21 +5002,21 @@ function cwPaintReview(){
   const keys=(m.keys||[]);
   const gpp=(typeof window.gpp==='function')?window.gpp(m.appetite):({light:200,reg:280,heavy:380}[m.appetite]||280);
   const totalG=Math.round(gpp*(m.guests||8)/1000*10)/10;
-  const dishRow=keys.map(k=>{const meta=resolveItem(k); if(!meta) return ''; const heb=meta.heb||(meta.obj&&meta.obj.heb)||k;
+  const dishRow=keys.map(k=>{const meta=resolveItem(k); if(!meta) return ''; const heb=(typeof itemName==='function'?itemName(meta):null)||meta.heb||(meta.obj&&meta.obj.heb)||k;
     const meth=(typeof activeMethods==='function'&&meta.kind!=='spec')?activeMethods(meta.obj||meta,k):[];
     const seas=(typeof selectedSeasonings==='function')?selectedSeasonings(k).length:0;
-    const mlabel={sv:'סו-ויד',smoke:'עישון',grill:'גריל'};
-    return `<div class="csum-row"><span class="si">${(typeof itemEmoji==='function'?itemEmoji(meta.cat||(meta.obj&&meta.obj.cat),k):'🍽️')}</span><div class="sb"><div class="st">${heb}</div><div class="sd">${meth.map(x=>mlabel[x]||x).join(' + ')||'מוכן'}${seas?' · '+seas+' מתבלים':''}</div></div></div>`;
+    const mlabel={sv:L('סו-ויד','Sous-vide'),smoke:L('עישון','Smoke'),grill:L('גריל','Grill')};
+    return `<div class="csum-row"><span class="si">${(typeof itemEmoji==='function'?itemEmoji(meta.cat||(meta.obj&&meta.obj.cat),k):'🍽️')}</span><div class="sb"><div class="st">${heb}</div><div class="sd">${meth.map(x=>mlabel[x]||x).join(' + ')||L('מוכן','Ready')}${seas?' · '+seas+' '+L('מתבלים','seasonings'):''}</div></div></div>`;
   }).join('');
-  host.innerHTML=`<div class="cscard"><h4>📋 התפריט · ${m.guests||8} סועדים · ~${totalG} ק״ג בשר</h4>
-    ${dishRow||'<div style="color:var(--smoke)">לא נבחרו מנות</div>'}
-    ${(m.sides||[]).length?`<div class="csum-row"><span class="si">🥗</span><div class="sb"><div class="st">תוספות</div><div class="sd">${m.sides.join(' · ')}</div></div></div>`:''}
-    ${(m.drinks||[]).length?`<div class="csum-row"><span class="si">🥤</span><div class="sb"><div class="st">שתייה</div><div class="sd">${m.drinks.join(' · ')}</div></div></div>`:''}
-    ${(m.desserts||[]).length?`<div class="csum-row"><span class="si">🍮</span><div class="sb"><div class="st">קינוחים</div><div class="sd">${m.desserts.map(x=>x==='__fruit'?'מגש פירות העונה ('+eventSeason()+')':x).join(' · ')}</div></div></div>`:''}
+  host.innerHTML=`<div class="cscard"><h4>📋 ${L('התפריט','The menu')} · ${m.guests||8} ${L('סועדים','guests')} · ~${totalG} ${L('ק״ג בשר','kg meat')}</h4>
+    ${dishRow||`<div style="color:var(--smoke)">${L('לא נבחרו מנות','No dishes selected')}</div>`}
+    ${(m.sides||[]).length?`<div class="csum-row"><span class="si">🥗</span><div class="sb"><div class="st">${L('תוספות','Sides')}</div><div class="sd">${m.sides.map(x=>t(x)).join(' · ')}</div></div></div>`:''}
+    ${(m.drinks||[]).length?`<div class="csum-row"><span class="si">🥤</span><div class="sb"><div class="st">${L('שתייה','Drinks')}</div><div class="sd">${m.drinks.map(x=>t(x)).join(' · ')}</div></div></div>`:''}
+    ${(m.desserts||[]).length?`<div class="csum-row"><span class="si">🍮</span><div class="sb"><div class="st">${L('קינוחים','Desserts')}</div><div class="sd">${m.desserts.map(x=>x==='__fruit'?L('מגש פירות העונה','Seasonal fruit platter')+' ('+t(eventSeason())+')':t(x)).join(' · ')}</div></div></div>`:''}
   </div>`;
   // seed resume for home
-  const firstName=keys.length?(resolveItem(keys[0])||{}).heb:'ארוחה';
-  store.set('mk-cresume',{title:(firstName||'ארוחה')+(keys.length>1?' ועוד':''), serv:m.guests||8, ctx:(typeof menuCtx==='function'?menuCtx():'event'), step:cWiz.step, ts:Date.now()});
+  const firstName=keys.length?((typeof itemName==='function'?itemName(resolveItem(keys[0])||{}):null)||(resolveItem(keys[0])||{}).heb):L('ארוחה','Meal');
+  store.set('mk-cresume',{title:(firstName||L('ארוחה','Meal'))+(keys.length>1?L(' ועוד',' & more'):''), serv:m.guests||8, ctx:(typeof menuCtx==='function'?menuCtx():'event'), step:cWiz.step, ts:Date.now()});
 }
 // wire wizard controls
 (function(){
@@ -6277,8 +6283,8 @@ function burgerDiners(){
 function saveBurgerDiners(a){ store.set(burgerKey(),a); }
 function burgerSummaryLine(d){
   const dn=BURGER_DONE[d.done]||BURGER_DONE.med;
-  const ch=d.cheesePos==='none'?'ללא גבינה':(d.cheesePos==='stuffed'?`🧀 ${d.cheese} ממולא`:`🧀 ${d.cheese}`);
-  return `${dn[0]} ${dn[1]}° · ${ch} · ${d.tops.length} תוספות${d.sauce?` · ${d.sauce.split(' (')[0]}`:''}`;
+  const ch=d.cheesePos==='none'?L('ללא גבינה','No cheese'):(d.cheesePos==='stuffed'?`🧀 ${t(d.cheese)} ${L('ממולא','stuffed')}`:`🧀 ${t(d.cheese)}`);
+  return `${t(dn[0])} ${dn[1]}° · ${ch} · ${d.tops.length} ${L('תוספות','toppings')}${d.sauce?` · ${t(d.sauce.split(' (')[0])}`:''}`;
 }
 // pure task builder for the work plan (testable)
 function burgerPlanTasks(diners, startClock, serveClock, name, detail){
@@ -6311,38 +6317,38 @@ function openBurgerBuilder(){
     return `<div class="cscard" data-bcard="${d.id}">
       <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px">
         <input data-bname="${d.id}" value="${(d.name||'').replace(/"/g,'&quot;')}" style="flex:1;background:var(--char);border:1.5px solid var(--line2);border-radius:10px;padding:9px;color:var(--bone);font-family:'Heebo';font-weight:800">
-        <button class="mchip" data-bdup="${d.id}" title="שכפל">⧉</button>
-        ${diners.length>1?`<button class="mchip" data-brm="${d.id}" title="הסר">🗑</button>`:''}
+        <button class="mchip" data-bdup="${d.id}" title="${L('שכפל','Duplicate')}">⧉</button>
+        ${diners.length>1?`<button class="mchip" data-brm="${d.id}" title="${L('הסר','Remove')}">🗑</button>`:''}
       </div>
-      <h4>🌡️ מידת עשייה</h4><div class="cmethods">${Object.entries(BURGER_DONE).map(([k,[l,c]])=>chip(`${l} ${c}°`,d.done===k,`data-bdone="${k}" data-bid="${d.id}"`)).join('')}</div>
-      ${d.done!=='well'?`<div style="font-size:11px;color:var(--smoke);margin:4px 2px 0">⚠ בבשר טחון ההמלצה הרשמית היא 71°C — פחות מזה על אחריותך ומבשר טרי בלבד.</div>`:''}
-      <h4 style="margin-top:12px">🧀 גבינה</h4><div class="cmethods">
-        ${chip('ללא',d.cheesePos==='none',`data-bcp="none" data-bid="${d.id}"`)}
-        ${chip('מעל (נמסה)',d.cheesePos==='top',`data-bcp="top" data-bid="${d.id}"`)}
-        ${chip('ממולאת (Juicy Lucy)',d.cheesePos==='stuffed',`data-bcp="stuffed" data-bid="${d.id}"`)}
+      <h4>🌡️ ${L('מידת עשייה','Doneness')}</h4><div class="cmethods">${Object.entries(BURGER_DONE).map(([k,[l,c]])=>chip(`${t(l)} ${c}°`,d.done===k,`data-bdone="${k}" data-bid="${d.id}"`)).join('')}</div>
+      ${d.done!=='well'?`<div style="font-size:11px;color:var(--smoke);margin:4px 2px 0">${L('⚠ בבשר טחון ההמלצה הרשמית היא 71°C — פחות מזה על אחריותך ומבשר טרי בלבד.','⚠ For ground meat the official recommendation is 71°C — below that is at your own risk and from fresh meat only.')}</div>`:''}
+      <h4 style="margin-top:12px">🧀 ${L('גבינה','Cheese')}</h4><div class="cmethods">
+        ${chip(L('ללא','None'),d.cheesePos==='none',`data-bcp="none" data-bid="${d.id}"`)}
+        ${chip(L('מעל (נמסה)','On top (melted)'),d.cheesePos==='top',`data-bcp="top" data-bid="${d.id}"`)}
+        ${chip(L('ממולאת (Juicy Lucy)','Stuffed (Juicy Lucy)'),d.cheesePos==='stuffed',`data-bcp="stuffed" data-bid="${d.id}"`)}
       </div>
-      ${d.cheesePos!=='none'?`<div class="cmethods" style="margin-top:6px">${cheeses.map(c=>chip(c,d.cheese===c,`data-bche="${c}" data-bid="${d.id}"`)).join('')}</div>`:''}
-      <h4 style="margin-top:12px">🥗 תוספות</h4><div class="cmethods">${BURGER_TOPPINGS.map(t=>chip(t,(d.tops||[]).includes(t),`data-btop="${t}" data-bid="${d.id}"`)).join('')}</div>
-      <h4 style="margin-top:12px">🥫 רוטב</h4><div class="cmethods">${BURGER_SAUCES.map(x=>chip(x,d.sauce===x,`data-bsauce="${x}" data-bid="${d.id}"`)).join('')}</div>
-      <h4 style="margin-top:12px">🍞 לחמנייה</h4><div class="cmethods">${BURGER_BUNS.map(x=>chip(x,d.bun===x,`data-bbun="${x}" data-bid="${d.id}"`)).join('')}</div>
+      ${d.cheesePos!=='none'?`<div class="cmethods" style="margin-top:6px">${cheeses.map(c=>chip(t(c),d.cheese===c,`data-bche="${c}" data-bid="${d.id}"`)).join('')}</div>`:''}
+      <h4 style="margin-top:12px">🥗 ${L('תוספות','Toppings')}</h4><div class="cmethods">${BURGER_TOPPINGS.map(tp=>chip(t(tp),(d.tops||[]).includes(tp),`data-btop="${tp}" data-bid="${d.id}"`)).join('')}</div>
+      <h4 style="margin-top:12px">🥫 ${L('רוטב','Sauce')}</h4><div class="cmethods">${BURGER_SAUCES.map(x=>chip(t(x),d.sauce===x,`data-bsauce="${x}" data-bid="${d.id}"`)).join('')}</div>
+      <h4 style="margin-top:12px">🍞 ${L('לחמנייה','Bun')}</h4><div class="cmethods">${BURGER_BUNS.map(x=>chip(t(x),d.bun===x,`data-bbun="${x}" data-bid="${d.id}"`)).join('')}</div>
     </div>`;
   };
-  showPanel(`${toolTop('בורגר לכל סועד','מידת עשייה, גבינה, תוספות ורוטב — אישית','🍔','#c0563a')}
+  showPanel(`${toolTop(L('בורגר לכל סועד','A burger per guest'),L('מידת עשייה, גבינה, תוספות ורוטב — אישית','Doneness, cheese, toppings and sauce — personal'),'🍔','#c0563a')}
     <div class="panel-body">
       <div style="display:flex;gap:8px;margin-bottom:10px">
-        <button class="ccta" data-badd style="margin:0;flex:1;padding:11px;font-size:13.5px">＋ הוסף סועד</button>
-        ${guests>diners.length?`<button class="ccta ghostc" data-bfill style="margin:0;flex:1;padding:11px;font-size:13.5px;background:none;border:1.5px solid var(--ember);color:var(--ember)">השלם ל-${guests} סועדים</button>`:''}
+        <button class="ccta" data-badd style="margin:0;flex:1;padding:11px;font-size:13.5px">＋ ${L('הוסף סועד','Add guest')}</button>
+        ${guests>diners.length?`<button class="ccta ghostc" data-bfill style="margin:0;flex:1;padding:11px;font-size:13.5px;background:none;border:1.5px solid var(--ember);color:var(--ember)">${L('השלם ל-','Fill to ')}${guests} ${L('סועדים','guests')}</button>`:''}
       </div>
       ${diners.map(dinerCard).join('')}
-      <div style="font-size:11.5px;color:var(--smoke);padding:6px 4px 8px">ההגדרות נשמרות לבישול/אירוע הנוכחי ומופיעות בתוכנית העבודה — כולל קיבוץ קציצות לפי מידת עשייה והרכבה אישית.</div>
+      <div style="font-size:11.5px;color:var(--smoke);padding:6px 4px 8px">${L('ההגדרות נשמרות לבישול/אירוע הנוכחי ומופיעות בתוכנית העבודה — כולל קיבוץ קציצות לפי מידת עשייה והרכבה אישית.','Settings are saved to the current cook/event and appear in the work plan — including grouping patties by doneness and personal assembly.')}</div>
     </div>`);
   const pnl=$("#panel"); if(!pnl) return;
   const upd=fn=>{ const a=burgerDiners(); fn(a); saveBurgerDiners(a); openBurgerBuilder(); };
   pnl.querySelectorAll('[data-bopen]').forEach(x=>x.addEventListener('click',()=>{ _bOpen=x.dataset.bopen; openBurgerBuilder(); }));
-  pnl.querySelectorAll('[data-badd]').forEach(x=>x.addEventListener('click',()=>upd(a=>{ const base=a[a.length-1]; const nd=Object.assign({},base,{id:uid(),name:'סועד '+(a.length+1),tops:[...(base.tops||[])]}); a.push(nd); _bOpen=nd.id; })));
-  pnl.querySelectorAll('[data-bfill]').forEach(x=>x.addEventListener('click',()=>upd(a=>{ const base=a[0]; while(a.length<guests){ a.push(Object.assign({},base,{id:uid(),name:'סועד '+(a.length+1),tops:[...(base.tops||[])]})); } })));
+  pnl.querySelectorAll('[data-badd]').forEach(x=>x.addEventListener('click',()=>upd(a=>{ const base=a[a.length-1]; const nd=Object.assign({},base,{id:uid(),name:L('סועד ','Guest ')+(a.length+1),tops:[...(base.tops||[])]}); a.push(nd); _bOpen=nd.id; })));
+  pnl.querySelectorAll('[data-bfill]').forEach(x=>x.addEventListener('click',()=>upd(a=>{ const base=a[0]; while(a.length<guests){ a.push(Object.assign({},base,{id:uid(),name:L('סועד ','Guest ')+(a.length+1),tops:[...(base.tops||[])]})); } })));
   pnl.querySelectorAll('[data-bdup]').forEach(x=>x.addEventListener('click',()=>upd(a=>{ const i=a.findIndex(d=>d.id===x.dataset.bdup); if(i<0)return; const nd=Object.assign({},a[i],{id:uid(),name:a[i].name+' (2)',tops:[...(a[i].tops||[])]}); a.splice(i+1,0,nd); _bOpen=nd.id; })));
-  pnl.querySelectorAll('[data-brm]').forEach(x=>x.addEventListener('click',async()=>{ if((await appConfirm('להסיר את הסועד?',{okLabel:'הסר',danger:true}))!==true) return; upd(a=>{ const i=a.findIndex(d=>d.id===x.dataset.brm); if(i>=0&&a.length>1) a.splice(i,1); }); }));
+  pnl.querySelectorAll('[data-brm]').forEach(x=>x.addEventListener('click',async()=>{ if((await appConfirm(L('להסיר את הסועד?','Remove this guest?'),{okLabel:L('הסר','Remove'),danger:true}))!==true) return; upd(a=>{ const i=a.findIndex(d=>d.id===x.dataset.brm); if(i>=0&&a.length>1) a.splice(i,1); }); }));
   pnl.querySelectorAll('[data-bname]').forEach(x=>x.addEventListener('change',()=>upd(a=>{ const d=a.find(y=>y.id===x.dataset.bname); if(d) d.name=x.value.trim()||d.name; })));
   const bid=x=>x.dataset.bid;
   pnl.querySelectorAll('[data-bdone]').forEach(x=>x.addEventListener('click',()=>upd(a=>{ const d=a.find(y=>y.id===bid(x)); if(d) d.done=x.dataset.bdone; })));

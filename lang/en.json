@@ -301,5 +301,17 @@
  "האירוע": "The event",
  "הגדר את הציוד שלך": "Set up your equipment",
  "כדי שהמתכונים יתאימו למה שיש לך": "so recipes match what you have",
- "בחר שפה": "Choose language"
+ "בחר שפה": "Choose language",
+ "לכל פריט — בחר שיטה (סו-ויד / עישון / גריל). נשמר במנוע האמיתי.": "For each item — choose a method (sous-vide / smoking / grill). Saved in the real engine.",
+ "מגוון רחב להכנה מאפס: נקניקיות טריות, נקניקים מעושנים ומיובשים, פסטרמות ושווארמה — כל אחד עם חומרים, טחינה, מילוי, עישון ומחשבון מלח.": "A wide range to make from scratch: fresh sausages, smoked and dry-cured sausages, pastramis and shawarma — each with materials, grinding, stuffing, smoking and a salt calculator.",
+ "מותאם למנות ולעונה. הקינוחים כוללים פירות טריים לפי תאריך האירוע.": "Matched to the dishes and the season. Desserts include fresh fruit based on the event date.",
+ "ריפוי ועישון — ג'רקי, בייקון, נקניקים מותססים/מיובשים, ו-33 גבינות לעישון קר וגריל.": "Curing and smoking — jerky, bacon, fermented/dry-cured sausages, and 33 cheeses for cold smoke and grill.",
+ "⏰ שעת הגשה": "⏰ Serve time",
+ "✡️ כשרות": "✡️ Kosher",
+ "🍮 קינוחים": "🍮 Desserts",
+ "🎉 אירוע חדש": "🎉 New event",
+ "🗑️ איפוס תצוגה": "🗑️ Reset view",
+ "🥗 תוספות": "🥗 Sides",
+ "🥤 שתייה": "🥤 Drinks",
+ "🥩 סנן חזיר/לא-כשר": "🥩 Filter pork/non-kosher"
 }
