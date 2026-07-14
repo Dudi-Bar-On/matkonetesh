@@ -21,18 +21,18 @@ test('setLang switches dir/lang, translates chrome, and restores Hebrew on switc
   await page.evaluate(`setLang('en')`);
   expect(await page.evaluate(`document.documentElement.lang`)).toBe('en');
   expect(await page.evaluate(`document.documentElement.dir`)).toBe('ltr');
-  expect(await page.evaluate(`document.querySelector('[data-i18n="path.event"]').textContent`)).toContain('I have an event');
+  expect(await page.evaluate(`document.querySelector('[data-i18n="path.project"]').textContent`)).toContain('Advanced project');
   expect(await page.evaluate(`document.querySelector('[data-i18n-html="home.what"]').innerHTML`)).toContain('<b>cooking</b>');
   await page.evaluate(`setLang('he')`);
   expect(await page.evaluate(`document.documentElement.dir`)).toBe('rtl');
-  expect(await page.evaluate(`document.querySelector('[data-i18n="path.event"]').textContent`)).toContain('יש לי אירוע');   // restored
+  expect(await page.evaluate(`document.querySelector('[data-i18n="path.project"]').textContent`)).toContain('פרויקט מתקדם');   // restored
   expect(await page.evaluate(`document.querySelector('[data-i18n-html="home.what"]').innerHTML`)).toContain('מדליקים');       // restored
 });
 
 test('a second language (French) works from the same mechanism', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('fr')`);
-  expect(await page.evaluate(`document.querySelector('[data-i18n="path.event"]').textContent`)).toContain("J'ai un événement");
+  expect(await page.evaluate(`document.querySelector('[data-i18n="path.project"]').textContent`)).toContain('Projet avancé');
   expect(await page.evaluate(`t('בקר')`)).toBe('Bœuf');
 });
 

@@ -145,10 +145,8 @@ HTML = r"""<!DOCTYPE html>
     <button class="capp-langpill" id="cHomeLang" aria-label="Language"><span class="clp-flag" id="cHomeLangFlag">🌐</span><span class="clp-name" id="cHomeLangName">Language</span><span class="clp-caret">▾</span></button>
     <button class="capp-ico capp-more-corner" id="cHomeMore" aria-label="More">☰</button>
     <div class="chome-title">
-      <div class="chome-kick">סו-ויד · עישון · גריל · אש</div>
+      <div class="chome-kick" id="cHomeKick">סו-ויד · עישון · גריל · אש</div>
       <h1 class="chome-h1"><span class="brand-flame">🔥</span> מתכונת · מדריך האש</h1>
-      <p class="chome-sub">בישול מדויק בעברית — טמפרטורה × זמן, מבשר ופירות-ים ועד גבינות וירקות. <button class="chome-caps" id="cHomeCaps">גלה את כל היכולות ←</button></p>
-      <div class="chome-credit-top">נבנה באהבה לקהילת האש · <b>דודי בר-און</b></div>
     </div>
   </div>
   <div class="chome-search" id="cHomeSearch"><span class="ic">⌕</span><input id="cHomeSearchInput" data-i18n-ph="search.ph" placeholder="חפש הכל — נתח, נקניקייה, מתבל…" autocomplete="off"></div>
@@ -156,8 +154,7 @@ HTML = r"""<!DOCTYPE html>
   <div id="cGearBanner"></div>
   <button class="chome-ask" id="cHomeAsk"><span class="cha-ico">🔥</span><span class="cha-txt"><b data-i18n="home.ask">שאל את האש</b><small>עוזר בישול חכם — זמן, טמפ׳, עץ, כמות, כשרות, ואיפה לקנות</small></span><span class="cha-go">←</span></button>
   <div class="cpaths">
-    <div class="cpath event" data-cgo="wizard"><span class="ptag">🌿 הכי פופולרי</span><span class="pico">🎉</span><h3 data-i18n="path.event">יש לי אירוע</h3><p>אשף מודרך שבונה תפריט, רשימת קניות ותוכנית עבודה — לפי מספר הסועדים והטעמים.</p><span class="go">←</span></div>
-    <div class="cpath quick" id="cPathCook"><span class="pico">🔥</span><h3 data-i18n="path.cook">בא לי לבשל משהו</h3><p>אותו אשף מודרך כמו אירוע — בחר מנות, שיטות ותיבול, וקבל תוכנית עבודה מלאה עם טיימרים.</p><span class="go">←</span></div>
+    <div class="cpath event" data-cgo="wizard"><span class="ptag">🌿 הכי פופולרי</span><span class="pico">🎉</span><h3 data-i18n="path.hosting">מארח? תכנן את האירוע</h3><p>אשף מודרך שבונה תפריט, רשימת קניות ותוכנית עבודה — לפי מספר הסועדים והטעמים.</p><button class="cpath-branch" id="cPathCook">↳ או פשוט בשל כמה מנות (בלי אירוע)</button></div>
     <div class="cpath project" id="cPathProj"><span class="pico">🧪</span><h3 data-i18n="path.project">פרויקט מתקדם</h3><p>שרקוטרי, נקניקים ועישון ארוך — בחירה מקוטלגת לפי סוג ומדינה, עם תיאור מלא לכל מלאכה וליווי צעד-אחר-צעד.</p><span class="go">←</span></div>
   </div>
   <div class="cnext cnext-live" id="cCooking" hidden><span class="nico">🔥</span><div style="flex:1"><div class="nt">בישול פעיל עכשיו</div><div class="nm" id="cCookingM"></div></div><button class="cnext-x" id="cCookingX" aria-label="עצור בישול פעיל">✕</button><span class="ng">←</span></div>
@@ -314,7 +311,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 205 · 14.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 206 · 14.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>

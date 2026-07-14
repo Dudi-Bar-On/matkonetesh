@@ -65,10 +65,12 @@ body.capp{padding-bottom:82px}
 .cpath h3{font-family:var(--font-display);font-size:calc(24px * var(--fscale));margin-bottom:8px;color:var(--bone);font-weight:400}
 .cpath p{font-size:calc(13.5px * var(--fscale));color:var(--ash);line-height:1.6;text-align:start}
 .cpath .go{display:block;margin-top:12px;font-size:calc(22px * var(--fscale));text-align:center;opacity:.85}
+.cpath-branch{display:inline-block;margin-top:12px;background:none;border:none;border-top:1px dashed var(--line2);padding:11px 4px 0;width:100%;font-family:var(--font-body);font-size:calc(13px * var(--fscale));font-weight:700;color:var(--terra-d);cursor:pointer;text-align:start}
+.cpath-branch:hover{color:var(--ember)}
 .cpath.event{background:linear-gradient(135deg,var(--tint-warm),var(--tint-warm2))}.cpath.event .go{color:var(--ember)}
 .cpath.quick .go{color:var(--ember)}
 .cpath.project .go{color:var(--terra-d)}
-.cpath .ptag{position:absolute;top:16px;left:16px;background:var(--fresh-l);color:var(--fresh);font-family:var(--font-body);font-weight:700;font-size:calc(10px * var(--fscale));padding:3px 9px;border-radius:999px}
+.cpath .ptag{position:absolute;top:16px;inset-inline-start:16px;background:var(--fresh-l);color:var(--fresh);font-family:var(--font-body);font-weight:700;font-size:calc(10px * var(--fscale));padding:3px 9px;border-radius:999px}
 .cnext{margin:20px 16px 0;background:var(--char2);border:2px solid var(--line2);border-radius:16px;padding:15px;display:flex;align-items:center;gap:13px;cursor:pointer}
 .cnext-x{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line2);background:var(--char3);color:var(--smoke);font-size:14px;cursor:pointer;display:grid;place-items:center;line-height:1}
 .cnext-x:hover{border-color:var(--ember);color:var(--ember)}

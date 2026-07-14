@@ -5247,6 +5247,7 @@ function cRefreshHome(){
     }
   }
   const g=$("#cGreet"); if(g){ const h=new Date().getHours(); g.textContent=(h<12?L('בוקר טוב','Good morning'):h<18?L('צהריים טובים','Good afternoon'):L('ערב טוב','Good evening'))+' 👋'; }
+  const kk=$("#cHomeKick"); if(kk){ const hg=(typeof homeGear==='function')?homeGear():{canSV:true,canSmoke:true,canGrill:true}; const p=[]; if(hg.canSV)p.push(L('סו-ויד','Sous-vide')); if(hg.canSmoke)p.push(L('עישון','Smoke')); if(hg.canGrill)p.push(L('גריל','Grill')); p.push(L('אש','Fire')); kk.textContent=p.join(' · '); }   // gear-aware tagline — drops methods you can't do
 }
 // shared "is something cooking?" state (started plans + running/ringing timers)
 function _liveCookState(){
@@ -6881,14 +6882,14 @@ function openMoreSheet(){
   }));
 }
 // wire nav + home controls
-document.querySelectorAll('[data-cnav]').forEach(b=>b.addEventListener('click',()=>cNavGo(b.dataset.cnav)));
-document.querySelectorAll('[data-cgo]').forEach(b=>b.addEventListener('click',()=>cNavGo(b.dataset.cgo)));
+// wizard triggers get cStartNewEvent below — exclude them here so we never have to clone them off cNavGo (cloneNode strips the i18n _mkO restore expando → title stuck in the other language)
+document.querySelectorAll('[data-cnav]').forEach(b=>{ if(b.dataset.cnav==='wizard') return; b.addEventListener('click',()=>cNavGo(b.dataset.cnav)); });
+document.querySelectorAll('[data-cgo]').forEach(b=>{ if(b.dataset.cgo==='wizard') return; b.addEventListener('click',()=>cNavGo(b.dataset.cgo)); });
 // floating Active-now shortcut: click → hub; keep it in sync on boot + a slow tick (for ringing while idle on a screen)
 (()=>{ const fab=$("#cActiveFab"); if(fab) fab.addEventListener('click',()=>{ if(typeof openActive==='function') openActive(); }); try{ if(typeof syncActiveFab==='function'){ syncActiveFab(); setInterval(syncActiveFab, 5000); } }catch(e){} })();
 // "יש לי אירוע" path + FAB → start a NEW clean event (guard unsaved draft)
 function cStartNewEvent(){ setMenuCtx('event'); evGuardBeforeNew(()=>{ cwGo(0); cNavGo('wizard'); cwSyncFromMenu(); }); }
 function cStartCook(){ setMenuCtx('cook'); cwGo(0); cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }
-document.querySelectorAll('[data-cgo="wizard"],[data-cnav="wizard"]').forEach(b=>{ b.replaceWith(b.cloneNode(true)); });
 document.querySelectorAll('[data-cgo="wizard"],[data-cnav="wizard"]').forEach(b=>b.addEventListener('click',cStartNewEvent));
 // UX #12: real global search from home — typing carries the query into the catalog search and shows results
 (()=>{ const wrap=$("#cHomeSearch"); const inp=$("#cHomeSearchInput");
@@ -6902,7 +6903,6 @@ document.querySelectorAll('[data-cgo="wizard"],[data-cnav="wizard"]').forEach(b=
 function openLangMenu(){ showPanel(`${toolTop(t('🌐 שפה'),t('בחר שפה'),'🌐','#5a7d8c')}<div class="panel-body">${langRowHtml()}</div>`); wireLangRow($("#panel")); }
 (()=>{ const lb=$("#cHomeLang"); if(lb) lb.addEventListener('click',openLangMenu); try{ syncHomeLang(); }catch(e){} })();
 (()=>{ const a=$("#cHomeAbout"); if(a) a.addEventListener('click',()=>{ if(typeof openGuide==='function') openGuide(); }); })();
-(()=>{ const a=$("#cHomeCaps"); if(a) a.addEventListener('click',()=>{ if(typeof openAbout==='function') openAbout(); }); })();
 (()=>{ const host=$("#cGearBanner"); if(host && typeof gearConfigured==='function' && !gearConfigured()){
    host.innerHTML=`<button class="gear-banner" id="gearBanner">🔧 <span><b>הגדר את הציוד שלך</b> — כדי שהמתכונים יתאימו למה שיש לך</span><span class="gb-go">←</span></button>`;
    const b=$("#gearBanner"); if(b) b.addEventListener('click',()=>{ if(typeof openGear==='function') openGear(); });
@@ -6933,7 +6933,7 @@ function openLangMenu(){ showPanel(`${toolTop(t('🌐 שפה'),t('בחר שפה'
 (()=>{ const r=$("#cResumeProj"); if(r) r.addEventListener('click',()=>cNavGo('projects')); })();
 // dismiss the "resume project" card (just hides the shortcut; the project itself stays in Projects)
 (()=>{ const x=$("#cResumeProjX"); if(x) x.addEventListener('click',(e)=>{ e.stopPropagation(); store.set('mk-lastproj',null); const pb=$("#cResumeProj"); if(pb) pb.hidden=true; }); })();
-(()=>{ const c=$("#cPathCook"); if(c) c.addEventListener('click',cStartCook); })();
+(()=>{ const c=$("#cPathCook"); if(c) c.addEventListener('click',(e)=>{ e.stopPropagation(); cStartCook(); }); })();   // the "or just cook" branch lives inside the hosting card — don't also trigger the card's new-event handler
 (()=>{ const c=$("#cPathProj"); if(c) c.addEventListener('click',()=>{ if(typeof openProjectPicker==='function') openProjectPicker(); else cNavGo('projects'); }); })();
 document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('click',openMoreSheet));
 (()=>{ const n=$("#cEvNew"); if(n) n.addEventListener('click',cStartNewEvent); })();
