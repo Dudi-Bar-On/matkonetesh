@@ -3609,6 +3609,17 @@ function _tlFocusItem(focus){
     }catch(e){ try{ target.scrollIntoView({block:'center'}); }catch(_){} } });
   }catch(e){} };
   requestAnimationFrame(attempt);
+  _tlMarkSelected();   // reflect the (new) selection persistently
+}
+// user picks an item as the current selection → remembered across view switches, shown with a persistent highlight
+function _tlSelect(itemKey){ if(!itemKey) return; _tlFocusKey=itemKey; _tlMarkSelected(); }
+// paint the persistent selection ring on every element belonging to _tlFocusKey (re-run after each render)
+function _tlMarkSelected(){
+  const list=$("#tlList"); if(!list) return;
+  list.querySelectorAll('.tl-sel').forEach(function(e){ e.classList.remove('tl-sel'); });
+  const ik=_tlFocusKey; if(!ik) return;
+  list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(b.getAttribute('data-tlexp')===ik){ const c=b.closest('.tlcard'); if(c) c.classList.add('tl-sel'); } });
+  list.querySelectorAll('[data-tlitem]').forEach(function(e){ if(e.getAttribute('data-tlitem')===ik) e.classList.add('tl-sel'); });
 }
 /* ---------- voice cook mode (TTS + closed voice commands) ---------- */
 let vcTasks=[], vcIdx=0, vcRec=null, vcVoices=[];
@@ -4149,6 +4160,9 @@ function renderTimelinePanel(){
     if(typeof clearTimers==='function') clearTimers();   // stop stale intervals before re-wiring; state persists in mk-timers
     $("#tlList").innerHTML=html;
     if(_tlAllOpen){ $("#tlList").querySelectorAll('.tl-stages').forEach(function(s){s.style.display='block';}); $("#tlList").querySelectorAll('[data-tlexp]').forEach(function(b){b.textContent='▴';}); $("#tlList").querySelectorAll('.wp-acc').forEach(function(a){a.classList.add('open');}); }   // expand-all
+    if(typeof _tlMarkSelected==='function') _tlMarkSelected();   // re-apply the persistent selection ring after re-render
+    // select an item by tapping its work-plan task (all shapes) — remembers it across view switches without toggling the done checkbox
+    $("#tlList").querySelectorAll('[data-tlitem]').forEach(function(el){ el.addEventListener('click',function(e){ const ik=el.getAttribute('data-tlitem'); if(!ik) return; if(el.classList.contains('wp-row') && !e.target.closest('.wp-ck')) e.preventDefault(); if(typeof _tlSelect==='function') _tlSelect(ik); }); });
     $("#tlList").querySelectorAll('.timer').forEach(tm=>wireTimer(tm));   // live countdowns per timed stage (items + plan views)
     { const starts=computed.filter(c=>!c.blocked&&c.startClock).map(c=>c.startClock.getTime());
       let earliest=starts.length?new Date(Math.min(...starts)):null;
@@ -4170,6 +4184,7 @@ function renderTimelinePanel(){
     const tasks=[];
     computed.forEach(c=>{
       if(c.blocked) return;
+      const _tn0=tasks.length;   // tag every task this item pushes with its key, for "select item" in the work-plan view
       const name=(typeof itemName==='function'?itemName(c.m):c.m.heb);
       // ── from-scratch build phases (make-recipes + ground-meat cuts), split-aware ──
       { const sb2=itemScratchBuild(c.m); const stg=c.st.stage||(c.st.ready?'ready':'scratch');
@@ -4221,6 +4236,7 @@ function renderTimelinePanel(){
       const sel2=sel.filter(s=>s.kind==='glaze');
       const lastCook=c.stages.filter(s=>s.kind!=='rest'&&s.kind!=='note').pop();
       if(lastCook) sel2.forEach(s=>tasks.push({t:new Date(lastCook.end.getTime()-15*60e3),label:`🍯 ${L('הברש גלייז','Brush glaze')} ${itemName(s)} — ${name}`,sub:L('10-15 דק׳ אחרונות, בשכבות','last 10-15 min, in layers'),kind:'glaze',det:detail?`${t(s.ing)}${s.sub?` · ⚠ ${L('תחליף','substitute')}: ${t(s.sub)}`:''}`:''}));
+      for(let _ti=_tn0;_ti<tasks.length;_ti++){ if(tasks[_ti]&&tasks[_ti].ikey===undefined) tasks[_ti].ikey=c.m.key; }
     });
     // ── mise-en-place clustering: group flexible prep tasks of the same type (2+) ──
     const clusterDefs=[['🥄',L('🥄 הכנת רטבים (mise en place)','🥄 Make sauces (mise en place)')],['🥣',L('🥣 השריית מרינדות','🥣 Marinades')],['🌶️',L('🌶️ הכנת ושפשוף ראבים','🌶️ Rubs — mix and apply')],['🍯',null]]; // glaze stays clock-bound!
@@ -4268,14 +4284,14 @@ function renderTimelinePanel(){
     return `<div class="workplan ${detail?'wp-full':''}">${tasks.map((tk,i)=>{
       const key='wpck:'+sc+':'+tk.label; const done=store.get(key);   // F: persist check state across rebuilds by task identity (scope+label)
       const cue = i===nextIdx?'wp-next':'';
-      return `<label class="wp-row wp-${tk.kind} ${done?'wp-done':''} ${cue}"><input type="checkbox" class="wp-ck" data-wpck="${encodeURIComponent(key)}" ${done?'checked':''}>
+      return `<label class="wp-row wp-${tk.kind} ${done?'wp-done':''} ${cue}" data-tlitem="${tk.ikey||''}"><input type="checkbox" class="wp-ck" data-wpck="${encodeURIComponent(key)}" ${done?'checked':''}>
         <span class="wp-time">${cue?`<span class="wp-nowtag">${L('הבא','Next')}</span>`:''}${fmtClockRel(tk.t, serve)}</span>
         <span class="wp-body"><b>${tk.label}</b>${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpv-'+i), tk.label)}</span>`:''}</span>
       </label>`;}).join('')}</div>`;
   }
   function renderWpAccordion(tasks, detail, serve){
     return `<div class="workplan wp-accordion ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
-      <div class="wp-acc ${i===0?'open':''}" data-wpacc="${i}">
+      <div class="wp-acc ${i===0?'open':''}" data-wpacc="${i}" data-tlitem="${tk.ikey||''}">
         <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClockRel(tk.t, serve)}</span><b class="wp-atitle">${tk.label}</b><span class="wp-caret">▾</span></div>
         <div class="wp-accb">${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${!tk.sub&&!tk.det?`<small>${L('אין פרטים נוספים לשלב זה.','No further details for this step.')}</small>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpa-'+i), tk.label)}</span>`:''}</div>
       </div>`).join('')}</div>`;
@@ -4283,7 +4299,7 @@ function renderTimelinePanel(){
   function renderWpHorizontal(tasks, serve){
     const ic={sv:'💧',smoke:'💨',cook:'🔥',rest:'⏸️',prep:'🔪',fire:'🔥',serve:'🍽️',glaze:'🍯',dry:'🌬️',bcheck:'🌡️'};
     return `<div class="workplan wp-horiz">${tasks.map((tk,i)=>`
-      <div class="wp-hcell wp-${tk.kind}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClockRel(tk.t, serve)}</div><div class="wp-hlabel">${tk.label}</div>${tk.dur?`<div class="wp-timer">${timerHTML(tk.dur, tk.tid||('wph-'+i), tk.label)}</div>`:''}</div>`).join('')}</div>`;
+      <div class="wp-hcell wp-${tk.kind}" data-tlitem="${tk.ikey||''}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClockRel(tk.t, serve)}</div><div class="wp-hlabel">${tk.label}</div>${tk.dur?`<div class="wp-timer">${timerHTML(tk.dur, tk.tid||('wph-'+i), tk.label)}</div>`:''}</div>`).join('')}</div>`;
   }
   function itemRowHtml(c, serve){
     const {m,profile,st,stages,startClock,blocked}=c;
@@ -4382,7 +4398,12 @@ function renderTimelinePanel(){
     [...(window._tlSeasOpen||[])].forEach(key=>{ const meta=resolveItem(key); if(!meta){window._tlSeasOpen.delete(key);return;} renderTlSeas(key,cssKey(key)); });
     list.querySelectorAll('[data-tlexp]').forEach(b=>b.addEventListener('click',()=>{
       const el=document.getElementById('tlstages-'+b.dataset.ck);
-      if(el){ const open=el.style.display!=='none'; el.style.display=open?'none':'block'; b.textContent=open?'▾':'▴'; if(!open) _tlFocusKey=b.dataset.tlexp; }   // remember the expanded item so a view switch keeps it
+      if(el){ const open=el.style.display!=='none'; el.style.display=open?'none':'block'; b.textContent=open?'▾':'▴'; }
+      if(typeof _tlSelect==='function') _tlSelect(b.dataset.tlexp);   // interacting with an item selects it (kept across view switches)
+    }));
+    // tapping an item card header (not its controls) also selects it
+    list.querySelectorAll('.tlcard .tlc-head').forEach(h=>h.addEventListener('click',function(e){
+      if(e.target.closest('[data-tlexp],button,select,input,a')) return; const xb=h.querySelector('[data-tlexp]'); if(xb && typeof _tlSelect==='function') _tlSelect(xb.getAttribute('data-tlexp'));
     }));
     list.querySelectorAll('[data-tlpantry]').forEach(b=>b.addEventListener('click',()=>openFrom(openTimeline,openPantry)));
     list.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>window.print()));

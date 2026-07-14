@@ -46,3 +46,22 @@ test('voice cook has a jump-to-item selector', async ({ page }) => {
   await page.waitForTimeout(150);
   expect(await page.evaluate(`typeof vcIdx==='number'`)).toBe(true);
 });
+
+test('selecting a different item in the work-plan persists it across a view switch', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+    localStorage.setItem('mk-tlview', JSON.stringify('plan'));
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openTimeline==='function'`);
+  // enter focused on cut-1 (as from the Active-now hub), in the work-plan view
+  await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
+  await page.waitForSelector('#tlList .workplan'); await page.waitForTimeout(500);
+  expect(await page.evaluate(`_tlFocusKey`)).toBe('cut-1');
+  // the user selects cut-2 by tapping one of its tasks
+  await page.evaluate(`document.querySelector('#tlList [data-tlitem="cut-2"]').click()`);
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(`_tlFocusKey`)).toBe('cut-2');
+  // switching views keeps cut-2 selected/focused (not the item we entered with)
+  await page.click('[data-tlview="items"]'); await page.waitForTimeout(500);
+  expect(await page.evaluate(`(function(){ const s=document.querySelector('.tlcard.tl-sel'); return s&&s.querySelector('[data-tlexp]')?s.querySelector('[data-tlexp]').getAttribute('data-tlexp'):'NONE'; })()`)).toBe('cut-2');
+});

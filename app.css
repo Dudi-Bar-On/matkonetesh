@@ -1160,6 +1160,10 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .tlcard.tl-focus{border-color:var(--ember)}
 @keyframes tlfocus{0%{box-shadow:0 0 0 8px rgba(231,111,81,.5)}100%{box-shadow:0 0 0 4px rgba(231,111,81,.28)}}
 @media (prefers-reduced-motion:reduce){.tl-focus{animation:none}}
+/* persistent "selected item" marker — survives view switches */
+.tl-sel{border-radius:12px;outline:2px solid var(--ember2);outline-offset:1px}
+.tlcard.tl-sel{border-color:var(--ember2)}
+.wp-row.tl-sel,.wp-hcell.tl-sel{background:var(--char3)}
 .tlc-head{display:flex;align-items:center;gap:9px}
 .tl-startt{min-width:58px;font-size:calc(14px * var(--fscale))}
 .tl-name{flex:1;font-size:calc(14.5px * var(--fscale))}
