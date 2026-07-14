@@ -5098,8 +5098,8 @@ function cRefreshHome(){
       const ts=store.get('mk-timers')||{}, now=Date.now(); let running=0, ringing=0;
       Object.keys(ts).forEach(k=>{ const r=ts[k]; if(r&&r.end){ if(r.fired) ringing++; else if(r.end>now) running++; } });
       const live = anyStarted || running>0 || ringing>0;
-      if(live){ cb.hidden=false; const cm=$("#cCookingM");
-        if(cm) cm.textContent = ringing? `⏰ ${ringing} טיימרים הסתיימו — הקש` : running? `${running} טיימרים פעילים · הקש לתוכנית` : 'תוכנית פעילה · הקש לתוכנית';
+      if(live){ cb.hidden=false; const cm=$("#cCookingM"); const en=(typeof getLang==='function'&&getLang()!=='he');
+        if(cm) cm.textContent = ringing? `⏰ ${ringing} ${en?(ringing===1?'timer finished — tap':'timers finished — tap'):'טיימרים הסתיימו — הקש'}` : running? `${running} ${en?(running===1?'timer running · tap for the plan':'timers running · tap for the plan'):'טיימרים פעילים · הקש לתוכנית'}` : L('תוכנית פעילה · הקש לתוכנית','Plan active · tap for the plan');
         cb.classList.toggle('cnext-ring', ringing>0);
         cb.onclick=()=>{ if(typeof openTimeline==='function') openTimeline(); };
       } else cb.hidden=true;
@@ -6640,6 +6640,17 @@ function openLangMenu(){ showPanel(`${toolTop(t('🌐 שפה'),t('בחר שפה'
   store.set(ctx==='cook'?'mk-cook':'mk-menu',empty); store.set('mk-cresume',null);
   try{ if(ctx==='event' && typeof evClearActive==='function') evClearActive(); }catch(_){}
   if(typeof toast==='function') toast(L('הטיוטה בוטלה','Draft discarded'));
+  if(typeof cRefreshHome==='function') cRefreshHome();
+}); })();
+// stop / clear the "cooking now" banner. A timer started from a recipe step (not the timeline) isn't
+// scoped to any event, so "Stop plan" can't reach it and it only auto-clears 12h after its end — leaving
+// the banner stuck with no way out. This ✕ clears EVERY started-plan flag + all timers, so it's always removable.
+(()=>{ const x=$("#cCookingX"); if(x) x.addEventListener('click',async(e)=>{ e.stopPropagation();
+  if(typeof appConfirm==='function' && (await appConfirm(L('לעצור את הבישול הפעיל ולנקות את כל הטיימרים?','Stop the active cook and clear all its timers?'),{okLabel:L('עצור ונקה','Stop & clear'),danger:true}))!==true) return;
+  try{ const rm=[]; for(let i=0;i<localStorage.length;i++){ const kk=localStorage.key(i)||''; if(kk.indexOf('mk-plan-started-')===0) rm.push(kk); } rm.forEach(k=>localStorage.removeItem(k)); }catch(_){}
+  store.set('mk-timers',{});
+  try{ if(typeof clearTimers==='function') clearTimers(); }catch(_){}
+  if(typeof toast==='function') toast(L('הבישול הפעיל נעצר','Active cook stopped'));
   if(typeof cRefreshHome==='function') cRefreshHome();
 }); })();
 (()=>{ const r=$("#cResumeProj"); if(r) r.addEventListener('click',()=>cNavGo('projects')); })();
