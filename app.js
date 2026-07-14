@@ -3563,9 +3563,10 @@ function tlStateKey(){ return 'mk-tlstate-'+(typeof evScope==='function'?evScope
 function tlState(){return store.get(tlStateKey())||store.get('mk-tlstate')||{};}   // falls back to the legacy global once (migration)
 function tlSetState(s){store.set(tlStateKey(),s);}
 
-let _tlFocusKey=null, _tlAllOpen=false;   // the item currently focused (kept across view switches) + expand-all state
+let _tlFocusKey=null, _tlFocusTid='', _tlAllOpen=false;   // selected item (across views) + the exact task (its timer id, so the right ROW highlights) + expand-all state
+function _tlEsc(s){ return (window.CSS&&CSS.escape)?CSS.escape(String(s)):String(s); }
 function openTimeline(focus){
-  _tlFocusKey=null;   // fresh session — don't inherit a stale focus
+  _tlFocusKey=null; _tlFocusTid='';   // fresh session — don't inherit a stale focus
   showPanel(`${toolTop(L('מתזמן ציר-זמן','Timeline scheduler'),L('שלבי הכנה מפורטים לכל פריט, לפי שעת הגשה','Detailed prep steps per item, by serve time'),'🕒','#cf6a4a')}
    <div class="panel-body" id="tlBody"></div>`);
   renderTimelinePanel();
@@ -3577,6 +3578,7 @@ function _tlFocusItem(focus){
   let ik=(typeof timerItemKey==='function')?timerItemKey(focus):'';   // resolve the item key up front for reliable matching
   if(!ik && /^(cut|spec|make)-/.test(String(focus)) && typeof resolveItem==='function'){ try{ if(resolveItem(String(focus))) ik=String(focus); }catch(e){} }   // focus is already a bare item key (e.g. re-applied across a view switch)
   _tlFocusKey = ik || String(focus||'') || null;                        // remember it so view switches can re-apply
+  if(focus && String(focus)!==ik && String(focus).indexOf('st-')===0) _tlFocusTid=String(focus);   // came in on a specific stage timer → keep that exact task highlighted
   const esc=function(s){ return (window.CSS&&CSS.escape)?CSS.escape(String(s)):String(s); };
   const belongs=function(tid){ if(!tid) return false; if(!ik) return false; return tid===ik || tid.indexOf('-'+ik+'-')>=0 || tid.indexOf(ik+'-')===0 || ((typeof timerItemKey==='function')&&timerItemKey(tid)===ik); };
   let tries=0;
@@ -3611,19 +3613,30 @@ function _tlFocusItem(focus){
   requestAnimationFrame(attempt);
   _tlMarkSelected();   // reflect the (new) selection persistently
 }
-// user picks an item as the current selection → remembered across view switches, shown with a persistent highlight
-function _tlSelect(itemKey){ if(!itemKey) return; _tlFocusKey=itemKey; _tlMarkSelected(); }
-// paint a SINGLE persistent selection marker for _tlFocusKey (re-run after each render) — one per view, never multiple
+// user picks a selection. `el` (when given) is the exact element tapped → highlight THAT one, and remember its
+// item (for cross-view) and its task timer-id (so the same ROW re-highlights on re-render).
+function _tlSelect(itemKey, el){
+  if(!itemKey) return; _tlFocusKey=itemKey;
+  const tEl = el && el.querySelector ? el.querySelector('[data-tid]') : null;
+  _tlFocusTid = tEl ? (tEl.getAttribute('data-tid')||'') : (el && el.getAttribute ? (el.getAttribute('data-tid')||'') : '');
+  const list=$("#tlList");
+  if(list && el){ list.querySelectorAll('.tl-sel').forEach(function(e){ e.classList.remove('tl-sel'); }); el.classList.add('tl-sel'); }   // highlight exactly what was tapped
+  else _tlMarkSelected();
+}
+// paint a SINGLE persistent selection marker for the current selection (re-run after each render) — never multiple
 function _tlMarkSelected(){
   const list=$("#tlList"); if(!list) return;
   list.querySelectorAll('.tl-sel').forEach(function(e){ e.classList.remove('tl-sel'); });
   const ik=_tlFocusKey; if(!ik) return;
-  // by-item view → the item's card; work-plan view → the item's FIRST task. Exactly one element either way.
+  // by-item view → the item's card
   let card=null;
   list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(!card && b.getAttribute('data-tlexp')===ik) card=b.closest('.tlcard'); });
   if(card){ card.classList.add('tl-sel'); return; }
-  const esc=(window.CSS&&CSS.escape)?CSS.escape(ik):ik;
-  const first=list.querySelector('[data-tlitem="'+esc+'"]'); if(first) first.classList.add('tl-sel');
+  // work-plan view → the EXACT task by its timer-id if we have one, else the item's first task. One element.
+  let target=null;
+  if(_tlFocusTid){ const t=list.querySelector('[data-tid="'+_tlEsc(_tlFocusTid)+'"]'); if(t) target=t.closest('[data-tlitem]')||t; }
+  if(!target) target=list.querySelector('[data-tlitem="'+_tlEsc(ik)+'"]');
+  if(target) target.classList.add('tl-sel');
 }
 /* ---------- voice cook mode (TTS + closed voice commands) ---------- */
 let vcTasks=[], vcIdx=0, vcRec=null, vcVoices=[];
@@ -4161,7 +4174,7 @@ function renderTimelinePanel(){
     if(_tlAllOpen){ $("#tlList").querySelectorAll('.tl-stages').forEach(function(s){s.style.display='block';}); $("#tlList").querySelectorAll('[data-tlexp]').forEach(function(b){b.textContent='▴';}); $("#tlList").querySelectorAll('.wp-acc').forEach(function(a){a.classList.add('open');}); }   // expand-all
     if(typeof _tlMarkSelected==='function') _tlMarkSelected();   // re-apply the persistent selection ring after re-render
     // select an item by tapping its work-plan task (all shapes) — remembers it across view switches without toggling the done checkbox
-    $("#tlList").querySelectorAll('[data-tlitem]').forEach(function(el){ el.addEventListener('click',function(e){ const ik=el.getAttribute('data-tlitem'); if(!ik) return; if(el.classList.contains('wp-row') && !e.target.closest('.wp-ck')) e.preventDefault(); if(typeof _tlSelect==='function') _tlSelect(ik); }); });
+    $("#tlList").querySelectorAll('[data-tlitem]').forEach(function(el){ el.addEventListener('click',function(e){ const ik=el.getAttribute('data-tlitem'); if(!ik) return; if(el.classList.contains('wp-row') && !e.target.closest('.wp-ck')) e.preventDefault(); if(typeof _tlSelect==='function') _tlSelect(ik, el); }); });   // highlight the exact task tapped
     $("#tlList").querySelectorAll('.timer').forEach(tm=>wireTimer(tm));   // live countdowns per timed stage (items + plan views)
     { const starts=computed.filter(c=>!c.blocked&&c.startClock).map(c=>c.startClock.getTime());
       let earliest=starts.length?new Date(Math.min(...starts)):null;

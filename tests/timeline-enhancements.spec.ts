@@ -47,26 +47,29 @@ test('voice cook has a jump-to-step selector that lists every task and jumps dir
   expect(await page.evaluate(`vcIdx`)).toBe(4);
 });
 
-test('selecting a different item in the work-plan persists it across a view switch', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+test('work-plan: a REAL tap highlights that exact task (not another), one marker, persists across views', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
     localStorage.setItem('mk-tlview', JSON.stringify('plan'));
     localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
+  await page.setViewportSize({ width: 390, height: 780 });
   await page.goto('/index.html');
   await page.waitForFunction(`typeof openTimeline==='function'`);
-  // enter focused on cut-1 (as from the Active-now hub), in the work-plan view
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
-  await page.waitForSelector('#tlList .workplan'); await page.waitForTimeout(500);
-  expect(await page.evaluate(`_tlFocusKey`)).toBe('cut-1');
-  // the user selects cut-2 by tapping one of its tasks — exactly ONE selection marker (not one per task)
-  await page.evaluate(`document.querySelector('#tlList [data-tlitem="cut-2"]').click()`);
+  await page.waitForSelector('#tlList .workplan'); await page.waitForTimeout(400);
+  // pick a cut-2 task that is NOT its first one (the exact class of bug we hit) and REALLY click it
+  const clickedText = await page.evaluate(`(function(){ const els=Array.from(document.querySelectorAll('#tlList [data-tlitem="cut-2"]')); const el=els[els.length-1]; el.setAttribute('data-testpick','1'); return el.textContent.replace(/\\s+/g,' ').trim().slice(0,30); })()`);
+  await page.locator('[data-testpick="1"]').click({ position: { x: 120, y: 10 } });   // click the body, away from the checkbox
   await page.waitForTimeout(150);
-  expect(await page.evaluate(`_tlFocusKey`)).toBe('cut-2');
+  // the EXACT tapped element is the single highlight
   expect(await page.evaluate(`document.querySelectorAll('#tlList .tl-sel').length`)).toBe(1);
-  // switching views keeps cut-2 selected/focused (not the item we entered with), still a single marker
+  expect(await page.evaluate(`document.querySelector('[data-testpick="1"]').classList.contains('tl-sel')`)).toBe(true);
+  // clicking the row body did NOT toggle its done checkbox
+  expect(await page.evaluate(`(function(){ const cb=document.querySelector('[data-testpick="1"] .wp-ck'); return cb?cb.checked:false; })()`)).toBe(false);
+  // switch to By-item → the item's card is the single marker (cut-2)
   await page.click('[data-tlview="items"]'); await page.waitForTimeout(500);
   expect(await page.evaluate(`document.querySelectorAll('#tlList .tl-sel').length`)).toBe(1);
-  expect(await page.evaluate(`(function(){ const s=document.querySelector('.tlcard.tl-sel'); return s&&s.querySelector('[data-tlexp]')?s.querySelector('[data-tlexp]').getAttribute('data-tlexp'):'NONE'; })()`)).toBe('cut-2');
-  // and back again → still one
+  expect(await page.evaluate(`document.querySelector('.tlcard.tl-sel [data-tlexp]').getAttribute('data-tlexp')`)).toBe('cut-2');
+  // back to work-plan → still a single marker on a cut-2 task
   await page.click('[data-tlview="plan"]'); await page.waitForTimeout(500);
   expect(await page.evaluate(`document.querySelectorAll('#tlList .tl-sel').length`)).toBe(1);
   expect(await page.evaluate(`document.querySelector('#tlList .tl-sel').getAttribute('data-tlitem')`)).toBe('cut-2');
