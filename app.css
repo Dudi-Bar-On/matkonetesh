@@ -811,6 +811,11 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .lang-flag.on{border-color:var(--ember2);background:rgba(245,147,49,.12);font-weight:800}
 .lang-flag:focus-visible{outline:2px solid var(--ember2);outline-offset:2px}
 .capp-lang-corner{position:absolute;top:14px;inset-inline-start:16px;font-size:19px}
+/* visible language pill on the home top bar (flag + name) — placed opposite the ☰ menu */
+.capp-langpill{position:absolute;top:14px;inset-inline-end:16px;z-index:2;display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 11px;border-radius:17px;background:var(--char2);border:1.5px solid var(--line2);color:var(--bone);cursor:pointer;font-family:'Heebo';font-weight:700;font-size:calc(13px * var(--fscale));line-height:1}
+.capp-langpill:hover{border-color:var(--ember)}
+.capp-langpill .clp-flag{font-size:calc(16px * var(--fscale))}
+.capp-langpill .clp-caret{opacity:.6;font-size:11px}
 .toolgroup{margin-bottom:16px}
 .toolgroup-h{margin:0 0 2px;font-size:calc(12px * var(--fscale));font-weight:800;color:var(--smoke);letter-spacing:.02em}
 .toolbtn{display:flex;flex-direction:column;align-items:center;gap:6px;background:var(--char2);border:1px solid var(--line);color:var(--bone);border-radius:12px;padding:16px 10px;font-size:calc(13px * var(--fscale));text-align:center}

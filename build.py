@@ -147,8 +147,8 @@ HTML = r"""<!DOCTYPE html>
 <!-- ═══ HOME ═══ -->
 <div class="screen on" id="scr-home">
   <div class="capp-top capp-top-home">
-    <button class="capp-ico capp-lang-corner" id="cHomeLang" aria-label="Language">🌐</button>
-    <button class="capp-ico capp-more-corner" id="cHomeMore" aria-label="עוד">☰</button>
+    <button class="capp-langpill" id="cHomeLang" aria-label="Language"><span class="clp-flag" id="cHomeLangFlag">🌐</span><span class="clp-name" id="cHomeLangName">Language</span><span class="clp-caret">▾</span></button>
+    <button class="capp-ico capp-more-corner" id="cHomeMore" aria-label="More">☰</button>
     <div class="chome-title">
       <div class="chome-kick">סו-ויד · עישון · גריל · אש</div>
       <h1 class="chome-h1"><span class="brand-flame">🔥</span> מתכונת · מדריך האש</h1>
@@ -317,7 +317,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 186 · 14.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 187 · 14.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
