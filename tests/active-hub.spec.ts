@@ -118,11 +118,15 @@ test('floating Active-now shortcut: shows while cooking, opens the hub, hides wi
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
   await page.goto('/index.html');
   await page.waitForFunction(`typeof syncActiveFab==='function'`);
-  // idle → hidden
+  // idle → hidden (property AND actually not painted — the [hidden] attr must beat the class's display:flex)
   expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(true);
+  expect(await page.evaluate(`getComputedStyle(document.querySelector('#cActiveFab')).display`)).toBe('none');
   // a running timer → shown on the home screen
   await page.evaluate(`(function(){ store.set('mk-timers',{'st-ev-a-cut-1-smoke':{end:Date.now()+3600000,name:'x'}}); cNavGo('home'); })()`);
   await page.waitForSelector('#cActiveFab:not([hidden])');
+  expect(await page.evaluate(`getComputedStyle(document.querySelector('#cActiveFab')).display`)).not.toBe('none');   // actually painted while cooking
+  // its label is localized (English UI → no Hebrew leak)
+  expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#cActiveFabT').textContent`) as string)).toBe(false);
   // shown on other screens too
   await page.evaluate(`cNavGo('catalog')`);
   expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(false);

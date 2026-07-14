@@ -1724,7 +1724,9 @@ function closePanel(){
   if(typeof vcRec!=='undefined'&&vcRec){try{vcRec.stop();}catch(e){} vcRec=null;}clearTimers();if(typeof serveIv!=='undefined'&&serveIv){clearInterval(serveIv);serveIv=null;}panelStack=[];$("#panel").classList.remove("open");$("#panel").setAttribute("aria-hidden","true");
   $("#scrim").classList.remove("open");document.body.classList.remove("noscroll");
   if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}} lastFocus=null;
-  try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){} }
+  try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){}
+  // if home is the screen behind the panel, re-sync it — catches state changed inside a tool (e.g. gear edited → lanes/kick re-gate), on any close path
+  try{ const h=document.getElementById('scr-home'); if(h&&h.classList.contains('on')&&typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} }
 
 /* ---------- shopping list ---------- */
 // Wave E: the event cart's "bought" ticks + menu quantities are per-event — a global namespace meant
@@ -5248,6 +5250,34 @@ function cRefreshHome(){
   }
   const g=$("#cGreet"); if(g){ const h=new Date().getHours(); g.textContent=(h<12?L('בוקר טוב','Good morning'):h<18?L('צהריים טובים','Good afternoon'):L('ערב טוב','Good evening'))+' 👋'; }
   const kk=$("#cHomeKick"); if(kk){ const hg=(typeof homeGear==='function')?homeGear():{canSV:true,canSmoke:true,canGrill:true}; const p=[]; if(hg.canSV)p.push(L('סו-ויד','Sous-vide')); if(hg.canSmoke)p.push(L('עישון','Smoke')); if(hg.canGrill)p.push(L('גריל','Grill')); p.push(L('אש','Fire')); kk.textContent=p.join(' · '); }   // gear-aware tagline — drops methods you can't do
+  try{ if(typeof renderHomeLanes==='function') renderHomeLanes(); }catch(e){}
+}
+// Phase 3 — home hero quick-pick lanes: gear-gated rails of single cuts, each chip → openCut (the single-cut fast lane
+// that skips the event wizard). DATA-derived shortlist per method; resolveItem-guarded so a data change never leaves a dead chip.
+const HOME_LANES=[
+  { m:'smoke', ic:'💨', he:'מעשנה', en:'Smoker', tip:['נמוך ואיטי — 105-110°C, עשן אלון/היקורי','Low & slow — 105–110°C, oak/hickory smoke'],
+    keys:['cut-1','cut-13','cut-2','cut-7','cut-21','cut-15','cut-12'] },       // Brisket, Pork Shoulder, Short Ribs, Pork Ribs, Dino Ribs, Lamb Shoulder, Pastrami
+  { m:'grill', ic:'🔥', he:'גריל', en:'Grill',
+    keys:['cut-6','cut-20','cut-18','cut-17','cut-5','cut-39','cut-16'] },       // Picanha, Tri-Tip, Hamburger, Kebab, Chicken Thighs, Wings, Sausages
+  { m:'sv', ic:'💧', he:'סו-ויד', en:'Sous-vide',
+    keys:['cut-6','cut-11','cut-20','cut-27','cut-23','cut-26'] },               // Picanha, Tomahawk, Tri-Tip, Tenderloin, Prime Rib, Striploin
+];
+function renderHomeLanes(){
+  const host=$("#cHomeLanes"); if(!host) return;
+  const he=(typeof getLang!=='function' || getLang()==='he');
+  let html='';
+  HOME_LANES.forEach(function(ln){
+    if(typeof gearCan==='function' && !gearCan(ln.m)) return;                    // gear gate — lane shows only for gear you own
+    const chips=ln.keys.map(function(k){ const it=(typeof resolveItem==='function')?resolveItem(k):null; if(!it) return '';   // guard: skip a key that no longer resolves
+      const nm=he?it.heb:(it.eng||it.heb);
+      return `<button class="lane-chip" data-k="${k}">${nm}</button>`;
+    }).filter(Boolean).join('');
+    if(!chips) return;
+    const tip=ln.tip?`<div class="lane-tip">${he?ln.tip[0]:ln.tip[1]}</div>`:'';
+    html+=`<div class="lane lane-${ln.m}"><div class="lane-head"><span class="lane-ic">${ln.ic}</span>${he?ln.he:ln.en}</div><div class="lane-rail">${chips}</div>${tip}</div>`;
+  });
+  host.innerHTML=html;
+  host.querySelectorAll('.lane-chip[data-k]').forEach(function(b){ b.addEventListener('click',function(){ const m=resolveItem(b.dataset.k); if(!m) return; m.kind==='cut'?openCut(m.obj):m.kind==='spec'?openSpec(m.obj):openMake(String(m.key).slice(5)); }); });
 }
 // shared "is something cooking?" state (started plans + running/ringing timers)
 function _liveCookState(){
