@@ -1164,6 +1164,8 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .tl-sel{border-radius:12px;outline:2px solid var(--ember2);outline-offset:1px}
 .tlcard.tl-sel{border-color:var(--ember2)}
 .wp-row.tl-sel,.wp-hcell.tl-sel{background:var(--char3)}
+/* the exact step we came from, marked inside the by-item card */
+.tl-stage.tl-step-sel{background:rgba(231,111,81,.12);border-radius:8px;box-shadow:inset 3px 0 0 var(--ember);padding-inline-start:6px}
 .tlc-head{display:flex;align-items:center;gap:9px}
 .tl-startt{min-width:58px;font-size:calc(14px * var(--fscale))}
 .tl-name{flex:1;font-size:calc(14.5px * var(--fscale))}

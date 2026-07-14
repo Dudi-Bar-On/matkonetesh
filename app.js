@@ -1354,9 +1354,16 @@ const DONE_SCALES={
   dark:{mr:'רך',med:'מאוזן',well:'נשלף'},
   fish:{mr:'משיי',med:'פלקי',well:'מוצק'}
 };
+const DONE_SCALES_EN={
+  steak:{rare:'Rare',mr:'Medium-rare',med:'Medium',mw:'Medium-well',well:'Well done'},
+  white:{mr:'Juicy',med:'Balanced',well:'Firm'},
+  dark:{mr:'Tender',med:'Balanced',well:'Fall-apart'},
+  fish:{mr:'Silky',med:'Flaky',well:'Firm'}
+};
 function doneLabel(cut,k){
   const sc=(cut&&cut.doneness&&cut.doneness.scale)||'steak';
-  return (DONE_SCALES[sc]&&DONE_SCALES[sc][k])||DONE_SCALES.steak[k]||k;
+  const T=(typeof getLang==='function'&&getLang()!=='he')?DONE_SCALES_EN:DONE_SCALES;
+  return (T[sc]&&T[sc][k])||T.steak[k]||k;
 }
 function doneKey(cut){ return 'done:cut-'+cut.n; }
 function currentDoneness(cut){
@@ -1378,9 +1385,9 @@ function donenessSelector(cut){
       <span class="dn-l">${doneLabel(cut,k)}</span><span class="dn-c">${lv.c}°</span></button>`;
   }).join('');
   return `<div class="dn-wrap">
-    <div class="dn-head">מידת עשייה <small>(טמפ׳ פנים = מידת עשייה; הזמן משפיע על מרקם בלבד)</small></div>
+    <div class="dn-head">${L('מידת עשייה','Doneness')} <small>(${L('טמפ׳ פנים = מידת עשייה; הזמן משפיע על מרקם בלבד','internal temp = doneness; time affects texture only')})</small></div>
     <div class="dn-btns">${btns}</div>
-    <button class="dn-reset" data-donereset>↺ חזרה למומלץ (${doneLabel(cut,cut.doneness.default)})</button>
+    <button class="dn-reset" data-donereset>↺ ${L('חזרה למומלץ','Back to recommended')} (${doneLabel(cut,cut.doneness.default)})</button>
   </div>`;
 }
 function wireDoneness(cut){
@@ -1391,7 +1398,7 @@ function wireDoneness(cut){
     panel.querySelectorAll('[data-done]').forEach(x=>x.classList.toggle('on',x===b));
     const tgt=cut.doneness.levels[b.dataset.done].c;
     const stat=$("#tgtStat"); if(stat) stat.textContent=tgt+'°';
-    toast(`יעד עודכן: ${doneLabel(cut,b.dataset.done)} · ${tgt}°`);
+    toast(`${L('יעד עודכן','Target updated')}: ${doneLabel(cut,b.dataset.done)} · ${tgt}°`);
   }));
   const rb=panel.querySelector('[data-donereset]');
   if(rb) rb.addEventListener('click',()=>{
@@ -1399,7 +1406,7 @@ function wireDoneness(cut){
     const def=cut.doneness.default, tgt=cut.doneness.levels[def].c;
     panel.querySelectorAll('[data-done]').forEach(x=>x.classList.toggle('on',x.dataset.done===def));
     const stat=$("#tgtStat"); if(stat) stat.textContent=tgt+'°';
-    toast(`אופס למומלץ: ${doneLabel(cut,def)} · ${tgt}°`);
+    toast(`${L('איפוס למומלץ','Reset to recommended')}: ${doneLabel(cut,def)} · ${tgt}°`);
   });
 }
 
@@ -3591,7 +3598,7 @@ function _tlFocusItem(focus){
     // 1) the EXACT timer element — present in BOTH the by-item and the work-plan views (same data-tid)
     const tEl = list.querySelector('[data-tid="'+esc(focus)+'"]');
     if(tEl){ const card=tEl.closest('.tlcard');
-      if(card){ target=card; hi=card; const xb=card.querySelector('[data-tlexp]'); expandCk=xb&&xb.getAttribute('data-ck'); }
+      if(card){ const stageRow=tEl.closest('.tl-stage'); target=stageRow||card; hi=target; const xb=card.querySelector('[data-tlexp]'); expandCk=xb&&xb.getAttribute('data-ck'); }   // by-item: land on the exact STEP inside the card, not just the card top
       else { target=tEl.closest('.wp-row,.wp-acc,.wp-hcell')||tEl; hi=target; }
     }
     // 2) fall back to the item card matched by its key (bare item key, or no exact timer element)
@@ -3626,12 +3633,14 @@ function _tlSelect(itemKey, el){
 // paint a SINGLE persistent selection marker for the current selection (re-run after each render) — never multiple
 function _tlMarkSelected(){
   const list=$("#tlList"); if(!list) return;
-  list.querySelectorAll('.tl-sel').forEach(function(e){ e.classList.remove('tl-sel'); });
+  list.querySelectorAll('.tl-sel,.tl-step-sel').forEach(function(e){ e.classList.remove('tl-sel'); e.classList.remove('tl-step-sel'); });
   const ik=_tlFocusKey; if(!ik) return;
-  // by-item view → the item's card
+  // by-item view → the item's card, plus a marker on the exact step we came from
   let card=null;
   list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(!card && b.getAttribute('data-tlexp')===ik) card=b.closest('.tlcard'); });
-  if(card){ card.classList.add('tl-sel'); return; }
+  if(card){ card.classList.add('tl-sel');
+    if(_tlFocusTid){ const tt=card.querySelector('[data-tid="'+_tlEsc(_tlFocusTid)+'"]'); const row=tt&&tt.closest('.tl-stage'); if(row) row.classList.add('tl-step-sel'); }
+    return; }
   // work-plan view → the EXACT task by its timer-id if we have one, else the item's first task. One element.
   let target=null;
   if(_tlFocusTid){ const t=list.querySelector('[data-tid="'+_tlEsc(_tlFocusTid)+'"]'); if(t) target=t.closest('[data-tlitem]')||t; }

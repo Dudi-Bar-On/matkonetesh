@@ -12,7 +12,8 @@ test('focus stays on the item when switching By-item → Work-plan view', async 
   await init(page, ['cut-1','cut-2']);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
   await page.waitForSelector('#tlList .tlcard'); await page.waitForTimeout(500);
-  expect(await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); return f&&f.querySelector('[data-tlexp]')?f.querySelector('[data-tlexp]').getAttribute('data-tlexp'):'NONE'; })()`)).toBe('cut-1');
+  // the flash now lands on the exact stage row inside the card; it belongs to cut-1
+  expect(await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); if(!f) return 'NONE'; const card=f.closest('.tlcard'); const xb=card&&card.querySelector('[data-tlexp]'); return xb?xb.getAttribute('data-tlexp'):'NONE'; })()`)).toBe('cut-1');
   await page.click('[data-tlview="plan"]'); await page.waitForTimeout(700);
   const tid = await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); if(!f) return 'NONE'; const t=f.querySelector('[data-tid]'); return t?t.getAttribute('data-tid'):(f.getAttribute('data-tid')||'NO'); })()`) as string;
   expect(tid.includes('cut-1')).toBe(true);   // the same item is still focused in the work-plan view
@@ -95,4 +96,41 @@ test('view switch re-focuses the SELECTED task, not the item first task (grill�
   const r = await page.evaluate(`(function(){ const kind=el=>el?((el.className.match(/wp-(sv|smoke|grill|rest|bcheck)/)||[])[1]||''):'NONE'; return { sel:kind(document.querySelector('#tlList .tl-sel')), flash:kind(document.querySelector('#tlList .tl-focus')) }; })()`) as any;
   expect(r.sel).toBe('smoke');     // persistent highlight on the selected task
   expect(r.flash).toBe('smoke');   // scroll/flash also lands on it (was 'sv' — the bug)
+});
+
+test('doneness scale is English in English mode (no Hebrew rare/medium/well)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
+    localStorage.setItem('mk-tlview', JSON.stringify('items')); localStorage.setItem('mk-tlplandetail', JSON.stringify('full'));
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-108']}}])); } catch {} });   // cut-108 (Hanger) has a doneness scale
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openTimeline==='function'`);
+  await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
+  await page.waitForSelector('#tlList .tlcard');
+  await page.evaluate(`document.querySelectorAll('#tlList .tl-stages').forEach(s=>s.style.display='block')`);
+  await page.waitForTimeout(200);
+  const heb = await page.evaluate(`(function(){ const r=document.querySelector('#tlList'); const w=document.createTreeWalker(r,NodeFilter.SHOW_TEXT,null);const a=[];let n;while((n=w.nextNode())){const t=(n.nodeValue||'').trim(); if(/[֐-׿]/.test(t))a.push(t);} return a; })()`) as string[];
+  expect(heb).toEqual([]);   // no Hebrew doneness labels leaking
+});
+
+test('coming from a specific step marks that step inside the by-item card', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
+    localStorage.setItem('mk-tlview', JSON.stringify('plan'));
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
+  await page.setViewportSize({ width: 390, height: 820 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openTimeline==='function'`);
+  await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
+  await page.waitForSelector('#tlList .workplan'); await page.waitForTimeout(400);
+  // select cut-2's SMOKE step in the work-plan
+  const tid = await page.evaluate(`(function(){ const els=Array.from(document.querySelectorAll('#tlList [data-tlitem="cut-2"]')); const smoke=els.find(e=>/wp-smoke/.test(e.className)); smoke.setAttribute('data-pick','1'); return smoke.querySelector('[data-tid]').getAttribute('data-tid'); })()`) as string;
+  await page.locator('[data-pick="1"]').click({ position: { x: 130, y: 12 } });
+  await page.waitForTimeout(150);
+  // go into the by-item view
+  await page.click('[data-tlview="items"]'); await page.waitForTimeout(500);
+  // exactly one step is marked, and it is the one we came from
+  expect(await page.evaluate(`document.querySelectorAll('.tl-step-sel').length`)).toBe(1);
+  expect(await page.evaluate(`document.querySelector('.tl-step-sel [data-tid]').getAttribute('data-tid')`)).toBe(tid);
+  // its card is selected and the steps are expanded (visible)
+  expect(await page.evaluate(`document.querySelector('.tlcard.tl-sel [data-tlexp]').getAttribute('data-tlexp')`)).toBe('cut-2');
+  expect(await page.evaluate(`getComputedStyle(document.querySelector('.tl-step-sel').closest('.tl-stages')).display`)).toBe('block');
 });

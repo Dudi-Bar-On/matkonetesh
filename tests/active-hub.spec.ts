@@ -54,9 +54,9 @@ test('active hub: a plan-timer jump opens the timeline focused on that item', as
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
   await page.waitForSelector('#tlList .tlcard');
   await page.waitForTimeout(300);
-  // the cut-1 card is focused and its steps are expanded
-  expect(await page.evaluate(`(function(){ const f=document.querySelector('.tlcard.tl-focus'); return f? f.querySelector('[data-tlexp]').getAttribute('data-tlexp') : 'NONE'; })()`)).toBe('cut-1');
-  const stagesShown = await page.evaluate(`(function(){ const f=document.querySelector('.tlcard.tl-focus'); const ck=f.querySelector('[data-tlexp]').getAttribute('data-ck'); return getComputedStyle(document.getElementById('tlstages-'+ck)).display; })()`);
+  // the flash lands on the exact stage row inside cut-1's card, and the steps are expanded
+  expect(await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); const c=f&&f.closest('.tlcard'); const xb=c&&c.querySelector('[data-tlexp]'); return xb?xb.getAttribute('data-tlexp'):'NONE'; })()`)).toBe('cut-1');
+  const stagesShown = await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); const stg=f&&f.closest('.tl-stages'); return stg?getComputedStyle(stg).display:'n/a'; })()`);
   expect(stagesShown).toBe('block');
 });
 
