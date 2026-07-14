@@ -63,3 +63,28 @@ test('adaptive home Phase 1: merged hosting card + gear-aware kick, i18n round-t
   const ptagEn = await page.evaluate(`(function(){ const cs=getComputedStyle(document.querySelector('.cpath.event .ptag')); return {left:cs.left, right:cs.right}; })()`);
   expect(ptagEn.left).toBe('16px');   // LTR: inset-inline-start resolves to the left (leading) edge
 });
+
+test('adaptive home Phase 2: a live cook lifts the banner to the top of the fold (gated on is-cooking)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
+  await page.setViewportSize({ width: 390, height: 820 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof cRefreshHome==='function'`);
+  // a running timer = a live cook → the banner shows and body.is-cooking is stamped
+  await page.evaluate(`(function(){ store.set('mk-timers',{'cut-1-sv-0':{end:Date.now()+3600000,name:'SV'}}); cNavGo('home'); })()`);
+  await page.waitForSelector('#cCooking:not([hidden])');
+  expect(await page.evaluate(`document.body.classList.contains('is-cooking')`)).toBe(true);
+  const pos = await page.evaluate(`(function(){ const top=s=>document.querySelector(s).getBoundingClientRect().top;
+    return { cook:top('#cCooking'), hero:top('.chome-hero'), ask:top('.chome-ask'), paths:top('.cpaths'), search:top('.chome-search'), header:top('.capp-top') }; })()`);
+  // lifted above the hero, Ask-the-Fire, and the path cards...
+  expect(pos.cook).toBeLessThan(pos.hero);
+  expect(pos.cook).toBeLessThan(pos.ask);
+  expect(pos.cook).toBeLessThan(pos.paths);
+  // ...but still below the sticky header + search bar
+  expect(pos.cook).toBeGreaterThan(pos.search);
+  expect(pos.search).toBeGreaterThan(pos.header);
+  // gating proof: with the banner still shown, dropping is-cooking returns it to its natural spot (below the hero)
+  await page.evaluate(`document.body.classList.remove('is-cooking')`);
+  const cook2 = await page.evaluate(`document.querySelector('#cCooking').getBoundingClientRect().top`);
+  const hero2 = await page.evaluate(`document.querySelector('.chome-hero').getBoundingClientRect().top`);
+  expect(cook2).toBeGreaterThan(hero2);
+});
