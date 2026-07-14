@@ -44,3 +44,32 @@ test('W1-P1: aiJSON tasks carry an output-language directive that follows the UI
   const ov = await capAfter(page, `aiJSON({task:'t', grounding:'g', outLang:'en'})`);
   expect(ov.contents[0].parts[0].text).toContain('in ENGLISH');
 });
+
+test('W1-P2: safety detector catches extended patterns and the caveat is bilingual', async ({ page }) => {
+  await bootAI(page);
+  expect(await page.evaluate(`aiSafetyHasNumbers('cook to 165F')`)).toBe(true);       // bare Fahrenheit
+  expect(await page.evaluate(`aiSafetyHasNumbers('use 2.5% salt')`)).toBe(true);        // salt %
+  expect(await page.evaluate(`aiSafetyHasNumbers('ferment to pH 5.3')`)).toBe(true);    // pH
+  expect(await page.evaluate(`aiSafetyHasNumbers('target aw 0.89')`)).toBe(true);       // water activity
+  expect(await page.evaluate(`aiSafetyHasNumbers('cure #1 at 156 ppm')`)).toBe(true);
+  expect(await page.evaluate(`aiSafetyHasNumbers('rest for a while then slice thin')`)).toBe(false);
+  // bilingual
+  expect(await page.evaluate(`aiSafetyCaveat('cure #1 156 ppm')`)).toContain('not verified');
+  await page.evaluate(`store.set('mk-lang','he')`);
+  expect(await page.evaluate(`aiSafetyCaveat('ריפוי 156 ppm')`)).toContain('אינם מאומתים');
+});
+
+test('W1-P2: Diagnose & Journal render the safety caveat only when the AI output has safety numbers', async ({ page }) => {
+  await bootAI(page);
+  // Diagnose WITH a safety number → caveat present
+  await page.evaluate(`diagnoseRender('stall', {diagnosis:'wrap at 70C to push through the stall', causes:['evaporative cooling'], fixes:['bump the pit to 135C'], related:[]})`);
+  expect(await page.evaluate(`!!document.querySelector('#panel .ai-caveat')`)).toBe(true);
+  await page.evaluate(`closePanel()`);
+  // Diagnose WITHOUT numbers → no caveat
+  await page.evaluate(`diagnoseRender('bitter', {diagnosis:'too much smoke early on', causes:['creosote buildup'], fixes:['aim for thin blue smoke'], related:[]})`);
+  expect(await page.evaluate(`!!document.querySelector('#panel .ai-caveat')`)).toBe(false);
+  await page.evaluate(`closePanel()`);
+  // Journal insights with a temperature → caveat
+  await page.evaluate(`journalInsightsRender({summary:'your best cooks rested longer', patterns:['wrapping at 70C rated higher'], suggestions:[{title:'rest more',detail:'try 45 minutes'}]})`);
+  expect(await page.evaluate(`!!document.querySelector('#panel .ai-caveat')`)).toBe(true);
+});

@@ -3086,10 +3086,16 @@ function aiStripFences(t){
 // AI #4/#7 · numeric-invariant guard over AI prose. The model can state a fabricated safety number;
 // when an answer carries temperature / cure / nitrite / dry-day figures, flag them as unverified and
 // point back to the app's cited data + calculator. (We flag rather than redact so cited numbers survive.)
+// W1-P2: bilingual, and the detector also catches bare Fahrenheit, salt %, pH, and water-activity (aw).
+function aiSafetyHasNumbers(txt){
+  return /\d{2,3}\s*°|\d+\s*מעלות|\d+\s*°?[FC]\b|\d+\s*ppm|ניטריט|nitrite|Cure\s*#?[12]|קיור|ריפוי|\d+(\.\d+)?\s*%|\bpH\b|water[-\s]*activity|\baw\b|\d+\s*ימי[םי]?\s*ייבוש|פסטור|pasteur/i.test(String(txt||''));
+}
 function aiSafetyCaveat(txt){
-  const t=String(txt||'');
-  const safety = /\d{2,3}\s*°|\d+\s*מעלות|\d+\s*ppm|ניטריט|Cure\s*#?[12]|קיור|ריפוי|\d+\s*ימי[םי]?\s*ייבוש|פסטור/i.test(t);
-  return safety ? '<div class="ai-caveat">⚠ מספרי טמפ׳/ריפוי/בטיחות בתשובת ה-AI אינם מאומתים — אמת מול כרטיס המתכון והמחשבון באפליקציה לפני ביצוע.</div>' : '';
+  if(!aiSafetyHasNumbers(txt)) return '';
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  return '<div class="ai-caveat">⚠ '+(he
+    ?'מספרי טמפ׳/ריפוי/בטיחות בתשובת ה-AI אינם מאומתים — אמת מול כרטיס המתכון והמחשבון באפליקציה לפני ביצוע.'
+    :'Temperature / cure / safety numbers in the AI answer are not verified — check them against the recipe card and the app calculator before you act.')+'</div>';
 }
 // UX #13: one shared AI-loading spinner (the ask flow and the ✨ AI panels used different markup).
 function aiSpinner(label){ return `<span class="wcim-loading">✨ ${esc(label||'האש חושב')}<span class="ask-dots"><b>.</b><b>.</b><b>.</b></span></span>`; }
@@ -6182,6 +6188,7 @@ function diagnoseRender(problem, res){
       ${res.causes.length?`<div class="pp-group"><div class="pp-gh">סיבות אפשריות</div><ul style="margin:0;padding-inline-start:20px;font-size:13.5px;line-height:1.7;color:var(--bone)">${li(res.causes)}</ul></div>`:''}
       ${res.fixes.length?`<div class="pp-group"><div class="pp-gh">מה לעשות</div><ul style="margin:0;padding-inline-start:20px;font-size:13.5px;line-height:1.7;color:var(--bone)">${li(res.fixes)}</ul></div>`:''}
       ${res.related.length?`<div class="pp-group"><div class="pp-gh">📖 פתרונות מאומתים רלוונטיים</div>${anchors}</div>`:''}
+      ${aiSafetyCaveat((res.diagnosis||'')+' '+(res.causes||[]).join(' ')+' '+(res.fixes||[]).join(' '))}
       <button class="akc-back" id="diagFull" style="margin-top:14px">📋 כל התקלות (מצב הצילו) ←</button>
     </div>`);
   const fb=$("#diagFull"); if(fb) fb.addEventListener('click',()=>{ if(typeof openHelp==='function') openHelp(); });
@@ -6346,6 +6353,7 @@ function journalInsightsRender(res){
       ${res.summary?`<div class="padv-target" style="background:var(--char2)">📊 ${esc(res.summary)}</div>`:''}
       ${res.patterns.length?`<div class="pp-group"><div class="pp-gh">דפוסים שזוהו</div><ul style="margin:0;padding-inline-start:20px;font-size:13.5px;line-height:1.7;color:var(--bone)">${li(res.patterns)}</ul></div>`:''}
       ${res.suggestions.length?`<div class="pp-group"><div class="pp-gh">הצעות שיפור</div>${sugg}</div>`:''}
+      ${aiSafetyCaveat((res.summary||'')+' '+(res.patterns||[]).join(' ')+' '+res.suggestions.map(s=>s.title+' '+s.detail).join(' '))}
     </div>`);
 }
 async function openJournalInsights(){
