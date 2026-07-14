@@ -6927,6 +6927,29 @@ const CCAT_TILES=[
   ['ירקות','🥦','var(--veg,#5aa84a)'],['פירות','🍑','var(--fruit,#e0748a)'],['דג','🐟','var(--fish,#5a9ab0)'],
   ['איברים פנימיים','🫀','#b06a7a'],['נקניק מעושן','🥓','var(--dried,#b07a3a)'],['מיוחדים','⭐','var(--ember2)'],
 ];
+// P8 — AI tools hub: one discoverable place for every AI feature, reachable at EVERY interface level.
+// The only gate is the API key (aiAvail), never experience level — without a key the tools still show, with an "unlock" route.
+// [icon, title, blurb, fn, needsKey]. Add new AI tools here.
+const AI_TOOLS=[
+  ['🔥', L('שאל את האש','Ask the Fire'), L('שאלות חופשיות — זמן, טמפ׳, עץ, כמות, כשרות, איפה לקנות','Free questions — time, temp, wood, quantity, kosher, where to buy'), 'openAsk', false],
+  ['✨', L('מחולל מתכונים','Recipe generator'), L('צור מתכון חדש בשפה חופשית','Generate a new recipe from a free description'), 'openRecipeGen', true],
+  ['🩺', L('אבחון תקלה','Diagnose a cook'), L('תאר מה השתבש — אבחון לפי היומן והפרויקטים שלך','Describe what went wrong — diagnosed against your journal'), 'openDiagnoseAI', true],
+  ['📊', L('תובנות יומן','Journal insights'), L('דפוסים מהבישולים הקודמים שלך','Patterns from your past cooks'), 'openJournalInsights', true],
+];
+function openAiHub(){
+  if(typeof showPanel!=='function') return;
+  const key=(typeof aiAvail==='function' && aiAvail());
+  const items=AI_TOOLS.map(function(tl){ const locked=tl[4] && !key; const fn=locked?'openKeyManager':tl[3];
+    return `<button class="ai-tool${locked?' ai-locked':''}" data-aifn="${fn}"><span class="ai-tic">${tl[0]}</span><span class="ai-tbody"><b>${tl[1]}${locked?' <span class="ai-lock">🔒</span>':''}</b><small>${tl[2]}</small></span><span class="ai-go">←</span></button>`;
+  }).join('');
+  const keyBanner = key ? '' : `<button class="ai-keybanner" data-aifn="openKeyManager">🔑 <span><b>${L('הוסף מפתח AI כדי לפתוח את הכל','Add an AI key to unlock everything')}</b> — ${L('מפתח Gemini אישי (חינמי)','a personal Gemini key (free)')}</span><span class="ai-go">←</span></button>`;
+  showPanel(`${typeof toolTop==='function'?toolTop(L('כלי AI','AI tools'),L('כל היכולות החכמות במקום אחד','Every smart feature in one place'),'🤖','#7a5cc2'):`<h2 style="padding:16px">${L('כלי AI','AI tools')}</h2>`}
+    <div class="panel-body">${keyBanner}<div class="ai-tools">${items}</div>
+    <p class="section-sub" style="margin-top:14px">${L('הכלים זמינים בכל רמת ממשק. חלקם דורשים חיבור AI (מפתח אישי).','These tools are available at every interface level. Some need an AI connection (a personal key).')}</p></div>`);
+  $("#panel").querySelectorAll('[data-aifn]').forEach(function(b){ b.addEventListener('click',function(){ const fn=b.dataset.aifn;
+    if(typeof closePanel==='function') closePanel(); setTimeout(function(){ if(typeof window[fn]==='function') window[fn](); }, 60);
+  }); });
+}
 // more sheet — grouped tools. Phase 6: data-driven + adaptive — a "most-used" top section, and advanced items (adv:true)
 // trimmed for beginners so the sheet gets shorter for the default persona. Each item = [icon, label, fn, adv?].
 function openMoreSheet(){
@@ -6934,7 +6957,7 @@ function openMoreSheet(){
   const beg=(typeof uiLevel==='function' && uiLevel()==='beginner');
   const GROUPS=[
     ['🍽️', L('עבודה','Work'), [['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline',true],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint',true],['🛒',L('רשימת קניות','Shopping list'),'openCart']]],
-    ['✨', L('חוויה','Experience'), [['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
+    ['✨', L('חוויה','Experience'), [['🤖',L('כלי AI','AI tools'),'openAiHub'],['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
     ['🧰', L('עזר','Utilities'), [['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans',true],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders',true],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']]],
     ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🔧',L('הציוד שלי','My gear'),'openGear'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
   ];
@@ -6994,6 +7017,7 @@ function syncGearBanner(){
 }
 (()=>{ try{ syncGearBanner(); }catch(e){} })();
 (()=>{ const a=$("#cHomeAsk"); if(a) a.addEventListener('click',()=>{ if(typeof openAsk==='function') openAsk(); }); })();
+(()=>{ const a=$("#cHomeAiMore"); if(a) a.addEventListener('click',()=>{ if(typeof openAiHub==='function') openAiHub(); }); })();   // P8: home → AI tools hub (all levels)
 (()=>{ const r=$("#cResume"); if(r) r.addEventListener('click',()=>{ const d=store.get('mk-cresume')||{}; if(typeof setMenuCtx==='function') setMenuCtx(d.ctx||'event'); if(typeof cwGo==='function') cwGo(typeof d.step==='number'?d.step:5); if(typeof cNavGo==='function') cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }); })();
 // dismiss the "resume where you left off" card — discard the unsaved draft so it stops appearing
 (()=>{ const x=$("#cResumeX"); if(x) x.addEventListener('click',async(e)=>{ e.stopPropagation();

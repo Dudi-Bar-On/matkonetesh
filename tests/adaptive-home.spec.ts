@@ -296,3 +296,38 @@ test('adaptive home Phase 6: More sheet has a most-used row, learns, and trims a
   await page.waitForSelector('#panel .cmore-quick .cmore-qchip');
   expect(await page.evaluate(`document.querySelector('#panel .cmore-quick .cmore-qchip').dataset.mfn`)).toBe('openWoods');
 });
+
+test('adaptive home Phase 8: AI hub gathers every AI tool, key-gated not level-gated, reachable everywhere', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); localStorage.setItem('mk-uilevel', JSON.stringify('beginner')); } catch {} });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openAiHub==='function'`);
+  // NO key: all 4 tools listed; key-requiring ones locked → route to key manager; Ask stays usable; unlock banner shown
+  await page.evaluate(`(function(){ store.set('mk-gemkey',''); openAiHub(); })()`);
+  await page.waitForSelector('#panel .ai-tools .ai-tool');
+  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool').length`)).toBe(4);
+  expect(await page.evaluate(`!!document.querySelector('#panel .ai-keybanner')`)).toBe(true);
+  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool.ai-locked').length`)).toBe(3);
+  expect(await page.evaluate(`document.querySelector('#panel .ai-tool:not(.ai-locked)').dataset.aifn`)).toBe('openAsk');   // Ask works without a key
+  expect(await page.evaluate(`document.querySelector('#panel .ai-tool.ai-locked').dataset.aifn`)).toBe('openKeyManager');   // locked → unlock route
+  expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#panel .ai-tools').textContent`) as string)).toBe(false);   // English, no leak
+  await page.evaluate(`closePanel()`);
+  // WITH key: nothing locked, no banner, every tool routes to its real function
+  await page.evaluate(`(function(){ store.set('mk-gemkey','test-key-123'); openAiHub(); })()`);
+  await page.waitForSelector('#panel .ai-tools .ai-tool');
+  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool.ai-locked').length`)).toBe(0);
+  expect(await page.evaluate(`!document.querySelector('#panel .ai-keybanner')`)).toBe(true);
+  expect(await page.evaluate(`Array.from(document.querySelectorAll('#panel .ai-tool')).map(b=>b.dataset.aifn).join(',')`)).toBe('openAsk,openRecipeGen,openDiagnoseAI,openJournalInsights');
+  await page.evaluate(`closePanel()`);
+  // reachable at BEGINNER level from the More sheet (AI is never level-trimmed)
+  await page.evaluate(`openMoreSheet()`);
+  await page.waitForSelector('#panel .cmore-item');
+  expect(await page.evaluate(`!!document.querySelector('#panel [data-mfn="openAiHub"]')`)).toBe(true);
+  await page.evaluate(`closePanel()`);
+  // home "more AI tools" link (all levels) opens the hub
+  await page.evaluate(`cNavGo('home')`); await page.waitForTimeout(80);
+  expect(await page.evaluate(`document.querySelector('#cHomeAiMore').textContent`)).toContain('More AI tools');
+  await page.click('#cHomeAiMore');
+  await page.waitForSelector('#panel .ai-tools');
+  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool').length`)).toBe(4);
+});
