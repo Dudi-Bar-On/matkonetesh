@@ -5398,6 +5398,26 @@ function applyHomeCustom(){
 }
 // Phase 4 — pro/multi-event home chrome: gear-summary chip, multi-event command-center bar, and the pit-tools dock.
 // All gear/level/event derived, re-rendered every cRefreshHome (so language + state changes track live).
+// Pit-tools dock is user-customizable: pick WHICH tools (from this pool) appear and in what order. [icon, he, en, fn].
+const DOCK_POOL=[
+  ['🧮','מלח / ריפוי','Salt / cure','openCalc'],
+  ['🌳','עץ ופחם','Wood & charcoal','openWoods'],
+  ['🗂️','ציר זמן משולב','Combined timeline','openCombinedTimeline'],
+  ['📓','יומן','Journal','openJournal'],
+  ['🤖','כלי AI','AI tools','openAiHub'],
+  ['🔥','שאל את האש','Ask the Fire','openAsk'],
+  ['🧂','מתבלים ורטבים','Seasonings','openSeasonings'],
+  ['🥩','מתרגם נתחים','Cut translator','openCutTrans'],
+  ['🧫','פרויקטים ומזווה','Projects & pantry','openPantry'],
+  ['⏰','תזכורות','Reminders','openReminders'],
+  ['🩺','אבחון תקלה','Diagnose','openDiagnoseAI'],
+];
+const DOCK_DEFAULT=['openCalc','openWoods','openCombinedTimeline','openJournal'];
+function dockTools(){ const pool=DOCK_POOL.map(function(t){return t[3];});
+  const c=(typeof store!=='undefined')&&store.get('mk-dock-tools');
+  if(Array.isArray(c)) return c.filter(function(fn){return pool.indexOf(fn)>=0;});   // set (even empty) is respected
+  return DOCK_DEFAULT.slice();
+}
 function renderHomeChrome(){
   const he=(typeof getLang!=='function'||getLang()==='he');
   // gear-summary chip — the honest "tap to change what the app assumes you have" (only once gear is configured)
@@ -5424,10 +5444,16 @@ function renderHomeChrome(){
   if(dk){
     const pro=(typeof uiLevel==='function' && uiLevel()==='pro');
     if(pro){
-      const tools=[['🧮',he?'מלח / ריפוי':'Salt / cure','openCalc'],['🌳',he?'עץ ופחם':'Wood & charcoal','openWoods'],['🗂️',he?'ציר זמן משולב':'Combined timeline','openCombinedTimeline'],['📓',he?'יומן':'Journal','openJournal']];
-      dk.innerHTML=`<div class="dock-title">🛠️ ${he?'כלי הפיטמאסטר':'Pitmaster tools'}</div><div class="dock-grid">${tools.map(function(x){return `<button class="dockbtn" data-hfn="${x[2]}"><span class="dk-ic">${x[0]}</span>${x[1]}</button>`;}).join('')}</div>`;
+      const byFn={}; DOCK_POOL.forEach(function(t){ byFn[t[3]]=t; });
+      const tools=dockTools().map(function(fn){ return byFn[fn]; }).filter(Boolean);
+      const title=`<div class="dock-title">🛠️ ${he?'כלי הפיטמאסטר':'Pitmaster tools'}<button class="dock-edit" data-dockedit aria-label="${he?'התאם':'Customize'}">✎</button></div>`;
+      const grid=tools.length
+        ? `<div class="dock-grid">${tools.map(function(x){return `<button class="dockbtn" data-hfn="${x[3]}"><span class="dk-ic">${x[0]}</span>${he?x[1]:x[2]}</button>`;}).join('')}</div>`
+        : `<button class="dock-empty" data-dockedit>＋ ${he?'הוסף כלים':'Add tools'}</button>`;
+      dk.innerHTML=title+grid;
       dk.hidden=false;
       dk.querySelectorAll('.dockbtn[data-hfn]').forEach(function(b){ b.addEventListener('click',function(){ const fn=b.dataset.hfn; if(typeof window[fn]==='function') window[fn](); }); });
+      dk.querySelectorAll('[data-dockedit]').forEach(function(b){ b.addEventListener('click',function(){ if(typeof openDockCustom==='function') openDockCustom(); }); });
     } else { dk.hidden=true; dk.innerHTML=''; }
   }
 }
@@ -7118,6 +7144,29 @@ function openHomeCustom(){
     b.textContent = b.classList.contains('on')?(he?'מוצג':'Shown'):(he?'מוסתר':'Hidden'); save(); }); });
   { const r=$("#hcReset"); if(r) r.addEventListener('click',function(){ store.set('mk-homecustom',null); if(typeof cRefreshHome==='function') cRefreshHome(); openHomeCustom(); }); }
   hcWireDrag(listEl, save);
+}
+// "Customize dock" — pick WHICH pit-tools appear + order, from the full pool (owner-requested). Reuses the drag/toggle pattern.
+function openDockCustom(){
+  if(typeof showPanel!=='function') return;
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const chosen=dockTools(); const chosenSet=new Set(chosen); const byFn={}; DOCK_POOL.forEach(function(t){ byFn[t[3]]=t; });
+  const ordered=chosen.map(function(fn){return byFn[fn];}).filter(Boolean).concat(DOCK_POOL.filter(function(t){return !chosenSet.has(t[3]);}));   // chosen (in order) first, then the rest of the pool
+  const rows=ordered.map(function(t){ const on=chosenSet.has(t[3]);
+    return `<div class="hc-row" data-hcid="${t[3]}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="dk-ic">${t[0]}</span><span class="hc-name">${he?t[1]:t[2]}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${t[3]}">${on?(he?'✓ במזח':'✓ In'):(he?'+ הוסף':'+ Add')}</button></div>`;
+  }).join('');
+  showPanel(`${typeof toolTop==='function'?toolTop(L('כלי הפיטמאסטר','Pitmaster tools'),L('בחר וסדר את הכלים במזח','Pick and order the dock tools'),'🛠️','#5a7d8c'):`<h2 style="padding:16px">${L('כלי הפיטמאסטר','Pitmaster tools')}</h2>`}
+    <div class="panel-body">
+      <p class="section-sub">${L('בחר אילו כלים יופיעו במזח הכלים שבמסך הבית ובאיזה סדר. גרור לשינוי סדר, הקש להוספה/הסרה.','Choose which tools appear in the home dock, and in what order. Drag to reorder, tap to add/remove.')}</p>
+      <div class="hc-list" id="dkList">${rows}</div>
+      <button class="hc-reset" id="dkReset">↺ ${L('אפס לברירת המחדל','Reset to default')}</button>
+    </div>`);
+  const listEl=$("#dkList"); if(!listEl) return;
+  const save=function(){ const inc=[].slice.call(listEl.querySelectorAll('.hc-row')).filter(function(r){ const tb=r.querySelector('.hc-toggle'); return tb&&tb.classList.contains('on'); }).map(function(r){return r.dataset.hcid;});
+    store.set('mk-dock-tools', inc); if(typeof cRefreshHome==='function') cRefreshHome(); };
+  listEl.querySelectorAll('[data-hctoggle]').forEach(function(b){ b.addEventListener('click',function(){ b.classList.toggle('on');
+    b.textContent=b.classList.contains('on')?(he?'✓ במזח':'✓ In'):(he?'+ הוסף':'+ Add'); save(); }); });
+  { const r=$("#dkReset"); if(r) r.addEventListener('click',function(){ store.set('mk-dock-tools',null); if(typeof cRefreshHome==='function') cRefreshHome(); openDockCustom(); }); }
+  if(typeof hcWireDrag==='function') hcWireDrag(listEl, save);
 }
 // pointer-based drag reorder (works on touch): drag a row's handle; on drop, persist the new order.
 // Move/up are bound on document (not the handle) so drags keep tracking after the pointer leaves the handle.

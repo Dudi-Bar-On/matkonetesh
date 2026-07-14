@@ -375,3 +375,36 @@ test('adaptive home Phase 7: customize home — toggle hide, drag-reorder, persi
   expect(await homeOrder()).toBe('cHomeLanes,cHomeAskWrap,cHomePaths,cHomeDock');
   expect(await page.evaluate(`document.querySelector('#cHomeDock').classList.contains('home-mod-off')`)).toBe(false);
 });
+
+test('adaptive home: pit-tools dock is customizable — choose tools + order (owner request)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); localStorage.setItem('mk-uilevel', JSON.stringify('pro')); } catch {} });
+  await page.setViewportSize({ width: 390, height: 1000 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof cRefreshHome==='function'`);
+  await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
+  await page.waitForSelector('#cHomeDock .dockbtn');
+  const dockFns = () => page.evaluate(`Array.from(document.querySelectorAll('#cHomeDock .dockbtn')).map(b=>b.dataset.hfn).join(',')`);
+  // default dock = the 4 defaults
+  expect(await dockFns()).toBe('openCalc,openWoods,openCombinedTimeline,openJournal');
+  // a custom selection (different tools + order) is applied to the dock
+  await page.evaluate(`(function(){ store.set('mk-dock-tools',['openAiHub','openAsk','openCalc']); cNavGo('home'); })()`);
+  expect(await dockFns()).toBe('openAiHub,openAsk,openCalc');
+  // the ✎ opens the picker with the full pool, English, no Hebrew leak
+  await page.evaluate(`(function(){ store.set('mk-dock-tools',null); cNavGo('home'); })()`);
+  await page.click('#cHomeDock .dock-edit');
+  await page.waitForSelector('#dkList .hc-row');
+  expect(await page.evaluate(`document.querySelectorAll('#dkList .hc-row').length`)).toBe(11);
+  expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#dkList').textContent`) as string)).toBe(false);
+  // toggle a tool IN (Seasonings) and one OFF (Journal) → the dock reflects it + persists
+  await page.click('#dkList .hc-row[data-hcid="openSeasonings"] .hc-toggle');
+  await page.click('#dkList .hc-row[data-hcid="openJournal"] .hc-toggle');
+  await page.waitForTimeout(150);
+  const fns = await dockFns();
+  expect(fns).toContain('openSeasonings');
+  expect(fns).not.toContain('openJournal');
+  expect(await page.evaluate(`(store.get('mk-dock-tools')||[]).indexOf('openSeasonings')>=0`)).toBe(true);
+  // reset → back to the default 4
+  await page.click('#dkReset');
+  await page.waitForTimeout(150);
+  expect(await dockFns()).toBe('openCalc,openWoods,openCombinedTimeline,openJournal');
+});

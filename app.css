@@ -129,7 +129,12 @@ body.is-cooking #scr-home>#cCooking{margin-top:6px}
 .chome-mev .mev-go{color:#7a5cc2;font-weight:800}
 .chome-dock{margin:15px 16px 4px}
 .chome-dock[hidden]{display:none}
-.chome-dock .dock-title{font-family:var(--font-body);font-weight:800;font-size:calc(12px * var(--fscale));color:var(--smoke);margin:0 2px 8px}
+.chome-dock .dock-title{display:flex;align-items:center;gap:8px;font-family:var(--font-body);font-weight:800;font-size:calc(12px * var(--fscale));color:var(--smoke);margin:0 2px 8px}
+.chome-dock .dock-edit{margin-inline-start:auto;background:none;border:none;color:var(--terra-d);font-size:calc(13px * var(--fscale));cursor:pointer;padding:2px 6px;line-height:1}
+.chome-dock .dock-edit:hover{color:var(--ember)}
+.chome-dock .dock-empty{width:100%;background:none;border:1.5px dashed var(--line2);border-radius:12px;padding:12px;font-family:var(--font-body);font-weight:700;font-size:calc(12.5px * var(--fscale));color:var(--smoke);cursor:pointer}
+.chome-dock .dock-empty:hover{border-color:var(--ember);color:var(--ember)}
+.hc-row .dk-ic{font-size:calc(17px * var(--fscale));line-height:1}
 .chome-dock .dock-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
 .chome-dock .dockbtn{display:flex;align-items:center;gap:9px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:12px 13px;font-family:var(--font-body);font-weight:700;font-size:calc(12.5px * var(--fscale));color:var(--bone);cursor:pointer;text-align:start;transition:border-color .15s,color .15s}
 .chome-dock .dockbtn:hover{border-color:var(--ember);color:var(--ember)}
