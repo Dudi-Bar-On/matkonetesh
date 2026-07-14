@@ -138,11 +138,6 @@ HTML = r"""<!DOCTYPE html>
 <body class="capp">
 <a href="#mainContent" class="skip-link">דלג לתוכן</a>
 <div class="glow"></div>
-<header class="hero">
-  <div class="kick">סו-ויד · עישון · גריל · אש</div>
-  <h1>מתכונת · מדריך האש</h1>
-  <p class="sub" id="heroSub"></p>
-</header>
 
 <!-- ═══ HOME ═══ -->
 <div class="screen on" id="scr-home">
@@ -236,9 +231,11 @@ HTML = r"""<!DOCTYPE html>
     </div>
     <div id="cwReview"></div>
     <button class="ccta" id="cwGenPlan" data-i18n="wiz.genplan">📋 צור תוכנית עבודה מלאה</button>
-    <button class="ccta ghost" id="cwSaveEvent" data-i18n="wiz.saveevent">💾 שמור אירוע</button>
-    <button class="ccta ghost" id="cwVoice" data-i18n="wiz.voice">🎙️ מצב בישול קולי</button>
-    <button class="ccta ghost" data-cgo="events" data-i18n="wiz.toevents">סיום · לרשימת האירועים</button>
+    <div class="cw5-more">
+      <button id="cwSaveEvent" data-i18n="wiz.saveevent">💾 שמור אירוע</button>
+      <button id="cwVoice" data-i18n="wiz.voice">🎙️ מצב בישול קולי</button>
+      <button data-cgo="events" data-i18n="wiz.toevents">סיום · לרשימת האירועים</button>
+    </div>
   </div>
 </div>
 
@@ -286,9 +283,7 @@ HTML = r"""<!DOCTYPE html>
 </main>
 </div>
 
-<!-- legacy tools header (retired) -->
-<div style="display:none" id="legacyTools"></div>
-<template id="legacyToolsTpl"></template>
+<!-- retired UI kept hidden: still wired unconditionally in app.js (themeBtn/favBtn/favN/cartN…) — do not remove without also removing their JS handlers -->
 <div style="display:none">
   <button id="themeBtn"></button><button id="favBtn"><span id="favN">0</span></button>
   <span id="cartN">0</span><button id="aboutTop"></button><button id="exitTop"></button>
@@ -317,7 +312,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 190 · 14.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 191 · 14.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>

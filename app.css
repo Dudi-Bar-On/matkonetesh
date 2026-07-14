@@ -41,7 +41,7 @@ body.capp{padding-bottom:82px}
 .capp-top-home{position:relative;padding:22px 16px 10px;text-align:center;display:block}
 .capp-more-corner{position:absolute;top:16px;inset-inline-start:16px;z-index:2}
 .chome-title{max-width:520px;margin:0 auto}
-.chome-kick{font-family:var(--font-body);letter-spacing:.14em;font-size:calc(10.5px * var(--fscale));color:var(--ember2);font-weight:800;margin-bottom:7px}
+.chome-kick{font-family:var(--font-body);letter-spacing:.14em;font-size:calc(12px * var(--fscale));color:var(--ember2);font-weight:800;margin-bottom:7px}
 .chome-h1{font-family:var(--font-display);font-weight:400;font-size:clamp(29px,7.6vw,40px);line-height:1.05;color:var(--ink-strong);margin:0;letter-spacing:-.01em;text-shadow:0 1px 0 rgba(255,255,255,.55);text-wrap:balance}
 .chome-sub{font-size:calc(13px * var(--fscale));color:var(--smoke);line-height:1.55;margin:9px auto 0;max-width:340px;font-family:var(--font-body)}
 .chome-caps{background:none;border:none;color:var(--ember);font-weight:800;font-family:var(--font-body);font-size:calc(13px * var(--fscale));cursor:pointer;padding:0;text-decoration:underline;white-space:nowrap}
@@ -236,6 +236,10 @@ body.capp{padding-bottom:82px}
 /* cta */
 .ccta{display:block;width:calc(100% - 32px);margin:20px 16px 8px;background:linear-gradient(135deg,var(--ember2),var(--ember));color:#fff;border:none;border-radius:15px;padding:16px;font-family:var(--font-body);font-weight:800;font-size:calc(16px * var(--fscale));cursor:pointer;box-shadow:0 5px 16px rgba(231,111,81,.3)}
 .ccta.ghost{background:var(--char2);border:2px solid var(--line2);color:var(--bone);box-shadow:none}
+/* wizard step-5 secondary actions — one primary CTA (.ccta) above; these are demoted to a compact wrapping row */
+.cw5-more{display:flex;flex-wrap:wrap;gap:8px;margin:0 16px 8px}
+.cw5-more button{flex:1 1 40%;min-width:132px;min-height:44px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;color:var(--terra-d);font-family:var(--font-body);font-weight:600;font-size:calc(13.5px * var(--fscale));padding:11px 10px;cursor:pointer}
+.cw5-more button:active{background:var(--char3)}
 /* bottom nav */
 .cnav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:520px;display:flex;background:var(--char2);border-top:2px solid var(--line2);z-index:60;box-shadow:0 -4px 16px rgba(210,105,30,.06)}
 .cnav button{flex:1;background:none;border:none;color:var(--smoke);padding:9px 0 11px;font-family:var(--font-body);font-weight:600;font-size:calc(10.5px * var(--fscale));cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:3px}
