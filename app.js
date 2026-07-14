@@ -3572,17 +3572,22 @@ function openTimeline(focus){
 // scroll the timeline to a specific item and expand its steps — `focus` may be a stage-timer id
 // (st-<scope>-<itemKey>-<kind>), a recipe-timer id (cut-1-sv-0), or a bare item key (cut-1)
 function _tlFocusItem(focus){
-  requestAnimationFrame(function(){ try{
-    const list=$("#tlList"); if(!list) return;
+  const ik=(typeof timerItemKey==='function')?timerItemKey(focus):'';   // resolve the item key up front for reliable matching
+  let tries=0;
+  const attempt=function(){ try{
+    const list=$("#tlList"); const btns=list?list.querySelectorAll('[data-tlexp]'):[];
+    if((!list || !btns.length) && tries++<24){ setTimeout(attempt,50); return; }   // wait for the plan to render (retry ~1.2s)
+    if(!list) return;
     let card=null, ck=null;
-    list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(card) return; const k=b.getAttribute('data-tlexp');
-      if(k && (String(focus)===k || String(focus).indexOf('-'+k+'-')>=0 || String(focus).indexOf(k+'-')===0)){ card=b.closest('.tlcard'); ck=b.getAttribute('data-ck'); } });
-    if(!card){ const el=list.querySelector('[data-tid="'+((window.CSS&&CSS.escape)?CSS.escape(String(focus)):String(focus))+'"]'); if(el) card=el.closest('.tlcard'); }
+    btns.forEach(function(b){ if(card) return; const k=b.getAttribute('data-tlexp');
+      if(k && (k===ik || String(focus)===k || String(focus).indexOf('-'+k+'-')>=0 || String(focus).indexOf(k+'-')===0)){ card=b.closest('.tlcard'); ck=b.getAttribute('data-ck'); } });
+    if(!card){ const el=list.querySelector('[data-tid="'+((window.CSS&&CSS.escape)?CSS.escape(String(focus)):String(focus))+'"]'); if(el){ card=el.closest('.tlcard'); const xb=card&&card.querySelector('[data-tlexp]'); ck=xb&&xb.getAttribute('data-ck'); } }
     if(!card) return;
     if(ck){ const stg=document.getElementById('tlstages-'+ck); if(stg) stg.style.display='block'; }   // expand steps so the timer is visible
     card.classList.add('tl-focus'); setTimeout(function(){ try{ card.classList.remove('tl-focus'); }catch(e){} }, 2600);
     card.scrollIntoView({block:'center',behavior:'smooth'});
-  }catch(e){} });
+  }catch(e){} };
+  requestAnimationFrame(attempt);
 }
 /* ---------- voice cook mode (TTS + closed voice commands) ---------- */
 let vcTasks=[], vcIdx=0, vcRec=null, vcVoices=[];
@@ -5141,30 +5146,56 @@ function activeTimerRows(){
   out.sort(function(a,b){ if(a.ringing!==b.ringing) return a.ringing?-1:1; return (a.end||0)-(b.end||0); });   // ringing (needs attention) first, then soonest
   return out;
 }
-// which cook / plan / recipe a timer belongs to → a label + optional jump-back
+// derive the catalog item key a timer belongs to, from either id shape:
+//   recipe:   <itemKey>-<which>-<index>        (e.g. cut-1-sv-0)
+//   timeline: st-<scope>-<itemKey>-<kind>[n]   (scope/itemKey may both contain dashes)
+function timerItemKey(key){
+  const s=String(key); if(typeof resolveItem!=='function') return '';
+  let m=s.match(/^((?:cut|spec|make)-.+?)-[a-z]+-\d+$/);   // recipe form
+  if(m && resolveItem(m[1])) return m[1];
+  if(s.indexOf('st-')===0){
+    const body=s.slice(3).replace(/-[a-z]+\d*$/,'');       // drop 'st-' + trailing stage kind → <scope>-<itemKey>
+    const parts=body.split('-');
+    for(let i=0;i<parts.length;i++){ const cand=parts.slice(i).join('-'); if(/^(cut|spec|make)-/.test(cand) && resolveItem(cand)) return cand; }   // longest suffix that resolves
+  }
+  return '';
+}
+const STAGE_KIND={sv:['סו-ויד','Sous-vide'],smoke:['עישון','Smoke'],grill:['גריל','Grill'],sear:['צריבה','Sear'],rest:['מנוחה','Rest'],prep:['הכנה','Prep'],hot:['עישון חם','Hot smoke'],cold:['עישון קר','Cold smoke'],serve:['הגשה','Serve'],dry:['ייבוש','Dry'],cure:['ריפוי','Cure']};
+function timerKindLabel(key){
+  const s=String(key); let kind='';
+  let m=s.match(/^(?:cut|spec|make)-.+?-([a-z]+)-\d+$/);   // recipe: the "which" segment
+  if(m) kind=m[1]; else { m=s.match(/-([a-z]+)\d*$/); if(m) kind=m[1]; }   // timeline: trailing kind
+  const kk=STAGE_KIND[kind]; return kk?L(kk[0],kk[1]):'';
+}
+// which cook / plan / recipe a timer belongs to → a localized item label + context + jump-back
 function timerSource(key){
   const s=String(key);
+  const ikey=timerItemKey(key);
+  const meta=(ikey&&typeof resolveItem==='function')?resolveItem(ikey):null;
+  const itemLbl=meta?(typeof itemName==='function'?itemName(meta):meta.heb):'';
   if(s.indexOf('st-')===0){
     const evName=(typeof timerEventName==='function')?timerEventName(key):'';
     if(evName){ const ev=(typeof evList==='function'?evList():[]).find(function(e){ return s.indexOf('st-'+e.id+'-')===0; });
-      return {label:evName, jump: ev?function(){ if(typeof evLoad==='function') evLoad(ev.id); if(typeof openTimeline==='function') openTimeline(key); }:null}; }   // focus this timer's item in the plan
-    if(s.indexOf('st-cook-')===0) return {label:L('בישול','Cook'), jump:function(){ if(typeof setMenuCtx==='function') setMenuCtx('cook'); if(typeof openTimeline==='function') openTimeline(key); }};
-    return {label:L('תוכנית','Plan'), jump:(typeof openTimeline==='function')?function(){ openTimeline(key); }:null};
+      return {label:itemLbl, ctx:evName, jump: ev?function(){ if(typeof evLoad==='function') evLoad(ev.id); if(typeof openTimeline==='function') openTimeline(key); }:null}; }   // focus this timer's item in the plan
+    if(s.indexOf('st-cook-')===0) return {label:itemLbl, ctx:L('בישול','Cook'), jump:function(){ if(typeof setMenuCtx==='function') setMenuCtx('cook'); if(typeof openTimeline==='function') openTimeline(key); }};
+    return {label:itemLbl, ctx:L('תוכנית','Plan'), jump:(typeof openTimeline==='function')?function(){ openTimeline(key); }:null};
   }
-  const ikey=s.replace(/-[a-z]+-\d+$/,'');   // cut-1-sv-0 → cut-1
-  if(/^(cut|spec|make)-/.test(ikey)){ const meta=(typeof resolveItem==='function')?resolveItem(ikey):null;
-    if(meta) return {label:(typeof itemName==='function'?itemName(meta):meta.heb), jump:function(){ _openItemByKey(ikey); }}; }
-  return {label:'', jump:null};
+  if(meta) return {label:itemLbl, ctx:'', jump:function(){ _openItemByKey(ikey); }};
+  return {label:'', ctx:'', jump:null};
 }
 function openActive(){
   const rows=activeTimerRows();
   const plans=[]; try{ for(let i=0;i<localStorage.length;i++){ const kk=localStorage.key(i)||''; if(kk.indexOf('mk-plan-started-')===0 && store.get(kk)) plans.push(kk.replace('mk-plan-started-','')); } }catch(e){}
   const draft=store.get('mk-cresume');
   const projs=(typeof pantry==='function'?pantry():[]).filter(function(p){ return (p.type==='dry'||p.type==='cure') && !((typeof projProgressReady==='function')&&projProgressReady(p)); });
+  const en=(typeof getLang==='function'&&getLang()!=='he');
   const trow=function(x){ const src=timerSource(x.key);
     const time=x.ringing?`⏰ ${L('הסתיים!','Done!')}`:(x.paused?`⏸ ${fmt(x.remain)}`:`<span class="atimer-remain" data-end="${x.end}">${fmt(x.remain)}</span>`);
-    const nm=x.name||src.label||L('טיימר','Timer');
-    const sub=(src.label && src.label!==x.name)?src.label:'';
+    const stage=timerKindLabel(x.key), item=src.label||'';
+    // build the name from the (localized) item + stage; only fall back to the stored name if it isn't stale Hebrew
+    let nm = item ? (stage?stage+' · '+item:item) : '';
+    if(!nm) nm = (x.name && !(en && /[֐-׿]/.test(x.name))) ? x.name : (stage||L('טיימר','Timer'));
+    const sub=src.ctx||'';
     return `<div class="active-row ${x.ringing?'ring':''}"${src.jump?' data-ajump="'+encodeURIComponent(x.key)+'"':''}>
       <div class="ar-main"><b>${esc(nm)}</b>${sub?`<small>${esc(sub)}</small>`:''}</div>
       <div class="ar-time">${time}</div>

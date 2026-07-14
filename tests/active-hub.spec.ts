@@ -75,3 +75,15 @@ test('events: tapping an event opens its work-plan; the ✏️ Edit button opens
   await page.click('[data-evedit]');   // Edit → wizard
   await expect(page.locator('#scr-wizard')).toHaveClass(/on/);
 });
+
+test('active hub: a timer with a stale Hebrew name shows a localized name (derived from its key)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1']}}])); } catch {} });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openActive==='function'`);
+  await page.evaluate(`(function(){ store.set('mk-timers',{ 'st-ev-a-cut-1-smoke':{end:Date.now()+3600000,name:'עישון 105° · בריסקט'} }); openActive(); })()`);
+  await page.waitForSelector('#panel.open .active-row[data-ajump]');
+  const nm = await page.evaluate(`document.querySelector('#panel .active-row[data-ajump] .ar-main b').textContent`) as string;
+  expect(/[֐-׿]/.test(nm)).toBe(false);   // no leftover Hebrew from the stored name
+  expect(nm).toContain('Brisket');        // resolved from the key: "Smoke · Brisket"
+});
