@@ -6927,21 +6927,31 @@ const CCAT_TILES=[
   ['ירקות','🥦','var(--veg,#5aa84a)'],['פירות','🍑','var(--fruit,#e0748a)'],['דג','🐟','var(--fish,#5a9ab0)'],
   ['איברים פנימיים','🫀','#b06a7a'],['נקניק מעושן','🥓','var(--dried,#b07a3a)'],['מיוחדים','⭐','var(--ember2)'],
 ];
-// more sheet — grouped tools
+// more sheet — grouped tools. Phase 6: data-driven + adaptive — a "most-used" top section, and advanced items (adv:true)
+// trimmed for beginners so the sheet gets shorter for the default persona. Each item = [icon, label, fn, adv?].
 function openMoreSheet(){
   if(typeof showPanel!=='function'){ if(typeof openTools==='function') openTools(); return; }
-  const grp=(title,items)=>`<div class="cmore-grp"><h4>${title}</h4>${items.map(([ic,label,fn])=>`<div class="cmore-item" data-mfn="${fn}"><span class="mi">${ic}</span>${label}<span class="mg">←</span></div>`).join('')}</div>`;
+  const beg=(typeof uiLevel==='function' && uiLevel()==='beginner');
+  const GROUPS=[
+    ['🍽️', L('עבודה','Work'), [['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline',true],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint',true],['🛒',L('רשימת קניות','Shopping list'),'openCart']]],
+    ['✨', L('חוויה','Experience'), [['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
+    ['🧰', L('עזר','Utilities'), [['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans',true],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders',true],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']]],
+    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🔧',L('הציוד שלי','My gear'),'openGear'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
+  ];
+  const reg={}; GROUPS.forEach(g=>g[2].forEach(it=>reg[it[2]]=it));
+  const visible=it=>!(beg && it[3]);                                   // advanced items hidden at beginner level
+  // "most-used": recent tools from history, backfilled with a curated default so it's never sparse
+  let recent=((typeof store!=='undefined'&&store.get('mk-recent-tools'))||[]).map(fn=>reg[fn]).filter(Boolean).filter(visible).slice(0,5);
+  ['openAsk','openCalc','openSeasonings','openJournal','openGear'].map(fn=>reg[fn]).filter(Boolean).filter(visible).forEach(d=>{ if(recent.length<5 && recent.indexOf(d)<0) recent.push(d); });
+  const quick=recent.length?`<div class="cmore-grp cmore-quick"><h4>⭐ ${L('בשימוש נפוץ','Most used')}</h4><div class="cmore-quickrow">${recent.map(([ic,label,fn])=>`<button class="cmore-qchip" data-mfn="${fn}"><span>${ic}</span>${label}</button>`).join('')}</div></div>`:'';
+  const grp=(ic,title,items)=>{ const its=items.filter(visible); if(!its.length) return ''; return `<div class="cmore-grp"><h4>${ic} ${title}</h4>${its.map(([i,label,fn])=>`<div class="cmore-item" data-mfn="${fn}"><span class="mi">${i}</span>${label}<span class="mg">←</span></div>`).join('')}</div>`; };
   const html=`${typeof toolTop==='function'?toolTop(L('עוד','More'),L('כל הכלים והתכונות','All the tools and features'),'☰','#e07a52'):`<h2 style="padding:16px">${L('עוד','More')}</h2>`}
-    <div class="panel-body">${langRowHtml()}
-    ${grp('🍽️ '+L('עבודה','Work'),[['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline'],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint'],['🛒',L('רשימת קניות','Shopping list'),'openCart']])}
-    ${grp('✨ '+L('חוויה','Experience'),[['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']])}
-    ${grp('🧰 '+L('עזר','Utilities'),[['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans'],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders'],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']])}
-    ${grp('⚙️ '+L('הגדרות ועזרה','Settings & help'),[['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🔧',L('הציוד שלי','My gear'),'openGear'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']])}
-    </div>`;
+    <div class="panel-body">${langRowHtml()}${quick}${GROUPS.map(g=>grp(g[0],g[1],g[2])).join('')}</div>`;
   showPanel(html);
   if(typeof wireLangRow==='function') wireLangRow($("#panel"));
   document.querySelectorAll('#panel [data-mfn]').forEach(el=>el.addEventListener('click',()=>{
     const fn=el.dataset.mfn;
+    try{ if(reg[fn]){ const r=((store.get('mk-recent-tools'))||[]).filter(x=>x!==fn); r.unshift(fn); store.set('mk-recent-tools', r.slice(0,8)); } }catch(e){}   // remember for "most used"
     if(fn==='__about'){ if(typeof closePanel==='function') closePanel(); setTimeout(openAbout,60); return; }
     if(fn==='__gloss'){ closePanel&&closePanel(); cNavGo('catalog'); requestAnimationFrame(()=>{ if(typeof catView==='function') catView('gloss'); }); return; }
     if(typeof window[fn]==='function'){ if(typeof closePanel==='function') closePanel(); setTimeout(()=>window[fn](),60); }

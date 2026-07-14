@@ -322,6 +322,11 @@ body.lvl-pro .chome-about .cha-sub{display:none}
 .cmore-item{display:flex;align-items:center;gap:12px;background:var(--char2);border:1.5px solid var(--line2);border-radius:13px;padding:13px 14px;margin-bottom:8px;cursor:pointer;font-family:var(--font-body);font-size:calc(14px * var(--fscale));font-weight:600;color:var(--bone);text-decoration:none}
 .cmore-item .mi{font-size:calc(20px * var(--fscale))}
 .cmore-item .mg{margin-inline-start:auto;color:var(--smoke)}
+/* Phase 6 — More sheet "most used" quick row */
+.cmore-quick .cmore-quickrow{display:flex;flex-wrap:wrap;gap:8px}
+.cmore-qchip{display:inline-flex;align-items:center;gap:6px;background:var(--char2);border:1.5px solid var(--line2);border-radius:999px;padding:8px 13px;font-family:var(--font-body);font-weight:700;font-size:calc(12.5px * var(--fscale));color:var(--bone);cursor:pointer}
+.cmore-qchip:hover{border-color:var(--ember);color:var(--ember)}
+.cmore-qchip span{font-size:1.1em;line-height:1}
 /* hide bottom nav when a modal panel is open (so its action/print row isn't covered) */
 body.noscroll .cnav{display:none}
 body.noscroll .cactive-fab{display:none}

@@ -261,3 +261,38 @@ test('adaptive home Phase 5: uiLevel adjusts density (beginner promotes how-to +
   // how-to itself is never removed at any level (nothing removed, only reordered/demoted)
   expect(await page.evaluate(`getComputedStyle(document.querySelector('.chome-about')).display`)).not.toBe('none');
 });
+
+test('adaptive home Phase 6: More sheet has a most-used row, learns, and trims advanced items for beginners', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openMoreSheet==='function'`);
+  // mid: most-used row present (curated default), English, advanced items visible
+  await page.evaluate(`(function(){ store.set('mk-uilevel','mid'); openMoreSheet(); })()`);
+  await page.waitForSelector('#panel .cmore-quick .cmore-qchip');
+  expect(await page.evaluate(`document.querySelectorAll('#panel .cmore-quick .cmore-qchip').length`)).toBeGreaterThanOrEqual(3);
+  const qtext = await page.evaluate(`document.querySelector('#panel .cmore-quick').textContent`) as string;
+  expect(/[֐-׿]/.test(qtext)).toBe(false); expect(qtext).toContain('Most used');
+  const midCount = await page.evaluate(`document.querySelectorAll('#panel .cmore-item[data-mfn]').length`) as number;
+  expect(await page.evaluate(`!!document.querySelector('#panel [data-mfn="openTimeline"]')`)).toBe(true);   // Scheduler visible at mid
+  await page.evaluate(`closePanel()`);
+  // beginner: advanced items trimmed → fewer items
+  await page.evaluate(`(function(){ store.set('mk-uilevel','beginner'); openMoreSheet(); })()`);
+  await page.waitForSelector('#panel .cmore-item');
+  for (const fn of ['openTimeline','openMenuPrint','openCutTrans','openReminders']) {
+    expect(await page.evaluate(`!document.querySelector('#panel [data-mfn="${fn}"]')`)).toBe(true);
+  }
+  const begCount = await page.evaluate(`document.querySelectorAll('#panel .cmore-item[data-mfn]').length`) as number;
+  expect(begCount).toBeLessThan(midCount);
+  // AI stays reachable at beginner level (AI-for-everyone): Ask + Recipe generator present
+  expect(await page.evaluate(`!!document.querySelector('#panel [data-mfn="openAsk"]') && !!document.querySelector('#panel [data-mfn="openRecipeGen"]')`)).toBe(true);
+  await page.evaluate(`closePanel()`);
+  // most-used LEARNS: using a tool makes it lead the row next open
+  await page.evaluate(`(function(){ store.set('mk-uilevel','mid'); openMoreSheet(); })()`);
+  await page.click('#panel [data-mfn="openWoods"]');
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(`(store.get('mk-recent-tools')||[])[0]`)).toBe('openWoods');
+  await page.evaluate(`closePanel(); openMoreSheet();`);
+  await page.waitForSelector('#panel .cmore-quick .cmore-qchip');
+  expect(await page.evaluate(`document.querySelector('#panel .cmore-quick .cmore-qchip').dataset.mfn`)).toBe('openWoods');
+});
