@@ -150,6 +150,8 @@ HTML = r"""<!DOCTYPE html>
     </div>
   </div>
   <div class="chome-search" id="cHomeSearch"><span class="ic">⌕</span><input id="cHomeSearchInput" data-i18n-ph="search.ph" placeholder="חפש הכל — נתח, נקניקייה, מתבל…" autocomplete="off"></div>
+  <button class="chome-gearchip" id="cHomeGearChip" hidden></button>
+  <button class="chome-mev" id="cHomeMultiEv" hidden></button>
   <div class="chome-hero"><div class="hi" id="cGreet">ברוך הבא 👋</div><h2 data-i18n-html="home.what">מה <b>מדליקים</b> היום?</h2></div>
   <div class="chome-lanes" id="cHomeLanes"></div>
   <div id="cGearBanner"></div>
@@ -158,6 +160,7 @@ HTML = r"""<!DOCTYPE html>
     <div class="cpath event" data-cgo="wizard"><span class="ptag">🌿 הכי פופולרי</span><span class="pico">🎉</span><h3 data-i18n="path.hosting">מארח? תכנן את האירוע</h3><p>אשף מודרך שבונה תפריט, רשימת קניות ותוכנית עבודה — לפי מספר הסועדים והטעמים.</p><button class="cpath-branch" id="cPathCook">↳ או פשוט בשל כמה מנות (בלי אירוע)</button></div>
     <div class="cpath project" id="cPathProj"><span class="pico">🧪</span><h3 data-i18n="path.project">פרויקט מתקדם</h3><p>שרקוטרי, נקניקים ועישון ארוך — בחירה מקוטלגת לפי סוג ומדינה, עם תיאור מלא לכל מלאכה וליווי צעד-אחר-צעד.</p><span class="go">←</span></div>
   </div>
+  <div class="chome-dock" id="cHomeDock" hidden></div>
   <div class="cnext cnext-live" id="cCooking" hidden><span class="nico">🔥</span><div style="flex:1"><div class="nt">בישול פעיל עכשיו</div><div class="nm" id="cCookingM"></div></div><button class="cnext-x" id="cCookingX" aria-label="עצור בישול פעיל">✕</button><span class="ng">←</span></div>
   <div class="cnext" id="cResume" hidden><span class="nico">📋</span><div style="flex:1"><div class="nt">המשך מהמקום שעצרת</div><div class="nm" id="cResumeM"></div></div><button class="cnext-x" id="cResumeX" aria-label="בטל טיוטה">✕</button><span class="ng">←</span></div>
   <div class="cnext" id="cResumeProj" hidden><span class="nico">🧫</span><div style="flex:1"><div class="nt">המשך פרויקט</div><div class="nm" id="cResumeProjM"></div></div><button class="cnext-x" id="cResumeProjX" aria-label="הסתר">✕</button><span class="ng">←</span></div>
@@ -312,7 +315,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 208 · 14.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 209 · 14.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>

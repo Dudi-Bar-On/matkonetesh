@@ -5251,6 +5251,42 @@ function cRefreshHome(){
   const g=$("#cGreet"); if(g){ const h=new Date().getHours(); g.textContent=(h<12?L('בוקר טוב','Good morning'):h<18?L('צהריים טובים','Good afternoon'):L('ערב טוב','Good evening'))+' 👋'; }
   const kk=$("#cHomeKick"); if(kk){ const hg=(typeof homeGear==='function')?homeGear():{canSV:true,canSmoke:true,canGrill:true}; const p=[]; if(hg.canSV)p.push(L('סו-ויד','Sous-vide')); if(hg.canSmoke)p.push(L('עישון','Smoke')); if(hg.canGrill)p.push(L('גריל','Grill')); p.push(L('אש','Fire')); kk.textContent=p.join(' · '); }   // gear-aware tagline — drops methods you can't do
   try{ if(typeof renderHomeLanes==='function') renderHomeLanes(); }catch(e){}
+  try{ if(typeof renderHomeChrome==='function') renderHomeChrome(); }catch(e){}
+}
+// Phase 4 — pro/multi-event home chrome: gear-summary chip, multi-event command-center bar, and the pit-tools dock.
+// All gear/level/event derived, re-rendered every cRefreshHome (so language + state changes track live).
+function renderHomeChrome(){
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  // gear-summary chip — the honest "tap to change what the app assumes you have" (only once gear is configured)
+  const gc=$("#cHomeGearChip");
+  if(gc){
+    if(typeof gearConfigured==='function' && gearConfigured()){
+      gc.innerHTML=`🔧 <span class="cgc-list">${he?'הציוד שלי':'My gear'}</span> <span class="cgc-edit">· ${he?'שנה':'change'}</span>`;
+      gc.hidden=false;
+    } else gc.hidden=true;
+  }
+  try{ if(typeof syncGearBanner==='function') syncGearBanner(); }catch(e){}   // banner ↔ chip symmetry: banner when unconfigured, chip when configured
+  // multi-event bar — 2+ events → the combined command center (v203), with a smoker-clash flag
+  const mv=$("#cHomeMultiEv");
+  if(mv){
+    const evs=(typeof evList==='function')?evList():[];
+    if(evs.length>=2){
+      let clash=0; try{ clash=combinedEventsRows().filter(function(r){return r.contention;}).length; }catch(e){}
+      mv.innerHTML=`<span class="mev-ic">🗂️</span><span class="mev-txt"><b>${evs.length} ${he?'אירועים':'cookouts'}</b> · ${he?'לוח-זמנים משולב':'combined schedule'}${clash?` · <span class="mev-warn">⚠ ${clash} ${he?'חפיפות':'clashes'}</span>`:''}</span><span class="mev-go">←</span>`;
+      mv.hidden=false;
+    } else mv.hidden=true;
+  }
+  // pit-tools dock — pro level only (the power tools within one tap)
+  const dk=$("#cHomeDock");
+  if(dk){
+    const pro=(typeof uiLevel==='function' && uiLevel()==='pro');
+    if(pro){
+      const tools=[['🧮',he?'מלח / ריפוי':'Salt / cure','openCalc'],['🌳',he?'עץ ופחם':'Wood & charcoal','openWoods'],['🗂️',he?'ציר זמן משולב':'Combined timeline','openCombinedTimeline'],['📓',he?'יומן':'Journal','openJournal']];
+      dk.innerHTML=`<div class="dock-title">🛠️ ${he?'כלי הפיטמאסטר':'Pitmaster tools'}</div><div class="dock-grid">${tools.map(function(x){return `<button class="dockbtn" data-hfn="${x[2]}"><span class="dk-ic">${x[0]}</span>${x[1]}</button>`;}).join('')}</div>`;
+      dk.hidden=false;
+      dk.querySelectorAll('.dockbtn[data-hfn]').forEach(function(b){ b.addEventListener('click',function(){ const fn=b.dataset.hfn; if(typeof window[fn]==='function') window[fn](); }); });
+    } else { dk.hidden=true; dk.innerHTML=''; }
+  }
 }
 // Phase 3 — home hero quick-pick lanes: gear-gated rails of single cuts, each chip → openCut (the single-cut fast lane
 // that skips the event wizard). DATA-derived shortlist per method; resolveItem-guarded so a data change never leaves a dead chip.
@@ -6917,6 +6953,8 @@ document.querySelectorAll('[data-cnav]').forEach(b=>{ if(b.dataset.cnav==='wizar
 document.querySelectorAll('[data-cgo]').forEach(b=>{ if(b.dataset.cgo==='wizard') return; b.addEventListener('click',()=>cNavGo(b.dataset.cgo)); });
 // floating Active-now shortcut: click → hub; keep it in sync on boot + a slow tick (for ringing while idle on a screen)
 (()=>{ const fab=$("#cActiveFab"); if(fab) fab.addEventListener('click',()=>{ if(typeof openActive==='function') openActive(); }); try{ if(typeof syncActiveFab==='function'){ syncActiveFab(); setInterval(syncActiveFab, 5000); } }catch(e){} })();
+// Phase 4 home chrome (buttons persist; only their innerHTML is re-rendered, so wire once): gear chip → gear editor, multi-event bar → command center
+(()=>{ const gc=$("#cHomeGearChip"); if(gc) gc.addEventListener('click',()=>{ if(typeof openGear==='function') openGear(); }); const mv=$("#cHomeMultiEv"); if(mv) mv.addEventListener('click',()=>{ if(typeof openCombinedTimeline==='function') openCombinedTimeline(); }); })();
 // "יש לי אירוע" path + FAB → start a NEW clean event (guard unsaved draft)
 function cStartNewEvent(){ setMenuCtx('event'); evGuardBeforeNew(()=>{ cwGo(0); cNavGo('wizard'); cwSyncFromMenu(); }); }
 function cStartCook(){ setMenuCtx('cook'); cwGo(0); cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }
@@ -6933,10 +6971,18 @@ document.querySelectorAll('[data-cgo="wizard"],[data-cnav="wizard"]').forEach(b=
 function openLangMenu(){ showPanel(`${toolTop(t('🌐 שפה'),t('בחר שפה'),'🌐','#5a7d8c')}<div class="panel-body">${langRowHtml()}</div>`); wireLangRow($("#panel")); }
 (()=>{ const lb=$("#cHomeLang"); if(lb) lb.addEventListener('click',openLangMenu); try{ syncHomeLang(); }catch(e){} })();
 (()=>{ const a=$("#cHomeAbout"); if(a) a.addEventListener('click',()=>{ if(typeof openGuide==='function') openGuide(); }); })();
-(()=>{ const host=$("#cGearBanner"); if(host && typeof gearConfigured==='function' && !gearConfigured()){
-   host.innerHTML=`<button class="gear-banner" id="gearBanner">🔧 <span><b>הגדר את הציוד שלך</b> — כדי שהמתכונים יתאימו למה שיש לך</span><span class="gb-go">←</span></button>`;
-   const b=$("#gearBanner"); if(b) b.addEventListener('click',()=>{ if(typeof openGear==='function') openGear(); });
-} })();
+// gear banner ↔ chip are symmetric: banner prompts setup when unconfigured, chip (in renderHomeChrome) takes over once configured.
+// Managed on every cRefreshHome (not boot-once) so it reappears if gear is un-configured mid-session (e.g. a full data reset). L()-generated so a cNavGo re-create can't leak Hebrew in English.
+function syncGearBanner(){
+  const host=$("#cGearBanner"); if(!host) return;
+  if(typeof gearConfigured==='function' && !gearConfigured()){
+    if(!host.firstChild){
+      host.innerHTML=`<button class="gear-banner" id="gearBanner">🔧 <span><b>${L('הגדר את הציוד שלך','Set up your equipment')}</b> — ${L('כדי שהמתכונים יתאימו למה שיש לך','so recipes match what you have')}</span><span class="gb-go">←</span></button>`;
+      const b=$("#gearBanner"); if(b) b.addEventListener('click',()=>{ if(typeof openGear==='function') openGear(); });
+    }
+  } else host.innerHTML='';
+}
+(()=>{ try{ syncGearBanner(); }catch(e){} })();
 (()=>{ const a=$("#cHomeAsk"); if(a) a.addEventListener('click',()=>{ if(typeof openAsk==='function') openAsk(); }); })();
 (()=>{ const r=$("#cResume"); if(r) r.addEventListener('click',()=>{ const d=store.get('mk-cresume')||{}; if(typeof setMenuCtx==='function') setMenuCtx(d.ctx||'event'); if(typeof cwGo==='function') cwGo(typeof d.step==='number'?d.step:5); if(typeof cNavGo==='function') cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }); })();
 // dismiss the "resume where you left off" card — discard the unsaved draft so it stops appearing

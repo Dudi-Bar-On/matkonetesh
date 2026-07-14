@@ -148,3 +148,90 @@ test('adaptive home Phase 3: editing gear from Home re-gates the lanes on panel 
   expect(await page.evaluate(`!document.querySelector('.lane-sv')`)).toBe(true);
   expect(await page.evaluate(`document.querySelectorAll('.chome-lanes .lane').length`)).toBe(2);
 });
+
+test('adaptive home Phase 4: gear chip + multi-event bar + pro pit-tools dock (with negative gating)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
+    localStorage.setItem('mk-uilevel', JSON.stringify('pro'));
+    localStorage.setItem('mk-events', JSON.stringify([
+      {id:'ev-a',name:'Fri BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1']}},
+      {id:'ev-b',name:'Sat BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:6,keys:['cut-1']}}
+    ])); } catch {} });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof cRefreshHome==='function'`);
+  await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
+  await page.waitForSelector('.chome-lanes .lane');
+  // gear chip: configured → visible, English, no Hebrew leak
+  expect(await page.evaluate(`document.querySelector('#cHomeGearChip').hidden`)).toBe(false);
+  const gc = await page.evaluate(`document.querySelector('#cHomeGearChip').textContent`) as string;
+  expect(/[֐-׿]/.test(gc)).toBe(false); expect(gc).toContain('My gear');
+  // once configured, the chip replaces the boot "set up your gear" banner (no stale duplicate)
+  expect(await page.evaluate(`document.querySelector('#cGearBanner').children.length`)).toBe(0);
+  // multi-event bar: 2 events → visible with count, English
+  expect(await page.evaluate(`document.querySelector('#cHomeMultiEv').hidden`)).toBe(false);
+  const mv = await page.evaluate(`document.querySelector('#cHomeMultiEv').textContent`) as string;
+  expect(mv).toContain('2 cookouts'); expect(/[֐-׿]/.test(mv)).toBe(false);
+  // pit-tools dock: pro → 4 tools, English, no h-scroll
+  expect(await page.evaluate(`document.querySelector('#cHomeDock').hidden`)).toBe(false);
+  expect(await page.evaluate(`document.querySelectorAll('#cHomeDock .dockbtn').length`)).toBe(4);
+  // no dead buttons: every dock action resolves to a real function
+  expect(await page.evaluate(`Array.from(document.querySelectorAll('#cHomeDock .dockbtn')).every(b=>typeof window[b.dataset.hfn]==='function')`)).toBe(true);
+  const dk = await page.evaluate(`document.querySelector('#cHomeDock').textContent`) as string;
+  expect(/[֐-׿]/.test(dk)).toBe(false); expect(dk).toContain('Pitmaster');
+  expect(await page.evaluate(`document.body.scrollWidth <= window.innerWidth + 1`)).toBe(true);
+  // a dock button opens its tool (Salt/cure calc)
+  await page.click('#cHomeDock .dockbtn:first-child');
+  await page.waitForSelector('#panel.open .panel-top h2, #panel.open h2');
+  expect(await page.evaluate(`document.querySelector('#panel h2').textContent`)).toContain('Calculators');
+  await page.evaluate(`closePanel()`);
+  // multi-event bar → the combined command center
+  await page.click('#cHomeMultiEv');
+  await page.waitForSelector('#panel.open .cet-row, #panel.open .shop-empty');
+  await page.evaluate(`closePanel()`);
+  // NEGATIVE gating: not pro → no dock; <2 events → no bar; gear unconfigured → no chip
+  await page.evaluate(`(function(){ store.set('mk-uilevel','mid'); store.set('mk-events',[{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1']}}]); store.set('mk-gear-set',false); cNavGo('home'); })()`);
+  await page.waitForTimeout(120);
+  expect(await page.evaluate(`document.querySelector('#cHomeDock').hidden`)).toBe(true);
+  expect(await page.evaluate(`document.querySelector('#cHomeMultiEv').hidden`)).toBe(true);
+  expect(await page.evaluate(`document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
+});
+
+test('adaptive home Phase 4: projects card demotes when there is no charcuterie gear', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
+  await page.setViewportSize({ width: 390, height: 820 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof cRefreshHome==='function'`);
+  // charcuterie gear present → full project card (description shown)
+  await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
+  expect(await page.evaluate(`document.body.classList.contains('gear-noproj')`)).toBe(false);
+  expect(await page.evaluate(`getComputedStyle(document.querySelector('#cPathProj p')).display`)).not.toBe('none');
+  // no grinder/stuffer → demoted to a slim card (description hidden), still present + tappable
+  await page.evaluate(`(function(){ store.set('mk-gear',{smoker:'מעשנה',grill:'גריל',sousvide:'אין',thermo:'אין',grinder:'אין',stuffer:'אין'}); cNavGo('home'); })()`);
+  expect(await page.evaluate(`document.body.classList.contains('gear-noproj')`)).toBe(true);
+  expect(await page.evaluate(`getComputedStyle(document.querySelector('#cPathProj p')).display`)).toBe('none');
+  expect(await page.evaluate(`!document.querySelector('#cPathProj').hidden`)).toBe(true);
+});
+
+test('adaptive home Phase 4: gear banner <-> chip stay symmetric across (un)configure (e.g. full reset)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
+    localStorage.setItem('mk-gear-set', JSON.stringify(true)); localStorage.setItem('mk-gear', JSON.stringify({smoker:'מעשנה',grill:'גריל',sousvide:'אין',thermo:'אין',grinder:'אין',stuffer:'אין'})); } catch {} });
+  await page.setViewportSize({ width: 390, height: 820 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof cRefreshHome==='function'`);
+  await page.evaluate(`cNavGo('home')`); await page.waitForTimeout(80);
+  // configured → chip shown, no set-up banner
+  expect(await page.evaluate(`!document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
+  expect(await page.evaluate(`document.querySelector('#cGearBanner').children.length`)).toBe(0);
+  // gear becomes unconfigured (as a full data reset does) → the set-up banner comes BACK, chip hides
+  await page.evaluate(`(function(){ store.set('mk-gear-set',false); cRefreshHome(); })()`); await page.waitForTimeout(80);
+  expect(await page.evaluate(`document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
+  expect(await page.evaluate(`!!document.querySelector('#cGearBanner #gearBanner')`)).toBe(true);
+  expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#cGearBanner').textContent`) as string)).toBe(false);   // English, no leak
+  await page.click('#cGearBanner #gearBanner');   // opens the gear editor
+  await page.waitForSelector('#panel.open [data-gear="sousvide"]');
+  await page.evaluate(`closePanel()`);
+  // re-configure → chip returns, banner clears again
+  await page.evaluate(`(function(){ store.set('mk-gear-set',true); cRefreshHome(); })()`); await page.waitForTimeout(80);
+  expect(await page.evaluate(`!document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
+  expect(await page.evaluate(`document.querySelector('#cGearBanner').children.length`)).toBe(0);
+});

@@ -116,6 +116,27 @@ body.is-cooking #scr-home>#cCooking{margin-top:6px}
 .lane-chip{flex:0 0 auto;background:var(--char2);border:1.5px solid var(--line2);border-radius:999px;padding:8px 14px;font-family:var(--font-body);font-weight:700;font-size:calc(12.5px * var(--fscale));color:var(--bone);cursor:pointer;white-space:nowrap;transition:border-color .15s,color .15s}
 .lane-chip:hover{border-color:var(--ember);color:var(--ember)}
 .lane-tip{font-size:calc(11px * var(--fscale));color:var(--ash);margin:5px 2px 0;font-style:italic}
+/* Phase 4 — pro / multi-event home chrome */
+.chome-gearchip{display:inline-flex;align-self:flex-start;align-items:center;gap:5px;margin:0 16px 11px;background:none;border:1px dashed var(--line2);border-radius:999px;padding:6px 12px;font-family:var(--font-body);font-weight:700;font-size:calc(11.5px * var(--fscale));color:var(--smoke);cursor:pointer}
+.chome-gearchip[hidden]{display:none}
+.chome-gearchip:hover{border-color:var(--ember)}
+.chome-gearchip .cgc-edit{color:var(--terra-d)}
+.chome-mev{display:flex;align-items:center;gap:11px;margin:0 16px 13px;background:linear-gradient(135deg,rgba(122,92,194,.13),rgba(122,92,194,.04));border:1.5px solid rgba(122,92,194,.42);border-radius:14px;padding:13px 15px;cursor:pointer;text-align:start}
+.chome-mev[hidden]{display:none}
+.chome-mev .mev-ic{font-size:1.3em;line-height:1}
+.chome-mev .mev-txt{flex:1;font-family:var(--font-body);font-size:calc(13px * var(--fscale));color:var(--bone)}
+.chome-mev .mev-warn{color:#c0392b;font-weight:800;white-space:nowrap}
+.chome-mev .mev-go{color:#7a5cc2;font-weight:800}
+.chome-dock{margin:15px 16px 4px}
+.chome-dock[hidden]{display:none}
+.chome-dock .dock-title{font-family:var(--font-body);font-weight:800;font-size:calc(12px * var(--fscale));color:var(--smoke);margin:0 2px 8px}
+.chome-dock .dock-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.chome-dock .dockbtn{display:flex;align-items:center;gap:9px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:12px 13px;font-family:var(--font-body);font-weight:700;font-size:calc(12.5px * var(--fscale));color:var(--bone);cursor:pointer;text-align:start;transition:border-color .15s,color .15s}
+.chome-dock .dockbtn:hover{border-color:var(--ember);color:var(--ember)}
+.chome-dock .dockbtn .dk-ic{font-size:1.15em;line-height:1}
+/* projects card demotes to a slim title-only card when there's no charcuterie gear (nothing to make from scratch) */
+body.gear-noproj #cPathProj p{display:none}
+body.gear-noproj #cPathProj{padding-top:15px;padding-bottom:15px}
 .wp-advisory{margin:0 0 12px;padding:10px 12px;background:rgba(217,166,43,.1);border:1px solid rgba(217,166,43,.4);border-radius:10px;font-size:calc(12.5px * var(--fscale));line-height:1.5;color:var(--bone)}
 .wp-row.wp-done{opacity:.5}.wp-row.wp-done .wp-body b{text-decoration:line-through}
 .wp-row.wp-next{box-shadow:inset 0 0 0 2px var(--ember2);background:rgba(245,147,49,.07)}
