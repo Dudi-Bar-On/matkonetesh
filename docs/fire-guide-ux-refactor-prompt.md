@@ -1,0 +1,393 @@
+# מתכונת · מדריך האש — פרומפט לרפקטורינג ממשק (UX/UI)
+
+> **איך להשתמש בקובץ הזה:** זהו פרומפט עבודה מלא ל-Claude Code (או כל סוכן קידוד).
+> צרף אותו יחד עם `index.html` של האפליקציה. הסוכן צריך לקרוא קודם את סעיף
+> "הקשר", אחר כך את "הבעיות", ולבצע לפי "סדר העדיפויות". הדמו המוטמע בסוף
+> משמש כמפרט ויזואלי (reference) לשלושת המצבים — לא להעתיק אותו כמו שהוא,
+> אלא ליישם את הרעיונות בתוך הקוד הקיים.
+
+---
+
+## 1. הקשר — מה האפליקציה
+
+- PWA בעברית, RTL מלא, קובץ HTML יחיד (~7,000 שורות, ~1.17MB) עם `DATA` מוטמע.
+- 5 מסכים: בית, קטלוג (~130 נתחים), בית מלאכה (שרקוטרי/גבינות), אשף 6 שלבים, עוזר AI.
+- שפה עיצובית "שמנת-טרקוטה" (05-A), Service Worker לאופליין, מצב קולי קיים.
+- כל הרינדור עובר דרך פונקציות (`renderTlSeas`, `mkBody` וכו') שקוראות מ-`DATA` מרכזי — נקודת המינוף העיקרית לרפקטורינג.
+
+**מה עובד ואסור לשבור:** עקביות עיצובית, RTL נקי, מבנה משימתי בבית, אופליין מלא, והתוכן עצמו (הפרדת טמפ' יעד מטמפ' בטיחות, doneness פר נתח, מחשבוני ריפוי). התוכן הוא הנכס — הרפקטורינג נוגע בהגשה בלבד.
+
+---
+
+## 2. הבעיות המרכזיות (ממצאי הניתוח)
+
+### 2.1 כפילות בדף הבית
+שני "headers" (ה-`hero` הישן + `capp-top-home`) ושני מסלולים ("יש לי אירוע" / "בא לי לבשל") שמובילים **לאותו אשף** — בחירה מדומה שמייצרת היסוס.
+**פתרון:** מסלול אחד עם branching בשלב 0, או שוני אמיתי (בישול מהיר = אשף מקוצר של 3 שלבים). הסרת ה-hero הישן.
+
+### 2.2 שלב 0 של האשף — טפסים לפני ערך
+שם אירוע, תיאור, תאריך, סועדים, תיאבון וכשרות — הכול לפני שהמשתמש ראה אוכל.
+**פתרון:** להתחיל מבחירת מנות (הכיף), ולדחות שם/תאריך לשלב השמירה בסוף.
+
+### 2.3 שלב 5 — חמישה כפתורי CTA מוערמים
+שמור / צור תוכנית / בונה ארוחה / מצב קולי / סיום — בלי היררכיה.
+**פתרון:** primary אחד ("צור תוכנית"), השאר כ-actions משניים בתפריט.
+
+### 2.4 הקטלוג = שלוש אפליקציות בדף אחד
+grid נתחים + בית מלאכה + ריפוי/גבינות, עם שלוש מערכות סינון נפרדות (chips, catgroups, filterbar) וגלילה אינסופית.
+**פתרון:** טאבים פנימיים או כניסה דרך אריחי קטגוריה בלבד; איחוד הסינון למערכת צ'יפים אחת עם ✕.
+
+### 2.5 נגישות וקריאוּת בתנאי שטח (שמש, ידיים שמנוניות)
+- טקסט `--smoke` (‎#b09480) על שמנת **נכשל ב-WCAG AA** → להכהות ל-‎`#7a5a42`.
+- ה-kick בכתום-אפרסק ב-10.5px כמעט בלתי קריא בשמש → מינימום 12px.
+- כפתורי nav עם padding 9px מתחת ל-44px מטרת מגע → מינימום 44–48px.
+- input בבית עם `readonly` שמתחזה לכפתור חיפוש → בעייתי לקורא מסך; להחליף ב-`<button>` אמיתי.
+- אייקון 🧫 בניווט ("פרויקטים") קריפטי → להחליף ל-⚗️ "מלאכות".
+
+### 2.6 צפיפות נתונים אחידה לכולם
+כרטיס נתח מציג svt/svh/smt/tgt/safe/wood/coal/diff — זהב למקצוען, קיר מספרים למתחיל. אין התאמה לרמת המשתמש.
+**פתרון:** בורר מצבים (סעיף 3).
+
+### 2.7 טכני
+- לפצל את ה-`DATA` המוטמע ל-JSON נפרד ב-`fetch` (עדיין אופליין דרך ה-SW) — מקצר parse ראשוני במובייל.
+- לנקות שרידי legacy מוסתרים (`#legacyTools`, `#themeBtn`...).
+
+---
+
+## 3. האסטרטגיה: מצב אחד, שלוש רמות
+
+במקום אפליקציות נפרדות — **בורר מצב** שנבחר בכניסה ראשונה (מסך "כמה ניסיון יש לך עם מעשנת?" עם שלושה כרטיסים), נשמר ב-`localStorage` לצד ה-checklist הקיים, ומתג קבוע בתפריט ☰. המצב מחליף **רק את שכבת הרינדור** — אותו `DATA`, אותם מנועים.
+
+| מצב | עיקרון | מה רואים |
+|---|---|---|
+| 🌱 **מתחיל — "מצב מודרך"** | שאלה אחת, בחירה לפי תוצאה | שלושה אריחים (מהיר / עישון ארוך / מארח); כרטיס נתח עם "למה לבחור בזה" במשפט, קושי במילים, זמן-עד-צלחת אחד, טמפ' בטיחות בירוק; **שיטה מומלצת אחת** (המנוע בוחר את המסלול הסלחני לפי diff); מונחים לחיצים שפותחים את המילון במקום |
+| 🔥 **ביתי — ברירת המחדל** | המבנה הקיים + progressive disclosure | כרטיס עם 3 נתונים (יעד, זמן עשן, חיסכון סו-ויד) + אקורדיון "כל הפרטים"; header אחד; מסלול אירוע מאוחד |
+| 🧪 **מקצוען — "מצב טבלה"** | צפיפות מקסימלית | טבלה עם כל העמודות (SV, עשן, יעד, עץ, diff), מיון בלחיצת כותרת, `tabular-nums`, פילטרים כצ'יפים חיים עם ✕, השוואת עד 3 נתחים, קיצורי מקלדת (`/` חיפוש, `c` השוואה) |
+
+**חיווט טכני:** `body.mode-beg / mode-home / mode-pro` + דגל אחד שפונקציות הרינדור קוראות.
+
+**עיקרון חשוב:** המצב **לא נועל תוכן** — מתחיל שמחפש "בריסקט" ימצא אותו, רק עם תג "מתקדם" והצעת חלופה קלה יותר (למשל פרגיות).
+
+---
+
+## 4. סדר עדיפויות ליישום
+
+1. **תיקוני קונטרסט וגדלי מגע** (~שעה, משפיע על כולם): `--smoke` → ‎`#7a5a42`, kick → 12px מינימום, nav → 48px, החלפת ה-🧫, תיקון ה-input המתחזה.
+2. **איחוד שני המסלולים בבית** + העברת שם/תאריך האירוע לסוף האשף + הסרת ה-hero הכפול.
+3. **היררכיית CTA בשלב 5** של האשף — primary אחד.
+4. **בורר המצבים** — קודם מתחיל/ביתי (הפער הכי כואב), מצב הטבלה למקצוענים בשלב שני.
+5. (טכני, במקביל) פיצול `DATA` ל-JSON + ניקוי legacy.
+
+### בונוס: "מצב ליד האש" 🔥
+כשטיימר רץ — מסך בקונטרסט מקסימלי, טיפוגרפיה ענקית, `wake-lock`, וכפתורים בגודל אגודל-בכפפה. חצי מהתשתית כבר קיימת במצב הקולי.
+
+---
+
+## 5. קריטריוני קבלה
+
+- [ ] כל טקסט משני עומד ב-WCAG AA (יחס ≥ 4.5:1 על הרקעים הקיימים).
+- [ ] כל מטרות המגע ≥ 44px (עדיף 48px).
+- [ ] דף הבית: header אחד, מסלול אשף אחד (עם branching), חיפוש כ-button אמיתי.
+- [ ] האשף מתחיל מבחירת מנות; שם/תאריך נדרשים רק בשמירה.
+- [ ] שלב 5: CTA ראשי אחד בלבד.
+- [ ] בורר מצבים: מסך בחירה בכניסה ראשונה, נשמר ב-`localStorage`, מתג בתפריט ☰.
+- [ ] מעבר מצב מחליף רינדור בלבד — אפס שכפול של `DATA` או של פאנלים קיימים.
+- [ ] חיפוש במצב מתחיל מוצא גם נתחי diff 4-5, עם תג "מתקדם" + חלופה.
+- [ ] אין רגרסיה באופליין (SW), ב-RTL, או בשפה העיצובית 05-A.
+
+---
+
+## 6. דמו-רפרנס — שלושת המצבים (HTML מלא)
+
+הקובץ הבא ממחיש את שלושת המצבים על תוכן אמיתי (בריסקט ופרגיות), בשפה העיצובית הקיימת, **כולל תיקוני הקונטרסט** (‎`--ash:#7a5a42`, מטרות מגע ≥44px). השתמש בו כמפרט ויזואלי — מבני הכרטיסים, הטבלה, הצ'יפים והערות "מה השתנה" בכל מצב הם ההגדרה של תוצאת היעד.
+
+```html
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>מתכונת · מדריך האש — דמו שלושת המצבים</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Suez+One&family=Assistant:wght@400;600;700;800&family=Heebo:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --char:#fdf6ec; --char2:#fffaf3; --char3:#fff2e4;
+  --ember:#e76f51; --ember2:#f4a261; --terra-d:#c85a1a;
+  --bone:#4a2f1e; --ash:#7a5a42;              /* מוכהה מול המקור — עומד ב-AA */
+  --line:#f0dcc4; --line2:#e9d3b4;
+  --fresh:#128a6c; --fresh-l:#d8f0e8;
+  --bg2:#faecd8; --r:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg2);color:var(--bone);font-family:'Heebo',sans-serif;-webkit-font-smoothing:antialiased}
+.wrap{max-width:960px;margin:0 auto;padding:20px 16px 60px}
+h1.demo{font-family:'Suez One',serif;font-weight:400;font-size:26px;margin:6px 0 2px;color:var(--terra-d)}
+.demo-sub{color:var(--ash);font-size:14px;margin:0 0 18px}
+
+/* ── mode switcher ── */
+.modes{position:sticky;top:0;z-index:50;display:flex;gap:6px;background:var(--char2);border:1.5px solid var(--line2);border-radius:999px;padding:5px;margin:0 auto 8px;max-width:480px;box-shadow:0 4px 14px rgba(200,90,26,.10)}
+.modes button{flex:1;border:none;background:none;border-radius:999px;padding:11px 6px;font-family:'Heebo';font-weight:700;font-size:14px;color:var(--ash);cursor:pointer;transition:.18s;min-height:44px}
+.modes button.on{background:linear-gradient(135deg,var(--ember2),var(--ember));color:#fff;box-shadow:0 3px 10px rgba(231,111,81,.35)}
+.mode-note{max-width:480px;margin:0 auto 18px;text-align:center;font-size:13px;color:var(--ash);min-height:36px}
+.mode-note b{color:var(--terra-d)}
+
+/* ── phone frame ── */
+.stage{display:flex;flex-wrap:wrap;gap:22px;justify-content:center;align-items:flex-start}
+.phone{width:390px;max-width:100%;background:var(--char);border:2px solid var(--line2);border-radius:28px;padding:14px 12px 70px;position:relative;overflow:hidden;box-shadow:0 14px 40px rgba(90,58,40,.14)}
+.frame-lbl{font-family:'Heebo';font-size:11px;font-weight:900;letter-spacing:.12em;color:var(--terra-d);text-transform:uppercase;margin:0 4px 10px}
+.annot{width:300px;max-width:100%;font-size:13.5px;line-height:1.65;color:var(--bone)}
+.annot h3{font-family:'Suez One';font-weight:400;font-size:17px;color:var(--terra-d);margin:0 0 6px}
+.annot ul{margin:0;padding-inline-start:18px}
+.annot li{margin-bottom:8px}
+.annot li b{color:var(--terra-d)}
+
+/* ── shared app pieces ── */
+.appbrand{text-align:center;margin-bottom:12px}
+.appbrand .kick{font-size:11px;font-weight:900;letter-spacing:.14em;color:var(--terra-d)}
+.appbrand h2{font-family:'Suez One',serif;font-weight:400;font-size:21px;margin:2px 0 0}
+.search{display:flex;align-items:center;gap:8px;background:var(--char2);border:1.5px solid var(--line2);border-radius:14px;padding:12px 14px;color:var(--ash);font-size:14px;margin-bottom:14px}
+.search .ic{color:var(--ember)}
+.cta{display:block;width:100%;border:none;background:linear-gradient(135deg,var(--ember2),var(--ember));color:#fff;font-family:'Heebo';font-weight:700;font-size:16px;border-radius:14px;padding:15px;cursor:pointer;box-shadow:0 5px 14px rgba(231,111,81,.3);min-height:48px}
+.cta.ghost{background:none;color:var(--terra-d);border:1.5px solid var(--line2);box-shadow:none;font-weight:600}
+.nav{position:absolute;bottom:0;right:0;left:0;display:flex;background:var(--char2);border-top:2px solid var(--line2);padding:6px 4px 10px}
+.nav button{flex:1;background:none;border:none;color:var(--ash);font-family:'Heebo';font-weight:600;font-size:12px;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 0;min-height:48px;cursor:pointer}
+.nav button.on{color:var(--ember)}
+.nav .ni{font-size:20px}
+.pill{display:inline-flex;align-items:center;gap:4px;background:var(--char3);border:1px solid var(--line2);border-radius:999px;padding:4px 10px;font-size:12px;font-weight:700;color:var(--bone)}
+.pill.safe{background:var(--fresh-l);border-color:var(--fresh);color:var(--fresh)}
+.pill.warn{background:#fdeadf;border-color:var(--ember2);color:var(--terra-d)}
+
+.view{display:none}.view.on{display:block;animation:f .25s}
+@keyframes f{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+
+/* ═══ BEGINNER ═══ */
+.b-q{font-family:'Suez One';font-size:24px;text-align:center;margin:8px 0 16px}
+.b-q b{color:var(--ember)}
+.b-tiles{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.b-tile{background:var(--char2);border:1.5px solid var(--line2);border-radius:var(--r);padding:16px 12px;cursor:pointer;transition:.15s}
+.b-tile:hover{border-color:var(--ember2);transform:translateY(-2px)}
+.b-tile .em{font-size:30px}
+.b-tile h4{margin:8px 0 3px;font-size:15px}
+.b-tile p{margin:0;font-size:12px;color:var(--ash);line-height:1.45}
+.b-tile.wide{grid-column:1/-1;display:flex;align-items:center;gap:12px}
+.b-tile.wide h4{margin:0 0 2px}
+.b-card{background:var(--char2);border:1.5px solid var(--line2);border-radius:var(--r);padding:16px;margin-bottom:12px}
+.b-card .top{display:flex;align-items:center;gap:12px;margin-bottom:8px}
+.b-card .em{font-size:34px}
+.b-card h4{margin:0;font-family:'Suez One';font-weight:400;font-size:19px}
+.b-card .eng{font-size:12px;color:var(--ash)}
+.b-card .why{font-size:13.5px;line-height:1.55;margin:0 0 10px;color:var(--bone)}
+.b-card .row{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.b-steps{background:var(--char3);border-radius:12px;padding:12px 14px;margin-bottom:12px}
+.b-steps h5{margin:0 0 8px;font-size:13px;color:var(--terra-d)}
+.b-step{display:flex;gap:10px;font-size:13.5px;margin-bottom:8px;line-height:1.5}
+.b-step .n{flex:none;width:22px;height:22px;border-radius:50%;background:var(--ember);color:#fff;font-weight:900;font-size:12px;display:grid;place-items:center}
+.b-term{border-bottom:1.5px dashed var(--ember2);cursor:help;font-weight:600}
+
+/* ═══ HOME (default) ═══ */
+.h-paths{display:flex;flex-direction:column;gap:10px;margin-bottom:14px}
+.h-path{display:flex;align-items:center;gap:12px;background:var(--char2);border:1.5px solid var(--line2);border-radius:var(--r);padding:14px;cursor:pointer}
+.h-path:hover{border-color:var(--ember2)}
+.h-path .em{font-size:26px}
+.h-path h4{margin:0 0 2px;font-size:15px}
+.h-path p{margin:0;font-size:12px;color:var(--ash);line-height:1.4}
+.h-path .go{margin-inline-start:auto;color:var(--ember);font-weight:900}
+.h-card{background:var(--char2);border:1.5px solid var(--line2);border-radius:var(--r);padding:14px;margin-bottom:12px}
+.h-card .top{display:flex;align-items:center;gap:10px}
+.h-card h4{margin:0;font-size:16px;font-weight:700}
+.h-card .eng{font-size:11.5px;color:var(--ash)}
+.h-card .em{font-size:28px}
+.h-stats{display:flex;gap:8px;margin:10px 0}
+.h-stat{flex:1;background:var(--char3);border-radius:10px;padding:8px 6px;text-align:center}
+.h-stat .v{font-weight:900;font-size:15px;color:var(--terra-d)}
+.h-stat .l{font-size:10.5px;color:var(--ash);font-weight:600}
+.h-more{border:none;background:none;color:var(--terra-d);font-family:'Heebo';font-weight:700;font-size:13px;cursor:pointer;padding:6px 0}
+.h-extra{display:none;border-top:1px solid var(--line);padding-top:10px;font-size:13px;line-height:1.6;color:var(--bone)}
+.h-extra.open{display:block}
+.h-extra b{color:var(--terra-d)}
+
+/* ═══ PRO ═══ */
+.p-bar{display:flex;gap:6px;align-items:center;margin-bottom:10px}
+.p-bar input{flex:1;background:var(--char2);border:1.5px solid var(--line2);border-radius:10px;padding:9px 12px;font-family:'Heebo';font-size:13px;color:var(--bone)}
+.p-bar .pill{cursor:pointer}
+.p-table{width:100%;border-collapse:collapse;font-size:12px;background:var(--char2);border-radius:12px;overflow:hidden;border:1.5px solid var(--line2)}
+.p-table th{background:var(--char3);color:var(--terra-d);font-weight:900;padding:8px 6px;text-align:right;font-size:11px;cursor:pointer;white-space:nowrap;border-bottom:1.5px solid var(--line2)}
+.p-table td{padding:8px 6px;border-bottom:1px solid var(--line);white-space:nowrap;font-variant-numeric:tabular-nums}
+.p-table tr:hover td{background:var(--char3)}
+.p-table .nm{font-weight:700;cursor:pointer}
+.p-table .diff{color:var(--ember)}
+.p-cmp{display:flex;gap:8px;margin-top:10px}
+.p-cmp .pill{cursor:pointer}
+.p-kbd{font-size:11px;color:var(--ash);margin-top:8px}
+.p-kbd kbd{background:var(--char3);border:1px solid var(--line2);border-radius:5px;padding:1px 6px;font-family:monospace}
+
+@media (max-width:760px){.annot{width:100%}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="demo">🔥 מתכונת · מדריך האש — דמו שלושת המצבים</h1>
+  <p class="demo-sub">מצב אחד נבחר בכניסה הראשונה ונשמר ב-localStorage; המתג נשאר זמין בכותרת. אותו DATA, אותם מנועים — רק שכבת הרינדור משתנה.</p>
+
+  <div class="modes" role="tablist" aria-label="בחירת מצב תצוגה">
+    <button data-mode="beg" role="tab">🌱 מתחיל</button>
+    <button data-mode="home" class="on" role="tab" aria-selected="true">🔥 ביתי</button>
+    <button data-mode="pro" role="tab">🧪 מקצוען</button>
+  </div>
+  <div class="mode-note" id="modeNote"></div>
+
+  <div class="stage">
+    <!-- ════════ PHONE ════════ -->
+    <div class="phone">
+      <div class="frame-lbl" id="frameLbl">מסך הבית + כרטיס נתח</div>
+
+      <!-- ── BEGINNER VIEW ── -->
+      <div class="view" data-view="beg">
+        <div class="appbrand"><div class="kick">מדריך האש</div></div>
+        <div class="b-q">מה <b>מדליקים</b> היום?</div>
+        <div class="b-tiles">
+          <div class="b-tile"><span class="em">🥩</span><h4>סטייק / מהיר</h4><p>מוכן תוך שעה. צריבה, גריל, מינימום ציוד.</p></div>
+          <div class="b-tile"><span class="em">💨</span><h4>עישון ארוך</h4><p>בריסקט, צלעות — פרויקט ליום שלם.</p></div>
+          <div class="b-tile wide"><span class="em">🎉</span><div><h4>מארח חברים</h4><p>אשף שבונה תפריט + קניות + לו״ז לפי מספר סועדים.</p></div></div>
+        </div>
+
+        <div class="b-card">
+          <div class="top"><span class="em">🍗</span><div><h4>פרגיות</h4><div class="eng">Chicken Thighs</div></div></div>
+          <p class="why">הנתח הכי סלחני להתחיל איתו — שומן פנימי ששומר על עסיסיות גם אם פספסת בזמנים.</p>
+          <div class="row">
+            <span class="pill">⏱️ ~45 דק׳ על האש</span>
+            <span class="pill">🎚️ קל</span>
+            <span class="pill safe">✓ בטיחות: 74°C בפנים</span>
+          </div>
+          <div class="b-steps">
+            <h5>המסלול המומלץ (שיטה אחת, בלי התלבטויות)</h5>
+            <div class="b-step"><span class="n">1</span><div>תבל ב<span class="b-term" title="תערובת תבלינים יבשה שמשפשפים על הבשר">ראב</span> עוף + לימון, שעה מראש.</div></div>
+            <div class="b-step"><span class="n">2</span><div>גריל בחום בינוני, עור כלפי מטה, עד שהעור פריך.</div></div>
+            <div class="b-step"><span class="n">3</span><div>מדחום בחלק העבה — סיימת ב-<b>74°C</b>. מנוחה 5 דק׳.</div></div>
+          </div>
+          <button class="cta">🔥 בשל את זה עכשיו — עם טיימרים</button>
+        </div>
+        <button class="cta ghost">📖 מה זה בכלל "עישון חם"? — מילון קצר</button>
+      </div>
+
+      <!-- ── HOME (default) VIEW ── -->
+      <div class="view on" data-view="home">
+        <div class="appbrand"><div class="kick">סו-ויד · עישון · גריל · אש</div><h2>🔥 מתכונת · מדריך האש</h2></div>
+        <div class="search"><span class="ic">⌕</span>חפש הכל — נתח, נקניקייה, מתבל…</div>
+        <div class="h-paths">
+          <div class="h-path"><span class="em">🎉</span><div><h4>מתכנן בישול או אירוע</h4><p>אשף אחד: בחר מנות → שיטות → תיבול → תוכנית עבודה. שם ותאריך? רק אם תרצה לשמור.</p></div><span class="go">←</span></div>
+          <div class="h-path"><span class="em">🧪</span><div><h4>פרויקט מתקדם</h4><p>שרקוטרי, נקניקים ועישון ארוך — עם ליווי צעד-אחר-צעד.</p></div><span class="go">←</span></div>
+        </div>
+
+        <div class="h-card">
+          <div class="top"><span class="em">🥩</span><div><h4>בריסקט</h4><div class="eng">Brisket · בקר</div></div><span class="pill" style="margin-inline-start:auto">🎚️ 5/5</span></div>
+          <div class="h-stats">
+            <div class="h-stat"><div class="v">94°</div><div class="l">טמפ׳ יעד</div></div>
+            <div class="h-stat"><div class="v">12 ש׳</div><div class="l">עישון בלבד</div></div>
+            <div class="h-stat"><div class="v">−9 ש׳</div><div class="l">חיסכון בסו-ויד</div></div>
+          </div>
+          <button class="h-more" onclick="this.nextElementSibling.classList.toggle('open');this.textContent=this.nextElementSibling.classList.contains('open')?'פחות פרטים ▲':'כל הפרטים ▼'">כל הפרטים ▼</button>
+          <div class="h-extra">
+            <b>סו-ויד:</b> ‏68° / 30 ש׳ · ביניים: צינון מלא<br>
+            <b>עישון:</b> ‏105° / 3 ש׳ · עץ: אלון/היקורי · פחם: Fogo Super Premium<br>
+            <b>ראב:</b> מלח+פלפל גס (טקסני) · <b>מנוחה:</b> 60 דק׳ · <b>בטיחות:</b> 63°
+          </div>
+        </div>
+        <button class="cta">➕ הוסף לתוכנית הבישול</button>
+      </div>
+
+      <!-- ── PRO VIEW ── -->
+      <div class="view" data-view="pro">
+        <div class="appbrand"><div class="kick">מצב מקצוען · תצוגת נתונים</div></div>
+        <div class="p-bar">
+          <input placeholder="/ חיפוש מיידי — שם, עץ, טמפ׳…">
+          <span class="pill warn">בקר ✕</span>
+          <span class="pill">diff ≥ 4 ✕</span>
+        </div>
+        <table class="p-table">
+          <thead><tr>
+            <th>נתח</th><th>SV °/ש׳</th><th>עשן °/ש׳</th><th>יעד°</th><th>עץ</th><th>🎚️</th>
+          </tr></thead>
+          <tbody>
+            <tr><td class="nm">בריסקט</td><td>68/30</td><td>105/3</td><td>94</td><td>אלון·היקורי</td><td class="diff">5</td></tr>
+            <tr><td class="nm">אסאדו</td><td>68/36</td><td>105/3</td><td>95</td><td>אלון·מזקיט</td><td class="diff">4</td></tr>
+            <tr><td class="nm">צוואר בקר</td><td>74/24</td><td>110/2</td><td>95</td><td>אלון·היקורי</td><td class="diff">4</td></tr>
+            <tr><td class="nm">אונטרייב</td><td>68/24</td><td>110/3</td><td>95</td><td>אלון·היקורי</td><td class="diff">4</td></tr>
+            <tr><td class="nm">לשון בקר</td><td>70/24-48</td><td>105/2</td><td>90</td><td>היקורי·אלון</td><td class="diff">4</td></tr>
+            <tr><td class="nm">פסטרמה</td><td>65/12</td><td>105/2</td><td>72</td><td>היקורי·אלון</td><td class="diff">4</td></tr>
+          </tbody>
+        </table>
+        <div class="p-cmp">
+          <span class="pill warn">⇄ השווה: בריסקט + אונטרייב</span>
+          <span class="pill">🧮 מחשבון ריפוי</span>
+        </div>
+        <div class="p-kbd">מקלדת: <kbd>/</kbd> חיפוש · <kbd>c</kbd> השוואה · לחיצה על כותרת = מיון</div>
+      </div>
+
+      <!-- shared nav -->
+      <div class="nav">
+        <button class="on"><span class="ni">🏠</span>בית</button>
+        <button><span class="ni">📚</span>קטלוג</button>
+        <button><span class="ni">🧭</span>אשף</button>
+        <button><span class="ni">📋</span>אירועים</button>
+        <button id="navLast"><span class="ni">⚗️</span>מלאכות</button>
+      </div>
+    </div>
+
+    <!-- ════════ ANNOTATIONS ════════ -->
+    <div class="annot" id="annot"></div>
+  </div>
+</div>
+
+<script>
+const NOTES={
+ beg:{note:'<b>🌱 מתחיל — מצב מודרך:</b> שאלה אחת, בחירה לפי תוצאה, שיטה מומלצת יחידה.',
+  html:`<h3>מה השתנה במצב מתחיל</h3><ul>
+  <li><b>בית = שאלה אחת.</b> אין חיפוש, אין "המשך מהמקום שעצרת" — שלושה אריחים לפי תוצאה (מהיר / ארוך / אירוח), לא לפי פיצ׳ר.</li>
+  <li><b>כרטיס נתח בלי קיר מספרים.</b> "למה לבחור בזה" במשפט, קושי במילים, זמן-עד-צלחת אחד, וטמפ׳ הבטיחות בירוק — הנתון היחיד שמתחיל חייב.</li>
+  <li><b>שיטה מומלצת אחת.</b> מטריצת סו-ויד/עישון/גריל מוסתרת; המנוע בוחר את המסלול הסלחני ביותר לפי diff.</li>
+  <li><b>מונחים לחיצים</b> (קו מקווקו) שפותחים את המילון הקיים במקום — במקום לשלוח למסך נפרד.</li>
+  <li>נתחים עם diff 4-5 מוצגים אך מסומנים "מתקדם" עם הצעה לחלופה קלה (פרגיות במקום בריסקט).</li></ul>`},
+ home:{note:'<b>🔥 ביתי — ברירת המחדל:</b> המבנה הקיים + חשיפה הדרגתית ותיקון הכפילויות.',
+  html:`<h3>מה השתנה במצב ביתי</h3><ul>
+  <li><b>מסלול אחד במקום שניים.</b> "יש לי אירוע" ו"בא לי לבשל" אוחדו — שם/תאריך עברו לשלב השמירה בסוף האשף.</li>
+  <li><b>כרטיס עם 3 נתונים</b> (יעד, זמן עשן, חיסכון סו-ויד) + אקורדיון "כל הפרטים" לשאר. הכרטיס נושם, המידע לא אבד.</li>
+  <li><b>header אחד</b> — ה-hero הישן הוסר; מותג + חיפוש + מסלולים.</li>
+  <li><b>קונטרסט מתוקן:</b> טקסט משני הוכהה (‎#7a5a42) ומטרות מגע ≥44px — קריא גם בשמש ליד המעשנת.</li>
+  <li>ה-🧫 בניווט הוחלף ב-⚗️ "מלאכות" — שם שמסביר את עצמו.</li></ul>`},
+ pro:{note:'<b>🧪 מקצוען — מצב טבלה:</b> צפיפות מקסימלית, מיון, השוואה, מקלדת.',
+  html:`<h3>מה השתנה במצב מקצוען</h3><ul>
+  <li><b>טבלה במקום כרטיסים.</b> כל העמודות (SV, עשן, יעד, עץ, diff) במסך אחד, מיון בלחיצת כותרת, מספרים ב-tabular-nums ליישור.</li>
+  <li><b>פילטרים כצ׳יפים חיים</b> עם ✕ — רואים בדיוק מה מסונן, בלי שלוש מערכות סינון נפרדות.</li>
+  <li><b>השוואת נתחים</b> (עד 3) זה-לצד-זה — הפיצ׳ר שהמקצוען עושה היום ידנית בין כרטיסים.</li>
+  <li><b>קיצורי מקלדת</b> לדסקטופ/טאבלט ליד המעשנת: / לחיפוש, c להשוואה.</li>
+  <li>לחיצה על שם נתח פותחת את הפאנל הקיים — הפירוט המלא לא שוכפל, רק נקודת הכניסה השתנתה.</li></ul>`}
+};
+const btns=document.querySelectorAll('.modes button');
+function setMode(m){
+  btns.forEach(b=>{const on=b.dataset.mode===m;b.classList.toggle('on',on);b.setAttribute('aria-selected',on)});
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.dataset.view===m));
+  document.getElementById('modeNote').innerHTML=NOTES[m].note;
+  document.getElementById('annot').innerHTML=NOTES[m].html;
+  document.getElementById('frameLbl').textContent=
+    m==='beg'?'בית מודרך + כרטיס "מסלול"':m==='home'?'בית מאוחד + כרטיס עם חשיפה הדרגתית':'תצוגת טבלה + השוואה';
+}
+btns.forEach(b=>b.addEventListener('click',()=>setMode(b.dataset.mode)));
+setMode('home');
+</script>
+</body>
+</html>
+```
+
+---
+
+## 7. הנחיות לסוכן המבצע
+
+1. עבוד לפי סדר העדיפויות בסעיף 4 — כל שלב הוא commit נפרד וניתן לבדיקה בפני עצמו.
+2. אל תשכתב את מנועי הלוגיקה או את `DATA` — שכבת הרינדור בלבד.
+3. שמור על תאימות לאחור: משתמש קיים עם `localStorage` ישן צריך לקבל מצב 🔥 ביתי כברירת מחדל בלי מסך בחירה חוזר.
+4. כל שינוי CSS — לבדוק ב-RTL וב-390px רוחב (מובייל) לפני סיום.
+5. בסוף כל שלב — לוודא את קריטריוני הקבלה הרלוונטיים מסעיף 5.
