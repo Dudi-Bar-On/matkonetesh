@@ -73,6 +73,7 @@ body.capp{padding-bottom:82px}
 .cnext-x{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line2);background:var(--char3);color:var(--smoke);font-size:14px;cursor:pointer;display:grid;place-items:center;line-height:1}
 .cnext-x:hover{border-color:var(--ember);color:var(--ember)}
 /* "Active now" hub */
+.active-tip{background:var(--char3);border:1px solid var(--line2);border-radius:10px;padding:9px 12px;margin:0 0 16px;font-size:calc(12.5px * var(--fscale));line-height:1.5;color:var(--ash)}
 .active-sec{margin:0 0 18px}
 .active-sec>h4{font-family:var(--font-body);font-size:calc(12px * var(--fscale));letter-spacing:.08em;text-transform:uppercase;color:var(--ember2);margin:0 0 8px}
 .active-row{display:flex;align-items:center;gap:10px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
@@ -1152,9 +1153,10 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 /* timeline item cards (process-stage model) */
 .tlcard{background:var(--char2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:9px}
 .tlcard.tl-blocked{border-color:rgba(200,150,80,.3);background:rgba(200,150,80,.05)}
-.tlcard.tl-focus{border-color:var(--ember);box-shadow:0 0 0 2px rgba(231,111,81,.35);animation:tlfocus 1.2s ease-out}
-@keyframes tlfocus{0%{box-shadow:0 0 0 6px rgba(231,111,81,.45)}100%{box-shadow:0 0 0 2px rgba(231,111,81,.35)}}
-@media (prefers-reduced-motion:reduce){.tlcard.tl-focus{animation:none}}
+.tl-focus{border-radius:12px;outline:2px solid var(--ember);outline-offset:1px;box-shadow:0 0 0 4px rgba(231,111,81,.28);animation:tlfocus 1.3s ease-out}
+.tlcard.tl-focus{border-color:var(--ember)}
+@keyframes tlfocus{0%{box-shadow:0 0 0 8px rgba(231,111,81,.5)}100%{box-shadow:0 0 0 4px rgba(231,111,81,.28)}}
+@media (prefers-reduced-motion:reduce){.tl-focus{animation:none}}
 .tlc-head{display:flex;align-items:center;gap:9px}
 .tl-startt{min-width:58px;font-size:calc(14px * var(--fscale))}
 .tl-name{flex:1;font-size:calc(14.5px * var(--fscale))}

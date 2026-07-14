@@ -3573,19 +3573,33 @@ function openTimeline(focus){
 // (st-<scope>-<itemKey>-<kind>), a recipe-timer id (cut-1-sv-0), or a bare item key (cut-1)
 function _tlFocusItem(focus){
   const ik=(typeof timerItemKey==='function')?timerItemKey(focus):'';   // resolve the item key up front for reliable matching
+  const esc=function(s){ return (window.CSS&&CSS.escape)?CSS.escape(String(s)):String(s); };
   let tries=0;
   const attempt=function(){ try{
-    const list=$("#tlList"); const btns=list?list.querySelectorAll('[data-tlexp]'):[];
-    if((!list || !btns.length) && tries++<24){ setTimeout(attempt,50); return; }   // wait for the plan to render (retry ~1.2s)
-    if(!list) return;
-    let card=null, ck=null;
-    btns.forEach(function(b){ if(card) return; const k=b.getAttribute('data-tlexp');
-      if(k && (k===ik || String(focus)===k || String(focus).indexOf('-'+k+'-')>=0 || String(focus).indexOf(k+'-')===0)){ card=b.closest('.tlcard'); ck=b.getAttribute('data-ck'); } });
-    if(!card){ const el=list.querySelector('[data-tid="'+((window.CSS&&CSS.escape)?CSS.escape(String(focus)):String(focus))+'"]'); if(el){ card=el.closest('.tlcard'); const xb=card&&card.querySelector('[data-tlexp]'); ck=xb&&xb.getAttribute('data-ck'); } }
-    if(!card) return;
-    if(ck){ const stg=document.getElementById('tlstages-'+ck); if(stg) stg.style.display='block'; }   // expand steps so the timer is visible
-    card.classList.add('tl-focus'); setTimeout(function(){ try{ card.classList.remove('tl-focus'); }catch(e){} }, 2600);
-    card.scrollIntoView({block:'center',behavior:'smooth'});
+    const list=$("#tlList"); if(!list){ if(tries++<30) setTimeout(attempt,50); return; }
+    const ready = list.querySelector('[data-tlexp]') || list.querySelector('[data-tid]') || list.querySelector('.workplan');
+    if(!ready){ if(tries++<30) setTimeout(attempt,50); return; }   // wait for the plan to render (either view), retry ~1.5s
+
+    let target=null, hi=null, expandCk=null;
+    // 1) the EXACT timer element — present in BOTH the by-item and the work-plan views (same data-tid)
+    const tEl = list.querySelector('[data-tid="'+esc(focus)+'"]');
+    if(tEl){ const card=tEl.closest('.tlcard');
+      if(card){ target=card; hi=card; const xb=card.querySelector('[data-tlexp]'); expandCk=xb&&xb.getAttribute('data-ck'); }
+      else { target=tEl.closest('.wp-row,.wp-acc,.wp-hcell')||tEl; hi=target; }
+    }
+    // 2) fall back to the item card matched by its key (bare item key, or no exact timer element)
+    if(!target){ list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(target) return; const k=b.getAttribute('data-tlexp');
+      if(k && (k===ik || String(focus)===k || String(focus).indexOf('-'+k+'-')>=0 || String(focus).indexOf(k+'-')===0)){ target=b.closest('.tlcard'); hi=target; expandCk=b.getAttribute('data-ck'); } }); }
+    if(!target) return;
+    if(expandCk){ const stg=document.getElementById('tlstages-'+expandCk); if(stg) stg.style.display='block'; }   // expand steps (by-item view)
+    const acc=target.closest&&target.closest('.wp-acc'); if(acc) acc.classList.add('open');                        // open the task (accordion work-plan view)
+    if(hi){ hi.classList.add('tl-focus'); setTimeout(function(){ try{ hi.classList.remove('tl-focus'); }catch(e){} }, 2800); }
+    // robust manual scroll of the panel body (scrollIntoView is unreliable inside a fixed+transformed panel);
+    // measure on the next frame so the just-applied expansion is laid out first
+    requestAnimationFrame(function(){ try{ const scroller=target.closest('.panel-body');
+      if(scroller){ const cr=target.getBoundingClientRect(), sr=scroller.getBoundingClientRect(); scroller.scrollBy({top:(cr.top-sr.top)-(sr.height-cr.height)/2, behavior:'smooth'}); }
+      else target.scrollIntoView({block:'center'});
+    }catch(e){ try{ target.scrollIntoView({block:'center'}); }catch(_){} } });
   }catch(e){} };
   requestAnimationFrame(attempt);
 }
@@ -5212,6 +5226,7 @@ function openActive(){
       return `<div class="active-row" data-aproj="1"><div class="ar-main"><b>${esc(p.name)}</b><small>${esc((pr.day||pr.label)+(pr.sub?' · '+pr.sub:''))}</small></div><span class="ar-go">←</span></div>`; }).join('');
   showPanel(`${toolTop(L('פעיל עכשיו','Active now'),L('טיימרים, תוכניות ופרויקטים פעילים','Timers, plans and projects in progress'),'🔥','#c65a3f')}
     <div class="panel-body">
+      <div class="active-tip">💡 ${L('הקש טיימר כדי לקפוץ לשלב שלו בתוכנית העבודה · הקש בישול/אירוע כדי לפתוח את תוכנית העבודה שלו','Tap a timer to jump to its step in the work plan · tap a cook/event to open its work plan')}</div>
       <div class="active-sec"><h4>⏱ ${L('טיימרים','Timers')}</h4>${timerHTML}</div>
       <div class="active-sec"><h4>🔥 ${L('בישול / תוכניות','Cooks / plans')}</h4>${planHTML}</div>
       ${projs.length?`<div class="active-sec"><h4>🧫 ${L('פרויקטים ארוכי-טווח','Long-term projects')}</h4>${projHTML}</div>`:''}

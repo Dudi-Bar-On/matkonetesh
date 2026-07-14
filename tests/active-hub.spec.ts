@@ -87,3 +87,19 @@ test('active hub: a timer with a stale Hebrew name shows a localized name (deriv
   expect(/[֐-׿]/.test(nm)).toBe(false);   // no leftover Hebrew from the stored name
   expect(nm).toContain('Brisket');        // resolved from the key: "Smoke · Brisket"
 });
+
+test('active hub: timer focus works in the WORK-PLAN view too (exact timer element)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+    localStorage.setItem('mk-tlview', JSON.stringify('plan'));   // chronological work-plan view
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','make-1']}}])); } catch {} });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openActive==='function'`);
+  await page.evaluate(`(function(){ store.set('mk-timers',{ 'st-ev-a-cut-1-smoke':{end:Date.now()+3600000,name:'x'} }); openActive(); })()`);
+  await page.waitForSelector('#panel.open .active-row[data-ajump]');
+  await page.click('#panel .active-row[data-ajump] .ar-main');
+  await page.waitForSelector('#tlList .workplan');
+  await page.waitForTimeout(700);
+  // the exact smoke timer's task is highlighted (not just the plan opened at the top)
+  const tid = await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); if(!f) return 'NONE'; const t=f.querySelector('[data-tid]'); return t?t.getAttribute('data-tid'):(f.getAttribute('data-tid')||'NO-TID'); })()`);
+  expect(tid).toBe('st-ev-a-cut-1-smoke');
+});
