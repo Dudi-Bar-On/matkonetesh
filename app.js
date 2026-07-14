@@ -3001,7 +3001,7 @@ function askMode(){ const v=store.get('mk-askai'); if(v==='1')return true; if(v=
 function setAskMode(on){ store.set('mk-askai', on?'1':'0'); }
 // W1-P4: does the question touch a food-safety topic (cure/nitrite/salt%/temp-safety/botulism/pasteurization/mold/ferment/pH/aw)?
 function askSafetyIntent(q){
-  return /ריפוי|קיור|\bcure\b|ניטריט|nitrite|מלח ורוד|pink salt|כמה מלח|salt\s*%|\bcure\s*#|בוטוליזם|botulism|פסטור|pasteur|עובש|mold|תסיס|ferment|טמפ.*בטוח|safe.*temp|temp.*safe|\bsafe\b.*(eat|chicken|poultry|pork|meat|נתח)|פנים.*°|internal.*temp|water[-\s]*activity|\baw\b|\bpH\b/i.test(String(q||''));
+  return /ריפוי|קיור|\bcure\b|ניטריט|nitrite|מלח ורוד|pink salt|כמה מלח|salt\s*%|\bcure\s*#|בוטוליזם|botulism|פסטור|pasteur|עובש|mold|תסיס|ferment|טמפ.*בטוח|safe.*temp|temp.*safe|\bsafe\b.*(eat|chicken|poultry|pork|meat|נתח)|(eat|לאכול|אכול).*(mold|עובש|salami|salami|נקניק|מיובש)|פנים.*°|internal.*temp|water[-\s]*activity|\baw\b|\bpH\b/i.test(String(q||''));
 }
 // The app's vetted safety anchors + the directive to defer exact doses to the calculator (never invent). Matches the calculator constants.
 function SAFETY_FACTS(){
@@ -3011,6 +3011,7 @@ function SAFETY_FACTS(){
     +'• טמפ׳ פנים בטוחות: עוף/הודו 74°C · בשר טחון 71°C · נתח שלם/דג 63°C.\n'
     +'• מוצר יבש / מעושן-קר / יציב-מדף חייב ניטריט (Cure) — היעדרו = סכנת בוטוליזם.\n'
     +'• סלמי מיובש: יעד איבוד משקל ~35% לפני אכילה (קירוב לפעילות-מים בטוחה).\n'
+    +'• עובש על בשר מיובש: עובש לבן אחיד ואבקתי תקין; עובש ירוק/שחור/פרוותי — יש להשליך (מיקוטוקסינים), לא לשטוף/לקצוץ ולהמשיך, ולא לאכול.\n'
     +'• תסיסה בטוחה דורשת תרבית-מוצא ובקרת pH; אין לתסוס בטמפ׳ חדר ללא בקרה.\n'
     +'המחשבון של האפליקציה מחשב את המינון המדויק לפי המשקל — הפנה את המשתמש אליו.';
 }
@@ -3025,6 +3026,65 @@ function askContextFor(q){
   // W1-P4: safety questions ALWAYS get the vetted anchors, even with no catalog-item match (closes the "how much Cure #1 for salami?" free-generation hole)
   if(askSafetyIntent(q)) ctx=(ctx?ctx+'\n\n':'')+SAFETY_FACTS();
   return {ctx, ents:ents.map(m=>({key:m.key,heb:m.heb,cat:m.cat}))};
+}
+// W1-P5: refuse/deflect KNOWN-DANGEROUS intents deterministically — answer from a sourced safety card instead of letting the AI generate.
+// Data-driven + extensible: add an entry to refuse another intent. Over-refusing is safe (the cards are advisory + cite sources).
+const AI_REFUSALS=[
+  { id:'no-nitrite',
+    test:function(q){ const s=String(q);
+      const dry=/(סלמי|salami|נקניק.?יבש|נקניק מיובש|מיובש|מיושן|dry.?cur|dry.?age|dry.?sausage|dried|air.?dr|shelf.?stable|יציב.?מדף|cold.?smok|עישון.?קר|charcuterie|שרקוטרי|pepperoni|פפרוני|prosciutto|coppa|soppressata|saucisson|כבישה יבשה|cured (meat|sausage|נקניק)|fermented)/i.test(s);
+      if(!dry) return false;
+      const cure=/(ניטריט|nitrite|מלח ורוד|pink.?salt|cure\s*#?[12]?|curing.?salt|ריפוי|קיור|prague powder|instacure)/i.test(s);
+      const omission=/(בלי|ללא|no |without|skip|omit|לוותר|לדלג)/i.test(s);
+      const subst=/(instead of|במקום|substitute|replace|celery|סלרי|sea salt|מלח ים|regular salt|מלח רגיל|kosher salt|table salt|מלח שולחן|\bonly\b|\bjust\b|\bרק\b|סתם)/i.test(s);
+      const quantity=/(how much|how many|what dose|how many g\b|כמה|מה המינון)/i.test(s);   // a quantity question ("how much nitrite do I need") is legit → grounded answer, not a refusal
+      const necessity=!quantity && /(do i (really |even |actually )?need|need i\b|do i have to|must i|is\s+(it|nitrite|cure|pink salt|curing salt)\s*(really |even )?(necessary|required|needed)|really need|even need|האם (צריך|חייב|נחוץ)|חייבים|נחוץ)/i.test(s);
+      const onlySalt=!cure && /((just |only |רק |סתם ).{0,15}(salt|מלח))|sea salt|מלח ים|regular salt|מלח רגיל|kosher salt|table salt|מלח שולחן/i.test(s);
+      return (cure && (omission||subst||necessity)) || onlySalt;
+    },
+    he:{title:'ריפוי בלי ניטריט = סכנת בוטוליזם', body:'למוצר מיובש / מעושן-קר / יציב-מדף, הניטריט (Cure #1/#2) אינו רשות — הוא המחסום העיקרי נגד החיידק C. botulinum, שגדל בסביבה נטולת-החמצן של בשר מרוקם ומייצר רעלן (בוטוליזם) שעלול להיות קטלני. מלח ים / אבקת סלרי אינם תחליף בטוח. השתמש במחשבון הריפוי של האפליקציה למינון המדויק.'},
+    en:{title:'Curing without nitrite = botulism risk', body:'For dry / cold-smoked / shelf-stable meat, nitrite (Cure #1/#2) is not optional — it is the primary hurdle against the bacterium C. botulinum, which grows in the anaerobic environment of cured meat and produces a potentially fatal toxin (botulism). Sea salt / celery powder is NOT a safe substitute. Use the app cure calculator for the exact, safe dose.'},
+    src:'USDA FSIS · Marianski, Home Production of Quality Meats & Sausages', calc:true },
+  { id:'poultry-under',
+    test:function(q){ const s=String(q);
+      const poultry=/(עוף|הודו|chicken|poultry|turkey|duck breast|פרגית)/i.test(s);
+      const lowC=/\b(5[0-9]|6[0-2])\s*°?\s*[cC]?\b/.test(s);
+      const lowF=/\b(1[0-2][0-9]|13[0-9]|14[0-5])\s*°?\s*[fF]\b/.test(s);
+      const cookLow=/(סו.?ויד|sous.?vide|\bsv\b|confit|poach|low.?temp|טמפ.?נמוכ|שעה|hour|\bhr\b|minute|\bmin\b|דקות|overnight|לילה)/i.test(s);
+      const rawpink=/(raw|נא|ורוד|pink|undercook|תת.?בישול).{0,18}(chicken|poultry|עוף|הודו)|(chicken|poultry|עוף|הודו).{0,18}(raw|נא|ורוד|pink|undercook|תת.?בישול)/i.test(s);
+      return (poultry && (lowC||lowF) && cookLow) || rawpink;
+    },
+    he:{title:'עוף חייב פסטור בטוח', body:'עוף/הודו חייבים להגיע לפסטור בטוח — 74°C מיידית, או שווה-ערך של זמן-בטמפ׳ (למשל 60°C המוחזק מספיק זמן לפי טבלאות Baldwin). סו-ויד בטמפ׳ נמוכה לזמן קצר מדי אינו מפסטר ומסכן בסלמונלה/קמפילובקטר. בדוק את הטמפ׳ הבטוחה בכרטיס וב-Baldwin.'},
+    en:{title:'Poultry needs safe pasteurization', body:'Poultry must reach safe pasteurization — 74°C instantaneous, or an equivalent time-at-temperature (e.g. 60°C held long enough per Baldwin’s tables). Sous-vide at a low temp for too short a time does NOT pasteurize it and risks Salmonella/Campylobacter. Check the card’s safe temp and Baldwin’s tables.'},
+    src:'USDA FSIS · Baldwin, Sous-Vide Pasteurization Tables', calc:false },
+  { id:'ferment-uncontrolled',
+    test:q=>/(תסיס|ferment)/i.test(q) && /(חדר|room|counter|דלפק|warm|חמים|garage|בלי תרבית|ללא תרבית|no starter|without\s+(a\s+)?starter|no culture|without\s+(a\s+)?culture|בלי מוצא|no ph|ללא ph|בלי מד|bactoferm|תרבית)/i.test(q),
+    he:{title:'תסיסה ללא בקרה מסוכנת', body:'תסיסת נקניק ללא תרבית-מוצא ובקרת pH מסכנת ברעלן סטפילוקוקוס (S. aureus) ובפתוגנים. תסיסה בטוחה דורשת תרבית מוכחת, טמפ׳ מבוקרת וירידת pH מתחת ל-~5.3 בזמן. עקוב אחר מתכון מאומת.'},
+    en:{title:'Uncontrolled fermentation is dangerous', body:'Fermenting sausage without a starter culture and pH control risks Staphylococcus aureus toxin and pathogen growth. Safe fermentation needs a proven starter, a controlled temperature, and a pH drop below ~5.3 in time. Follow a validated recipe.'},
+    src:'Marianski · FSIS fermented-products guideline', calc:false },
+  { id:'unsafe-mold',
+    test:q=>/(עובש|mold)/i.test(q) && /(רחץ|נקה|לשטוף|שטוף|wash|scrub|save|להציל|eat|אכול|לאכול|safe|בסדר|\bok\b|cut.?off|cut it|trim|wipe|brush|scrape|קצוץ|לחתוך|לגרד|המשך|keep.{0,12}(going|drying|eat|it|curing))/i.test(q),
+    he:{title:'עובש לא-לבן — יש להשליך', body:'עובש ירוק/שחור/פרוותי על בשר מיובש אינו העובש הלבן הרצוי — הוא עלול לייצר מיקוטוקסינים. אין לשטוף/לקצוץ ולהמשיך, ואין לאכול; יש להשליך את המוצר הפגוע. רק עובש לבן אחיד ואבקתי (או משטח נקי) הוא תקין.'},
+    en:{title:'Non-white mold — discard it', body:'Green, black, or fuzzy mold on dry-cured meat is not the good white mold — it can produce mycotoxins. Do not wash/trim it and continue, and do not eat it; discard the affected product. Only even, powdery WHITE mold (or a wiped-clean surface) is normal.'},
+    src:'Marianski · charcuterie safety guidance', calc:false },
+  { id:'reduce-safety',
+    test:function(q){ const s=String(q);
+      const cureWord=/(ניטריט|nitrite|ריפוי|\bcure|מלח ורוד|pink.?salt|curing.?salt|קיור)/i.test(s);
+      const reduce=/(פחות|הפחת|הורד|חצי|less|lower|reduce|half|cut.?down|instead of|במקום)/i.test(s);   // reduction words only — "what dose/amount" is a legit question, not a reduction
+      const timeTemp=/\b(time|זמן|temperature|טמפרטור|how long|כמה זמן)\b/i.test(s);
+      const cureDose=cureWord && reduce && !timeTemp;
+      const cookLow=/(cook|בשל|צלה|serve|sous.?vide|\bsv\b|pull|finish|pasteur|remove).{0,22}(below|מתחת|under|less than|פחות מ|instead of|במקום).{0,12}(safe|בטוח|\d)/i.test(s);
+      return cureDose || cookLow;
+    },
+    he:{title:'אל תרד מתחת למינון/טמפ׳ הבטוחים', body:'הפחתת ריפוי/ניטריט מתחת למינון המחושב, או בישול מתחת לטמפ׳ הפנים הבטוחה, מסירה את מרווח הבטיחות (בוטוליזם בריפוי; פתוגנים בתת-בישול). המחשבון של האפליקציה מחזיק את המינון המינימלי הבטוח — אל תרד ממנו.'},
+    en:{title:'Don’t go below the safe dose / temp', body:'Reducing cure/nitrite below the calculated dose, or cooking below the safe internal temperature, removes the safety margin (botulism for cure; pathogens for undercooking). The app calculator owns the minimum safe dose — don’t go below it.'},
+    src:'USDA FSIS · Marianski', calc:true },
+];
+function askRefuse(q){ q=String(q||''); for(let i=0;i<AI_REFUSALS.length;i++){ try{ if(AI_REFUSALS[i].test(q)) return AI_REFUSALS[i]; }catch(e){} } return null; }
+function askRefuseCardHTML(ref){
+  const he=(typeof getLang!=='function'||getLang()==='he'); const c=he?ref.he:ref.en;
+  return '<div class="abubble ask-refuse"><div class="ai-caveat ai-caveat-strong"><b>🚫 '+esc(c.title)+'</b><br>'+esc(c.body)
+    +'<div class="ai-refuse-src">📚 '+esc(ref.src)+'</div>'+(ref.calc?'<button class="ai-calc-link" data-aicalc>🧮 '+(he?'פתח מחשבון':'Open calculator')+'</button>':'')+'</div></div>';
 }
 // ── centralized Gemini transport (AI #2 timeout · #3 retry/backoff · #9 key-in-header) + the
 //    AI #8 endpoint-indirection seam: one place to point at a managed proxy later (monetization seam).
@@ -3245,6 +3305,9 @@ function openAsk(){
     const q=($("#askq").value||'').trim(); if(!q) return;
     $("#askq").value=''; $("#askex").hidden=true; $("#askclear").hidden=false;   // clear input + hide examples after first Q
     addUser(q); hist.push({role:'user',text:q});
+    // W1-P5: refuse known-dangerous intents with a sourced safety card — before any AI or local answer
+    { const ref=(typeof askRefuse==='function')?askRefuse(q):null;
+      if(ref){ addAnswer(askRefuseCardHTML(ref)); hist.push({role:'ai',text:((typeof getLang==='function'&&getLang()==='he')?ref.he:ref.en).title}); if(typeof scrollDown==='function') scrollDown(); $("#askq").focus(); return; } }
     if(askMode()){
       if(!gemKey()){ askConnect(); return; }
       const load=addAnswer(`<div class="abubble ask-loading">${badge('ai')}${aiSpinner(L('האש חושב','The Fire is thinking'))}</div>`);

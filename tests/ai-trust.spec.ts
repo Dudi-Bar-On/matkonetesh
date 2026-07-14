@@ -118,3 +118,54 @@ test('W1-P4: safety questions always attach the vetted SAFETY_FACTS grounding (e
   expect(await page.evaluate(`aiUngroundedSafety('use 250 ppm nitrite', SAFETY_FACTS()).length`)).toBe(1);
   expect(await page.evaluate(`aiUngroundedSafety('use 156 ppm nitrite', SAFETY_FACTS()).length`)).toBe(0);
 });
+
+test('W1-P5: refuse classifier catches dangerous intents and lets safe questions through', async ({ page }) => {
+  await bootAI(page);
+  const rid = (q: string) => page.evaluate(`(function(){ var r=askRefuse(${JSON.stringify(q)}); return r?r.id:null; })()`);
+  // no-nitrite — omission, substitution, necessity, only-salt phrasings
+  expect(await rid('can I skip the pink salt in my salami')).toBe('no-nitrite');
+  expect(await rid('cure salami without nitrite')).toBe('no-nitrite');
+  expect(await rid('do I need cure #1 for dry sausage')).toBe('no-nitrite');
+  expect(await rid('cure salami using celery powder instead of nitrite')).toBe('no-nitrite');
+  expect(await rid('can I use just sea salt to dry cure salami')).toBe('no-nitrite');
+  // poultry — Celsius, Fahrenheit, and "still pink"
+  expect(await rid('is it safe to sous vide chicken at 55 for 1 hour')).toBe('poultry-under');
+  expect(await rid('sous vide chicken breast at 140F for 1 hour')).toBe('poultry-under');
+  expect(await rid('my chicken is still pink inside, is it safe')).toBe('poultry-under');
+  // ferment — counter / without a culture
+  expect(await rid('ferment the sausage at room temperature without a starter')).toBe('ferment-uncontrolled');
+  expect(await rid('ferment salami on the counter without a culture')).toBe('ferment-uncontrolled');
+  // mold — wash/keep AND the "can I still eat it" / "cut off" phrasings
+  expect(await rid('can I wash the mold off my salami and keep drying')).toBe('unsafe-mold');
+  expect(await rid('black mold on my salami, can I still eat it?')).toBe('unsafe-mold');
+  expect(await rid('can I cut off the moldy part of my salami')).toBe('unsafe-mold');
+  // reduce — words and numeric-with-instead
+  expect(await rid('use less cure than the recipe says')).toBe('reduce-safety');
+  expect(await rid('use 1g of cure #1 per kg instead of 2.5g')).toBe('reduce-safety');
+  // legitimate questions are NOT refused (they get grounded answers instead)
+  expect(await rid('how much cure #1 for 2kg salami')).toBe(null);
+  expect(await rid('how much nitrite do I need for salami')).toBe(null);   // quantity, not "do I need it at all"
+  expect(await rid('how do I keep mold from forming on my salami')).toBe(null);  // prevention, not "keep going"
+  expect(await rid('reduce the cure time for my bacon')).toBe(null);       // time, not dose
+  expect(await rid('how long to smoke ribs')).toBe(null);
+  expect(await rid('what temp for chicken')).toBe(null);
+  expect(await rid('which wood for brisket')).toBe(null);
+});
+
+test('W1-P5: a dangerous question in Ask shows the sourced safety card and never calls the AI', async ({ page }) => {
+  await bootAI(page);
+  await page.evaluate(`store.set('mk-askai','1'); openAsk();`);
+  await page.waitForSelector('#askq');
+  await page.fill('#askq', 'can I skip the pink salt in my salami');
+  await page.click('#askgo');
+  await page.waitForSelector('.ask-refuse');
+  const card = await page.evaluate(`document.querySelector('.ask-refuse').textContent`) as string;
+  expect(card).toContain('botulism');
+  expect(card).toContain('USDA');
+  expect(/[֐-׿]/.test(card)).toBe(false);                       // English UI → no Hebrew leak
+  expect(await page.evaluate(`window.__cap.length`)).toBe(0);    // the AI was never called
+  // the calculator link works (wait for the h2 to actually become the calculator, not the stale Ask panel h2)
+  await page.click('.ask-refuse [data-aicalc]');
+  await page.waitForFunction(`(function(){ var h=document.querySelector('#panel h2'); return h && /Calculators/.test(h.textContent); })()`);
+  expect(await page.evaluate(`document.querySelector('#panel h2').textContent`)).toContain('Calculators');
+});
