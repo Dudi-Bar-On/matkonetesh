@@ -235,3 +235,29 @@ test('adaptive home Phase 4: gear banner <-> chip stay symmetric across (un)conf
   expect(await page.evaluate(`!document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
   expect(await page.evaluate(`document.querySelector('#cGearBanner').children.length`)).toBe(0);
 });
+
+test('adaptive home Phase 5: uiLevel adjusts density (beginner promotes how-to + hides advanced detail; pro quiets how-to)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof cRefreshHome==='function'`);
+  const abt = (prop:string) => page.evaluate(`getComputedStyle(document.querySelector('.chome-about'))['${prop}']`);
+  const projP = () => page.evaluate(`getComputedStyle(document.querySelector('#cPathProj p')).display`);
+  // mid + full gear: standard how-to card, project card full
+  await page.evaluate(`(function(){ ${FULLGEAR} store.set('mk-uilevel','mid'); cNavGo('home'); })()`); await page.waitForTimeout(80);
+  expect(await abt('flexDirection')).toBe('column');
+  expect(await page.evaluate(`getComputedStyle(document.querySelector('.chome-about .cha-sub')).display`)).not.toBe('none');
+  expect(await projP()).not.toBe('none');
+  // beginner: how-to promoted to an accent card + advanced-project detail hidden
+  await page.evaluate(`(function(){ store.set('mk-uilevel','beginner'); cRefreshHome(); })()`); await page.waitForTimeout(80);
+  expect(await page.evaluate(`document.body.classList.contains('lvl-beg')`)).toBe(true);
+  expect(await abt('borderTopColor')).toBe('rgb(231, 111, 81)');   // --ember accent
+  expect(await projP()).toBe('none');
+  // pro: how-to collapses to a quiet inline link (sub hidden, row layout)
+  await page.evaluate(`(function(){ store.set('mk-uilevel','pro'); cRefreshHome(); })()`); await page.waitForTimeout(80);
+  expect(await page.evaluate(`document.body.classList.contains('lvl-pro')`)).toBe(true);
+  expect(await abt('flexDirection')).toBe('row');
+  expect(await page.evaluate(`getComputedStyle(document.querySelector('.chome-about .cha-sub')).display`)).toBe('none');
+  // how-to itself is never removed at any level (nothing removed, only reordered/demoted)
+  expect(await page.evaluate(`getComputedStyle(document.querySelector('.chome-about')).display`)).not.toBe('none');
+});
