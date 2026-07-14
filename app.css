@@ -1207,7 +1207,14 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .cet-leg{display:flex;align-items:center;gap:6px;font-size:calc(12.5px * var(--fscale));font-weight:700;color:var(--bone)}
 .cet-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
 .cet-row{display:flex;align-items:center;gap:10px;padding:9px 11px;margin-bottom:6px;background:var(--char2);border:1px solid var(--line);border-radius:10px}
+.cet-row[data-cetgo]{cursor:pointer}
+.cet-row[data-cetgo]:hover{border-color:var(--ember2)}
+.cet-row .cet-go{flex:0 0 auto;color:var(--ember);font-weight:900;margin-inline-start:2px}
 .cet-past{opacity:.5}
+/* Events-screen multi-event hero */
+.cet-hero{background:var(--char2);border:1.5px solid var(--line2);border-radius:16px;padding:14px;margin-bottom:14px}
+.cet-hero-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+.cet-herotitle{border:none;background:none;padding:0;cursor:pointer;font-family:var(--font-body);font-size:calc(13px * var(--fscale));font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ember2)}
 .cet-day{margin:14px 0 7px;font-weight:800;font-size:calc(12.5px * var(--fscale));color:var(--ember2);border-bottom:1px solid var(--line);padding-bottom:4px}
 .cet-clash{box-shadow:inset 3px 0 0 #c0392b}
 .cet-warn{font-size:calc(10.5px * var(--fscale));font-weight:800;color:#fff;background:#c0392b;border-radius:6px;padding:1px 5px;white-space:nowrap}

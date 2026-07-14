@@ -5416,7 +5416,7 @@ function combinedEventsRows(){
       // schedule backward from serve to get the start clock and this item's smoke window (for equipment contention)
       let end=serve.getTime(), smokeWin=null;
       for(var i=stages.length-1;i>=0;i--){ const s=stages[i]; const sSt=end-(s.hours||0)*3600e3; if(s.kind==='smoke'&&!smokeWin) smokeWin={start:sSt,end:end}; end=sSt; }
-      rows.push({ev:ev, ei:ei, name:meta.heb, eng:meta.eng, start:new Date(end), serve:serve, totalH:totalH, smoke:smokeWin});
+      rows.push({ev:ev, ei:ei, key:key, name:meta.heb, eng:meta.eng, start:new Date(end), serve:serve, totalH:totalH, smoke:smokeWin});
     });
   });
   rows.sort(function(a,b){return a.start-b.start;});
@@ -5470,21 +5470,37 @@ function openCrossEventCart(){
     row.classList.toggle('done',done); sp.classList.toggle('done',done); sp.textContent=done?'✓':''; store.set('xshop:'+t,done);
   }); });
 }
-function openCombinedTimeline(){
+// shared combined-timeline body (legend + clash note + tappable rows) — used both in the panel and as the Events-screen hero
+function combinedTimelineHTML(){
   const evs=evList(), rows=combinedEventsRows(), now=new Date();
+  if(!rows.length) return '';
+  const en=(typeof getLang==='function'&&getLang()!=='he'); const dloc=en?'en-US':'he-IL';
   const legend=evs.map(function(ev,ei){ return `<span class="cet-leg"><span class="cet-dot" style="background:${EV_COLORS[ei%EV_COLORS.length]}"></span>${esc(ev.name)} · ${ev.serve||'19:00'}${evRunningCount(ev.id)?` · 🔴 ${evRunningCount(ev.id)}`:''}</span>`; }).join('');
   let curDay=null;
-  const dloc = (typeof getLang==='function'&&getLang()!=='he')?'en-US':'he-IL';
-  const listHtml=rows.length?rows.map(function(r){ const col=EV_COLORS[r.ei%EV_COLORS.length];
+  const listHtml=rows.map(function(r){ const col=EV_COLORS[r.ei%EV_COLORS.length];
     const day=isoDate(r.start); let head='';
-    if(day!==curDay){ curDay=day; head=`<div class="cet-day">📅 ${esc(serveDayLabel(r.start))} · ${new Date(r.start).toLocaleDateString(dloc,{day:'numeric',month:'short'})}</div>`; }   // day separator so multi-day catering doesn't collapse onto one clock
-    return `${head}<div class="cet-row ${r.start<now?'cet-past':''} ${r.contention?'cet-clash':''}" style="border-inline-start:4px solid ${col}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc((typeof getLang==='function'&&getLang()!=='he')?(r.eng||r.name):r.name)}${r.contention?' <span class="cet-warn" title="'+L('חפיפת מעשנה בין אירועים','Smoker overlap between events')+'">⚠ '+L('מעשנה','Smoker')+'</span>':''}</b><small style="color:${col}">${esc(r.ev.name)} · ${L('הגשה','Serve')} ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+L('ד','m'):r.totalH.toFixed(1)+L('ש','h')):''}</span></div>`;
-  }).join(''):`<div class="shop-empty">${L('אין אירועים עם מנות עדיין.','No events with dishes yet.')}</div>`;
+    if(day!==curDay){ curDay=day; head=`<div class="cet-day">📅 ${esc(serveDayLabel(r.start))} · ${new Date(r.start).toLocaleDateString(dloc,{day:'numeric',month:'short'})}</div>`; }
+    return `${head}<div class="cet-row ${r.start<now?'cet-past':''} ${r.contention?'cet-clash':''}" style="border-inline-start:4px solid ${col}" data-cetgo="${esc(r.ev.id)}" data-cetitem="${esc(r.key||'')}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(en?(r.eng||r.name):r.name)}${r.contention?' <span class="cet-warn" title="'+L('חפיפת מעשנה בין אירועים','Smoker overlap between events')+'">⚠ '+L('מעשנה','Smoker')+'</span>':''}</b><small style="color:${col}">${esc(r.ev.name)} · ${L('הגשה','Serve')} ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+L('ד','m'):r.totalH.toFixed(1)+L('ש','h')):''}</span><span class="cet-go">←</span></div>`;
+  }).join('');
   const clashN=rows.filter(function(r){return r.contention;}).length;
   const clashNote=clashN?`<div class="cet-clashnote">⚠ <b>${L('חפיפת מעשנה:','Smoker overlap:')}</b> ${clashN} ${L('פריטים מאירועים שונים מתוזמנים לעשן בו-זמנית. מעשנה אחת לא תספיק — פזר את שעות ההגשה או השתמש בשתי מעשנות.','items from different events are scheduled to smoke at the same time. One smoker will not be enough — stagger the serve times or use two smokers.')}</div>`:'';
-  const shopBtn = evs.length? `<button class="mchip" id="cetShop" style="margin-bottom:10px">🛒 ${L('רשימת קניות מאוחדת','Combined shopping list')}</button>` : '';
-  showPanel(`${toolTop(L('כל האירועים — תצוגה משולבת','All events — combined view'),L('לוח-זמנים מאוחד לאירועים מקבילים','A unified schedule for parallel events'),'🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div>${clashNote}${shopBtn}<p class="section-sub">${L('זמני ההתחלה של כל המנות מכל האירועים, לפי השיטה שנבחרה בכל אירוע, ממוזגים לפי יום ושעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.','Start times for every dish from every event — by the method chosen per event — merged by day and hour. Open a specific event for the full plan with timers.')}</p>${listHtml}</div>`);
+  return `<div class="cet-legend">${legend}</div>${clashNote}${listHtml}`;
+}
+// tap a combined-timeline row → open that event's work plan, focused on the item
+function _wireCetRows(container){
+  if(!container) return;
+  container.querySelectorAll('[data-cetgo]').forEach(function(row){ row.addEventListener('click',function(){
+    const id=row.getAttribute('data-cetgo'), item=row.getAttribute('data-cetitem');
+    if(typeof evLoad==='function' && !evLoad(id)) return;
+    if(typeof openTimeline==='function') openTimeline(item||undefined);
+  }); });
+}
+function openCombinedTimeline(){
+  const body=combinedTimelineHTML();
+  const shopBtn = evList().length? `<button class="mchip" id="cetShop" style="margin-bottom:10px">🛒 ${L('רשימת קניות מאוחדת','Combined shopping list')}</button>` : '';
+  showPanel(`${toolTop(L('כל האירועים — תצוגה משולבת','All events — combined view'),L('לוח-זמנים מאוחד לאירועים מקבילים','A unified schedule for parallel events'),'🗂️','#7a5cc2')}<div class="panel-body">${shopBtn}<p class="section-sub">${L('זמני ההתחלה של כל המנות מכל האירועים, לפי השיטה שנבחרה בכל אירוע, ממוזגים לפי יום ושעה. הקש שורה כדי לפתוח את תוכנית העבודה של אותו אירוע.','Start times for every dish from every event — by the method chosen per event — merged by day and hour. Tap a row to open the work plan for that event.')}</p>${body||`<div class="shop-empty">${L('אין אירועים עם מנות עדיין.','No events with dishes yet.')}</div>`}</div>`);
   { const b=$("#cetShop"); if(b) b.addEventListener('click', openCrossEventCart); }
+  _wireCetRows($("#panel"));
 }
 function cPaintEvents(){
   setMenuCtx('event');
@@ -5526,11 +5542,14 @@ function cPaintEvents(){
   }).join('');
   if(list.length){
     html+=`<button class="cwclear" id="cEvDelAll" style="margin:14px auto 0;display:block">${L('מחק את כל האירועים','Delete all events')}</button>`;
-    html=`<button class="ccta" id="cetOpen" style="margin:0 0 12px;padding:11px">🗂️ ${L('תצוגה משולבת — כל האירועים המקבילים','Combined view — all parallel events')}</button>`+html;
+    if(list.length>=2){ const hero=combinedTimelineHTML();   // multi-event command center: the combined color-coded schedule, tap a row → that event's plan
+      if(hero) html=`<div class="cet-hero"><div class="cet-hero-head"><button class="cet-herotitle" id="cetFull">🗂️ ${L('לוח משולב','Combined schedule')} · ${list.length} ${L('אירועים','events')} ↗</button><button class="mchip" id="cetShopHero">🛒 ${L('קניות מאוחדות','Combined shopping')}</button></div>${hero}</div>`+html; }
   }
   host.innerHTML=html;
   // wire
-  { const co=$("#cetOpen"); if(co) co.addEventListener('click',()=>openCombinedTimeline()); }
+  { const sh=$("#cetShopHero"); if(sh) sh.addEventListener('click',()=>openCrossEventCart()); }
+  { const cf=$("#cetFull"); if(cf) cf.addEventListener('click',()=>openCombinedTimeline()); }
+  if(typeof _wireCetRows==='function') _wireCetRows(host);
   const ds=$("#cEvDraftSave"); if(ds) ds.addEventListener('click',async()=>{ const nm=await appPrompt(L('שם לאירוע:','Event name:'),'',{placeholder:L('למשל: שישי במשפחה','e.g. Family Friday'),okLabel:'💾 '+L('שמור','Save')}); if(nm===null||nm===false) return; evSaveCurrent(nm||L('אירוע ללא שם','Untitled event')); cPaintEvents(); if(typeof toast==='function') toast(L('האירוע נשמר','Event saved')); });
   const dd=$("#cEvDraftDiscard"); if(dd) dd.addEventListener('click',async()=>{ if((await appConfirm(L('למחוק את הטיוטה?','Delete the draft?'),{okLabel:'🗑️ '+L('מחק','Delete'),danger:true}))!==true) return; evClearActive(); cPaintEvents(); });
   host.querySelectorAll('[data-evload]').forEach(el=>el.addEventListener('click',ev=>{
