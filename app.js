@@ -346,6 +346,8 @@ let seasCtxKey=null; // when set, browser cards get a ＋ button adding to this 
 const SPK_FLAVORS=['מתוק','חמצמץ','חריף','מעושן','עשבי','הדרי','ארומטי-חם','אגוזי','אומאמי'];
 const SPK_BASES=['יבש','שמן','יוגורט','עגבניות','רכז-פירות','חמאה'];
 const SPK_HEAT=[[0,'😌 עדין'],[1,'🌶 קל'],[2,'🌶🌶 חריף'],[3,'🔥 בוער']];
+const SPK_HEAT_EN={0:'😌 Mild',1:'🌶 Light',2:'🌶🌶 Spicy',3:'🔥 Blazing'};
+function heatLabel(v,heLabel){ return getLang()==='he'?heLabel:(SPK_HEAT_EN[v]||heLabel); }
 const SPK_CONTS=['אמריקה','דרום אמריקה','אירופה','אסיה','אפריקה','ישראל/מזה"ת'];
 let seasPkState={};
 function spkState(key){ return seasPkState[key]=seasPkState[key]||{axis:'rec',val:'',expand:{}}; }
@@ -365,8 +367,8 @@ function spkChip(s, opts){
   const marks=(house?'🏠':'')+(rec&&!house?'⭐':'');
   const heatDots=s.heat?('🌶'.repeat(Math.min(s.heat,3))):'';
   return `<div class="spk-chip ${sel?'sel':''} ${house?'house':''}">
-    <button class="spk-info" data-spkinfo="${s.id}" title="הצג פרטים · ${(s.origin||'')}">${marks?`<span class="spk-mark">${marks}</span>`:''}<span class="spk-heb">${s.heb}</span>${heatDots?`<span class="spk-heat">${heatDots}</span>`:''}</button>
-    <button class="spk-add" data-spkpick="${s.id}" data-spkkind="${s.kind}" ${mode==='view'?'disabled':''} title="${sel?'הסר מהמופע':'הוסף למופע'}">${sel?'✓':'＋'}</button>
+    <button class="spk-info" data-spkinfo="${s.id}" title="${L('הצג פרטים','Show details')} · ${t(s.origin||'')}">${marks?`<span class="spk-mark">${marks}</span>`:''}<span class="spk-heb">${itemName(s)}</span>${heatDots?`<span class="spk-heat">${heatDots}</span>`:''}</button>
+    <button class="spk-add" data-spkpick="${s.id}" data-spkkind="${s.kind}" ${mode==='view'?'disabled':''} title="${sel?L('הסר מהמופע','Remove from instance'):L('הוסף למופע','Add to instance')}">${sel?'✓':'＋'}</button>
   </div>`;
 }
 function seasPickerHTML(key, cat, isProd, mode){
@@ -386,15 +388,15 @@ function seasPickerHTML(key, cat, isProd, mode){
     if(st.axis==='heat') return st.val==='' || String(s.heat)===String(st.val);
     return true;
   };
-  const AX=[['rec','⭐ מומלצים'],['cont','🌍 מדינה'],['flavor','👅 טעם'],['base','🧪 בסיס'],['heat','🌶️ חריפות']];
-  const tabs=`<div class="spk-tabs">${AX.map(([a,l])=>`<button class="spk-tab ${st.axis===a?'on':''}" data-spkaxis="${a}">${l}</button>`).join('')}${(typeof aiAvail==='function'&&aiAvail()&&mode!=='view')?`<button class="spk-tab spk-ai" data-spkairec style="background:var(--fresh-l);border-color:var(--fresh);color:var(--fresh)">✨ המלץ AI</button>`:''}</div>`;
+  const AX=[['rec',L('⭐ מומלצים','⭐ Recommended')],['cont',L('🌍 מדינה','🌍 Country')],['flavor',L('👅 טעם','👅 Flavor')],['base',L('🧪 בסיס','🧪 Base')],['heat',L('🌶️ חריפות','🌶️ Heat')]];
+  const tabs=`<div class="spk-tabs">${AX.map(([a,l])=>`<button class="spk-tab ${st.axis===a?'on':''}" data-spkaxis="${a}">${l}</button>`).join('')}${(typeof aiAvail==='function'&&aiAvail()&&mode!=='view')?`<button class="spk-tab spk-ai" data-spkairec style="background:var(--fresh-l);border-color:var(--fresh);color:var(--fresh)">✨ ${L('המלץ AI','AI suggest')}</button>`:''}</div>`;
   let vals='';
-  if(st.axis==='cont') vals=SPK_CONTS.map(v=>`<button class="spk-val ${st.val===v?'on':''}" data-spkval="${v}">${v}</button>`).join('');
-  else if(st.axis==='flavor') vals=SPK_FLAVORS.map(v=>`<button class="spk-val ${st.val===v?'on':''}" data-spkval="${v}">${v}</button>`).join('');
-  else if(st.axis==='base') vals=SPK_BASES.map(v=>`<button class="spk-val ${st.val===v?'on':''}" data-spkval="${v}">${v}</button>`).join('');
-  else if(st.axis==='heat') vals=SPK_HEAT.map(([v,l])=>`<button class="spk-val ${String(st.val)===String(v)?'on':''}" data-spkval="${v}">${l}</button>`).join('');
+  if(st.axis==='cont') vals=SPK_CONTS.map(v=>`<button class="spk-val ${st.val===v?'on':''}" data-spkval="${v}">${t(v)}</button>`).join('');
+  else if(st.axis==='flavor') vals=SPK_FLAVORS.map(v=>`<button class="spk-val ${st.val===v?'on':''}" data-spkval="${v}">${t(v)}</button>`).join('');
+  else if(st.axis==='base') vals=SPK_BASES.map(v=>`<button class="spk-val ${st.val===v?'on':''}" data-spkval="${v}">${t(v)}</button>`).join('');
+  else if(st.axis==='heat') vals=SPK_HEAT.map(([v,l])=>`<button class="spk-val ${String(st.val)===String(v)?'on':''}" data-spkval="${v}">${heatLabel(v,l)}</button>`).join('');
   const valsRow=vals?`<div class="spk-vals">${vals}</div>`:'';
-  const KE=KIND_EMOJI, KL=KIND_LABEL;
+  const KE=KIND_EMOJI;
   const kinds=['rub','marinade','glaze','sauce'].map(kind=>{
     const inKind=all.filter(s=>s.kind===kind);
     if(!inKind.length) return '';
@@ -405,25 +407,25 @@ function seasPickerHTML(key, cat, isProd, mode){
     const curSel=picked.find(id=>{const s=seasoningById(id);return s&&s.kind===kind;})||'';
     const CAP=12; const exp=st.expand[kind];
     const shown=exp?list:list.slice(0,CAP);
-    const noneChip=`<div class="spk-chip none ${!curSel?'sel':''}"><button class="spk-only" data-spknone="${kind}" ${mode==='view'?'disabled':''}>ללא${!curSel?' ✓':''}</button></div>`;
-    const more=list.length>CAP&&!exp?`<button class="spk-more" data-spkmore="${kind}">עוד ${list.length-CAP} ›</button>`:'';
-    const empty=!list.length?`<span class="spk-empty">אין ${KL[kind]} בסינון הזה</span>`:'';
-    return `<div class="spk-kind"><div class="spk-kh">${KE[kind]} ${KL[kind]}${curSel?` <b class="spk-cur">· ${(seasoningById(curSel)||{}).heb||''}</b>`:''}</div>
+    const noneChip=`<div class="spk-chip none ${!curSel?'sel':''}"><button class="spk-only" data-spknone="${kind}" ${mode==='view'?'disabled':''}>${L('ללא','None')}${!curSel?' ✓':''}</button></div>`;
+    const more=list.length>CAP&&!exp?`<button class="spk-more" data-spkmore="${kind}">${L('עוד','More')} ${list.length-CAP} ›</button>`:'';
+    const empty=!list.length?`<span class="spk-empty">${L('אין','No')} ${kindLabel(kind)} ${L('בסינון הזה','in this filter')}</span>`:'';
+    return `<div class="spk-kind"><div class="spk-kh">${KE[kind]} ${kindLabel(kind)}${curSel?` <b class="spk-cur">· ${itemName(seasoningById(curSel)||{})}</b>`:''}</div>
       <div class="spk-chips">${noneChip}${shown.map(s=>spkChip(s,{selected:picked.includes(s.id),house:s.id===hr,rec:recIds.has(s.id),mode})).join('')}${more}${empty}</div></div>`;
   }).join('');
   const inEvent=(typeof menuCtx==='function'&&menuCtx()==='event');
   const otherKeys=(()=>{ try{ const m=menuState(); return (m.keys||[]).filter(k=>k!==key).length; }catch(e){ return 0; } })();
   const ctaButtons=inEvent
-    ? `<button class="spk-editbtn" data-spkgotl="1">🧂 לבחירת תיבול באשף האירוע ←</button>`
+    ? `<button class="spk-editbtn" data-spkgotl="1">🧂 ${L('לבחירת תיבול באשף האירוע ←','Choose seasoning in the event wizard →')}</button>`
     : (otherKeys>0
-        ? `<button class="spk-editbtn" data-spkfresh="1">🍳 בישול חדש — רק הפריט הזה</button> <button class="spk-editbtn" data-spkgotl="1">➕ צרף לתוכנית (${otherKeys})</button>`
-        : `<button class="spk-editbtn" data-spkgotl="1">🧂 בחר תיבול ותזמן ←</button>`);
-  const viewNote=mode==='view'?`<div class="spk-viewnote">📌 תצוגת תבנית — ראב הבית 🏠 הוא ברירת המחדל. התאמה אישית נעשית בביצוע ונשמרת לו בלבד. ${ctaButtons}</div>`:'';
+        ? `<button class="spk-editbtn" data-spkfresh="1">🍳 ${L('בישול חדש — רק הפריט הזה','New cook — just this item')}</button> <button class="spk-editbtn" data-spkgotl="1">➕ ${L('צרף לתוכנית','Add to plan')} (${otherKeys})</button>`
+        : `<button class="spk-editbtn" data-spkgotl="1">🧂 ${L('בחר תיבול ותזמן ←','Pick seasoning and schedule →')}</button>`);
+  const viewNote=mode==='view'?`<div class="spk-viewnote">📌 ${L('תצוגת תבנית — ראב הבית 🏠 הוא ברירת המחדל. התאמה אישית נעשית בביצוע ונשמרת לו בלבד.','Template view — the house rub 🏠 is the default. Customization happens at cook time and is saved only there.')} ${ctaButtons}</div>`:'';
   const cnt=picked.length;
   return `<div class="var spk-box" id="spk-${key}">
-    <h4>🧂 תיבול ${mode==='view'?'<span style="font-weight:400;font-size:11.5px;color:var(--smoke)">(תבנית · ברירת מחדל: ראב הבית)</span>':(cnt?`<span class="seas-count">· ${cnt} נבחרו</span>`:'')}</h4>
+    <h4>🧂 ${L('תיבול','Seasoning')} ${mode==='view'?`<span style="font-weight:400;font-size:11.5px;color:var(--smoke)">(${L('תבנית · ברירת מחדל: ראב הבית','template · default: house rub')})</span>`:(cnt?`<span class="seas-count">· ${cnt} ${L('נבחרו','selected')}</span>`:'')}</h4>
     ${viewNote}${mode==='edit'?tabs+valsRow:''}${kinds}
-    <button class="seasoning-more" data-seasall="${isProd?'__produce':cat}">📖 דפדוף מלא במאגר ›</button>
+    <button class="seasoning-more" data-seasall="${isProd?'__produce':cat}">📖 ${L('דפדוף מלא במאגר ›','Full browse of the database ›')}</button>
   </div>`;
 }
 function spkGoInstance(key, backFn, fresh){
@@ -894,10 +896,10 @@ function buildFilterBar(){
   const wrap=$("#filterBar"); if(!wrap) return;
   const msel=(v,cur)=>v==(cur)?' selected':'';
   wrap.innerHTML=`
-    <select data-f="method" aria-label="שיטה"><option value="">כל שיטה</option><option value="grill"${msel('grill',filters.method)}>🔥 גריל / אש ישירה</option><option value="sv"${msel('sv',filters.method)}>💧 סו-ויד</option><option value="smoke"${msel('smoke',filters.method)}>💨 עישון</option><option value="build"${msel('build',filters.method)}>🔨 בנייה מאפס</option></select>
-    <select data-f="diff" aria-label="קושי"><option value="0">כל קושי</option><option value="1"${msel(1,filters.diff)}>קל (1)</option><option value="2"${msel(2,filters.diff)}>עד 2</option><option value="3"${msel(3,filters.diff)}>עד 3</option><option value="4"${msel(4,filters.diff)}>עד 4</option></select>
-    <select data-f="time" aria-label="זמן"><option value="0">כל זמן</option><option value="2"${msel(2,filters.time)}>עד 2ש</option><option value="6"${msel(6,filters.time)}>עד 6ש</option><option value="12"${msel(12,filters.time)}>עד 12ש</option><option value="24"${msel(24,filters.time)}>עד 24ש</option></select>
-    <button data-f="kosher" class="fchip ${filters.kosher?'on':''}">${filters.kosher?'✓ ':''}כשר בלבד</button>`;
+    <select data-f="method" aria-label="${L('שיטה','Method')}"><option value="">${L('כל שיטה','Any method')}</option><option value="grill"${msel('grill',filters.method)}>🔥 ${L('גריל / אש ישירה','Grill / direct heat')}</option><option value="sv"${msel('sv',filters.method)}>💧 ${L('סו-ויד','Sous-vide')}</option><option value="smoke"${msel('smoke',filters.method)}>💨 ${L('עישון','Smoking')}</option><option value="build"${msel('build',filters.method)}>🔨 ${L('בנייה מאפס','Build from scratch')}</option></select>
+    <select data-f="diff" aria-label="${L('קושי','Difficulty')}"><option value="0">${L('כל קושי','Any difficulty')}</option><option value="1"${msel(1,filters.diff)}>${L('קל (1)','Easy (1)')}</option><option value="2"${msel(2,filters.diff)}>${L('עד 2','Up to 2')}</option><option value="3"${msel(3,filters.diff)}>${L('עד 3','Up to 3')}</option><option value="4"${msel(4,filters.diff)}>${L('עד 4','Up to 4')}</option></select>
+    <select data-f="time" aria-label="${L('זמן','Time')}"><option value="0">${L('כל זמן','Any time')}</option><option value="2"${msel(2,filters.time)}>${L('עד','Up to')} 2${L('ש','h')}</option><option value="6"${msel(6,filters.time)}>${L('עד','Up to')} 6${L('ש','h')}</option><option value="12"${msel(12,filters.time)}>${L('עד','Up to')} 12${L('ש','h')}</option><option value="24"${msel(24,filters.time)}>${L('עד','Up to')} 24${L('ש','h')}</option></select>
+    <button data-f="kosher" class="fchip ${filters.kosher?'on':''}">${filters.kosher?'✓ ':''}${L('כשר בלבד','Kosher only')}</button>`;
   wrap.querySelectorAll("select").forEach(s=>s.addEventListener("change",()=>{
     const k=s.dataset.f; filters[k]= (k==='diff'||k==='time')? +s.value : s.value; render();
   }));
@@ -1028,16 +1030,16 @@ function catView(mode){
 
 /* ---------- detail panel ---------- */
 /* ---------- calculators ---------- */
-function fmtG(g){ if(g<=0) return '0'; return g>=1000 ? (g/1000).toFixed((g%1000)?2:0)+' ק״ג' : (g>=10?Math.round(g):g.toFixed(1))+' ג׳'; }
+function fmtG(g){ if(g<=0) return '0'; const kg=(typeof L==='function')?L('ק״ג','kg'):'ק״ג', gr=(typeof L==='function')?L('ג׳','g'):'ג׳'; return g>=1000 ? (g/1000).toFixed((g%1000)?2:0)+' '+kg : (g>=10?Math.round(g):g.toFixed(1))+' '+gr; }
 function calcBoxHTML(calc){
   if(!calc) return '';
   const brine=calc.brine;
   return `<div class="calcbox" data-saltcalc>
-    <h4>מחשבון מלח וריפוי</h4>
-    <div class="calcrow"><label>${brine?'מים לתמלחת':'משקל בשר'}</label>
+    <h4>${L('מחשבון מלח וריפוי','Salt & cure calculator')}</h4>
+    <div class="calcrow"><label>${brine?L('מים לתמלחת','Brine water'):L('משקל בשר','Meat weight')}</label>
       <input type="number" data-w min="0" step="${brine?'0.5':'50'}" value="${brine?'2':'1000'}">
-      <span class="u">${brine?'ליטר':'גרם'}</span></div>
-    ${brine?`<div class="calcrow"><label>משקל הנתח <small>(לא חובה)</small></label><input type="number" data-mw min="0" step="100" value="0"><span class="u">גרם</span></div>`:''}
+      <span class="u">${brine?L('ליטר','liter'):L('גרם','grams')}</span></div>
+    ${brine?`<div class="calcrow"><label>${L('משקל הנתח','Cut weight')} <small>(${L('לא חובה','optional')})</small></label><input type="number" data-mw min="0" step="100" value="0"><span class="u">${L('גרם','grams')}</span></div>`:''}
     <div class="calcout" data-out></div>
     <div class="calcnote" data-note></div>
   </div>`;
@@ -1047,44 +1049,46 @@ function wireCalcBox(root, calc){
   const w=box.querySelector("[data-w]"), out=box.querySelector("[data-out]"), note=box.querySelector("[data-note]"), mw=box.querySelector("[data-mw]");
   const line=(l,v,s)=>`<div class="cl"><span>${l}</span><b>${v}</b>${s?`<small>${s}</small>`:''}</div>`;
   function recompute(){
-    const x=Math.max(0,parseFloat(w.value)||0); let h='';
+    const x=Math.max(0,parseFloat(w.value)||0); let h=''; const gL=L('ג׳/ליטר','g/liter'), gKg=L('ג׳/ק״ג','g/kg');
     if(calc.brine){
-      h+=line('מלח', fmtG(x*calc.saltL), calc.saltL+' ג׳/ליטר');
-      h+=line('Cure #1', fmtG(x*calc.cureL), calc.cureL+' ג׳/ליטר');
-      h+=line('סוכר', fmtG(x*calc.sugarL), calc.sugarL+' ג׳/ליטר');
+      h+=line(L('מלח','Salt'), fmtG(x*calc.saltL), calc.saltL+' '+gL);
+      h+=line('Cure #1', fmtG(x*calc.cureL), calc.cureL+' '+gL);
+      h+=line(L('סוכר','Sugar'), fmtG(x*calc.sugarL), calc.sugarL+' '+gL);
       const meat=mw?Math.max(0,parseFloat(mw.value)||0):0;
       if(meat>0){
         const suggestL=Math.ceil(meat/1000*10)/10; // ~1L per kg to submerge
         const totalKg=(meat+x*1000)/1000; const eqSalt=totalKg*1000*0.028; // grams: 2.8% equilibrium salt of (meat+water)
-        h+=`<div class="cl cl-note"><span>שיטת שיווי-משקל (מומלץ, מדויק):</span></div>`;
-        h+=line('מים מומלצים לכיסוי', suggestL+' ליטר', '≈1 ל׳/ק״ג בשר בשקית ואקום');
-        h+=line('מלח לשיווי-משקל', fmtG(eqSalt), '2.8% ממשקל בשר+מים');   // D4: eqSalt is already grams — the previous /1000 showed ~1000× too little
-        if(calc.cureL) h+=line('Cure #1 לשיווי-משקל', fmtG(totalKg*2.5), '2.5 ג׳/ק״ג בשר+מים ≈156ppm');   // D4: equilibrium nitrite dose — was left at the per-liter dip rate → unvalidated in the one calc where it's acutely dangerous
+        h+=`<div class="cl cl-note"><span>${L('שיטת שיווי-משקל (מומלץ, מדויק):','Equilibrium method (recommended, precise):')}</span></div>`;
+        h+=line(L('מים מומלצים לכיסוי','Recommended water to cover'), suggestL+' '+L('ליטר','liter'), L('≈1 ל׳/ק״ג בשר בשקית ואקום','≈1 L/kg meat in a vacuum bag'));
+        h+=line(L('מלח לשיווי-משקל','Salt for equilibrium'), fmtG(eqSalt), L('2.8% ממשקל בשר+מים','2.8% of meat+water weight'));   // D4: eqSalt is already grams — the previous /1000 showed ~1000× too little
+        if(calc.cureL) h+=line(L('Cure #1 לשיווי-משקל','Cure #1 for equilibrium'), fmtG(totalKg*2.5), L('2.5 ג׳/ק״ג בשר+מים ≈156ppm','2.5 g/kg meat+water ≈156ppm'));   // D4: equilibrium nitrite dose — was left at the per-liter dip rate → unvalidated in the one calc where it's acutely dangerous
       }
-      note.textContent='תמלחת כבישה — שקלו לכסות את הנתח. שיטת שיווי-משקל (בשקית ואקום עם מעט מים) בטוחה מפני מליחות-יתר, ומינון ה-Cure מחושב לפי המשקל הכולל (בטוח). כבישה ~24ש לכל 1 ס״מ עובי.';
+      note.textContent=L('תמלחת כבישה — שקלו לכסות את הנתח. שיטת שיווי-משקל (בשקית ואקום עם מעט מים) בטוחה מפני מליחות-יתר, ומינון ה-Cure מחושב לפי המשקל הכולל (בטוח). כבישה ~24ש לכל 1 ס״מ עובי.','Curing brine — weigh out to cover the cut. The equilibrium method (in a vacuum bag with a little water) is safe from over-salting, and the Cure dose is calculated from the total weight (safe). Cure ~24h per 1 cm of thickness.');
     } else {
-      h+=line('מלח', fmtG(x*calc.salt/1000), calc.salt+' ג׳/ק״ג');
-      if(calc.cure) h+=line('Cure #'+calc.cure, fmtG(x*(calc.cureRate||2.5)/1000), (calc.cureRate||2.5)+' ג׳/ק״ג');
-      if(calc.sugar) h+=line('סוכר/דקסטרוז', fmtG(x*calc.sugar/1000), calc.sugar+' ג׳/ק״ג');
-      if(calc.water) h+=line('קרח/מים', fmtG(x*calc.water/100), calc.water+'%');
-      note.textContent = calc.cure==='2' ? '⚠ מוצר מיובש לא מבושל — דיוק ה-Cure קריטי לבטיחות.'
-        : (calc.cure==='1' ? 'Cure #1 ב-2.5 ג׳/ק״ג ≈ 156ppm ניטריט (תקני ובטוח).' : '');
+      h+=line(L('מלח','Salt'), fmtG(x*calc.salt/1000), calc.salt+' '+gKg);
+      if(calc.cure) h+=line('Cure #'+calc.cure, fmtG(x*(calc.cureRate||2.5)/1000), (calc.cureRate||2.5)+' '+gKg);
+      if(calc.sugar) h+=line(L('סוכר/דקסטרוז','Sugar/dextrose'), fmtG(x*calc.sugar/1000), calc.sugar+' '+gKg);
+      if(calc.water) h+=line(L('קרח/מים','Ice/water'), fmtG(x*calc.water/100), calc.water+'%');
+      note.textContent = calc.cure==='2' ? L('⚠ מוצר מיובש לא מבושל — דיוק ה-Cure קריטי לבטיחות.','⚠ Dry-cured, uncooked product — Cure accuracy is critical for safety.')
+        : (calc.cure==='1' ? L('Cure #1 ב-2.5 ג׳/ק״ג ≈ 156ppm ניטריט (תקני ובטוח).','Cure #1 at 2.5 g/kg ≈ 156ppm nitrite (standard and safe).') : '');
     }
     out.innerHTML=h;
   }
   w.addEventListener('input',recompute); if(mw) mw.addEventListener('input',recompute); recompute();
 }
 const SERV_TYPES={
-  meat:{heb:'🥩 בשר עיקרי',light:220,reg:320,heavy:420,note:'מנה עיקרית — סטייק, צלי, עוף'},
-  ground:{heb:'🌭 נקניקיות / טחון',light:160,reg:220,heavy:300,note:'נקניקיות, המבורגר, קבב'},
-  fish:{heb:'🐟 דג',light:180,reg:240,heavy:320,note:'פילה דג כמנה עיקרית'},
-  seafood:{heb:'🦐 פירות ים (עם קליפה)',light:220,reg:320,heavy:450,note:'שרימפס/סרטן/לובסטר — כולל פחת קליפה'},
-  offal:{heb:'🫀 איברים פנימיים',light:120,reg:180,heavy:250,note:'כבד, לב, שקדים — לרוב מנה עשירה וקטנה יותר'},
-  cured:{heb:'🍖 שרקוטרי / מיובש',light:50,reg:75,heavy:110,note:'סלמי, פסטרמה, בשר מיובש, בייקון — כפרוסות דקות, בלי בישול'},
-  cheese:{heb:'🧀 גבינה / מנה ראשונה',light:60,reg:90,heavy:130,note:'קרש גבינות, פתיח'},
-  veg:{heb:'🥦 ירקות (תוספת)',light:120,reg:200,heavy:280,note:'ירקות על הגריל/בתנור כתוספת'},
-  fruit:{heb:'🍑 פירות (קינוח)',light:100,reg:150,heavy:220,note:'פירות צלויים כקינוח/תוספת'}
+  meat:{heb:'🥩 בשר עיקרי',eng:'🥩 Main meat',light:220,reg:320,heavy:420,note:'מנה עיקרית — סטייק, צלי, עוף',noteEn:'Main course — steak, roast, chicken'},
+  ground:{heb:'🌭 נקניקיות / טחון',eng:'🌭 Sausages / ground',light:160,reg:220,heavy:300,note:'נקניקיות, המבורגר, קבב',noteEn:'Sausages, burgers, kebab'},
+  fish:{heb:'🐟 דג',eng:'🐟 Fish',light:180,reg:240,heavy:320,note:'פילה דג כמנה עיקרית',noteEn:'Fish fillet as a main'},
+  seafood:{heb:'🦐 פירות ים (עם קליפה)',eng:'🦐 Seafood (in shell)',light:220,reg:320,heavy:450,note:'שרימפס/סרטן/לובסטר — כולל פחת קליפה',noteEn:'Shrimp/crab/lobster — includes shell loss'},
+  offal:{heb:'🫀 איברים פנימיים',eng:'🫀 Offal',light:120,reg:180,heavy:250,note:'כבד, לב, שקדים — לרוב מנה עשירה וקטנה יותר',noteEn:'Liver, heart, sweetbreads — usually a rich, smaller portion'},
+  cured:{heb:'🍖 שרקוטרי / מיובש',eng:'🍖 Charcuterie / cured',light:50,reg:75,heavy:110,note:'סלמי, פסטרמה, בשר מיובש, בייקון — כפרוסות דקות, בלי בישול',noteEn:'Salami, pastrami, cured meat, bacon — thin slices, no cooking'},
+  cheese:{heb:'🧀 גבינה / מנה ראשונה',eng:'🧀 Cheese / starter',light:60,reg:90,heavy:130,note:'קרש גבינות, פתיח',noteEn:'Cheese board, appetizer'},
+  veg:{heb:'🥦 ירקות (תוספת)',eng:'🥦 Vegetables (side)',light:120,reg:200,heavy:280,note:'ירקות על הגריל/בתנור כתוספת',noteEn:'Grilled/roasted vegetables as a side'},
+  fruit:{heb:'🍑 פירות (קינוח)',eng:'🍑 Fruit (dessert)',light:100,reg:150,heavy:220,note:'פירות צלויים כקינוח/תוספת',noteEn:'Grilled fruit as dessert/side'}
 };
+function servTypeName(v){ return getLang()==='he'?v.heb:(v.eng||v.heb); }
+function servTypeNote(v){ return getLang()==='he'?v.note:(v.noteEn||v.note); }
 function servTypeFor(c){
   if(!c) return 'meat'; const cat=c.cat||'';
   if(cat==='פירות ים') return /טונה|הליבוט|סלמון|דג/.test(c.heb||'')?'fish':'seafood';
@@ -1099,13 +1103,13 @@ function servTypeFor(c){
 }
 function servingsCalcHTML(c){
   const cur=servTypeFor(c);
-  const opts=Object.entries(SERV_TYPES).map(([k,v])=>`<option value="${k}" ${k===cur?'selected':''}>${v.heb}</option>`).join('');
+  const opts=Object.entries(SERV_TYPES).map(([k,v])=>`<option value="${k}" ${k===cur?'selected':''}>${servTypeName(v)}</option>`).join('');
   return `<div class="calcbox" data-servcalc>
-    <h4>מחשבון כמויות לפי סועדים</h4>
-    <div class="calcrow"><label>סוג מנה</label><select data-stype>${opts}</select></div>
-    <div class="calcrow"><label>מספר סועדים</label><input type="number" data-d min="1" value="4"><span class="u">איש</span></div>
-    <div class="calcrow"><label>תיאבון</label>
-      <select data-app><option value="light">קל</option><option value="reg" selected>רגיל</option><option value="heavy">כבד</option></select></div>
+    <h4>${L('מחשבון כמויות לפי סועדים','Portions-by-guests calculator')}</h4>
+    <div class="calcrow"><label>${L('סוג מנה','Dish type')}</label><select data-stype>${opts}</select></div>
+    <div class="calcrow"><label>${L('מספר סועדים','Number of guests')}</label><input type="number" data-d min="1" value="4"><span class="u">${L('איש','people')}</span></div>
+    <div class="calcrow"><label>${L('תיאבון','Appetite')}</label>
+      <select data-app><option value="light">${L('קל','Light')}</option><option value="reg" selected>${L('רגיל','Regular')}</option><option value="heavy">${L('כבד','Heavy')}</option></select></div>
     <div class="calcout" data-out></div>
   </div>`;
 }
@@ -1117,24 +1121,25 @@ function wireServCalc(root, c){
     const diners=Math.max(1,parseInt(d.value)||1), t=SERV_TYPES[st.value]||SERV_TYPES.meat, per=t[app.value]||t.reg, y=yld();
     const noCook=(st.value==='cheese'||st.value==='cured');
     const cooked=diners*per, raw=cooked/y;
-    out.innerHTML=`<div class="cl"><span>${noCook?'לקנייה':'נא לקנייה'}</span><b>${((noCook?cooked:raw)/1000).toFixed(2)} ק״ג</b><small>${diners}×${per}ג׳</small></div>
-      ${!noCook?`<div class="cl"><span>תשואה מבושלת</span><b>${(cooked/1000).toFixed(2)} ק״ג</b><small>~${Math.round(y*100)}% אחרי בישול</small></div>`:''}
-      <div class="cl cl-note"><span>${t.note}</span></div>
-      ${c?`<div class="cl"><span>מול נתח בטבלה</span><b>${c.kg} ק״ג</b><small>≈ ${Math.max(1,Math.round(raw/1000/c.kg))} יח׳</small></div>`:''}`;
+    const kg=L('ק״ג','kg');
+    out.innerHTML=`<div class="cl"><span>${noCook?L('לקנייה','To buy'):L('נא לקנייה','Raw to buy')}</span><b>${((noCook?cooked:raw)/1000).toFixed(2)} ${kg}</b><small>${diners}×${per}${L('ג׳','g')}</small></div>
+      ${!noCook?`<div class="cl"><span>${L('תשואה מבושלת','Cooked yield')}</span><b>${(cooked/1000).toFixed(2)} ${kg}</b><small>~${Math.round(y*100)}% ${L('אחרי בישול','after cooking')}</small></div>`:''}
+      <div class="cl cl-note"><span>${servTypeNote(t)}</span></div>
+      ${c?`<div class="cl"><span>${L('מול נתח בטבלה','vs the table cut')}</span><b>${c.kg} ${kg}</b><small>≈ ${Math.max(1,Math.round(raw/1000/c.kg))} ${L('יח׳','pcs')}</small></div>`:''}`;
   }
   d.addEventListener('input',recompute); app.addEventListener('change',recompute); st.addEventListener('change',recompute); recompute();
 }
 function openCalc(){
-  const html=`<div class="panel-top"><button class="x" aria-label="סגור">✕</button>
-     <div class="cat">כלי עזר</div><h2>מחשבונים</h2><div class="en">מלח · ריפוי · כמויות</div></div>
+  const html=`<div class="panel-top"><button class="x" aria-label="${L('סגור','Close')}">✕</button>
+     <div class="cat">${L('כלי עזר','Tools')}</div><h2>${L('מחשבונים','Calculators')}</h2><div class="en">${L('מלח · ריפוי · כמויות','Salt · cure · quantities')}</div></div>
    <div class="panel-body">
-     <div class="calcrow" style="margin:16px 0 0"><label>סוג מוצר</label>
+     <div class="calcrow" style="margin:16px 0 0"><label>${L('סוג מוצר','Product type')}</label>
        <select id="ptype">
-        <option value="fresh">נקניקייה טרייה</option>
-        <option value="smoked">מעושן-מבושל</option>
-        <option value="dry">מיובש (פרמנט)</option>
-        <option value="bacon">בייקון</option>
-        <option value="brine">פסטרמה (תמלחת)</option>
+        <option value="fresh">${L('נקניקייה טרייה','Fresh sausage')}</option>
+        <option value="smoked">${L('מעושן-מבושל','Smoked-cooked')}</option>
+        <option value="dry">${L('מיובש (פרמנט)','Dry-cured (fermented)')}</option>
+        <option value="bacon">${L('בייקון','Bacon')}</option>
+        <option value="brine">${L('פסטרמה (תמלחת)','Pastrami (brine)')}</option>
        </select></div>
      <div id="saltHost"></div>
      <hr style="border:none;border-top:1px solid var(--line);margin:20px 0">
@@ -1154,49 +1159,51 @@ function openCalc(){
 /* ---------- build (from-scratch) renderer ---------- */
 function renderBuildInto(sel, key, b){
   const which='build';
-  let h=`<div class="method-note">🔨 ${b.intro}</div>`;
+  let h=`<div class="method-note">🔨 <span data-mt>${b.intro}</span></div>`;
   if(b.materials&&b.materials.length){
-    h+=`<div class="matlist"><h4>חומרים וציוד</h4><ul>`+b.materials.map(m=>`<li>${m}</li>`).join("")+`</ul></div>`;
+    h+=`<div class="matlist"><h4>${L('חומרים וציוד','Materials & equipment')}</h4><ul>`+b.materials.map(m=>`<li data-mt>${m}</li>`).join("")+`</ul></div>`;
   }
   if(b.calc) h+=calcBoxHTML(b.calc);
   if(b.variants&&b.variants.length){
-    h+=`<div class="var"><h4>סוגים / ווריאנטים</h4>`+b.variants.map(v=>`<div class="varitem"><div class="vt">${v[0]}</div><p>${v[1]}</p></div>`).join("")+`</div>`;
+    h+=`<div class="var"><h4>${L('סוגים / ווריאנטים','Types / variants')}</h4>`+b.variants.map(v=>`<div class="varitem"><div class="vt" data-mt>${v[0]}</div><p data-mt>${v[1]}</p></div>`).join("")+`</div>`;
   }
-  h+=`<div class="steps" style="margin-top:14px"><h4 style="font-family:'Heebo';font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember2);margin:0 0 4px">שלבי הבנייה</h4>`+
+  h+=`<div class="steps" style="margin-top:14px"><h4 style="font-family:'Heebo';font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember2);margin:0 0 4px">${L('שלבי הבנייה','Build steps')}</h4>`+
      b.phases.map((p,i)=>stepHTML(key,which,i,p)).join("")+`</div>`;
-  if(b.store) h+=`<div class="method-note" style="margin-top:14px;background:var(--fresh-l);border-color:#b8e0d4">${b.store}</div>`;
+  if(b.store) h+=`<div class="method-note" data-mt style="margin-top:14px;background:var(--fresh-l);border-color:#b8e0d4">${b.store}</div>`;
   document.querySelector(sel).innerHTML=h;
   if(b.calc) wireCalcBox(document.querySelector(sel), b.calc);
   wireSteps(key,which,b.phases);
+  try{ if(typeof hydrateMT==='function') hydrateMT(document.querySelector(sel)); }catch(e){}   // translate build prose (intro/materials/variants/store) offline
 }
 
 function grillLine(c){
-  if(c.grillable===false) return 'לא מומלץ לגריל ישיר (נתח ארוך-בישול)';
+  if(c.grillable===false) return L('לא מומלץ לגריל ישיר (נתח ארוך-בישול)','Not recommended for direct grilling (a long-cook cut)');
   if(c.grt==null) return null;
-  return `${c.grt}°C${c.grh?` · ${c.grh}ש`:''}${c.grz?` · ${c.grz}`:''}`;
+  return `${c.grt}°C${c.grh?` · ${c.grh}${L('ש','h')}`:''}${c.grz?` · ${t(c.grz)}`:''}`;
 }
 function srcRow(label, o){
   if(!o) return '';
-  if(o.ref==='UNVERIFIED') return `<tr><td>${label}</td><td style="color:var(--terra-d,#c9822e)">⚠ טרם אומת ממקור</td></tr>`;
+  if(o.ref==='UNVERIFIED') return `<tr><td>${label}</td><td style="color:var(--terra-d,#c9822e)">⚠ ${L('טרם אומת ממקור','Not yet source-verified')}</td></tr>`;
   const link=o.url?` <a href="${o.url}" target="_blank" rel="noopener" style="color:var(--ember2);text-decoration:none">↗</a>`:'';
   const note=o.note?`<div style="font-size:.82em;opacity:.7;margin-top:2px">${o.note}</div>`:'';
   return `<tr><td>${label}</td><td>${o.ref||'—'}${link}${note}</td></tr>`;
 }
 function sourcesBlock(c){
-  const hd=`<h4 style="font-family:'Heebo';font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember2);margin:0 0 8px">📚 מקורות ואימות</h4>`;
+  const hd=`<h4 style="font-family:'Heebo';font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember2);margin:0 0 8px">📚 ${L('מקורות ואימות','Sources & verification')}</h4>`;
   const s=c.src;
   if(!s||typeof s!=='object'){
-    return `<div class="raw">${hd}<p style="opacity:.6;font-size:13px;margin:0">טרם אומת ממקור ראשוני.</p></div>`;
+    return `<div class="raw">${hd}<p style="opacity:.6;font-size:13px;margin:0">${L('טרם אומת ממקור ראשוני.','Not yet verified against a primary source.')}</p></div>`;
   }
-  const rows=[srcRow('סו-ויד',s.sv),srcRow('עישון',s.smoke),srcRow('גריל',s.grill),srcRow('בטיחות',s.safe),srcRow('ריפוי/כבישה',s.cure)].join('');
-  const ver=s.verified?`<tr><td>אומת</td><td>${s.verified}</td></tr>`:'';
+  const rows=[srcRow(L('סו-ויד','Sous-vide'),s.sv),srcRow(L('עישון','Smoke'),s.smoke),srcRow(L('גריל','Grill'),s.grill),srcRow(L('בטיחות','Safety'),s.safe),srcRow(L('ריפוי/כבישה','Cure/brine'),s.cure)].join('');
+  const ver=s.verified?`<tr><td>${L('אומת','Verified')}</td><td>${s.verified}</td></tr>`:'';
   const oa=c.order_svsmoke, ob=c.order_smokesv;
   let order='';
   if(oa||ob){
     const vt=`style="font-family:'Heebo';font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ember2);margin:2px 0"`;
-    order=`<div style="margin-top:10px"><div ${vt}>🔀 השפעת סדר</div>`;
-    if(oa) order+=`<div style="font-size:13px;line-height:1.5">סו-ויד→עישון: סו-ויד ${oa.sv.t}°/${oa.sv.h}ש${oa.dry?` → ייבוש ${oa.dry.h}ש`:''} → עישון ${oa.smoke.t}°/${oa.smoke.h}ש <span style="opacity:.65">(גימור חם)</span></div>`;
-    if(ob) order+=`<div style="font-size:13px;line-height:1.5">עישון→סו-ויד: עישון ${ob.smoke.t}°/${ob.smoke.h}ש${ob.smoke.cold?' <span style="opacity:.65">(עישון קר)</span>':''} → סו-ויד ${ob.sv.t}°/${ob.sv.h}ש <span style="opacity:.65">(פסטור מלא)</span></div>`;
+    const hh=L('ש','h');
+    order=`<div style="margin-top:10px"><div ${vt}>🔀 ${L('השפעת סדר','Order impact')}</div>`;
+    if(oa) order+=`<div style="font-size:13px;line-height:1.5">${L('סו-ויד→עישון','Sous-vide→smoke')}: ${L('סו-ויד','sous-vide')} ${oa.sv.t}°/${oa.sv.h}${hh}${oa.dry?` → ${L('ייבוש','dry')} ${oa.dry.h}${hh}`:''} → ${L('עישון','smoke')} ${oa.smoke.t}°/${oa.smoke.h}${hh} <span style="opacity:.65">(${L('גימור חם','hot finish')})</span></div>`;
+    if(ob) order+=`<div style="font-size:13px;line-height:1.5">${L('עישון→סו-ויד','Smoke→sous-vide')}: ${L('עישון','smoke')} ${ob.smoke.t}°/${ob.smoke.h}${hh}${ob.smoke.cold?` <span style="opacity:.65">(${L('עישון קר','cold smoke')})</span>`:''} → ${L('סו-ויד','sous-vide')} ${ob.sv.t}°/${ob.sv.h}${hh} <span style="opacity:.65">(${L('פסטור מלא','full pasteurization')})</span></div>`;
     order+=`</div>`;
   }
   return `<div class="raw">${hd}<table>${rows}${ver}</table>${order}</div>`;
@@ -1818,8 +1825,8 @@ function buildGloss(){
   // inject search + group chips once, above the grid
   let bar=$("#glossBar");
   if(!bar){ bar=document.createElement('div'); bar.id='glossBar'; host.parentNode.insertBefore(bar,host); }
-  bar.innerHTML=`<div class="chome-search" style="margin:0 0 10px"><span class="ic">⌕</span><input id="glossSearch" placeholder="חפש מונח — עברית או אנגלית…" value="${glossFilter.q}"></div>
-    <div class="chips" style="margin-bottom:12px"><span class="chip ${!glossFilter.grp?'on':''}" data-glossgrp="">הכל</span>${groups.map(g=>`<span class="chip ${glossFilter.grp===g?'on':''}" data-glossgrp="${g}">${g}</span>`).join('')}</div>`;
+  bar.innerHTML=`<div class="chome-search" style="margin:0 0 10px"><span class="ic">⌕</span><input id="glossSearch" placeholder="${L('חפש מונח — עברית או אנגלית…','Search a term — Hebrew or English…')}" value="${glossFilter.q}"></div>
+    <div class="chips" style="margin-bottom:12px"><span class="chip ${!glossFilter.grp?'on':''}" data-glossgrp="">${L('הכל','All')}</span>${groups.map(g=>`<span class="chip ${glossFilter.grp===g?'on':''}" data-glossgrp="${g}">${t(g)}</span>`).join('')}</div>`;
   const s=$("#glossSearch"); if(s){ s.addEventListener('input',()=>{ glossFilter.q=s.value.trim().toLowerCase(); paintGloss(); }); }
   bar.querySelectorAll('[data-glossgrp]').forEach(c=>c.addEventListener('click',()=>{ glossFilter.grp=c.dataset.glossgrp; buildGloss(); }));
   paintGloss();
@@ -1829,9 +1836,9 @@ function paintGloss(){
   if(glossFilter.grp) items=items.filter(g=>g.group===glossFilter.grp);
   if(glossFilter.q) items=items.filter(g=>(g.he+' '+g.en+' '+g.desc).toLowerCase().includes(glossFilter.q));
   $("#gloss").innerHTML=items.length?items.map(g=>`<div class="gitem">
-     <div class="gg">${g.group}</div>
-     <div class="gh">${g.he}<span class="ge">${g.en}</span></div>
-     <p>${g.desc}</p></div>`).join(""):'<div class="shop-empty">לא נמצא מונח תואם.</div>';
+     <div class="gg">${t(g.group)}</div>
+     <div class="gh">${getLang()==='he'?g.he:g.en}${getLang()==='he'?`<span class="ge">${g.en}</span>`:''}</div>
+     <p data-mt>${g.desc}</p></div>`).join(""):`<div class="shop-empty">${L('לא נמצא מונח תואם.','No matching term found.')}</div>`;
 }
 
 /* ---------- wire ---------- */
@@ -1889,7 +1896,8 @@ let toastTmo=null;
 function toast(msg, undoFn, actionLabel){
   let t=$("#toast");
   if(!t){ t=document.createElement("div"); t.id="toast"; t.className="toast"; t.setAttribute("role","status"); t.setAttribute("aria-live","polite"); document.body.appendChild(t); }
-  t.innerHTML=`<span>${msg}</span>`+(undoFn?`<button data-undo>${actionLabel||'בטל'}</button>`:'');   // action label defaults to "בטל" (undo); pass e.g. "רענן עכשיו" for non-undo actions
+  const _d=(typeof getDict==='function')?getDict():null; const tr=(s)=>(_d&&_d[s]!=null)?_d[s]:s;   // i18n: dict-translate the notification, Hebrew passes through unchanged
+  t.innerHTML=`<span>${tr(msg)}</span>`+(undoFn?`<button data-undo>${tr(actionLabel||'בטל')}</button>`:'');   // action label defaults to "בטל" (undo); pass e.g. "רענן עכשיו" for non-undo actions
   t.classList.add("show");
   clearTimeout(toastTmo); toastTmo=setTimeout(()=>t.classList.remove("show"),5000);
   if(undoFn){ t.querySelector("[data-undo]").addEventListener("click",()=>{ clearTimeout(toastTmo); t.classList.remove("show"); undoFn(); }); }
@@ -2233,24 +2241,24 @@ function fillExtras(key){
   const hasOuterPicker=(()=>{ const e=document.getElementById('spk-'+key); return !!(e && !host.contains(e)); })();
   const ks=kosherStatus(key), sub=kosherSub(key);
   const note=store.get('note:'+key)||'', rate=store.get('rating:'+key)||0;
-  const projBanner=curProject?(()=>{ const p=projById(curProject); return p?`<div class="proj-banner">🧫 בתוך פרויקט: <b>${p.name}</b> · סימוני השלבים נשמרים בפרויקט</div>`:''; })():'';
+  const projBanner=curProject?(()=>{ const p=projById(curProject); return p?`<div class="proj-banner">🧫 ${L('בתוך פרויקט','Inside project')}: <b>${p.name}</b> · ${L('סימוני השלבים נשמרים בפרויקט','step marks are saved in the project')}</div>`:''; })():'';
   host.innerHTML=`<div class="exbox">${projBanner}
-     <button class="exaddmenu ${menuHasKey(key)?'on':''}" data-addmenu="${key}" data-full aria-pressed="${menuHasKey(key)}" aria-label="${menuHasKey(key)?'הסר מהתפריט':'הוסף לתפריט'}">${menuHasKey(key)?'✓ בתפריט':'＋ הוסף לתפריט'}</button>
+     <button class="exaddmenu ${menuHasKey(key)?'on':''}" data-addmenu="${key}" data-full aria-pressed="${menuHasKey(key)}" aria-label="${menuHasKey(key)?L('הסר מהתפריט','Remove from menu'):L('הוסף לתפריט','Add to menu')}">${menuHasKey(key)?`✓ ${L('בתפריט','On menu')}`:`＋ ${L('הוסף לתפריט','Add to menu')}`}</button>
      <div class="exrow">
-       <button class="exfav ${isFav(key)?'on':''}" data-exfav>${isFav(key)?'★ במועדפים':'☆ הוסף למועדפים'}</button>
+       <button class="exfav ${isFav(key)?'on':''}" data-exfav>${isFav(key)?`★ ${L('במועדפים','Favorited')}`:`☆ ${L('הוסף למועדפים','Add to favorites')}`}</button>
        <div class="exrate" data-rate>${[1,2,3,4,5].map(n=>`<span class="star ${n<=rate?'on':''}" data-n="${n}">★</span>`).join('')}</div>
      </div>
-     ${(ks!=='kosher'&&!isProduce(meta.obj||{}))?`<div class="kbox k-${ks}"><b>${kosherLabel(ks)}</b>${sub?` · תחליף כשר: ${sub}`:''}</div>`:(isProduce(meta.obj||{})?'':`<div class="kbox k-ok">✓ ניתן להכנה כשרה</div>`)}
+     ${(ks!=='kosher'&&!isProduce(meta.obj||{}))?`<div class="kbox k-${ks}"><b>${kosherLabel(ks)}</b>${sub?` · ${L('תחליף כשר','Kosher substitute')}: ${t(sub)}`:''}</div>`:(isProduce(meta.obj||{})?'':`<div class="kbox k-ok">✓ ${L('ניתן להכנה כשרה','Can be made kosher')}</div>`)}
      <div class="exactions">
-       ${isProjectItem(meta)?`<button data-startproj>▶ התחל פרויקט</button>`:''}
-       ${key==='cut-18'?`<button data-burger>🍔 בנה את הבורגר</button>`:''}
-       <button data-recipecart>🛒 קניות למתכון זה</button>
-       <button data-logcook>📓 תעד בישול</button>
-       ${(meta.kind==='cut'&&!isProduce(meta.obj||{}))?`<button data-butcher>🥩 פתק לקצב</button>`:''}
-       ${meta.obj&&meta.obj.wood&&meta.obj.wood!=='ללא'?`<button data-exwoods>🪵 עצים</button>`:''}
-       <button data-resetprog>↺ אפס התקדמות</button>
+       ${isProjectItem(meta)?`<button data-startproj>▶ ${L('התחל פרויקט','Start project')}</button>`:''}
+       ${key==='cut-18'?`<button data-burger>🍔 ${L('בנה את הבורגר','Build the burger')}</button>`:''}
+       <button data-recipecart>🛒 ${L('קניות למתכון זה','Shopping for this recipe')}</button>
+       <button data-logcook>📓 ${L('תעד בישול','Log cook')}</button>
+       ${(meta.kind==='cut'&&!isProduce(meta.obj||{}))?`<button data-butcher>🥩 ${L('פתק לקצב','Butcher note')}</button>`:''}
+       ${meta.obj&&meta.obj.wood&&meta.obj.wood!=='ללא'?`<button data-exwoods>🪵 ${L('עצים','Woods')}</button>`:''}
+       <button data-resetprog>↺ ${L('אפס התקדמות','Reset progress')}</button>
      </div>
-     <div class="exnotes"><label>הערות אישיות (נשמר אוטומטית)</label><textarea data-note placeholder="טמפ׳ שעבדה, התאמות, מה לשפר…">${note}</textarea></div>
+     <div class="exnotes"><label>${L('הערות אישיות (נשמר אוטומטית)','Personal notes (auto-saved)')}</label><textarea data-note placeholder="${L('טמפ׳ שעבדה, התאמות, מה לשפר…','Temps that worked, tweaks, what to improve…')}">${note}</textarea></div>
      <div data-extraform></div>
    </div>
    ${(!hasOuterPicker&&typeof seasPickerHTML==='function')?seasPickerHTML(key, meta.cat||(meta.obj&&meta.obj.cat), (typeof isProduce==='function')&&meta.kind==='cut'&&isProduce(meta.obj||{}), 'edit'):''}`;
@@ -2469,8 +2477,8 @@ function openJournal(){
     <div class="jc-main"><div class="jc-top"><b>${e.name}</b><span>${fmtDate(e.date)}</span></div>
     ${e.temp?`<div class="jc-temp">${e.temp}</div>`:''}${e.rating?`<div class="rmini">${'★'.repeat(e.rating)}</div>`:''}</div>
     <button class="pc-rm" data-jrm="${e.id}">×</button></div>`).join("");
-  showPanel(`${toolTop('יומן בישולים','היסטוריה אישית','📓','#c0563a')}
-   <div class="panel-body">${(typeof aiAvail==='function'&&aiAvail()&&a.length>=3)?`<button class="ccta" id="jInsights" style="margin:0 0 14px;background:var(--fresh);border-color:var(--fresh)">✨ תובנות AI מהיומן</button>`:''}${a.length?rows:'<div class="shop-empty">אין רישומים עדיין.<br>פתח מתכון ולחץ "📓 תעד בישול".</div>'}</div>`);
+  showPanel(`${toolTop(L('יומן בישולים','Cook journal'),L('היסטוריה אישית','Personal history'),'📓','#c0563a')}
+   <div class="panel-body">${(typeof aiAvail==='function'&&aiAvail()&&a.length>=3)?`<button class="ccta" id="jInsights" style="margin:0 0 14px;background:var(--fresh);border-color:var(--fresh)">✨ ${L('תובנות AI מהיומן','AI insights from the journal')}</button>`:''}${a.length?rows:`<div class="shop-empty">${L('אין רישומים עדיין.','No entries yet.')}<br>${L('פתח מתכון ולחץ "📓 תעד בישול".','Open a recipe and tap "📓 Log cook".')}</div>`}</div>`);
   const ib=$("#jInsights"); if(ib) ib.addEventListener('click',openJournalInsights);
   $("#panel").querySelectorAll('[data-jrm]').forEach(b=>b.addEventListener('click',()=>{
     const arr=journal(), idx=arr.findIndex(x=>x.id===b.dataset.jrm), removed=arr[idx];
@@ -2810,14 +2818,14 @@ function openGuide(){
 function openHelp(){
   const total=TROUBLE_GROUPS.reduce((n,g)=>n+g.items.length,0);
   const groupHTML=TROUBLE_GROUPS.map((grp,gi)=>{
-    const items=grp.items.map((t,i)=>`<div class="acc"><button class="acc-q" data-acc="${gi}-${i}">${t[0]} <span>+</span></button><div class="acc-a" id="acc-${gi}-${i}">${t[1]}</div></div>`).join("");
-    return `<div class="trouble-grp"><button class="tg-head" data-tg="${gi}"><span>${grp.ic} ${grp.g}</span><span class="tg-n">${grp.items.length} <b class="tg-chev">▾</b></span></button><div class="tg-body" id="tg-${gi}" hidden>${items}</div></div>`;
+    const items=grp.items.map((tt,i)=>`<div class="acc"><button class="acc-q" data-acc="${gi}-${i}"><span data-mt>${tt[0]}</span> <span>+</span></button><div class="acc-a" id="acc-${gi}-${i}" data-mt>${tt[1]}</div></div>`).join("");
+    return `<div class="trouble-grp"><button class="tg-head" data-tg="${gi}"><span>${grp.ic} <span data-mt>${grp.g}</span></span><span class="tg-n">${grp.items.length} <b class="tg-chev">▾</b></span></button><div class="tg-body" id="tg-${gi}" hidden>${items}</div></div>`;
   }).join("");
-  showPanel(`${toolTop('מצב הצילו','אבחון ופתרון תקלות — לפי נושא','🆘','#a8392f')}
+  showPanel(`${toolTop(L('מצב הצילו','Rescue mode'),L('אבחון ופתרון תקלות — לפי נושא','Diagnose & fix problems — by topic'),'🆘','#a8392f')}
    <div class="panel-body">
-     <div class="trouble-search"><span class="ic">⌕</span><input id="tSearch" placeholder="חפש תקלה — עשן מר, שומן נמרח, pH, יבש…"></div>
-     ${(typeof aiAvail==='function'&&aiAvail())?`<button class="ccta" id="tAiDiag" style="margin:10px 0;background:var(--fresh);border-color:var(--fresh)">✨ אבחון אישי עם AI</button>`:''}
-     <p class="section-sub" style="margin:2px 0 12px">${total} פתרונות ב-${TROUBLE_GROUPS.length} נושאים · הקש נושא לפתיחה</p>
+     <div class="trouble-search"><span class="ic">⌕</span><input id="tSearch" placeholder="${L('חפש תקלה — עשן מר, שומן נמרח, pH, יבש…','Search a problem — bitter smoke, fat smear, pH, dry…')}"></div>
+     ${(typeof aiAvail==='function'&&aiAvail())?`<button class="ccta" id="tAiDiag" style="margin:10px 0;background:var(--fresh);border-color:var(--fresh)">✨ ${L('אבחון אישי עם AI','Personal AI diagnosis')}</button>`:''}
+     <p class="section-sub" style="margin:2px 0 12px">${total} ${L('פתרונות ב-','solutions in ')}${TROUBLE_GROUPS.length} ${L('נושאים · הקש נושא לפתיחה','topics · tap a topic to open')}</p>
      <div id="tGroups">${groupHTML}</div>
      <div id="tResults" hidden></div>
    </div>`);
@@ -4710,7 +4718,7 @@ function fillHero(){
   const nCats=new Set(DATA.cuts.map(c=>c.cat)).size;
   const nMakes=Object.keys(DATA.makes).length;
   const nDone=DATA.cuts.filter(c=>c.doneness).length;
-  el.innerHTML=`<b>${nCuts} נתחים</b> ב-${nCats} קטגוריות — בשר, עוף, דג, איברים פנימיים, ירקות ופירות — ועוד <b>${nMakes} מתכוני מלאכה</b> (ריפוי, נקניקים, גבינות). לכל פריט: סו-ויד, עישון וגריל, ול-${nDone} נתחים בורר מידת-עשייה מדויק — הכל נגזר מהטבלאות שלך.`;
+  el.innerHTML=L(`<b>${nCuts} נתחים</b> ב-${nCats} קטגוריות — בשר, עוף, דג, איברים פנימיים, ירקות ופירות — ועוד <b>${nMakes} מתכוני מלאכה</b> (ריפוי, נקניקים, גבינות). לכל פריט: סו-ויד, עישון וגריל, ול-${nDone} נתחים בורר מידת-עשייה מדויק — הכל נגזר מהטבלאות שלך.`,`<b>${nCuts} cuts</b> in ${nCats} categories — meat, poultry, fish, offal, vegetables and fruit — plus <b>${nMakes} craft recipes</b> (curing, sausages, cheeses). For each item: sous-vide, smoking and grill, and a precise doneness picker for ${nDone} cuts — all derived from your tables.`);
 }
 buildChips();buildMakeChips();buildFilterBar();fillHero();buildGloss();updateCartBadge();updateFavBadge();
 (()=>{ const bb=$("#catBack"); if(bb) bb.addEventListener('click',()=>{
@@ -6603,7 +6611,7 @@ try{ if(typeof startTimerWatch==='function') startTimerWatch(); }catch(e){}   //
 try{ if(typeof anyTimerRinging==='function' && anyTimerRinging()){ if(typeof renderAlarm==='function') renderAlarm(); if(typeof startRingLoop==='function') startRingLoop(); } }catch(e){}   // reopened while a timer is ringing → show the in-app alarm + resume the re-pulse
 // Wave 5: keep translating as the SPA re-renders. childList only (subtree) — tnode edits text values,
 // not structure, so it never re-triggers itself. Debounced; no-op in Hebrew.
-try{ let _tnTmo=null; const _mo=new MutationObserver(function(){ if(getLang()==='he') return; clearTimeout(_tnTmo); _tnTmo=setTimeout(function(){ try{ applyI18n(document.body); }catch(e){} try{ tnode(document.body); }catch(e){} }, 50); }); _mo.observe(document.body, {childList:true, subtree:true}); }catch(e){}
+try{ let _tnTmo=null; const _mo=new MutationObserver(function(){ if(getLang()==='he') return; clearTimeout(_tnTmo); _tnTmo=setTimeout(function(){ try{ applyI18n(document.body); }catch(e){} try{ tnode(document.body); }catch(e){} try{ hydrateMT(document.body); }catch(e){} }, 50); }); _mo.observe(document.body, {childList:true, subtree:true}); }catch(e){}
 try{ if(typeof requestPersist==='function') requestPersist(); }catch(e){}   // Wave C: ask for persistent storage so a live cook's data isn't evicted
 try{ document.addEventListener('pointerdown', function(){ if(typeof timerAudioPrime==='function') timerAudioPrime(); }, {once:true}); }catch(e){}   // R4: unlock audio on first gesture so timers restored after a reload still beep
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}
