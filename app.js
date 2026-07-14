@@ -4584,6 +4584,7 @@ function syncHomeLang(){ try{ const l=getLang(); const f=$("#cHomeLangFlag"); if
 function applyLang(){ const l=getLang(); const d=(l==='he')?null:(I18N_DICTS[l]||{}); const dir=d?((d.__meta__||{}).dir||'ltr'):'rtl';
   try{ const el=document.documentElement; el.lang=l; el.dir=dir; el.classList.toggle('lang-en', l!=='he'); }catch(e){}
   try{ syncHomeLang(); }catch(e){}
+  try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){}   // home greeting + cooking/resume banners are painted by cRefreshHome (L()/getLang-based), not tnode — repaint them so a language switch updates them without a refresh
   try{ if(_mkMethodRepaint && document.getElementById('methodArea')) _mkMethodRepaint(); }catch(e){}   // regenerate open recipe steps in the active language
   if(l==='he'){ try{ restoreHe(); }catch(e){} return; }   // restore originals, then stop (no dict)
   try{ applyI18n(); }catch(e){}
