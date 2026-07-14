@@ -65,6 +65,27 @@ function canGrill(){ if(!gearConfigured()) return true; const g=gearState();
   return !!(g.smoker && ['קמאדו / קרמי','קטל (ככלי עישון)','WSM / חבית','אופסט / סטיק-ברנר'].includes(g.smoker)); }
 function gearCan(method){ return method==='sv'?canSV():method==='smoke'?canSmoke():method==='grill'?canGrill():true; }
 function gearLabelFor(method){ return method==='sv'?'סו-ויד':method==='smoke'?'מעשנה':method==='grill'?'גריל':''; }
+// one source of truth for the adaptive home — capability + presence, read from mk-gear each paint
+function homeGear(){ const g=gearState();
+  return {
+    canSmoke: canSmoke(), canGrill: canGrill(), canSV: canSV(),
+    hasProbe: !!(g.thermo && g.thermo!=='אין'),
+    hasCharcuterie: !!((g.grinder && g.grinder!=='אין') || (g.stuffer && g.stuffer!=='אין')),
+    configured: gearConfigured()
+  };
+}
+// stamp the adaptive-home body classes (gear = relevance, level = density; is-cooking = live). Render-layer only.
+function homeAdaptClasses(){ try{
+  const cl=document.body.classList;
+  const hg=homeGear();
+  const lvKey=(typeof uiLevel==='function')?uiLevel():'mid'; const lv=({beginner:'beg',mid:'mid',pro:'pro'})[lvKey]||'mid';
+  const live=(typeof _liveCookState==='function') && _liveCookState().live;
+  cl.toggle('is-cooking', !!live);
+  cl.toggle('gear-nosv', !hg.canSV);
+  cl.toggle('gear-noproj', !hg.hasCharcuterie);
+  cl.toggle('gear-noprobe', !hg.hasProbe);
+  cl.remove('lvl-beg','lvl-mid','lvl-pro'); cl.add('lvl-'+lv);
+}catch(e){} }
 function methodRules(c){
   if(isProduce(c)) return {allowed:['sv','smoke','grill'], def:['grill'], minOne:true,
     invalid:[['sv','smoke','grill']]};                       // all three = overcooked produce
@@ -5193,6 +5214,7 @@ function cwPaintMethods(){ /* legacy no-op retained */ }
 function cwPaintProteins(){ /* legacy no-op retained */ }
 function cwUpdateHint(){ /* legacy no-op */ }
 function cRefreshHome(){
+  try{ if(typeof homeAdaptClasses==='function') homeAdaptClasses(); }catch(e){}   // adaptive-home body classes (gear/level/live)
   const r=store.get('mk-cresume'); const box=$("#cResume"); if(!box) return;
   // validate against the store for the SAVED context (cook -> mk-cook, event -> mk-menu), not always mk-menu
   const savedCtx=(r&&r.ctx==='cook')?'cook':'event';
@@ -5224,7 +5246,7 @@ function cRefreshHome(){
       } else cb.hidden=true;
     }
   }
-  const g=$("#cGreet"); if(g){ const h=new Date().getHours(); g.textContent=(h<12?'בוקר טוב':h<18?'צהריים טובים':'ערב טוב')+' 👋'; }
+  const g=$("#cGreet"); if(g){ const h=new Date().getHours(); g.textContent=(h<12?L('בוקר טוב','Good morning'):h<18?L('צהריים טובים','Good afternoon'):L('ערב טוב','Good evening'))+' 👋'; }
 }
 // shared "is something cooking?" state (started plans + running/ringing timers)
 function _liveCookState(){
