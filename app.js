@@ -1899,6 +1899,8 @@ document.addEventListener("keydown",e=>{
   const act=t.closest('.card,.cpath,.cnext,[data-cgo],[data-cwm],[data-app],.chip,.cmethod,[data-cwpick]');
   if(!act) return; e.preventDefault(); act.click();
 });
+// W1-P3: any "🧮 Open calculator" deep-link from an AI safety escalation → the salt/cure/quantity calculator (the number owner)
+document.addEventListener('click',function(e){ const b=e.target&&e.target.closest&&e.target.closest('[data-aicalc]'); if(b){ if(typeof closePanel==='function') closePanel(); setTimeout(function(){ if(typeof openCalc==='function') openCalc(); },60); } });
 /* a11y: make those surfaces focusable + announced; keep aria-pressed synced with the .on toggle class.
    (Cards carry tabindex/role in their own template — the high-count path — so they stay out of this observer.) */
 (function(){
@@ -3055,7 +3057,7 @@ async function askGemini(qRaw, history){
   const cand=j.candidates&&j.candidates[0];
   const txt=cand&&cand.content&&(cand.content.parts||[]).map(p=>p.text||'').join('').trim();
   if(!txt){ const fr=(cand&&cand.finishReason)||(j.promptFeedback&&j.promptFeedback.blockReason)||'ריק'; throw new Error('empty-'+fr); }
-  return {txt,chips:ents};
+  return {txt,chips:ents,ctx};   // W1-P3: return the grounding so the render can verify the answer's safety numbers against it
 }
 async function askValidateKey(key){
   try{ await gemFetch(GEM_MODEL, {contents:[{parts:[{text:'שלום'}]}],generationConfig:{maxOutputTokens:20,thinkingConfig:{thinkingBudget:0}}}, {key, retries:0, timeout:12000}); return true; }catch(e){ return false; }
@@ -3096,6 +3098,33 @@ function aiSafetyCaveat(txt){
   return '<div class="ai-caveat">⚠ '+(he
     ?'מספרי טמפ׳/ריפוי/בטיחות בתשובת ה-AI אינם מאומתים — אמת מול כרטיס המתכון והמחשבון באפליקציה לפני ביצוע.'
     :'Temperature / cure / safety numbers in the AI answer are not verified — check them against the recipe card and the app calculator before you act.')+'</div>';
+}
+// W1-P3: numeric-invariant guard. Extract the safety-relevant numbers (temps °/°C/°F/bare C-F, ppm, %, pH) from AI prose,
+// and flag any that are NOT present in the vetted grounding context as ungrounded (likely fabricated) → escalate + deep-link the calculator.
+function aiSafetyNums(s){
+  const out=[]; const str=String(s||''); let m;
+  const re=/(\d+(?:\.\d+)?)\s*(?:°\s*[CF]?|[CF]\b|ppm|%)|\bpH\s*(\d+(?:\.\d+)?)/gi;
+  while((m=re.exec(str))!==null){ const n=parseFloat(m[1]||m[2]); if(!isNaN(n)) out.push(n); if(m.index===re.lastIndex) re.lastIndex++; }
+  return out;
+}
+function aiUngroundedSafety(answer, context){
+  const a=aiSafetyNums(answer); if(!a.length) return [];
+  const c=new Set(aiSafetyNums(context).map(function(n){return n.toString();}));
+  return a.filter(function(n){ return !c.has(n.toString()); });
+}
+// The trust contract in one place: no safety numbers → nothing; ungrounded safety numbers → STRONG "don't rely, use the calculator";
+// grounded/unknown safety numbers → the mild "verify" caveat.
+function aiSafetyNote(answerText, groundingText){
+  if(!aiSafetyHasNumbers(answerText)) return '';
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const ung=(groundingText!=null && groundingText!=='') ? aiUngroundedSafety(answerText, groundingText) : null;
+  if(ung && ung.length){
+    return '<div class="ai-caveat ai-caveat-strong">🚫 '+(he
+      ?'התשובה כוללת מספרי בטיחות שאינם מהנתונים המאומתים של האפליקציה — אל תסתמך עליהם. השתמש במחשבון לחישוב מדויק:'
+      :'This answer contains safety numbers that are NOT from the app\'s verified data — do not rely on them. Use the calculator for the exact figure:')
+      +' <button class="ai-calc-link" data-aicalc>🧮 '+(he?'פתח מחשבון':'Open calculator')+'</button></div>';
+  }
+  return aiSafetyCaveat(answerText);
 }
 // UX #13: one shared AI-loading spinner (the ask flow and the ✨ AI panels used different markup).
 function aiSpinner(label){ return `<span class="wcim-loading">✨ ${esc(label||'האש חושב')}<span class="ask-dots"><b>.</b><b>.</b><b>.</b></span></span>`; }
@@ -3203,7 +3232,7 @@ function openAsk(){
       if(!gemKey()){ askConnect(); return; }
       const load=addAnswer(`<div class="abubble ask-loading">${badge('ai')}${aiSpinner(L('האש חושב','The Fire is thinking'))}</div>`);
       try{ const r=await askGemini(q, hist);
-        load.innerHTML=`<div class="abubble">${badge('ai')}${esc(r.txt||'').replace(/\n/g,'<br>')}${aiSafetyCaveat(r.txt)}</div>`;   // AI #4: flag unverified safety numbers
+        load.innerHTML=`<div class="abubble">${badge('ai')}${esc(r.txt||'').replace(/\n/g,'<br>')}${aiSafetyNote(r.txt, r.ctx)}</div>`;   // W1-P3: verify safety numbers against the grounding; escalate + calculator link if ungrounded
         if(r.chips&&r.chips.length){ load.innerHTML+=`<div class="askchips">`+r.chips.map(m=>`<button class="askhit" data-k="${m.key}">${(typeof itemName==='function'?itemName(m):m.heb)} · ${t(m.cat)} ▶</button>`).join("")+`</div>`; wireChips(load); }
         hist.push({role:'ai',text:r.txt||''}); scrollDown();
       }catch(err){ const code=String(err.message||err);

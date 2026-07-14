@@ -73,3 +73,28 @@ test('W1-P2: Diagnose & Journal render the safety caveat only when the AI output
   await page.evaluate(`journalInsightsRender({summary:'your best cooks rested longer', patterns:['wrapping at 70C rated higher'], suggestions:[{title:'rest more',detail:'try 45 minutes'}]})`);
   expect(await page.evaluate(`!!document.querySelector('#panel .ai-caveat')`)).toBe(true);
 });
+
+test('W1-P3: numeric guard flags ungrounded safety numbers and offers the calculator', async ({ page }) => {
+  await bootAI(page);
+  // extraction: temps / ppm / % (not incidental "6 hours")
+  expect(await page.evaluate(`JSON.stringify(aiSafetyNums('smoke at 110C for 6 hours, cure 156 ppm, 2.5% salt'))`)).toBe(JSON.stringify([110, 156, 2.5]));
+  // ungrounded (250 not in context) vs grounded (156 present)
+  expect(await page.evaluate(`aiUngroundedSafety('use 250 ppm nitrite', 'vetted: cure #1 156 ppm').length`)).toBe(1);
+  expect(await page.evaluate(`aiUngroundedSafety('cure at 156 ppm', 'vetted: 156 ppm').length`)).toBe(0);
+  // note escalation: ungrounded → STRONG + calculator link; grounded → mild; none → empty
+  const strong = await page.evaluate(`aiSafetyNote('use 250 ppm nitrite', 'vetted: 156 ppm')`) as string;
+  expect(strong).toContain('ai-caveat-strong'); expect(strong).toContain('data-aicalc');
+  const mild = await page.evaluate(`aiSafetyNote('cure at 156 ppm', 'vetted: 156 ppm')`) as string;
+  expect(mild).toContain('ai-caveat'); expect(mild).not.toContain('data-aicalc');
+  expect(await page.evaluate(`aiSafetyNote('rest for a while then slice thin', 'ctx')`)).toBe('');
+  // askGemini now returns its grounding context for the guard
+  expect(await page.evaluate(`(async()=>{ try{ const r=await askGemini('how long to smoke ribs'); return typeof r.ctx; }catch(e){ return 'err'; } })()`)).toBe('string');
+});
+
+test('W1-P3: the calculator deep-link from a strong caveat opens the calculator', async ({ page }) => {
+  await bootAI(page);
+  await page.evaluate(`showPanel('<div class="panel-body">'+aiSafetyNote('use 250 ppm nitrite','vetted: 156 ppm')+'</div>')`);
+  await page.click('#panel [data-aicalc]');
+  await page.waitForSelector('#panel h2');
+  expect(await page.evaluate(`document.querySelector('#panel h2').textContent`)).toContain('Calculators');
+});
