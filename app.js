@@ -5102,11 +5102,86 @@ function cRefreshHome(){
       if(live){ cb.hidden=false; const cm=$("#cCookingM"); const en=(typeof getLang==='function'&&getLang()!=='he');
         if(cm) cm.textContent = ringing? `⏰ ${ringing} ${en?(ringing===1?'timer finished — tap':'timers finished — tap'):'טיימרים הסתיימו — הקש'}` : running? `${running} ${en?(running===1?'timer running · tap for the plan':'timers running · tap for the plan'):'טיימרים פעילים · הקש לתוכנית'}` : L('תוכנית פעילה · הקש לתוכנית','Plan active · tap for the plan');
         cb.classList.toggle('cnext-ring', ringing>0);
-        cb.onclick=()=>{ if(typeof openTimeline==='function') openTimeline(); };
+        cb.onclick=()=>{ if(typeof openActive==='function') openActive(); else if(typeof openTimeline==='function') openTimeline(); };
       } else cb.hidden=true;
     }
   }
   const g=$("#cGreet"); if(g){ const h=new Date().getHours(); g.textContent=(h<12?'בוקר טוב':h<18?'צהריים טובים':'ערב טוב')+' 👋'; }
+}
+// ═══════════ "Active now" hub — every ongoing timer / plan / long-term project in one place, each with a jump-back ═══════════
+function _openItemByKey(key){ try{ const it=(typeof resolveItem==='function')?resolveItem(key):null; if(!it) return false;
+  if(it.kind==='cut'&&typeof openCut==='function') openCut(it.obj);
+  else if(it.kind==='spec'&&typeof openSpec==='function') openSpec(it.obj);
+  else if(it.kind==='make'&&typeof openMake==='function') openMake(String(it.key).replace(/^make-/,''));
+  else return false; return true; }catch(e){ return false; } }
+// parse mk-timers into displayable rows (running / ringing / paused)
+function activeTimerRows(){
+  const ts=store.get('mk-timers')||{}, now=Date.now(), out=[];
+  Object.keys(ts).forEach(function(k){ const r=ts[k]; if(!r) return;
+    const running=!!(r.end && !r.fired && r.end>now), ringing=!!(r.end && r.fired), paused=(r.left!=null)&&!r.end;
+    if(!running && !ringing && !paused) return;
+    out.push({key:k, name:(r.name||''), running:running, ringing:ringing, paused:paused, remain:running?Math.max(0,Math.round((r.end-now)/1000)):(paused?r.left:0), end:r.end||0});
+  });
+  out.sort(function(a,b){ if(a.ringing!==b.ringing) return a.ringing?-1:1; return (a.end||0)-(b.end||0); });   // ringing (needs attention) first, then soonest
+  return out;
+}
+// which cook / plan / recipe a timer belongs to → a label + optional jump-back
+function timerSource(key){
+  const s=String(key);
+  if(s.indexOf('st-')===0){
+    const evName=(typeof timerEventName==='function')?timerEventName(key):'';
+    if(evName){ const ev=(typeof evList==='function'?evList():[]).find(function(e){ return s.indexOf('st-'+e.id+'-')===0; });
+      return {label:evName, jump: ev?function(){ if(typeof evLoad==='function') evLoad(ev.id); if(typeof openTimeline==='function') openTimeline(); }:null}; }
+    if(s.indexOf('st-cook-')===0) return {label:L('בישול','Cook'), jump:function(){ if(typeof setMenuCtx==='function') setMenuCtx('cook'); if(typeof openTimeline==='function') openTimeline(); }};
+    return {label:L('תוכנית','Plan'), jump:(typeof openTimeline==='function')?function(){ openTimeline(); }:null};
+  }
+  const ikey=s.replace(/-[a-z]+-\d+$/,'');   // cut-1-sv-0 → cut-1
+  if(/^(cut|spec|make)-/.test(ikey)){ const meta=(typeof resolveItem==='function')?resolveItem(ikey):null;
+    if(meta) return {label:(typeof itemName==='function'?itemName(meta):meta.heb), jump:function(){ _openItemByKey(ikey); }}; }
+  return {label:'', jump:null};
+}
+function openActive(){
+  const rows=activeTimerRows();
+  const plans=[]; try{ for(let i=0;i<localStorage.length;i++){ const kk=localStorage.key(i)||''; if(kk.indexOf('mk-plan-started-')===0 && store.get(kk)) plans.push(kk.replace('mk-plan-started-','')); } }catch(e){}
+  const draft=store.get('mk-cresume');
+  const projs=(typeof pantry==='function'?pantry():[]).filter(function(p){ return (p.type==='dry'||p.type==='cure') && !((typeof projProgressReady==='function')&&projProgressReady(p)); });
+  const trow=function(x){ const src=timerSource(x.key);
+    const time=x.ringing?`⏰ ${L('הסתיים!','Done!')}`:(x.paused?`⏸ ${fmt(x.remain)}`:`<span class="atimer-remain" data-end="${x.end}">${fmt(x.remain)}</span>`);
+    const nm=x.name||src.label||L('טיימר','Timer');
+    const sub=(src.label && src.label!==x.name)?src.label:'';
+    return `<div class="active-row ${x.ringing?'ring':''}"${src.jump?' data-ajump="'+encodeURIComponent(x.key)+'"':''}>
+      <div class="ar-main"><b>${esc(nm)}</b>${sub?`<small>${esc(sub)}</small>`:''}</div>
+      <div class="ar-time">${time}</div>
+      <button class="ar-x" data-astop="${encodeURIComponent(x.key)}" aria-label="${L('עצור טיימר','Stop timer')}">✕</button>
+    </div>`; };
+  const timerHTML=rows.length?rows.map(trow).join(''):`<div class="active-empty">${L('אין טיימרים פעילים.','No active timers.')}</div>`;
+  const planHTML=(plans.length||(draft&&draft.title))?(
+    ((draft&&draft.title)?`<div class="active-row" data-aresume="1"><div class="ar-main"><b>${esc(draft.title)}</b><small>${draft.ctx==='cook'?L('בישול','Cook'):L('אירוע','Event')} · ${L('טיוטה','draft')}</small></div><span class="ar-go">←</span></div>`:'')
+    +plans.map(function(sc){ const ev=(typeof evList==='function'?evList():[]).find(function(e){return e.id===sc;});
+        const label=ev?ev.name:(sc==='cook'?L('בישול','Cook'):L('תוכנית','Plan'));
+        return `<div class="active-row" data-aplan="${encodeURIComponent(sc)}"><div class="ar-main"><b>${esc(label)}</b><small>▶ ${L('תוכנית פעילה','Plan running')}</small></div><span class="ar-go">←</span></div>`; }).join('')
+  ):`<div class="active-empty">${L('אין תוכניות פעילות.','No active plans.')}</div>`;
+  const projHTML=projs.map(function(p){ const pr=projProgress(p);
+      return `<div class="active-row" data-aproj="1"><div class="ar-main"><b>${esc(p.name)}</b><small>${esc((pr.day||pr.label)+(pr.sub?' · '+pr.sub:''))}</small></div><span class="ar-go">←</span></div>`; }).join('');
+  showPanel(`${toolTop(L('פעיל עכשיו','Active now'),L('טיימרים, תוכניות ופרויקטים פעילים','Timers, plans and projects in progress'),'🔥','#c65a3f')}
+    <div class="panel-body">
+      <div class="active-sec"><h4>⏱ ${L('טיימרים','Timers')}</h4>${timerHTML}</div>
+      <div class="active-sec"><h4>🔥 ${L('בישול / תוכניות','Cooks / plans')}</h4>${planHTML}</div>
+      ${projs.length?`<div class="active-sec"><h4>🧫 ${L('פרויקטים ארוכי-טווח','Long-term projects')}</h4>${projHTML}</div>`:''}
+    </div>`);
+  const pnl=$("#panel"); if(!pnl) return;
+  pnl.querySelectorAll('[data-astop]').forEach(function(b){ b.addEventListener('click',function(e){ e.stopPropagation();
+    const key=decodeURIComponent(b.dataset.astop); const ts=store.get('mk-timers')||{}; delete ts[key]; store.set('mk-timers',ts);
+    try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(_){} openActive(); }); });
+  pnl.querySelectorAll('[data-ajump]').forEach(function(row){ row.addEventListener('click',function(){ const src=timerSource(decodeURIComponent(row.dataset.ajump)); if(src&&src.jump) src.jump(); }); });
+  pnl.querySelectorAll('[data-aplan]').forEach(function(row){ row.addEventListener('click',function(){ const sc=decodeURIComponent(row.dataset.aplan);
+    if(sc==='cook'){ if(typeof setMenuCtx==='function') setMenuCtx('cook'); } else if(typeof evLoad==='function'){ evLoad(sc); }
+    if(typeof openTimeline==='function') openTimeline(); }); });
+  const dr=pnl.querySelector('[data-aresume]'); if(dr) dr.addEventListener('click',function(){ const d=store.get('mk-cresume')||{}; if(typeof setMenuCtx==='function') setMenuCtx(d.ctx||'event'); if(typeof cwGo==='function') cwGo(typeof d.step==='number'?d.step:5); if(typeof cNavGo==='function') cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); });
+  pnl.querySelectorAll('[data-aproj]').forEach(function(row){ row.addEventListener('click',function(){ if(typeof cNavGo==='function') cNavGo('projects'); }); });
+  try{ timers['atick']=setInterval(function(){ const now=Date.now();
+    pnl.querySelectorAll('.atimer-remain[data-end]').forEach(function(s){ const left=Math.max(0,Math.round((+s.dataset.end-now)/1000));
+      if(left<=0){ s.textContent='⏰ '+L('הסתיים!','Done!'); s.removeAttribute('data-end'); } else s.textContent=fmt(left); }); },1000); }catch(e){}
 }
 // ═══════════ Event manager (mk-events + draft) ═══════════
 function evList(){ const l=store.get('mk-events'); return Array.isArray(l)?l:[]; }
@@ -6592,7 +6667,7 @@ function openMoreSheet(){
   const grp=(title,items)=>`<div class="cmore-grp"><h4>${title}</h4>${items.map(([ic,label,fn])=>`<div class="cmore-item" data-mfn="${fn}"><span class="mi">${ic}</span>${label}<span class="mg">←</span></div>`).join('')}</div>`;
   const html=`${typeof toolTop==='function'?toolTop(L('עוד','More'),L('כל הכלים והתכונות','All the tools and features'),'☰','#e07a52'):`<h2 style="padding:16px">${L('עוד','More')}</h2>`}
     <div class="panel-body">${langRowHtml()}
-    ${grp('🍽️ '+L('עבודה','Work'),[['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline'],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint'],['🛒',L('רשימת קניות','Shopping list'),'openCart']])}
+    ${grp('🍽️ '+L('עבודה','Work'),[['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline'],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint'],['🛒',L('רשימת קניות','Shopping list'),'openCart']])}
     ${grp('✨ '+L('חוויה','Experience'),[['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']])}
     ${grp('🧰 '+L('עזר','Utilities'),[['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans'],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders'],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']])}
     ${grp('⚙️ '+L('הגדרות ועזרה','Settings & help'),[['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🔧',L('הציוד שלי','My gear'),'openGear'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']])}

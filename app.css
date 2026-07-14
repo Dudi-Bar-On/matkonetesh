@@ -72,6 +72,23 @@ body.capp{padding-bottom:82px}
 .cnext{margin:20px 16px 0;background:var(--char2);border:2px solid var(--line2);border-radius:16px;padding:15px;display:flex;align-items:center;gap:13px;cursor:pointer}
 .cnext-x{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line2);background:var(--char3);color:var(--smoke);font-size:14px;cursor:pointer;display:grid;place-items:center;line-height:1}
 .cnext-x:hover{border-color:var(--ember);color:var(--ember)}
+/* "Active now" hub */
+.active-sec{margin:0 0 18px}
+.active-sec>h4{font-family:var(--font-body);font-size:calc(12px * var(--fscale));letter-spacing:.08em;text-transform:uppercase;color:var(--ember2);margin:0 0 8px}
+.active-row{display:flex;align-items:center;gap:10px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.active-row:hover{border-color:var(--ember2)}
+.active-row .ar-main{flex:1;min-width:0}
+.active-row .ar-main b{display:block;font-size:calc(14.5px * var(--fscale));color:var(--bone);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.active-row .ar-main small{display:block;font-size:calc(12px * var(--fscale));color:var(--ash)}
+.active-row .ar-time{flex:0 0 auto;font-variant-numeric:tabular-nums;font-weight:800;color:var(--terra-d);font-size:calc(15px * var(--fscale))}
+.active-row .ar-go{flex:0 0 auto;color:var(--ember);font-weight:900}
+.active-row .ar-x{flex:0 0 auto;width:30px;height:30px;min-width:30px;border-radius:50%;border:1.5px solid var(--line2);background:var(--char3);color:var(--smoke);font-size:14px;cursor:pointer;display:grid;place-items:center;line-height:1}
+.active-row .ar-x:hover{border-color:var(--ember);color:var(--ember)}
+.active-row.ring{border-color:var(--ember);background:var(--fresh-l,#fdeadf);animation:apulse 1.4s ease-in-out infinite}
+.active-row.ring .ar-time{color:var(--ember)}
+@keyframes apulse{0%,100%{box-shadow:0 0 0 0 rgba(231,111,81,.28)}50%{box-shadow:0 0 0 5px rgba(231,111,81,0)}}
+.active-empty{color:var(--ash);font-size:calc(13px * var(--fscale));padding:6px 2px}
+@media (prefers-reduced-motion:reduce){.active-row.ring{animation:none}}
 .cnext .nico{font-size:calc(28px * var(--fscale))}.cnext .nt{font-size:calc(11.5px * var(--fscale));color:var(--ash);font-family:var(--font-body)}
 .cnext .nm{font-size:calc(15px * var(--fscale));font-weight:700;margin-top:2px;color:var(--bone)}
 .cnext .ng{color:var(--ember);font-size:calc(19px * var(--fscale))}
