@@ -45,3 +45,33 @@ test('active hub: the home cooking banner opens it', async ({ page }) => {
   expect(await page.evaluate(`document.querySelectorAll('#panel .active-sec').length`)).toBeGreaterThanOrEqual(2);
   expect(await page.evaluate(`!!document.querySelector('#panel .atimer-remain[data-end]')`)).toBe(true);
 });
+
+test('active hub: a plan-timer jump opens the timeline focused on that item', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1','make-1']}}])); } catch {} });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openTimeline==='function'`);
+  await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
+  await page.waitForSelector('#tlList .tlcard');
+  await page.waitForTimeout(300);
+  // the cut-1 card is focused and its steps are expanded
+  expect(await page.evaluate(`(function(){ const f=document.querySelector('.tlcard.tl-focus'); return f? f.querySelector('[data-tlexp]').getAttribute('data-tlexp') : 'NONE'; })()`)).toBe('cut-1');
+  const stagesShown = await page.evaluate(`(function(){ const f=document.querySelector('.tlcard.tl-focus'); const ck=f.querySelector('[data-tlexp]').getAttribute('data-ck'); return getComputedStyle(document.getElementById('tlstages-'+ck)).display; })()`);
+  expect(stagesShown).toBe('block');
+});
+
+test('events: tapping an event opens its work-plan; the ✏️ Edit button opens the wizard', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1']}}])); } catch {} });
+  await page.goto('/index.html');
+  await page.evaluate(`cNavGo('events')`);
+  await page.waitForSelector('.cevcard .cev-name');
+  await page.click('.cevcard .cev-name');   // tap the event body
+  await page.waitForSelector('#panel.open #tlBody');   // → work-plan (timeline), not the wizard
+  expect(await page.evaluate(`document.querySelector('#scr-wizard').classList.contains('on')`)).toBe(false);
+  await page.evaluate(`closePanel()`);
+  await page.evaluate(`cNavGo('events')`);
+  await page.waitForSelector('[data-evedit]');
+  await page.click('[data-evedit]');   // Edit → wizard
+  await expect(page.locator('#scr-wizard')).toHaveClass(/on/);
+});

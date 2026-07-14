@@ -3563,10 +3563,26 @@ function tlStateKey(){ return 'mk-tlstate-'+(typeof evScope==='function'?evScope
 function tlState(){return store.get(tlStateKey())||store.get('mk-tlstate')||{};}   // falls back to the legacy global once (migration)
 function tlSetState(s){store.set(tlStateKey(),s);}
 
-function openTimeline(){
+function openTimeline(focus){
   showPanel(`${toolTop(L('מתזמן ציר-זמן','Timeline scheduler'),L('שלבי הכנה מפורטים לכל פריט, לפי שעת הגשה','Detailed prep steps per item, by serve time'),'🕒','#cf6a4a')}
    <div class="panel-body" id="tlBody"></div>`);
   renderTimelinePanel();
+  if(focus) _tlFocusItem(focus);
+}
+// scroll the timeline to a specific item and expand its steps — `focus` may be a stage-timer id
+// (st-<scope>-<itemKey>-<kind>), a recipe-timer id (cut-1-sv-0), or a bare item key (cut-1)
+function _tlFocusItem(focus){
+  requestAnimationFrame(function(){ try{
+    const list=$("#tlList"); if(!list) return;
+    let card=null, ck=null;
+    list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(card) return; const k=b.getAttribute('data-tlexp');
+      if(k && (String(focus)===k || String(focus).indexOf('-'+k+'-')>=0 || String(focus).indexOf(k+'-')===0)){ card=b.closest('.tlcard'); ck=b.getAttribute('data-ck'); } });
+    if(!card){ const el=list.querySelector('[data-tid="'+((window.CSS&&CSS.escape)?CSS.escape(String(focus)):String(focus))+'"]'); if(el) card=el.closest('.tlcard'); }
+    if(!card) return;
+    if(ck){ const stg=document.getElementById('tlstages-'+ck); if(stg) stg.style.display='block'; }   // expand steps so the timer is visible
+    card.classList.add('tl-focus'); setTimeout(function(){ try{ card.classList.remove('tl-focus'); }catch(e){} }, 2600);
+    card.scrollIntoView({block:'center',behavior:'smooth'});
+  }catch(e){} });
 }
 /* ---------- voice cook mode (TTS + closed voice commands) ---------- */
 let vcTasks=[], vcIdx=0, vcRec=null, vcVoices=[];
@@ -5067,7 +5083,7 @@ function cwPaintReview(){
     const m=cwMenu();
     let name=(m.evName||'').trim();
     if(!name){ const v=await appPrompt('שם לאירוע:','',{placeholder:'למשל: שישי במשפחה',okLabel:'💾 שמור'}); if(v===null||v===false) return; name=v||'אירוע ללא שם'; const mm=cwMenu(); mm.evName=name; cwSave(mm); const nmf=$("#cwEvName"); if(nmf) nmf.value=name; }
-    evSaveCurrent(name); if(typeof toast==='function') toast('האירוע נשמר ✓'); cNavGo('events');
+    evSaveCurrent(name); if(typeof toast==='function') toast(L('האירוע נשמר ✓','Event saved ✓')); cNavGo('events');
   });
 })();
 function cwSeedResume(){ cwPaintReview(); }
@@ -5131,9 +5147,9 @@ function timerSource(key){
   if(s.indexOf('st-')===0){
     const evName=(typeof timerEventName==='function')?timerEventName(key):'';
     if(evName){ const ev=(typeof evList==='function'?evList():[]).find(function(e){ return s.indexOf('st-'+e.id+'-')===0; });
-      return {label:evName, jump: ev?function(){ if(typeof evLoad==='function') evLoad(ev.id); if(typeof openTimeline==='function') openTimeline(); }:null}; }
-    if(s.indexOf('st-cook-')===0) return {label:L('בישול','Cook'), jump:function(){ if(typeof setMenuCtx==='function') setMenuCtx('cook'); if(typeof openTimeline==='function') openTimeline(); }};
-    return {label:L('תוכנית','Plan'), jump:(typeof openTimeline==='function')?function(){ openTimeline(); }:null};
+      return {label:evName, jump: ev?function(){ if(typeof evLoad==='function') evLoad(ev.id); if(typeof openTimeline==='function') openTimeline(key); }:null}; }   // focus this timer's item in the plan
+    if(s.indexOf('st-cook-')===0) return {label:L('בישול','Cook'), jump:function(){ if(typeof setMenuCtx==='function') setMenuCtx('cook'); if(typeof openTimeline==='function') openTimeline(key); }};
+    return {label:L('תוכנית','Plan'), jump:(typeof openTimeline==='function')?function(){ openTimeline(key); }:null};
   }
   const ikey=s.replace(/-[a-z]+-\d+$/,'');   // cut-1-sv-0 → cut-1
   if(/^(cut|spec|make)-/.test(ikey)){ const meta=(typeof resolveItem==='function')?resolveItem(ikey):null;
@@ -5228,12 +5244,12 @@ function evLoad(id){
   if(e.serve) store.set('mk-tlserve',e.serve);
   store.set('mk-active',id);
   if(typeof toast==='function'){
-    if(rescued) toast('עברת לאירוע: '+esc(e.name)+' · הטיוטה נשמרה', function(){   // undo → restore the rescued draft
+    if(rescued) toast(L('עברת לאירוע: ','Switched to event: ')+esc(e.name)+L(' · הטיוטה נשמרה',' · draft saved'), function(){   // undo → restore the rescued draft
         setMenuCtx(rescued.ctx||'event'); if(typeof saveMenu==='function') saveMenu(rescued.menu); if(rescued.serve) store.set('mk-tlserve',rescued.serve); store.set('mk-active',null);
         if(typeof closePanel==='function') closePanel(); if(typeof render==='function') render(); try{ if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }catch(_){}
         if(typeof updateCartBadge==='function') updateCartBadge(); if(typeof cRefreshHome==='function') cRefreshHome();
-      }, 'שחזר טיוטה');
-    else toast('עברת לאירוע: '+esc(e.name));
+      }, L('שחזר טיוטה','Restore draft'));
+    else toast(L('עברת לאירוע: ','Switched to event: ')+esc(e.name));
   }
   return true;
 }
@@ -5391,7 +5407,7 @@ function cPaintEvents(){
         ${e.desc?`<div class="cev-desc">${e.desc}</div>`:''}
         <div class="cev-meta">${dateStr?`📅 ${dateStr} · `:''}🍽️ ${n} ${L('מנות','dishes')} · 👥 ${e.menu&&e.menu.guests||8}${e.serve?' · ⏰ '+e.serve:''}</div>
         <div class="cev-actions">
-          <button class="cev-act" data-evplan="${e.id}">📋 ${L('תוכנית עבודה','Work plan')}</button>
+          <button class="cev-act" data-evedit="${e.id}">✏️ ${L('ערוך','Edit')}</button>
           <button class="cev-act" data-evcart="${e.id}">🛒 ${L('קניות','Shopping')}</button>
           <button class="cev-act" data-evprint="${e.id}">🖨️ ${L('הדפס תפריט','Print menu')}</button>
         </div>
@@ -5406,15 +5422,15 @@ function cPaintEvents(){
   host.innerHTML=html;
   // wire
   { const co=$("#cetOpen"); if(co) co.addEventListener('click',()=>openCombinedTimeline()); }
-  const ds=$("#cEvDraftSave"); if(ds) ds.addEventListener('click',async()=>{ const nm=await appPrompt(L('שם לאירוע:','Event name:'),'',{placeholder:L('למשל: שישי במשפחה','e.g. Family Friday'),okLabel:'💾 '+L('שמור','Save')}); if(nm===null||nm===false) return; evSaveCurrent(nm||L('אירוע ללא שם','Untitled event')); cPaintEvents(); if(typeof toast==='function') toast('האירוע נשמר'); });
+  const ds=$("#cEvDraftSave"); if(ds) ds.addEventListener('click',async()=>{ const nm=await appPrompt(L('שם לאירוע:','Event name:'),'',{placeholder:L('למשל: שישי במשפחה','e.g. Family Friday'),okLabel:'💾 '+L('שמור','Save')}); if(nm===null||nm===false) return; evSaveCurrent(nm||L('אירוע ללא שם','Untitled event')); cPaintEvents(); if(typeof toast==='function') toast(L('האירוע נשמר','Event saved')); });
   const dd=$("#cEvDraftDiscard"); if(dd) dd.addEventListener('click',async()=>{ if((await appConfirm(L('למחוק את הטיוטה?','Delete the draft?'),{okLabel:'🗑️ '+L('מחק','Delete'),danger:true}))!==true) return; evClearActive(); cPaintEvents(); });
   host.querySelectorAll('[data-evload]').forEach(el=>el.addEventListener('click',ev=>{
-    if(ev.target.closest('[data-evdel],[data-evplan],[data-evprint],[data-evcart]')) return;
-    const id=el.dataset.evload; if(evLoad(id)){ cwGo(0); cNavGo('wizard'); cwSyncFromMenu(); }   // evLoad now shows the switch toast itself (with draft-undo when needed) — don't overwrite it
+    if(ev.target.closest('[data-evdel],[data-evedit],[data-evprint],[data-evcart]')) return;
+    const id=el.dataset.evload; if(evLoad(id) && typeof openTimeline==='function') openTimeline();   // tapping an event opens its work-plan (not the wizard start); edit is the ✏️ button
   }));
-  host.querySelectorAll('[data-evplan]').forEach(el=>el.addEventListener('click',ev=>{
-    ev.stopPropagation(); const id=el.dataset.evplan;
-    if(evLoad(id) && typeof openTimeline==='function') openTimeline();
+  host.querySelectorAll('[data-evedit]').forEach(el=>el.addEventListener('click',ev=>{
+    ev.stopPropagation(); const id=el.dataset.evedit;
+    if(evLoad(id)){ cwGo(0); cNavGo('wizard'); cwSyncFromMenu(); }   // explicit edit → wizard from the start
   }));
   host.querySelectorAll('[data-evcart]').forEach(el=>el.addEventListener('click',ev=>{
     ev.stopPropagation(); const id=el.dataset.evcart;
@@ -5439,7 +5455,7 @@ async function cwExitWizard(){
     // 3-way: OK = save & exit, Cancel(button) = discard & exit, dismiss(×/esc) = stay
     const ans=await appConfirm(L('לצאת מאשף האירוע? יש טיוטה שלא נשמרה.','Exit the event wizard? You have an unsaved draft.'),{okLabel:'💾 '+L('שמור וצא','Save & exit'),cancelLabel:'🗑️ '+L('מחק וצא','Discard & exit')});
     if(ans===null) return;   // dismissed → stay in the wizard
-    if(ans===true){ let nm=(menuState().evName||'').trim(); if(!nm){ const v=await appPrompt(L('שם לאירוע:','Event name:'),'',{placeholder:L('למשל: שישי במשפחה','e.g. Family Friday'),okLabel:'💾 '+L('שמור','Save')}); if(v===null||v===false) return; nm=v||L('אירוע ללא שם','Untitled event'); } evSaveCurrent(nm); if(typeof toast==='function') toast('האירוע נשמר'); }
+    if(ans===true){ let nm=(menuState().evName||'').trim(); if(!nm){ const v=await appPrompt(L('שם לאירוע:','Event name:'),'',{placeholder:L('למשל: שישי במשפחה','e.g. Family Friday'),okLabel:'💾 '+L('שמור','Save')}); if(v===null||v===false) return; nm=v||L('אירוע ללא שם','Untitled event'); } evSaveCurrent(nm); if(typeof toast==='function') toast(L('האירוע נשמר','Event saved')); }
     else { const empty={guests:8,appetite:'reg',kosher:false,keys:[],sides:[],drinks:[],desserts:[],gpm:0}; store.set('mk-menu',empty); try{ evClearActive(); }catch(_){}
       store.set('mk-cresume',null); if(typeof toast==='function') toast(L('הטיוטה בוטלה','Draft discarded')); }
   } else if(cook){

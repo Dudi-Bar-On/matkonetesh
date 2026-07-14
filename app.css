@@ -1152,6 +1152,9 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 /* timeline item cards (process-stage model) */
 .tlcard{background:var(--char2);border:1px solid var(--line);border-radius:12px;padding:11px 13px;margin-bottom:9px}
 .tlcard.tl-blocked{border-color:rgba(200,150,80,.3);background:rgba(200,150,80,.05)}
+.tlcard.tl-focus{border-color:var(--ember);box-shadow:0 0 0 2px rgba(231,111,81,.35);animation:tlfocus 1.2s ease-out}
+@keyframes tlfocus{0%{box-shadow:0 0 0 6px rgba(231,111,81,.45)}100%{box-shadow:0 0 0 2px rgba(231,111,81,.35)}}
+@media (prefers-reduced-motion:reduce){.tlcard.tl-focus{animation:none}}
 .tlc-head{display:flex;align-items:center;gap:9px}
 .tl-startt{min-width:58px;font-size:calc(14px * var(--fscale))}
 .tl-name{flex:1;font-size:calc(14.5px * var(--fscale))}
