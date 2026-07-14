@@ -322,6 +322,17 @@ body.lvl-pro .chome-about .cha-sub{display:none}
 .cmore-item{display:flex;align-items:center;gap:12px;background:var(--char2);border:1.5px solid var(--line2);border-radius:13px;padding:13px 14px;margin-bottom:8px;cursor:pointer;font-family:var(--font-body);font-size:calc(14px * var(--fscale));font-weight:600;color:var(--bone);text-decoration:none}
 .cmore-item .mi{font-size:calc(20px * var(--fscale))}
 .cmore-item .mg{margin-inline-start:auto;color:var(--smoke)}
+/* P7 — home customization: a toggled-off module hides on top of any conditional visibility; the drag-reorder editor */
+.home-mod-off{display:none !important}
+.hc-list{display:flex;flex-direction:column;gap:9px;margin-top:4px}
+.hc-row{display:flex;align-items:center;gap:11px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:12px 13px;font-family:var(--font-body);touch-action:none}
+.hc-row.hc-dragging{opacity:.6;border-color:var(--ember);box-shadow:0 6px 16px rgba(0,0,0,.14)}
+.hc-handle{cursor:grab;color:var(--smoke);font-size:calc(17px * var(--fscale));line-height:1;touch-action:none;user-select:none}
+.hc-name{flex:1;font-weight:700;font-size:calc(13.5px * var(--fscale));color:var(--bone)}
+.hc-toggle{background:none;border:1.5px solid var(--line2);border-radius:999px;padding:5px 13px;font-family:var(--font-body);font-weight:700;font-size:calc(11.5px * var(--fscale));color:var(--smoke);cursor:pointer;min-width:64px}
+.hc-toggle.on{border-color:var(--fresh);color:var(--fresh);background:var(--fresh-l)}
+.hc-reset{width:100%;margin-top:12px;background:none;border:1.5px dashed var(--line2);border-radius:12px;padding:12px;font-family:var(--font-body);font-weight:700;font-size:calc(12.5px * var(--fscale));color:var(--smoke);cursor:pointer}
+.hc-reset:hover{border-color:var(--ember);color:var(--ember)}
 /* P8 — home link to the AI hub (slim, under the Ask button, at all levels) */
 .chome-aimore{display:block;width:calc(100% - 32px);margin:-6px 16px 14px;background:none;border:none;padding:4px;font-family:var(--font-body);font-weight:700;font-size:calc(12px * var(--fscale));color:var(--fresh);cursor:pointer;text-align:center}
 .chome-aimore:hover{color:var(--ember)}

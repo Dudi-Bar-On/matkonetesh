@@ -331,3 +331,47 @@ test('adaptive home Phase 8: AI hub gathers every AI tool, key-gated not level-g
   await page.waitForSelector('#panel .ai-tools');
   expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool').length`)).toBe(4);
 });
+
+test('adaptive home Phase 7: customize home — toggle hide, drag-reorder, persist, reset', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); localStorage.setItem('mk-uilevel', JSON.stringify('pro')); } catch {} });
+  await page.setViewportSize({ width: 390, height: 900 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openHomeCustom==='function'`);
+  await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
+  const homeOrder = () => page.evaluate(`Array.from(document.querySelectorAll('#cHomeModules > [id]')).map(e=>e.id).join(',')`);
+  // default module order in the home container
+  expect(await homeOrder()).toBe('cHomeLanes,cHomeAskWrap,cHomePaths,cHomeDock');
+  // open the editor — 4 rows, English, no leak
+  await page.evaluate(`openHomeCustom()`);
+  await page.waitForSelector('#hcList .hc-row');
+  expect(await page.evaluate(`document.querySelectorAll('#hcList .hc-row').length`)).toBe(4);
+  expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#hcList').textContent`) as string)).toBe(false);
+  // toggle OFF the pit-tools dock → home hides it + persists
+  await page.click('#hcList .hc-row[data-hcid="cHomeDock"] .hc-toggle');
+  await page.waitForTimeout(120);
+  expect(await page.evaluate(`(store.get('mk-homecustom')||{}).off`)).toContain('cHomeDock');
+  expect(await page.evaluate(`document.querySelector('#cHomeDock').classList.contains('home-mod-off')`)).toBe(true);
+  // DRAG the first row (Quick-pick lanes) to the bottom via real pointer events
+  const h = await page.locator('#hcList .hc-row[data-hcid="cHomeLanes"] .hc-handle').boundingBox();
+  const lastRow = await page.locator('#hcList .hc-row:last-child').boundingBox();
+  await page.mouse.move(h!.x + h!.width/2, h!.y + h!.height/2);
+  await page.mouse.down();
+  await page.mouse.move(h!.x + h!.width/2, lastRow!.y + lastRow!.height + 12, { steps: 12 });
+  await page.mouse.up();
+  await page.waitForTimeout(150);
+  // new order persisted + applied to the home container (lanes now last)
+  expect(await page.evaluate(`(store.get('mk-homecustom')||{}).order`)).toEqual(['cHomeAskWrap','cHomePaths','cHomeDock','cHomeLanes']);
+  expect(await homeOrder()).toBe('cHomeAskWrap,cHomePaths,cHomeDock,cHomeLanes');
+  await page.evaluate(`closePanel()`);
+  // applyHomeCustom reads the store on every paint: set a custom order directly → the home reflects it
+  await page.evaluate(`(function(){ store.set('mk-homecustom',{order:['cHomeDock','cHomeLanes','cHomePaths','cHomeAskWrap'],off:[]}); cNavGo('home'); })()`);
+  expect(await homeOrder()).toBe('cHomeDock,cHomeLanes,cHomePaths,cHomeAskWrap');
+  // reset → smart default restored, custom cleared
+  await page.evaluate(`openHomeCustom()`);
+  await page.click('#hcReset');
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(`store.get('mk-homecustom')`)).toBe(null);
+  await page.evaluate(`closePanel(); cNavGo('home');`);
+  expect(await homeOrder()).toBe('cHomeLanes,cHomeAskWrap,cHomePaths,cHomeDock');
+  expect(await page.evaluate(`document.querySelector('#cHomeDock').classList.contains('home-mod-off')`)).toBe(false);
+});

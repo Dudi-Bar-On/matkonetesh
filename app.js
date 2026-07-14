@@ -5252,6 +5252,30 @@ function cRefreshHome(){
   const kk=$("#cHomeKick"); if(kk){ const hg=(typeof homeGear==='function')?homeGear():{canSV:true,canSmoke:true,canGrill:true}; const p=[]; if(hg.canSV)p.push(L('סו-ויד','Sous-vide')); if(hg.canSmoke)p.push(L('עישון','Smoke')); if(hg.canGrill)p.push(L('גריל','Grill')); p.push(L('אש','Fire')); kk.textContent=p.join(' · '); }   // gear-aware tagline — drops methods you can't do
   try{ if(typeof renderHomeLanes==='function') renderHomeLanes(); }catch(e){}
   try{ if(typeof renderHomeChrome==='function') renderHomeChrome(); }catch(e){}
+  try{ if(typeof applyHomeCustom==='function') applyHomeCustom(); }catch(e){}
+}
+// P7 — home customization: the user picks which home modules show and in what order (a manual override on top
+// of the gear/level auto-defaults). Reorder is done by moving nodes inside #cHomeModules (decoupled from Phase 2's
+// cooking-lift, which reorders direct children of #scr-home). Conditional visibility (dock=pro, etc.) still applies;
+// a toggled-off module gets .home-mod-off on top.
+const HOME_MODULES=[
+  { id:'cHomeLanes',   he:'מנות מהירות',          en:'Quick-pick lanes' },
+  { id:'cHomeAskWrap', he:'שאל את האש · כלי AI',   en:'Ask the Fire · AI' },
+  { id:'cHomePaths',   he:'תכנון אירוע / בישול',   en:'Plan / cook cards' },
+  { id:'cHomeDock',    he:'כלי הפיטמאסטר',         en:'Pit-tools dock' },
+];
+function homeCustom(){ const c=(typeof store!=='undefined')&&store.get('mk-homecustom'); return (c&&Array.isArray(c.order))?c:null; }
+function homeCustomOrder(){ const ids=HOME_MODULES.map(m=>m.id); const c=homeCustom();
+  const order=c?c.order.filter(id=>ids.indexOf(id)>=0):ids.slice();
+  ids.forEach(id=>{ if(order.indexOf(id)<0) order.push(id); });   // any module missing from a stored order → append (forward-compatible)
+  return order;
+}
+function applyHomeCustom(){
+  const host=$("#cHomeModules"); if(!host) return;
+  const order=homeCustomOrder(); const c=homeCustom(); const off=(c&&Array.isArray(c.off))?c.off:[];
+  const cur=[].slice.call(host.children).map(el=>el.id).filter(Boolean);
+  if(cur.join(',')!==order.join(',')){ order.forEach(function(id){ const el=document.getElementById(id); if(el&&el.parentNode===host) host.appendChild(el); }); }   // reorder only when it actually differs (avoid DOM churn each paint)
+  order.forEach(function(id){ const el=document.getElementById(id); if(el) el.classList.toggle('home-mod-off', off.indexOf(id)>=0); });
 }
 // Phase 4 — pro/multi-event home chrome: gear-summary chip, multi-event command-center bar, and the pit-tools dock.
 // All gear/level/event derived, re-rendered every cRefreshHome (so language + state changes track live).
@@ -6950,6 +6974,50 @@ function openAiHub(){
     if(typeof closePanel==='function') closePanel(); setTimeout(function(){ if(typeof window[fn]==='function') window[fn](); }, 60);
   }); });
 }
+// P7 — the "Customize home" editor: drag to reorder + tap to show/hide each home module, with reset-to-smart-default.
+function openHomeCustom(){
+  if(typeof showPanel!=='function') return;
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const order=homeCustomOrder(); const c=homeCustom(); const off=new Set((c&&c.off)||[]);
+  const nameOf=id=>{ const m=HOME_MODULES.find(x=>x.id===id); return m?(he?m.he:m.en):id; };
+  const rows=order.map(function(id){ const on=!off.has(id);
+    return `<div class="hc-row" data-hcid="${id}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="hc-name">${nameOf(id)}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${id}">${on?(he?'מוצג':'Shown'):(he?'מוסתר':'Hidden')}</button></div>`;
+  }).join('');
+  showPanel(`${typeof toolTop==='function'?toolTop(L('התאמת מסך הבית','Customize home'),L('גרור לשינוי סדר · הקש להצגה/הסתרה','Drag to reorder · tap to show/hide'),'⚙️','#5a7d8c'):`<h2 style="padding:16px">${L('התאמת מסך הבית','Customize home')}</h2>`}
+    <div class="panel-body">
+      <p class="section-sub">${L('בחר אילו חלקים יופיעו במסך הבית ובאיזה סדר. חלקים תלויי-ציוד/רמה עדיין יופיעו רק כשהם רלוונטיים.','Choose which parts of the home show, and in what order. Gear/level-dependent parts still appear only when relevant.')}</p>
+      <div class="hc-list" id="hcList">${rows}</div>
+      <button class="hc-reset" id="hcReset">↺ ${L('אפס לברירת המחדל החכמה','Reset to the smart default')}</button>
+    </div>`);
+  const listEl=$("#hcList"); if(!listEl) return;
+  const save=function(){ const ord=[].slice.call(listEl.querySelectorAll('.hc-row')).map(r=>r.dataset.hcid);
+    const offArr=[].slice.call(listEl.querySelectorAll('.hc-toggle:not(.on)')).map(b=>b.dataset.hctoggle);
+    store.set('mk-homecustom',{order:ord, off:offArr}); if(typeof cRefreshHome==='function') cRefreshHome(); };
+  listEl.querySelectorAll('[data-hctoggle]').forEach(function(b){ b.addEventListener('click',function(){ b.classList.toggle('on');
+    b.textContent = b.classList.contains('on')?(he?'מוצג':'Shown'):(he?'מוסתר':'Hidden'); save(); }); });
+  { const r=$("#hcReset"); if(r) r.addEventListener('click',function(){ store.set('mk-homecustom',null); if(typeof cRefreshHome==='function') cRefreshHome(); openHomeCustom(); }); }
+  hcWireDrag(listEl, save);
+}
+// pointer-based drag reorder (works on touch): drag a row's handle; on drop, persist the new order.
+// Move/up are bound on document (not the handle) so drags keep tracking after the pointer leaves the handle.
+function hcWireDrag(listEl, onDrop){
+  listEl.querySelectorAll('.hc-row').forEach(function(row){
+    const handle=row.querySelector('.hc-handle')||row;
+    handle.addEventListener('pointerdown', function(e){
+      e.preventDefault(); row.classList.add('hc-dragging');
+      const move=function(ev){ const y=ev.clientY; let placed=false;
+        const others=[].slice.call(listEl.querySelectorAll('.hc-row:not(.hc-dragging)'));
+        for(let i=0;i<others.length;i++){ const rect=others[i].getBoundingClientRect(); if(y < rect.top+rect.height/2){ listEl.insertBefore(row, others[i]); placed=true; break; } }
+        if(!placed) listEl.appendChild(row);
+      };
+      const up=function(){ row.classList.remove('hc-dragging');
+        document.removeEventListener('pointermove',move); document.removeEventListener('pointerup',up); document.removeEventListener('pointercancel',up);
+        if(row.isConnected && typeof onDrop==='function') onDrop();   // skip a stale save if the editor was closed mid-drag (e.g. Escape)
+      };
+      document.addEventListener('pointermove',move); document.addEventListener('pointerup',up); document.addEventListener('pointercancel',up);
+    });
+  });
+}
 // more sheet — grouped tools. Phase 6: data-driven + adaptive — a "most-used" top section, and advanced items (adv:true)
 // trimmed for beginners so the sheet gets shorter for the default persona. Each item = [icon, label, fn, adv?].
 function openMoreSheet(){
@@ -6959,7 +7027,7 @@ function openMoreSheet(){
     ['🍽️', L('עבודה','Work'), [['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline',true],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint',true],['🛒',L('רשימת קניות','Shopping list'),'openCart']]],
     ['✨', L('חוויה','Experience'), [['🤖',L('כלי AI','AI tools'),'openAiHub'],['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
     ['🧰', L('עזר','Utilities'), [['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans',true],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders',true],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']]],
-    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🔧',L('הציוד שלי','My gear'),'openGear'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
+    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🔧',L('הציוד שלי','My gear'),'openGear'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
   ];
   const reg={}; GROUPS.forEach(g=>g[2].forEach(it=>reg[it[2]]=it));
   const visible=it=>!(beg && it[3]);                                   // advanced items hidden at beginner level
