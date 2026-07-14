@@ -3563,7 +3563,9 @@ function tlStateKey(){ return 'mk-tlstate-'+(typeof evScope==='function'?evScope
 function tlState(){return store.get(tlStateKey())||store.get('mk-tlstate')||{};}   // falls back to the legacy global once (migration)
 function tlSetState(s){store.set(tlStateKey(),s);}
 
+let _tlFocusKey=null, _tlAllOpen=false;   // the item currently focused (kept across view switches) + expand-all state
 function openTimeline(focus){
+  _tlFocusKey=null;   // fresh session — don't inherit a stale focus
   showPanel(`${toolTop(L('מתזמן ציר-זמן','Timeline scheduler'),L('שלבי הכנה מפורטים לכל פריט, לפי שעת הגשה','Detailed prep steps per item, by serve time'),'🕒','#cf6a4a')}
    <div class="panel-body" id="tlBody"></div>`);
   renderTimelinePanel();
@@ -3572,8 +3574,11 @@ function openTimeline(focus){
 // scroll the timeline to a specific item and expand its steps — `focus` may be a stage-timer id
 // (st-<scope>-<itemKey>-<kind>), a recipe-timer id (cut-1-sv-0), or a bare item key (cut-1)
 function _tlFocusItem(focus){
-  const ik=(typeof timerItemKey==='function')?timerItemKey(focus):'';   // resolve the item key up front for reliable matching
+  let ik=(typeof timerItemKey==='function')?timerItemKey(focus):'';   // resolve the item key up front for reliable matching
+  if(!ik && /^(cut|spec|make)-/.test(String(focus)) && typeof resolveItem==='function'){ try{ if(resolveItem(String(focus))) ik=String(focus); }catch(e){} }   // focus is already a bare item key (e.g. re-applied across a view switch)
+  _tlFocusKey = ik || String(focus||'') || null;                        // remember it so view switches can re-apply
   const esc=function(s){ return (window.CSS&&CSS.escape)?CSS.escape(String(s)):String(s); };
+  const belongs=function(tid){ if(!tid) return false; if(!ik) return false; return tid===ik || tid.indexOf('-'+ik+'-')>=0 || tid.indexOf(ik+'-')===0 || ((typeof timerItemKey==='function')&&timerItemKey(tid)===ik); };
   let tries=0;
   const attempt=function(){ try{
     const list=$("#tlList"); if(!list){ if(tries++<30) setTimeout(attempt,50); return; }
@@ -3590,6 +3595,8 @@ function _tlFocusItem(focus){
     // 2) fall back to the item card matched by its key (bare item key, or no exact timer element)
     if(!target){ list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(target) return; const k=b.getAttribute('data-tlexp');
       if(k && (k===ik || String(focus)===k || String(focus).indexOf('-'+k+'-')>=0 || String(focus).indexOf(k+'-')===0)){ target=b.closest('.tlcard'); hi=target; expandCk=b.getAttribute('data-ck'); } }); }
+    // 3) work-plan view with only an item key: first task/timer element that belongs to the item
+    if(!target && ik){ const els=list.querySelectorAll('[data-tid]'); for(let i=0;i<els.length;i++){ if(belongs(els[i].getAttribute('data-tid'))){ target=els[i].closest('.wp-row,.wp-acc,.wp-hcell,.tlcard')||els[i]; hi=target; const xb=target.querySelector&&target.querySelector('[data-tlexp]'); expandCk=xb&&xb.getAttribute('data-ck'); break; } } }
     if(!target) return;
     if(expandCk){ const stg=document.getElementById('tlstages-'+expandCk); if(stg) stg.style.display='block'; }   // expand steps (by-item view)
     const acc=target.closest&&target.closest('.wp-acc'); if(acc) acc.classList.add('open');                        // open the task (accordion work-plan view)
@@ -3716,6 +3723,13 @@ function vcCurrentText(full){
   if(t.sub) s+=' '+t.sub+'.';
   return s;
 }
+// unique items in the current work-plan (for the voice "jump to item" selector) → {idx: first task index, nm: name}
+function vcItems(){
+  const seen={}, out=[];
+  (vcTasks||[]).forEach(function(tk,i){ if(!tk||!tk.tid) return; const ik=(typeof timerItemKey==='function')?timerItemKey(tk.tid):''; if(!ik || seen[ik]) return;
+    const m=(typeof resolveItem==='function')?resolveItem(ik):null; const nm=m?(typeof itemName==='function'?itemName(m):m.heb):''; if(!nm) return; seen[ik]=1; out.push({idx:i, nm:nm, ik:ik}); });
+  return out;
+}
 function vcRender(){
   const host=$("#vcBody"); if(!host) return;
   if(typeof clearTimers==='function') clearTimers();   // stop stale intervals; timers restore from mk-timers
@@ -3750,6 +3764,8 @@ function vcRender(){
       <button class="vc-q" data-vc="qwhen">⏰ ${L('מתי הבא?','When is the next?')}</button>
       <button class="vc-q ${vcRec?'on':''}" data-vc="mic">${vcRec?'🎙️ '+L('מאזין… (אמור: הבא / חזור / הקרא)','Listening… (say: next / back / read)'):'🎙️ '+L('פקודות קוליות','Voice commands')}</button>
     </div>
+    ${(function(){ const its=vcItems(); if(its.length<2) return ''; const curIk=(vcTasks[vcIdx]&&vcTasks[vcIdx].tid&&typeof timerItemKey==='function')?timerItemKey(vcTasks[vcIdx].tid):'';
+      return `<div class="vc-jumprow"><label>🎯 ${L('קפוץ לפריט:','Jump to item:')}</label><select id="vcItemJump">${its.map(it=>`<option value="${it.idx}" ${it.ik===curIk?'selected':''}>${esc(it.nm)}</option>`).join('')}</select></div>`; })()}
     <p class="vc-hint">💡 ${L('מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: "הבא", "הקודם", "הקרא שוב", "פרטים".','Big screen, big buttons — meant to stand by the smoker. Commands: "next", "back", "read again", "details".')}</p>
     <div class="vc-langrow">
       <span class="vc-langlbl">🎙️ ${L('שפת דיבור:','Speech language:')}</span>
@@ -3773,6 +3789,7 @@ function vcRender(){
    :`<div class="shop-empty">${L('אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.','No tasks — build a work plan in the scheduler, then come back.')}</div>`;
   host.querySelectorAll('[data-vc]').forEach(b=>b.addEventListener('click',()=>vcAction(b.dataset.vc)));
   host.querySelectorAll('[data-vcjump]').forEach(b=>b.addEventListener('click',()=>{ vcIdx=+b.dataset.vcjump; vcRender(); vcSpeakContent(vcCurrentText(false)); }));   // jump to a parallel running timer
+  { const js=host.querySelector('#vcItemJump'); if(js) js.addEventListener('change',function(){ const i=parseInt(js.value,10); if(!isNaN(i)){ vcIdx=i; vcRender(); vcSpeakContent(vcCurrentText(false)); } }); }   // jump to a chosen work-plan item
   // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
   { const tm=host.querySelector('.vc-timerwrap .timer'); if(tm){ const total=+tm.dataset.sec; const warnAt=total>150?120:(total>60?30:0);
       wireTimer(tm, { warnSec:warnAt,
@@ -4119,7 +4136,7 @@ function renderTimelinePanel(){
       sorted.forEach(c=>{ if(!c.blocked&&c.startClock){ const nm=(typeof itemName==='function'?itemName(c.m):c.m.heb); fire(c.startClock,'⏰ '+stripEmoji(nm),L('הזמן להתחיל: ','Time to start: ')+nm); } });
     }
     const viewMode=store.get('mk-tlview')||'items';
-    let html=`<div class="tl-viewtoggle"><button class="mchip ${viewMode==='items'?'on':''}" data-tlview="items">📦 ${L('לפי פריט','By item')}</button><button class="mchip ${viewMode==='plan'?'on':''}" data-tlview="plan">📋 ${L('תוכנית עבודה','Work plan')}</button></div>`;
+    let html=`<div class="tl-viewtoggle"><button class="mchip ${viewMode==='items'?'on':''}" data-tlview="items">📦 ${L('לפי פריט','By item')}</button><button class="mchip ${viewMode==='plan'?'on':''}" data-tlview="plan">📋 ${L('תוכנית עבודה','Work plan')}</button><button class="mchip tl-allbtn" data-tlallopen>${_tlAllOpen?'⤡ '+L('כווץ הכל','Collapse all'):'⤢ '+L('הרחב הכל','Expand all')}</button></div>`;
     const _wpHtml=workPlanHtml(computed, preheat, serve);   // F5: always build the plan (populates window._wpTasks for voice cook even when the items view is showing)
     if(viewMode==='plan'){
       html+=_wpHtml;
@@ -4131,14 +4148,18 @@ function renderTimelinePanel(){
     html+=`<button class="prbtn" style="position:static;margin-top:12px" data-print>⎙ ${L('הדפס','Print')} ${viewMode==='plan'?L('תוכנית עבודה','work plan'):L('לוח זמנים','schedule')}</button>`;
     if(typeof clearTimers==='function') clearTimers();   // stop stale intervals before re-wiring; state persists in mk-timers
     $("#tlList").innerHTML=html;
+    if(_tlAllOpen){ $("#tlList").querySelectorAll('.tl-stages').forEach(function(s){s.style.display='block';}); $("#tlList").querySelectorAll('[data-tlexp]').forEach(function(b){b.textContent='▴';}); $("#tlList").querySelectorAll('.wp-acc').forEach(function(a){a.classList.add('open');}); }   // expand-all
     $("#tlList").querySelectorAll('.timer').forEach(tm=>wireTimer(tm));   // live countdowns per timed stage (items + plan views)
     { const starts=computed.filter(c=>!c.blocked&&c.startClock).map(c=>c.startClock.getTime());
       let earliest=starts.length?new Date(Math.min(...starts)):null;
       if(preheat && (!earliest||preheat.getTime()<earliest.getTime())) earliest=preheat;
       window._wpServe=serve; window._wpStart=earliest; startServeBar(); renderPlanStartRow(earliest, serve, buildList); }   // live serve bar + start/feasibility controls
-    $("#tlList").querySelectorAll('[data-tlview]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlview',b.dataset.tlview); buildList();}));
-    $("#tlList").querySelectorAll('[data-tldetail]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlplandetail',b.dataset.tldetail); buildList();}));
-    $("#tlList").querySelectorAll('[data-tlshape]').forEach(b=>b.addEventListener('click',()=>{setTlShape(b.dataset.tlshape); buildList();}));
+    // view / detail / shape switches: rebuild, then re-apply the focused item so it stays in view + expanded across views
+    const _reFocus=()=>{ if(_tlFocusKey && typeof _tlFocusItem==='function') _tlFocusItem(_tlFocusKey); };
+    $("#tlList").querySelectorAll('[data-tlview]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlview',b.dataset.tlview); buildList(); _reFocus();}));
+    $("#tlList").querySelectorAll('[data-tldetail]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlplandetail',b.dataset.tldetail); buildList(); _reFocus();}));
+    $("#tlList").querySelectorAll('[data-tlshape]').forEach(b=>b.addEventListener('click',()=>{setTlShape(b.dataset.tlshape); buildList(); _reFocus();}));
+    { const ab=$("#tlList").querySelector('[data-tlallopen]'); if(ab) ab.addEventListener('click',()=>{ _tlAllOpen=!_tlAllOpen; buildList(); }); }   // expand / collapse the whole plan
     $("#tlList").querySelectorAll('.wp-acch').forEach(h=>h.addEventListener('click',()=>{ const acc=h.parentElement; if(acc) acc.classList.toggle('open'); }));
     $("#tlList").querySelectorAll('.wp-ck[data-wpck]').forEach(cb=>cb.addEventListener('change',()=>{ const k=decodeURIComponent(cb.dataset.wpck); store.set(k, cb.checked||null); const row=cb.closest('.wp-row'); if(row) row.classList.toggle('wp-done', cb.checked); }));   // F: persist plan check state
     { const vb=$("#tlList").querySelector('[data-vclaunch]'); if(vb) vb.addEventListener('click',()=>openFrom(openTimeline,()=>openVoiceCook(window._wpTasks||[]))); }
@@ -4361,7 +4382,7 @@ function renderTimelinePanel(){
     [...(window._tlSeasOpen||[])].forEach(key=>{ const meta=resolveItem(key); if(!meta){window._tlSeasOpen.delete(key);return;} renderTlSeas(key,cssKey(key)); });
     list.querySelectorAll('[data-tlexp]').forEach(b=>b.addEventListener('click',()=>{
       const el=document.getElementById('tlstages-'+b.dataset.ck);
-      if(el){ const open=el.style.display!=='none'; el.style.display=open?'none':'block'; b.textContent=open?'▾':'▴'; }
+      if(el){ const open=el.style.display!=='none'; el.style.display=open?'none':'block'; b.textContent=open?'▾':'▴'; if(!open) _tlFocusKey=b.dataset.tlexp; }   // remember the expanded item so a view switch keeps it
     }));
     list.querySelectorAll('[data-tlpantry]').forEach(b=>b.addEventListener('click',()=>openFrom(openTimeline,openPantry)));
     list.querySelectorAll('[data-print]').forEach(b=>b.addEventListener('click',()=>window.print()));
