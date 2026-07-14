@@ -313,5 +313,14 @@
  "🗑️ איפוס תצוגה": "🗑️ Reset view",
  "🥗 תוספות": "🥗 Sides",
  "🥤 שתייה": "🥤 Drinks",
- "🥩 סנן חזיר/לא-כשר": "🥩 Filter pork/non-kosher"
+ "🥩 סנן חזיר/לא-כשר": "🥩 Filter pork/non-kosher",
+ "בטל טיוטה": "Discard draft",
+ "הסתר": "Hide",
+ "יציאה מהאשף": "Exit wizard",
+ "הפעל טיימר": "Start timer",
+ "אפס טיימר": "Reset timer",
+ "השהה טיימר": "Pause timer",
+ "סיום!": "Done!",
+ "הטיימר הסתיים!": "Timer finished!",
+ "טיימר הסתיים": "Timer finished"
 }

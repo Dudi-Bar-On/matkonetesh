@@ -70,6 +70,8 @@ body.capp{padding-bottom:82px}
 .cpath.project .go{color:var(--terra-d)}
 .cpath .ptag{position:absolute;top:16px;left:16px;background:var(--fresh-l);color:var(--fresh);font-family:var(--font-body);font-weight:700;font-size:calc(10px * var(--fscale));padding:3px 9px;border-radius:999px}
 .cnext{margin:20px 16px 0;background:var(--char2);border:2px solid var(--line2);border-radius:16px;padding:15px;display:flex;align-items:center;gap:13px;cursor:pointer}
+.cnext-x{flex:0 0 auto;width:28px;height:28px;border-radius:50%;border:1.5px solid var(--line2);background:var(--char3);color:var(--smoke);font-size:14px;cursor:pointer;display:grid;place-items:center;line-height:1}
+.cnext-x:hover{border-color:var(--ember);color:var(--ember)}
 .cnext .nico{font-size:calc(28px * var(--fscale))}.cnext .nt{font-size:calc(11.5px * var(--fscale));color:var(--ash);font-family:var(--font-body)}
 .cnext .nm{font-size:calc(15px * var(--fscale));font-weight:700;margin-top:2px;color:var(--bone)}
 .cnext .ng{color:var(--ember);font-size:calc(19px * var(--fscale))}
@@ -83,6 +85,8 @@ body.capp{padding-bottom:82px}
 .cnext[hidden]{display:none}
 /* section head (sub-screens) */
 .cshead{display:flex;align-items:center;gap:10px;padding:16px 16px 14px}
+.cwexit{margin-inline-start:auto;width:34px;height:34px;border-radius:50%;border:1.5px solid var(--line2);background:var(--char2);color:var(--smoke);font-size:15px;cursor:pointer;display:grid;place-items:center;line-height:1;flex:0 0 auto}
+.cwexit:hover{border-color:var(--ember);color:var(--ember)}
 .cshead .back{width:38px;height:38px;border-radius:12px;background:var(--char2);border:1.5px solid var(--line2);color:var(--bone);font-size:calc(17px * var(--fscale));display:grid;place-items:center;cursor:pointer}
 .cshead h2{font-family:var(--font-display);font-size:calc(20px * var(--fscale));flex:1;color:var(--bone);font-weight:400}
 .cshead .step{font-size:calc(12px * var(--fscale));color:var(--smoke);font-family:var(--font-body)}
@@ -1233,6 +1237,10 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
   @page{margin:14mm}
   html,body{background:#fff!important;color:#111!important;overflow:visible!important}
   .glow,.tools,header.hero,main,footer,.scrim,.prbtn,.x,.tabs,.timer,.progress,.addbtn{display:none!important}
+  /* the app is a set of full-screen .screen divs behind an overlay #panel — when printing an open
+     panel, hide every screen + chrome so only the panel's content reaches the page (was: whole home
+     screen printed above the recipe/plan/list). */
+  .screen,.cnav,.capp-top,.capp-langpill,.capp-ico,.chome-search,#cScrim,.cfab,.cwexit,.backbtn{display:none!important}
   .panel:not(.open){display:none!important}
   .panel.open{position:static!important;transform:none!important;width:100%!important;max-width:100%!important;
     box-shadow:none!important;border:none!important;background:#fff!important;height:auto!important;display:block!important}

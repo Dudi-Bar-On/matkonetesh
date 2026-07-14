@@ -1417,10 +1417,10 @@ function stepHTML(key,which,i,s){
 }
 function timerHTML(sec, id, name){
   return `<div class="timer" data-sec="${sec}" data-left="${sec}"${id?` data-tid="${esc(id)}"`:''}${name?` title="${esc(name)}" data-name="${esc(name)}"`:''} role="timer">
-     <button data-play aria-label="הפעל טיימר">▶</button>
+     <button data-play aria-label="${L('הפעל טיימר','Start timer')}">▶</button>
      <span class="tt">${fmt(sec)}</span>
      <span class="tt-alert" role="alert" aria-live="assertive"></span>
-     <button class="rst" data-reset aria-label="אפס טיימר">↻</button>
+     <button class="rst" data-reset aria-label="${L('אפס טיימר','Reset timer')}">↻</button>
    </div>`;
 }
 let mkAudioCtx=null;
@@ -1468,13 +1468,13 @@ function wireTimer(tm, opts){
   const tt=tm.querySelector(".tt"), play=tm.querySelector("[data-play]"), al=tm.querySelector(".tt-alert");
   let iv=null, endsAt=0, left=+tm.dataset.left, warned=false;
   const stop=()=>{ if(iv){clearInterval(iv);iv=null;} };
-  const idle=l=>{ play.textContent="▶"; play.setAttribute('aria-label','הפעל טיימר'); tt.textContent=fmt(Math.max(0,l)); };
-  const done=()=>{ stop(); play.textContent="▶"; play.setAttribute('aria-label','הפעל טיימר'); tm.classList.add("ringing"); tt.textContent="סיום!"; if(al) al.textContent="הטיימר הסתיים!"; };
+  const idle=l=>{ play.textContent="▶"; play.setAttribute('aria-label',L('הפעל טיימר','Start timer')); tt.textContent=fmt(Math.max(0,l)); };
+  const done=()=>{ stop(); play.textContent="▶"; play.setAttribute('aria-label',L('הפעל טיימר','Start timer')); tm.classList.add("ringing"); tt.textContent=L('סיום!','Done!'); if(al) al.textContent=L('הטיימר הסתיים!','Timer finished!'); };
   const tick=()=>{ left=Math.round((endsAt-Date.now())/1000);
     if(opts.warnSec && !warned && left<=opts.warnSec && left>0 && opts.onWarn){ warned=true; try{opts.onWarn(left);}catch(e){} }   // R5: one-shot latch (was left===warnSec — stuttered ~4x / could skip)
     if(left<=0){ done(); timerBeep(); _timerSet(id,{end:endsAt,name:tm.dataset.name||'',fired:1}); if(opts.onEnd){ try{opts.onEnd();}catch(e){} } return; }
     tt.textContent=fmt(left); };
-  const run=()=>{ play.textContent="❚❚"; play.setAttribute('aria-label','השהה טיימר'); tm.classList.remove("ringing"); if(al) al.textContent=""; stop(); iv=setInterval(tick,250); timers["t"+Math.random()]=iv; tick(); };
+  const run=()=>{ play.textContent="❚❚"; play.setAttribute('aria-label',L('השהה טיימר','Pause timer')); tm.classList.remove("ringing"); if(al) al.textContent=""; stop(); iv=setInterval(tick,250); timers["t"+Math.random()]=iv; tick(); };
   const startFresh=()=>{ warned=false; timerAudioPrime(); endsAt=Date.now()+left*1000; _timerSet(id,{end:endsAt,name:tm.dataset.name||''}); run(); };
   const pause=()=>{ stop(); left=Math.max(0,Math.round((endsAt-Date.now())/1000)); idle(left); _timerSet(id,{left:left}); };
   // restore prior state on (re-)wire: running keeps counting, paused shows the remaining time, finished shows סיום
@@ -1671,8 +1671,8 @@ function appDialog(o){
         <div class="appdlg-msg">${o.msg}</div>
         ${o.input!==undefined?`<input class="appdlg-in" value="${(o.input||'').replace(/"/g,'&quot;')}" placeholder="${o.placeholder||''}">`:''}
         <div class="appdlg-btns">
-          ${o.cancelLabel!==null?`<button class="appdlg-btn ghost" data-adk="cancel">${o.cancelLabel||'ביטול'}</button>`:''}
-          <button class="appdlg-btn ${o.danger?'danger':''}" data-adk="ok">${o.okLabel||'אישור'}</button>
+          ${o.cancelLabel!==null?`<button class="appdlg-btn ghost" data-adk="cancel">${o.cancelLabel||(typeof L==='function'?L('ביטול','Cancel'):'Cancel')}</button>`:''}
+          <button class="appdlg-btn ${o.danger?'danger':''}" data-adk="ok">${o.okLabel||(typeof L==='function'?L('אישור','OK'):'OK')}</button>
         </div>
       </div>`;
     document.body.appendChild(wrap);
@@ -1704,42 +1704,44 @@ function mkMenuqtyKey(){ return 'mk-menuqty-'+((typeof evScope==='function')?evS
 function shopData(){
   const meat=[], season=new Set(), wood=new Set(), coal=new Set(), equip=new Set(), items=[], seasSel=[];
   const seenSeas=new Set();
-  const collectSeas=(k,heb)=>{
+  const nm=(o,key)=>{ try{ const meta=(typeof resolveItem==='function'&&key)?resolveItem(key):null; if(meta && typeof itemName==='function') return itemName(meta); }catch(e){} return (getLang&&getLang()!=='he'&&o&&o.eng)?o.eng:(o&&o.heb)||''; };
+  const collectSeas=(k,dispName)=>{
     selectedSeasonings(k).forEach(id=>{
       const s=seasoningById(id); if(!s) return;
       const ex=seasSel.find(x=>x.id===id);
-      if(ex){ ex.for.push(heb); return; }
-      seasSel.push({id, heb:s.heb, kind:s.kind, ing:s.ing, sub:s.sub, for:[heb]});
+      if(ex){ ex.for.push(dispName); return; }
+      seasSel.push({id, heb:s.heb, eng:s.eng, kind:s.kind, ing:s.ing, sub:s.sub, for:[dispName]});
     });
   };
+  const kg=L('ק״ג','kg');
   const mq=store.get(mkMenuqtyKey())||{};
-  const qkg=k=>mq[k]?` — ~${(mq[k]/1000).toFixed(1)} ק״ג <b style="color:var(--ember2)">(מהתפריט)</b>`:null;
-  const ilFor=(heb,eng)=>{ const il=(typeof ILCUT!=='undefined')?ILCUT.find(r=>heb.includes(r[0].split(' ')[0])||(eng||'').toLowerCase().includes((r[1]||'').toLowerCase())):null; return il?` — 🥩 לקצב: ${il[2]}`:''; };
+  const qkg=k=>mq[k]?` — ~${(mq[k]/1000).toFixed(1)} ${kg} <b style="color:var(--ember2)">(${L('מהתפריט','from menu')})</b>`:null;
+  const ilFor=(heb,eng)=>{ const il=(typeof ILCUT!=='undefined')?ILCUT.find(r=>heb.includes(r[0].split(' ')[0])||(eng||'').toLowerCase().includes((r[1]||'').toLowerCase())):null; return il?` — 🥩 ${L('לקצב','for butcher')}: ${t(il[2])}`:''; };
   // shopping list is derived from the ACTIVE event/menu (not a separate cart) — always in sync
   const srcKeys=[...new Set((typeof menuState==='function')?(menuState().keys||[]):[])];
   srcKeys.forEach(k=>{
     if(k.startsWith("cut-")){
       const c=DATA.cuts.find(x=>"cut-"+x.n===k); if(!c)return;
-      items.push({cat:c.cat,name:c.heb+" · "+c.eng,key:k});
-      collectSeas(k,c.heb);
-      meat.push(`${c.heb} (${c.eng})${qkg(k)||` — ~${c.kg} ק״ג`}${ilFor(c.heb,c.eng)}`);
+      items.push({cat:c.cat,name:(getLang&&getLang()!=='he'?c.eng:c.heb+" · "+c.eng),key:k});
+      collectSeas(k,nm(c,k));
+      meat.push(`${nm(c,k)}${qkg(k)||` — ~${c.kg} ${kg}`}${ilFor(c.heb,c.eng)}`);
       if(k==='cut-18'){ const dn=burgerDiners(); const tps=[...new Set(dn.flatMap(d=>d.tops||[]))]; const chs=[...new Set(dn.filter(d=>d.cheesePos!=='none').map(d=>d.cheese))]; const scs=[...new Set(dn.map(d=>d.sauce).filter(Boolean))]; const bns=[...new Set(dn.map(d=>d.bun).filter(Boolean))];
-        meat.push(`🍔 לבורגרים (${dn.length} סועדים): לחמניות ${bns.join('/')||'—'} ×${dn.length}${chs.length?` · גבינות: ${chs.join(', ')}`:''}${tps.length?` · תוספות: ${tps.join(', ')}`:''}${scs.length?` · רטבים: ${scs.join(', ')}`:''}`); }
+        meat.push(`🍔 ${L('לבורגרים','for the burgers')} (${dn.length} ${L('סועדים','guests')}): ${L('לחמניות','buns')} ${bns.map(x=>t(x)).join('/')||'—'} ×${dn.length}${chs.length?` · ${L('גבינות','cheeses')}: ${chs.map(x=>t(x)).join(', ')}`:''}${tps.length?` · ${L('תוספות','toppings')}: ${tps.map(x=>t(x)).join(', ')}`:''}${scs.length?` · ${L('רטבים','sauces')}: ${scs.map(x=>t(x)).join(', ')}`:''}`); }
       // house rub flows through collectSeas as the default selection — no separate season.add (avoids double-listing)
       String(c.wood).split("/").forEach(w=>wood.add(w.trim()));
       if(c.coal) coal.add(c.coal);
     } else if(k.startsWith("spec-")){
       const s=DATA.specials.find(x=>"spec-"+x.n===k); if(!s)return;
-      items.push({cat:s.cat,name:s.heb+" · "+s.eng,key:k});
-      collectSeas(k,s.heb);
-      meat.push(`${s.heb} (${s.eng})${qkg(k)||''}`);
+      items.push({cat:s.cat,name:(getLang&&getLang()!=='he'?s.eng:s.heb+" · "+s.eng),key:k});
+      collectSeas(k,nm(s,k));
+      meat.push(`${nm(s,k)}${qkg(k)||''}`);
       if(s.wood&&s.wood!=="ללא") String(s.wood).split("/").forEach(w=>wood.add(w.trim()));
       const b=DATA.builds["spec-"+s.n]; if(b&&b.materials) b.materials.forEach(m=>equip.add(m));
     } else if(k.startsWith("make-")){
       const id=k.slice(5), m=DATA.makes[id]; if(!m)return;
-      items.push({cat:m.cat,name:m.heb+" · "+m.eng,key:k});
-      collectSeas(k,m.heb);
-      meat.push(`${m.heb} (${m.cat})${qkg(k)||''}`);
+      items.push({cat:m.cat,name:(getLang&&getLang()!=='he'?m.eng:m.heb+" · "+m.eng),key:k});
+      collectSeas(k,nm(m,k));
+      meat.push(`${nm(m,k)} (${t(m.cat)})${qkg(k)||''}`);
       if(m.build&&m.build.materials) m.build.materials.forEach(x=>equip.add(x));
     }
   });
@@ -1748,9 +1750,9 @@ function shopData(){
   if(typeof menuCtx!=='function' || menuCtx()==='event'){
     const ms=(typeof menuState==='function')?menuState():{};
     const g=ms.guests||8;
-    (ms.sides||[]).forEach(x=>extras.push(`${x} — ${eventQty(x,'side',g)}`));
-    (ms.drinks||[]).forEach(x=>extras.push(`${x} — ${eventQty(x,'drink',g)}`));
-    (ms.desserts||[]).forEach(x=>{ if(x==='__fruit') extras.push(`מגש פירות העונה (${eventSeason()}: ${seasonalFruitList().join(', ')}) — ${eventQty('','fruit',g)}`); else extras.push(`${x} — ${eventQty(x,'dessert',g)}`); });
+    (ms.sides||[]).forEach(x=>extras.push(`${t(x)} — ${eventQty(x,'side',g)}`));
+    (ms.drinks||[]).forEach(x=>extras.push(`${t(x)} — ${eventQty(x,'drink',g)}`));
+    (ms.desserts||[]).forEach(x=>{ if(x==='__fruit') extras.push(`${L('מגש פירות העונה','Seasonal fruit platter')} (${t(eventSeason())}: ${seasonalFruitList().map(f=>t(f)).join(', ')}) — ${eventQty('','fruit',g)}`); else extras.push(`${t(x)} — ${eventQty(x,'dessert',g)}`); });
   }
   return {items, meat, season:[...season], wood:[...wood], coal:[...coal], equip:[...equip], seasSel, extras};
 }
@@ -1758,10 +1760,11 @@ function cartInventoryHTML(){
   if(typeof invList!=='function') return '';
   const inv=invList()||[]; const low=inv.filter(i=>i.qty<=i.low);
   if(!low.length) return '';
-  return `<div class="shop-group"><h4>📦 מהמזווה — חסר / להשלים</h4>${low.map(i=>{
-    const t=i.name+(i.low>0?` (יעד ≥${i.low} ${i.unit})`:'');
-    const done=store.get(mshopKey(t))?"done":"";
-    return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(t)}">${done?"✓":""}</span><span>${t} · <b style="color:var(--terra-d)">יש ${i.qty}</b></span></div>`;
+  return `<div class="shop-group"><h4>📦 ${L('מהמזווה — חסר / להשלים','From pantry — missing / to restock')}</h4>${low.map(i=>{
+    const key=i.name+(i.low>0?` (${L('יעד','target')} ≥${i.low} ${t(i.unit)})`:'');
+    const disp=t(i.name)+(i.low>0?` (${L('יעד','target')} ≥${i.low} ${t(i.unit)})`:'');
+    const done=store.get(mshopKey(key))?"done":"";
+    return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(key)}">${done?"✓":""}</span><span>${disp} · <b style="color:var(--terra-d)">${L('יש','have')} ${i.qty}</b></span></div>`;
   }).join('')}</div>`;
 }
 function shopLine(text){
@@ -1803,8 +1806,8 @@ function openCart(){
        })()}
        ${cartInventoryHTML()}
        <div style="margin-top:20px;display:flex;gap:8px;flex-wrap:wrap">
-         <button class="prbtn" style="position:static" data-print>⎙ הדפס / PDF</button>
-         <button class="prbtn" style="position:static" data-clear>נקה הכל</button>
+         <button class="prbtn" style="position:static" data-print>⎙ ${L('הדפס / PDF','Print / PDF')}</button>
+         <button class="prbtn" style="position:static" data-clear>${L('נקה הכל','Clear all')}</button>
        </div>`:""}
    </div>`;
   showPanel(html);
@@ -2032,8 +2035,8 @@ const MAKE_COOK={
    methods:[{key:'serve',label:'הוצא והגש',tempC:'—',hours:0.1,note:'ג׳רקי/ביltong מוכן'}]},
 };
 function comboMethodEntry(c, combo, isCard){
-  const names={sv:'סו-ויד',smoke:'עישון',grill:'גריל'};
-  const label=(isCard?'⚡ ':'')+combo.map(m=>names[m]).join(' + ')+(isCard?' (מהכרטיסייה)':'');
+  const names={sv:L('סו-ויד','Sous-vide'),smoke:L('עישון','Smoking'),grill:L('גריל','Grill')};
+  const label=(isCard?'⚡ ':'')+combo.map(m=>names[m]).join(' + ')+(isCard?L(' (מהכרטיסייה)',' (from the tab)'):'');
   let hours=0, svH=0, smH=0;
   if(combo.includes('sv')) { svH=upperHours(c.svh); hours+=svH; }
   if(combo.includes('smoke')) { smH=combo.includes('sv')?upperHours(c.smh):upperHours(c.soh||c.smh); hours+=smH; }
@@ -3586,7 +3589,7 @@ function hebSpeechText(t){
   return s.replace(/\s+/g,' ').trim();
 }
 /* ── bilingual voice (v132): input(ASR) lang + answer(TTS) lang ── */
-function vcLang(){ return store.get('mk-vclang')||'he'; }        // recognition language
+function vcLang(){ return store.get('mk-vclang')||((typeof getLang==='function'&&getLang()!=='he')?'en':'he'); }        // recognition language — defaults to the UI language
 function vcAnsLang(){ return store.get('mk-vcanslang')||vcLang(); } // answer/TTS language
 function vcLocale(l){ return l==='en'?'en-US':'he-IL'; }
 function enSpeechText(t){ return stripEmoji(String(t)).replace(/·|•/g,', ').replace(/\s+/g,' ').trim(); }
@@ -3672,8 +3675,8 @@ function vcSpeak(text, lang){
   } else sysSpeak(text, L);
 }
 function vcCurrentText(full){
-  const t=vcTasks[vcIdx]; if(!t) return 'אין משימות';
-  if(full) return t.det ? t.det : (t.sub||'אין פרטים נוספים למשימה הזו');
+  const t=vcTasks[vcIdx]; if(!t) return L('אין משימות','No tasks');
+  if(full) return t.det ? t.det : (t.sub||L('אין פרטים נוספים למשימה הזו','No further details for this task'));
   let s=`${fmtClock(t.t)}. ${t.label}.`;
   if(t.sub) s+=' '+t.sub+'.';
   return s;
@@ -3683,7 +3686,7 @@ function vcRender(){
   if(typeof clearTimers==='function') clearTimers();   // stop stale intervals; timers restore from mk-timers
   const t=vcTasks[vcIdx];
   host.innerHTML=t?`
-    <div class="vc-pos">משימה ${vcIdx+1} מתוך ${vcTasks.length}</div>
+    <div class="vc-pos">${L('משימה','Task')} ${vcIdx+1} ${L('מתוך','of')} ${vcTasks.length}</div>
     <div class="vc-card wp-${t.kind}">
       <div class="vc-time">${fmtClock(t.t)}</div>
       <div class="vc-label">${t.label}</div>
@@ -3693,46 +3696,46 @@ function vcRender(){
     ${(function(){
       if(t.dur && t.tid){ return `<div class="vc-timerwrap"><div class="vc-timerlbl">⏱ ${esc(stripEmoji(t.label))}</div>${timerHTML(t.dur, t.tid, t.label)}</div>`; }   // synced with the work-plan stage timer
       const nx=vcTasks[vcIdx+1]; if(!nx||!(t.t instanceof Date)||!(nx.t instanceof Date)) return ''; const d=Math.round((nx.t-t.t)/1000); if(d<=0||d>24*3600) return '';
-      return `<div class="vc-timerwrap"><div class="vc-timerlbl">⏱ טיימר — עד המשימה הבאה (${fmtClock(nx.t)})</div>${timerHTML(d, 'vc-'+(t.t?t.t.getTime():vcIdx))}</div>`;
+      return `<div class="vc-timerwrap"><div class="vc-timerlbl">⏱ ${L('טיימר — עד המשימה הבאה','Timer — until the next task')} (${fmtClock(nx.t)})</div>${timerHTML(d, 'vc-'+(t.t?t.t.getTime():vcIdx))}</div>`;
     })()}
     ${(function(){
       const ts=store.get('mk-timers')||{}, now=Date.now();
       const runners=vcTasks.map((tk,i)=>({tk,i})).filter(o=>o.tk.tid && ts[o.tk.tid] && ts[o.tk.tid].end && ts[o.tk.tid].end>now);
       if(runners.length<2) return '';   // the current task's timer is already prominent; strip is for 2+ in parallel
-      return `<div class="vc-running"><div class="vc-running-lbl">🔴 רצים במקביל (${runners.length})</div>${runners.map(o=>{ const rem=Math.round((ts[o.tk.tid].end-now)/1000); return `<button class="vc-runchip ${o.i===vcIdx?'on':''}" data-vcjump="${o.i}">${esc(stripEmoji(o.tk.label))} · ${fmt(rem)}</button>`; }).join('')}</div>`;
+      return `<div class="vc-running"><div class="vc-running-lbl">🔴 ${L('רצים במקביל','running in parallel')} (${runners.length})</div>${runners.map(o=>{ const rem=Math.round((ts[o.tk.tid].end-now)/1000); return `<button class="vc-runchip ${o.i===vcIdx?'on':''}" data-vcjump="${o.i}">${esc(stripEmoji(o.tk.label))} · ${fmt(rem)}</button>`; }).join('')}</div>`;
     })()}
     <div class="vc-btns">
-      <button class="vc-big" data-vc="prev">⏮ הקודם</button>
-      <button class="vc-big vc-main" data-vc="read">🔊 הקרא</button>
-      <button class="vc-big" data-vc="next">הבא ⏭</button>
+      <button class="vc-big" data-vc="prev">⏮ ${L('הקודם','Previous')}</button>
+      <button class="vc-big vc-main" data-vc="read">🔊 ${L('הקרא','Read')}</button>
+      <button class="vc-big" data-vc="next">${L('הבא','Next')} ⏭</button>
     </div>
     <div class="vc-btns2">
-      <button class="vc-q" data-vc="readfull">📖 הקרא עם פרטים</button>
-      <button class="vc-q" data-vc="qtemp">🌡️ מה הטמפרטורה?</button>
-      <button class="vc-q" data-vc="qwhen">⏰ מתי הבא?</button>
-      <button class="vc-q ${vcRec?'on':''}" data-vc="mic">${vcRec?'🎙️ מאזין… (אמור: הבא / חזור / הקרא)':'🎙️ פקודות קוליות'}</button>
+      <button class="vc-q" data-vc="readfull">📖 ${L('הקרא עם פרטים','Read with details')}</button>
+      <button class="vc-q" data-vc="qtemp">🌡️ ${L('מה הטמפרטורה?','What is the temperature?')}</button>
+      <button class="vc-q" data-vc="qwhen">⏰ ${L('מתי הבא?','When is the next?')}</button>
+      <button class="vc-q ${vcRec?'on':''}" data-vc="mic">${vcRec?'🎙️ '+L('מאזין… (אמור: הבא / חזור / הקרא)','Listening… (say: next / back / read)'):'🎙️ '+L('פקודות קוליות','Voice commands')}</button>
     </div>
-    <p class="vc-hint">💡 מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: "הבא", "הקודם", "הקרא שוב", "פרטים".</p>
+    <p class="vc-hint">💡 ${L('מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: "הבא", "הקודם", "הקרא שוב", "פרטים".','Big screen, big buttons — meant to stand by the smoker. Commands: "next", "back", "read again", "details".')}</p>
     <div class="vc-langrow">
-      <span class="vc-langlbl">🎙️ שפת דיבור:</span>
+      <span class="vc-langlbl">🎙️ ${L('שפת דיבור:','Speech language:')}</span>
       <button class="vc-langbtn ${vcLang()==='he'?'on':''}" data-vc="lang-he">עברית</button>
       <button class="vc-langbtn ${vcLang()==='en'?'on':''}" data-vc="lang-en">English</button>
-      <span class="vc-langlbl">🔊 תשובה:</span>
+      <span class="vc-langlbl">🔊 ${L('תשובה:','Answer:')}</span>
       <button class="vc-langbtn ${vcAnsLang()==='he'?'on':''}" data-vc="anslang-he">עברית</button>
       <button class="vc-langbtn ${vcAnsLang()==='en'?'on':''}" data-vc="anslang-en">English</button>
     </div>
-    <p class="vc-hint">${vcLang()==='en'?'🇬🇧 Voice commands: next · back · read · details · temperature · when.':'פקודות עבריות: הבא · הקודם · הקרא · פרטים · טמפרטורה · מתי.'} דיבור באנגלית מזוהה לרוב מדויק יותר.</p>
-    ${aiAvail()?`<p class="vc-hint">✨ אפשר לשאול שאלות חופשיות בקול (למשל "כמה עוד זמן לחזה?") — אפשר לשאול באנגלית ולקבל תשובה בעברית.</p>
+    <p class="vc-hint">${vcLang()==='en'?'🇬🇧 Voice commands: next · back · read · details · temperature · when.':'פקודות עבריות: הבא · הקודם · הקרא · פרטים · טמפרטורה · מתי.'} ${L('דיבור באנגלית מזוהה לרוב מדויק יותר.','English speech is usually recognized more accurately.')}</p>
+    ${aiAvail()?`<p class="vc-hint">✨ ${L('אפשר לשאול שאלות חופשיות בקול (למשל "כמה עוד זמן לחזה?") — אפשר לשאול באנגלית ולקבל תשובה בעברית.','You can ask free questions by voice (e.g. "how much longer for the brisket?") — you can ask in English and get an answer in Hebrew.')}</p>
     <div class="vc-askrow"><input id="vcAskInput" placeholder="${vcAnsLang()==='en'?'Type a question…':'הקלד שאלה…'}"><button class="vc-askbtn" data-vc="asktext">${vcAnsLang()==='en'?'Ask ✨':'שאל ✨'}</button></div>
     ${vcLastQA?`<div class="vc-qa"><div class="vc-qa-q">❓ ${esc(vcLastQA.q)}</div><div class="vc-qa-a">${esc(vcLastQA.a)}</div></div>`:''}`:''}
-    ${gemKey()?`<div class="vc-voicerow">✨ Gemini TTS פעיל · <label>קול:</label><select id="gemVoiceSel">${GEM_VOICES.map(v=>`<option ${v===gemVoice()?'selected':''}>${v}</option>`).join('')}</select> <button class="vc-keybtn" data-vc="gemoff">נתק</button></div>`
-      :`<details class="vc-gem"><summary>✨ שדרוג איכות קול — Gemini TTS (מפתח אישי · דורש Billing)</summary>
-        <p>קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת יישאר קול המערכת.</p>
-        <div class="vc-keyrow"><input type="password" id="gemKeyInp" placeholder="הדבק מפתח API..."><button class="vc-keybtn" data-vc="gemsave">שמור</button></div>
+    ${gemKey()?`<div class="vc-voicerow">✨ ${L('Gemini TTS פעיל','Gemini TTS active')} · <label>${L('קול:','Voice:')}</label><select id="gemVoiceSel">${GEM_VOICES.map(v=>`<option ${v===gemVoice()?'selected':''}>${v}</option>`).join('')}</select> <button class="vc-keybtn" data-vc="gemoff">${L('נתק','Disconnect')}</button></div>`
+      :`<details class="vc-gem"><summary>✨ ${L('שדרוג איכות קול — Gemini TTS (מפתח אישי · דורש Billing)','Upgrade voice quality — Gemini TTS (personal key · requires Billing)')}</summary>
+        <p>${L('קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת יישאר קול המערכת.','Neural voices with natural speech. Create a key at <b>aistudio.google.com</b> → Get API Key, and paste it here. Stored only in your browser, requires network. ⚠ Gemini read-aloud is a paid model — it requires enabling <b>Billing</b> on the project (a generous free quota even then); otherwise the system voice stays.')}</p>
+        <div class="vc-keyrow"><input type="password" id="gemKeyInp" placeholder="${L('הדבק מפתח API...','Paste API key...')}"><button class="vc-keybtn" data-vc="gemsave">${L('שמור','Save')}</button></div>
       </details>`}
-    ${vcVoices.length>1&&!gemKey()?`<div class="vc-voicerow"><label>קול מערכת:</label><select id="vcVoiceSel">${vcVoices.map(v=>`<option value="${v.name}" ${v===vcPickVoice()?'selected':''}>${v.name} (${v.lang})</option>`).join('')}</select></div>`
-      :(vcVoices.length===0&&!gemKey()?'<p class="vc-hint">⚠ לא נמצא קול עברי במכשיר — באנדרואיד: הגדרות ← ניהול כללי ← המרת טקסט לדיבור ← התקן/בחר "שירותי הדיבור של Google" עם עברית.</p>':'')}`
-   :'<div class="shop-empty">אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.</div>';
+    ${vcVoices.length>1&&!gemKey()?`<div class="vc-voicerow"><label>${L('קול מערכת:','System voice:')}</label><select id="vcVoiceSel">${vcVoices.map(v=>`<option value="${v.name}" ${v===vcPickVoice()?'selected':''}>${v.name} (${v.lang})</option>`).join('')}</select></div>`
+      :(vcVoices.length===0&&!gemKey()?`<p class="vc-hint">${L('⚠ לא נמצא קול עברי במכשיר — באנדרואיד: הגדרות ← ניהול כללי ← המרת טקסט לדיבור ← התקן/בחר "שירותי הדיבור של Google" עם עברית.','⚠ No Hebrew voice found on the device — on Android: Settings → General management → Text-to-speech → install/select "Google speech services" with Hebrew.')}</p>`:'')}`
+   :`<div class="shop-empty">${L('אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.','No tasks — build a work plan in the scheduler, then come back.')}</div>`;
   host.querySelectorAll('[data-vc]').forEach(b=>b.addEventListener('click',()=>vcAction(b.dataset.vc)));
   host.querySelectorAll('[data-vcjump]').forEach(b=>b.addEventListener('click',()=>{ vcIdx=+b.dataset.vcjump; vcRender(); vcSpeakContent(vcCurrentText(false)); }));   // jump to a parallel running timer
   // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
@@ -3923,7 +3926,7 @@ function openVoiceCook(tasks){
   // start at the nearest upcoming task
   const now=new Date();
   const up=vcTasks.findIndex(t=>t.t>=now); if(up>0) vcIdx=up;
-  showPanel(`${toolTop('מצב בישול קולי','הטלפון ליד המעשנת — הקראה, ניווט ופקודות','🎙️','#7a5cc2')}
+  showPanel(`${toolTop(L('מצב בישול קולי','Voice cooking mode'),L('הטלפון ליד המעשנת — הקראה, ניווט ופקודות','The phone by the smoker — read-aloud, navigation and commands'),'🎙️','#7a5cc2')}
     <div class="panel-body" id="vcBody"></div>`);
   vcRender();
   if(vcTasks.length) vcSpeakContent(vcCurrentText(false));
@@ -5045,7 +5048,8 @@ function cwPaintReview(){
     if(typeof cwPaintPickList==='function') cwPaintPickList();   // re-filter the list immediately
   });
   document.querySelectorAll('[data-cwgo]').forEach(b=>b.addEventListener('click',()=>cwGo(+b.dataset.cwgo)));
-  const back=$("#cwBack"); if(back) back.addEventListener('click',()=>{ if(cWiz.step>0) cwGo(cWiz.step-1); else cNavGo('home'); });
+  const back=$("#cwBack"); if(back) back.addEventListener('click',()=>{ if(cWiz.step>0) cwGo(cWiz.step-1); else cwExitWizard(); });
+  const exit=$("#cwExit"); if(exit) exit.addEventListener('click',cwExitWizard);
   const gen=$("#cwGenPlan"); if(gen) gen.addEventListener('click',()=>{ const sv=$("#cwServe"); if(sv) store.set('mk-tlserve',sv.value); if(typeof openTimeline==='function') openTimeline(); });
   const vc=$("#cwVoice"); if(vc) vc.addEventListener('click',()=>{
     // build the work-plan tasks (openTimeline populates window._wpTasks synchronously), then launch voice
@@ -5075,7 +5079,7 @@ function cRefreshHome(){
   const savedCtx=(r&&r.ctx==='cook')?'cook':'event';
   const savedMenu=store.get(savedCtx==='cook'?'mk-cook':'mk-menu')||{keys:[]};
   const hasDraft=(savedMenu.keys||[]).length>0;
-  if(r&&r.title&&hasDraft){ box.hidden=false; const m=$("#cResumeM"); if(m) m.textContent=`${r.title} · ${r.serv} סועדים${savedCtx==='cook'?' · בישול':''}`; }
+  if(r&&r.title&&hasDraft){ box.hidden=false; const m=$("#cResumeM"); if(m) m.textContent=`${r.title} · ${r.serv} ${L('סועדים','guests')}${savedCtx==='cook'?' · '+L('בישול','cook'):''}`; }
   else { box.hidden=true; if(!hasDraft&&r) store.set('mk-cresume',null); }
   // last active project
   const pbox=$("#cResumeProj");
@@ -5084,7 +5088,7 @@ function cRefreshHome(){
     const p=lid&&projs.find?projs.find(x=>x.id===lid):null;
     if(p){ pbox.hidden=false; const pm=$("#cResumeProjM");
       const pr=(typeof projProgress==='function')?projProgress(p):null;
-      if(pm) pm.textContent=`${p.name}${pr?' · '+(pr.day||pr.label):''}${pr&&pr.ready?' · מוכן ✓':''}`;
+      if(pm) pm.textContent=`${p.name}${pr?' · '+(pr.day||pr.label):''}${pr&&pr.ready?' · '+L('מוכן ✓','ready ✓'):''}`;
     } else pbox.hidden=true;
   }
   // F2: live-cook banner — a plan started (any event/scope) or timers running/ringing
@@ -5211,7 +5215,7 @@ function combinedEventsRows(){
       // schedule backward from serve to get the start clock and this item's smoke window (for equipment contention)
       let end=serve.getTime(), smokeWin=null;
       for(var i=stages.length-1;i>=0;i--){ const s=stages[i]; const sSt=end-(s.hours||0)*3600e3; if(s.kind==='smoke'&&!smokeWin) smokeWin={start:sSt,end:end}; end=sSt; }
-      rows.push({ev:ev, ei:ei, name:meta.heb, start:new Date(end), serve:serve, totalH:totalH, smoke:smokeWin});
+      rows.push({ev:ev, ei:ei, name:meta.heb, eng:meta.eng, start:new Date(end), serve:serve, totalH:totalH, smoke:smokeWin});
     });
   });
   rows.sort(function(a,b){return a.start-b.start;});
@@ -5239,21 +5243,25 @@ function crossEventShopData(){
 }
 function openCrossEventCart(){
   const d=crossEventShopData();
-  if(!d.items.length){ showPanel(`${toolTop('רשימת קניות מאוחדת','לכל האירועים יחד','🛒','#4f8a3d')}<div class="panel-body"><div class="shop-empty">אין פריטים באירועים עדיין.</div></div>`); return; }
+  const en = typeof getLang==='function' && getLang()!=='he';
+  const kg = L('ק״ג','kg');
+  if(!d.items.length){ showPanel(`${toolTop(L('רשימת קניות מאוחדת','Combined shopping list'),L('לכל האירועים יחד','For all events together'),'🛒','#4f8a3d')}<div class="panel-body"><div class="shop-empty">${L('אין פריטים באירועים עדיין.','No items in any events yet.')}</div></div>`); return; }
   const byCat={}; d.items.forEach(function(it){ (byCat[it.cat]=byCat[it.cat]||[]).push(it); });
-  const xline=function(text, sub){ const k='xshop:'+text; const done=store.get(k)?'done':''; return `<div class="shop-line ${done}"><span class="cbx ${done}" data-xshop="${encodeURIComponent(text)}">${done?'✓':''}</span><span>${esc(text)}${sub?` <small style="color:var(--smoke)">· ${esc(sub)}</small>`:''}</span></div>`; };
+  // key stays the stable (language-independent) label so checkbox state survives a language switch; disp is what's shown
+  const xline=function(key, disp, sub){ const k='xshop:'+key; const done=store.get(k)?'done':''; return `<div class="shop-line ${done}"><span class="cbx ${done}" data-xshop="${encodeURIComponent(key)}">${done?'✓':''}</span><span>${esc(disp||key)}${sub?` <small style="color:var(--smoke)">· ${esc(sub)}</small>`:''}</span></div>`; };
   const groups=Object.keys(byCat).map(function(cat){
-    return `<div class="shop-group"><h4>${esc(cat)}</h4>`+byCat[cat].map(function(it){
-      const qty = it.totalKg? `~${it.totalKg.toFixed(1)} ק״ג` : '';
-      const brk = it.events.length>1? it.events.map(function(e){return e.name+(e.kg?` ${e.kg.toFixed(1)}ק״ג`:'');}).join(' + ') : '';
-      return xline(`${it.name} (${it.eng})${qty?' — '+qty:''}`, brk);
+    return `<div class="shop-group"><h4>${esc(t(cat))}</h4>`+byCat[cat].map(function(it){
+      const qty = it.totalKg? `~${it.totalKg.toFixed(1)} ${kg}` : '';
+      const brk = it.events.length>1? it.events.map(function(e){return e.name+(e.kg?` ${e.kg.toFixed(1)}${kg}`:'');}).join(' + ') : '';
+      const disp = (en?it.eng:`${it.name} (${it.eng})`)+(qty?' — '+qty:'');
+      return xline(`${it.name} (${it.eng})${qty?' — '+qty:''}`, disp, brk);
     }).join('')+`</div>`;
   }).join('');
-  const woodG = d.woods.length? `<div class="shop-group"><h4>🪵 עצים</h4>`+d.woods.map(function(w){return xline(w);}).join('')+`</div>` : '';
-  const coalG = d.coals.length? `<div class="shop-group"><h4>⚫ פחם</h4>`+d.coals.map(function(c){return xline(c);}).join('')+`</div>` : '';
-  showPanel(`${toolTop('רשימת קניות מאוחדת','כל '+d.eventCount+' האירועים יחד — כמויות מסוכמות','🛒','#4f8a3d')}
+  const woodG = d.woods.length? `<div class="shop-group"><h4>🪵 ${L('עצים','Woods')}</h4>`+d.woods.map(function(w){return xline(w, t(w));}).join('')+`</div>` : '';
+  const coalG = d.coals.length? `<div class="shop-group"><h4>⚫ ${L('פחם','Charcoal')}</h4>`+d.coals.map(function(c){return xline(c, t(c));}).join('')+`</div>` : '';
+  showPanel(`${toolTop(L('רשימת קניות מאוחדת','Combined shopping list'),L('כל ','All ')+d.eventCount+L(' האירועים יחד — כמויות מסוכמות',' events together — summed quantities'),'🛒','#4f8a3d')}
     <div class="panel-body">
-      <div class="kbox k-ok">רשימה אחת לכל האירועים — כמויות מסוכמות עם פירוט לכל אירוע. תבלינים ותוספות ספציפיים נמצאים בעגלה של כל אירוע.</div>
+      <div class="kbox k-ok">${L('רשימה אחת לכל האירועים — כמויות מסוכמות עם פירוט לכל אירוע. תבלינים ותוספות ספציפיים נמצאים בעגלה של כל אירוע.','One list for all events — summed quantities with a per-event breakdown. Event-specific seasonings and sides live in each individual event cart.')}</div>
       ${groups}${woodG}${coalG}
     </div>`);
   $("#panel").querySelectorAll('[data-xshop]').forEach(function(sp){ sp.addEventListener('click',function(){
@@ -5265,15 +5273,16 @@ function openCombinedTimeline(){
   const evs=evList(), rows=combinedEventsRows(), now=new Date();
   const legend=evs.map(function(ev,ei){ return `<span class="cet-leg"><span class="cet-dot" style="background:${EV_COLORS[ei%EV_COLORS.length]}"></span>${esc(ev.name)} · ${ev.serve||'19:00'}${evRunningCount(ev.id)?` · 🔴 ${evRunningCount(ev.id)}`:''}</span>`; }).join('');
   let curDay=null;
+  const dloc = (typeof getLang==='function'&&getLang()!=='he')?'en-US':'he-IL';
   const listHtml=rows.length?rows.map(function(r){ const col=EV_COLORS[r.ei%EV_COLORS.length];
     const day=isoDate(r.start); let head='';
-    if(day!==curDay){ curDay=day; head=`<div class="cet-day">📅 ${esc(serveDayLabel(r.start))} · ${new Date(r.start).toLocaleDateString('he-IL',{day:'numeric',month:'short'})}</div>`; }   // day separator so multi-day catering doesn't collapse onto one clock
-    return `${head}<div class="cet-row ${r.start<now?'cet-past':''} ${r.contention?'cet-clash':''}" style="border-inline-start:4px solid ${col}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(r.name)}${r.contention?' <span class="cet-warn" title="חפיפת מעשנה בין אירועים">⚠ מעשנה</span>':''}</b><small style="color:${col}">${esc(r.ev.name)} · הגשה ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+'ד':r.totalH.toFixed(1)+'ש'):''}</span></div>`;
-  }).join(''):'<div class="shop-empty">אין אירועים עם מנות עדיין.</div>';
+    if(day!==curDay){ curDay=day; head=`<div class="cet-day">📅 ${esc(serveDayLabel(r.start))} · ${new Date(r.start).toLocaleDateString(dloc,{day:'numeric',month:'short'})}</div>`; }   // day separator so multi-day catering doesn't collapse onto one clock
+    return `${head}<div class="cet-row ${r.start<now?'cet-past':''} ${r.contention?'cet-clash':''}" style="border-inline-start:4px solid ${col}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc((typeof getLang==='function'&&getLang()!=='he')?(r.eng||r.name):r.name)}${r.contention?' <span class="cet-warn" title="'+L('חפיפת מעשנה בין אירועים','Smoker overlap between events')+'">⚠ '+L('מעשנה','Smoker')+'</span>':''}</b><small style="color:${col}">${esc(r.ev.name)} · ${L('הגשה','Serve')} ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+L('ד','m'):r.totalH.toFixed(1)+L('ש','h')):''}</span></div>`;
+  }).join(''):`<div class="shop-empty">${L('אין אירועים עם מנות עדיין.','No events with dishes yet.')}</div>`;
   const clashN=rows.filter(function(r){return r.contention;}).length;
-  const clashNote=clashN?`<div class="cet-clashnote">⚠ <b>חפיפת מעשנה:</b> ${clashN} פריטים מאירועים שונים מתוזמנים לעשן בו-זמנית. מעשנה אחת לא תספיק — פזר את שעות ההגשה או השתמש בשתי מעשנות.</div>`:'';
-  const shopBtn = evs.length? `<button class="mchip" id="cetShop" style="margin-bottom:10px">🛒 רשימת קניות מאוחדת</button>` : '';
-  showPanel(`${toolTop('כל האירועים — תצוגה משולבת','לוח-זמנים מאוחד לאירועים מקבילים','🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div>${clashNote}${shopBtn}<p class="section-sub">זמני ההתחלה של כל המנות מכל האירועים, לפי השיטה שנבחרה בכל אירוע, ממוזגים לפי יום ושעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.</p>${listHtml}</div>`);
+  const clashNote=clashN?`<div class="cet-clashnote">⚠ <b>${L('חפיפת מעשנה:','Smoker overlap:')}</b> ${clashN} ${L('פריטים מאירועים שונים מתוזמנים לעשן בו-זמנית. מעשנה אחת לא תספיק — פזר את שעות ההגשה או השתמש בשתי מעשנות.','items from different events are scheduled to smoke at the same time. One smoker will not be enough — stagger the serve times or use two smokers.')}</div>`:'';
+  const shopBtn = evs.length? `<button class="mchip" id="cetShop" style="margin-bottom:10px">🛒 ${L('רשימת קניות מאוחדת','Combined shopping list')}</button>` : '';
+  showPanel(`${toolTop(L('כל האירועים — תצוגה משולבת','All events — combined view'),L('לוח-זמנים מאוחד לאירועים מקבילים','A unified schedule for parallel events'),'🗂️','#7a5cc2')}<div class="panel-body"><div class="cet-legend">${legend}</div>${clashNote}${shopBtn}<p class="section-sub">${L('זמני ההתחלה של כל המנות מכל האירועים, לפי השיטה שנבחרה בכל אירוע, ממוזגים לפי יום ושעה. פתח אירוע ספציפי לתוכנית המלאה עם טיימרים.','Start times for every dish from every event — by the method chosen per event — merged by day and hour. Open a specific event for the full plan with timers.')}</p>${listHtml}</div>`);
   { const b=$("#cetShop"); if(b) b.addEventListener('click', openCrossEventCart); }
 }
 function cPaintEvents(){
@@ -5344,6 +5353,24 @@ function cPaintEvents(){
     appConfirm(L('למחוק את האירוע?','Delete this event?'),{okLabel:'🗑️ '+L('מחק','Delete'),danger:true}).then(y=>{ if(y===true){ evDelete(id); cPaintEvents(); } });
   }));
   const da=$("#cEvDelAll"); if(da) da.addEventListener('click',async()=>{ if((await appConfirm(L('למחוק את כל האירועים?\nפעולה בלתי הפיכה.','Delete all events?\nThis cannot be undone.'),{okLabel:'🗑️ '+L('מחק הכל','Delete all'),danger:true}))!==true) return; if((await appConfirm(L('בטוח? כל האירועים יימחקו.','Are you sure? All events will be deleted.'),{okLabel:L('כן, מחק סופית','Yes, delete permanently'),danger:true}))!==true) return; evDeleteAll(); cPaintEvents(); });
+}
+// exit/cancel the wizard from any step. For an unsaved EVENT draft, offer save/discard/stay;
+// otherwise just return home (a cook draft persists as the dismissible home resume card).
+async function cwExitWizard(){
+  const cook=(typeof menuCtx==='function'&&menuCtx()==='cook');
+  const hasContent=(typeof evMenuHasContent==='function')?evMenuHasContent():false;
+  if(!cook && typeof isDraft==='function' && isDraft() && hasContent){
+    // 3-way: OK = save & exit, Cancel(button) = discard & exit, dismiss(×/esc) = stay
+    const ans=await appConfirm(L('לצאת מאשף האירוע? יש טיוטה שלא נשמרה.','Exit the event wizard? You have an unsaved draft.'),{okLabel:'💾 '+L('שמור וצא','Save & exit'),cancelLabel:'🗑️ '+L('מחק וצא','Discard & exit')});
+    if(ans===null) return;   // dismissed → stay in the wizard
+    if(ans===true){ let nm=(menuState().evName||'').trim(); if(!nm){ const v=await appPrompt(L('שם לאירוע:','Event name:'),'',{placeholder:L('למשל: שישי במשפחה','e.g. Family Friday'),okLabel:'💾 '+L('שמור','Save')}); if(v===null||v===false) return; nm=v||L('אירוע ללא שם','Untitled event'); } evSaveCurrent(nm); if(typeof toast==='function') toast('האירוע נשמר'); }
+    else { const empty={guests:8,appetite:'reg',kosher:false,keys:[],sides:[],drinks:[],desserts:[],gpm:0}; store.set('mk-menu',empty); try{ evClearActive(); }catch(_){}
+      store.set('mk-cresume',null); if(typeof toast==='function') toast(L('הטיוטה בוטלה','Draft discarded')); }
+  } else if(cook){
+    // cook drafts are non-destructive — leave them; they surface as the (dismissible) resume card
+    store.set('mk-cresume',null);
+  }
+  cwGo(0); cNavGo('home');
 }
 function cwSyncFromMenu(){
   // reflect loaded event into wizard step 0 fields
@@ -5799,12 +5826,12 @@ async function runDiagnose(problem){
   }
 }
 function openDiagnoseAI(){
-  const examples=['הנקניק יצא יבש ופריך','העשן יצא מר','הבשר נתקע ב-68 מעלות','עובש לבן על הסלמי','הגבינה לא נמסה'];
-  showPanel(`${toolTop('אבחון תקלה אישי','תאר מה קרה — ואאבחן','🩺','#a8392f')}<div class="panel-body">
-    <div class="ai-badge">✨ מופעל ע\u05f4י AI · לוקח בחשבון את היומן והפרויקטים שלך</div>
-    <textarea id="diagPrompt" placeholder="למשל: עישנתי חזה אבל יצא יבש וקשה, למרות שהגעתי לטמפ׳" style="width:100%;min-height:80px;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:15px;margin-bottom:10px"></textarea>
+  const examples=[L('הנקניק יצא יבש ופריך','The sausage came out dry and crumbly'),L('העשן יצא מר','The smoke came out bitter'),L('הבשר נתקע ב-68 מעלות','The meat stalled at 68 degrees'),L('עובש לבן על הסלמי','White mold on the salami'),L('הגבינה לא נמסה','The cheese did not melt')];
+  showPanel(`${toolTop(L('אבחון תקלה אישי','Personal troubleshooting'),L('תאר מה קרה — ואאבחן','Describe what happened — and I will diagnose'),'🩺','#a8392f')}<div class="panel-body">
+    <div class="ai-badge">✨ ${L('מופעל ע\u05f4י AI · לוקח בחשבון את היומן והפרויקטים שלך','Powered by AI · takes your journal and projects into account')}</div>
+    <textarea id="diagPrompt" placeholder="${L('למשל: עישנתי חזה אבל יצא יבש וקשה, למרות שהגעתי לטמפ׳','e.g. I smoked a brisket but it came out dry and tough, even though I hit the target temp')}" style="width:100%;min-height:80px;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:15px;margin-bottom:10px"></textarea>
     <div class="chips" style="margin-bottom:14px">${examples.map(e=>`<span class="chip" data-diagex="${e}">${e}</span>`).join('')}</div>
-    <button class="ccta" id="diagGo">✨ אבחן</button></div>`);
+    <button class="ccta" id="diagGo">✨ ${L('אבחן','Diagnose')}</button></div>`);
   const ta=$("#diagPrompt");
   $("#panel").querySelectorAll('[data-diagex]').forEach(c=>c.addEventListener('click',()=>{ if(ta) ta.value=c.dataset.diagex; }));
   const go=$("#diagGo"); if(go) go.addEventListener('click',()=>runDiagnose(ta?ta.value:''));
@@ -6111,7 +6138,7 @@ function cPaintProjects(){
   host.querySelectorAll('[data-invinc]').forEach(b=>b.addEventListener('click',()=>{ const a=invEnsure(); const it=a.find(x=>x.id===b.dataset.invinc); if(it) upd(it.id,it.qty+ (it.unit==='גרם'?10:1)); }));
   host.querySelectorAll('[data-invdec]').forEach(b=>b.addEventListener('click',()=>{ const a=invEnsure(); const it=a.find(x=>x.id===b.dataset.invdec); if(it) upd(it.id,it.qty-(it.unit==='גרם'?10:1)); }));
   host.querySelectorAll('[data-invrm]').forEach(b=>b.addEventListener('click',()=>{
-    appConfirm('להסיר את הפריט מהמזווה?',{okLabel:'הסר',danger:true}).then(y=>{ if(y!==true) return; invSave(invEnsure().filter(x=>x.id!==b.dataset.invrm)); cPaintProjects(); });
+    appConfirm(L('להסיר את הפריט מהמזווה?','Remove this item from the pantry?'),{okLabel:L('הסר','Remove'),danger:true}).then(y=>{ if(y!==true) return; invSave(invEnsure().filter(x=>x.id!==b.dataset.invrm)); cPaintProjects(); });
   }));
   // wire — links
   host.querySelectorAll('[data-mfn]').forEach(b=>b.addEventListener('click',()=>{ const fn=b.dataset.mfn; if(typeof window[fn]==='function') window[fn](); }));
@@ -6131,13 +6158,13 @@ function resetRecipeProgress(key){
 function openPantryShop(){
   const inv=invEnsure(); const low=inv.filter(i=>i.qty<=i.low);
   const byGrp={}; low.forEach(i=>{ const g=i.grp||'שונות'; (byGrp[g]=byGrp[g]||[]).push(i); });
-  const line=(i)=>{ const txt=i.name+(i.low>0?` · יעד ≥${i.low} ${i.unit}`:'')+` · יש ${i.qty}`; const done=store.get("shop:"+i.name)?"done":"";
+  const line=(i)=>{ const txt=t(i.name)+(i.low>0?` · ${L('יעד','target')} ≥${i.low} ${t(i.unit)}`:'')+` · ${L('יש','have')} ${i.qty}`; const done=store.get("shop:"+i.name)?"done":"";
     return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(i.name)}">${done?"✓":""}</span><span>${txt}</span></div>`; };
-  const body=low.length?Object.keys(byGrp).map(g=>`<div class="shop-group"><h4>${g}</h4>${byGrp[g].map(line).join('')}</div>`).join(''):'<div class="shop-empty">המזווה מלא — אין חוסרים 🎉</div>';
-  showPanel(`${toolTop('קניות למזווה','חומרי גלם חסרים או נמוכים','🛒','#9e4a3d')}
+  const body=low.length?Object.keys(byGrp).map(g=>`<div class="shop-group"><h4>${t(g)}</h4>${byGrp[g].map(line).join('')}</div>`).join(''):`<div class="shop-empty">${L('המזווה מלא — אין חוסרים 🎉','Pantry is full — nothing low 🎉')}</div>`;
+  showPanel(`${toolTop(L('קניות למזווה','Pantry shopping'),L('חומרי גלם חסרים או נמוכים','Missing or low raw materials'),'🛒','#9e4a3d')}
     <div class="panel-body">
       ${body}
-      ${low.length?`<button class="prbtn" style="position:static;margin-top:14px" data-print>⎙ הדפס רשימה</button>`:''}
+      ${low.length?`<button class="prbtn" style="position:static;margin-top:14px" data-print>⎙ ${L('הדפס רשימה','Print list')}</button>`:''}
     </div>`);
   const pnl=$("#panel"); if(!pnl) return;
   pnl.querySelectorAll('[data-shopck]').forEach(cb=>cb.addEventListener('click',()=>{ const k="shop:"+decodeURIComponent(cb.dataset.shopck); store.set(k,!store.get(k)); openPantryShop(); }));
@@ -6149,16 +6176,16 @@ function recipeMaterials(meta){
   const out=[];
   const bld=(meta.obj&&meta.obj.build)||(meta.build)||(DATA.makes[(meta.key||'').replace(/^make-/,'')]||{}).build||{};
   if(bld && Array.isArray(bld.materials) && bld.materials.length){
-    bld.materials.forEach(m=>out.push(String(m)));
+    bld.materials.forEach(m=>out.push(t(String(m))));
   }
   const o=meta.obj||{};
   if(meta.kind==='cut'){
-    if(o.heb) out.push(o.heb+(o.kg?` (~${o.kg} ק״ג)`:''));
-    if(o.rub && o.rub!=='—') String(o.rub).split(/[+,\/]/).forEach(r=>{const t=r.trim(); if(t) out.push(t);});
-    if(o.wood && o.wood!=='ללא') out.push('עצי '+o.wood);
+    if(o.heb) out.push((typeof itemName==='function'?itemName(meta):o.heb)+(o.kg?` (~${o.kg} ${L('ק״ג','kg')})`:''));
+    if(o.rub && o.rub!=='—') String(o.rub).split(/[+,\/]/).forEach(r=>{const rr=r.trim(); if(rr) out.push(t(rr));});
+    if(o.wood && o.wood!=='ללא') out.push(L('עצי ','Wood: ')+t(o.wood));
   } else if(meta.kind==='spec'){
-    if(o.cure && o.cure!=='—') out.push(o.cure);
-    if(o.wood && o.wood!=='ללא') out.push('עצי '+o.wood);
+    if(o.cure && o.cure!=='—') out.push(t(o.cure));
+    if(o.wood && o.wood!=='ללא') out.push(L('עצי ','Wood: ')+t(o.wood));
   }
   // dedup
   return [...new Set(out.filter(Boolean))];
@@ -6171,16 +6198,16 @@ function openRecipeShop(meta){
   const showMissingKey='shopmiss:'+(meta.key||'');
   const onlyMissing=store.get(showMissingKey)||false;
   const line=(text,have)=>{ const done=store.get("shop:"+text)?"done":"";
-    return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(text)}">${done?"✓":""}</span><span>${text} ${have?'<b style="color:var(--good)">· יש במזווה</b>':'<b style="color:var(--terra-d)">· חסר</b>'}</span></div>`; };
+    return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(text)}">${done?"✓":""}</span><span>${text} ${have?`<b style="color:var(--good)">· ${L('יש במזווה','in pantry')}</b>`:`<b style="color:var(--terra-d)">· ${L('חסר','missing')}</b>`}</span></div>`; };
   let list=mats.map(mt=>({mt,have:invHas(String(mt).split(/[0-9]/)[0].trim())}));
   if(onlyMissing) list=list.filter(x=>!x.have);
-  const matHTML=list.length?list.map(x=>line(x.mt,x.have)).join(''):'<div class="shop-empty">אין פריטים להצגה.</div>';
+  const matHTML=list.length?list.map(x=>line(x.mt,x.have)).join(''):`<div class="shop-empty">${L('אין פריטים להצגה.','No items to show.')}</div>`;
   const missCount=mats.filter(mt=>!invHas(String(mt).split(/[0-9]/)[0].trim())).length;
-  showPanel(`${toolTop('קניות למתכון',meta.heb,'🛒','#e07a52')}
+  showPanel(`${toolTop(L('קניות למתכון','Recipe shopping'),(typeof itemName==='function'?itemName(meta):meta.heb),'🛒','#e07a52')}
     <div class="panel-body">
-      <div class="shop-toggle"><button class="${onlyMissing?'':'on'}" data-showall>הכל (${mats.length})</button><button class="${onlyMissing?'on':''}" data-showmiss>רק חסר (${missCount})</button></div>
+      <div class="shop-toggle"><button class="${onlyMissing?'':'on'}" data-showall>${L('הכל','All')} (${mats.length})</button><button class="${onlyMissing?'on':''}" data-showmiss>${L('רק חסר','Only missing')} (${missCount})</button></div>
       <div class="shop-group">${matHTML}</div>
-      <button class="prbtn" style="position:static;margin-top:14px" data-print>⎙ הדפס רשימה</button>
+      <button class="prbtn" style="position:static;margin-top:14px" data-print>⎙ ${L('הדפס רשימה','Print list')}</button>
     </div>`);
   const pnl=$("#panel"); if(!pnl) return;
   pnl.querySelectorAll('[data-shopck]').forEach(cb=>cb.addEventListener('click',()=>{ const k="shop:"+decodeURIComponent(cb.dataset.shopck); store.set(k,!store.get(k)); openRecipeShop(meta); }));
@@ -6194,16 +6221,17 @@ function openProjectCart(p){
   const bld=boughtRaw?{}:((meta.obj&&meta.obj.build)||itemScratchBuild(meta)||(DATA.makes[(p.key||'').replace(/^make-/,'')]||{}).build||{});
   const mats=boughtRaw?[]:(bld.materials||[]); const inv=invEnsure();
   const invHas=(name)=>inv.some(i=>i.qty>0 && (i.name.includes(name)||name.includes(i.name.split(' ')[0])));
-  const line=(text,have)=>{ const done=store.get("shop:"+text)?"done":""; 
-    return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(text)}">${done?"✓":""}</span><span>${text}${have?' <b style="color:var(--good)">· יש</b>':' <b style="color:var(--terra-d)">· חסר</b>'}</span></div>`; };
-  const matHTML=mats.length?mats.map(mt=>{const key=String(mt).split(/[0-9]/)[0].trim();return line(mt,invHas(key));}).join(''):(boughtRaw?`<div class="shop-empty">פריט שנקנה מוכן — אין חומרי-גלם לרכישה.${p.finish?' שלב סיום: '+p.finish:''}</div>`:'<div class="shop-empty">אין רשימת מרכיבים למתכון זה.</div>');
+  // key stays the language-independent Hebrew label so checkbox state survives a language switch; disp is shown
+  const line=(key,disp,have)=>{ const done=store.get("shop:"+key)?"done":"";
+    return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(key)}">${done?"✓":""}</span><span>${disp||key}${have?` <b style="color:var(--good)">· ${L('יש','in pantry')}</b>`:` <b style="color:var(--terra-d)">· ${L('חסר','missing')}</b>`}</span></div>`; };
+  const matHTML=mats.length?mats.map(mt=>{const key=String(mt).split(/[0-9]/)[0].trim();return line(mt,t(String(mt)),invHas(key));}).join(''):(boughtRaw?`<div class="shop-empty">${L('פריט שנקנה מוכן — אין חומרי-גלם לרכישה.','A bought item is ready — no raw ingredients to purchase.')}${p.finish?' '+L('שלב סיום:','Finishing step:')+' '+t(p.finish):''}</div>`:`<div class="shop-empty">${L('אין רשימת מרכיבים למתכון זה.','No ingredient list for this recipe.')}</div>`);
   const low=inv.filter(i=>i.qty<=i.low);
-  const lowHTML=low.length?`<div class="shop-group"><h4>📦 מהמזווה — להשלים</h4>${low.map(i=>line(i.name+(i.low>0?` (יעד ≥${i.low} ${i.unit})`:'')+` · יש ${i.qty}`,false)).join('')}</div>`:'';
-  showPanel(`${toolTop('קניות לפרויקט',p.name,'🛒','#9e4a3d')}
+  const lowHTML=low.length?`<div class="shop-group"><h4>📦 ${L('מהמזווה — להשלים','From the pantry — to restock')}</h4>${low.map(i=>line(i.name+(i.low>0?` (יעד ≥${i.low} ${i.unit})`:'')+` · יש ${i.qty}`, t(i.name)+(i.low>0?` (${L('יעד','target')} ≥${i.low} ${t(i.unit)})`:'')+` · ${L('יש','have')} ${i.qty}`,false)).join('')}</div>`:'';
+  showPanel(`${toolTop(L('קניות לפרויקט','Project shopping'),p.name,'🛒','#9e4a3d')}
     <div class="panel-body">
-      <div class="shop-group"><h4>🧫 מרכיבים וציוד</h4>${matHTML}</div>
+      <div class="shop-group"><h4>🧫 ${L('מרכיבים וציוד','Ingredients & equipment')}</h4>${matHTML}</div>
       ${lowHTML}
-      <button class="prbtn" style="position:static;margin-top:14px" data-print>⎙ הדפס רשימה</button>
+      <button class="prbtn" style="position:static;margin-top:14px" data-print>⎙ ${L('הדפס רשימה','Print list')}</button>
     </div>`);
   const pnl=$("#panel");
   if(pnl){
@@ -6447,7 +6475,7 @@ async function pantryAdvisorAI(targetDate){
 }
 function openProjectWizard(meta){
   pwState={meta,step:0,name:meta.heb,type:pwGuessType(meta),start:today(),startW:1000,factor:0.62,days:pwSuggestDays(meta)};
-  showPanel(`${toolTop('אשף פרויקט','צור פרויקט מלאכה חדש','🧫','#9e4a3d')}
+  showPanel(`${toolTop(L('אשף פרויקט','Project wizard'),L('צור פרויקט מלאכה חדש','Create a new craft project'),'🧫','#9e4a3d')}
     <div class="cwprog" id="pwProg" style="padding:0 22px 16px"></div>
     <div class="panel-body" id="pwBody"></div>`);
   pwRender();
@@ -6460,52 +6488,52 @@ function pwRender(){
   let body='';
   if(s.step===0){
     const scratch=s.type==='scratch';
-    body=`<div class="cwq">פרטי הפרויקט</div><div class="cwsub">תן שם ובחר את סוג התהליך.</div>
+    body=`<div class="cwq">${L('פרטי הפרויקט','Project details')}</div><div class="cwsub">${L('תן שם ובחר את סוג התהליך.','Name it and pick the process type.')}</div>
       <div class="cscard">
-        <input id="pwn" placeholder="שם הפרויקט" value="${s.name}" style="${inp}">
+        <input id="pwn" placeholder="${L('שם הפרויקט','Project name')}" value="${s.name}" style="${inp}">
         <input id="pwstart" type="date" value="${s.start}" style="${inp}">
       </div>
-      <div class="cscard"><h4>⚙️ סוג התהליך</h4><div class="cmethods" id="pwtype">
-        <span class="cmethod ${s.type==='scratch'?'on':''}" data-pwt="scratch">🍖 בנייה מאפס (טרי)</span>
-        <span class="cmethod ${s.type==='dry'?'on':''}" data-pwt="dry">🧫 ייבוש למשקל</span>
-        <span class="cmethod ${s.type==='cure'?'on':''}" data-pwt="cure">🧂 כבישה בימים</span>
+      <div class="cscard"><h4>⚙️ ${L('סוג התהליך','Process type')}</h4><div class="cmethods" id="pwtype">
+        <span class="cmethod ${s.type==='scratch'?'on':''}" data-pwt="scratch">🍖 ${L('בנייה מאפס (טרי)','Build from scratch (fresh)')}</span>
+        <span class="cmethod ${s.type==='dry'?'on':''}" data-pwt="dry">🧫 ${L('ייבוש למשקל','Dry to weight')}</span>
+        <span class="cmethod ${s.type==='cure'?'on':''}" data-pwt="cure">🧂 ${L('כבישה בימים','Cure by days')}</span>
       </div></div>
-      ${scratch?`<div class="cscard" style="background:var(--fresh-l);border-color:#b8e0d4"><h4>🍖 בנייה מאפס</h4><div style="font-size:12.5px;color:var(--bone);line-height:1.6">מלאכה טרייה — טחינה, תיבול, מילוי/עיצוב ובישול. ${(()=>{const ph=(itemScratchBuild(meta)||{}).phases||[];return ph.length?`${ph.length} שלבים.`:'';})()} עוקבים אחרי השלבים במזווה, ואפשר לאחסן ולסיים בהמשך.</div></div>
-      <button class="ccta" data-pwcreate>🍖 צור פרויקט מאפס</button>`
-      :`<button class="ccta" data-pwnext>המשך ליעד ←</button>`}`;
+      ${scratch?`<div class="cscard" style="background:var(--fresh-l);border-color:#b8e0d4"><h4>🍖 ${L('בנייה מאפס','Build from scratch')}</h4><div style="font-size:12.5px;color:var(--bone);line-height:1.6">${L('מלאכה טרייה — טחינה, תיבול, מילוי/עיצוב ובישול.','A fresh craft — grinding, seasoning, stuffing/shaping and cooking.')} ${(()=>{const ph=(itemScratchBuild(meta)||{}).phases||[];return ph.length?`${ph.length} ${L('שלבים.','steps.')}`:'';})()} ${L('עוקבים אחרי השלבים במזווה, ואפשר לאחסן ולסיים בהמשך.','Follow the steps in the pantry — you can store it and finish later.')}</div></div>
+      <button class="ccta" data-pwcreate>🍖 ${L('צור פרויקט מאפס','Create scratch project')}</button>`
+      :`<button class="ccta" data-pwnext>${L('המשך ליעד ←','Next: target →')}</button>`}`;
   } else if(s.step===1){
-    body=s.type==='dry'?`<div class="cwq">יעד ייבוש</div><div class="cwsub">המוצר מוכן כשאיבד אחוז מהמשקל (35–40% קלאסי).</div>
-      <div class="cstepper"><button data-pwwm>−</button><div class="val" id="pwwv">${s.startW}<small>גרם התחלה</small></div><button data-pwwp>+</button></div>
-      <div class="cscard"><h4>📉 אחוז ירידת יעד</h4><div class="cmethods">
+    body=s.type==='dry'?`<div class="cwq">${L('יעד ייבוש','Drying target')}</div><div class="cwsub">${L('המוצר מוכן כשאיבד אחוז מהמשקל (35–40% קלאסי).','Ready when it has lost a percentage of its weight (35–40% is classic).')}</div>
+      <div class="cstepper"><button data-pwwm>−</button><div class="val" id="pwwv">${s.startW}<small>${L('גרם התחלה','g start')}</small></div><button data-pwwp>+</button></div>
+      <div class="cscard"><h4>📉 ${L('אחוז ירידת יעד','Target weight-loss %')}</h4><div class="cmethods">
         <span class="cmethod ${s.factor==0.65?'on':''}" data-pwf="0.65">35%</span>
         <span class="cmethod ${s.factor==0.62?'on':''}" data-pwf="0.62">38%</span>
         <span class="cmethod ${s.factor==0.6?'on':''}" data-pwf="0.6">40%</span>
-      </div><div style="font-size:13px;color:var(--fresh);font-weight:700;margin-top:12px">יעד משקל: ${Math.round(s.startW*s.factor)} ג׳</div></div>
-      <button class="ccta" data-pwnext>המשך למרכיבים ←</button>`
-    :`<div class="cwq">משך כבישה</div><div class="cwsub">כמה ימים עד שהמוצר מוכן.</div>
-      <div class="cstepper"><button data-pwdm>−</button><div class="val" id="pwdv">${s.days}<small>ימים</small></div><button data-pwdp>+</button></div>
-      <div class="cscard"><div style="font-size:13px;color:var(--fresh);font-weight:700">סיום משוער: ${fmtDate(addDays(s.start,s.days))}</div></div>
-      <button class="ccta" data-pwnext>המשך למרכיבים ←</button>`;
+      </div><div style="font-size:13px;color:var(--fresh);font-weight:700;margin-top:12px">${L('יעד משקל:','Target weight:')} ${Math.round(s.startW*s.factor)} ${L('ג׳','g')}</div></div>
+      <button class="ccta" data-pwnext>${L('המשך למרכיבים ←','Next: ingredients →')}</button>`
+    :`<div class="cwq">${L('משך כבישה','Cure duration')}</div><div class="cwsub">${L('כמה ימים עד שהמוצר מוכן.','How many days until it is ready.')}</div>
+      <div class="cstepper"><button data-pwdm>−</button><div class="val" id="pwdv">${s.days}<small>${L('ימים','days')}</small></div><button data-pwdp>+</button></div>
+      <div class="cscard"><div style="font-size:13px;color:var(--fresh);font-weight:700">${L('סיום משוער:','Estimated finish:')} ${fmtDate(addDays(s.start,s.days))}</div></div>
+      <button class="ccta" data-pwnext>${L('המשך למרכיבים ←','Next: ingredients →')}</button>`;
   } else if(s.step===2){
     const bld=(meta.obj&&meta.obj.build)||(DATA.makes[(meta.key||'').replace(/^make-/,'')]||{}).build||{};
     const mats=(bld.materials||[]); const inv=invEnsure();
     const invHas=(name)=>inv.some(i=>i.qty>0 && (i.name.includes(name)||name.includes(i.name.split(' ')[0])));
-    body=`<div class="cwq">מרכיבים וציוד</div><div class="cwsub">✓ = יש במזווה · חסרים יתווספו לרשימת הקניות.</div>
+    body=`<div class="cwq">${L('מרכיבים וציוד','Ingredients & equipment')}</div><div class="cwsub">${L('✓ = יש במזווה · חסרים יתווספו לרשימת הקניות.','✓ = in the pantry · missing ones are added to the shopping list.')}</div>
       <div class="cscard">${mats.length?mats.map(mt=>{const key=String(mt).split(/[0-9]/)[0].trim();const have=invHas(key);
-        return `<div class="pw-mat ${have?'have':''}"><span>${have?'✓':'○'}</span> ${mt}</div>`;}).join(''):'<div style="color:var(--smoke);font-size:12.5px">אין רשימת מרכיבים ייעודית.</div>'}</div>
-      <button class="ccta" data-pwnext>סקירה ויצירה ←</button>`;
+        return `<div class="pw-mat ${have?'have':''}"><span>${have?'✓':'○'}</span> ${t(String(mt))}</div>`;}).join(''):`<div style="color:var(--smoke);font-size:12.5px">${L('אין רשימת מרכיבים ייעודית.','No dedicated ingredient list.')}</div>`}</div>
+      <button class="ccta" data-pwnext>${L('סקירה ויצירה ←','Review & create →')}</button>`;
   } else {
-    const tgt=s.type==='dry'?`יעד ${Math.round(s.startW*s.factor)} ג׳ (ירידה ${Math.round((1-s.factor)*100)}%)`:`${s.days} ימים · סיום ${fmtDate(addDays(s.start,s.days))}`;
-    body=`<div class="cwq">סקירה</div><div class="cwsub">בדוק ואשר — ייווצרו תזכורות אוטומטיות.</div>
+    const tgt=s.type==='dry'?`${L('יעד','target')} ${Math.round(s.startW*s.factor)} ${L('ג׳','g')} (${L('ירידה','loss')} ${Math.round((1-s.factor)*100)}%)`:`${s.days} ${L('ימים','days')} · ${L('סיום','finish')} ${fmtDate(addDays(s.start,s.days))}`;
+    body=`<div class="cwq">${L('סקירה','Review')}</div><div class="cwsub">${L('בדוק ואשר — ייווצרו תזכורות אוטומטיות.','Check and confirm — automatic reminders will be created.')}</div>
       <div class="cscard">
-        <div class="pw-rr"><span>שם</span><b>${s.name}</b></div>
-        <div class="pw-rr"><span>סוג</span><b>${s.type==='dry'?'ייבוש למשקל':'כבישה בימים'}</b></div>
-        <div class="pw-rr"><span>התחלה</span><b>${fmtDate(s.start)}</b></div>
-        <div class="pw-rr"><span>יעד</span><b>${tgt}</b></div>
+        <div class="pw-rr"><span>${L('שם','Name')}</span><b>${s.name}</b></div>
+        <div class="pw-rr"><span>${L('סוג','Type')}</span><b>${s.type==='dry'?L('ייבוש למשקל','Dry to weight'):L('כבישה בימים','Cure by days')}</b></div>
+        <div class="pw-rr"><span>${L('התחלה','Start')}</span><b>${fmtDate(s.start)}</b></div>
+        <div class="pw-rr"><span>${L('יעד','Target')}</span><b>${tgt}</b></div>
       </div>
-      <button class="ccta" data-pwcreate>✓ צור פרויקט</button>`;
+      <button class="ccta" data-pwcreate>✓ ${L('צור פרויקט','Create project')}</button>`;
   }
-  const backBtn=s.step>0?`<button class="cwclear" data-pwback style="margin:0 16px 8px">← חזרה</button>`:'';
+  const backBtn=s.step>0?`<button class="cwclear" data-pwback style="margin:0 16px 8px">${L('← חזרה','← Back')}</button>`:'';
   host.innerHTML=body+backBtn;
   const g=sel=>host.querySelector(sel);
   if(g('#pwn')) g('#pwn').addEventListener('input',e=>s.name=e.target.value);
@@ -6531,22 +6559,22 @@ function pwCreate(){
   projSeedReminders(p);
   store.set('mk-lastproj',p.id);
   pwState=null;
-  if(typeof toast==='function') toast(s.type==='scratch'?'פרויקט מאפס נוצר 🍖 · עקוב אחרי השלבים במזווה':'הפרויקט נוצר · תזכורות נוספו ✓');
+  if(typeof toast==='function') toast(s.type==='scratch'?L('פרויקט מאפס נוצר 🍖 · עקוב אחרי השלבים במזווה','Scratch project created 🍖 · follow the steps in the pantry'):L('הפרויקט נוצר · תזכורות נוספו ✓','Project created · reminders added ✓'));
   if(typeof closePanel==='function') closePanel();
   if(typeof cNavGo==='function') cNavGo('projects'); else if(typeof cPaintProjects==='function') cPaintProjects();
 }
 // auto-seed reminders based on project type/duration
 function projSeedReminders(p){
   const rem=reminders(); const add=(text,date)=>rem.push({id:uid(),text:`[${p.name}] ${text}`,date,proj:p.id});
-  if(p.type==='scratch'){ add('סיים והכן להגשה / אחסון',addDays(p.start,1)); store.set('mk-reminders',rem); return; }
+  if(p.type==='scratch'){ add(L('סיים והכן להגשה / אחסון','Finish and prep for serving / storage'),addDays(p.start,1)); store.set('mk-reminders',rem); return; }
   if(p.type==='dry'){
-    add('בדוק משקל ושקול',addDays(p.start,7));
-    add('בדוק לחות/עובש לבן תקין',addDays(p.start,14));
+    add(L('בדוק משקל ושקול','Check and weigh'),addDays(p.start,7));
+    add(L('בדוק לחות/עובש לבן תקין','Check humidity / healthy white mold'),addDays(p.start,14));
     const half=Math.max(21,Math.round((p.startW?21:21)));
-    add('שקילה — קרוב ליעד?',addDays(p.start,28));
+    add(L('שקילה — קרוב ליעד?','Weigh — close to target?'),addDays(p.start,28));
   } else {
-    add('הפוך/ערבב את המוצר',addDays(p.start,Math.max(1,Math.round(p.days/2))));
-    add('סיום כבישה — הוצא ושטוף',addDays(p.start,p.days));
+    add(L('הפוך/ערבב את המוצר','Flip / mix the product'),addDays(p.start,Math.max(1,Math.round(p.days/2))));
+    add(L('סיום כבישה — הוצא ושטוף','End of cure — remove and rinse'),addDays(p.start,p.days));
   }
   store.set('mk-reminders',rem);
 }
@@ -6604,7 +6632,19 @@ function openLangMenu(){ showPanel(`${toolTop(t('🌐 שפה'),t('בחר שפה'
 } })();
 (()=>{ const a=$("#cHomeAsk"); if(a) a.addEventListener('click',()=>{ if(typeof openAsk==='function') openAsk(); }); })();
 (()=>{ const r=$("#cResume"); if(r) r.addEventListener('click',()=>{ const d=store.get('mk-cresume')||{}; if(typeof setMenuCtx==='function') setMenuCtx(d.ctx||'event'); if(typeof cwGo==='function') cwGo(typeof d.step==='number'?d.step:5); if(typeof cNavGo==='function') cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }); })();
+// dismiss the "resume where you left off" card — discard the unsaved draft so it stops appearing
+(()=>{ const x=$("#cResumeX"); if(x) x.addEventListener('click',async(e)=>{ e.stopPropagation();
+  if(typeof appConfirm==='function' && (await appConfirm(L('לבטל את הטיוטה שלא נשמרה?','Discard the unsaved draft?'),{okLabel:L('בטל טיוטה','Discard'),danger:true}))!==true) return;
+  const d=store.get('mk-cresume')||{}; const ctx=(d.ctx==='cook')?'cook':'event';
+  const empty={guests:8,appetite:'reg',kosher:false,keys:[],sides:[],drinks:[],desserts:[],gpm:0};
+  store.set(ctx==='cook'?'mk-cook':'mk-menu',empty); store.set('mk-cresume',null);
+  try{ if(ctx==='event' && typeof evClearActive==='function') evClearActive(); }catch(_){}
+  if(typeof toast==='function') toast(L('הטיוטה בוטלה','Draft discarded'));
+  if(typeof cRefreshHome==='function') cRefreshHome();
+}); })();
 (()=>{ const r=$("#cResumeProj"); if(r) r.addEventListener('click',()=>cNavGo('projects')); })();
+// dismiss the "resume project" card (just hides the shortcut; the project itself stays in Projects)
+(()=>{ const x=$("#cResumeProjX"); if(x) x.addEventListener('click',(e)=>{ e.stopPropagation(); store.set('mk-lastproj',null); const pb=$("#cResumeProj"); if(pb) pb.hidden=true; }); })();
 (()=>{ const c=$("#cPathCook"); if(c) c.addEventListener('click',cStartCook); })();
 (()=>{ const c=$("#cPathProj"); if(c) c.addEventListener('click',()=>{ if(typeof openProjectPicker==='function') openProjectPicker(); else cNavGo('projects'); }); })();
 document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('click',openMoreSheet));

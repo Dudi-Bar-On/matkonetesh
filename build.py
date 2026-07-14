@@ -166,14 +166,14 @@ HTML = r"""<!DOCTYPE html>
     <div class="cpath project" id="cPathProj"><span class="pico">🧪</span><h3 data-i18n="path.project">פרויקט מתקדם</h3><p>שרקוטרי, נקניקים ועישון ארוך — בחירה מקוטלגת לפי סוג ומדינה, עם תיאור מלא לכל מלאכה וליווי צעד-אחר-צעד.</p><span class="go">←</span></div>
   </div>
   <div class="cnext cnext-live" id="cCooking" hidden><span class="nico">🔥</span><div style="flex:1"><div class="nt">בישול פעיל עכשיו</div><div class="nm" id="cCookingM"></div></div><span class="ng">←</span></div>
-  <div class="cnext" id="cResume" hidden><span class="nico">📋</span><div style="flex:1"><div class="nt">המשך מהמקום שעצרת</div><div class="nm" id="cResumeM"></div></div><span class="ng">←</span></div>
-  <div class="cnext" id="cResumeProj" hidden><span class="nico">🧫</span><div style="flex:1"><div class="nt">המשך פרויקט</div><div class="nm" id="cResumeProjM"></div></div><span class="ng">←</span></div>
+  <div class="cnext" id="cResume" hidden><span class="nico">📋</span><div style="flex:1"><div class="nt">המשך מהמקום שעצרת</div><div class="nm" id="cResumeM"></div></div><button class="cnext-x" id="cResumeX" aria-label="בטל טיוטה">✕</button><span class="ng">←</span></div>
+  <div class="cnext" id="cResumeProj" hidden><span class="nico">🧫</span><div style="flex:1"><div class="nt">המשך פרויקט</div><div class="nm" id="cResumeProjM"></div></div><button class="cnext-x" id="cResumeProjX" aria-label="הסתר">✕</button><span class="ng">←</span></div>
   <button class="chome-about" id="cHomeAbout"><span data-i18n="home.how">❓ איך משתמשים באפליקציה</span><span class="cha-sub">מסלולים, כלים וכל היכולות</span></button>
 </div>
 
 <!-- ═══ WIZARD (full 6-step) ═══ -->
 <div class="screen" id="scr-wizard">
-  <div class="cshead"><button class="back" id="cwBack" aria-label="חזרה">→</button><h2 id="cwTitle">אשף האירוע</h2><span class="step" id="cwLbl">שלב 1/6</span></div>
+  <div class="cshead"><button class="back" id="cwBack" aria-label="חזרה">→</button><h2 id="cwTitle">אשף האירוע</h2><span class="step" id="cwLbl">שלב 1/6</span><button class="cwexit" id="cwExit" aria-label="יציאה מהאשף">✕</button></div>
   <div class="cwprog" id="cwProg"></div>
 
   <!-- step 0: event identity + basics -->
@@ -317,7 +317,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 187 · 14.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 188 · 14.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
