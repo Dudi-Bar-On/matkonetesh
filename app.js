@@ -3038,7 +3038,8 @@ async function askGemini(qRaw, history){
   const key=gemKey(); if(!key) throw new Error('no-key');
   const q=(qRaw||'').trim();
   const {ctx,ents}=askContextFor(q);
-  const sys='אתה "האש" — עוזר בישול מומחה לאש, עישון, גריל, סו-ויד ושרקוטרי, בתוך אפליקציה ישראלית בעברית בשם "מתכונת · מדריך האש". ענה תמיד בעברית, בצורה מלאה ומועילה — אורך התשובה לפי הצורך, כולל רשימות, המלצות ופירוט כשזה עוזר. יש לך חיפוש באינטרנט: השתמש בו לשאלות על מידע עדכני/מקומי — עסקים, חנויות, ספקים, מחירים, זמינות, כתובות (למשל "היכן לקנות פחם איכותי בשרון" — תן רשימת עסקים אמיתית עם פרטים). כשסופקו נתונים מהקטלוג של האפליקציה והם רלוונטיים — התבסס עליהם וצטט טמפ׳/זמנים משם. אתה יכול לענות גם על שאלות מעשיות סביב עולם הבישול על אש (ציוד, קניות, מקומות) ולא רק על מתכונים. אל תמציא מספרי בטיחות קריטיים — אם אינך בטוח, אמור זאת והפנה לאימות.';
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const sys='אתה "האש" — עוזר בישול מומחה לאש, עישון, גריל, סו-ויד ושרקוטרי, בתוך אפליקציה ישראלית בשם "מתכונת · מדריך האש". '+(he?'ענה תמיד בעברית':'Reply ALWAYS in English (the app UI language is English)')+', בצורה מלאה ומועילה — אורך התשובה לפי הצורך, כולל רשימות, המלצות ופירוט כשזה עוזר. יש לך חיפוש באינטרנט: השתמש בו לשאלות על מידע עדכני/מקומי — עסקים, חנויות, ספקים, מחירים, זמינות, כתובות (למשל "היכן לקנות פחם איכותי בשרון" — תן רשימת עסקים אמיתית עם פרטים). כשסופקו נתונים מהקטלוג של האפליקציה והם רלוונטיים — התבסס עליהם וצטט טמפ׳/זמנים משם. אתה יכול לענות גם על שאלות מעשיות סביב עולם הבישול על אש (ציוד, קניות, מקומות) ולא רק על מתכונים. אל תמציא מספרי בטיחות קריטיים — אם אינך בטוח, אמור זאת והפנה לאימות.';
   const turns=[];
   (history||[]).slice(-4).forEach(h=>turns.push({role:h.role==='ai'?'model':'user',parts:[{text:h.text}]}));
   turns.push({role:'user',parts:[{text:(ctx?ctx+'\n\n':'')+'שאלה: '+q}]});
@@ -3095,7 +3096,7 @@ function aiSpinner(label){ return `<span class="wcim-loading">✨ ${esc(label||'
 const AI_JSON_SYS = 'אתה מנוע-עזר בתוך אפליקציית בישול-אש ישראלית. החזר אך ורק JSON תקין (בלי Markdown, בלי טקסט לפני או אחרי). '
   + 'בחר אך ורק מתוך רשימת המפתחות (keys) שסופקה — אל תמציא מפתחות, שמות פריטים או מזהים שאינם ברשימה. '
   + 'אל תמציא מספרי בטיחות, טמפרטורות-ריפוי או ימי-ייבוש — אם נדרש מספר כזה השמט אותו והאפליקציה תחשב. '
-  + 'הקפד על מבנה ה-JSON המבוקש בדיוק. נימוקים בעברית וקצרים.';
+  + 'הקפד על מבנה ה-JSON המבוקש בדיוק. נימוקים קצרים.';
 
 // A5 · test seam
 function aiMockActive(){ return typeof window!=='undefined' && window.__aiMock!==undefined && window.__aiMock!==null; }
@@ -3105,7 +3106,10 @@ async function aiJSON(opts){
   const {task, schemaHint, grounding='', temperature=0.4, maxTokens=1200, search=false}=opts||{};
   if(aiMockActive()){ const m=window.__aiMock; return typeof m==='function' ? m(opts) : m; }
   const key=gemKey(); if(!key) throw new Error('no-key');
-  const userText=(grounding?grounding+'\n\n':'')+'משימה: '+(task||'')+(schemaHint?('\n\nהחזר JSON במבנה הבא בדיוק:\n'+schemaHint):'');
+  // W1-P1: output-language plumbing — human-readable string values follow the UI language (keys/ids stay as given). Fixes AI JSON coming back Hebrew in the English UI.
+  const outLang=(opts&&opts.outLang) || (typeof getLang==='function'?getLang():'he');
+  const langLine=(outLang==='he')?'':'\n\nIMPORTANT: write every human-readable string VALUE (reason/note/summary/rationale/tip/warning/text/title/desc) in ENGLISH. Keep every key and id EXACTLY as provided.';
+  const userText=(grounding?grounding+'\n\n':'')+'משימה: '+(task||'')+(schemaHint?('\n\nהחזר JSON במבנה הבא בדיוק:\n'+schemaHint):'')+langLine;
   const mkBody=()=>({
     system_instruction:{parts:[{text:AI_JSON_SYS}]},
     contents:[{role:'user',parts:[{text:userText}]}],
