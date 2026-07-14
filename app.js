@@ -3613,13 +3613,17 @@ function _tlFocusItem(focus){
 }
 // user picks an item as the current selection → remembered across view switches, shown with a persistent highlight
 function _tlSelect(itemKey){ if(!itemKey) return; _tlFocusKey=itemKey; _tlMarkSelected(); }
-// paint the persistent selection ring on every element belonging to _tlFocusKey (re-run after each render)
+// paint a SINGLE persistent selection marker for _tlFocusKey (re-run after each render) — one per view, never multiple
 function _tlMarkSelected(){
   const list=$("#tlList"); if(!list) return;
   list.querySelectorAll('.tl-sel').forEach(function(e){ e.classList.remove('tl-sel'); });
   const ik=_tlFocusKey; if(!ik) return;
-  list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(b.getAttribute('data-tlexp')===ik){ const c=b.closest('.tlcard'); if(c) c.classList.add('tl-sel'); } });
-  list.querySelectorAll('[data-tlitem]').forEach(function(e){ if(e.getAttribute('data-tlitem')===ik) e.classList.add('tl-sel'); });
+  // by-item view → the item's card; work-plan view → the item's FIRST task. Exactly one element either way.
+  let card=null;
+  list.querySelectorAll('[data-tlexp]').forEach(function(b){ if(!card && b.getAttribute('data-tlexp')===ik) card=b.closest('.tlcard'); });
+  if(card){ card.classList.add('tl-sel'); return; }
+  const esc=(window.CSS&&CSS.escape)?CSS.escape(ik):ik;
+  const first=list.querySelector('[data-tlitem="'+esc+'"]'); if(first) first.classList.add('tl-sel');
 }
 /* ---------- voice cook mode (TTS + closed voice commands) ---------- */
 let vcTasks=[], vcIdx=0, vcRec=null, vcVoices=[];

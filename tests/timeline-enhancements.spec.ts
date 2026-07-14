@@ -57,11 +57,17 @@ test('selecting a different item in the work-plan persists it across a view swit
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
   await page.waitForSelector('#tlList .workplan'); await page.waitForTimeout(500);
   expect(await page.evaluate(`_tlFocusKey`)).toBe('cut-1');
-  // the user selects cut-2 by tapping one of its tasks
+  // the user selects cut-2 by tapping one of its tasks — exactly ONE selection marker (not one per task)
   await page.evaluate(`document.querySelector('#tlList [data-tlitem="cut-2"]').click()`);
   await page.waitForTimeout(150);
   expect(await page.evaluate(`_tlFocusKey`)).toBe('cut-2');
-  // switching views keeps cut-2 selected/focused (not the item we entered with)
+  expect(await page.evaluate(`document.querySelectorAll('#tlList .tl-sel').length`)).toBe(1);
+  // switching views keeps cut-2 selected/focused (not the item we entered with), still a single marker
   await page.click('[data-tlview="items"]'); await page.waitForTimeout(500);
+  expect(await page.evaluate(`document.querySelectorAll('#tlList .tl-sel').length`)).toBe(1);
   expect(await page.evaluate(`(function(){ const s=document.querySelector('.tlcard.tl-sel'); return s&&s.querySelector('[data-tlexp]')?s.querySelector('[data-tlexp]').getAttribute('data-tlexp'):'NONE'; })()`)).toBe('cut-2');
+  // and back again → still one
+  await page.click('[data-tlview="plan"]'); await page.waitForTimeout(500);
+  expect(await page.evaluate(`document.querySelectorAll('#tlList .tl-sel').length`)).toBe(1);
+  expect(await page.evaluate(`document.querySelector('#tlList .tl-sel').getAttribute('data-tlitem')`)).toBe('cut-2');
 });
