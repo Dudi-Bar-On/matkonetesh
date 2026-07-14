@@ -4181,7 +4181,7 @@ function renderTimelinePanel(){
       if(preheat && (!earliest||preheat.getTime()<earliest.getTime())) earliest=preheat;
       window._wpServe=serve; window._wpStart=earliest; startServeBar(); renderPlanStartRow(earliest, serve, buildList); }   // live serve bar + start/feasibility controls
     // view / detail / shape switches: rebuild, then re-apply the focused item so it stays in view + expanded across views
-    const _reFocus=()=>{ if(_tlFocusKey && typeof _tlFocusItem==='function') _tlFocusItem(_tlFocusKey); };
+    const _reFocus=()=>{ const f=_tlFocusTid||_tlFocusKey; if(f && typeof _tlFocusItem==='function') _tlFocusItem(f); };   // re-focus the EXACT selected task (not the item's first) so a view switch doesn't jump to sous-vide
     $("#tlList").querySelectorAll('[data-tlview]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlview',b.dataset.tlview); buildList(); _reFocus();}));
     $("#tlList").querySelectorAll('[data-tldetail]').forEach(b=>b.addEventListener('click',()=>{store.set('mk-tlplandetail',b.dataset.tldetail); buildList(); _reFocus();}));
     $("#tlList").querySelectorAll('[data-tlshape]').forEach(b=>b.addEventListener('click',()=>{setTlShape(b.dataset.tlshape); buildList(); _reFocus();}));

@@ -74,3 +74,25 @@ test('work-plan: a REAL tap highlights that exact task (not another), one marker
   expect(await page.evaluate(`document.querySelectorAll('#tlList .tl-sel').length`)).toBe(1);
   expect(await page.evaluate(`document.querySelector('#tlList .tl-sel').getAttribute('data-tlitem')`)).toBe('cut-2');
 });
+
+test('view switch re-focuses the SELECTED task, not the item first task (grill≠sous-vide bug)', async ({ page }) => {
+  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
+    localStorage.setItem('mk-tlview', JSON.stringify('plan'));
+    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
+  await page.setViewportSize({ width: 390, height: 780 });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openTimeline==='function'`);
+  await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
+  await page.waitForSelector('#tlList .workplan'); await page.waitForTimeout(400);
+  // select a NON-first stage of cut-2 (its smoke task), by a real click
+  await page.evaluate(`(function(){ const els=Array.from(document.querySelectorAll('#tlList [data-tlitem="cut-2"]')); const smoke=els.find(e=>/wp-smoke/.test(e.className)); smoke.setAttribute('data-pick','1'); })()`);
+  await page.locator('[data-pick="1"]').click({ position: { x: 130, y: 12 } });
+  await page.waitForTimeout(150);
+  // round-trip the view
+  await page.click('[data-tlview="items"]'); await page.waitForTimeout(400);
+  await page.click('[data-tlview="plan"]'); await page.waitForTimeout(300);
+  // BOTH the persistent selection and the transient scroll/flash must be the SMOKE task, not sv
+  const r = await page.evaluate(`(function(){ const kind=el=>el?((el.className.match(/wp-(sv|smoke|grill|rest|bcheck)/)||[])[1]||''):'NONE'; return { sel:kind(document.querySelector('#tlList .tl-sel')), flash:kind(document.querySelector('#tlList .tl-focus')) }; })()`) as any;
+  expect(r.sel).toBe('smoke');     // persistent highlight on the selected task
+  expect(r.flash).toBe('smoke');   // scroll/flash also lands on it (was 'sv' — the bug)
+});
