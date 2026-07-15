@@ -52,3 +52,31 @@ test('W3-P2: charcuterie safety guardian — weight-loss + nitrite checks', asyn
   await page.waitForSelector('.cpc-guardian');
   expect(await page.evaluate(`document.querySelector('.cpc-guardian').textContent`)).toContain('safe');
 });
+
+test('W3-P3: personal coach — longitudinal journal stats + renders', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`store.set('mk-journal',[
+    {id:'1',name:'Brisket',temp:'110°C',rating:5,date:'2026-06-01'},
+    {id:'2',name:'Brisket',temp:'108°C',rating:5,date:'2026-06-10'},
+    {id:'3',name:'Brisket',temp:'95°C',rating:3,date:'2026-06-15'},
+    {id:'4',name:'Ribs',temp:'120°C',rating:4,date:'2026-06-20'}
+  ])`);
+  const c = await page.evaluate(`journalCoach()`) as any;
+  expect(c.enough).toBe(true);
+  expect(c.count).toBe(4);
+  expect(c.mostCooked.name).toBe('Brisket');
+  expect(c.mostCooked.count).toBe(3);
+  expect(c.bestRated.name).toBe('Brisket');
+  // temp pattern needs >=2 high-rated and >=2 low-rated with a >=5° gap
+  await page.evaluate(`store.set('mk-journal',[
+    {id:'1',name:'A',temp:'110°C',rating:5},{id:'2',name:'B',temp:'112°C',rating:5},
+    {id:'3',name:'C',temp:'90°C',rating:2},{id:'4',name:'D',temp:'92°C',rating:3}
+  ])`);
+  const c2 = await page.evaluate(`journalCoach()`) as any;
+  expect(c2.tempPattern).not.toBeNull();
+  expect(c2.tempPattern.hi).toBeGreaterThan(c2.tempPattern.lo);
+  // the coach card renders at the top of the journal
+  await page.evaluate(`openJournal()`);
+  await page.waitForSelector('#panel .jcoach');
+  expect(await page.evaluate(`document.querySelector('#panel .jcoach').textContent`)).toContain('cooks logged');
+});

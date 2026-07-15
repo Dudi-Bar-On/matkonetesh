@@ -2511,6 +2511,33 @@ function downscale(file){return new Promise((res,rej)=>{
     cv.getContext('2d').drawImage(img,0,0,cv.width,cv.height);res(cv.toDataURL('image/jpeg',0.6));
   };img.src=r.result;};r.readAsDataURL(file);
 });}
+// Wave 3 · personal coach — deterministic longitudinal intelligence from the journal (no key needed).
+function journalCoach(){
+  const j=(typeof journal==='function'?journal():[]).filter(function(e){return e;});
+  if(j.length<3) return {enough:false, count:j.length};
+  const rated=j.filter(function(e){return e.rating;});
+  const avg=rated.length?(rated.reduce(function(a,e){return a+e.rating;},0)/rated.length):null;
+  const byItem={};
+  j.forEach(function(e){ const k=(e.name||e.key||'?'); if(!byItem[k]) byItem[k]={name:k,count:0,rateSum:0,rateN:0}; byItem[k].count++; if(e.rating){byItem[k].rateSum+=e.rating;byItem[k].rateN++;} });
+  const items=Object.keys(byItem).map(function(k){ const o=byItem[k]; return {name:o.name,count:o.count,avg:o.rateN?o.rateSum/o.rateN:null}; });
+  const mostCooked=items.slice().sort(function(a,b){return b.count-a.count;})[0];
+  const bestRated=items.filter(function(i){return i.avg!=null && i.count>=2;}).sort(function(a,b){return b.avg-a.avg;})[0];
+  const tnum=function(e){ const m=String(e.temp||'').match(/\d+/); return m?+m[0]:null; };
+  const hi=rated.filter(function(e){return e.rating>=4;}).map(tnum).filter(function(n){return n!=null;});
+  const lo=rated.filter(function(e){return e.rating<=3;}).map(tnum).filter(function(n){return n!=null;});
+  let tempPattern=null;
+  if(hi.length>=2 && lo.length>=2){ const ha=hi.reduce(function(a,b){return a+b;},0)/hi.length, la=lo.reduce(function(a,b){return a+b;},0)/lo.length; if(Math.abs(ha-la)>=5) tempPattern={hi:Math.round(ha),lo:Math.round(la)}; }
+  return {enough:true, count:j.length, avg:avg?Math.round(avg*10)/10:null, mostCooked:mostCooked, bestRated:bestRated, tempPattern:tempPattern};
+}
+function _journalCoachHtml(){
+  const he=(typeof getLang!=='function'||getLang()==='he'); const c=journalCoach(); if(!c.enough) return '';
+  const bits=[];
+  bits.push(`<b>${c.count}</b> ${he?'בישולים תועדו':'cooks logged'}${c.avg!=null?` · ${he?'דירוג ממוצע':'avg'} ${c.avg}★`:''}`);
+  if(c.mostCooked && c.mostCooked.count>=2) bits.push(`${he?'הכי מבושל':'Most cooked'}: <b>${esc(c.mostCooked.name)}</b> (${c.mostCooked.count})`);
+  if(c.bestRated) bits.push(`${he?'הכי מדורג':'Best rated'}: <b>${esc(c.bestRated.name)}</b> (${Math.round(c.bestRated.avg*10)/10}★)`);
+  if(c.tempPattern){ const hotter=c.tempPattern.hi>c.tempPattern.lo; bits.push(he?`הבישולים המדורגים גבוה רצו ${hotter?'חם':'קריר'} יותר (~${c.tempPattern.hi}° מול ${c.tempPattern.lo}°).`:`Your higher-rated cooks ran ${hotter?'hotter':'cooler'} (~${c.tempPattern.hi}° vs ${c.tempPattern.lo}°).`); }
+  return `<div class="jcoach"><div class="jcoach-h">🎓 ${he?'המאמן שלך':'Your coach'}</div>${bits.map(function(b){return `<div class="jcoach-row">${b}</div>`;}).join('')}</div>`;
+}
 function openJournal(){
   const a=journal();
   const rows=a.map(e=>`<div class="jcard">
@@ -2519,7 +2546,7 @@ function openJournal(){
     ${e.temp?`<div class="jc-temp">${e.temp}</div>`:''}${e.rating?`<div class="rmini">${'★'.repeat(e.rating)}</div>`:''}</div>
     <button class="pc-rm" data-jrm="${e.id}">×</button></div>`).join("");
   showPanel(`${toolTop(L('יומן בישולים','Cook journal'),L('היסטוריה אישית','Personal history'),'📓','#c0563a')}
-   <div class="panel-body">${(typeof aiAvail==='function'&&aiAvail()&&a.length>=3)?`<button class="ccta" id="jInsights" style="margin:0 0 14px;background:var(--fresh);border-color:var(--fresh)">✨ ${L('תובנות AI מהיומן','AI insights from the journal')}</button>`:''}${a.length?rows:`<div class="shop-empty">${L('אין רישומים עדיין.','No entries yet.')}<br>${L('פתח מתכון ולחץ "📓 תעד בישול".','Open a recipe and tap "📓 Log cook".')}</div>`}</div>`);
+   <div class="panel-body">${_journalCoachHtml()}${(typeof aiAvail==='function'&&aiAvail()&&a.length>=3)?`<button class="ccta" id="jInsights" style="margin:0 0 14px;background:var(--fresh);border-color:var(--fresh)">✨ ${L('תובנות AI מהיומן','AI insights from the journal')}</button>`:''}${a.length?rows:`<div class="shop-empty">${L('אין רישומים עדיין.','No entries yet.')}<br>${L('פתח מתכון ולחץ "📓 תעד בישול".','Open a recipe and tap "📓 Log cook".')}</div>`}</div>`);
   const ib=$("#jInsights"); if(ib) ib.addEventListener('click',openJournalInsights);
   $("#panel").querySelectorAll('[data-jrm]').forEach(b=>b.addEventListener('click',()=>{
     const arr=journal(), idx=arr.findIndex(x=>x.id===b.dataset.jrm), removed=arr[idx];

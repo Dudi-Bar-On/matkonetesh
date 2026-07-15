@@ -886,6 +886,9 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .cpc-g-warn{background:rgba(217,166,43,.12);border:1px solid rgba(217,166,43,.5);color:var(--bone)}
 .cpc-g-ok{background:rgba(26,154,122,.1);border:1px solid rgba(26,154,122,.4);color:var(--fresh)}
 .cpc-g-info{background:var(--char2);border:1px solid var(--line2);color:var(--smoke)}
+.jcoach{background:linear-gradient(180deg,var(--tint-warm),var(--tint-warm2));border:1.5px solid var(--line2);border-radius:14px;padding:13px 14px;margin-bottom:14px}
+.jcoach-h{font-family:var(--font-body);font-weight:800;font-size:calc(13px * var(--fscale));color:var(--bone);margin-bottom:7px}
+.jcoach-row{font-family:var(--font-body);font-size:calc(12.5px * var(--fscale));color:var(--bone);line-height:1.6}
 #copAdvice:not(:empty){background:rgba(26,154,122,.08);border:1.5px solid rgba(26,154,122,.35);border-radius:14px;padding:12px 14px;margin-bottom:10px;display:block}
 .cw-presets{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
 .cw-presets-lbl{font-size:calc(11.5px * var(--fscale));font-weight:700;color:var(--smoke)}
