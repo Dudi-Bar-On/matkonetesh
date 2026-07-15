@@ -140,3 +140,19 @@ test('C2: work plan labels the cooker on cook stages', async ({ page }) => {
   const txt = await page.evaluate(`document.querySelector('#panel .workplan').textContent`);
   expect(txt).toContain('My Bath');   // the single sous-vide device auto-labels the SV stage
 });
+
+test('P2: cookerContention flags overlapping same-cooker stages', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'sm1',cat:'smoker',type:'אופסט / סטיק-ברנר',name:'Offset'}]); equipSetConfigured();`);
+  const clashes = await page.evaluate(`(function(){ const now=Date.now(); return cookerContention([
+    {blocked:false, m:{key:'cut-1',heb:'A',eng:'A'}, stages:[{kind:'smoke',start:new Date(now),end:new Date(now+3600000)}]},
+    {blocked:false, m:{key:'cut-2',heb:'B',eng:'B'}, stages:[{kind:'smoke',start:new Date(now+1800000),end:new Date(now+5400000)}]}
+  ]); })()`) as any[];
+  expect(clashes.length).toBe(1);
+  expect(clashes[0].devName).toBe('Offset');
+  const none = await page.evaluate(`(function(){ const now=Date.now(); return cookerContention([
+    {blocked:false, m:{key:'cut-1',heb:'A',eng:'A'}, stages:[{kind:'smoke',start:new Date(now),end:new Date(now+3600000)}]},
+    {blocked:false, m:{key:'cut-2',heb:'B',eng:'B'}, stages:[{kind:'smoke',start:new Date(now+7200000),end:new Date(now+10800000)}]}
+  ]); })()`) as any[];
+  expect(none.length).toBe(0);   // non-overlapping windows → no clash
+});
