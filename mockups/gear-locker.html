@@ -1,0 +1,403 @@
+<!doctype html><html lang="en" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Gear Locker — My Equipment</title>
+<link href="https://fonts.googleapis.com/css2?family=Suez+One&family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --char:#fdf6ec; --bg2:#faecd8; --char2:#fffaf3; --char3:#fff2e4;
+  --ember:#e76f51; --ember2:#f4a261; --terra-d:#d2691e;
+  --bone:#5a3a28; --ash:#6e5340; --smoke:#7a5f4c;
+  --line:#f0dcc4; --line2:#f5e0c8;
+  --fresh:#1a9a7a; --fresh-l:#d8f0e8; --good:#1a9a7a;
+  --tint-warm:#fff6ec; --tint-warm2:#fdeede; --tint-warn:#fbe9e7; --tint-cool:#f3f7f9;
+  --font-display:'Suez One'; --font-body:'Heebo';
+  /* category accents */
+  --c-smoke:#9a6a3a; --c-grill:#e76f51; --c-oven:#f4a261;
+  --c-sv:#2b7fb8; --c-probe:#1a9a7a; --c-other:#8a6f5c;
+  --shadow:0 5px 16px rgba(210,105,30,.08);
+}
+*{box-sizing:border-box}
+body{margin:0;background:linear-gradient(180deg,var(--char),var(--bg2));color:var(--bone);
+  font-family:var(--font-body),sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased;
+  min-height:100vh}
+.app{max-width:460px;margin:0 auto;padding:0 16px 60px}
+
+/* ---------- SCREEN HEADER ---------- */
+.gl-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:26px 2px 18px}
+.gl-head .ht{min-width:0}
+.gl-kick{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ember2);margin:0 0 4px}
+.gl-head h1{font-family:var(--font-display);font-weight:400;font-size:29px;color:var(--bone);margin:0;line-height:1.1}
+.gl-head .sub{font-size:12.5px;color:var(--ash);margin:5px 0 0}
+.gl-add{flex:0 0 auto;display:inline-flex;align-items:center;gap:7px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--ember),var(--terra-d));color:#fff;
+  font-family:var(--font-body);font-weight:800;font-size:14px;padding:11px 16px;border-radius:14px;
+  box-shadow:0 6px 16px rgba(210,105,30,.28)}
+.gl-add .pl{font-size:18px;line-height:1;margin-top:-1px}
+.gl-add:active{transform:scale(.97)}
+
+/* ---------- CAPABILITIES BANNER ---------- */
+.caps{background:linear-gradient(135deg,var(--tint-warm),var(--tint-warm2));
+  border:2px solid var(--line2);border-radius:18px;padding:16px 17px;margin:0 0 14px;box-shadow:var(--shadow)}
+.caps .cx{display:flex;align-items:center;gap:8px;margin:0 0 11px}
+.caps h4{font-family:var(--font-body);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ember2);margin:0;font-weight:800}
+.caps .cx .cn{margin-inline-start:auto;font-size:11.5px;color:var(--smoke);font-weight:700}
+.gcaps{display:flex;gap:8px;flex-wrap:wrap}
+.gcap{font-size:12.5px;font-weight:700;border-radius:999px;padding:6px 12px;display:inline-flex;align-items:center;gap:6px}
+.gcap.ok{background:var(--fresh-l);color:var(--good)}
+.gcap.no{background:var(--tint-warn);color:var(--terra-d);border:1px dashed rgba(210,105,30,.4)}
+.gcap .em{font-size:14px;line-height:1}
+.gcap.no .em{opacity:.55}
+
+/* ---------- CONCIERGE ON-RAMP ---------- */
+.concierge{display:flex;align-items:center;gap:12px;width:100%;text-align:start;cursor:pointer;
+  background:var(--char2);border:1.5px solid var(--line2);border-radius:15px;padding:13px 15px;margin:0 0 22px;
+  box-shadow:var(--shadow)}
+.concierge:hover{border-color:var(--ember2)}
+.concierge .ci{flex:0 0 auto;width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:20px;
+  background:linear-gradient(135deg,#fdeede,#f7ddc2)}
+.concierge .cc{flex:1;min-width:0}
+.concierge .cc b{display:block;font-size:14px;color:var(--bone);font-weight:800}
+.concierge .cc small{display:block;font-size:12px;color:var(--ash)}
+.concierge .cg{flex:0 0 auto;color:var(--ember);font-weight:900;font-size:19px}
+
+/* ---------- CATEGORY SECTION ---------- */
+.gl-sec{margin:0 0 22px}
+.gl-sec>h4{font-family:var(--font-body);font-size:12px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--ember2);margin:0 0 10px;font-weight:800;display:flex;align-items:center;gap:8px}
+.gl-sec>h4 .sc{color:var(--smoke);font-weight:700;letter-spacing:0}
+.gl-sec>h4 .em{font-size:15px}
+
+/* ---------- DEVICE CARD ---------- */
+.dev{position:relative;display:flex;align-items:flex-start;gap:13px;
+  background:var(--char2);border:1.5px solid var(--line2);border-radius:16px;
+  padding:15px 15px 13px;margin-bottom:11px;box-shadow:var(--shadow);overflow:hidden}
+.dev:before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--acc,var(--ember))}
+.dev .dico{flex:0 0 auto;width:50px;height:50px;border-radius:14px;display:grid;place-items:center;
+  font-size:26px;line-height:1;background:var(--acc-l,var(--char3));box-shadow:inset 0 0 0 1.5px rgba(90,58,40,.05)}
+.dev .dmain{flex:1;min-width:0}
+.dev .dtop{display:flex;align-items:center;gap:7px}
+.dev .dname{font-family:var(--font-display);font-weight:400;font-size:17px;color:var(--bone);line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dev .ai{flex:0 0 auto;font-size:10.5px;font-weight:800;color:var(--terra-d);background:var(--char3);
+  border-radius:999px;padding:2px 7px;display:inline-flex;align-items:center;gap:3px;line-height:1.4}
+.dev .dsub{font-size:12.5px;color:var(--ash);margin:2px 0 0}
+.dev .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;
+  background:var(--char3);border:1px solid var(--line);color:var(--ash);border-radius:999px;padding:4px 10px}
+.chip.spec{color:var(--bone)}
+.chip .em{font-size:13px;line-height:1;opacity:.85}
+.dev .acts{position:absolute;top:12px;inset-inline-end:12px;display:flex;gap:6px}
+.iconbtn{width:30px;height:30px;min-width:30px;border-radius:50%;border:1.5px solid var(--line2);
+  background:var(--char3);color:var(--smoke);font-size:13px;cursor:pointer;display:grid;place-items:center;line-height:1}
+.iconbtn:hover{border-color:var(--ember);color:var(--ember)}
+
+/* ---------- ADD-GEAR DASHED CTA ---------- */
+.add-tile{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;cursor:pointer;
+  background:none;border:2px dashed var(--line2);border-radius:16px;padding:16px;
+  font-family:var(--font-body);font-weight:800;font-size:14.5px;color:var(--terra-d)}
+.add-tile:hover{border-color:var(--ember);color:var(--ember);background:rgba(231,111,81,.03)}
+.add-tile .pl{font-size:20px;line-height:1}
+
+/* ---------- DIVIDER LABELS (mockup only) ---------- */
+.demo-div{display:flex;align-items:center;gap:12px;margin:44px 0 20px;color:var(--smoke);
+  font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase}
+.demo-div:before,.demo-div:after{content:'';flex:1;height:1px;background:var(--line)}
+
+/* ---------- ADD SHEET ---------- */
+.sheet{background:var(--char2);border:1.5px solid var(--line2);border-radius:22px;box-shadow:0 -6px 30px rgba(210,105,30,.12);
+  padding:8px 18px 20px;position:relative}
+.sheet .grab{width:44px;height:5px;border-radius:999px;background:var(--line2);margin:8px auto 14px}
+.sheet .sclose{position:absolute;top:16px;inset-inline-end:16px}
+.steps{display:flex;align-items:center;gap:7px;margin:0 0 4px}
+.steps .st{font-size:11px;font-weight:800;color:var(--smoke);letter-spacing:.02em}
+.steps .st.on{color:var(--ember)}
+.steps .sd{width:5px;height:5px;border-radius:50%;background:var(--line2)}
+.steps .st.on+.sd,.steps .st.done+.sd{background:var(--ember2)}
+.sheet h3{font-family:var(--font-display);font-weight:400;font-size:22px;color:var(--bone);margin:6px 0 3px}
+.sheet .lede{font-size:12.5px;color:var(--ash);margin:0 0 16px}
+.flabel{font-size:11px;font-weight:800;color:var(--smoke);letter-spacing:.06em;text-transform:uppercase;margin:16px 2px 8px}
+.mchips{display:flex;flex-wrap:wrap;gap:7px}
+.mchip{background:var(--char2);border:1px solid var(--line);color:var(--ash);border-radius:999px;padding:8px 13px;
+  font-family:var(--font-body);font-weight:700;font-size:12.5px;cursor:pointer}
+.mchip.on{background:rgba(26,154,122,.14);border-color:var(--good);color:var(--good)}
+.mchip:hover{border-color:var(--ember)}
+.tinput{width:100%;font-family:var(--font-body);font-size:15px;color:var(--bone);background:var(--char);
+  border:1.5px solid var(--line2);border-radius:13px;padding:13px 14px;margin-top:2px}
+.tinput::placeholder{color:var(--smoke)}
+.tinput:focus{outline:none;border-color:var(--ember2)}
+
+/* AI assist strip */
+.ai-strip{margin-top:14px;background:linear-gradient(135deg,var(--tint-warm),var(--tint-warm2));
+  border:1.5px solid var(--line2);border-radius:15px;padding:13px 14px}
+.ai-strip .ah{display:flex;align-items:center;gap:8px;margin:0 0 10px}
+.ai-strip .ah b{font-size:13px;font-weight:800;color:var(--bone)}
+.ai-strip .ah .tag{margin-inline-start:auto;font-size:10px;font-weight:800;color:var(--terra-d);
+  background:var(--char2);border-radius:999px;padding:2px 8px;letter-spacing:.04em}
+.ai-btns{display:flex;gap:9px}
+.ai-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;
+  background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:11px 10px;
+  font-family:var(--font-body);font-weight:800;font-size:13px;color:var(--bone)}
+.ai-btn:hover{border-color:var(--ember);color:var(--ember)}
+.ai-btn .em{font-size:16px}
+.ai-note{font-size:11.5px;color:var(--smoke);margin:9px 2px 0;text-align:center}
+
+/* AI result preview */
+.ai-result{margin-top:12px;background:var(--fresh-l);border:1.5px solid rgba(26,154,122,.28);
+  border-radius:13px;padding:12px 13px}
+.ai-result .rh{display:flex;align-items:center;gap:7px;font-size:12px;font-weight:800;color:var(--good);margin:0 0 9px}
+.ai-result .chips{display:flex;flex-wrap:wrap;gap:6px}
+.ai-result .chip{background:var(--char2);border-color:rgba(26,154,122,.25);color:var(--bone)}
+
+.save-btn{display:block;width:100%;margin-top:18px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--ember),var(--terra-d));color:#fff;
+  font-family:var(--font-body);font-weight:800;font-size:15.5px;padding:15px;border-radius:15px;
+  box-shadow:0 6px 16px rgba(210,105,30,.28)}
+.save-btn:active{transform:scale(.99)}
+
+/* ---------- EMPTY STATE ---------- */
+.empty{text-align:center;padding:30px 20px 8px}
+.empty .art{font-size:52px;line-height:1;margin:0 0 6px;filter:drop-shadow(0 6px 10px rgba(210,105,30,.14))}
+.empty h2{font-family:var(--font-display);font-weight:400;font-size:24px;color:var(--bone);margin:8px 0 6px}
+.empty p{font-size:13.5px;color:var(--ash);margin:0 auto 20px;max-width:300px}
+.empty .estack{display:flex;flex-direction:column;gap:11px;max-width:330px;margin:0 auto}
+.ebtn{display:flex;align-items:center;gap:11px;text-align:start;cursor:pointer;border-radius:15px;padding:14px 15px;
+  font-family:var(--font-body)}
+.ebtn.primary{background:linear-gradient(135deg,var(--ember),var(--terra-d));color:#fff;border:none;box-shadow:0 6px 16px rgba(210,105,30,.24)}
+.ebtn.ghost{background:var(--char2);border:1.5px solid var(--line2);color:var(--bone)}
+.ebtn .ei{font-size:22px;flex:0 0 auto}
+.ebtn .et{flex:1}.ebtn .et b{display:block;font-size:14.5px;font-weight:800}
+.ebtn.primary .et small{color:rgba(255,255,255,.85);font-size:12px}
+.ebtn.ghost .et small{color:var(--ash);font-size:12px}
+.ebtn .eg{font-weight:900;font-size:18px;opacity:.9}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- ============ SCREEN HEADER ============ -->
+  <header class="gl-head">
+    <div class="ht">
+      <p class="gl-kick">My Equipment</p>
+      <h1>Gear Locker</h1>
+      <p class="sub">5 devices · 3 categories</p>
+    </div>
+    <button class="gl-add"><span class="pl">＋</span> Add</button>
+  </header>
+
+  <!-- ============ CAPABILITIES SUMMARY ============ -->
+  <section class="caps">
+    <div class="cx">
+      <h4>What you can cook</h4>
+      <span class="cn">2 of 3 unlocked</span>
+    </div>
+    <div class="gcaps">
+      <span class="gcap ok"><span class="em">🌊</span> Sous-vide</span>
+      <span class="gcap ok"><span class="em">🔥</span> Low &amp; slow smoke</span>
+      <span class="gcap no"><span class="em">🍖</span> Direct grill · add a grill</span>
+    </div>
+  </section>
+
+  <!-- ============ CONCIERGE ON-RAMP ============ -->
+  <button class="concierge">
+    <span class="ci">✨</span>
+    <span class="cc">
+      <b>Describe your gear in words</b>
+      <small>“I’ve got a WSM and a Joule” → we’ll add them</small>
+    </span>
+    <span class="cg">‹</span>
+  </button>
+
+  <!-- ============ SMOKER SECTION ============ -->
+  <section class="gl-sec">
+    <h4><span class="em">🔥</span> Smoker <span class="sc">· 2</span></h4>
+
+    <!-- device: AI-filled -->
+    <article class="dev" style="--acc:var(--c-smoke);--acc-l:#f4e6d6">
+      <div class="dico">🛢️</div>
+      <div class="dmain">
+        <div class="dtop">
+          <span class="dname">Weber Smokey Mountain 18″</span>
+          <span class="ai">✨ AI</span>
+        </div>
+        <p class="dsub">Bullet / water smoker</p>
+        <div class="chips">
+          <span class="chip spec"><span class="em">🗄️</span> 2 racks</span>
+          <span class="chip"><span class="em">⚫</span> Charcoal</span>
+        </div>
+      </div>
+      <div class="acts">
+        <button class="iconbtn" title="Edit">✎</button>
+        <button class="iconbtn" title="Remove">✕</button>
+      </div>
+    </article>
+
+    <!-- device: manual -->
+    <article class="dev" style="--acc:var(--c-smoke);--acc-l:#f4e6d6">
+      <div class="dico">📦</div>
+      <div class="dmain">
+        <div class="dtop">
+          <span class="dname">Offset “Old Rusty”</span>
+        </div>
+        <p class="dsub">Offset / stick burner</p>
+        <div class="chips">
+          <span class="chip spec"><span class="em">🗄️</span> 3 racks</span>
+          <span class="chip"><span class="em">🪵</span> Wood</span>
+        </div>
+      </div>
+      <div class="acts">
+        <button class="iconbtn" title="Edit">✎</button>
+        <button class="iconbtn" title="Remove">✕</button>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ SOUS-VIDE SECTION ============ -->
+  <section class="gl-sec">
+    <h4><span class="em">🌊</span> Sous-vide <span class="sc">· 1</span></h4>
+
+    <article class="dev" style="--acc:var(--c-sv);--acc-l:#dcecf6">
+      <div class="dico">🌀</div>
+      <div class="dmain">
+        <div class="dtop">
+          <span class="dname">Breville Joule Turbo</span>
+          <span class="ai">✨ AI</span>
+        </div>
+        <p class="dsub">Immersion circulator</p>
+        <div class="chips">
+          <span class="chip spec"><span class="em">🛁</span> up to 20 L bath</span>
+          <span class="chip"><span class="em">⚡</span> 1100 W</span>
+        </div>
+      </div>
+      <div class="acts">
+        <button class="iconbtn" title="Edit">✎</button>
+        <button class="iconbtn" title="Remove">✕</button>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ PROBE SECTION ============ -->
+  <section class="gl-sec">
+    <h4><span class="em">🌡️</span> Probe <span class="sc">· 2</span></h4>
+
+    <article class="dev" style="--acc:var(--c-probe);--acc-l:var(--fresh-l)">
+      <div class="dico">🌡️</div>
+      <div class="dmain">
+        <div class="dtop">
+          <span class="dname">ThermoWorks Signals</span>
+        </div>
+        <p class="dsub">Wired probe hub</p>
+        <div class="chips">
+          <span class="chip spec"><span class="em">🔌</span> 4 channels</span>
+          <span class="chip"><span class="em">📶</span> Wi-Fi</span>
+        </div>
+      </div>
+      <div class="acts">
+        <button class="iconbtn" title="Edit">✎</button>
+        <button class="iconbtn" title="Remove">✕</button>
+      </div>
+    </article>
+
+    <article class="dev" style="--acc:var(--c-probe);--acc-l:var(--fresh-l)">
+      <div class="dico">📡</div>
+      <div class="dmain">
+        <div class="dtop">
+          <span class="dname">MEATER Pro XL</span>
+          <span class="ai">✨ AI</span>
+        </div>
+        <p class="dsub">Wireless probes</p>
+        <div class="chips">
+          <span class="chip spec"><span class="em">🔌</span> 4 channels</span>
+          <span class="chip"><span class="em">📶</span> Bluetooth</span>
+        </div>
+      </div>
+      <div class="acts">
+        <button class="iconbtn" title="Edit">✎</button>
+        <button class="iconbtn" title="Remove">✕</button>
+      </div>
+    </article>
+  </section>
+
+  <!-- ============ ADD-GEAR CTA ============ -->
+  <button class="add-tile"><span class="pl">＋</span> Add another device</button>
+
+
+  <!-- =========================================================== -->
+  <!-- REFERENCE: ADD-DEVICE SHEET (step 2 of 3 — Identify) -->
+  <!-- =========================================================== -->
+  <div class="demo-div">Add-device sheet</div>
+  <section class="sheet">
+    <div class="grab"></div>
+    <button class="iconbtn sclose" title="Close">✕</button>
+    <div class="steps">
+      <span class="st done">Category</span><span class="sd"></span>
+      <span class="st on">Identify</span><span class="sd"></span>
+      <span class="st">Capacity</span>
+    </div>
+    <h3>Add a smoker</h3>
+    <p class="lede">Pick a sub-type, or type a brand and let us fill the rest.</p>
+
+    <p class="flabel">Sub-type</p>
+    <div class="mchips">
+      <button class="mchip on">Bullet</button>
+      <button class="mchip">Offset</button>
+      <button class="mchip">Kamado</button>
+      <button class="mchip">Pellet</button>
+      <button class="mchip">Cabinet</button>
+      <button class="mchip">Drum</button>
+    </div>
+
+    <p class="flabel">Brand or model</p>
+    <input class="tinput" value="Weber Smokey Mountain 18″" />
+
+    <!-- AI assist (hidden gracefully when no AI key) -->
+    <div class="ai-strip">
+      <div class="ah">
+        <span>✨</span><b>Let AI do the boring part</b>
+        <span class="tag">AI</span>
+      </div>
+      <div class="ai-btns">
+        <button class="ai-btn"><span class="em">🔎</span> Look up specs</button>
+        <button class="ai-btn"><span class="em">📋</span> Browse models</button>
+      </div>
+      <p class="ai-note">Fills capacity &amp; fuel for you — always yours to edit.</p>
+    </div>
+
+    <!-- result of "look up specs" -->
+    <div class="ai-result">
+      <div class="rh">✨ Found it — check &amp; save</div>
+      <div class="chips">
+        <span class="chip"><span class="em">🗄️</span> 2 racks</span>
+        <span class="chip"><span class="em">⚫</span> Charcoal</span>
+        <span class="chip"><span class="em">📐</span> 18″ / 47 cm</span>
+      </div>
+    </div>
+
+    <button class="save-btn">Save to locker</button>
+  </section>
+
+
+  <!-- =========================================================== -->
+  <!-- REFERENCE: EMPTY STATE -->
+  <!-- =========================================================== -->
+  <div class="demo-div">Empty state</div>
+  <section class="empty">
+    <div class="art">🧰</div>
+    <h2>Your locker is empty</h2>
+    <p>Add your smokers, grills, probes and more — we’ll unlock the right cook methods and timings for each.</p>
+    <div class="estack">
+      <button class="ebtn primary">
+        <span class="ei">＋</span>
+        <span class="et"><b>Add your first device</b><small>Pick a category — takes a few taps</small></span>
+        <span class="eg">‹</span>
+      </button>
+      <button class="ebtn ghost">
+        <span class="ei">✨</span>
+        <span class="et"><b>Describe it in words</b><small>“Two smokers and a Joule”</small></span>
+        <span class="eg">‹</span>
+      </button>
+    </div>
+  </section>
+
+</div>
+</body></html>

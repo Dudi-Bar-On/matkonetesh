@@ -1,0 +1,562 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>My Equipment · Concierge-first</title>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;600;700;800;900&family=Suez+One&display=swap" rel="stylesheet">
+<style>
+:root{
+  --char:#fdf6ec; --bg2:#faecd8; --char2:#fffaf3; --char3:#fff2e4;
+  --ember:#e76f51; --ember2:#f4a261; --terra-d:#d2691e;
+  --bone:#5a3a28; --ash:#6e5340; --smoke:#7a5f4c;
+  --line:#f0dcc4; --line2:#f5e0c8;
+  --fresh:#1a9a7a; --fresh-l:#d8f0e8; --good:#1a9a7a;
+  --tint-warm:#fff6ec; --tint-warm2:#fdeede; --tint-cool:#f3f7f9; --tint-warn:#fbe9e7;
+  --font-display:'Suez One', Georgia, serif;
+  --font-body:'Heebo', system-ui, -apple-system, sans-serif;
+  --fscale:1;
+  --shadow:0 5px 16px rgba(210,105,30,.08);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#ecdcc4;color:var(--bone);font-family:var(--font-body);
+  display:flex;flex-wrap:wrap;gap:34px;justify-content:center;align-items:flex-start;
+  padding:34px 18px 70px;-webkit-font-smoothing:antialiased}
+
+/* board scaffolding (not part of the app — just to frame the panels) */
+.col{display:flex;flex-direction:column;align-items:center;gap:12px}
+.cap{font-family:var(--font-body);font-weight:800;letter-spacing:.14em;text-transform:uppercase;
+  font-size:11px;color:#9a7d63}
+.phone{width:412px;max-width:92vw;background:var(--char);border-radius:30px;
+  box-shadow:0 20px 50px rgba(120,70,20,.18);overflow:hidden;border:1px solid #e7d3ba}
+.scr{max-height:none}
+
+/* ---- top bar (echo .capp-top / .capp-ico) ---- */
+.capp-top{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:11px;
+  padding:15px 16px 13px;background:linear-gradient(180deg,var(--char) 72%,transparent)}
+.capp-ico{width:40px;height:40px;border-radius:13px;background:var(--char2);
+  border:1.5px solid var(--line2);color:var(--ember);font-size:18px;display:grid;
+  place-items:center;cursor:pointer;flex:none}
+.capp-title{font-family:var(--font-display);font-weight:400;font-size:20px;color:var(--bone);flex:1}
+.capp-title small{display:block;font-family:var(--font-body);font-weight:600;
+  font-size:11.5px;color:var(--smoke);letter-spacing:.01em}
+.body{padding:2px 16px 26px}
+
+/* ================= CONCIERGE HERO ================= */
+.eq-con{position:relative;overflow:hidden;border-radius:20px;padding:22px 20px 20px;
+  background:linear-gradient(150deg,var(--tint-warm) 0%,var(--char3) 100%);
+  border:2px solid var(--line2);box-shadow:var(--shadow);margin-bottom:22px}
+.eq-con-spark{position:absolute;top:-18px;inset-inline-end:-6px;font-size:104px;
+  line-height:1;opacity:.09;transform:rotate(-12deg);pointer-events:none;user-select:none}
+.eq-con-kick{font-family:var(--font-body);text-transform:uppercase;letter-spacing:.12em;
+  font-size:12px;font-weight:800;color:var(--ember2);margin-bottom:8px}
+.eq-con-h{font-family:var(--font-display);font-weight:400;font-size:27px;line-height:1.12;
+  color:var(--bone);letter-spacing:-.01em}
+.eq-con-h b{color:var(--ember);font-weight:400}
+.eq-con-sub{font-family:var(--font-body);font-size:13px;line-height:1.55;color:var(--smoke);
+  margin-top:9px;max-width:330px}
+
+/* prompt box */
+.eq-prompt{position:relative;margin-top:15px;background:var(--char2);
+  border:1.5px solid var(--line2);border-radius:16px;box-shadow:var(--shadow);
+  transition:border-color .15s,box-shadow .15s}
+.eq-prompt:focus-within{border-color:var(--ember);box-shadow:0 0 0 3px rgba(231,111,81,.12)}
+.eq-prompt-ic{position:absolute;top:13px;inset-inline-start:14px;font-size:16px;
+  color:var(--ember);pointer-events:none}
+.eq-prompt-in{width:100%;border:none;background:transparent;resize:none;outline:none;
+  color:var(--bone);font-family:var(--font-body);font-size:14.5px;line-height:1.55;
+  padding:13px 15px 13px 40px;unicode-bidi:plaintext}
+.eq-prompt-in::placeholder{color:#a98d75}
+
+.eq-con-go{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+  margin-top:12px;background:var(--ember);border:none;color:#fff;border-radius:13px;
+  padding:14px;font-family:var(--font-body);font-weight:800;font-size:15px;cursor:pointer;
+  box-shadow:0 6px 16px rgba(231,111,81,.28);transition:transform .12s}
+.eq-con-go:active{transform:scale(.985)}
+.eq-con-go .arw{font-size:20px;line-height:1;opacity:.9}
+.eq-con-go.slim{padding:12px;font-size:14px}
+
+/* example chips (echo .cmore-qchip) */
+.eq-egrow{display:flex;flex-wrap:wrap;gap:8px;margin-top:13px}
+.eq-egchip{display:inline-flex;align-items:center;gap:6px;background:var(--char2);
+  border:1.5px solid var(--line2);border-radius:999px;padding:8px 13px;
+  font-family:var(--font-body);font-weight:700;font-size:12.5px;color:var(--bone);cursor:pointer}
+.eq-egchip span{font-size:1.05em;line-height:1}
+.eq-egchip:hover{border-color:var(--ember);color:var(--ember)}
+
+/* secondary entry / escape hatch */
+.eq-con-alts{display:flex;gap:9px;margin-top:15px;padding-top:14px;
+  border-top:1px dashed var(--line2)}
+.eq-alt{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:11px 8px;
+  font-family:var(--font-body);font-weight:700;font-size:12.5px;color:var(--ash);cursor:pointer}
+.eq-alt span{font-size:1.05em}
+.eq-alt:hover{border-color:var(--ember2);color:var(--bone)}
+.eq-alt.manual{color:var(--smoke)}
+
+/* ================= CAPABILITIES ================= */
+.active-sec{margin:0 0 20px}
+.active-sec>h4{font-family:var(--font-body);font-size:12px;letter-spacing:.08em;
+  text-transform:uppercase;color:var(--ember2);margin:0 0 9px;display:flex;align-items:center;gap:7px}
+.eq-count{font-family:var(--font-body);font-weight:800;letter-spacing:0;text-transform:none;
+  font-size:11px;color:var(--smoke);background:var(--char3);border:1px solid var(--line2);
+  border-radius:999px;padding:1px 8px}
+.eq-cap-card{background:var(--char2);border:1.5px solid var(--line2);border-radius:15px;
+  padding:14px;box-shadow:var(--shadow)}
+.gcaps{display:flex;gap:8px;flex-wrap:wrap}
+.gcap{font-size:12px;font-weight:700;border-radius:999px;padding:5px 11px;font-family:var(--font-body)}
+.gcap.ok{background:var(--fresh-l);color:var(--good)}
+.gcap.no{background:var(--tint-warn);color:var(--terra-d)}
+.eq-cap-note{font-family:var(--font-body);font-size:12.5px;line-height:1.55;color:var(--ash);
+  margin-top:11px}
+.eq-cap-note b{color:var(--bone)}
+
+/* ================= DEVICE GROUPS ================= */
+.eq-dev{display:flex;align-items:flex-start;gap:12px;background:var(--char2);
+  border:1.5px solid var(--line2);border-radius:14px;padding:13px;margin-bottom:9px;
+  transition:border-color .15s}
+.eq-dev:hover{border-color:var(--ember2)}
+.eq-dev-ico{flex:none;width:46px;height:46px;border-radius:12px;background:var(--char3);
+  border:1px solid var(--line2);display:grid;place-items:center;font-size:24px;line-height:1}
+.eq-dev-main{flex:1;min-width:0}
+.eq-dev-main b{display:flex;align-items:center;gap:7px;font-size:15px;color:var(--bone);
+  font-weight:800;line-height:1.2}
+.eq-dev-name{overflow-wrap:anywhere}
+.eq-ai{flex:none;font-family:var(--font-body);font-weight:800;font-size:10px;letter-spacing:.02em;
+  background:var(--fresh-l);color:var(--fresh);border-radius:999px;padding:2px 7px;line-height:1.5}
+.eq-dev-main small{display:block;font-size:12px;color:var(--ash);margin-top:3px}
+.eq-spec{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.eq-pill{font-family:var(--font-body);font-size:11.5px;font-weight:700;color:var(--ash);
+  background:var(--char3);border:1px solid var(--line);border-radius:999px;padding:4px 9px}
+.eq-pill.type{background:var(--tint-warm2);color:var(--terra-d);border-color:var(--line2)}
+.eq-dev-acts{flex:none;display:flex;gap:6px}
+.eq-dev-edit,.eq-dev-x{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line2);
+  background:var(--char3);font-size:13px;cursor:pointer;display:grid;place-items:center;line-height:1}
+.eq-dev-edit{color:var(--ash)}
+.eq-dev-x{color:var(--smoke)}
+.eq-dev-edit:hover,.eq-dev-x:hover{border-color:var(--ember);color:var(--ember)}
+
+/* add-another ghost row */
+.eq-add-row{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;
+  background:none;border:1.5px dashed var(--line2);border-radius:12px;padding:11px;
+  font-family:var(--font-body);font-weight:700;font-size:13px;color:var(--terra-d);cursor:pointer;
+  margin-top:1px}
+.eq-add-row:hover{border-color:var(--ember);color:var(--ember)}
+
+/* ================= ADD SHEET (concierge flow) ================= */
+.sheet-wrap{background:var(--bg2);padding:0 0 4px}
+.sheet-grab{width:42px;height:5px;border-radius:999px;background:var(--line2);
+  margin:11px auto 4px}
+.sheet-head{display:flex;align-items:center;gap:10px;padding:6px 16px 12px}
+.sheet-head h3{flex:1;font-family:var(--font-display);font-weight:400;font-size:19px;color:var(--bone)}
+.sheet-x{width:32px;height:32px;border-radius:50%;border:1.5px solid var(--line2);
+  background:var(--char2);color:var(--smoke);font-size:14px;cursor:pointer;display:grid;place-items:center}
+.sheet-body{padding:0 16px 20px}
+
+.eq-step-l{display:block;font-family:var(--font-body);font-weight:700;font-size:13px;
+  color:var(--ash);margin:4px 0 8px}
+.eq-lookup{position:relative}
+.eq-lookup-in{width:100%;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;
+  padding:12px 14px;font-family:var(--font-body);font-size:14.5px;color:var(--bone);outline:none}
+.eq-lookup-in:focus{border-color:var(--ember)}
+.eq-lookup-acts{display:flex;gap:8px;margin-top:9px}
+.eq-look-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;
+  background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:11px;
+  font-family:var(--font-body);font-weight:700;font-size:12.5px;color:var(--bone);cursor:pointer}
+.eq-look-btn span{font-size:1.1em}
+.eq-look-btn:hover{border-color:var(--ember)}
+.eq-look-btn.primary{background:var(--ember);color:#fff;border-color:transparent;
+  box-shadow:0 5px 14px rgba(231,111,81,.24)}
+
+.eq-or{display:flex;align-items:center;gap:10px;margin:16px 0 12px;color:var(--smoke);
+  font-family:var(--font-body);font-size:11.5px;font-weight:700;letter-spacing:.06em;
+  text-transform:uppercase}
+.eq-or::before,.eq-or::after{content:"";flex:1;height:1px;background:var(--line2)}
+
+/* browse-a-brand model list */
+.eq-modellist{display:flex;flex-direction:column;gap:7px}
+.eq-model{width:100%;display:flex;align-items:center;gap:11px;text-align:start;
+  background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:11px 13px;cursor:pointer}
+.eq-model-main{flex:1;min-width:0}
+.eq-model-main b{display:block;font-size:14px;color:var(--bone);font-weight:800}
+.eq-model-main small{display:block;font-size:11.5px;color:var(--ash);margin-top:2px}
+.eq-model-go{flex:none;color:var(--ember);font-weight:900;font-size:17px}
+.eq-model:hover{border-color:var(--ember)}
+.eq-model.on{border-color:var(--ember);background:var(--fresh-l)}
+.eq-model.on .eq-model-go{color:var(--fresh)}
+
+/* ✨ verify & edit card */
+.eq-verify{background:var(--char2);border:1.5px solid var(--line2);border-radius:16px;
+  padding:15px;box-shadow:var(--shadow)}
+.eq-verify-h{display:block;font-family:var(--font-body);line-height:1.4;
+  font-size:14.5px;color:var(--bone);font-weight:600;margin-bottom:13px}
+.eq-verify-h span{font-size:17px;margin-inline-end:5px}
+.eq-verify-h b{color:var(--ember);font-weight:800}
+.eq-vrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.eq-vfield{margin-bottom:11px}
+.eq-vfield label{display:flex;align-items:center;gap:5px;font-family:var(--font-body);
+  font-size:12px;color:var(--ash);margin-bottom:5px}
+.eq-vfield input,.eq-vfield select{width:100%;background:var(--char);border:1px solid var(--line);
+  border-radius:9px;padding:9px 11px;font-family:var(--font-body);font-size:14px;color:var(--bone);outline:none}
+.eq-vfield input:focus,.eq-vfield select:focus{border-color:var(--ember)}
+.eq-vfield.ai input,.eq-vfield.ai select{background:#eef8f4;border-color:#bfe4d7}
+.eq-ai.sm{background:none;padding:0;color:var(--fresh);font-size:12px}
+.eq-v-src{font-family:var(--font-body);font-size:11.5px;color:var(--smoke);line-height:1.5;
+  margin:3px 0 13px}
+.eq-v-src b{color:var(--fresh)}
+.eq-v-acts{display:flex;gap:8px}
+.eq-v-acts .eq-con-go{flex:1;margin-top:0}
+.eq-ghost{flex:none;background:none;border:1.5px solid var(--line2);border-radius:12px;
+  padding:12px 15px;font-family:var(--font-body);font-weight:700;font-size:13px;color:var(--ash);cursor:pointer}
+.eq-ghost:hover{border-color:var(--ember);color:var(--ember)}
+
+/* manual fallback note (echo .miniform) */
+.miniform{background:var(--char);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:16px}
+.miniform h4{margin:0 0 4px;font-family:var(--font-body);font-size:13px;color:var(--ember2);font-weight:800}
+.miniform p{font-family:var(--font-body);font-size:12px;color:var(--smoke);line-height:1.5;margin-bottom:10px}
+.miniform .mf-row{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.miniform label{display:block;font-size:12px;color:var(--ash);margin-bottom:9px}
+.miniform input,.miniform select{width:100%;background:var(--char2);border:1px solid var(--line);
+  color:var(--bone);border-radius:9px;padding:9px 11px;font-family:var(--font-body);font-size:14px;
+  outline:none;margin-top:3px}
+
+/* ================= EMPTY STATE ================= */
+.eq-empty{text-align:center;padding:20px 20px 24px;background:linear-gradient(150deg,var(--tint-warm) 0%,var(--char3) 100%);
+  border:2px solid var(--line2);border-radius:20px;box-shadow:var(--shadow)}
+.eq-empty-ic{font-size:52px;line-height:1;margin-bottom:12px}
+.eq-empty .eq-con-h{font-size:26px}
+.eq-empty .eq-con-sub{margin:9px auto 0}
+.eq-empty .eq-prompt,.eq-empty .eq-con-go{text-align:start}
+.eq-empty .eq-egrow{justify-content:center}
+.eq-empty-manual{display:block;margin:15px auto 0;background:none;border:none;
+  font-family:var(--font-body);font-weight:700;font-size:13px;color:var(--terra-d);
+  text-decoration:underline;cursor:pointer}
+.eq-empty-manual:hover{color:var(--ember)}
+
+/* ---- bidi hygiene: keep Latin gear names / numbers+units / English copy
+        readable inside the RTL frame. In production these carry Hebrew and
+        `plaintext` auto-detects direction per string, so the same rules hold. ---- */
+.eq-con-h,.eq-con-sub,.eq-cap-note,.eq-v-src,.miniform p,.eq-step-l,
+.eq-dev-name,.eq-dev-main small,.eq-pill,.eq-add-row,.eq-verify-h,.eq-ghost,
+.eq-model-main b,.eq-model-main small{unicode-bidi:plaintext}
+.eq-vfield input,.eq-vfield select,.eq-lookup-in,
+.miniform input,.miniform select{unicode-bidi:plaintext;text-align:start}
+.eq-ai{unicode-bidi:isolate}
+</style>
+
+<!-- ==================================================================
+     PANEL 1 — MAIN SCREEN (deliverable #6), populated, English, RTL
+     =================================================================== -->
+<div class="col">
+  <div class="cap">Panel 1 · Main screen — populated</div>
+  <div class="phone" dir="rtl" lang="en">
+    <div class="scr">
+
+      <header class="capp-top">
+        <button class="capp-ico" aria-label="Back">›</button>
+        <div class="capp-title">My Equipment<small>Your gear, tuned to every recipe</small></div>
+        <button class="capp-ico" aria-label="What this unlocks">✨</button>
+      </header>
+
+      <div class="body">
+
+        <!-- CONCIERGE HERO -->
+        <section class="eq-con" aria-label="Describe your gear">
+          <div class="eq-con-spark" aria-hidden="true">✨</div>
+          <p class="eq-con-kick">✨ Your gear, in words</p>
+          <h2 class="eq-con-h">Tell me what<br>you <b>cook on.</b></h2>
+          <p class="eq-con-sub">Describe your kit the way you'd tell a friend — I'll set it all up, specs and all.</p>
+
+          <div class="eq-prompt">
+            <span class="eq-prompt-ic" aria-hidden="true">✨</span>
+            <textarea class="eq-prompt-in" rows="3" aria-label="Describe your gear"
+              placeholder="e.g. “I run a Traeger pellet smoker and a Weber bullet, plus an Anova stick and a couple of Meater probes…”"></textarea>
+          </div>
+
+          <button class="eq-con-go">Set it up for me <span class="arw" aria-hidden="true">‹</span></button>
+
+          <div class="eq-egrow" aria-label="Quick examples">
+            <button class="eq-egchip"><span>🛢️</span> Offset smoker</button>
+            <button class="eq-egchip"><span>🌀</span> Sous-vide stick</button>
+            <button class="eq-egchip"><span>📡</span> Meater probe</button>
+          </div>
+
+          <div class="eq-con-alts">
+            <button class="eq-alt"><span>📷</span> Identify from a photo</button>
+            <button class="eq-alt manual"><span>✍️</span> Add it manually</button>
+          </div>
+        </section>
+
+        <!-- CAPABILITIES -->
+        <section class="active-sec" aria-label="What you can cook">
+          <h4>What you can cook</h4>
+          <div class="eq-cap-card">
+            <div class="gcaps">
+              <span class="gcap ok">✓ Smoke</span>
+              <span class="gcap ok">✓ Low &amp; slow</span>
+              <span class="gcap ok">✓ Grill &amp; sear</span>
+              <span class="gcap ok">✓ Sous-vide</span>
+              <span class="gcap ok">✓ Roast</span>
+              <span class="gcap no">Cold-smoke — add a smoke tube</span>
+            </div>
+            <p class="eq-cap-note"><b>5 techniques unlocked.</b> Your Traeger and the bullet cover low-and-slow; the Anova adds precision baths. One step from cold-smoking.</p>
+          </div>
+        </section>
+
+        <!-- SMOKERS -->
+        <section class="active-sec" aria-label="Smokers">
+          <h4>Smokers <span class="eq-count">2</span></h4>
+
+          <div class="eq-dev">
+            <div class="eq-dev-ico" aria-hidden="true">🛢️</div>
+            <div class="eq-dev-main">
+              <b><span class="eq-dev-name">Traeger Pro 575</span><span class="eq-ai">✨ AI</span></b>
+              <small>Traeger · Pro 575</small>
+              <div class="eq-spec">
+                <span class="eq-pill type">Pellet</span>
+                <span class="eq-pill">2 racks</span>
+                <span class="eq-pill">575 in²</span>
+                <span class="eq-pill">Wood pellets</span>
+              </div>
+            </div>
+            <div class="eq-dev-acts">
+              <button class="eq-dev-edit" aria-label="Edit">✏️</button>
+              <button class="eq-dev-x" aria-label="Remove">✕</button>
+            </div>
+          </div>
+
+          <div class="eq-dev">
+            <div class="eq-dev-ico" aria-hidden="true">⚫</div>
+            <div class="eq-dev-main">
+              <b><span class="eq-dev-name">Weber Smokey Mountain 18″</span><span class="eq-ai">✨ AI</span></b>
+              <small>Weber · WSM 18</small>
+              <div class="eq-spec">
+                <span class="eq-pill type">Bullet · water</span>
+                <span class="eq-pill">2 racks</span>
+                <span class="eq-pill">Charcoal</span>
+              </div>
+            </div>
+            <div class="eq-dev-acts">
+              <button class="eq-dev-edit" aria-label="Edit">✏️</button>
+              <button class="eq-dev-x" aria-label="Remove">✕</button>
+            </div>
+          </div>
+
+          <button class="eq-add-row"><span aria-hidden="true">＋</span> Add another smoker</button>
+        </section>
+
+        <!-- SOUS-VIDE -->
+        <section class="active-sec" aria-label="Sous-vide">
+          <h4>Sous-vide <span class="eq-count">1</span></h4>
+
+          <div class="eq-dev">
+            <div class="eq-dev-ico" aria-hidden="true">🌀</div>
+            <div class="eq-dev-main">
+              <b><span class="eq-dev-name">Anova Precision Cooker 3.0</span><span class="eq-ai">✨ AI</span></b>
+              <small>Anova · AN500-EU</small>
+              <div class="eq-spec">
+                <span class="eq-pill type">Immersion</span>
+                <span class="eq-pill">up to 20 L bath</span>
+                <span class="eq-pill">1100 W</span>
+                <span class="eq-pill">Wi-Fi</span>
+              </div>
+            </div>
+            <div class="eq-dev-acts">
+              <button class="eq-dev-edit" aria-label="Edit">✏️</button>
+              <button class="eq-dev-x" aria-label="Remove">✕</button>
+            </div>
+          </div>
+
+          <button class="eq-add-row"><span aria-hidden="true">＋</span> Add another sous-vide</button>
+        </section>
+
+        <!-- PROBES -->
+        <section class="active-sec" aria-label="Probes">
+          <h4>Probes <span class="eq-count">2</span></h4>
+
+          <div class="eq-dev">
+            <div class="eq-dev-ico" aria-hidden="true">📡</div>
+            <div class="eq-dev-main">
+              <b><span class="eq-dev-name">Meater+</span><span class="eq-ai">✨ AI</span></b>
+              <small>Meater · RT1-MTPR</small>
+              <div class="eq-spec">
+                <span class="eq-pill type">Wireless</span>
+                <span class="eq-pill">1 channel</span>
+                <span class="eq-pill">50 m range</span>
+              </div>
+            </div>
+            <div class="eq-dev-acts">
+              <button class="eq-dev-edit" aria-label="Edit">✏️</button>
+              <button class="eq-dev-x" aria-label="Remove">✕</button>
+            </div>
+          </div>
+
+          <div class="eq-dev">
+            <div class="eq-dev-ico" aria-hidden="true">🌡️</div>
+            <div class="eq-dev-main">
+              <b><span class="eq-dev-name">ThermoPro TP20</span></b>
+              <small>ThermoPro · TP20 · added by hand</small>
+              <div class="eq-spec">
+                <span class="eq-pill type">Leave-in</span>
+                <span class="eq-pill">2 channels</span>
+                <span class="eq-pill">90 m RF</span>
+              </div>
+            </div>
+            <div class="eq-dev-acts">
+              <button class="eq-dev-edit" aria-label="Edit">✏️</button>
+              <button class="eq-dev-x" aria-label="Remove">✕</button>
+            </div>
+          </div>
+
+          <button class="eq-add-row"><span aria-hidden="true">＋</span> Add another probe</button>
+        </section>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================================================================
+     PANEL 2 — ADD FLOW (concierge): identify → 🔎 specs / 📋 models → ✨ verify
+     =================================================================== -->
+<div class="col">
+  <div class="cap">Panel 2 · Add flow — identify → verify</div>
+  <div class="phone" dir="rtl" lang="en">
+    <div class="sheet-wrap">
+      <div class="sheet-grab" aria-hidden="true"></div>
+      <div class="sheet-head">
+        <div class="eq-dev-ico" aria-hidden="true">🛢️</div>
+        <h3>Add a smoker</h3>
+        <button class="sheet-x" aria-label="Close">✕</button>
+      </div>
+
+      <div class="sheet-body">
+
+        <!-- STEP: tell me the model -->
+        <label class="eq-step-l">Tell me the model — I'll pull the specs</label>
+        <div class="eq-lookup">
+          <input class="eq-lookup-in" value="Traeger Pro 575" aria-label="Brand and model">
+        </div>
+        <div class="eq-lookup-acts">
+          <button class="eq-look-btn primary"><span aria-hidden="true">🔎</span> Look up specs</button>
+          <button class="eq-look-btn"><span aria-hidden="true">📋</span> Browse Traeger models</button>
+        </div>
+
+        <div class="eq-or">then</div>
+
+        <!-- STEP: verify & edit (confirm-before-save) -->
+        <div class="eq-verify">
+          <div class="eq-verify-h"><span aria-hidden="true">✨</span> Here's what I found — <b>verify &amp; edit</b></div>
+
+          <div class="eq-vfield ai">
+            <label>Name <span class="eq-ai sm" aria-hidden="true">✨</span></label>
+            <input value="Traeger Pro 575">
+          </div>
+
+          <div class="eq-vrow">
+            <div class="eq-vfield ai">
+              <label>Sub-type <span class="eq-ai sm" aria-hidden="true">✨</span></label>
+              <select>
+                <option selected>Pellet grill / smoker</option>
+                <option>Offset</option><option>Kamado</option><option>Bullet / water</option>
+              </select>
+            </div>
+            <div class="eq-vfield ai">
+              <label>Racks <span class="eq-ai sm" aria-hidden="true">✨</span></label>
+              <input value="2">
+            </div>
+          </div>
+
+          <div class="eq-vrow">
+            <div class="eq-vfield ai">
+              <label>Cooking area <span class="eq-ai sm" aria-hidden="true">✨</span></label>
+              <input value="575 in²">
+            </div>
+            <div class="eq-vfield ai">
+              <label>Fuel <span class="eq-ai sm" aria-hidden="true">✨</span></label>
+              <select>
+                <option selected>Wood pellets</option>
+                <option>Charcoal</option><option>Gas</option><option>Electric</option>
+              </select>
+            </div>
+          </div>
+
+          <p class="eq-v-src"><b>✨ Auto-filled</b> from Traeger's published specs. Tap any field to change it — nothing is saved yet.</p>
+
+          <div class="eq-v-acts">
+            <button class="eq-con-go slim">Looks right — save</button>
+            <button class="eq-ghost">↺ Redo</button>
+          </div>
+        </div>
+
+        <!-- ALT: browse a brand's models -->
+        <div class="eq-or">or pick from the catalogue</div>
+        <div class="eq-modellist" aria-label="Traeger models">
+          <button class="eq-model on">
+            <div class="eq-model-main"><b>Pro 575</b><small>Pellet · 2 racks · 575 in² · WiFIRE</small></div>
+            <span class="eq-model-go" aria-hidden="true">✓</span>
+          </button>
+          <button class="eq-model">
+            <div class="eq-model-main"><b>Pro 780</b><small>Pellet · 2 racks · 780 in² · WiFIRE</small></div>
+            <span class="eq-model-go" aria-hidden="true">＋</span>
+          </button>
+          <button class="eq-model">
+            <div class="eq-model-main"><b>Ironwood 650</b><small>Pellet · 2 racks · 650 in² · downdraft exhaust</small></div>
+            <span class="eq-model-go" aria-hidden="true">＋</span>
+          </button>
+        </div>
+
+        <!-- FALLBACK: manual (no key / offline / custom) -->
+        <div class="miniform">
+          <h4>No connection or custom rig?</h4>
+          <p>Add it by hand — pick a sub-type and enter capacity yourself.</p>
+          <div class="mf-row">
+            <label>Sub-type
+              <select><option>Pellet grill / smoker</option><option>Offset</option><option>Kamado</option></select>
+            </label>
+            <label>Racks
+              <input value="" placeholder="e.g. 2">
+            </label>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================================================================
+     PANEL 3 — EMPTY STATE (invites the concierge)
+     =================================================================== -->
+<div class="col">
+  <div class="cap">Panel 3 · Empty state</div>
+  <div class="phone" dir="rtl" lang="en">
+    <div class="scr">
+      <header class="capp-top">
+        <button class="capp-ico" aria-label="Back">›</button>
+        <div class="capp-title">My Equipment</div>
+      </header>
+
+      <div class="body">
+        <div class="eq-empty">
+          <div class="eq-empty-ic" aria-hidden="true">🔥🍳</div>
+          <h2 class="eq-con-h">Let's meet <b>your kit.</b></h2>
+          <p class="eq-con-sub">Tell me what you cook on and I'll build your shelf — every recipe then tunes itself to your exact gear.</p>
+
+          <div class="eq-prompt">
+            <span class="eq-prompt-ic" aria-hidden="true">✨</span>
+            <textarea class="eq-prompt-in" rows="3" aria-label="Describe your gear"
+              placeholder="e.g. “A kettle grill and a cheap probe” — even a rough description works."></textarea>
+          </div>
+
+          <button class="eq-con-go">Set it up for me <span class="arw" aria-hidden="true">‹</span></button>
+
+          <div class="eq-egrow">
+            <button class="eq-egchip"><span>🔥</span> Kettle grill</button>
+            <button class="eq-egchip"><span>🛢️</span> Pellet smoker</button>
+            <button class="eq-egchip"><span>🌀</span> Sous-vide</button>
+          </div>
+
+          <button class="eq-empty-manual">Or add manually, one by one</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
