@@ -353,6 +353,16 @@ for _code, _dfs in _i18n_data.items():
         for _df in _dfs:
             with open(_df, encoding="utf-8") as _f:
                 _i18n[_code].update(json.load(_f))
+# i18n coverage report (non-fatal): how far each language covers the English reference + orphaned keys
+_en_keys = set(_i18n.get("en", {}).keys())
+if _en_keys:
+    for _code in sorted(_i18n):
+        if _code == "en":
+            continue
+        _k = set(_i18n[_code].keys())
+        _cov = len(_k & _en_keys); _orph = _k - _en_keys
+        _pct = round(100 * _cov / len(_en_keys))
+        print("[i18n] %s: %d/%d keys vs en (%d%%)%s" % (_code, _cov, len(_en_keys), _pct, (" · %d orphaned" % len(_orph)) if _orph else ""))
 I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
 html = HTML.replace("__CSS__", _css).replace("__JS__", _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")")
 import os as _os, shutil as _shutil
