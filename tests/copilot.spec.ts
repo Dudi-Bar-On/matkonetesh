@@ -65,3 +65,37 @@ test('W2-P2: stall detection helper + advisory card during smoke stages', async 
   await page.waitForSelector('#panel .cop-stall-on');
   expect(await page.evaluate(`document.querySelector('#panel .cop-stallh').textContent`)).toContain('71');
 });
+
+test('W2-P3: pace/ETA math — states, rate, projection, and verdict vs serve', async ({ page }) => {
+  await bootCopilot(page);
+  const pace = (s: any) => page.evaluate(`copilotPace(${JSON.stringify(s)})`);
+  expect((await pace({ targetC: 95 }) as any).state).toBe('no-reading');
+  expect((await pace({ probes: [{ t: 1000, tempC: 60 }] }) as any).state).toBe('no-target');
+  expect((await pace({ probes: [{ t: 1000, tempC: 60 }], targetC: 95 }) as any).state).toBe('need-more');
+  // 60→70 over 1h, target 95 → rate 10°C/h, 2.5h left, ETA at t=12,600,000
+  const p = await pace({ probes: [{ t: 0, tempC: 60 }, { t: 3600000, tempC: 70 }], targetC: 95 }) as any;
+  expect(p.state).toBe('projected'); expect(p.rate).toBe(10); expect(p.hoursLeft).toBe(2.5); expect(p.etaMs).toBe(12600000);
+  // verdict vs a serve deadline
+  expect((await pace({ probes: [{ t: 0, tempC: 60 }, { t: 3600000, tempC: 70 }], targetC: 95, serveTs: 12600000 - 30 * 60000 }) as any).verdict).toBe('behind');
+  expect((await pace({ probes: [{ t: 0, tempC: 60 }, { t: 3600000, tempC: 70 }], targetC: 95, serveTs: 12600000 + 60 * 60000 }) as any).verdict).toBe('ahead');
+  // stall: flat in the 65-77 band
+  expect((await pace({ probes: [{ t: 0, tempC: 68 }, { t: 3600000, tempC: 68.5 }], targetC: 95 }) as any).state).toBe('stall');
+  // done: at/above target
+  expect((await pace({ probes: [{ t: 0, tempC: 96 }], targetC: 95 }) as any).state).toBe('done');
+});
+
+test('W2-P3: probe check-in UI logs a reading and updates the pace card', async ({ page }) => {
+  await bootCopilot(page);
+  await page.evaluate(`startLiveCook()`);
+  await page.waitForSelector('#panel .cop-probe #copTarget');
+  await page.fill('#panel #copTarget', '95');
+  await page.click('#panel #copTargetSet');
+  await page.waitForSelector('#panel #copProbe');
+  await page.fill('#panel #copProbe', '70');
+  await page.click('#panel #copProbeLog');
+  await page.waitForTimeout(150);
+  expect(await page.evaluate(`liveSession().targetC`)).toBe(95);
+  expect(await page.evaluate(`liveSession().probes.length`)).toBe(1);
+  expect(await page.evaluate(`document.querySelector('#panel .cop-probe').textContent`)).toContain('another');   // "Log another reading to project…"
+  expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#panel .cop-probe').textContent`) as string)).toBe(false);   // English, no leak
+});

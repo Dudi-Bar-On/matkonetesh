@@ -4184,10 +4184,63 @@ function copilotStallInfo(tempC){
     : 'Evaporative cooling around 65–77°C — completely normal, can last 1–3 hours. Don’t panic-raise the heat. Options: patience, or the “Texas Crutch” — wrap in butcher paper/foil once the bark is dark and set (around 68–70°C) to break through. Wrapping too early softens the bark.';
   return { inStall: phase==='stall', phase, title, body };
 }
+// W2-P3: probe capture + pace/ETA — the new subsystem. Manual entry (device-agnostic: read off the MEATER/Inkbird app).
+function copilotLogProbe(tempC){ const sc=liveScope(); const s=liveSession(sc); if(!s) return null; if(!Array.isArray(s.probes)) s.probes=[]; s.probes.push({t:Date.now(), tempC:tempC}); store.set(liveKey(sc), s); return s; }
+function copilotSetTarget(tempC){ const sc=liveScope(); const s=liveSession(sc); if(!s) return null; s.targetC=tempC; store.set(liveKey(sc), s); return s; }
+// Pure pace/ETA math from the session's probe readings vs the target internal temp. Honest: never extrapolates through the stall.
+function copilotPace(session){
+  const s=session||{};
+  const probes=(Array.isArray(s.probes)?s.probes.slice():[]).filter(function(p){return p&&typeof p.tempC==='number'&&typeof p.t==='number';}).sort(function(a,b){return a.t-b.t;});
+  const targetC=(typeof s.targetC==='number')?s.targetC:null;
+  if(!probes.length) return {state:'no-reading'};
+  const last=probes[probes.length-1];
+  if(targetC==null) return {state:'no-target', lastTemp:last.tempC};
+  if(last.tempC>=targetC) return {state:'done', lastTemp:last.tempC};
+  if(probes.length<2) return {state:'need-more', lastTemp:last.tempC};
+  const a=probes[probes.length-2], b=last;
+  const dtH=(b.t-a.t)/3600000;
+  const rate = dtH>0 ? (b.tempC-a.tempC)/dtH : 0;               // °C per hour, from the last two readings
+  const r1=Math.round(rate*10)/10;
+  if(rate<=1 && b.tempC>=65 && b.tempC<=77) return {state:'stall', lastTemp:b.tempC, rate:r1};   // flat in the plateau = the stall (don't project a wild ETA)
+  if(rate<=0) return {state:'flat', lastTemp:b.tempC, rate:r1};
+  const hoursLeft=(targetC-b.tempC)/rate;
+  const etaMs=b.t + hoursLeft*3600000;
+  const out={state:'projected', lastTemp:b.tempC, rate:r1, hoursLeft:Math.round(hoursLeft*100)/100, etaMs:etaMs};
+  if(typeof s.serveTs==='number'){ const readyBy=s.serveTs - (s.restMin||0)*60000; const slackMs=readyBy-etaMs;
+    out.verdict = slackMs>15*60000?'ahead' : (slackMs<-15*60000?'behind':'on-pace'); out.slackMin=Math.round(slackMs/60000); }
+  return out;
+}
+function _copilotPaceHtml(pace){
+  const he=(typeof getLang!=='function'||getLang()==='he'); const p=pace||{};
+  const note=function(cls,txt){ return `<div class="cop-pacenote ${cls||''}">${txt}</div>`; };
+  if(p.state==='no-reading') return note('', (he?'רשום קריאת מדחום כדי לעקוב אחר הקצב.':'Log a probe reading to track your pace.'));
+  if(p.state==='no-target') return note('', (he?'הגדר טמפ׳-יעד פנימית כדי לחשב זמן סיום.':'Set a target internal temp to get a finish-time estimate.'));
+  if(p.state==='need-more') return note('', `🌡️ ${p.lastTemp}°C · ${he?'רשום קריאה נוספת כדי לחזות זמן סיום.':'Log another reading to project a finish time.'}`);
+  if(p.state==='done') return note('cop-pace-ok', `✅ ${p.lastTemp}°C · ${he?'הגיע ליעד — נוח והגש.':'Target reached — rest and serve.'}`);
+  if(p.state==='stall') return note('cop-pace-warn', `🧱 ${p.lastTemp}°C · ${he?'בסטָאל — הקצב שטוח. עטוף לפרוץ, או המתן בסבלנות.':'In the stall — pace is flat. Wrap to break through, or wait it out.'}`);
+  if(p.state==='flat') return note('cop-pace-warn', `⚠ ${p.lastTemp}°C · ${he?'הטמפ׳ אינה עולה — בדוק את החום/הדלק.':'Temp isn’t rising — check your fire / fuel.'}`);
+  // projected
+  const eta=(typeof fmtClock==='function')?fmtClock(new Date(p.etaMs)):new Date(p.etaMs).toLocaleTimeString();
+  const vTxt = p.verdict==='behind'?(he?'מאחר':'behind') : p.verdict==='ahead'?(he?'מקדים':'ahead') : (he?'בקצב':'on pace');
+  const cls = p.verdict==='behind'?'cop-pace-warn':'cop-pace-ok';
+  const slack = (typeof p.slackMin==='number')?` (${p.slackMin>0?'+':''}${p.slackMin} ${he?'דק׳':'min'})`:'';
+  const fix = p.verdict==='behind' ? (he?'להאיץ: העלה מעט את חום התא, או עטוף (Crutch) עכשיו; אפשר גם לקצר מנוחה או לדחות הגשה.':'To catch up: nudge the pit temp up, or wrap (Crutch) now; you can also shorten the rest or push serve.')
+            : p.verdict==='ahead' ? (he?'יש עודף זמן — אפשר להחזיק בקופסת בידוד (faux cambro).':'You have slack — hold it wrapped in a cooler (faux cambro).') : '';
+  return note(cls, `📈 ${p.lastTemp}°C · ${he?'קצב':'rate'} ~${p.rate}°C/${he?'ש':'h'} · ${he?'סיום ~':'ETA ~'}${eta}${p.verdict?` · <b>${vTxt}</b>${slack}`:''}`) + (fix?`<div class="cop-pacefix">💡 ${fix}</div>`:'');
+}
 function openCopilot(){
   if(typeof showPanel!=='function') return;
   const he=(typeof getLang!=='function'||getLang()==='he');
   const sess=liveSession(); const st=_copilotStages();
+  // probe check-in + pace/ETA card
+  let probeCard='';
+  if(sess){
+    const tgt=(typeof sess.targetC==='number')?sess.targetC:null;
+    probeCard=`<div class="cop-probe"><div class="cop-probeh">🌡️ ${he?'בדיקת מדחום':'Probe check-in'}</div>
+      <div class="cop-proberow"><input id="copProbe" class="cop-in" type="number" inputmode="decimal" placeholder="${he?'טמפ׳ פנימית °C':'internal °C'}"><button class="mchip" id="copProbeLog">${he?'רשום':'Log'}</button></div>
+      ${tgt==null?`<div class="cop-proberow"><input id="copTarget" class="cop-in" type="number" inputmode="decimal" placeholder="${he?'יעד פנימי °C':'target internal °C'}"><button class="mchip" id="copTargetSet">${he?'הגדר יעד':'Set target'}</button></div>`:`<div class="cop-pacenote">🎯 ${he?'יעד':'target'} ${tgt}°C</div>`}
+      ${_copilotPaceHtml(copilotPace(sess))}</div>`;
+  }
   // stall advisory during smoke stages (uses the last probe reading if one exists — capture arrives in P3)
   let stallCard='';
   if((st.cur&&st.cur.kind==='smoke')||(st.next&&st.next.kind==='smoke')){
@@ -4200,7 +4253,7 @@ function openCopilot(){
   const stageHtml=function(t,tag){ if(!t) return ''; return `<div class="cop-stage"><div class="cop-stagek">${tag}</div><div class="cop-stagel">${esc(t.label||'')}</div>${t.sub?`<div class="cop-stagesub">${esc(t.sub)}</div>`:''}${(t.tid&&t.dur)?timerHTML(t.dur, t.tid, t.label||''):''}</div>`; };
   const body = (st.count
     ? `${stageHtml(st.cur, he?'עכשיו':'Now')}${stageHtml(st.next, he?'הבא':'Next')}`
-    : `<div class="cop-empty">${he?'פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.':'Open the cook’s work plan to start a live session.'}</div>`) + stallCard;
+    : `<div class="cop-empty">${he?'פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.':'Open the cook’s work plan to start a live session.'}</div>`) + stallCard + probeCard;
   showPanel(`${typeof toolTop==='function'?toolTop(L('טייס חי','Live Copilot'),L('הבישול שלך בזמן אמת','Your cook, live'),'🔥','#c0392b'):`<h2 style="padding:16px">${L('טייס חי','Live Copilot')}</h2>`}
     <div class="panel-body">
       ${sess?`<div class="cop-hdr">🔥 ${he?'מושב חי פעיל':'Live session active'}${sess.serveTs?` · ${he?'הגשה':'serve'} ${fmtClock(new Date(sess.serveTs))}`:''}</div>`:''}
@@ -4213,6 +4266,8 @@ function openCopilot(){
   $("#panel").querySelectorAll('.timer').forEach(function(tm){ try{ if(typeof wireTimer==='function') wireTimer(tm); }catch(e){} });
   { const vb=$("#panel").querySelector('[data-copvoice]'); if(vb) vb.addEventListener('click',function(){ if(typeof openVoiceCook==='function') openVoiceCook((typeof window!=='undefined'&&window._wpTasks)||[]); }); }
   { const sb=$("#copStop"); if(sb) sb.addEventListener('click',function(){ stopLiveCook(); if(typeof closePanel==='function') closePanel(); }); }
+  { const lb=$("#copProbeLog"); if(lb) lb.addEventListener('click',function(){ const inp=$("#copProbe"); const v=inp?parseFloat(inp.value):NaN; if(!isNaN(v)){ copilotLogProbe(v); openCopilot(); } }); }
+  { const tb=$("#copTargetSet"); if(tb) tb.addEventListener('click',function(){ const inp=$("#copTarget"); const v=inp?parseFloat(inp.value):NaN; if(!isNaN(v)){ copilotSetTarget(v); openCopilot(); } }); }
 }
 function openVoiceCook(tasks){
   vcTasks=tasks||[]; vcIdx=0;

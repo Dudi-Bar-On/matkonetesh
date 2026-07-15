@@ -26,7 +26,9 @@ export default defineConfig({
     // and the manifest/icons resolve (no 404 noise)
     command: `python build.py && node serve.js ${PORT}`,
     url: `http://localhost:${PORT}/index.html`,
-    reuseExistingServer: !process.env.CI,
+    // Always start a fresh server that Playwright tears down after the run. reuseExistingServer:true
+    // (the old default locally) would silently reuse a STALE/broken leftover on :8123 → random 30s timeouts.
+    reuseExistingServer: false,
     timeout: 120_000,
   },
 });
