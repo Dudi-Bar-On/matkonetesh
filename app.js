@@ -4949,44 +4949,79 @@ async function aiBrandModels(brand, cat){
 function openEquipment(){
   const catOpt=EQUIP_CATS.map(function(c){ return `<option value="${c.cat}">${L(c.he,c.en)}</option>`; }).join('');
   const typeOpts=function(cat){ const c=equipCat(cat)||{types:[]}; return c.types.map(function(tp){return `<option value="${tp}">${t(tp)}</option>`;}).join('')+`<option value="__custom__">${L('אחר…','Other…')}</option>`; };
+  const brandOpts=function(cat){ return (EQUIP_BRANDS[cat]||[]).map(function(b){return `<option value="${b}">`;}).join(''); };
+  let editId=null;
   const draw=function(){
     const list=equipList();
     const cards=EQUIP_CATS.map(function(c){
       const ds=list.filter(function(d){return d.cat===c.cat;}); if(!ds.length) return '';
       return `<div class="eq-group"><h4>${L(c.he,c.en)}</h4>`+ds.map(function(d){
         const cap=c.capKey&&d.cap&&d.cap[c.capKey]!=null?` · ${d.cap[c.capKey]} ${L(c.capHe,c.capEn)}`:'';
-        return `<div class="eq-card"><div class="eq-main"><b>${esc(d.name||t(d.type)||'')}</b><span>${esc(t(d.type)||'')}${cap}</span></div><button class="eq-rm" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">×</button></div>`;
+        const ai=d.specSource==='ai'?' ✨':'';
+        return `<div class="eq-card"><div class="eq-main"><b>${esc(d.name||t(d.type)||'')}${ai}</b><span>${esc(t(d.type)||'')}${cap}</span></div><button class="eq-edit" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-rm" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">×</button></div>`;
       }).join('')+`</div>`;
     }).join('');
+    const aiRow=equipAiOn()?`<div class="mf-actions" style="gap:6px"><button id="eqModels" class="ghost" type="button">📋 ${L('דגמים','Models')}</button><button id="eqLookup" class="ghost" type="button">🔎 ${L('מצא מפרט (AI)','Look up specs (AI)')}</button></div><div id="eqAiNote" class="cop-pacenote" style="margin:4px 0"></div>`:'';
     showPanel(`${toolTop(L('הציוד שלי','My equipment'),L('הוסף את הכלים שלך — מספר מכשירים מכל סוג','Add your kit — multiple devices per type'),'🧰','#5a7d8c')}
       <div class="panel-body">
         <button class="cmore-qchip" id="eqConcierge" style="margin-bottom:12px"><span>✨</span> ${L('תאר במילים במקום','Describe it in words instead')}</button>
-        <div class="miniform"><h4>${L('הוסף מכשיר','Add a device')}</h4>
+        <div class="miniform"><h4 id="eqFormTitle">${editId?L('ערוך מכשיר','Edit device'):L('הוסף מכשיר','Add a device')}</h4>
           <label>${L('סוג','Category')}<select id="eqCat">${catOpt}</select></label>
           <label>${L('דגם/סוג','Type')}<select id="eqType">${typeOpts('smoker')}</select></label>
-          <label>${L('שם','Name')}<input id="eqName" placeholder="${L('לדוגמה: Weber Smokey Mountain','e.g. Weber Smokey Mountain')}"></label>
+          <label>${L('שם / מותג','Name / brand')}<input id="eqName" list="eqBrandList" placeholder="${L('לדוגמה: Weber Smokey Mountain','e.g. Weber Smokey Mountain')}"><datalist id="eqBrandList">${brandOpts('smoker')}</datalist></label>
+          ${aiRow}
           <label id="eqCapWrap" hidden><span id="eqCapLbl"></span><input type="number" min="0" id="eqCapKey" inputmode="numeric"></label>
-          <div class="mf-actions"><button id="eqAdd">${L('הוסף','Add')}</button></div>
+          <div class="mf-actions"><button id="eqAdd">${editId?L('שמור','Save'):L('הוסף','Add')}</button>${editId?`<button id="eqCancel" class="ghost" type="button">${L('בטל','Cancel')}</button>`:''}</div>
         </div>
         <div id="eqList" style="margin-top:14px">${cards||`<div class="shop-empty">${L('עדיין לא הוגדר ציוד.','No equipment yet.')}</div>`}</div>
       </div>`);
     const pnl=$("#panel");
+    const capC=function(cat){ return equipCat(cat)||{}; };
     const syncType=function(){ const cat=($("#eqCat")||{}).value; const ts=$("#eqType"); if(ts) ts.innerHTML=typeOpts(cat);
-      const c=equipCat(cat); const w=$("#eqCapWrap"), lbl=$("#eqCapLbl"), inp=$("#eqCapKey");
-      if(c&&c.capKey){ if(w) w.hidden=false; if(lbl) lbl.textContent=L(c.capHe,c.capEn); if(inp) inp.value=''; } else if(w){ w.hidden=true; } };
-    const ec=$("#eqCat"); if(ec) ec.addEventListener('change', syncType); syncType();
+      const bl=$("#eqBrandList"); if(bl) bl.innerHTML=brandOpts(cat);
+      const c=capC(cat); const w=$("#eqCapWrap"), lbl=$("#eqCapLbl");
+      if(c.capKey){ if(w) w.hidden=false; if(lbl) lbl.textContent=L(c.capHe,c.capEn); } else if(w){ w.hidden=true; } };
+    const ec=$("#eqCat"); if(ec) ec.addEventListener('change', function(){ syncType(); const inp=$("#eqCapKey"); if(inp) inp.value=''; }); syncType();
+    const note=function(s){ const n=$("#eqAiNote"); if(n) n.textContent=s||''; };
     const add=$("#eqAdd"); if(add) add.addEventListener('click', function(){
-      const cat=($("#eqCat")||{}).value; const c=equipCat(cat);
+      const cat=($("#eqCat")||{}).value; const c=capC(cat);
       let type=($("#eqType")||{}).value; if(type==='__custom__') type=(($("#eqName")||{}).value||L('מותאם','custom'));
-      const name=(($("#eqName")||{}).value||t(type)||type);
-      const dev={id:equipId(), cat:cat, type:type, name:name, brand:'', model:'', fuel:'', cap:{}, specSource:'manual', notes:''};
-      if(c&&c.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) dev.cap[c.capKey]=v; }
-      const l=equipList(); l.push(dev); equipSave(l); equipSetConfigured();
+      const nmEl=$("#eqName"); const name=((nmEl&&nmEl.value)||t(type)||type);
+      const list2=equipList(); let dev;
+      if(editId){ dev=list2.find(function(d){return d.id===editId;}); if(!dev){ editId=null; return; } }
+      else { dev={id:equipId(), cat:cat, type:type, name:name, brand:'', model:'', fuel:'', cap:{}, specSource:'manual', notes:''}; list2.push(dev); }
+      dev.cat=cat; dev.type=type; dev.name=name; dev.cap=dev.cap||{};
+      if(c.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) dev.cap[c.capKey]=v; }
+      if(nmEl && nmEl._aifuel){ dev.fuel=nmEl._aifuel; dev.specSource='ai'; }
+      equipSave(list2); equipSetConfigured();
       const b=$("#gearBanner"); if(b) b.remove();
       if(typeof cRefreshHome==='function') cRefreshHome();
-      draw();
+      editId=null; draw();
     });
-    pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); draw(); }); });
+    const cancel=$("#eqCancel"); if(cancel) cancel.addEventListener('click', function(){ editId=null; draw(); });
+    pnl.querySelectorAll('[data-eqedit]').forEach(function(b){ b.addEventListener('click', function(){
+      const d=equipList().find(function(x){return x.id===b.dataset.eqedit;}); if(!d) return; editId=d.id; draw();
+      const ec2=$("#eqCat"); if(ec2) ec2.value=d.cat; syncType();
+      const ts=$("#eqType"); if(ts){ if(Array.prototype.some.call(ts.options,function(o){return o.value===d.type;})) ts.value=d.type; else ts.value='__custom__'; }
+      const nm=$("#eqName"); if(nm) nm.value=d.name||'';
+      const c=capC(d.cat); const inp=$("#eqCapKey"); if(inp&&c.capKey&&d.cap) inp.value=(d.cap[c.capKey]!=null?d.cap[c.capKey]:'');
+    }); });
+    pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); editId=null; draw(); }); });
+    const lookup=$("#eqLookup"); if(lookup) lookup.addEventListener('click', function(){
+      const q=($("#eqName")||{}).value||''; const cat=($("#eqCat")||{}).value; if(!q.trim()){ note(L('הקלד שם/דגם קודם','Type a name/model first')); return; }
+      note(L('מחפש…','Looking up…'));
+      aiLookupDevice(q, cat).then(function(r){
+        const c=capC(cat); const inp=$("#eqCapKey"); if(inp&&c.capKey&&r.cap&&r.cap[c.capKey]!=null){ if($("#eqCapWrap")) $("#eqCapWrap").hidden=false; inp.value=r.cap[c.capKey]; }
+        const nm=$("#eqName"); if(nm) nm._aifuel=r.fuel||'';
+        const parts=[]; if(r.fuel) parts.push(r.fuel); if(r.note) parts.push(r.note);
+        note('✨ '+(parts.join(' · ')||L('לא נמצא מפרט — מלא ידנית','No specs found — fill manually'))+L(' (ודא ותקן)',' (verify & edit)'));
+      }).catch(function(e){ note(String(e&&e.message||e).indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל — מלא ידנית','Lookup failed — fill manually')); });
+    });
+    const models=$("#eqModels"); if(models) models.addEventListener('click', function(){
+      const brand=($("#eqName")||{}).value||''; const cat=($("#eqCat")||{}).value; if(!brand.trim()){ note(L('הקלד מותג קודם','Type a brand first')); return; }
+      note(L('מחפש דגמים…','Finding models…'));
+      aiBrandModels(brand, cat).then(function(ms){ const bl=$("#eqBrandList"); if(bl) bl.innerHTML=ms.map(function(m){return `<option value="${m}">`;}).join(''); note(ms.length?(ms.length+L(' דגמים — בחר מהרשימה',' models — pick from the list')):L('לא נמצאו דגמים','No models found')); }).catch(function(e){ note(String(e&&e.message||e).indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל','Search failed')); });
+    });
     const gc=$("#eqConcierge"); if(gc) gc.addEventListener('click', function(){ if(typeof openGearConcierge==='function') openGearConcierge(); });
   };
   draw();

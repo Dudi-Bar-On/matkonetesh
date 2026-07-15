@@ -89,3 +89,28 @@ test('B1: aiLookupDevice + aiBrandModels normalize AI output; no-key guarded', a
   await page.evaluate(`store.set('mk-gemkey',''); window.__aiMock=null;`);
   expect(await page.evaluate(`aiLookupDevice('x','smoker').then(()=>'ok').catch(e=>String(e.message))`)).toContain('no-key');
 });
+
+test('B2: in-place edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'eq-1',cat:'smoker',type:'פלטים',name:'Old Name',cap:{racks:1}}]); equipSetConfigured();`);
+  // no key → AI buttons hidden
+  await page.evaluate(`store.set('mk-gemkey',''); openEquipment();`);
+  await page.waitForSelector('#panel #eqAdd');
+  expect(await page.evaluate(`!document.querySelector('#panel #eqLookup')`)).toBe(true);
+  // edit the device in place
+  await page.click('#panel [data-eqedit="eq-1"]');
+  await page.waitForFunction(`(document.querySelector('#panel #eqName')||{}).value==='Old Name'`);
+  await page.fill('#panel #eqName','New Name');
+  await page.click('#panel #eqAdd');   // Save
+  await page.waitForTimeout(120);
+  expect(await page.evaluate(`equipList().length`)).toBe(1);   // updated, not duplicated
+  expect(await page.evaluate(`equipList()[0].name`)).toBe('New Name');
+  // with key → AI lookup appears + prefills capacity
+  await page.evaluate(`store.set('mk-gemkey','k'); window.__aiMock={fuel:'pellet',racks:4,note:'x'}; openEquipment();`);
+  await page.waitForSelector('#panel #eqLookup');
+  await page.selectOption('#panel #eqCat','smoker');
+  await page.fill('#panel #eqName','Traeger Ironwood');
+  await page.click('#panel #eqLookup');
+  await page.waitForFunction(`(document.querySelector('#panel #eqCapKey')||{}).value==='4'`);
+  expect(await page.evaluate(`(document.querySelector('#panel #eqCapKey')||{}).value`)).toBe('4');
+});
