@@ -240,15 +240,14 @@ const SMOKER_TIPS_EN={
   'גז (עם תיבת עשן)':'Gas: light just one burner for indirect heat, a smoke box with chips over the lit burner, and the meat on the off side.',
   'חשמלי':'Electric: stable and easy but weak smoke — add chips throughout the cook to keep smoke continuous.'
 };
-function smokerTip(){ if(!gearConfigured()) return ''; const g=gearState(); return (g.smoker&&g.smoker!=='אין')?(getLang()==='he'?SMOKER_TIPS:SMOKER_TIPS_EN)[g.smoker]||'':''; }
-function preheatHint(){ if(!gearConfigured()) return L('45 דק׳ ייצוב','45 min to stabilize'); const g=gearState(); const s=g.smoker;
+function smokerTip(){ if(!equipConfigured()) return ''; const d=primaryOf('smoker'); return d?((getLang()==='he'?SMOKER_TIPS:SMOKER_TIPS_EN)[d.type]||''):''; }
+function preheatHint(){ if(!equipConfigured()) return L('45 דק׳ ייצוב','45 min to stabilize'); const d=primaryOf('smoker'); const s=d&&d.type;
   if(s==='פלטים') return L('~15 דק׳ (פלט מתחמם מהר)','~15 min (pellet heats fast)');
   if(s==='גז (עם תיבת עשן)') return L('~10–15 דק׳','~10–15 min');
   if(s==='חשמלי'||s==='ארון / קבינט') return L('~20–30 דק׳','~20–30 min');
   if(s&&s!=='אין') return L('ארובת פחם ~30–45 דק׳','Charcoal chimney ~30–45 min');
   return L('45 דק׳ ייצוב','45 min to stabilize'); }
 function gearMissingHelp(c, methods){
-  const g=gearState();
   const items=methods.map(m=>{
     if(m==='sv'){
       const alt=(c.sot?L(`עישון-בלבד (הנתח תומך: ~${c.soh}ש ב-${c.sot}°C)`,`Smoke-only (this cut supports it: ~${c.soh}h at ${c.sot}°C)`):(canSmoke()?L('עישון','Smoking'):canGrill()?L('גריל עם גימור זהיר','Grill with a careful finish'):L('בישול איטי בתנור','Slow-cook in the oven')));
@@ -259,7 +258,7 @@ function gearMissingHelp(c, methods){
       return {ic:'💨',name:L('עישון','Smoking'),alt,altnote:L('ללא מעשנה ייעודית, גריל עקיף עם עץ נותן טעם עשן טוב.','Without a dedicated smoker, an indirect grill with wood gives good smoke flavor.'),buy:L('מעשנת פחם (WSM/חבית), קמאדו, או ארון.','A charcoal smoker (WSM/drum), kamado, or cabinet.')};
     }
     if(m==='grill'){
-      const alt=(g.torch&&g.torch!=='אין')?L('גימור במבער/לפיד','Finish with a torch'):L('צריבה במחבת ברזל-יצוק חמה מאוד','Sear in a very hot cast-iron pan');
+      const alt=hasGear('torch')?L('גימור במבער/לפיד','Finish with a torch'):L('צריבה במחבת ברזל-יצוק חמה מאוד','Sear in a very hot cast-iron pan');
       return {ic:'🔥',name:L('גריל','Grill'),alt,altnote:L('לגימור/צריבה — מחבת ברזל יצוק או מבער נותנים קרום מצוין.','For finishing/searing — a cast-iron pan or a torch gives an excellent crust.'),buy:L('גריל פחם/גז, או מבער ידני לגימור.','A charcoal/gas grill, or a handheld torch for finishing.')};
     }
     return null;
@@ -288,7 +287,7 @@ function methodToggleHTML(c,key){
   return row + gearMissingHelp(c, offMethods) + extra;
 }
 function gearThermoNote(c){
-  if(!gearConfigured()) return ''; const g=gearState(); const th=g.thermo;
+  if(!equipConfigured()) return ''; const probes=equipByCat('probe'); const th=(probes.find(function(p){return p.type==='בקר-מאוורר';})||probes[0]||{}).type||null;
   if(!th || th==='אין') return `<div class="thermo-note">🌡️ <b>${L('אין לך מדחום','You have no thermometer')}:</b> ${L('עבוד לפי זמן ומבחני מגע/צבע. לבטיחות (בעיקר עוף ובשר טחון) — מדחום מיידי הוא הדבר הכי מומלץ לרכוש; בלעדיו קשה לוודא','Work by time and touch/color tests. For safety (especially poultry and ground meat) — an instant-read thermometer is the top recommended buy; without it, it is hard to verify')} ${c&&c.safe?c.safe+'°C':L('טמפ׳ בטוחה','a safe temp')} ${L('במרכז','in the center')}.</div>`;
   if(th==='בקר-מאוורר') return `<div class="thermo-note ok">🌡️ <b>${L('בקר-מאוורר','Leave-in probe')}:</b> ${L('הגדר יעד פיט ופרוב בשר — הוא ישמור על הטמפ׳ ויתריע. "הגדר ולך".','Set a pit target and a meat probe — it will hold the temp and alert you. "Set and forget."')}</div>`;
   return '';
@@ -6286,12 +6285,12 @@ function wcimInvHas(name, inv){
 // which method(s) a make needs, and whether gear supports at least one
 function wcimGearOk(meta){
   const cat=meta.cat||'', o=meta.obj||{}, b=o.build||{};
-  const g=gearState(); const configured=gearConfigured();
+  const configured=equipConfigured();
   // sausage-family needs grinder+stuffer (soft: if gear unconfigured, assume yes)
   const isSausage=['נקניקיות','נקניק מעושן','נקניק מיובש','סלומי'].includes(cat);
   if(isSausage && configured){
-    const hasGrinder=g.grinder && g.grinder!=='אין';
-    const hasStuffer=g.stuffer && g.stuffer!=='אין';
+    const hasGrinder=hasCat('grinder');
+    const hasStuffer=hasCat('stuffer');
     if(!hasGrinder||!hasStuffer) return {ok:false, need: [!hasGrinder&&'מטחנת בשר', !hasStuffer&&'מכונת מילוי'].filter(Boolean)};
   }
   // smoked items need smoke capability
