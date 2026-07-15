@@ -305,9 +305,9 @@ test('adaptive home Phase 8: AI hub gathers every AI tool, key-gated not level-g
   // NO key: all 4 tools listed; key-requiring ones locked → route to key manager; Ask stays usable; unlock banner shown
   await page.evaluate(`(function(){ store.set('mk-gemkey',''); openAiHub(); })()`);
   await page.waitForSelector('#panel .ai-tools .ai-tool');
-  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool').length`)).toBe(4);
+  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool').length`)).toBe(5);
   expect(await page.evaluate(`!!document.querySelector('#panel .ai-keybanner')`)).toBe(true);
-  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool.ai-locked').length`)).toBe(3);
+  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool.ai-locked').length`)).toBe(4);
   expect(await page.evaluate(`document.querySelector('#panel .ai-tool:not(.ai-locked)').dataset.aifn`)).toBe('openAsk');   // Ask works without a key
   expect(await page.evaluate(`document.querySelector('#panel .ai-tool.ai-locked').dataset.aifn`)).toBe('openKeyManager');   // locked → unlock route
   expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#panel .ai-tools').textContent`) as string)).toBe(false);   // English, no leak
@@ -317,7 +317,7 @@ test('adaptive home Phase 8: AI hub gathers every AI tool, key-gated not level-g
   await page.waitForSelector('#panel .ai-tools .ai-tool');
   expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool.ai-locked').length`)).toBe(0);
   expect(await page.evaluate(`!document.querySelector('#panel .ai-keybanner')`)).toBe(true);
-  expect(await page.evaluate(`Array.from(document.querySelectorAll('#panel .ai-tool')).map(b=>b.dataset.aifn).join(',')`)).toBe('openAsk,openRecipeGen,openDiagnoseAI,openJournalInsights');
+  expect(await page.evaluate(`Array.from(document.querySelectorAll('#panel .ai-tool')).map(b=>b.dataset.aifn).join(',')`)).toBe('openPhotoAnalyze,openAsk,openRecipeGen,openDiagnoseAI,openJournalInsights');
   await page.evaluate(`closePanel()`);
   // reachable at BEGINNER level from the More sheet (AI is never level-trimmed)
   await page.evaluate(`openMoreSheet()`);
@@ -329,7 +329,7 @@ test('adaptive home Phase 8: AI hub gathers every AI tool, key-gated not level-g
   expect(await page.evaluate(`document.querySelector('#cHomeAiMore').textContent`)).toContain('More AI tools');
   await page.click('#cHomeAiMore');
   await page.waitForSelector('#panel .ai-tools');
-  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool').length`)).toBe(4);
+  expect(await page.evaluate(`document.querySelectorAll('#panel .ai-tool').length`)).toBe(5);
 });
 
 test('adaptive home Phase 7: customize home — toggle hide, drag-reorder, persist, reset', async ({ page }) => {

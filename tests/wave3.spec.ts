@@ -80,3 +80,28 @@ test('W3-P3: personal coach — longitudinal journal stats + renders', async ({ 
   await page.waitForSelector('#panel .jcoach');
   expect(await page.evaluate(`document.querySelector('#panel .jcoach').textContent`)).toContain('cooks logged');
 });
+
+test('W3-P4: photo analyzer — multimodal request, advisory framing, no-key guard', async ({ page }) => {
+  await boot(page);
+  // the prompt is advisory + carries the safety rail
+  const prompt = await page.evaluate(`_photoPrompt()`) as string;
+  expect(prompt).toContain('probe');
+  expect(prompt).toContain('Never state a numeric');
+  // gemVision builds a real multimodal request (image inlineData + text)
+  await page.evaluate(`window.__cap=null; window.gemFetch=async(m,b)=>{ window.__cap=b; return {ok:true,json:async()=>({candidates:[{content:{parts:[{text:'the bark looks set'}]}}]})}; }; store.set('mk-gemkey','k');`);
+  const r = await page.evaluate(`gemVision('data:image/jpeg;base64,AAAA', 'read this')`) as string;
+  expect(r).toContain('bark');
+  const body = await page.evaluate(`window.__cap`) as any;
+  expect(body.contents[0].parts[0].inlineData.mimeType).toBe('image/jpeg');
+  expect(body.contents[0].parts[0].inlineData.data).toBe('AAAA');
+  expect(body.contents[0].parts[1].text).toBe('read this');
+  // the AI hub lists the photo analyzer
+  expect(await page.evaluate(`AI_TOOLS.some(t=>t[3]==='openPhotoAnalyze')`)).toBe(true);
+  // no key → gemVision refuses (no fake analysis)
+  await page.evaluate(`store.set('mk-gemkey','')`);
+  expect(await page.evaluate(`(async()=>{ try{ await gemVision('data:image/jpeg;base64,AA','x'); return 'ok'; }catch(e){ return String(e.message||e); } })()`)).toContain('no-key');
+  // the panel opens with the advisory framing
+  await page.evaluate(`openPhotoAnalyze()`);
+  await page.waitForSelector('#panel #paFile');
+  expect(await page.evaluate(`document.querySelector('#panel .pa-note').textContent`)).toContain('probe');
+});

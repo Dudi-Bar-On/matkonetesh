@@ -7395,7 +7395,43 @@ const CCAT_TILES=[
 // P8 — AI tools hub: one discoverable place for every AI feature, reachable at EVERY interface level.
 // The only gate is the API key (aiAvail), never experience level — without a key the tools still show, with an "unlock" route.
 // [icon, title, blurb, fn, needsKey]. Add new AI tools here.
+// Wave 3 · photo analyzer — Gemini multimodal read of bark / doneness / smoke-ring / charcuterie mold. ALWAYS advisory ("probe decides").
+async function gemVision(dataUrl, prompt){
+  const key=(typeof gemKey==='function')?gemKey():''; if(!key) throw new Error('no-key');
+  const m=String(dataUrl||'').match(/^data:([^;]+);base64,(.+)$/); if(!m) throw new Error('bad-image');
+  const body={ contents:[{parts:[{inlineData:{mimeType:m[1], data:m[2]}}, {text:prompt}]}], generationConfig:{temperature:0.4, maxOutputTokens:800, thinkingConfig:{thinkingBudget:0}} };
+  const r=await gemFetch(GEM_MODEL, body, {timeout:40000}); if(!r.ok) throw new Error('api-'+r.status);
+  const j=await r.json(); const cand=j.candidates&&j.candidates[0];
+  const txt=cand&&cand.content&&(cand.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();
+  if(!txt) throw new Error('empty'); return txt;
+}
+function _photoPrompt(){ const he=(typeof getLang!=='function'||getLang()==='he');
+  return he
+    ? 'אתה מומחה בישול-אש. נתח את התמונה של בשר/נקניק על האש: הערך קרום (bark), טבעת עשן, מידת עשייה חיצונית, ולשרקוטרי — עובש/התקשות-שפה. תשובה קצרה ומעשית בעברית. חשוב: זו הערכה ויזואלית בלבד — סיים תמיד ב"אמת עם מדחום לפי טמפ׳ הבטיחות בכרטיס". אל תקבע מספר טמפ׳-פנים בטוחה מהתמונה.'
+    : 'You are a fire-cooking expert. Analyze this photo of meat/sausage on the fire: assess bark, smoke ring, exterior doneness, and for charcuterie mold/case-hardening. Short, practical answer in English. IMPORTANT: this is a VISUAL estimate only — always end with "confirm with a probe against the safe temp on the card". Never state a numeric safe internal temperature from the photo.';
+}
+function openPhotoAnalyze(){
+  if(typeof showPanel!=='function') return;
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  showPanel(`${typeof toolTop==='function'?toolTop(L('ניתוח תמונה','Photo read'),L('צלם/העלה — אעריך קרום, עשייה, עובש','Snap/upload — I’ll read the bark, doneness, mold'),'📸','#7a5cc2'):`<h2 style="padding:16px">${L('ניתוח תמונה','Photo read')}</h2>`}
+    <div class="panel-body">
+      <div class="pa-note">📸 ${he?'הערכה ויזואלית · 🌡️ המדחום מכריע':'Advises visually · 🌡️ the probe decides'}</div>
+      <input type="file" accept="image/*" id="paFile" class="cop-in" style="padding:9px">
+      <div id="paPreview"></div>
+      <button class="ccta" id="paGo" style="margin-top:10px" disabled>✨ ${he?'נתח':'Analyze'}</button>
+      <div id="paResult"></div>
+    </div>`);
+  let dataUrl=null;
+  const f=$("#paFile"); if(f) f.addEventListener('change',function(){ const file=f.files&&f.files[0]; if(!file) return; const rd=new FileReader(); rd.onload=function(){ dataUrl=rd.result; const pv=$("#paPreview"); if(pv) pv.innerHTML=`<img src="${dataUrl}" alt="" style="max-width:100%;border-radius:12px;margin:10px 0">`; const go=$("#paGo"); if(go) go.disabled=false; }; rd.readAsDataURL(file); });
+  const go=$("#paGo"); if(go) go.addEventListener('click',async function(){ if(!dataUrl) return; const res=$("#paResult");
+    if(typeof aiAvail!=='function' || !aiAvail()){ if(res) res.innerHTML=`<div class="ai-keybanner"><span>🔑 ${he?'ניתוח תמונות דורש מפתח AI.':'Photo analysis needs an AI key.'}</span><button class="ai-calc-link" id="paKey">${he?'הוסף מפתח':'Add key'}</button></div>`; const kb=$("#paKey"); if(kb) kb.addEventListener('click',function(){ if(typeof openKeyManager==='function') openKeyManager(); }); return; }
+    if(res) res.innerHTML=`<div class="cop-pacenote">${(typeof aiSpinner==='function')?aiSpinner(he?'מנתח את התמונה':'Analyzing the photo'):'…'}</div>`;
+    try{ const txt=await gemVision(dataUrl, _photoPrompt()); if(res) res.innerHTML=`<div class="pa-read">${esc(txt).replace(/\n/g,'<br>')}${(typeof aiSafetyNote==='function')?aiSafetyNote(txt, (typeof SAFETY_FACTS==='function'?SAFETY_FACTS():'')):''}</div>`; }
+    catch(e){ if(res) res.innerHTML=`<div class="cop-pacenote cop-pace-warn">${he?'הניתוח נכשל — נסה שוב או בדוק את המפתח.':'Analysis failed — try again or check your key.'}</div>`; }
+  });
+}
 const AI_TOOLS=[
+  ['📸', L('ניתוח תמונה','Photo read'), L('צלם את הבישול — קרום, עשייה, עובש (הערכה)','Snap your cook — bark, doneness, mold (advisory)'), 'openPhotoAnalyze', true],
   ['🔥', L('שאל את האש','Ask the Fire'), L('שאלות חופשיות — זמן, טמפ׳, עץ, כמות, כשרות, איפה לקנות','Free questions — time, temp, wood, quantity, kosher, where to buy'), 'openAsk', false],
   ['✨', L('מחולל מתכונים','Recipe generator'), L('צור מתכון חדש בשפה חופשית','Generate a new recipe from a free description'), 'openRecipeGen', true],
   ['🩺', L('אבחון תקלה','Diagnose a cook'), L('תאר מה השתבש — אבחון לפי היומן והפרויקטים שלך','Describe what went wrong — diagnosed against your journal'), 'openDiagnoseAI', true],
