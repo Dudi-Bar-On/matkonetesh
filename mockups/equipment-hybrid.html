@@ -1,0 +1,314 @@
+<!doctype html><html lang="en" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Equipment — Hybrid</title>
+<link href="https://fonts.googleapis.com/css2?family=Suez+One&family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --char:#fdf6ec; --bg2:#faecd8; --char2:#fffaf3; --char3:#fff2e4;
+  --ember:#e76f51; --ember2:#f4a261; --terra-d:#d2691e;
+  --bone:#5a3a28; --ash:#6e5340; --smoke:#7a5f4c;
+  --line:#f0dcc4; --line2:#f5e0c8;
+  --fresh:#1a9a7a; --fresh-l:#d8f0e8; --good:#1a9a7a;
+  --tint-warm:#fff6ec; --tint-warm2:#fdeede; --tint-warn:#fbe9e7;
+  --font-display:'Suez One',Georgia,serif; --font-body:'Heebo',system-ui,sans-serif;
+  --shadow:0 5px 16px rgba(210,105,30,.08);
+  /* Gear-Locker category accents (borrowed) */
+  --c-smoke:#9a6a3a; --c-grill:#e76f51; --c-oven:#f4a261; --c-sv:#2b7fb8;
+  --c-probe:#1a9a7a; --c-grinder:#b5651d; --c-other:#8a6f5c;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#ecdcc4;color:var(--bone);font-family:var(--font-body);
+  display:flex;flex-wrap:wrap;gap:34px;justify-content:center;align-items:flex-start;
+  padding:34px 18px 70px;-webkit-font-smoothing:antialiased;line-height:1.55}
+.col{display:flex;flex-direction:column;align-items:center;gap:12px}
+.capn{font-family:var(--font-body);font-weight:800;letter-spacing:.14em;text-transform:uppercase;font-size:11px;color:#9a7d63}
+.phone{width:414px;max-width:92vw;background:var(--char);border-radius:30px;
+  box-shadow:0 20px 50px rgba(120,70,20,.18);overflow:hidden;border:1px solid #e7d3ba}
+.body{padding:4px 16px 26px}
+
+/* ---- panel header (toolTop-like) ---- */
+.eqhead{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:22px 4px 16px}
+.eqhead .k{font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:var(--ember2);margin-bottom:4px}
+.eqhead h1{font-family:var(--font-display);font-weight:400;font-size:27px;color:var(--bone);line-height:1.08;display:flex;align-items:center;gap:8px}
+.eqhead .sub{font-size:12.5px;color:var(--ash);margin-top:5px}
+.addbtn{flex:none;display:inline-flex;align-items:center;gap:7px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--ember),var(--terra-d));color:#fff;font-weight:800;font-size:14px;
+  padding:11px 15px;border-radius:14px;box-shadow:0 6px 16px rgba(210,105,30,.28)}
+.addbtn .pl{font-size:18px;line-height:1}
+
+/* ---- capabilities banner (Gear Locker) ---- */
+.caps{background:linear-gradient(135deg,var(--tint-warm),var(--tint-warm2));border:2px solid var(--line2);
+  border-radius:18px;padding:15px 16px;margin-bottom:13px;box-shadow:var(--shadow)}
+.caps .cx{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.caps h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ember2);font-weight:800}
+.caps .cn{margin-inline-start:auto;font-size:11.5px;color:var(--smoke);font-weight:700}
+.gcaps{display:flex;gap:8px;flex-wrap:wrap}
+.gcap{font-size:12.5px;font-weight:700;border-radius:999px;padding:6px 12px;display:inline-flex;align-items:center;gap:6px}
+.gcap.ok{background:var(--fresh-l);color:var(--good)}
+.gcap.no{background:var(--tint-warn);color:var(--terra-d);border:1px dashed rgba(210,105,30,.4)}
+.gcap .em{font-size:14px;line-height:1}.gcap.no .em{opacity:.55}
+.caps .foot{font-size:11.5px;color:var(--ash);margin-top:9px}
+.caps .foot b{color:var(--bone)}
+
+/* ---- concierge on-ramp (subtle) ---- */
+.concierge{display:flex;align-items:center;gap:11px;width:100%;text-align:start;cursor:pointer;
+  background:var(--char2);border:1.5px solid var(--line2);border-radius:14px;padding:11px 13px;margin-bottom:20px}
+.concierge:hover{border-color:var(--ember2)}
+.concierge .ci{flex:none;width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-size:19px;background:linear-gradient(135deg,#fdeede,#f7ddc2)}
+.concierge .cc b{display:block;font-size:13.5px;color:var(--bone);font-weight:800}
+.concierge .cc small{display:block;font-size:11.5px;color:var(--ash)}
+.concierge .cg{margin-inline-start:auto;color:var(--ember);font-weight:900;font-size:18px}
+
+/* ---- category section ---- */
+.sec{margin-bottom:20px}
+.sec>h4{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--ember2);font-weight:800;
+  margin-bottom:9px;display:flex;align-items:center;gap:8px}
+.sec>h4 .em{font-size:15px}.sec>h4 .sc{color:var(--smoke);font-weight:700;letter-spacing:0}
+
+/* ---- device ROW (Gear-Locker tile + Craft-Workshop inline expand) ---- */
+.eqr{position:relative;background:var(--char2);border:1.5px solid var(--line2);border-radius:15px;
+  margin-bottom:9px;overflow:hidden;box-shadow:var(--shadow);transition:border-color .15s}
+.eqr:before{content:'';position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--acc,var(--ember))}
+.eqr:hover{border-color:var(--ember2)}
+.eqr.open{border-color:var(--ember)}
+.eqr-head{display:flex;align-items:center;gap:12px;padding:12px 13px;cursor:pointer}
+.dico{flex:none;width:48px;height:48px;border-radius:13px;display:grid;place-items:center;font-size:25px;line-height:1;
+  background:var(--acc-l,var(--char3));box-shadow:inset 0 0 0 1.5px rgba(90,58,40,.05)}
+.eqr-main{flex:1;min-width:0}
+.eqr-main .top{display:flex;align-items:center;gap:7px}
+.dname{font-family:var(--font-display);font-weight:400;font-size:16.5px;color:var(--bone);line-height:1.15;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:100%}
+.ai{flex:none;font-size:10px;font-weight:800;color:var(--terra-d);background:var(--char3);border-radius:999px;padding:2px 7px;line-height:1.5}
+.dsub{font-size:12px;color:var(--ash);margin-top:1px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:7px}
+.chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;background:var(--char3);
+  border:1px solid var(--line);color:var(--ash);border-radius:999px;padding:3px 9px}
+.chip.spec{color:var(--bone);background:var(--fresh-l);border-color:transparent}
+.chip .em{font-size:12.5px;line-height:1;opacity:.9}
+.eqr-acts{flex:none;display:flex;gap:6px;align-items:center}
+.iconbtn{width:31px;height:31px;border-radius:50%;border:1.5px solid var(--line2);background:var(--char3);
+  color:var(--smoke);font-size:13px;cursor:pointer;display:grid;place-items:center;line-height:1}
+.iconbtn:hover{border-color:var(--ember);color:var(--ember)}
+.chev{color:var(--smoke);transition:transform .2s;font-size:14px;margin-inline-start:2px}
+.eqr.open .chev{transform:rotate(180deg);color:var(--ember)}
+
+/* inline edit bench */
+.eqr-body{display:none;padding:2px 14px 14px;border-top:1px dashed var(--line)}
+.eqr.open .eqr-body{display:block}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:11px}
+.fld label{display:block;font-size:11.5px;color:var(--ash);margin-bottom:5px}
+.fld.full{grid-column:1/-1}
+.fld input,.fld select{width:100%;background:var(--char);border:1px solid var(--line);border-radius:9px;
+  padding:9px 11px;font-family:var(--font-body);font-size:14px;color:var(--bone);outline:none}
+.fld input:focus,.fld select:focus{border-color:var(--ember)}
+.capin{display:flex;align-items:center;gap:8px}.capin input{flex:1}.capin .u{font-size:12px;color:var(--smoke);font-weight:700}
+.eqr-actions{display:flex;gap:8px;align-items:center;margin-top:13px}
+.btn-save{background:var(--ember);border:none;color:#fff;border-radius:10px;padding:10px 16px;font-family:var(--font-body);font-weight:800;font-size:13.5px;cursor:pointer}
+.btn-ghost{background:none;border:1.5px solid var(--line2);color:var(--ash);border-radius:10px;padding:10px 14px;font-weight:700;font-size:13px;cursor:pointer}
+.btn-rm{margin-inline-start:auto;background:none;border:none;color:var(--terra-d);font-weight:700;font-size:12.5px;cursor:pointer}
+
+/* ---- inline add row ---- */
+.addrow{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:none;
+  border:2px dashed var(--line2);border-radius:14px;padding:13px;font-family:var(--font-body);font-weight:800;
+  font-size:14px;color:var(--terra-d);cursor:pointer;margin-top:2px}
+.addrow:hover{border-color:var(--ember);color:var(--ember)}.addrow .pl{font-size:19px;line-height:1}
+
+/* ---- add bench (Concierge AI-verify) ---- */
+.addbench{background:var(--char2);border:1.5px solid var(--ember);border-radius:15px;padding:4px 15px 16px;
+  box-shadow:var(--shadow);margin-top:2px}
+.addbench h3{font-family:var(--font-display);font-weight:400;font-size:18px;color:var(--bone);margin:13px 0 3px;display:flex;align-items:center;gap:8px}
+.addbench h3 .ic{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;font-size:19px;background:var(--acc-l,var(--char3))}
+.flabel{font-size:11px;font-weight:800;color:var(--smoke);letter-spacing:.05em;text-transform:uppercase;margin:14px 2px 8px}
+.mchips{display:flex;flex-wrap:wrap;gap:7px}
+.mchip{background:var(--char);border:1px solid var(--line);color:var(--ash);border-radius:999px;padding:7px 12px;font-family:var(--font-body);font-weight:700;font-size:12.5px;cursor:pointer}
+.mchip.on{background:rgba(26,154,122,.14);border-color:var(--good);color:var(--good)}
+.mchip:hover{border-color:var(--ember)}
+.tinput{width:100%;font-family:var(--font-body);font-size:14.5px;color:var(--bone);background:var(--char);
+  border:1.5px solid var(--line2);border-radius:12px;padding:12px 13px;margin-top:2px;outline:none}
+.tinput:focus{border-color:var(--ember)}
+.ai-btns{display:flex;gap:9px;margin-top:10px}
+.ai-btn{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:7px;cursor:pointer;background:var(--char);
+  border:1.5px solid var(--line2);border-radius:12px;padding:11px;font-family:var(--font-body);font-weight:800;font-size:13px;color:var(--bone)}
+.ai-btn.primary{background:var(--ember);color:#fff;border-color:transparent;box-shadow:0 5px 14px rgba(231,111,81,.24)}
+.ai-btn:hover{border-color:var(--ember)}.ai-btn .em{font-size:15px}
+
+/* ✨ verify & edit card (Concierge) */
+.verify{margin-top:13px;background:var(--char);border:1.5px solid rgba(26,154,122,.3);border-radius:13px;padding:13px}
+.verify .vh{font-size:13.5px;color:var(--bone);font-weight:600;margin-bottom:11px}
+.verify .vh b{color:var(--fresh);font-weight:800}
+.verify .fld input,.verify .fld select{background:#eef8f4;border-color:#bfe4d7}
+.verify .fld label{display:flex;align-items:center;gap:4px}.verify .fld label .sp{color:var(--fresh);font-size:11px}
+.vsrc{font-size:11px;color:var(--smoke);line-height:1.5;margin:9px 0 12px}.vsrc b{color:var(--fresh)}
+.addbench .save{display:block;width:100%;margin-top:14px;border:none;cursor:pointer;
+  background:linear-gradient(135deg,var(--ember),var(--terra-d));color:#fff;font-weight:800;font-size:15px;
+  padding:14px;border-radius:13px;box-shadow:0 6px 16px rgba(210,105,30,.28)}
+.manual-note{font-size:11.5px;color:var(--smoke);text-align:center;margin-top:11px}
+
+/* ---- empty state ---- */
+.empty{text-align:center;padding:26px 20px 12px}
+.empty .art{font-size:50px;line-height:1;filter:drop-shadow(0 6px 10px rgba(210,105,30,.14))}
+.empty h2{font-family:var(--font-display);font-weight:400;font-size:23px;color:var(--bone);margin:10px 0 6px}
+.empty p{font-size:13px;color:var(--ash);margin:0 auto 18px;max-width:290px}
+.estack{display:flex;flex-direction:column;gap:10px;max-width:320px;margin:0 auto}
+.ebtn{display:flex;align-items:center;gap:11px;text-align:start;cursor:pointer;border-radius:14px;padding:13px 14px;font-family:var(--font-body)}
+.ebtn.primary{background:linear-gradient(135deg,var(--ember),var(--terra-d));color:#fff;border:none;box-shadow:0 6px 16px rgba(210,105,30,.24)}
+.ebtn.ghost{background:var(--char2);border:1.5px solid var(--line2);color:var(--bone)}
+.ebtn .ei{font-size:21px;flex:none}.ebtn .et{flex:1}.ebtn .et b{display:block;font-size:14px;font-weight:800}
+.ebtn.primary .et small{color:rgba(255,255,255,.85);font-size:11.5px}.ebtn.ghost .et small{color:var(--ash);font-size:11.5px}
+.ebtn .eg{font-weight:900;font-size:17px;opacity:.9}
+
+/* bidi hygiene */
+.dname,.dsub,.chip,.eqhead h1,.eqhead .sub,.caps .foot,.vsrc,.fld input,.fld select,.tinput,.manual-note{unicode-bidi:plaintext}
+.fld input,.fld select,.tinput{text-align:start}
+</style></head>
+<body>
+
+<!-- ============ PANEL 1 — MAIN (populated; one row in inline-edit) ============ -->
+<div class="col">
+  <div class="capn">1 · Main — populated (one row editing)</div>
+  <div class="phone" dir="rtl" lang="en"><div class="body">
+
+    <header class="eqhead">
+      <div><p class="k">Settings</p><h1>🧰 My Equipment</h1><p class="sub">5 devices · 3 categories</p></div>
+      <button class="addbtn"><span class="pl">＋</span> Add</button>
+    </header>
+
+    <section class="caps">
+      <div class="cx"><h4>What you can cook</h4><span class="cn">2 of 3 unlocked</span></div>
+      <div class="gcaps">
+        <span class="gcap ok"><span class="em">🌊</span> Sous-vide</span>
+        <span class="gcap ok"><span class="em">💨</span> Low &amp; slow smoke</span>
+        <span class="gcap no"><span class="em">🍖</span> Direct grill · add a grill</span>
+      </div>
+      <p class="foot">🎯 <b>2 probes · 8 channels</b> for internal-temp targets</p>
+    </section>
+
+    <button class="concierge"><span class="ci">✨</span>
+      <span class="cc"><b>Describe your gear in words</b><small>“a WSM and a Joule” → we’ll add them</small></span>
+      <span class="cg">‹</span></button>
+
+    <section class="sec">
+      <h4><span class="em">💨</span> Smoker <span class="sc">· 2</span></h4>
+
+      <!-- collapsed -->
+      <div class="eqr" style="--acc:var(--c-smoke);--acc-l:#f4e6d6">
+        <div class="eqr-head">
+          <div class="dico">🛢️</div>
+          <div class="eqr-main"><div class="top"><span class="dname">Weber Smokey Mountain 18″</span><span class="ai">✨ AI</span></div>
+            <p class="dsub">Bullet / water smoker</p>
+            <div class="chips"><span class="chip spec"><span class="em">🗄️</span> 2 racks</span><span class="chip"><span class="em">⚫</span> Charcoal</span></div></div>
+          <div class="eqr-acts"><button class="iconbtn" title="Remove">✕</button><span class="chev">▾</span></div>
+        </div>
+      </div>
+
+      <!-- EXPANDED (inline edit) -->
+      <div class="eqr open" style="--acc:var(--c-smoke);--acc-l:#f4e6d6">
+        <div class="eqr-head">
+          <div class="dico">📦</div>
+          <div class="eqr-main"><div class="top"><span class="dname">Offset “Old Rusty”</span></div>
+            <p class="dsub">Offset / stick burner</p>
+            <div class="chips"><span class="chip spec"><span class="em">🗄️</span> 3 racks</span><span class="chip"><span class="em">🪵</span> Wood</span></div></div>
+          <div class="eqr-acts"><button class="iconbtn" title="Remove">✕</button><span class="chev">▾</span></div>
+        </div>
+        <div class="eqr-body">
+          <div class="grid">
+            <div class="fld"><label>Type</label><select><option selected>Offset / stick burner</option><option>Cabinet</option><option>Pellet</option></select></div>
+            <div class="fld"><label>Capacity · racks/grates</label><div class="capin"><input value="3"><span class="u">racks</span></div></div>
+            <div class="fld full"><label>Name / brand</label><input value='Offset “Old Rusty”'></div>
+          </div>
+          <div class="eqr-actions"><button class="btn-save">Save</button><button class="btn-ghost">Cancel</button><button class="btn-rm">🗑 Remove</button></div>
+        </div>
+      </div>
+      <button class="addrow"><span class="pl">＋</span> Add another smoker</button>
+    </section>
+
+    <section class="sec">
+      <h4><span class="em">🌊</span> Sous-vide <span class="sc">· 1</span></h4>
+      <div class="eqr" style="--acc:var(--c-sv);--acc-l:#dcecf6">
+        <div class="eqr-head"><div class="dico">🌀</div>
+          <div class="eqr-main"><div class="top"><span class="dname">Breville Joule Turbo</span><span class="ai">✨ AI</span></div>
+            <p class="dsub">Immersion circulator</p>
+            <div class="chips"><span class="chip spec"><span class="em">🛁</span> 20 L bath</span><span class="chip"><span class="em">⚡</span> 1100 W</span></div></div>
+          <div class="eqr-acts"><button class="iconbtn" title="Remove">✕</button><span class="chev">▾</span></div></div>
+      </div>
+      <button class="addrow"><span class="pl">＋</span> Add another sous-vide</button>
+    </section>
+
+    <section class="sec">
+      <h4><span class="em">🌡️</span> Probe <span class="sc">· 2</span></h4>
+      <div class="eqr" style="--acc:var(--c-probe);--acc-l:var(--fresh-l)">
+        <div class="eqr-head"><div class="dico">📡</div>
+          <div class="eqr-main"><div class="top"><span class="dname">MEATER Pro XL</span><span class="ai">✨ AI</span></div>
+            <p class="dsub">Wireless probes</p>
+            <div class="chips"><span class="chip spec"><span class="em">🔌</span> 4 channels</span><span class="chip"><span class="em">📶</span> Bluetooth</span></div></div>
+          <div class="eqr-acts"><button class="iconbtn" title="Remove">✕</button><span class="chev">▾</span></div></div>
+      </div>
+      <div class="eqr" style="--acc:var(--c-probe);--acc-l:var(--fresh-l)">
+        <div class="eqr-head"><div class="dico">🌡️</div>
+          <div class="eqr-main"><div class="top"><span class="dname">Inkbird INT-14S-BW</span></div>
+            <p class="dsub">Wired probe hub · added by hand</p>
+            <div class="chips"><span class="chip spec"><span class="em">🔌</span> 4 channels</span><span class="chip"><span class="em">📶</span> Wi-Fi</span></div></div>
+          <div class="eqr-acts"><button class="iconbtn" title="Remove">✕</button><span class="chev">▾</span></div></div>
+      </div>
+      <button class="addrow"><span class="pl">＋</span> Add another probe</button>
+    </section>
+
+  </div></div>
+</div>
+
+<!-- ============ PANEL 2 — ADD (identify → AI verify) ============ -->
+<div class="col">
+  <div class="capn">2 · Add a device — AI verify &amp; edit</div>
+  <div class="phone" dir="rtl" lang="en"><div class="body">
+    <header class="eqhead"><div><p class="k">Settings</p><h1>🧰 My Equipment</h1></div></header>
+
+    <div class="addbench">
+      <h3><span class="ic" style="--acc-l:#f4e6d6">💨</span> Add a smoker</h3>
+
+      <p class="flabel">Sub-type</p>
+      <div class="mchips"><button class="mchip on">Pellet</button><button class="mchip">Offset</button><button class="mchip">Kamado</button><button class="mchip">Bullet</button><button class="mchip">Cabinet</button></div>
+
+      <p class="flabel">Name / brand</p>
+      <input class="tinput" value="Traeger Pro 575" list="brands">
+      <div class="ai-btns">
+        <button class="ai-btn primary"><span class="em">🔎</span> Look up specs</button>
+        <button class="ai-btn"><span class="em">📋</span> Models</button>
+      </div>
+
+      <div class="verify">
+        <div class="vh">✨ <b>Found it — verify &amp; save</b></div>
+        <div class="grid">
+          <div class="fld"><label>Fuel <span class="sp">✨</span></label><select><option selected>Wood pellets</option><option>Charcoal</option></select></div>
+          <div class="fld"><label>Racks <span class="sp">✨</span></label><div class="capin"><input value="2"><span class="u">racks</span></div></div>
+        </div>
+        <p class="vsrc"><b>✨ Auto-filled</b> from the web. Tap any field to change it — <b>nothing is saved yet.</b></p>
+      </div>
+
+      <button class="save">Save to my equipment</button>
+      <p class="manual-note">No AI key? The 🔎/📋 buttons hide — just pick a sub-type and type the capacity.</p>
+    </div>
+  </div></div>
+</div>
+
+<!-- ============ PANEL 3 — EMPTY ============ -->
+<div class="col">
+  <div class="capn">3 · Empty state</div>
+  <div class="phone" dir="rtl" lang="en"><div class="body">
+    <header class="eqhead"><div><p class="k">Settings</p><h1>🧰 My Equipment</h1></div></header>
+    <div class="empty">
+      <div class="art">🧰</div>
+      <h2>Your kit is empty</h2>
+      <p>Add your smokers, grills, probes and more — every recipe then tunes its methods, temps and timings to what you own.</p>
+      <div class="estack">
+        <button class="ebtn primary"><span class="ei">＋</span><span class="et"><b>Add your first device</b><small>Pick a category — takes a few taps</small></span><span class="eg">‹</span></button>
+        <button class="ebtn ghost"><span class="ei">✨</span><span class="et"><b>Describe it in words</b><small>“Two smokers and a Joule”</small></span><span class="eg">‹</span></button>
+      </div>
+    </div>
+  </div></div>
+</div>
+
+<datalist id="brands"><option value="Traeger"><option value="Weber"><option value="Pit Boss"></datalist>
+<script>
+document.querySelectorAll('.eqr-head').forEach(function(h){ h.addEventListener('click',function(e){ if(e.target.closest('.iconbtn'))return; h.parentElement.classList.toggle('open'); }); });
+</script>
+</body></html>
