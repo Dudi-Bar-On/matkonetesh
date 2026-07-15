@@ -120,6 +120,25 @@ test('B2: edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) 
   expect(await page.evaluate(`(document.querySelector('#panel #eqCapKey')||{}).value`)).toBe('4');
 });
 
+test('B3: lookup image URL is https-validated; card photo tile renders + falls back to emoji', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`store.set('mk-gemkey','k'); window.__aiMock={fuel:'charcoal',racks:5,img:'https://cdn.example.com/aviya150.jpg',note:''};`);
+  expect((await page.evaluate(`aiLookupDevice('אביה 150','smoker')`) as any).img).toBe('https://cdn.example.com/aviya150.jpg');
+  await page.evaluate(`window.__aiMock={fuel:'charcoal',racks:5,img:'http://insecure.example.com/x.jpg'};`);   // http → rejected (mixed content on the https app)
+  expect((await page.evaluate(`aiLookupDevice('x','smoker')`) as any).img).toBe('');
+  await page.evaluate(`window.__aiMock={fuel:'charcoal',racks:5,img:'not-a-url'}`);
+  expect((await page.evaluate(`aiLookupDevice('x','smoker')`) as any).img).toBe('');
+  await page.evaluate(`store.set('mk-gemkey',''); window.__aiMock=null;`);
+  // a device WITH a valid (data-URI) image renders an .eq-thumb over the tile
+  const okPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
+  await page.evaluate(`equipSave([{id:'eq-i',cat:'smoker',type:'ארון / קבינט',name:'Aviya 150',cap:{racks:5},specSource:'ai',img:'${okPng}'}]); equipSetConfigured(); openEquipment();`);
+  await page.waitForSelector('#panel .eq-dev .eq-tile .eq-thumb');   // present + stays (valid image)
+  // a device with a BROKEN image self-removes → emoji fallback (no broken-image state)
+  await page.evaluate(`equipSave([{id:'eq-b',cat:'smoker',type:'ארון / קבינט',name:'Broken',cap:{racks:2},img:'data:image/png;base64,ZZZ'}]); openEquipment();`);
+  await page.waitForSelector('#panel .eq-dev');
+  await page.waitForFunction(`document.querySelectorAll('#panel .eq-thumb').length===0`);
+});
+
 test('C1: cookerFor resolves (single-fit auto, ambiguous→pick, assignment)', async ({ page }) => {
   await boot(page);
   await page.evaluate(`equipSave([{id:'sm1',cat:'smoker',type:'אופסט / סטיק-ברנר',name:'Big Offset'}]); equipSetConfigured();`);
