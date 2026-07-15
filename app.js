@@ -55,6 +55,44 @@ function gearState(){ return store.get('mk-gear')||{}; }
 function saveGear(g){ store.set('mk-gear',g); }
 function gearConfigured(){ return !!store.get('mk-gear-set'); }
 function gearSetConfigured(){ store.set('mk-gear-set', true); }
+// ── Equipment 2.0 · mk-equipment device LIST (source of truth; replaces the flat mk-gear) ──
+const EQUIP_CATS=[
+  {cat:'smoker', he:'מעשנה', en:'Smoker', types:['ארון / קבינט','אופסט / סטיק-ברנר','פלטים','קמאדו / קרמי','WSM / חבית','קטל (ככלי עישון)','גז (עם תיבת עשן)','חשמלי'], capKey:'racks', capHe:'מדפים/שבכות', capEn:'racks/grates'},
+  {cat:'grill', he:'גריל', en:'Grill', types:['פחם','גז','קטל','פלנצ׳ה / פלטה','לבה / אינפרא'], capKey:'zones', capHe:'אזורי חום', capEn:'heat zones'},
+  {cat:'oven', he:'תנור', en:'Oven', types:['ביתי','דק','פיצה'], capKey:'racks', capHe:'מדפים', capEn:'racks'},
+  {cat:'sousvide', he:'סו-ויד', en:'Sous-vide', types:['טבילה (immersion)','מיכל ייעודי'], capKey:'bathL', capHe:'נפח אמבט (ל׳)', capEn:'bath litres'},
+  {cat:'probe', he:'מדחום', en:'Probe', types:['מיידי (instant-read)','פרוב נעוץ','פרוב אלחוטי','בקר-מאוורר'], capKey:'channels', capHe:'ערוצים', capEn:'channels'},
+  {cat:'grinder', he:'מטחנת בשר', en:'Grinder', types:['ייעודית','מתאם למיקסר'], capKey:null},
+  {cat:'stuffer', he:'מכונת מילוי', en:'Stuffer', types:['אנכית','אופקית','מזרק / משפך ידני'], capKey:null},
+  {cat:'other', he:'אחר', en:'Other', types:[], capKey:null},
+];
+function equipCat(cat){ return EQUIP_CATS.find(function(c){return c.cat===cat;})||null; }
+function equipList(){ const l=store.get('mk-equipment'); return Array.isArray(l)?l:[]; }
+function equipSave(list){ store.set('mk-equipment', Array.isArray(list)?list:[]); }
+function equipId(){ return 'eq-'+(typeof uid==='function'?uid():Math.random().toString(36).slice(2,9)); }
+function equipByCat(cat){ return equipList().filter(function(d){return d && d.cat===cat;}); }
+function hasCat(cat){ return equipByCat(cat).length>0; }
+function hasGear(x){ return equipList().some(function(d){return d && (d.cat===x || d.type===x);}); }   // core cat OR migrated 'other' type (e.g. 'torch')
+function primaryOf(cat){ return equipByCat(cat)[0]||null; }                                            // first device = single-value display
+function cookers(){ return equipList().filter(function(d){return d && (d.cat==='smoker'||d.cat==='grill'||d.cat==='oven');}); }
+function probeChannels(){ return equipByCat('probe').reduce(function(n,d){return n+(+(d.cap&&d.cap.channels)||0);},0); }
+function svBaths(){ return equipByCat('sousvide'); }
+function equipConfigured(){ return !!store.get('mk-equip-set'); }
+function equipSetConfigured(){ store.set('mk-equip-set', true); }
+// one-time seed from the old flat mk-gear, then mk-gear is never read again
+function equipMigrateFromGear(){
+  if(equipList().length) return;                                   // idempotent: already has devices
+  const g=store.get('mk-gear'); if(!g || typeof g!=='object') return;
+  const CORE={smoker:'smoker', grill:'grill', sousvide:'sousvide', thermo:'probe', grinder:'grinder', stuffer:'stuffer'};
+  const list=[];
+  Object.keys(g).forEach(function(k){
+    const v=g[k]; if(!v || v==='אין') return;
+    const isCore=!!CORE[k];
+    list.push({id:equipId(), cat:isCore?CORE[k]:'other', type:isCore?v:k, name:v, brand:'', model:'', fuel:'', cap:{}, specSource:'manual', notes:''});
+  });
+  if(list.length) equipSave(list);
+  if(store.get('mk-gear-set')) store.set('mk-equip-set', true);
+}
 // capability mapping — permissive (true) until the user configures gear, so nothing changes for them until then
 function canSV(){ if(!gearConfigured()) return true; const g=gearState(); return !!(g.sousvide && g.sousvide!=='אין'); }
 function canSmoke(){ if(!gearConfigured()) return true; const g=gearState();
@@ -5200,6 +5238,7 @@ function setFontPair(k){ if(!FONT_PAIRS[k]) return; store.set('mk-fontpair',k); 
 function setFontScale(n){ if(!FONT_SCALES.includes(n)) return; store.set('mk-fontscale',n); applyAppearance(); }
 applyAppearance();
 try{ applyLang(); }catch(e){}   // Wave 5: set html lang/dir + translate tagged chrome on boot
+try{ equipMigrateFromGear(); }catch(e){}   // Equipment 2.0: seed mk-equipment from any legacy mk-gear
 /* ── v144: UI levels (beginner/mid/pro) + per-level default work-plan shape ── */
 const UI_LEVELS={
   beginner:{ name:'מתחיל', nameEn:'Beginner', desc:'הדרכה צעד-אחר-צעד, פחות מספרים בבת אחת', descEn:'Step-by-step guidance, fewer numbers at once' },
