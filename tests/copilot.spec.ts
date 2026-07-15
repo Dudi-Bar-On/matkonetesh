@@ -99,3 +99,53 @@ test('W2-P3: probe check-in UI logs a reading and updates the pace card', async 
   expect(await page.evaluate(`document.querySelector('#panel .cop-probe').textContent`)).toContain('another');   // "Log another reading to project…"
   expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#panel .cop-probe').textContent`) as string)).toBe(false);   // English, no leak
 });
+
+test('W2-P4: adaptive recompute — pushing serve flips the verdict and syncs the plan serve', async ({ page }) => {
+  await bootCopilot(page);
+  // a "behind" session: 60→70 over 1h (rate 10 → ETA now+2.5h), serve in 90 min → behind
+  await page.evaluate(`(function(){ startLiveCook(); var s=liveSession(); s.targetC=95; s.probes=[{t:Date.now()-3600000,tempC:60},{t:Date.now(),tempC:70}]; s.serveTs=Date.now()+90*60000; store.set(liveKey(), s); })()`);
+  expect(await page.evaluate(`copilotPace(liveSession()).verdict`)).toBe('behind');
+  // push serve +90 min → now ahead, and mk-tlserve updated in lockstep
+  await page.evaluate(`copilotAdjustServe(90)`);
+  expect(await page.evaluate(`copilotPace(liveSession()).verdict`)).toBe('ahead');
+  expect(await page.evaluate(`!!store.get('mk-tlserve')`)).toBe(true);
+  // the +1h UI button advances the serve by exactly 60 min
+  await page.evaluate(`openCopilot()`);
+  await page.waitForSelector('#panel [data-copserve="60"]');
+  const before = await page.evaluate(`liveSession().serveTs`) as number;
+  await page.click('#panel [data-copserve="60"]');
+  await page.waitForTimeout(150);
+  const after = await page.evaluate(`liveSession().serveTs`) as number;
+  expect(after - before).toBe(3600000);
+});
+
+test('W2-P5: voice context includes the live-session pace/ETA/verdict', async ({ page }) => {
+  await bootCopilot(page);
+  await page.evaluate(`(function(){ startLiveCook(); var s=liveSession(); s.targetC=95; s.probes=[{t:Date.now()-3600000,tempC:60},{t:Date.now(),tempC:70}]; s.serveTs=Date.now()+90*60000; store.set(liveKey(), s); })()`);
+  const ctx = await page.evaluate(`copilotVoiceContext()`) as string;
+  expect(ctx).toContain('70');    // last probe reading
+  expect(ctx).toContain('95');    // target
+  expect(ctx).toContain('מאחר');  // "behind" verdict, in the Hebrew grounding
+  // it folds into the voice Ask context even with no current voice task
+  const vctx = await page.evaluate(`vcCookContext()`) as string;
+  expect(vctx).toContain('70');
+  // no live session → no live context
+  await page.evaluate(`stopLiveCook()`);
+  expect(await page.evaluate(`copilotVoiceContext()`)).toBe('');
+});
+
+test('W2-P6: "what do I do now?" — deterministic advice by state + renders (no key needed)', async ({ page }) => {
+  await bootCopilot(page);
+  const adv = (s: any) => page.evaluate(`copilotAdviceLocal(${JSON.stringify(s)})`);
+  expect(await adv({ targetC: 95, serveTs: 0, probes: [{ t: 0, tempC: 60 }, { t: 3600000, tempC: 70 }] })).toContain('behind');
+  expect(await adv({ targetC: 95, probes: [{ t: 0, tempC: 68 }, { t: 3600000, tempC: 68.5 }] })).toContain('Crutch');
+  expect(await adv({ targetC: 95, probes: [{ t: 0, tempC: 96 }] })).toContain('rest');
+  expect(await adv({ targetC: 95, probes: [{ t: 0, tempC: 60 }] })).toContain('another');
+  // no key → clicking shows the deterministic advice, English, no AI call needed
+  await page.evaluate(`(function(){ store.set('mk-gemkey',''); startLiveCook(); var s=liveSession(); s.targetC=95; s.probes=[{t:Date.now()-3600000,tempC:68},{t:Date.now(),tempC:68.5}]; store.set(liveKey(), s); openCopilot(); })()`);
+  await page.click('#panel #copAskNow');
+  await page.waitForSelector('#panel #copAdvice .cop-pacenote');
+  const advice = await page.evaluate(`document.querySelector('#panel #copAdvice').textContent`) as string;
+  expect(advice).toContain('stall');
+  expect(/[֐-׿]/.test(advice)).toBe(false);
+});

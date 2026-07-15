@@ -4038,12 +4038,31 @@ async function vcSpeakContent(text){
   try{ const en=await vcTranslateToEn(text); vcSpeak(en, 'en'); }
   catch(e){ vcSpeak(text, 'he'); }
 }
+// W2-P5: the live-session state as grounding for the voice Ask (so "how much longer?" uses the real ETA).
+function copilotVoiceContext(){
+  const s=(typeof liveSession==='function')?liveSession():null;
+  if(!s) return '';
+  const parts=[];
+  if(typeof s.startedAt==='number') parts.push('זמן מתחילת המושב: '+Math.round((Date.now()-s.startedAt)/60000)+' דק׳');
+  if(typeof s.targetC==='number') parts.push('טמפ׳-יעד פנימית: '+s.targetC+'°C');
+  const pace=(typeof copilotPace==='function')?copilotPace(s):null;
+  if(pace){
+    if(pace.lastTemp!=null) parts.push('קריאת מדחום אחרונה: '+pace.lastTemp+'°C');
+    if(pace.state==='projected'){ parts.push('קצב ~'+pace.rate+'°C/ש');
+      if(pace.etaMs && typeof fmtClock==='function') parts.push('צפי סיום ~'+fmtClock(new Date(pace.etaMs)));
+      if(pace.verdict) parts.push('מול ההגשה: '+(pace.verdict==='behind'?'מאחר':(pace.verdict==='ahead'?'מקדים':'בקצב'))+(typeof pace.slackMin==='number'?' ('+pace.slackMin+' דק׳)':'')); }
+    else if(pace.state==='stall') parts.push('כרגע בסטָאל — הטמפ׳ שטוחה סביב 65-77°C');
+    else if(pace.state==='done') parts.push('הגיע לטמפ׳ היעד');
+  }
+  return parts.length ? (' מצב הבישול החי: '+parts.join(' · ')+'.') : '';
+}
 function vcCookContext(){
-  const t=vcTasks[vcIdx]; if(!t) return '';
-  const parts=[stripEmoji(t.label||'')];
-  if(t.sub) parts.push(stripEmoji(t.sub));
-  if(t.det) parts.push(stripEmoji(t.det));
-  return 'ההקשר: המשתמש מבשל כרגע, בשלב "'+parts.join(' · ').slice(0,300)+'".';
+  const t=vcTasks[vcIdx];
+  const live=copilotVoiceContext();
+  let base='';
+  if(t){ const parts=[stripEmoji(t.label||'')]; if(t.sub) parts.push(stripEmoji(t.sub)); if(t.det) parts.push(stripEmoji(t.det));
+    base='ההקשר: המשתמש מבשל כרגע, בשלב "'+parts.join(' · ').slice(0,300)+'".'; }
+  return (base+live).trim();
 }
 // question detection per language (Hebrew \b is unreliable — use explicit separators)
 function vcLooksLikeQuestion(said){
@@ -4187,6 +4206,17 @@ function copilotStallInfo(tempC){
 // W2-P3: probe capture + pace/ETA — the new subsystem. Manual entry (device-agnostic: read off the MEATER/Inkbird app).
 function copilotLogProbe(tempC){ const sc=liveScope(); const s=liveSession(sc); if(!s) return null; if(!Array.isArray(s.probes)) s.probes=[]; s.probes.push({t:Date.now(), tempC:tempC}); store.set(liveKey(sc), s); return s; }
 function copilotSetTarget(tempC){ const sc=liveScope(); const s=liveSession(sc); if(!s) return null; s.targetC=tempC; store.set(liveKey(sc), s); return s; }
+// W2-P4: adaptive recompute — shift the serve time (running late / moved / ahead). Updates the session verdict AND the
+// work-plan serve (mk-tlserve + date) so the plan reschedules backward to match next time it renders.
+function copilotAdjustServe(deltaMin){
+  const sc=liveScope(); const s=liveSession(sc); if(!s) return null;
+  const base=(typeof s.serveTs==='number')?s.serveTs:Date.now();
+  const ts=base + deltaMin*60000;
+  s.serveTs=ts; store.set(liveKey(sc), s);
+  try{ const d=new Date(ts); store.set('mk-tlserve', ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2));
+    if(typeof serveDateKey==='function' && typeof isoDate==='function') store.set(serveDateKey(), isoDate(d)); }catch(e){}
+  return s;
+}
 // Pure pace/ETA math from the session's probe readings vs the target internal temp. Honest: never extrapolates through the stall.
 function copilotPace(session){
   const s=session||{};
@@ -4228,6 +4258,35 @@ function _copilotPaceHtml(pace){
             : p.verdict==='ahead' ? (he?'יש עודף זמן — אפשר להחזיק בקופסת בידוד (faux cambro).':'You have slack — hold it wrapped in a cooler (faux cambro).') : '';
   return note(cls, `📈 ${p.lastTemp}°C · ${he?'קצב':'rate'} ~${p.rate}°C/${he?'ש':'h'} · ${he?'סיום ~':'ETA ~'}${eta}${p.verdict?` · <b>${vTxt}</b>${slack}`:''}`) + (fix?`<div class="cop-pacefix">💡 ${fix}</div>`:'');
 }
+// W2-P6: "what do I do now?" — deterministic advice from the session state (always available, no key needed).
+function copilotAdviceLocal(session){
+  const he=(typeof getLang!=='function'||getLang()==='he'); const s=session||{};
+  const pace=(typeof copilotPace==='function')?copilotPace(s):{state:'no-reading'};
+  if(pace.state==='done') return he?'הגעת ליעד — הוצא, עטוף ונוח בקופסת בידוד לפני הפריסה.':'You’ve hit the target — pull it, wrap it, and rest it in a cooler before slicing.';
+  if(pace.state==='stall') return he?'אתה בסטָאל: התאזר בסבלנות, או עטוף (Texas Crutch) כשהקרום כהה ויציב כדי לפרוץ. אל תעלה חום בפאניקה.':'You’re in the stall: wait it out, or wrap (Texas Crutch) once the bark is dark and set to break through. Don’t panic-raise the heat.';
+  if(pace.state==='flat') return he?'הטמפ׳ לא עולה — בדוק שהאש/הדלק תקינים ושכיסוי התא סגור.':'The temp isn’t rising — check your fire/fuel and that the lid is closed.';
+  if(pace.state==='projected' && pace.verdict==='behind') return he?'אתה מאחר להגשה: העלה מעט את חום התא, או עטוף עכשיו לפרוץ מהר; אפשר גם לקצר מנוחה או לדחות את ההגשה.':'You’re behind for serve: nudge the pit temp up, or wrap now to push faster; you can also shorten the rest or move serve later.';
+  if(pace.state==='projected' && pace.verdict==='ahead') return he?'אתה מקדים — כשתגיע ליעד, החזק עטוף בקופסת בידוד (faux cambro) עד ההגשה.':'You’re ahead — when it hits target, hold it wrapped in a cooler (faux cambro) until serve.';
+  if(pace.state==='projected') return he?'אתה בקצב טוב — המשך לפי התוכנית ובדוק מדחום מדי פעם.':'You’re on pace — stay the course and check the probe periodically.';
+  if(pace.state==='need-more') return he?'רשום עוד קריאת מדחום כדי שאחשב זמן-סיום מדויק.':'Log another probe reading so I can project a finish time.';
+  return he?'הגדר טמפ׳-יעד ורשום קריאת מדחום כדי שאעזור לכוון את התזמון.':'Set a target temp and log a reading so I can help you dial in the timing.';
+}
+async function copilotAskNow(){
+  const s=(typeof liveSession==='function')?liveSession():null; if(!s) return;
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const host=$("#copAdvice"); if(!host) return;
+  const local=copilotAdviceLocal(s);
+  host.innerHTML=`<div class="cop-pacenote">${esc(local)}</div>`;                    // deterministic advice, always
+  if(typeof aiAvail!=='function' || !aiAvail()) return;                              // no key → local only
+  const prev=host.innerHTML;
+  host.innerHTML=`<div class="cop-pacenote">${(typeof aiSpinner==='function')?aiSpinner(he?'האש חושב':'The Fire is thinking'):'…'}</div>`;
+  try{
+    const stage=_copilotStages(); const stageLbl=stage.cur?stripEmoji(stage.cur.label||''):'';
+    const q=(he?'מצב הבישול:':'Cook situation:')+copilotVoiceContext()+(stageLbl?(' '+(he?'שלב נוכחי:':'current stage:')+' '+stageLbl):'')+' '+(he?'מה כדאי לעשות עכשיו? תשובה קצרה ומעשית.':'What should I do right now? Short, practical answer.');
+    const r=await askGemini(q, []);
+    host.innerHTML=`<div class="cop-pacenote">${esc(r.txt||'').replace(/\n/g,'<br>')}${(typeof aiSafetyNote==='function')?aiSafetyNote(r.txt, (r.ctx||'')+' '+copilotVoiceContext()):''}</div>`;
+  }catch(e){ host.innerHTML=prev; }   // AI failed → keep the local advice
+}
 function openCopilot(){
   if(typeof showPanel!=='function') return;
   const he=(typeof getLang!=='function'||getLang()==='he');
@@ -4241,6 +4300,12 @@ function openCopilot(){
       ${tgt==null?`<div class="cop-proberow"><input id="copTarget" class="cop-in" type="number" inputmode="decimal" placeholder="${he?'יעד פנימי °C':'target internal °C'}"><button class="mchip" id="copTargetSet">${he?'הגדר יעד':'Set target'}</button></div>`:`<div class="cop-pacenote">🎯 ${he?'יעד':'target'} ${tgt}°C</div>`}
       ${_copilotPaceHtml(copilotPace(sess))}</div>`;
   }
+  // W2-P4: adaptive timing — shift the serve (running late / moved / ahead) → verdict + plan recompute
+  let adjustCard='';
+  if(sess){
+    adjustCard=`<div class="cop-adjust"><div class="cop-adjusth">⏱️ ${he?'תזמון':'Timing'}${(typeof sess.serveTs==='number')?` · ${he?'הגשה':'serve'} ${fmtClock(new Date(sess.serveTs))}`:''}</div>
+      <div class="cop-proberow"><button class="mchip" data-copserve="30">+30 ${he?'דק׳':'min'}</button><button class="mchip" data-copserve="60">+1 ${he?'ש':'h'}</button><button class="mchip" data-copserve="-15">−15 ${he?'דק׳':'min'}</button></div></div>`;
+  }
   // stall advisory during smoke stages (uses the last probe reading if one exists — capture arrives in P3)
   let stallCard='';
   if((st.cur&&st.cur.kind==='smoke')||(st.next&&st.next.kind==='smoke')){
@@ -4253,11 +4318,12 @@ function openCopilot(){
   const stageHtml=function(t,tag){ if(!t) return ''; return `<div class="cop-stage"><div class="cop-stagek">${tag}</div><div class="cop-stagel">${esc(t.label||'')}</div>${t.sub?`<div class="cop-stagesub">${esc(t.sub)}</div>`:''}${(t.tid&&t.dur)?timerHTML(t.dur, t.tid, t.label||''):''}</div>`; };
   const body = (st.count
     ? `${stageHtml(st.cur, he?'עכשיו':'Now')}${stageHtml(st.next, he?'הבא':'Next')}`
-    : `<div class="cop-empty">${he?'פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.':'Open the cook’s work plan to start a live session.'}</div>`) + stallCard + probeCard;
+    : `<div class="cop-empty">${he?'פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.':'Open the cook’s work plan to start a live session.'}</div>`) + stallCard + probeCard + adjustCard;
   showPanel(`${typeof toolTop==='function'?toolTop(L('טייס חי','Live Copilot'),L('הבישול שלך בזמן אמת','Your cook, live'),'🔥','#c0392b'):`<h2 style="padding:16px">${L('טייס חי','Live Copilot')}</h2>`}
     <div class="panel-body">
       ${sess?`<div class="cop-hdr">🔥 ${he?'מושב חי פעיל':'Live session active'}${sess.serveTs?` · ${he?'הגשה':'serve'} ${fmtClock(new Date(sess.serveTs))}`:''}</div>`:''}
       ${body}
+      ${sess?`<button class="mchip cop-asknow" id="copAskNow">🤖 ${he?'מה לעשות עכשיו?':'What do I do now?'}</button><div id="copAdvice"></div>`:''}
       <div class="cop-actions">
         <button class="mchip vc-launch" data-copvoice>🎙️ ${L('בישול קולי','Voice cook')}</button>
         ${sess?`<button class="mchip" id="copStop">■ ${L('סיים מושב','End session')}</button>`:''}
@@ -4268,6 +4334,8 @@ function openCopilot(){
   { const sb=$("#copStop"); if(sb) sb.addEventListener('click',function(){ stopLiveCook(); if(typeof closePanel==='function') closePanel(); }); }
   { const lb=$("#copProbeLog"); if(lb) lb.addEventListener('click',function(){ const inp=$("#copProbe"); const v=inp?parseFloat(inp.value):NaN; if(!isNaN(v)){ copilotLogProbe(v); openCopilot(); } }); }
   { const tb=$("#copTargetSet"); if(tb) tb.addEventListener('click',function(){ const inp=$("#copTarget"); const v=inp?parseFloat(inp.value):NaN; if(!isNaN(v)){ copilotSetTarget(v); openCopilot(); } }); }
+  $("#panel").querySelectorAll('[data-copserve]').forEach(function(b){ b.addEventListener('click',function(){ const d=parseInt(b.dataset.copserve,10); if(!isNaN(d)){ copilotAdjustServe(d); openCopilot(); } }); });
+  { const an=$("#copAskNow"); if(an) an.addEventListener('click',function(){ copilotAskNow(); }); }
 }
 function openVoiceCook(tasks){
   vcTasks=tasks||[]; vcIdx=0;
