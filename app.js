@@ -52,6 +52,24 @@ function primaryOf(cat){ return equipByCat(cat)[0]||null; }                     
 function cookers(){ return equipList().filter(function(d){return d && (d.cat==='smoker'||d.cat==='grill'||d.cat==='oven');}); }
 function probeChannels(){ return equipByCat('probe').reduce(function(n,d){return n+(+(d.cap&&d.cap.channels)||0);},0); }
 function svBaths(){ return equipByCat('sousvide'); }
+// Equipment 2.0 · Slice 1C — item→cooker assignment (which physical device an item's cook stage uses)
+function cookerCatForKind(kind){ return kind==='sv'?'sousvide':kind==='smoke'?'smoker':kind==='cook'?'grill':null; }
+function cookerCandidates(kind){
+  const cat=cookerCatForKind(kind); if(!cat) return [];
+  let list=equipByCat(cat);
+  if(kind==='smoke') list=list.concat(equipByCat('grill').filter(function(d){return ['פחם','קטל','גז'].indexOf(d.type)>=0;}));   // a charcoal/kettle/gas grill can also smoke
+  return list;
+}
+function itemCookerScope(scope){ return scope||((typeof evScope==='function')?evScope():'cook'); }
+function setItemCooker(itemKey, kind, deviceId, scope){ const k='mk-item-cooker-'+itemCookerScope(scope); const m=store.get(k)||{}; const mk=itemKey+'|'+kind; if(deviceId) m[mk]=deviceId; else delete m[mk]; store.set(k,m); }
+function cookerFor(itemKey, kind, scope){
+  const cands=cookerCandidates(kind); if(!cands.length) return null;
+  const m=store.get('mk-item-cooker-'+itemCookerScope(scope))||{};
+  const asg=m[itemKey+'|'+kind];
+  if(asg){ const d=cands.find(function(x){return x.id===asg;}); if(d) return d; }
+  return cands.length===1?cands[0]:null;   // single-fit auto; ambiguous → null (needs a pick)
+}
+function cookerLabel(itemKey, kind, scope){ const d=cookerFor(itemKey,kind,scope); return d?(d.name||t(d.type)||''):''; }
 function equipConfigured(){ return !!store.get('mk-equip-set'); }
 function equipSetConfigured(){ store.set('mk-equip-set', true); }
 // one-time seed from the old flat mk-gear, then mk-gear is never read again

@@ -114,3 +114,17 @@ test('B2: in-place edit + AI lookup prefills; no-key hides AI buttons', async ({
   await page.waitForFunction(`(document.querySelector('#panel #eqCapKey')||{}).value==='4'`);
   expect(await page.evaluate(`(document.querySelector('#panel #eqCapKey')||{}).value`)).toBe('4');
 });
+
+test('C1: cookerFor resolves (single-fit auto, ambiguous→pick, assignment)', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'sm1',cat:'smoker',type:'אופסט / סטיק-ברנר',name:'Big Offset'}]); equipSetConfigured();`);
+  expect(await page.evaluate(`(cookerFor('cut-1','smoke')||{}).name`)).toBe('Big Offset');   // single-fit auto
+  await page.evaluate(`equipSave([{id:'sm1',cat:'smoker',type:'אופסט / סטיק-ברנר',name:'Big Offset'},{id:'sm2',cat:'smoker',type:'פלטים',name:'Pellet'}]);`);
+  expect(await page.evaluate(`cookerFor('cut-1','smoke')`)).toBe(null);   // 2 smokers → ambiguous
+  await page.evaluate(`setItemCooker('cut-1','smoke','sm2')`);
+  expect(await page.evaluate(`(cookerFor('cut-1','smoke')||{}).name`)).toBe('Pellet');
+  expect(await page.evaluate(`cookerLabel('cut-1','smoke')`)).toBe('Pellet');
+  // a charcoal grill counts as a smoke candidate
+  await page.evaluate(`equipSave([{id:'g1',cat:'grill',type:'פחם',name:'Kettle'}]);`);
+  expect(await page.evaluate(`(cookerFor('cut-1','smoke')||{}).name`)).toBe('Kettle');   // now single smoke-capable device
+});
