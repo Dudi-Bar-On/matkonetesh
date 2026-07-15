@@ -128,3 +128,15 @@ test('C1: cookerFor resolves (single-fit auto, ambiguous→pick, assignment)', a
   await page.evaluate(`equipSave([{id:'g1',cat:'grill',type:'פחם',name:'Kettle'}]);`);
   expect(await page.evaluate(`(cookerFor('cut-1','smoke')||{}).name`)).toBe('Kettle');   // now single smoke-capable device
 });
+
+test('C2: work plan labels the cooker on cook stages', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`(function(){
+    equipSave([{id:'sv1',cat:'sousvide',type:'טבילה (immersion)',name:'My Bath'}]); equipSetConfigured();
+    saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-1'],sides:[],drinks:[],desserts:[],gpm:0});
+    store.set('mk-tlserve','19:00'); store.set('mk-tlview','plan'); openTimeline();
+  })()`);
+  await page.waitForSelector('#panel .workplan');
+  const txt = await page.evaluate(`document.querySelector('#panel .workplan').textContent`);
+  expect(txt).toContain('My Bath');   // the single sous-vide device auto-labels the SV stage
+});

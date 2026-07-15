@@ -4658,7 +4658,7 @@ function renderTimelinePanel(){
               det=(det?det+' ':'')+`[${L('מידות','Doneness')}: ${dn}]`;
             }
           }
-          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:s.note||'',kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid});
+          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:s.note||'',kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid,cooker:cookerLabel(c.m.key,s.kind)});
         }
       });
       const sel2=sel.filter(s=>s.kind==='glaze');
@@ -4696,7 +4696,17 @@ function renderTimelinePanel(){
       </div>${c.st.svSmokeOrder==='smoke-sv'?`<div class="tl-safety-warn">⚠️ <b>${itemName(c.m)}:</b> ${L('הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the cold smoke <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full. When in doubt — switch to the sous-vide→smoke order.')}</div>`:''}`).join('')}
     </div>`:'';
     const _blk=computed.filter(c=>c.blocked).map(c=>esc(itemName(c.m)));   // F4: multi-day items are excluded from the timed plan — surface them as a prep-ahead advisory instead of dropping them silently
-    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
+    // Slice 1C: per-item cooker picker — only shown when >1 device fits a cook stage (a real choice)
+    const _ckScope=(typeof evScope==='function')?evScope():'cook'; const _ckMap=store.get('mk-item-cooker-'+_ckScope)||{}; const _ckRows=[];
+    computed.forEach(function(c){ if(c.blocked) return; const kinds=[];
+      c.stages.forEach(function(s){ if(['sv','smoke','cook'].indexOf(s.kind)>=0 && kinds.indexOf(s.kind)<0) kinds.push(s.kind); });
+      kinds.forEach(function(kind){ const cands=cookerCandidates(kind); if(cands.length<2) return;
+        const cur=_ckMap[c.m.key+'|'+kind]||''; const kl=kind==='sv'?L('סו-ויד','Sous-vide'):kind==='smoke'?L('עישון','Smoke'):L('גריל','Grill');
+        _ckRows.push(`<div class="tl-order"><span class="tl-order-lbl">${esc(itemName(c.m))} · ${kl}:</span><select data-tlcooker="${c.m.key}|${kind}"><option value="">${L('אוטומטי','Auto')}</option>${cands.map(function(d){return `<option value="${d.id}" ${d.id===cur?'selected':''}>${esc(d.name||t(d.type))}</option>`;}).join('')}</select></div>`);
+      });
+    });
+    const cookerStripHtml=_ckRows.length?`<div class="tl-orderstrip"><div class="tl-orderstrip-lbl">🔧 ${L('שיוך תנור/מעשנה:','Assign cooker:')}</div>${_ckRows.join('')}</div>`:'';
+    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}${cookerStripHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
     <details class="tl-shapedet"><summary>${L('תצוגה','View')}: ${shapeName(shp)} <span class="tl-shapehint">▾ ${L('שנה','change')}</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
     ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
@@ -4714,20 +4724,20 @@ function renderTimelinePanel(){
       const cue = i===nextIdx?'wp-next':'';
       return `<label class="wp-row wp-${tk.kind} ${done?'wp-done':''} ${cue}" data-tlitem="${tk.ikey||''}"><input type="checkbox" class="wp-ck" data-wpck="${encodeURIComponent(key)}" ${done?'checked':''}>
         <span class="wp-time">${cue?`<span class="wp-nowtag">${L('הבא','Next')}</span>`:''}${fmtClockRel(tk.t, serve)}</span>
-        <span class="wp-body"><b>${tk.label}</b>${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpv-'+i), tk.label)}</span>`:''}</span>
+        <span class="wp-body"><b>${tk.label}</b>${tk.cooker?`<span class="wp-cooker">🔧 ${esc(tk.cooker)}</span>`:''}${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpv-'+i), tk.label)}</span>`:''}</span>
       </label>`;}).join('')}</div>`;
   }
   function renderWpAccordion(tasks, detail, serve){
     return `<div class="workplan wp-accordion ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
       <div class="wp-acc ${i===0?'open':''}" data-wpacc="${i}" data-tlitem="${tk.ikey||''}">
-        <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClockRel(tk.t, serve)}</span><b class="wp-atitle">${tk.label}</b><span class="wp-caret">▾</span></div>
+        <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClockRel(tk.t, serve)}</span><b class="wp-atitle">${tk.label}</b>${tk.cooker?`<span class="wp-cooker">🔧 ${esc(tk.cooker)}</span>`:''}<span class="wp-caret">▾</span></div>
         <div class="wp-accb">${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${!tk.sub&&!tk.det?`<small>${L('אין פרטים נוספים לשלב זה.','No further details for this step.')}</small>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpa-'+i), tk.label)}</span>`:''}</div>
       </div>`).join('')}</div>`;
   }
   function renderWpHorizontal(tasks, serve){
     const ic={sv:'💧',smoke:'💨',cook:'🔥',rest:'⏸️',prep:'🔪',fire:'🔥',serve:'🍽️',glaze:'🍯',dry:'🌬️',bcheck:'🌡️'};
     return `<div class="workplan wp-horiz">${tasks.map((tk,i)=>`
-      <div class="wp-hcell wp-${tk.kind}" data-tlitem="${tk.ikey||''}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClockRel(tk.t, serve)}</div><div class="wp-hlabel">${tk.label}</div>${tk.dur?`<div class="wp-timer">${timerHTML(tk.dur, tk.tid||('wph-'+i), tk.label)}</div>`:''}</div>`).join('')}</div>`;
+      <div class="wp-hcell wp-${tk.kind}" data-tlitem="${tk.ikey||''}"><div class="wp-hdot">${ic[tk.kind]||'•'}</div><div class="wp-htime">${fmtClockRel(tk.t, serve)}</div><div class="wp-hlabel">${tk.label}</div>${tk.cooker?`<div class="wp-hcooker">🔧 ${esc(tk.cooker)}</div>`:''}${tk.dur?`<div class="wp-timer">${timerHTML(tk.dur, tk.tid||('wph-'+i), tk.label)}</div>`:''}</div>`).join('')}</div>`;
   }
   function itemRowHtml(c, serve){
     const {m,profile,st,stages,startClock,blocked}=c;
@@ -4807,6 +4817,9 @@ function renderTimelinePanel(){
     }));
     list.querySelectorAll('[data-tlorder]').forEach(sel=>sel.addEventListener('change',()=>{
       const all=tlState(); const k=sel.dataset.tlorder; all[k]=all[k]||{ready:true}; all[k].svSmokeOrder=sel.value; tlSetState(all); buildList();
+    }));
+    list.querySelectorAll('[data-tlcooker]').forEach(sel=>sel.addEventListener('change',()=>{
+      const p=String(sel.dataset.tlcooker||'').split('|'); setItemCooker(p[0], p[1], sel.value); buildList();
     }));
     window._tlSeasOpen=window._tlSeasOpen||new Set();
     const renderTlSeas=(key,ck)=>{
