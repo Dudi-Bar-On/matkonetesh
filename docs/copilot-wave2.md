@@ -18,7 +18,8 @@ The flagship: *the pitmaster on your shoulder.* A live session for one cook that
 - **Voice:** reuse `openVoiceCook`, `vcSpeak`/`gemSpeak`, `vcAskFlow`/`vcAskAI`/`vcBuildAskPrompt`, `vcToggleMic`. The single seam to widen is `vcCookContext()` (app.js:4041) — inject elapsed time, last probe, on-pace/behind, ETA so the existing voice Ask answers with full session awareness.
 
 ## The new subsystem — probe → pace → ETA
-- **Capture:** a "log probe reading" input (°C, auto-timestamp) → appended to `probes[]`. (Manual entry for now; CSV/BLE import is a later wave.)
+- **Owner's probe gear (design around it):** **MEATER Pro XL** (wireless; MEATER app + Cloud/Link + BLE), **Inkbird latest probe** (app), **Inkbird ISV-300W sous-vide** (app). Both Inkbird products have apps; MEATER has app + cloud.
+- **Capture:** a "log probe reading" input (°C, auto-timestamp) → appended to `probes[]`. **Manual entry first** — device-agnostic, works with all three today (read the value off the MEATER/Inkbird app, type it in). **Follow-on (later increment):** Web Bluetooth live reads from MEATER/Inkbird (Chrome PWA supports it, keeps offline model) and/or app CSV export import. The ISV-300W is a set-temp circulator, so **sous-vide stages are time-at-temp, not a ramp** — the pace/ETA math applies to the smoke/roast ramp stages, while SV stages just track the held-temp duration.
 - **Pace:** from the last ≥2 readings fit a local rate (°C/h). Expected finish = now + (targetC − lastTemp)/rate. Compare finish vs (serveTs − restMin): **on-pace / behind / ahead**, with a fix ("bump the pit / wrap now / plan a longer rest / push serve +30").
 - **Stall detection:** rate ≈ 0 while lastTemp is in the 65–77 °C band → surface the stall card (existing content) + the crutch option.
 - **Honesty:** ETA shows a ± band from rate variance; with <2 readings it says "log another reading to project a finish time." Never fabricates.
