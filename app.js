@@ -4149,8 +4149,51 @@ function vcToggleMic(){
     });
   } else startRec();
 }
+// ═══ Wave 2 · Live Cook Copilot — session shell (P1) ═══
+// A live session for the current scope's cook. Reuses the timer engine, the work-plan tasks (window._wpTasks),
+// and _liveCookState (via setPlanStarted). Session store: mk-cook-live-<scope>. Local-only; P2-P6 add stall/probe/adaptive/voice/AI.
+function liveScope(){ return (typeof evScope==='function')?evScope():'cook'; }
+function liveKey(sc){ return 'mk-cook-live-'+(sc||liveScope()); }
+function liveSession(sc){ const s=store.get(liveKey(sc)); return (s&&typeof s==='object')?s:null; }
+function startLiveCook(){
+  const sc=liveScope();
+  let serveTs=null; try{ const d=(typeof serveDateTime==='function')?serveDateTime():null; if(d&&d.getTime) serveTs=d.getTime(); }catch(e){}
+  store.set(liveKey(sc), { startedAt:Date.now(), scope:sc, serveTs:serveTs, probes:[] });
+  try{ if(typeof setPlanStarted==='function') setPlanStarted(sc); }catch(e){}   // → _liveCookState().live + home banner
+  try{ if(typeof cRefreshHome==='function') cRefreshHome(); if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){}
+  openCopilot();
+}
+function stopLiveCook(sc){ sc=sc||liveScope(); store.set(liveKey(sc), null);
+  try{ if(typeof cRefreshHome==='function') cRefreshHome(); if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){} }
+// current + next stage from the flattened work-plan tasks (window._wpTasks: {t:Date,label,sub,dur,tid,ikey})
+function _copilotStages(){ const tasks=(typeof window!=='undefined'&&Array.isArray(window._wpTasks))?window._wpTasks:[]; const now=Date.now();
+  let nextIdx=tasks.findIndex(function(t){return t&&t.t&&t.t.getTime&&t.t.getTime()>now;});
+  if(nextIdx===-1) nextIdx=tasks.length;
+  return { cur:tasks[Math.max(0,nextIdx-1)]||null, next:tasks[nextIdx]||null, count:tasks.length };
+}
+function openCopilot(){
+  if(typeof showPanel!=='function') return;
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const sess=liveSession(); const st=_copilotStages();
+  const stageHtml=function(t,tag){ if(!t) return ''; return `<div class="cop-stage"><div class="cop-stagek">${tag}</div><div class="cop-stagel">${esc(t.label||'')}</div>${t.sub?`<div class="cop-stagesub">${esc(t.sub)}</div>`:''}${(t.tid&&t.dur)?timerHTML(t.dur, t.tid, t.label||''):''}</div>`; };
+  const body = st.count
+    ? `${stageHtml(st.cur, he?'עכשיו':'Now')}${stageHtml(st.next, he?'הבא':'Next')}`
+    : `<div class="cop-empty">${he?'פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.':'Open the cook’s work plan to start a live session.'}</div>`;
+  showPanel(`${typeof toolTop==='function'?toolTop(L('טייס חי','Live Copilot'),L('הבישול שלך בזמן אמת','Your cook, live'),'🔥','#c0392b'):`<h2 style="padding:16px">${L('טייס חי','Live Copilot')}</h2>`}
+    <div class="panel-body">
+      ${sess?`<div class="cop-hdr">🔥 ${he?'מושב חי פעיל':'Live session active'}${sess.serveTs?` · ${he?'הגשה':'serve'} ${fmtClock(new Date(sess.serveTs))}`:''}</div>`:''}
+      ${body}
+      <div class="cop-actions">
+        <button class="mchip vc-launch" data-copvoice>🎙️ ${L('בישול קולי','Voice cook')}</button>
+        ${sess?`<button class="mchip" id="copStop">■ ${L('סיים מושב','End session')}</button>`:''}
+      </div>
+    </div>`);
+  $("#panel").querySelectorAll('.timer').forEach(function(tm){ try{ if(typeof wireTimer==='function') wireTimer(tm); }catch(e){} });
+  { const vb=$("#panel").querySelector('[data-copvoice]'); if(vb) vb.addEventListener('click',function(){ if(typeof openVoiceCook==='function') openVoiceCook((typeof window!=='undefined'&&window._wpTasks)||[]); }); }
+  { const sb=$("#copStop"); if(sb) sb.addEventListener('click',function(){ stopLiveCook(); if(typeof closePanel==='function') closePanel(); }); }
+}
 function openVoiceCook(tasks){
-  vcTasks=tasks||[]; vcIdx=0; 
+  vcTasks=tasks||[]; vcIdx=0;
   // start at the nearest upcoming task
   const now=new Date();
   const up=vcTasks.findIndex(t=>t.t>=now); if(up>0) vcIdx=up;
@@ -4359,6 +4402,7 @@ function renderTimelinePanel(){
     $("#tlList").querySelectorAll('.wp-acch').forEach(h=>h.addEventListener('click',()=>{ const acc=h.parentElement; if(acc) acc.classList.toggle('open'); }));
     $("#tlList").querySelectorAll('.wp-ck[data-wpck]').forEach(cb=>cb.addEventListener('change',()=>{ const k=decodeURIComponent(cb.dataset.wpck); store.set(k, cb.checked||null); const row=cb.closest('.wp-row'); if(row) row.classList.toggle('wp-done', cb.checked); }));   // F: persist plan check state
     { const vb=$("#tlList").querySelector('[data-vclaunch]'); if(vb) vb.addEventListener('click',()=>openFrom(openTimeline,()=>openVoiceCook(window._wpTasks||[]))); }
+    { const cb=$("#tlList").querySelector('[data-copilotlaunch]'); if(cb) cb.addEventListener('click',()=>{ if(typeof startLiveCook==='function') startLiveCook(); }); }   // W2-P1: start a live copilot session
     wireRows();
   }
   function workPlanHtml(computed, preheat, serve){
@@ -4450,7 +4494,7 @@ function renderTimelinePanel(){
       </div>${c.st.svSmokeOrder==='smoke-sv'?`<div class="tl-safety-warn">⚠️ <b>${itemName(c.m)}:</b> ${L('הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the cold smoke <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full. When in doubt — switch to the sous-vide→smoke order.')}</div>`:''}`).join('')}
     </div>`:'';
     const _blk=computed.filter(c=>c.blocked).map(c=>esc(itemName(c.m)));   // F4: multi-day items are excluded from the timed plan — surface them as a prep-ahead advisory instead of dropping them silently
-    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
+    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
     <details class="tl-shapedet"><summary>${L('תצוגה','View')}: ${shapeName(shp)} <span class="tl-shapehint">▾ ${L('שנה','change')}</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
     ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
@@ -5363,7 +5407,7 @@ function cRefreshHome(){
       if(live){ cb.hidden=false; const cm=$("#cCookingM"); const en=(typeof getLang==='function'&&getLang()!=='he');
         if(cm) cm.textContent = ringing? `⏰ ${ringing} ${en?(ringing===1?'timer finished — tap':'timers finished — tap'):'טיימרים הסתיימו — הקש'}` : running? `${running} ${en?(running===1?'timer running · tap for the plan':'timers running · tap for the plan'):'טיימרים פעילים · הקש לתוכנית'}` : L('תוכנית פעילה · הקש לתוכנית','Plan active · tap for the plan');
         cb.classList.toggle('cnext-ring', ringing>0);
-        cb.onclick=()=>{ if(typeof openActive==='function') openActive(); else if(typeof openTimeline==='function') openTimeline(); };
+        cb.onclick=()=>{ if(typeof liveSession==='function' && liveSession() && typeof openCopilot==='function') openCopilot(); else if(typeof openActive==='function') openActive(); else if(typeof openTimeline==='function') openTimeline(); };   // W2-P1: a live session → the Copilot
       } else cb.hidden=true;
     }
   }

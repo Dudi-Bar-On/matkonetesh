@@ -855,6 +855,15 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .ai-caveat-strong{background:rgba(192,57,43,.16);border:1.5px solid rgba(192,57,43,.7);font-weight:600}
 .ai-calc-link{display:inline-block;margin-top:6px;background:#c0392b;color:#fff;border:none;border-radius:999px;padding:6px 13px;font-family:var(--font-body);font-weight:800;font-size:calc(11.5px * var(--fscale));cursor:pointer}
 .ai-refuse-src{margin-top:7px;font-size:calc(10.5px * var(--fscale));color:var(--smoke);font-style:italic}
+/* Wave 2 — Live Cook Copilot */
+.cop-hdr{background:rgba(192,57,43,.1);border:1.5px solid rgba(192,57,43,.4);border-radius:12px;padding:10px 13px;font-family:var(--font-body);font-weight:800;font-size:calc(12.5px * var(--fscale));color:var(--bone);margin-bottom:12px}
+.cop-stage{background:var(--char2);border:1.5px solid var(--line2);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+.cop-stage:first-of-type{border-color:var(--ember2);background:rgba(245,147,49,.07)}
+.cop-stagek{font-family:var(--font-body);font-weight:800;font-size:calc(10.5px * var(--fscale));letter-spacing:.06em;text-transform:uppercase;color:var(--terra-d)}
+.cop-stagel{font-family:var(--font-body);font-weight:700;font-size:calc(15px * var(--fscale));color:var(--bone);margin-top:2px}
+.cop-stagesub{font-size:calc(12.5px * var(--fscale));color:var(--smoke);margin-top:2px;line-height:1.4}
+.cop-empty{color:var(--smoke);font-size:calc(13px * var(--fscale));padding:10px 2px;line-height:1.5}
+.cop-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
 .cw-presets{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
 .cw-presets-lbl{font-size:calc(11.5px * var(--fscale));font-weight:700;color:var(--smoke)}
 .ask-link{background:none;border:none;color:var(--ember);font-weight:700;cursor:pointer;font-size:calc(12px * var(--fscale));text-decoration:underline;padding:0}
