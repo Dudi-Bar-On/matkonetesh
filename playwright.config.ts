@@ -13,6 +13,10 @@ export default defineConfig({
   use: {
     baseURL: `http://localhost:${PORT}`,
     trace: 'on-first-retry',
+    // The app links Google Fonts externally; page.goto waits for 'load', so a slow/throttled
+    // fonts.googleapis.com (many parallel test requests) stalls navigation to the 30s timeout.
+    // Fonts are progressive enhancement — make them fail fast so 'load' fires promptly.
+    launchOptions: { args: ['--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1, MAP fonts.gstatic.com 127.0.0.1'] },
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
@@ -20,7 +24,7 @@ export default defineConfig({
   webServer: {
     // build, then serve the clean deploy folder (dist/) so tests exercise the real artifact
     // and the manifest/icons resolve (no 404 noise)
-    command: `python build.py && python -m http.server ${PORT} --directory dist`,
+    command: `python build.py && node serve.js ${PORT}`,
     url: `http://localhost:${PORT}/index.html`,
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
