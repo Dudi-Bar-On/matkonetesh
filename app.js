@@ -4811,6 +4811,64 @@ function importData(file){
   r.readAsText(file);
 }
 // ── "הציוד שלי" — equipment profile (settings) ──
+// Wave 3 · onboarding concierge — describe your gear in words → config. Local-first keyword parser (offline, no key).
+function gearFromText(desc){
+  const s=String(desc||'').toLowerCase(); const g={};
+  if(/offset|אופסט|stick.?burner|סטיק.?ברנר/.test(s)) g.smoker='אופסט / סטיק-ברנר';
+  else if(/kamado|קמאדו|big green egg|\bbge\b|ceramic|קרמי/.test(s)) g.smoker='קמאדו / קרמי';
+  else if(/pellet|פלט|traeger|טרייגר/.test(s)) g.smoker='פלטים';
+  else if(/\bwsm\b|bullet|barrel|חבית|\bdrum\b/.test(s)) g.smoker='WSM / חבית';
+  else if(/cabinet|ארון|electric smoker|מעשנה חשמלית/.test(s)) g.smoker='ארון / קבינט';
+  else if(/smoker|מעשנ|עישון/.test(s)) g.smoker='ארון / קבינט';
+  if(/kettle|קטל|weber|וובר/.test(s)) g.grill='קטל';
+  else if(/charcoal|פחם|lump|briquette/.test(s)) g.grill='פחם';
+  else if(/gas grill|גריל גז|propane|\bgas\b|גז/.test(s)) g.grill='גז';
+  else if(/plancha|פלנצ|griddle|פלטה/.test(s)) g.grill='פלנצ׳ה / פלטה';
+  else if(/grill|גריל|\bbbq\b|על האש/.test(s)) g.grill='פחם';
+  if(/sous.?vide|סו.?ויד|circulator|immersion|טבילה|anova|joule|\bisv\b/.test(s)) g.sousvide='טבילה (immersion)';
+  if(/meater|wireless|אלחוטי/.test(s)) g.thermo='פרוב אלחוטי';
+  else if(/instant.?read|thermapen|מיידי/.test(s)) g.thermo='מיידי (instant-read)';
+  else if(/inkbird|\bprobe\b|מדחום|thermometer|פרוב/.test(s)) g.thermo='פרוב נעוץ';
+  if(/grinder|מטחנ|mincer|טוחן/.test(s)) g.grinder='ייעודית';
+  if(/stuffer|מילוי|sausage stuff|מכונת נקניק/.test(s)) g.stuffer='אנכית';
+  if(/chamber vac|ואקום חדר|chamber/.test(s)) g.vacuum='חדר (chamber)';
+  else if(/vacuum|ואקום|foodsaver|שואב/.test(s)) g.vacuum='שקית חיצונית (edge)';
+  return g;
+}
+function levelFromText(s, g){ s=String(s||'').toLowerCase();
+  if(/beginner|מתחיל|new to|just start|first time|פעם ראשונה/.test(s)) return 'beginner';
+  if(/pitmaster|\bpro\b|competition|תחרות|years|שנים|offset|\bwsm\b|charcuterie|שרקוטרי/.test(s) || (g.smoker&&g.grinder)) return 'pro';
+  return 'mid';
+}
+function gearConciergeApply(g, level){
+  const cur=Object.assign({}, (typeof gearState==='function')?gearState():{});
+  ['smoker','grill','sousvide','vacuum','thermo','grinder','stuffer','injector'].forEach(function(k){ if(!(k in cur)) cur[k]='אין'; });
+  Object.keys(g||{}).forEach(function(k){ cur[k]=g[k]; });
+  if(typeof saveGear==='function') saveGear(cur); if(typeof gearSetConfigured==='function') gearSetConfigured();
+  if(level) store.set('mk-uilevel', level);
+  if(typeof cRefreshHome==='function') cRefreshHome();
+}
+function _gearConciergePreview(g, level){
+  const he=(typeof getLang!=='function'||getLang()==='he'); const rows=[];
+  const nameOf={smoker:he?'מעשנה':'Smoker',grill:he?'גריל':'Grill',sousvide:he?'סו-ויד':'Sous-vide',thermo:he?'מדחום':'Probe',grinder:he?'מטחנה':'Grinder',stuffer:he?'מכונת מילוי':'Stuffer',vacuum:he?'ואקום':'Vacuum'};
+  Object.keys(g).forEach(function(k){ rows.push(`<div class="gc-row">✓ <b>${nameOf[k]||k}</b> · ${esc(t?t(g[k]):g[k])}</div>`); });
+  const lvl=({beginner:he?'מתחיל':'Beginner',mid:he?'בינוני':'Intermediate',pro:he?'מתקדם':'Pro'})[level]||level;
+  return rows.length ? `${rows.join('')}<div class="gc-row">🧭 ${he?'רמת ממשק מוצעת':'Suggested level'}: <b>${lvl}</b></div>` : `<div class="cop-pacenote">${he?'לא זיהיתי ציוד — נסה לתאר בפירוט (מעשנה, גריל, סו-ויד, מדחום…).':'Didn’t detect any gear — try describing it (smoker, grill, sous-vide, probe…).'}</div>`;
+}
+function openGearConcierge(){
+  if(typeof showPanel!=='function') return;
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  showPanel(`${typeof toolTop==='function'?toolTop(L('ספר לי מה יש לך','Tell me your setup'),L('תאר את הציוד במילים שלך — אגדיר אותו','Describe your gear — I’ll set it up'),'✨','#5a7d8c'):`<h2 style="padding:16px">${L('הציוד שלי','My gear')}</h2>`}
+    <div class="panel-body">
+      <textarea id="gcDesc" class="cop-in" rows="3" style="resize:vertical" placeholder="${he?'למשל: מעשנת אופסט, וובר קטל, מקל סו-ויד, מדחום MEATER, מטחנה ומכונת מילוי':'e.g. an offset smoker, a Weber kettle, a sous-vide stick, a MEATER probe, a grinder and a stuffer'}"></textarea>
+      <button class="ccta" id="gcGo" style="margin-top:10px">✨ ${he?'הגדר את הציוד שלי':'Set up my gear'}</button>
+      <div id="gcResult"></div>
+    </div>`);
+  const go=$("#gcGo"); if(go) go.addEventListener('click',function(){ const desc=($("#gcDesc")||{}).value||''; const g=gearFromText(desc); const level=levelFromText(desc,g); const res=$("#gcResult");
+    if(res){ res.innerHTML=`<div class="gc-preview">${_gearConciergePreview(g,level)}</div>${Object.keys(g).length?`<button class="ccta" id="gcApply" style="margin-top:10px;background:var(--fresh);border-color:var(--fresh)">✓ ${he?'החל':'Apply'}</button>`:''}`;
+      const ap=$("#gcApply"); if(ap) ap.addEventListener('click',function(){ gearConciergeApply(g,level); if(typeof toast==='function') toast(he?'הציוד הוגדר ✓':'Gear set ✓'); if(typeof closePanel==='function') closePanel(); }); }
+  });
+}
 function openGear(){
   const g=gearState();
   const groups=GEAR_GROUPS.map(grp=>`
@@ -4822,6 +4880,7 @@ function openGear(){
   showPanel(`${toolTop(L('הציוד שלי','My gear'),L('בחר מה יש לך — המתכונים יתאימו את עצמם','Pick what you have — recipes adapt themselves'),'🔧','#5a7d8c')}
    <div class="panel-body">
      <p class="section-sub" style="margin-bottom:12px">${L('האפליקציה תסמן שיטות שאין לך ציוד עבורן ותציע חלופות. תמיד אפשר להפעיל בכל זאת (override).','The app will flag methods you have no gear for and suggest alternatives. You can always enable them anyway (override).')}</p>
+     <button class="cmore-qchip" id="gearConcierge" style="margin-bottom:12px"><span>✨</span> ${L('תאר במילים במקום','Describe it in words instead')}</button>
      ${groups}
      <div id="gearSummary" class="gear-summary"></div>
      <button class="akc-back" id="gearDone">✓ ${L('שמור וסגור','Save and close')}</button>
@@ -4835,6 +4894,7 @@ function openGear(){
     refreshSummary();
   }));
   { const d=$("#gearDone"); if(d) d.addEventListener('click',()=>{ gearSetConfigured(); closePanel(); if(typeof render==='function') render(); }); }
+  { const gc=$("#gearConcierge"); if(gc) gc.addEventListener('click',()=>{ if(typeof openGearConcierge==='function') openGearConcierge(); }); }
   refreshSummary();
 }
 function openBackup(){
@@ -7386,7 +7446,7 @@ function openMoreSheet(){
     ['🍽️', L('עבודה','Work'), [['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline',true],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint',true],['🛒',L('רשימת קניות','Shopping list'),'openCart']]],
     ['✨', L('חוויה','Experience'), [['🤖',L('כלי AI','AI tools'),'openAiHub'],['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
     ['🧰', L('עזר','Utilities'), [['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans',true],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders',true],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']]],
-    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🔧',L('הציוד שלי','My gear'),'openGear'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
+    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🔧',L('הציוד שלי','My gear'),'openGear'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
   ];
   const reg={}; GROUPS.forEach(g=>g[2].forEach(it=>reg[it[2]]=it));
   const visible=it=>!(beg && it[3]);                                   // advanced items hidden at beginner level
