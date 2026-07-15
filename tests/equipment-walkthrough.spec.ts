@@ -36,34 +36,22 @@ const RICH = [
 // ══════════════════════════════════════════════════════════════════════
 // EMPTY view — options (1) quick-chips, (2) add manually, (3) set-it-up-for-me
 // ══════════════════════════════════════════════════════════════════════
-test('EMPTY view: quick-add chips (open form), describe-box feedback, set-it-up (EN)', async ({ page }) => {
+test('EMPTY view: quick-add chips open the category form; no describe-in-words box (EN)', async ({ page }) => {
   await boot(page, { lang: 'en' });
   await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqDescribe');
   await page.waitForSelector('#panel [data-eqpick="smoker"]');
   await page.screenshot({ path: SHOT + 'en-empty.png' });
 
-  // (1) quick-add chips: 6 categories incl. vacuum; clicking one OPENS its form (not append text)
+  // 6 quick-add chips incl. vacuum; clicking one OPENS its form. The "describe in words" box is gone.
   const chips = page.locator('#panel .eq-egchip[data-eqpick]');
   expect(await chips.count()).toBe(6);
   expect(await page.locator('#panel [data-eqpick="vacuum"]').count()).toBe(1);
+  expect(await page.locator('#panel #eqDescribe').count()).toBe(0);
+  expect(await page.locator('#panel #eqSetup').count()).toBe(0);
   await page.click('#panel [data-eqpick="grill"]');
   await page.waitForSelector('#panel #eqSave');
   expect(await page.locator('#panel #eqCat').inputValue()).toBe('grill');   // opened the grill form
   expect(await page.locator('#panel .eq-sheet').count()).toBe(1);
-
-  // (3) "Set it up for me" — reopen empty; non-match → inline feedback (no nav); match → builds + list
-  await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqSetup');
-  await page.fill('#panel #eqDescribe', 'zzz qqq nothing');
-  await page.click('#panel #eqSetup');
-  await page.waitForSelector('#panel .eq-setup-msg');       // no-match feedback shown, stayed on the screen
-  await page.fill('#panel #eqDescribe', 'a kettle grill and a cheap probe');
-  await page.click('#panel #eqSetup');
-  await page.waitForSelector('#panel .eq-dev');           // landed on the list
-  expect(await page.evaluate(`hasCat('grill')`)).toBe(true);
-  expect(await page.evaluate(`hasCat('probe')`)).toBe(true);
-  expect(await page.evaluate(`equipConfigured()`)).toBe(true);
 });
 
 // ══════════════════════════════════════════════════════════════════════
@@ -96,12 +84,8 @@ test('LIST view: header-add, caps banner, concierge, add-another, edit, remove, 
   expect(grillChips.join(' | ')).toContain('heat zones');
   expect(grillChips.join(' | ')).toContain('Charcoal');
 
-  // (6) concierge "Describe your gear" opens the gear-concierge panel without error
-  await page.click('#panel #eqConcierge');
-  await page.waitForSelector('#panel #gcDesc');
-  expect(await page.locator('#panel #gcGo').count()).toBe(1);
-  await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel .eq-dev');
+  // (6) the "Describe your gear in words" concierge card has been removed from the list
+  expect(await page.locator('#panel #eqConcierge').count()).toBe(0);
 
   // (7) "Add another <cat>" opens the form pre-set to that category (grill)
   await page.locator('#panel .eq-add-tile[data-eqaddcat="grill"]').click();

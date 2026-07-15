@@ -203,3 +203,20 @@ test('P2: cookerContention flags overlapping same-cooker stages', async ({ page 
   ]); })()`) as any[];
   expect(none.length).toBe(0);   // non-overlapping windows → no clash
 });
+
+test('P3: sous-vide — same-temp items share one bath (no clash); different temps clash', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'sv1',cat:'sousvide',type:'טבילה (immersion)',name:'Anova',cap:{baths:[12,24]}}]); equipSetConfigured();`);
+  // same temp (55°) + overlapping → they batch into one bath → NOT a clash
+  const same = await page.evaluate(`(function(){ const now=Date.now(); return cookerContention([
+    {blocked:false, m:{key:'a',heb:'A',eng:'A'}, stages:[{kind:'sv',temp:55,start:new Date(now),end:new Date(now+3600000)}]},
+    {blocked:false, m:{key:'b',heb:'B',eng:'B'}, stages:[{kind:'sv',temp:55,start:new Date(now+600000),end:new Date(now+4200000)}]}
+  ]); })()`) as any[];
+  expect(same.length).toBe(0);
+  // different temps (55 vs 63) + overlapping → one bath can't hold two temps → clash
+  const diff = await page.evaluate(`(function(){ const now=Date.now(); return cookerContention([
+    {blocked:false, m:{key:'a',heb:'A',eng:'A'}, stages:[{kind:'sv',temp:55,start:new Date(now),end:new Date(now+3600000)}]},
+    {blocked:false, m:{key:'b',heb:'B',eng:'B'}, stages:[{kind:'sv',temp:63,start:new Date(now+600000),end:new Date(now+4200000)}]}
+  ]); })()`) as any[];
+  expect(diff.length).toBe(1);
+});

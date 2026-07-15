@@ -75,14 +75,17 @@ function cookerLabel(itemKey, kind, scope){ const d=cookerFor(itemKey,kind,scope
 function cookerContention(computed, scope){
   const occ=[];
   (computed||[]).forEach(function(c){ if(!c||c.blocked||!c.stages) return;
-    c.stages.forEach(function(s){ if(['smoke','cook'].indexOf(s.kind)<0 || !s.start || !s.end) return;
+    c.stages.forEach(function(s){ if(['smoke','cook','sv'].indexOf(s.kind)<0 || !s.start || !s.end) return;
       const d=cookerFor(c.m.key, s.kind, scope); if(!d) return;   // only resolved (single-fit or assigned) devices can clash
-      occ.push({devId:d.id, devName:d.name||t(d.type), start:s.start.getTime(), end:s.end.getTime(), key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb), kind:s.kind});
+      occ.push({devId:d.id, devName:d.name||t(d.type), start:s.start.getTime(), end:s.end.getTime(), key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb), kind:s.kind, temp:(s.temp!=null?s.temp:null)});
     });
   });
   const clashes=[];
   for(var a=0;a<occ.length;a++){ for(var b=a+1;b<occ.length;b++){ var A=occ[a],B=occ[b];
-    if(A.devId===B.devId && A.key!==B.key && A.start<B.end && B.start<A.end) clashes.push({devId:A.devId, devName:A.devName, a:A, b:B});
+    if(A.devId===B.devId && A.key!==B.key && A.start<B.end && B.start<A.end){
+      if(A.kind==='sv' && B.kind==='sv' && A.temp!=null && B.temp!=null && A.temp===B.temp) continue;   // same-temp sous-vide items share one bath — batch, not a clash
+      clashes.push({devId:A.devId, devName:A.devName, a:A, b:B});
+    }
   }}
   return clashes;
 }
@@ -2187,10 +2190,10 @@ function itemStages(meta,methodKey,ready,order){
       const cited=(osm.t!=null && osv.t!=null);
       stages.push({label:`${L('עישון קר','Cold smoke')} ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:L('על בשר גולמי — טבעת עשן מרבית','on raw meat — maximal smoke ring')+(cited?' · '+L('מקור מצוטט','cited source'):'')});
       stages.push({label:L('איטום ומעבר לסו-ויד','Seal and move to sous-vide'),hours:0,kind:'note'});
-      stages.push({label:`${L('סו-ויד','Sous-vide')} ${svT}° (${L('כולל פסטור','incl. pasteurization')})`,hours:svH,kind:'sv',safety:'pasteur'});
+      stages.push({label:`${L('סו-ויד','Sous-vide')} ${svT}° (${L('כולל פסטור','incl. pasteurization')})`,hours:svH,kind:'sv',temp:svT,safety:'pasteur'});
     } else {
       if(hasSV){
-        stages.push({label:`${L('סו-ויד','Sous-vide')} ${m.svTemp}°`,hours:m.svHours,kind:'sv'});
+        stages.push({label:`${L('סו-ויד','Sous-vide')} ${m.svTemp}°`,hours:m.svHours,kind:'sv',temp:m.svTemp});
         if(hasSmoke){
           const dryH=drySurfaceHours(m.svHours);
           const dryLbl=dryH<1?L('ניגוב יבש (קצר)','Pat dry (short)'):L('ייבוש במקרר (ללא כיסוי)','Fridge-dry (uncovered)');
@@ -2202,7 +2205,7 @@ function itemStages(meta,methodKey,ready,order){
     }
     if(m.combo.includes('grill')) stages.push({label:m.combo.length===1?L('גריל / אש ישירה','Grill / direct heat'):L('גימור גריל (צריבה)','Grill finish (sear)'),hours:0.3,kind:'cook',note:m.combo.length===1?m.note:''});
   } else {
-    if(m.svHours){ stages.push({label:`${L('סו-ויד','Sous-vide')} ${m.svTemp}°`,hours:m.svHours,kind:'sv'}); stages.push({label:L('העברה למעשנת','Move to smoker'),hours:0,kind:'note'}); }
+    if(m.svHours){ stages.push({label:`${L('סו-ויד','Sous-vide')} ${m.svTemp}°`,hours:m.svHours,kind:'sv',temp:m.svTemp}); stages.push({label:L('העברה למעשנת','Move to smoker'),hours:0,kind:'note'}); }
     if(m.smHours||m.hours){
       const hrs=m.smHours||m.hours;
       stages.push({label:`${m.label} ${m.tempC||''}`.trim(),hours:hrs,kind:m.key.includes('smoke')||m.key==='sv'||m.key==='so'||m.key==='hot'||m.key==='cold'?'smoke':'cook',temp:m.smTemp,note:m.note});
@@ -4637,6 +4640,13 @@ function renderTimelinePanel(){
     const _ckMap=store.get('mk-item-cooker-'+_ckScope)||{};
     const _clashes=cookerContention(computed, _ckScope);
     const _clashOcc={}; _clashes.forEach(function(cl){ _clashOcc[cl.a.key+'@'+cl.a.start]=1; _clashOcc[cl.b.key+'@'+cl.b.start]=1; });
+    // sous-vide batching: same circulator + same temp + overlapping windows → cook together in one bath (the largest available size)
+    const _svBatch={}; { const svOcc=[];
+      computed.forEach(function(c){ if(c.blocked||!c.stages) return; c.stages.forEach(function(s){ if(s.kind!=='sv'||!s.start||!s.end) return; const d=cookerFor(c.m.key,'sv',_ckScope); if(!d) return; svOcc.push({dev:d, key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb), temp:(s.temp!=null?s.temp:null), start:s.start.getTime(), end:s.end.getTime()}); }); });
+      svOcc.forEach(function(o){ const mates=svOcc.filter(function(x){ return x!==o && x.dev.id===o.dev.id && x.temp!=null && o.temp!=null && x.temp===o.temp && x.start<o.end && o.start<x.end; });
+        if(mates.length){ const baths=(o.dev.cap&&Array.isArray(o.dev.cap.baths)&&o.dev.cap.baths.length)?o.dev.cap.baths:((o.dev.cap&&o.dev.cap.bathL!=null)?[o.dev.cap.bathL]:[]); _svBatch[o.key+'@'+o.start]={names:mates.map(function(m){return m.name;}), bath:baths.length?Math.max.apply(null,baths):null}; }
+      });
+    }
     computed.forEach(c=>{
       if(c.blocked) return;
       const _tn0=tasks.length;   // tag every task this item pushes with its key, for "select item" in the work-plan view
@@ -4685,7 +4695,9 @@ function renderTimelinePanel(){
               det=(det?det+' ':'')+`[${L('מידות','Doneness')}: ${dn}]`;
             }
           }
-          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:s.note||'',kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid,cooker:cookerLabel(c.m.key,s.kind),contention:!!_clashOcc[c.m.key+'@'+s.start.getTime()]});
+          let _sub=s.note||'';
+          if(s.kind==='sv'){ const bt=_svBatch[c.m.key+'@'+s.start.getTime()]; if(bt){ const bn='🌊 '+L('אמבט משותף עם ','shared bath with ')+bt.names.join(', ')+(bt.bath?(' · '+L('השתמש באמבט ','use the ')+bt.bath+L(' ל׳',' L')+L(' לכולם',' bath for all')):''); _sub=_sub?_sub+' · '+bn:bn; } }
+          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:_sub,kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid,cooker:cookerLabel(c.m.key,s.kind),contention:!!_clashOcc[c.m.key+'@'+s.start.getTime()]});
         }
       });
       const sel2=sel.filter(s=>s.kind==='glaze');
@@ -5060,12 +5072,8 @@ function openEquipment(){
 
   const drawEmpty=function(){
     const chips=['smoker','grill','oven','sousvide','vacuum','probe'].map(function(cat){ const c=cm(cat); return `<button class="eq-egchip" data-eqpick="${cat}"><span>${equipTypeIcon(cat,(c.types||[])[0])}</span> ${L(c.he,c.en)}</button>`; }).join('');
-    showPanel(headHtml(false,'')+`<div class="panel-body eq-wrap"><section class="eq-con"><div class="eq-con-spark">✨</div><div class="eq-con-ic">🔥🍳</div><h2 class="eq-con-h">${L('בוא נכיר את ','Let’s meet ')}<b>${L('הציוד שלך','your kit')}</b></h2><p class="eq-con-sub">${L('ספר לי על מה אתה מבשל — כל מתכון יתאים את עצמו לציוד שלך','Tell me what you cook on — every recipe tunes itself to your gear')}</p><div class="eq-prompt"><span class="eq-prompt-ic">✨</span><textarea id="eqDescribe" class="eq-prompt-in" rows="3" placeholder="${L('למשל: מעשנת פחם, וובר קטל ומדחום','e.g. a charcoal smoker, a Weber kettle and a probe')}"></textarea></div><button id="eqSetup" class="eq-setup">${L('הגדר לי','Set it up for me')} <span>‹</span></button><div id="eqSetupMsg"></div><p class="eq-or-add">${L('או הוסף לפי קטגוריה','or add by category')}</p><div class="eq-egrow">${chips}</div></section></div>`);
-    const pnl=$("#panel"); const dsc=function(){ return $("#eqDescribe"); };
-    const setup=$("#eqSetup"); if(setup) setup.addEventListener('click', function(){ const el=dsc(); const txt=(el&&el.value)||''; if(!txt.trim()){ if(el) el.focus(); return; } const g=gearFromText(txt);
-      if(!Object.keys(g).length){ const m=$("#eqSetupMsg"); if(m) m.innerHTML=`<div class="eq-setup-msg">${L('לא זיהיתי ציוד 🤔 — נסה למשל "מעשנת פחם וסו-ויד", או בחר קטגוריה למטה','Didn’t catch any gear 🤔 — try e.g. “a charcoal smoker and a sous-vide”, or pick a category below')}</div>`; if(el) el.focus(); return; }
-      gearConciergeApply(g, levelFromText(txt,g)); const b=$("#gearBanner"); if(b) b.remove(); drawList();
-    });
+    showPanel(headHtml(false,'')+`<div class="panel-body eq-wrap"><section class="eq-con"><div class="eq-con-spark">✨</div><div class="eq-con-ic">🔥🍳</div><h2 class="eq-con-h">${L('בוא נכיר את ','Let’s meet ')}<b>${L('הציוד שלך','your kit')}</b></h2><p class="eq-con-sub">${L('הוסף את הציוד שלך — כל מתכון יתאים את עצמו אליו','Add your gear — every recipe then tunes itself to it')}</p><p class="eq-or-add">${L('בחר קטגוריה להוספה','pick a category to add')}</p><div class="eq-egrow">${chips}</div></section></div>`);
+    const pnl=$("#panel");
     pnl.querySelectorAll('[data-eqpick]').forEach(function(b){ b.addEventListener('click', function(){ editId=null; drawForm(b.dataset.eqpick); }); });   // chips = quick-add: open the form for that category
   };
 
@@ -5079,14 +5087,12 @@ function openEquipment(){
     const nProbe=equipByCat('probe').length;
     const foot=probeChannels()?`<p class="eq-caps-foot">🎯 <b>${nProbe} ${L(nProbe===1?'פרוב':'פרובים', nProbe===1?'probe':'probes')} · ${probeChannels()} ${L('ערוצים','channels')}</b> ${L('למעקב טמפ׳ פנימית','tracked for internal-temp targets')}</p>`:'';
     const capsHtml=`<div class="eq-caps"><div class="eq-caps-x"><h4>${L('מה אפשר לבשל','What you can cook')}</h4><span class="eq-caps-n">${okN}/${caps.length} ${L('פעילים','unlocked')}</span></div><div class="eq-gcaps">${caps.map(function(x){return `<span class="eq-gcap ${x[0]?'ok':'no'}"><span class="em">${x[2]}</span> ${x[1]}${x[0]?'':' · '+x[3]}</span>`;}).join('')}</div>${foot}</div>`;
-    const conc=`<button class="eq-card eq-conc" id="eqConcierge" type="button"><span class="eq-tile eq-tile-ai">✨</span><span class="eq-conc-c"><b>${L('תאר את הציוד במילים','Describe your gear in words')}</b><small>${L('"מעשנה וסו-ויד" ← נוסיף','“a smoker and a sous-vide” → we add them')}</small></span><span class="eq-conc-g">‹</span></button>`;
     const secs=EQUIP_CATS.map(function(c){ const ds=list.filter(function(d){return d.cat===c.cat;}); if(!ds.length) return '';
       const cards=ds.map(function(d){ return `<article class="eq-card eq-spine eq-dev" style="--eqacc:${c.acc};--eqacc-l:${c.accL}"><div class="eq-tile">${equipTypeIcon(d.cat,d.type)}</div><div class="eq-dev-main"><div class="eq-dev-top"><span class="eq-dev-name">${esc(d.name||typeLabel(d.type)||'')}</span>${d.specSource==='ai'?`<span class="eq-dev-ai">✨ AI</span>`:''}</div><p class="eq-dev-sub">${esc(typeLabel(d.type)||'')}</p>${chipsFor(d)?`<div class="eq-dev-chips">${chipsFor(d)}</div>`:''}</div><div class="eq-dev-acts"><button class="eq-iconbtn" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-iconbtn" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">✕</button></div></article>`; }).join('');
       return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4>${cards}<button class="eq-add-tile" data-eqaddcat="${c.cat}"><span class="pl">＋</span> ${L('הוסף עוד','Add another')} ${L(c.he,c.en)}</button></section>`;
     }).join('');
-    showPanel(headHtml(true,sub)+`<div class="panel-body eq-wrap">${capsHtml}${conc}${secs}</div>`);
+    showPanel(headHtml(true,sub)+`<div class="panel-body eq-wrap">${capsHtml}${secs}</div>`);
     const pnl=$("#panel");
-    const gc=$("#eqConcierge"); if(gc) gc.addEventListener('click', function(){ if(typeof openGearConcierge==='function') openFrom(openEquipment, openGearConcierge); });   // openFrom → the concierge gets a back button to the equipment list (not just close-to-home)
     const an=$("#eqAddNew"); if(an) an.addEventListener('click', function(){ editId=null; drawPicker(); });   // header Add → pick a category first (not a hard-coded smoker form)
     pnl.querySelectorAll('[data-eqaddcat]').forEach(function(b){ b.addEventListener('click', function(){ editId=null; drawForm(b.dataset.eqaddcat); }); });
     pnl.querySelectorAll('[data-eqedit]').forEach(function(b){ b.addEventListener('click', function(){ const d=equipList().find(function(x){return x.id===b.dataset.eqedit;}); if(!d) return; editId=d.id; drawForm(d.cat, d); }); });
