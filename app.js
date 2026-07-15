@@ -5103,6 +5103,8 @@ function openEquipment(){
     const curCat=cat||(dev&&dev.cat)||'smoker'; const aiOn=equipAiOn();
     let vmode = dev ? 'edit' : 'manual';   // → 'ai' after a successful web lookup
     const capC=function(k){ return equipCat(k)||{}; };
+    // multi-value capacity list (sous-vide bath sizes / stuffer output tube sizes) — several instances, add/remove
+    let multiVals = (function(){ const c0=capC(curCat); if(c0.multiCap && dev){ const mk=c0.multiCap.key; if(dev.cap&&Array.isArray(dev.cap[mk])&&dev.cap[mk].length) return dev.cap[mk].slice(); if(mk==='baths'&&dev.cap&&dev.cap.bathL!=null) return [dev.cap.bathL]; } return []; })();
     const title=function(nc){ return dev?L('ערוך מכשיר','Edit device'):L('הוסף '+cm(nc).he, 'Add a '+(cm(nc).en||'').toLowerCase()); };
     const note=function(s,cls){ const n=$("#eqAiNote"); if(n){ n.textContent=s||''; n.className='eq-ainote'+(cls?' '+cls:''); } };
 
@@ -5134,7 +5136,8 @@ function openEquipment(){
       else { d={id:equipId(),cat:nc,type:type,name:nm,brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''}; list2.push(d); }
       d.cat=nc; d.type=type; d.name=nm; d.cap=d.cap||{};
       if(cc.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) d.cap[cc.capKey]=v; else delete d.cap[cc.capKey]; }
-      if(cc.multiCap){ const arr=(($("#eqMulti")||{}).value||'').split(/[^\d.]+/).map(function(x){return parseFloat(x);}).filter(function(n){return !isNaN(n)&&n>0&&n<100000;}); if(arr.length) d.cap[cc.multiCap.key]=arr; else delete d.cap[cc.multiCap.key]; if(cc.multiCap.key==='baths') delete d.cap.bathL; }   // sousvide bath sizes / stuffer output-tube sizes
+      if(cc.multiCap){ const mi=$("#eqMultiIn"); if(mi&&mi.value){ const pv=parseFloat((mi.value||'').replace(/[^\d.]/g,'')); if(!isNaN(pv)&&pv>0&&pv<100000&&multiVals.indexOf(pv)<0) multiVals.push(pv); }   // flush a typed-but-not-yet-added size
+        if(multiVals.length){ multiVals.sort(function(a,b){return a-b;}); d.cap[cc.multiCap.key]=multiVals.slice(); } else delete d.cap[cc.multiCap.key]; if(cc.multiCap.key==='baths') delete d.cap.bathL; }   // sousvide bath sizes / stuffer output-tube sizes
       const fEl=$("#eqvFuel"); if(fEl) d.fuel=fEl.value||''; else if(['smoker','grill','oven'].indexOf(nc)<0) d.fuel='';
       const aEl=$("#eqvArea"); if(aEl){ const av=(aEl.value||'').trim(); if(av) d.cap.area=av; else delete d.cap.area; }
       if(vmode==='ai') d.specSource='ai';
@@ -5146,6 +5149,18 @@ function openEquipment(){
       const rd=$("#eqRedo"); if(rd) rd.addEventListener('click', function(){ vmode='manual'; const nm=($("#eqName")||{}).value||''; note(''); paintVerify({name:nm}); });
       const cx=$("#eqCancel"); if(cx) cx.addEventListener('click', function(){ editId=null; drawList(); });
     };
+    // ── multi-value capacity editor: each size is its own removable chip; input + ＋ to add another ──
+    const multiHtml=function(){ const cc=capC(($("#eqCat")||{}).value||curCat); if(!cc.multiCap) return '';
+      const u=L(cc.multiCap.uHe,cc.multiCap.uEn);
+      const chips=multiVals.map(function(v,i){ return `<span class="eq-multi-chip">${esc(v)} ${esc(u)}<button type="button" class="eq-multi-x" data-eqmultirm="${i}" aria-label="${L('הסר','Remove')}">✕</button></span>`; }).join('');
+      return chips+`<span class="eq-multi-add"><input id="eqMultiIn" class="eq-multi-in" inputmode="decimal" placeholder="${L('גודל','size')} ${esc(u)}"><button type="button" id="eqMultiAdd" class="eq-multi-addbtn" aria-label="${L('הוסף','Add')}">＋</button></span>`;
+    };
+    const addMulti=function(){ const inp=$("#eqMultiIn"); if(!inp) return; const v=parseFloat((inp.value||'').replace(/[^\d.]/g,'')); if(!isNaN(v)&&v>0&&v<100000 && multiVals.indexOf(v)<0){ multiVals.push(v); multiVals.sort(function(a,b){return a-b;}); } inp.value=''; repaintMulti(); };
+    const repaintMulti=function(){ const w=$("#eqMultiWrap"); if(w){ w.innerHTML=multiHtml(); wireMulti(); const inp=$("#eqMultiIn"); if(inp) inp.focus(); } };
+    const wireMulti=function(){ const a=$("#eqMultiAdd"); if(a) a.addEventListener('click', addMulti);
+      const inp=$("#eqMultiIn"); if(inp) inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addMulti(); } });
+      const w=$("#eqMultiWrap"); if(w) w.querySelectorAll('[data-eqmultirm]').forEach(function(b){ b.addEventListener('click', function(){ const i=parseInt(b.dataset.eqmultirm,10); if(!isNaN(i)){ multiVals.splice(i,1); repaintMulti(); } }); });
+    };
     const paintVerify=function(data){
       const nc=($("#eqCat")||{}).value||curCat; const cc=capC(nc);
       const showFuel=['smoker','grill','oven'].indexOf(nc)>=0;
@@ -5154,7 +5169,7 @@ function openEquipment(){
       const nameField=`<div class="eq-vfield"><label>${L('שם','Name')}${sp}</label><input id="eqName" class="eq-vin${fc}" placeholder="${L('שם המכשיר','Device name')}" value="${d.name!=null?esc(d.name):''}"></div>`;
       const typeField=`<div class="eq-vfield"><label>${L('תת-סוג','Sub-type')}${sp}</label><select id="eqType" class="eq-vin${fc}">${typeOpts(nc, d.type)}</select></div>`;
       const capField=cc.capKey?`<div class="eq-vfield"><label>${L(cc.capHe,cc.capEn)}${sp}</label><input type="number" min="0" inputmode="numeric" id="eqCapKey" class="eq-vin${fc}" value="${(d.cap!=null&&d.cap!=='')?esc(d.cap):''}"></div>`:'';
-      const multiField=cc.multiCap?`<div class="eq-vfield"><label>${L(cc.multiCap.he,cc.multiCap.en)}${sp}</label><input id="eqMulti" class="eq-vin${fc}" placeholder="${cc.multiCap.key==='baths'?L('לדוגמה 12, 24','e.g. 12, 24'):L('לדוגמה 16, 20, 26','e.g. 16, 20, 26')}" value="${(d.multi!=null&&d.multi!=='')?esc(d.multi):''}"></div>`:'';
+      const multiField=cc.multiCap?`<div class="eq-vfield"><label>${L(cc.multiCap.he,cc.multiCap.en)}${sp}</label><div class="eq-multi${fc}" id="eqMultiWrap">${multiHtml()}</div></div>`:'';
       const grid=`<div class="eq-vrow">${typeField}${cc.capKey?capField:multiField}</div>`;
       const extraMulti=(cc.capKey&&cc.multiCap)?multiField:'';   // stuffer: cylinder volume in the grid + output tube sizes full-width below
       const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div><div class="eq-vfield"><label>${L('שטח בישול','Cooking area')}${sp}</label><input id="eqvArea" class="eq-vin${fc}" placeholder="${L('לדוגמה 575 in²','e.g. 575 in²')}" value="${d.area?esc(d.area):''}"></div></div>`:'';
@@ -5162,7 +5177,7 @@ function openEquipment(){
       const src=ai?`<p class="eq-v-src">${L('<b>✨ מולא אוטומטית</b> ממקורות רשת. גע בכל שדה כדי לשנות — <b>עדיין לא נשמר.</b>','<b>✨ Auto-filled</b> from web sources. Tap any field to change it — <b>nothing is saved yet.</b>')}</p>`:'';
       const saveLbl=dev?L('שמור','Save'):(ai?L('נראה טוב — שמור','Looks right — save'):L('הוסף','Add'));
       const acts=`<div class="eq-v-acts"><button id="eqSave" class="eq-con-go" type="button">${saveLbl}</button>${ai?`<button id="eqRedo" class="eq-ghost" type="button">↺ ${L('אפס','Redo')}</button>`:`<button id="eqCancel" class="eq-ghost" type="button">${L('בטל','Cancel')}</button>`}</div>`;
-      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+extraMulti+fuelRow+src+acts; wireVerify(); }
+      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+extraMulti+fuelRow+src+acts; wireVerify(); if(cc.multiCap) wireMulti(); }
       const st=$("#eqSheetTile"); if(st) st.textContent=equipTypeIcon(nc, d.type||((cm(nc).types||[])[0]));
     };
 
@@ -5171,6 +5186,7 @@ function openEquipment(){
       const tt=$("#eqFormTitle"); if(tt&&!dev) tt.textContent=title(nc);
       const st=$("#eqSheetTile"); if(st) st.style.setProperty('--eqacc-l', cm(nc).accL);
       if(vmode==='ai') vmode='manual';
+      multiVals=[];   // multi sizes are category-specific — reset on category change
       paintVerify({name:($("#eqName")||{}).value||''});
     });
     const lookup=$("#eqLookup"); if(lookup) lookup.addEventListener('click', function(){
@@ -5178,8 +5194,8 @@ function openEquipment(){
       if(!q){ note(L('הקלד שם/דגם קודם','Type a name/model first')); return; }
       note(L('מחפש באינטרנט…','Searching the web…'));
       aiLookupDevice(q, nc).then(function(r){ vmode='ai'; const cc=capC(nc);
-        const multiAI=(cc.multiCap&&cc.multiCap.key==='baths'&&r.cap&&r.cap.bathL!=null)?String(r.cap.bathL):'';
-        paintVerify({ name:q, type:r.subtype||'', cap:(cc.capKey&&r.cap&&r.cap[cc.capKey]!=null)?r.cap[cc.capKey]:'', multi:multiAI, fuel:r.fuel||'', area:r.area||'' });
+        if(cc.multiCap&&cc.multiCap.key==='baths'&&r.cap&&r.cap.bathL!=null&&multiVals.indexOf(r.cap.bathL)<0){ multiVals.push(r.cap.bathL); multiVals.sort(function(a,b){return a-b;}); }
+        paintVerify({ name:q, type:r.subtype||'', cap:(cc.capKey&&r.cap&&r.cap[cc.capKey]!=null)?r.cap[cc.capKey]:'', fuel:r.fuel||'', area:r.area||'' });
         note('✨ '+(r.note||L('נמצא — אמת ושמור','Found — verify & save')), 'ok');
       }).catch(function(e){ const m=String(e&&e.message||e); note(m.indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל — מלא ידנית','Lookup failed — fill by hand')); });
     });
@@ -5197,9 +5213,7 @@ function openEquipment(){
     const back=$("#eqBack"); if(back) back.addEventListener('click', function(){ editId=null; drawList(); });
     if(dev){ const cc=capC(dev.cat);
       const capVal=(cc.capKey&&dev.cap&&dev.cap[cc.capKey]!=null)?dev.cap[cc.capKey]:'';
-      let multiVal='';
-      if(cc.multiCap){ const mk=cc.multiCap.key; if(dev.cap&&Array.isArray(dev.cap[mk])&&dev.cap[mk].length) multiVal=dev.cap[mk].join(', '); else if(mk==='baths'&&dev.cap&&dev.cap.bathL!=null) multiVal=String(dev.cap.bathL); }
-      paintVerify({ name:dev.name||'', type:dev.type||'', cap:capVal, multi:multiVal, fuel:dev.fuel||'', area:(dev.cap&&dev.cap.area)||'' }); }
+      paintVerify({ name:dev.name||'', type:dev.type||'', cap:capVal, fuel:dev.fuel||'', area:(dev.cap&&dev.cap.area)||'' }); }
     else paintVerify({});
   };
 

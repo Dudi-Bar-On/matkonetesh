@@ -129,19 +129,25 @@ test('B3: sous-vide multi-bath + stuffer volume/output-sizes (one device each); 
   await page.waitForSelector('#panel #eqSave');
   expect(await page.evaluate(`!document.querySelector('#panel #eqCapKey')`)).toBe(true);   // no single-capacity field
   await page.fill('#panel #eqName', 'Anova');
-  await page.fill('#panel #eqMulti', '12, 24');
+  // add several bath instances via the chip editor (and remove one to prove add+remove)
+  await page.fill('#panel #eqMultiIn', '12'); await page.click('#panel #eqMultiAdd');
+  await page.fill('#panel #eqMultiIn', '40'); await page.click('#panel #eqMultiAdd');
+  await page.fill('#panel #eqMultiIn', '24'); await page.click('#panel #eqMultiAdd');
+  expect(await page.locator('#panel .eq-multi-chip').count()).toBe(3);
+  await page.locator('#panel .eq-multi-chip .eq-multi-x').last().click();   // chips sort ascending → remove the 40 L
+  expect(await page.locator('#panel .eq-multi-chip').count()).toBe(2);
   await page.click('#panel #eqSave');
   await page.waitForSelector('#panel .eq-dev');
   expect(await page.evaluate(`primaryOf('sousvide').cap.baths`)).toEqual([12, 24]);
   expect(await page.evaluate(`equipByCat('sousvide').length`)).toBe(1);   // one device, not two
-  // stuffer: cylinder volume (single) + output tube sizes (multi)
+  // stuffer: cylinder volume (single) + output tube sizes (multi instances)
   await page.click('#panel #eqAddNew');
   await page.click('#panel [data-eqpick="stuffer"]');
   await page.waitForSelector('#panel #eqSave');
   expect(await page.evaluate(`(document.querySelector('#panel #eqCat')||{}).value`)).toBe('stuffer');
   await page.fill('#panel #eqName', 'LEM 5L');
   await page.fill('#panel #eqCapKey', '5');           // cylinder volume
-  await page.fill('#panel #eqMulti', '16, 20, 26');   // output tube sizes
+  for (const s of ['16', '20', '26']) { await page.fill('#panel #eqMultiIn', s); await page.click('#panel #eqMultiAdd'); }
   await page.click('#panel #eqSave');
   await page.waitForSelector('#panel .eq-dev');
   expect(await page.evaluate(`primaryOf('stuffer').cap.volume`)).toBe(5);
@@ -151,7 +157,7 @@ test('B3: sous-vide multi-bath + stuffer volume/output-sizes (one device each); 
   await page.click('#panel [data-eqpick="vacuum"]');
   await page.waitForSelector('#panel #eqSave');
   expect(await page.evaluate(`(document.querySelector('#panel #eqCat')||{}).value`)).toBe('vacuum');
-  expect(await page.evaluate(`!document.querySelector('#panel #eqCapKey') && !document.querySelector('#panel #eqMulti')`)).toBe(true);
+  expect(await page.evaluate(`!document.querySelector('#panel #eqCapKey') && !document.querySelector('#panel #eqMultiWrap')`)).toBe(true);
   await page.fill('#panel #eqName', 'FoodSaver');
   await page.click('#panel #eqSave');
   await page.waitForSelector('#panel .eq-dev');

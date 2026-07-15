@@ -144,7 +144,7 @@ test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (E
   for (const c of CATS) {
     await page.selectOption('#panel #eqCat', c);
     await page.waitForFunction(`(document.querySelector('#panel #eqCat')||{}).value==='${c}'`);
-    const hasCap = (await page.locator('#panel #eqCapKey').count()) + (await page.locator('#panel #eqMulti').count());   // single capacity and/or multi-value list
+    const hasCap = (await page.locator('#panel #eqCapKey').count()) + (await page.locator('#panel #eqMultiWrap').count());   // single capacity and/or multi-value list
     const hasFuel = await page.locator('#panel #eqvFuel').count();
     expect(hasCap > 0, `cap field for ${c}`).toBe(HAS_CAP[c]);
     expect(hasFuel > 0, `fuel row for ${c}`).toBe(HAS_FUEL[c]);
