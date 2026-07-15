@@ -4913,6 +4913,39 @@ function openGearConcierge(){
       const ap=$("#gcApply"); if(ap) ap.addEventListener('click',function(){ gearConciergeApply(g,level); if(typeof toast==='function') toast(he?'הציוד הוגדר ✓':'Gear set ✓'); if(typeof closePanel==='function') closePanel(); }); }
   });
 }
+// Equipment 2.0 · Slice 1B — AI equipment helper. Curated brand list (offline) + web-grounded spec/model lookup.
+const EQUIP_BRANDS={
+  smoker:['Weber','Traeger','Pit Boss','Masterbuilt','Kamado Joe','Big Green Egg','Oklahoma Joe','Char-Griller','Camp Chef','Bradley'],
+  grill:['Weber','Napoleon','Char-Broil','Broil King','Pit Boss','Kamado Joe','Big Green Egg'],
+  oven:['Ooni','Gozney','Breville','Sage'],
+  sousvide:['Anova','Breville','Inkbird','Instant'],
+  probe:['MEATER','Inkbird','ThermoWorks','Combustion','ThermoPro'],
+  grinder:['LEM','STX','Kitchener','Weston'],
+  stuffer:['LEM','Hakka','Waltons','Kitchener'],
+  other:[]
+};
+function equipAiOn(){ return typeof aiAvail==='function' && aiAvail(); }
+// web-grounded spec lookup → normalized {fuel, cap:{...}, note}. Advisory; user confirms before save.
+async function aiLookupDevice(query, cat){
+  if(!equipAiOn()) throw new Error('no-key');
+  const c=equipCat(cat)||{};
+  const schema='{"fuel":"charcoal|pellet|gas|wood|electric|null","racks":"<number or null>","zones":"<number or null>","channels":"<number or null>","bathL":"<number or null>","note":"<one short line>"}';
+  const task='Look up the cooking-equipment specs for: '+String(query||'')+(cat?(' (category: '+(c.en||cat)+')'):'')+'. Return ONLY orchestration-relevant capacity as JSON: fuel type, number of racks/shelves (smoker/oven), grill heat zones, probe channels, or sous-vide bath litres. Use null for anything not applicable or that you cannot determine.';
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:400, outLang:'en'});
+  const cap={}; ['racks','zones','channels','bathL'].forEach(function(k){ const v=parseInt(raw&&raw[k],10); if(!isNaN(v)&&v>0&&v<1000) cap[k]=v; });
+  const FUELS=['charcoal','pellet','gas','wood','electric'];
+  return { fuel:(raw&&FUELS.indexOf(raw.fuel)>=0)?raw.fuel:'', cap:cap, note:(raw&&typeof raw.note==='string')?raw.note:'' };
+}
+// web-grounded model browse for a brand → array of model-name strings
+async function aiBrandModels(brand, cat){
+  if(!equipAiOn()) throw new Error('no-key');
+  const c=equipCat(cat)||{};
+  const schema='{"models":["<model name>","..."]}';
+  const task='List up to 10 well-known '+(c.en||cat||'cooking equipment')+' models made by "'+String(brand||'')+'". Return ONLY a JSON array of model-name strings, most popular first.';
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.3, maxTokens:400, outLang:'en'});
+  const arr=(raw&&Array.isArray(raw.models))?raw.models:(Array.isArray(raw)?raw:[]);
+  return arr.filter(function(m){return typeof m==='string'&&m.trim();}).slice(0,10);
+}
 function openEquipment(){
   const catOpt=EQUIP_CATS.map(function(c){ return `<option value="${c.cat}">${L(c.he,c.en)}</option>`; }).join('');
   const typeOpts=function(cat){ const c=equipCat(cat)||{types:[]}; return c.types.map(function(tp){return `<option value="${tp}">${t(tp)}</option>`;}).join('')+`<option value="__custom__">${L('אחר…','Other…')}</option>`; };
