@@ -32,10 +32,14 @@ test('Change 2: aiJSON outLang names the target language, not always English', a
   expect(JSON.stringify(await page.evaluate(`window.__cap`))).toContain('ENGLISH');  // English unchanged
 });
 
-test('Change 3: hardcoded toasts render English in English mode', async ({ page }) => {
+test('Change 3: interpolated toasts render English in English mode', async ({ page }) => {
+  // standalone toasts are already dict-covered; interpolated ones (e.g. restore-count) can never be dict keys
   await boot(page);
-  await page.evaluate(`setLang('en'); copyText('hello');`);
-  const txt = await page.evaluate(`(document.querySelector('#toast span')||{}).textContent||''`);
-  expect(txt).toMatch(/copied/i);
+  await page.evaluate(`setLang('en');
+    const blob=new Blob([JSON.stringify({app:'matkonet',data:{'mk-fav':[]}})],{type:'application/json'});
+    importData(new File([blob],'b.json',{type:'application/json'}));`);
+  await page.waitForFunction(`!!((document.querySelector('#toast span')||{}).textContent||'').trim()`);
+  const txt = await page.evaluate(`document.querySelector('#toast span').textContent`);
+  expect(txt).toMatch(/restored/i);
   expect(txt).not.toMatch(/[֐-׿]/);   // no Hebrew characters
 });

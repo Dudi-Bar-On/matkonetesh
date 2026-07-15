@@ -2356,8 +2356,8 @@ function pantryToPlan(pid){
   // set the timeline stage for this item: done→'ready' (serve only), ready→'prepped' (finish only)
   try{ const all=tlState(); all[p.key]=all[p.key]||{method:null}; const tls=(stg==='done')?'ready':'prepped'; all[p.key].stage=tls; all[p.key].ready=(tls==='ready'); tlSetState(all); }catch(e){}
   if(typeof updateCartBadge==='function') updateCartBadge();
-  const ctxName=(typeof menuCtx==='function'&&menuCtx()==='event')?'האירוע':'הבישול';
-  if(typeof toast==='function') toast(`${p.name} נוסף ל${ctxName} · ${stg==='done'?'מוכן להגשה':'רק סיום'}`);
+  const ctxName=(typeof menuCtx==='function'&&menuCtx()==='event')?L('האירוע','the event'):L('הבישול','the cook');
+  if(typeof toast==='function') toast(`${p.name} ${L('נוסף ל','added to ')}${ctxName} · ${stg==='done'?L('מוכן להגשה','ready to serve'):L('רק סיום','finish only')}`);
   if(typeof closePanel==='function') closePanel();
   if(typeof cNavGo==='function') cNavGo('wizard');
   if(typeof cwGo==='function') cwGo(3);
@@ -3584,8 +3584,8 @@ function presetFromCart(){
   items.forEach(k=>{ if(!s.keys.includes(k)) s.keys.push(k); }); // merge, no duplicates
   const added=s.keys.length-before;
   saveMenu(s); renderMenu();
-  toast(items.length? (added?`${added} כרטיסיות מסומנות (✓) נוספו לתפריט`:'כל המסומנות כבר בתפריט')
-                    : 'אין כרטיסיות מסומנות — סמן נתחים עם ＋ בכרטיסים');
+  toast(items.length? (added?`${added} ${L('כרטיסיות מסומנות (✓) נוספו לתפריט','checked cards (✓) added to the menu')}`:L('כל המסומנות כבר בתפריט','All checked cards are already in the menu'))
+                    : L('אין כרטיסיות מסומנות — סמן נתחים עם ＋ בכרטיסים','No checked cards — mark cuts with ＋ on the cards'));
 }
 function swapDish(i){const s=menuState();const cur=s.keys[i];const m=resolveItem(cur);if(!m)return;const cands=recipesInCat(m.cat,s.kosher).filter(k=>k!==cur&&!s.keys.includes(k));if(cands.length){s.keys[i]=cands[Math.floor(Math.random()*cands.length)];saveMenu(s);renderMenu();}}
 function copyText(t){try{if(navigator.clipboard)navigator.clipboard.writeText(t);toast('הרשימה הועתקה ✓');}catch(e){toast('הועתק');}}
@@ -3919,7 +3919,7 @@ function vcSpeak(text, lang){
       else if(s.includes('api-403')||/permission|billing|PERMISSION/i.test(s)) m='מודל ההקראה (TTS) אינו זמין למפתח זה — לרוב דורש הפעלת חיוב (Billing) בפרויקט. ה-AI הטקסטואלי ימשיך לעבוד.';
       else if(s.includes('api-404')||/not found|NOT_FOUND/i.test(s)) m='מודל ההקראה לא נמצא — ייתכן שהשם השתנה בצד Google.';
       else if(s.includes('api-4')) m='מפתח שגוי או בעיה בהרשאה.';
-      if(m) toast('קול Gemini: '+m+' עובר לקול המערכת.');
+      if(m) toast(L('קול Gemini: ','Gemini voice: ')+m+L(' עובר לקול המערכת.',' — switching to the system voice.'));
       sysSpeak(text, L);
     });
   } else sysSpeak(text, L);
@@ -4185,7 +4185,7 @@ function vcToggleMic(){
     rec.onend=()=>{ if(vcRec===rec && !rec._stop){ setTimeout(()=>{ try{rec.start();}catch(err){} },250); } };  // לולאת one-shot
     rec.start(); vcRender();
     vcSpeak(vcLang()==='en'?'Listening. Say: next, back, read again, details, temperature — or ask a question.':'מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.', vcAnsLang());
-  }catch(e){ vcRec=null; toast('לא ניתן להפעיל מיקרופון: '+e.message); } };
+  }catch(e){ vcRec=null; toast(L('לא ניתן להפעיל מיקרופון: ','Could not start the microphone: ')+e.message); } };
   if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
       stream.getTracks().forEach(t=>t.stop());   // שחרר — רק ההרשאה חשובה
@@ -4763,7 +4763,7 @@ function renderTimelinePanel(){
     list.querySelectorAll('[data-tlstage]').forEach(b=>b.addEventListener('click',()=>{
       const all=tlState(); const k=b.dataset.k; const stg=b.dataset.tlstage;
       all[k]=all[k]||{method:null}; all[k].stage=stg; all[k].ready=(stg==='ready'); tlSetState(all); buildList();
-      if(stg==='prepped'||stg==='ready'){ try{ const match=pantry().find(pp=>pp.key===k && (projStage(pp)==='ready'||projStage(pp)==='done')); if(match && typeof toast==='function') toast('💡 יש "'+match.name+'" מוכן במזווה — אפשר לגשר ממנו'); }catch(e){} }
+      if(stg==='prepped'||stg==='ready'){ try{ const match=pantry().find(pp=>pp.key===k && (projStage(pp)==='ready'||projStage(pp)==='done')); if(match && typeof toast==='function') toast(L('💡 יש "','💡 There is "')+match.name+L('" מוכן במזווה — אפשר לגשר ממנו','" ready in the pantry — you can bridge from it')); }catch(e){} }
       if(stg==='scratch'){ const meta=resolveItem(k); const sb2=itemScratchBuild(meta); if(sb2){ const sp=splitPhases(sb2.phases); const rest=sp.ahead.find(p=>/24|48|לילה/.test(p.label+p.body)); if(rest && typeof toast==='function') toast('⚠ שים לב: יש שלב יישון ארוך (24-48ש) — כדאי להתחיל יום-יומיים מראש'); } }
     }));
     list.querySelectorAll('[data-tlready]').forEach(b=>b.addEventListener('click',()=>{
@@ -4830,8 +4830,8 @@ function importData(file){
     favs=new Set(store.get('mk-fav')||[]);
     applyAppearance(); updateFavBadge(); updateCartBadge(); render();
     if(typeof toast==='function'){
-      if(fail>0) toast(`⚠ שוחזרו ${ok} מתוך ${keys.length} פריטים — ${fail} נכשלו (ייתכן שהאחסון מלא). ייצא-מחדש אחרי פינוי מקום.`);
-      else toast(`✓ הנתונים שוחזרו (${ok} פריטים)`);
+      if(fail>0) toast('⚠ '+L('שוחזרו','Restored')+' '+ok+' '+L('מתוך','of')+' '+keys.length+' '+L('פריטים','items')+' — '+fail+' '+L('נכשלו (ייתכן שהאחסון מלא). ייצא-מחדש אחרי פינוי מקום.','failed (storage may be full). Re-export after freeing space.'));
+      else toast('✓ '+L('הנתונים שוחזרו','Data restored')+' ('+ok+' '+L('פריטים','items')+')');
     }
   };
   r.onerror=()=>{ if(typeof toast==='function')toast('❌ שגיאה בקריאת הקובץ'); };
