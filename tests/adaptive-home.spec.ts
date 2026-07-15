@@ -236,7 +236,7 @@ test('adaptive home Phase 4: gear banner <-> chip stay symmetric across (un)conf
   expect(await page.evaluate(`!!document.querySelector('#cGearBanner #gearBanner')`)).toBe(true);
   expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#cGearBanner').textContent`) as string)).toBe(false);   // English, no leak
   await page.click('#cGearBanner #gearBanner');   // opens the equipment manager
-  await page.waitForSelector('#panel.open #eqAdd');
+  await page.waitForSelector('#panel.open #eqAddNew');
   await page.evaluate(`closePanel()`);
   // re-configure → chip returns, banner clears again
   await page.evaluate(`(function(){ store.set('mk-equip-set',true); cRefreshHome(); })()`); await page.waitForTimeout(80);

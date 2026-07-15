@@ -62,17 +62,19 @@ test('T4: concierge writes device entries into mk-equipment', async ({ page }) =
 test('T5: manager adds/removes devices; settings opens it', async ({ page }) => {
   await boot(page);
   await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqAdd');
+  await page.waitForSelector('#panel #eqManual');   // empty state
+  await page.click('#panel #eqManual');              // → add form
+  await page.waitForSelector('#panel #eqSave');
   await page.selectOption('#panel #eqCat', 'smoker');
   await page.selectOption('#panel #eqType', 'פלטים');
   await page.fill('#panel #eqName', 'My Traeger');
   await page.fill('#panel #eqCapKey', '2');
-  await page.click('#panel #eqAdd');
-  await page.waitForSelector('#panel .eq-card');
+  await page.click('#panel #eqSave');
+  await page.waitForSelector('#panel .eq-dev');
   expect(await page.evaluate(`equipByCat('smoker').length`)).toBe(1);
   expect(await page.evaluate(`primaryOf('smoker').cap.racks`)).toBe(2);
   expect(await page.evaluate(`equipConfigured()`)).toBe(true);
-  await page.click('#panel .eq-rm');
+  await page.click('#panel [data-eqrm]');            // remove
   expect(await page.evaluate(`equipByCat('smoker').length`)).toBe(0);
   expect(await page.evaluate(`typeof openEquipment==='function' && typeof openGear==='undefined'`)).toBe(true);
 });
@@ -90,23 +92,25 @@ test('B1: aiLookupDevice + aiBrandModels normalize AI output; no-key guarded', a
   expect(await page.evaluate(`aiLookupDevice('x','smoker').then(()=>'ok').catch(e=>String(e.message))`)).toContain('no-key');
 });
 
-test('B2: in-place edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) => {
+test('B2: edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) => {
   await boot(page);
   await page.evaluate(`equipSave([{id:'eq-1',cat:'smoker',type:'פלטים',name:'Old Name',cap:{racks:1}}]); equipSetConfigured();`);
-  // no key → AI buttons hidden
+  // no key: open the edit form → no AI buttons
   await page.evaluate(`store.set('mk-gemkey',''); openEquipment();`);
-  await page.waitForSelector('#panel #eqAdd');
-  expect(await page.evaluate(`!document.querySelector('#panel #eqLookup')`)).toBe(true);
-  // edit the device in place
+  await page.waitForSelector('#panel [data-eqedit="eq-1"]');
   await page.click('#panel [data-eqedit="eq-1"]');
+  await page.waitForSelector('#panel #eqSave');
+  expect(await page.evaluate(`!document.querySelector('#panel #eqLookup')`)).toBe(true);
   await page.waitForFunction(`(document.querySelector('#panel #eqName')||{}).value==='Old Name'`);
   await page.fill('#panel #eqName','New Name');
-  await page.click('#panel #eqAdd');   // Save
+  await page.click('#panel #eqSave');
   await page.waitForTimeout(120);
   expect(await page.evaluate(`equipList().length`)).toBe(1);   // updated, not duplicated
   expect(await page.evaluate(`equipList()[0].name`)).toBe('New Name');
-  // with key → AI lookup appears + prefills capacity
+  // with key: add a new device via the AI lookup
   await page.evaluate(`store.set('mk-gemkey','k'); window.__aiMock={fuel:'pellet',racks:4,note:'x'}; openEquipment();`);
+  await page.waitForSelector('#panel #eqAddNew');
+  await page.click('#panel #eqAddNew');
   await page.waitForSelector('#panel #eqLookup');
   await page.selectOption('#panel #eqCat','smoker');
   await page.fill('#panel #eqName','Traeger Ironwood');
