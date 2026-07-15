@@ -5083,7 +5083,13 @@ function t(heb, fallback){ const d=getDict(); if(d && d[heb]!=null) return d[heb
 // authored inline with its English counterpart; the active language picks which one is emitted. Falls
 // back to `en` for any non-Hebrew language (French/German/Spanish get English until localized, and the
 // online MT layer can still translate that). Interpolated Hebrew param values should be wrapped in t().
-function L(he, en){ return getLang()==='he' ? he : (en!=null?en:he); }
+function L(he, en){
+  const l=getLang();
+  if(l==='he') return he;
+  if(l==='en') return en!=null?en:he;               // shipped English: inline arg wins → zero regression
+  const d=getDict();                                 // fr/de/es: prefer the per-lang dict, keyed by the Hebrew source
+  return (d && d[he]!=null) ? d[he] : (en!=null?en:he);
+}
 function _reEsc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 function applyI18n(root){ const d=getDict(); if(!d) return; const H=d.__html__||{}; const r=root||document;
   r.querySelectorAll('[data-i18n-html]').forEach(function(el){ const v=H[el.getAttribute('data-i18n-html')]; if(v!=null){ if(el._mkHtml===undefined) el._mkHtml=el.innerHTML; el.innerHTML=v; } });   // remember Hebrew original for restore
