@@ -62,8 +62,8 @@ test('T4: concierge writes device entries into mk-equipment', async ({ page }) =
 test('T5: manager adds/removes devices; settings opens it', async ({ page }) => {
   await boot(page);
   await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqManual');   // empty state
-  await page.click('#panel #eqManual');              // → add form
+  await page.waitForSelector('#panel [data-eqpick="smoker"]');   // empty state: quick-add category chips
+  await page.click('#panel [data-eqpick="smoker"]');              // → add form for smoker
   await page.waitForSelector('#panel #eqSave');
   await page.selectOption('#panel #eqCat', 'smoker');
   await page.selectOption('#panel #eqType', 'פלטים');
@@ -111,7 +111,8 @@ test('B2: edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) 
   // with key: add a new device via the AI lookup
   await page.evaluate(`store.set('mk-gemkey','k'); window.__aiMock={fuel:'pellet',racks:4,note:'x'}; openEquipment();`);
   await page.waitForSelector('#panel #eqAddNew');
-  await page.click('#panel #eqAddNew');
+  await page.click('#panel #eqAddNew');                          // header Add → category picker
+  await page.click('#panel [data-eqpick="smoker"]');             // pick Smoker → the form
   await page.waitForSelector('#panel #eqLookup');
   await page.selectOption('#panel #eqCat','smoker');
   await page.fill('#panel #eqName','Traeger Ironwood');
@@ -120,23 +121,33 @@ test('B2: edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) 
   expect(await page.evaluate(`(document.querySelector('#panel #eqCapKey')||{}).value`)).toBe('4');
 });
 
-test('B3: lookup image URL is https-validated; card photo tile renders + falls back to emoji', async ({ page }) => {
+test('B3: sous-vide holds several bath sizes (one device); vacuum category; Hebrew hides English sub-type hints', async ({ page }) => {
   await boot(page);
-  await page.evaluate(`store.set('mk-gemkey','k'); window.__aiMock={fuel:'charcoal',racks:5,img:'https://cdn.example.com/aviya150.jpg',note:''};`);
-  expect((await page.evaluate(`aiLookupDevice('אביה 150','smoker')`) as any).img).toBe('https://cdn.example.com/aviya150.jpg');
-  await page.evaluate(`window.__aiMock={fuel:'charcoal',racks:5,img:'http://insecure.example.com/x.jpg'};`);   // http → rejected (mixed content on the https app)
-  expect((await page.evaluate(`aiLookupDevice('x','smoker')`) as any).img).toBe('');
-  await page.evaluate(`window.__aiMock={fuel:'charcoal',racks:5,img:'not-a-url'}`);
-  expect((await page.evaluate(`aiLookupDevice('x','smoker')`) as any).img).toBe('');
-  await page.evaluate(`store.set('mk-gemkey',''); window.__aiMock=null;`);
-  // a device WITH a valid (data-URI) image renders an .eq-thumb over the tile
-  const okPng = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==';
-  await page.evaluate(`equipSave([{id:'eq-i',cat:'smoker',type:'ארון / קבינט',name:'Aviya 150',cap:{racks:5},specSource:'ai',img:'${okPng}'}]); equipSetConfigured(); openEquipment();`);
-  await page.waitForSelector('#panel .eq-dev .eq-tile .eq-thumb');   // present + stays (valid image)
-  // a device with a BROKEN image self-removes → emoji fallback (no broken-image state)
-  await page.evaluate(`equipSave([{id:'eq-b',cat:'smoker',type:'ארון / קבינט',name:'Broken',cap:{racks:2},img:'data:image/png;base64,ZZZ'}]); openEquipment();`);
+  // one sous-vide circulator used with several bath sizes (12 & 24) — NOT two devices
+  await page.evaluate(`openEquipment();`);
+  await page.click('#panel [data-eqpick="sousvide"]');
+  await page.waitForSelector('#panel #eqSave');
+  await page.fill('#panel #eqName', 'Anova');
+  await page.fill('#panel #eqCapKey', '12, 24');
+  await page.click('#panel #eqSave');
   await page.waitForSelector('#panel .eq-dev');
-  await page.waitForFunction(`document.querySelectorAll('#panel .eq-thumb').length===0`);
+  expect(await page.evaluate(`primaryOf('sousvide').cap.baths`)).toEqual([12, 24]);
+  expect(await page.evaluate(`equipByCat('sousvide').length`)).toBe(1);
+  expect(await page.evaluate(`primaryOf('sousvide').cap.bathL`)).toBeUndefined();
+  // vacuum is its own category with no capacity field
+  await page.click('#panel #eqAddNew');                 // header Add → picker
+  await page.click('#panel [data-eqpick="vacuum"]');
+  await page.waitForSelector('#panel #eqSave');
+  expect(await page.evaluate(`(document.querySelector('#panel #eqCat')||{}).value`)).toBe('vacuum');
+  expect(await page.evaluate(`!document.querySelector('#panel #eqCapKey')`)).toBe(true);   // vacuum has no capacity
+  await page.fill('#panel #eqName', 'FoodSaver');
+  await page.click('#panel #eqSave');
+  await page.waitForSelector('#panel .eq-dev');
+  expect(await page.evaluate(`equipByCat('vacuum').length`)).toBe(1);
+  // typeLabel: in Hebrew strip an English "(hint)", keep a Hebrew one, and map legacy 'other' keys
+  expect(await page.evaluate(`setLang('he'); typeLabel('טבילה (immersion)')`)).toBe('טבילה');
+  expect(await page.evaluate(`typeLabel('גז (עם תיבת עשן)')`)).toBe('גז (עם תיבת עשן)');
+  expect(await page.evaluate(`typeLabel('torch')`)).toBe('מבער / לפיד');
 });
 
 test('C1: cookerFor resolves (single-fit auto, ambiguous→pick, assignment)', async ({ page }) => {

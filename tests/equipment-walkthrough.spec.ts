@@ -36,29 +36,28 @@ const RICH = [
 // ══════════════════════════════════════════════════════════════════════
 // EMPTY view — options (1) quick-chips, (2) add manually, (3) set-it-up-for-me
 // ══════════════════════════════════════════════════════════════════════
-test('EMPTY view: quick-chips, add-manually, set-it-up (EN)', async ({ page }) => {
+test('EMPTY view: quick-add chips (open form), describe-box feedback, set-it-up (EN)', async ({ page }) => {
   await boot(page, { lang: 'en' });
   await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqManual');
   await page.waitForSelector('#panel #eqDescribe');
+  await page.waitForSelector('#panel [data-eqpick="smoker"]');
   await page.screenshot({ path: SHOT + 'en-empty.png' });
 
-  // (1) quick-chip appends its category name to the describe box
-  const chips = page.locator('#panel .eq-egchip[data-eqquick]');
-  expect(await chips.count()).toBeGreaterThan(0);
-  await chips.first().click();
-  const boxVal = await page.locator('#panel #eqDescribe').inputValue();
-  expect(boxVal.trim().length).toBeGreaterThan(0);          // chip text was appended
-
-  // (2) "add manually" opens the form (sheet with the verify card)
-  await page.click('#panel #eqManual');
+  // (1) quick-add chips: 6 categories incl. vacuum; clicking one OPENS its form (not append text)
+  const chips = page.locator('#panel .eq-egchip[data-eqpick]');
+  expect(await chips.count()).toBe(6);
+  expect(await page.locator('#panel [data-eqpick="vacuum"]').count()).toBe(1);
+  await page.click('#panel [data-eqpick="grill"]');
   await page.waitForSelector('#panel #eqSave');
-  await page.waitForSelector('#panel #eqCat');
+  expect(await page.locator('#panel #eqCat').inputValue()).toBe('grill');   // opened the grill form
   expect(await page.locator('#panel .eq-sheet').count()).toBe(1);
 
-  // (3) "Set it up for me" — reopen empty, type a description, build devices, land on list
+  // (3) "Set it up for me" — reopen empty; non-match → inline feedback (no nav); match → builds + list
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel #eqSetup');
+  await page.fill('#panel #eqDescribe', 'zzz qqq nothing');
+  await page.click('#panel #eqSetup');
+  await page.waitForSelector('#panel .eq-setup-msg');       // no-match feedback shown, stayed on the screen
   await page.fill('#panel #eqDescribe', 'a kettle grill and a cheap probe');
   await page.click('#panel #eqSetup');
   await page.waitForSelector('#panel .eq-dev');           // landed on the list
@@ -121,8 +120,12 @@ test('LIST view: header-add, caps banner, concierge, add-another, edit, remove, 
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel .eq-dev');
 
-  // (4) header "＋ Add" opens the form
+  // (4) header "＋ Add" opens the category picker (9 chips incl. vacuum) → pick opens the form
   await page.click('#panel #eqAddNew');
+  await page.waitForSelector('#panel .eq-pickchip[data-eqpick]');
+  expect(await page.locator('#panel .eq-pickchip').count()).toBe(9);
+  expect(await page.locator('#panel .eq-pickchip[data-eqpick="vacuum"]').count()).toBe(1);
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqSave');
   expect(await page.locator('#panel .eq-sheet').count()).toBe(1);
   await page.evaluate(`openEquipment()`);
@@ -143,16 +146,16 @@ test('LIST view: header-add, caps banner, concierge, add-another, edit, remove, 
 test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (EN)', async ({ page }) => {
   await boot(page, { lang: 'en' });
   await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqManual');
-  await page.click('#panel #eqManual');
+  await page.waitForSelector('#panel [data-eqpick="smoker"]');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqSave');
   // no key → no AI lookup controls
   expect(await page.locator('#panel #eqLookup').count()).toBe(0);
 
   // (11) walk ALL 8 categories: cap field present iff capKey; fuel row iff smoker/grill/oven; sub-type opts change
-  const CATS = ['smoker', 'grill', 'oven', 'sousvide', 'probe', 'grinder', 'stuffer', 'other'];
-  const HAS_CAP: Record<string, boolean> = { smoker: true, grill: true, oven: true, sousvide: true, probe: true, grinder: false, stuffer: false, other: false };
-  const HAS_FUEL: Record<string, boolean> = { smoker: true, grill: true, oven: true, sousvide: false, probe: false, grinder: false, stuffer: false, other: false };
+  const CATS = ['smoker', 'grill', 'oven', 'sousvide', 'vacuum', 'probe', 'grinder', 'stuffer', 'other'];
+  const HAS_CAP: Record<string, boolean> = { smoker: true, grill: true, oven: true, sousvide: true, vacuum: false, probe: true, grinder: false, stuffer: false, other: false };
+  const HAS_FUEL: Record<string, boolean> = { smoker: true, grill: true, oven: true, sousvide: false, vacuum: false, probe: false, grinder: false, stuffer: false, other: false };
   let prevTypeOpts = '';
   for (const c of CATS) {
     await page.selectOption('#panel #eqCat', c);
@@ -183,6 +186,7 @@ test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (E
 
   // (13) custom sub-type ("Other…"/__custom__): the typed Name becomes the type
   await page.click('#panel #eqAddNew');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqSave');
   await page.selectOption('#panel #eqCat', 'smoker');
   await page.fill('#panel #eqName', 'Frankenpit');
@@ -194,6 +198,7 @@ test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (E
 
   // (17) Cancel (manual mode) returns to the list
   await page.click('#panel #eqAddNew');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqCancel');
   expect(await page.locator('#panel #eqRedo').count()).toBe(0);   // manual → Cancel, not Redo
   await page.click('#panel #eqCancel');
@@ -202,6 +207,7 @@ test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (E
 
   // (18) Back (sheet ✕) returns to the list
   await page.click('#panel #eqAddNew');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqBack');
   await page.click('#panel #eqBack');
   await page.waitForSelector('#panel .eq-dev');
@@ -214,8 +220,8 @@ test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (E
 test('FORM AI (mock): lookup verify+save, browse catalogue, redo (EN)', async ({ page }) => {
   await boot(page, { lang: 'en', key: 'k' });
   await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqManual');
-  await page.click('#panel #eqManual');
+  await page.waitForSelector('#panel [data-eqpick="smoker"]');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqLookup');       // key present → AI controls render
 
   // (14) AI lookup path — mock the web result, look up, verify card fills green+✨, then Save as ai
@@ -256,6 +262,7 @@ test('FORM AI (mock): lookup verify+save, browse catalogue, redo (EN)', async ({
 
   // (15) Browse models (mock {models:[{name,spec}]}) → catalogue cards WITH spec line + "or pick" divider
   await page.click('#panel #eqAddNew');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqModels');
   await page.evaluate(`window.__aiMock={models:[{name:'Pro 575',spec:'Pellet · 2 racks · 22"'},{name:'Ironwood 885',spec:'Pellet · 3 racks'}]};`);
   await page.selectOption('#panel #eqCat', 'smoker');
@@ -313,12 +320,12 @@ test('HEBREW RTL: empty/list/form + verify + catalogue mirror (HE)', async ({ pa
 
   // HE empty (transient — reachable by clearing devices)
   await page.evaluate(`equipSave([]); openEquipment();`);
-  await page.waitForSelector('#panel #eqManual');
+  await page.waitForSelector('#panel [data-eqpick="smoker"]');
   expect(await page.locator('#panel .eq-con-h').textContent()).toContain('הציוד שלך');
   await page.screenshot({ path: SHOT + 'he-empty.png' });
 
   // HE form + AI verify card (mock) + catalogue
-  await page.click('#panel #eqManual');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqLookup');
   expect(await page.locator('#panel .eq-step-l').first().textContent()).toContain('קטגוריה');
   await page.evaluate(`window.__aiMock={subtype:'פלטים',fuel:'pellet',racks:3,area:'575 in²',note:'נירוסטה'};`);
@@ -343,8 +350,8 @@ test('HEBREW RTL: empty/list/form + verify + catalogue mirror (HE)', async ({ pa
 test('אביה 150 (a) MANUAL: cabinet smoker, 5 racks, charcoal (HE)', async ({ page }) => {
   await boot(page, { lang: 'he' });
   await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqManual');
-  await page.click('#panel #eqManual');
+  await page.waitForSelector('#panel [data-eqpick="smoker"]');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqSave');
   await page.selectOption('#panel #eqCat', 'smoker');
   await page.fill('#panel #eqName', 'הנפח אביה 150');
@@ -373,8 +380,8 @@ test('אביה 150 (b) LOOKUP FLOW (mock): verify card fills, saved as ai (HE)',
   await boot(page, { lang: 'he', key: 'k' });
   await page.evaluate(`window.__aiMock={ subtype:'ארון / קבינט', fuel:'charcoal', racks:5, area:'150×60 cm', note:'3mm walls · separate firebox · ~60kg / 5 removable shelves' };`);
   await page.evaluate(`openEquipment()`);
-  await page.waitForSelector('#panel #eqManual');
-  await page.click('#panel #eqManual');
+  await page.waitForSelector('#panel [data-eqpick="smoker"]');
+  await page.click('#panel [data-eqpick="smoker"]');
   await page.waitForSelector('#panel #eqLookup');
   await page.selectOption('#panel #eqCat', 'smoker');
   await page.fill('#panel #eqLookupQ', 'אביה 150');
