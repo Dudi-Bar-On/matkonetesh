@@ -29,8 +29,8 @@ test('W3-P1: gear concierge — natural-language setup (local parser)', async ({
   await page.waitForSelector('#panel .gc-preview');
   await page.click('#panel #gcApply');
   await page.waitForTimeout(150);
-  expect(await page.evaluate(`gearState().smoker`)).toContain('פלט');
-  expect(await page.evaluate(`gearState().thermo`)).toContain('אלחוטי');
+  expect(await page.evaluate(`primaryOf('smoker').type`)).toContain('פלט');
+  expect(await page.evaluate(`primaryOf('probe').type`)).toContain('אלחוטי');
 });
 
 test('W3-P2: charcuterie safety guardian — weight-loss + nitrite checks', async ({ page }) => {

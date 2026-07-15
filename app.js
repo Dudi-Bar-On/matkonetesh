@@ -4905,10 +4905,15 @@ function levelFromText(s, g){ s=String(s||'').toLowerCase();
   return 'mid';
 }
 function gearConciergeApply(g, level){
-  const cur=Object.assign({}, (typeof gearState==='function')?gearState():{});
-  ['smoker','grill','sousvide','vacuum','thermo','grinder','stuffer','injector'].forEach(function(k){ if(!(k in cur)) cur[k]='אין'; });
-  Object.keys(g||{}).forEach(function(k){ cur[k]=g[k]; });
-  if(typeof saveGear==='function') saveGear(cur); if(typeof gearSetConfigured==='function') gearSetConfigured();
+  const CORE={smoker:'smoker', grill:'grill', sousvide:'sousvide', thermo:'probe', grinder:'grinder', stuffer:'stuffer'};
+  const list=equipList();
+  Object.keys(g||{}).forEach(function(k){
+    const v=g[k]; if(!v || v==='אין') return;
+    const cat=CORE[k]||'other', type=CORE[k]?v:k;
+    if(list.some(function(d){ return d.cat===cat && d.type===type; })) return;   // no duplicates
+    list.push({id:equipId(), cat:cat, type:type, name:v, brand:'', model:'', fuel:'', cap:{}, specSource:'manual', notes:''});
+  });
+  equipSave(list); equipSetConfigured();
   if(level) store.set('mk-uilevel', level);
   if(typeof cRefreshHome==='function') cRefreshHome();
 }
