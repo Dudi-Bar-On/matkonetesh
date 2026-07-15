@@ -121,30 +121,42 @@ test('B2: edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) 
   expect(await page.evaluate(`(document.querySelector('#panel #eqCapKey')||{}).value`)).toBe('4');
 });
 
-test('B3: sous-vide holds several bath sizes (one device); vacuum category; Hebrew hides English sub-type hints', async ({ page }) => {
+test('B3: sous-vide multi-bath + stuffer volume/output-sizes (one device each); vacuum no-capacity; Hebrew sub-type labels', async ({ page }) => {
   await boot(page);
-  // one sous-vide circulator used with several bath sizes (12 & 24) — NOT two devices
+  // one sous-vide circulator, several bath sizes (12 & 24) → one device, multi-value list
   await page.evaluate(`openEquipment();`);
   await page.click('#panel [data-eqpick="sousvide"]');
   await page.waitForSelector('#panel #eqSave');
+  expect(await page.evaluate(`!document.querySelector('#panel #eqCapKey')`)).toBe(true);   // no single-capacity field
   await page.fill('#panel #eqName', 'Anova');
-  await page.fill('#panel #eqCapKey', '12, 24');
+  await page.fill('#panel #eqMulti', '12, 24');
   await page.click('#panel #eqSave');
   await page.waitForSelector('#panel .eq-dev');
   expect(await page.evaluate(`primaryOf('sousvide').cap.baths`)).toEqual([12, 24]);
-  expect(await page.evaluate(`equipByCat('sousvide').length`)).toBe(1);
-  expect(await page.evaluate(`primaryOf('sousvide').cap.bathL`)).toBeUndefined();
-  // vacuum is its own category with no capacity field
-  await page.click('#panel #eqAddNew');                 // header Add → picker
+  expect(await page.evaluate(`equipByCat('sousvide').length`)).toBe(1);   // one device, not two
+  // stuffer: cylinder volume (single) + output tube sizes (multi)
+  await page.click('#panel #eqAddNew');
+  await page.click('#panel [data-eqpick="stuffer"]');
+  await page.waitForSelector('#panel #eqSave');
+  expect(await page.evaluate(`(document.querySelector('#panel #eqCat')||{}).value`)).toBe('stuffer');
+  await page.fill('#panel #eqName', 'LEM 5L');
+  await page.fill('#panel #eqCapKey', '5');           // cylinder volume
+  await page.fill('#panel #eqMulti', '16, 20, 26');   // output tube sizes
+  await page.click('#panel #eqSave');
+  await page.waitForSelector('#panel .eq-dev');
+  expect(await page.evaluate(`primaryOf('stuffer').cap.volume`)).toBe(5);
+  expect(await page.evaluate(`primaryOf('stuffer').cap.nozzles`)).toEqual([16, 20, 26]);
+  // vacuum: its own category, no capacity of any kind
+  await page.click('#panel #eqAddNew');
   await page.click('#panel [data-eqpick="vacuum"]');
   await page.waitForSelector('#panel #eqSave');
   expect(await page.evaluate(`(document.querySelector('#panel #eqCat')||{}).value`)).toBe('vacuum');
-  expect(await page.evaluate(`!document.querySelector('#panel #eqCapKey')`)).toBe(true);   // vacuum has no capacity
+  expect(await page.evaluate(`!document.querySelector('#panel #eqCapKey') && !document.querySelector('#panel #eqMulti')`)).toBe(true);
   await page.fill('#panel #eqName', 'FoodSaver');
   await page.click('#panel #eqSave');
   await page.waitForSelector('#panel .eq-dev');
   expect(await page.evaluate(`equipByCat('vacuum').length`)).toBe(1);
-  // typeLabel: in Hebrew strip an English "(hint)", keep a Hebrew one, and map legacy 'other' keys
+  // typeLabel: Hebrew strips an English "(hint)", keeps a Hebrew one, and maps legacy 'other' keys
   expect(await page.evaluate(`setLang('he'); typeLabel('טבילה (immersion)')`)).toBe('טבילה');
   expect(await page.evaluate(`typeLabel('גז (עם תיבת עשן)')`)).toBe('גז (עם תיבת עשן)');
   expect(await page.evaluate(`typeLabel('torch')`)).toBe('מבער / לפיד');

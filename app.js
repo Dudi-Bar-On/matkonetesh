@@ -35,11 +35,11 @@ const EQUIP_CATS=[
   {cat:'smoker', he:'מעשנה', en:'Smoker', icon:'💨', acc:'#9a6a3a', accL:'#f4e6d6', capEm:'🗄️', types:['ארון / קבינט','אופסט / סטיק-ברנר','פלטים','קמאדו / קרמי','WSM / חבית','קטל (ככלי עישון)','גז (עם תיבת עשן)','חשמלי'], capKey:'racks', capHe:'מדפים/שבכות', capEn:'racks/grates'},
   {cat:'grill', he:'גריל', en:'Grill', icon:'🔥', acc:'#e76f51', accL:'#f9ddd3', capEm:'🔥', types:['פחם','גז','קטל','פלנצ׳ה / פלטה','לבה / אינפרא'], capKey:'zones', capHe:'אזורי חום', capEn:'heat zones'},
   {cat:'oven', he:'תנור', en:'Oven', icon:'♨️', acc:'#f4a261', accL:'#fde9d6', capEm:'🗄️', types:['ביתי','דק','פיצה'], capKey:'racks', capHe:'מדפים', capEn:'racks'},
-  {cat:'sousvide', he:'סו-ויד', en:'Sous-vide', icon:'🌊', acc:'#2b7fb8', accL:'#dcecf6', capEm:'🛁', types:['טבילה (immersion)','מיכל ייעודי'], capKey:'bathL', capHe:'נפח אמבט (ל׳)', capEn:'bath litres'},
+  {cat:'sousvide', he:'סו-ויד', en:'Sous-vide', icon:'🌊', acc:'#2b7fb8', accL:'#dcecf6', capEm:'', types:['טבילה (immersion)','מיכל ייעודי'], capKey:null, multiCap:{key:'baths', he:'נפחי אמבט (ל׳)', en:'Bath sizes (L)', uHe:'ל׳', uEn:'L', em:'🛁'}},
   {cat:'vacuum', he:'ואקום', en:'Vacuum', icon:'🗜️', acc:'#7a8a5c', accL:'#e6ecda', capEm:'', types:['שקית חיצונית (edge)','חדר (chamber)','ידני / משאבה'], capKey:null},
   {cat:'probe', he:'מדחום', en:'Probe', icon:'🌡️', acc:'#1a9a7a', accL:'#d8f0e8', capEm:'🔌', types:['מיידי (instant-read)','פרוב נעוץ','פרוב אלחוטי','בקר-מאוורר'], capKey:'channels', capHe:'ערוצים', capEn:'channels'},
   {cat:'grinder', he:'מטחנת בשר', en:'Grinder', icon:'🥩', acc:'#b5651d', accL:'#f6e3cf', capEm:'', types:['ייעודית','מתאם למיקסר'], capKey:null},
-  {cat:'stuffer', he:'מכונת מילוי', en:'Stuffer', icon:'🌭', acc:'#b5651d', accL:'#f6e3cf', capEm:'', types:['אנכית','אופקית','מזרק / משפך ידני'], capKey:null},
+  {cat:'stuffer', he:'מכונת מילוי', en:'Stuffer', icon:'🌭', acc:'#b5651d', accL:'#f6e3cf', capEm:'🛢️', types:['אנכית','אופקית','מזרק / משפך ידני'], capKey:'volume', capHe:'נפח צילינדר (ל׳)', capEn:'cylinder (L)', multiCap:{key:'nozzles', he:'קטרי פייה (מ״מ)', en:'Output sizes (mm)', uHe:'מ״מ', uEn:'mm', em:'🔩'}},
   {cat:'other', he:'אחר', en:'Other', icon:'🧰', acc:'#8a6f5c', accL:'#efe6dd', capEm:'', types:[], capKey:null},
 ];
 function equipCat(cat){ return EQUIP_CATS.find(function(c){return c.cat===cat;})||null; }
@@ -5045,8 +5045,9 @@ function openEquipment(){
   const brandOpts=function(cat){ return (EQUIP_BRANDS[cat]||[]).map(function(b){return `<option value="${esc(b)}">`;}).join(''); };
   const fuelOpts=function(sel){ return [['','—'],['charcoal',fuelLabel('charcoal')],['wood',fuelLabel('wood')],['pellet',fuelLabel('pellet')],['gas',fuelLabel('gas')],['electric',fuelLabel('electric')]].map(function(o){return `<option value="${o[0]}" ${o[0]===sel?'selected':''}>${o[1]}</option>`;}).join(''); };
   const chipsFor=function(d){ const c=cm(d.cat); let s='';
-    if(d.cat==='sousvide'){ const arr=(d.cap&&Array.isArray(d.cap.baths)&&d.cap.baths.length)?d.cap.baths:((d.cap&&d.cap.bathL!=null)?[d.cap.bathL]:[]); if(arr.length) s+=`<span class="eq-chip spec">🛁 ${esc(arr.join(' · ')+' '+L('ל׳','L'))}</span>`; }
-    else if(c.capKey && d.cap && d.cap[c.capKey]!=null) s+=`<span class="eq-chip spec">${c.capEm?c.capEm+' ':''}${esc(d.cap[c.capKey]+' '+L(c.capHe,c.capEn))}</span>`;
+    if(c.capKey && d.cap && d.cap[c.capKey]!=null) s+=`<span class="eq-chip spec">${c.capEm?c.capEm+' ':''}${esc(d.cap[c.capKey]+' '+L(c.capHe,c.capEn))}</span>`;
+    if(c.multiCap){ const mk=c.multiCap; let arr=(d.cap&&Array.isArray(d.cap[mk.key])&&d.cap[mk.key].length)?d.cap[mk.key]:[]; if(!arr.length && mk.key==='baths' && d.cap && d.cap.bathL!=null) arr=[d.cap.bathL];   // legacy single bathL
+      if(arr.length) s+=`<span class="eq-chip spec">${mk.em?mk.em+' ':''}${esc(arr.join(' · ')+' '+L(mk.uHe,mk.uEn))}</span>`; }
     if(d.fuel) s+=`<span class="eq-chip"><span class="em">${FUEL_EMOJI[d.fuel]||''}</span> ${esc(fuelLabel(d.fuel))}</span>`;
     return s; };
   // mockup .gl-head — Settings kicker + My Equipment title + optional sub + inline Add; .x auto-wires to closePanel
@@ -5126,8 +5127,8 @@ function openEquipment(){
       if(editId){ d=list2.find(function(x){return x.id===editId;}); if(!d){ editId=null; return drawList(); } }
       else { d={id:equipId(),cat:nc,type:type,name:nm,brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''}; list2.push(d); }
       d.cat=nc; d.type=type; d.name=nm; d.cap=d.cap||{};
-      if(nc==='sousvide'){ const baths=(($("#eqCapKey")||{}).value||'').split(/[^\d]+/).map(function(x){return parseInt(x,10);}).filter(function(n){return !isNaN(n)&&n>0&&n<10000;}); if(baths.length) d.cap.baths=baths; else delete d.cap.baths; delete d.cap.bathL; }   // one circulator, several bath sizes you alternate between
-      else if(cc.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) d.cap[cc.capKey]=v; else delete d.cap[cc.capKey]; }
+      if(cc.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) d.cap[cc.capKey]=v; else delete d.cap[cc.capKey]; }
+      if(cc.multiCap){ const arr=(($("#eqMulti")||{}).value||'').split(/[^\d.]+/).map(function(x){return parseFloat(x);}).filter(function(n){return !isNaN(n)&&n>0&&n<100000;}); if(arr.length) d.cap[cc.multiCap.key]=arr; else delete d.cap[cc.multiCap.key]; if(cc.multiCap.key==='baths') delete d.cap.bathL; }   // sousvide bath sizes / stuffer output-tube sizes
       const fEl=$("#eqvFuel"); if(fEl) d.fuel=fEl.value||''; else if(['smoker','grill','oven'].indexOf(nc)<0) d.fuel='';
       const aEl=$("#eqvArea"); if(aEl){ const av=(aEl.value||'').trim(); if(av) d.cap.area=av; else delete d.cap.area; }
       if(vmode==='ai') d.specSource='ai';
@@ -5141,21 +5142,21 @@ function openEquipment(){
     };
     const paintVerify=function(data){
       const nc=($("#eqCat")||{}).value||curCat; const cc=capC(nc);
-      const showFuel=['smoker','grill','oven'].indexOf(nc)>=0; const isSV=(nc==='sousvide');
+      const showFuel=['smoker','grill','oven'].indexOf(nc)>=0;
       const ai=(vmode==='ai'); const fc=ai?' eq-aifilled':''; const sp=ai?' <span class="sp">✨</span>':'';
       const d=data||{};
       const nameField=`<div class="eq-vfield"><label>${L('שם','Name')}${sp}</label><input id="eqName" class="eq-vin${fc}" placeholder="${L('שם המכשיר','Device name')}" value="${d.name!=null?esc(d.name):''}"></div>`;
       const typeField=`<div class="eq-vfield"><label>${L('תת-סוג','Sub-type')}${sp}</label><select id="eqType" class="eq-vin${fc}">${typeOpts(nc, d.type)}</select></div>`;
-      const capField=cc.capKey?(isSV
-        ? `<div class="eq-vfield"><label>${L('נפחי אמבט (ל׳)','Bath sizes (L)')}${sp}</label><input id="eqCapKey" class="eq-vin${fc}" placeholder="${L('לדוגמה 12, 24','e.g. 12, 24')}" value="${(d.cap!=null&&d.cap!=='')?esc(d.cap):''}"></div>`
-        : `<div class="eq-vfield"><label>${L(cc.capHe,cc.capEn)}${sp}</label><input type="number" min="0" inputmode="numeric" id="eqCapKey" class="eq-vin${fc}" value="${(d.cap!=null&&d.cap!=='')?esc(d.cap):''}"></div>`):'';
-      const grid=`<div class="eq-vrow">${typeField}${capField}</div>`;
+      const capField=cc.capKey?`<div class="eq-vfield"><label>${L(cc.capHe,cc.capEn)}${sp}</label><input type="number" min="0" inputmode="numeric" id="eqCapKey" class="eq-vin${fc}" value="${(d.cap!=null&&d.cap!=='')?esc(d.cap):''}"></div>`:'';
+      const multiField=cc.multiCap?`<div class="eq-vfield"><label>${L(cc.multiCap.he,cc.multiCap.en)}${sp}</label><input id="eqMulti" class="eq-vin${fc}" placeholder="${cc.multiCap.key==='baths'?L('לדוגמה 12, 24','e.g. 12, 24'):L('לדוגמה 16, 20, 26','e.g. 16, 20, 26')}" value="${(d.multi!=null&&d.multi!=='')?esc(d.multi):''}"></div>`:'';
+      const grid=`<div class="eq-vrow">${typeField}${cc.capKey?capField:multiField}</div>`;
+      const extraMulti=(cc.capKey&&cc.multiCap)?multiField:'';   // stuffer: cylinder volume in the grid + output tube sizes full-width below
       const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div><div class="eq-vfield"><label>${L('שטח בישול','Cooking area')}${sp}</label><input id="eqvArea" class="eq-vin${fc}" placeholder="${L('לדוגמה 575 in²','e.g. 575 in²')}" value="${d.area?esc(d.area):''}"></div></div>`:'';
       const heading=ai?`<div class="eq-verify-h"><span>✨</span> ${L('הנה מה שמצאתי — ','Here’s what I found — ')}<b>${L('אמת ושמור','verify & save')}</b></div>`:`<div class="eq-verify-h">${dev?L('פרטי המכשיר','Device details'):L('פרטים','Details')}</div>`;
       const src=ai?`<p class="eq-v-src">${L('<b>✨ מולא אוטומטית</b> ממקורות רשת. גע בכל שדה כדי לשנות — <b>עדיין לא נשמר.</b>','<b>✨ Auto-filled</b> from web sources. Tap any field to change it — <b>nothing is saved yet.</b>')}</p>`:'';
       const saveLbl=dev?L('שמור','Save'):(ai?L('נראה טוב — שמור','Looks right — save'):L('הוסף','Add'));
       const acts=`<div class="eq-v-acts"><button id="eqSave" class="eq-con-go" type="button">${saveLbl}</button>${ai?`<button id="eqRedo" class="eq-ghost" type="button">↺ ${L('אפס','Redo')}</button>`:`<button id="eqCancel" class="eq-ghost" type="button">${L('בטל','Cancel')}</button>`}</div>`;
-      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+fuelRow+src+acts; wireVerify(); }
+      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+extraMulti+fuelRow+src+acts; wireVerify(); }
       const st=$("#eqSheetTile"); if(st) st.textContent=equipTypeIcon(nc, d.type||((cm(nc).types||[])[0]));
     };
 
@@ -5171,7 +5172,8 @@ function openEquipment(){
       if(!q){ note(L('הקלד שם/דגם קודם','Type a name/model first')); return; }
       note(L('מחפש באינטרנט…','Searching the web…'));
       aiLookupDevice(q, nc).then(function(r){ vmode='ai'; const cc=capC(nc);
-        paintVerify({ name:q, type:r.subtype||'', cap:(cc.capKey&&r.cap&&r.cap[cc.capKey]!=null)?r.cap[cc.capKey]:'', fuel:r.fuel||'', area:r.area||'' });
+        const multiAI=(cc.multiCap&&cc.multiCap.key==='baths'&&r.cap&&r.cap.bathL!=null)?String(r.cap.bathL):'';
+        paintVerify({ name:q, type:r.subtype||'', cap:(cc.capKey&&r.cap&&r.cap[cc.capKey]!=null)?r.cap[cc.capKey]:'', multi:multiAI, fuel:r.fuel||'', area:r.area||'' });
         note('✨ '+(r.note||L('נמצא — אמת ושמור','Found — verify & save')), 'ok');
       }).catch(function(e){ const m=String(e&&e.message||e); note(m.indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל — מלא ידנית','Lookup failed — fill by hand')); });
     });
@@ -5188,8 +5190,10 @@ function openEquipment(){
     });
     const back=$("#eqBack"); if(back) back.addEventListener('click', function(){ editId=null; drawList(); });
     if(dev){ const cc=capC(dev.cat);
-      const svCap=(dev.cat==='sousvide')?((dev.cap&&Array.isArray(dev.cap.baths)&&dev.cap.baths.length)?dev.cap.baths.join(', '):(dev.cap&&dev.cap.bathL!=null?String(dev.cap.bathL):'')):((cc.capKey&&dev.cap&&dev.cap[cc.capKey]!=null)?dev.cap[cc.capKey]:'');
-      paintVerify({ name:dev.name||'', type:dev.type||'', cap:svCap, fuel:dev.fuel||'', area:(dev.cap&&dev.cap.area)||'' }); }
+      const capVal=(cc.capKey&&dev.cap&&dev.cap[cc.capKey]!=null)?dev.cap[cc.capKey]:'';
+      let multiVal='';
+      if(cc.multiCap){ const mk=cc.multiCap.key; if(dev.cap&&Array.isArray(dev.cap[mk])&&dev.cap[mk].length) multiVal=dev.cap[mk].join(', '); else if(mk==='baths'&&dev.cap&&dev.cap.bathL!=null) multiVal=String(dev.cap.bathL); }
+      paintVerify({ name:dev.name||'', type:dev.type||'', cap:capVal, multi:multiVal, fuel:dev.fuel||'', area:(dev.cap&&dev.cap.area)||'' }); }
     else paintVerify({});
   };
 
