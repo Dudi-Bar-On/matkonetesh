@@ -3294,12 +3294,19 @@ async function aiJSON(opts){
   const outLang=(opts&&opts.outLang) || (typeof getLang==='function'?getLang():'he');
   const langLine=(outLang==='he')?'':('\n\nIMPORTANT: write every human-readable string VALUE (reason/note/summary/rationale/tip/warning/text/title/desc) in '+(LANGNAME[outLang]||'English').toUpperCase()+'. Keep every key and id EXACTLY as provided.');
   const userText=(grounding?grounding+'\n\n':'')+'משימה: '+(task||'')+(schemaHint?('\n\nהחזר JSON במבנה הבא בדיוק:\n'+schemaHint):'')+langLine;
-  const mkBody=()=>({
-    system_instruction:{parts:[{text:AI_JSON_SYS}]},
-    contents:[{role:'user',parts:[{text:userText}]}],
-    tools: search?[{google_search:{}}]:undefined,
-    generationConfig:{temperature,maxOutputTokens:maxTokens,thinkingConfig:{thinkingBudget:0},responseMimeType:'application/json'}
-  });
+  const mkBody=()=>{
+    // Gemini rejects responseMimeType:'application/json' together with the google_search tool (HTTP 400).
+    // When grounding, omit JSON-mode and recover the JSON from the grounded text via aiStripFences
+    // (AI_JSON_SYS already mandates "return ONLY valid JSON"). Non-search calls keep strict JSON mode.
+    const gen={temperature,maxOutputTokens:maxTokens,thinkingConfig:{thinkingBudget:0}};
+    if(!search) gen.responseMimeType='application/json';
+    return {
+      system_instruction:{parts:[{text:AI_JSON_SYS}]},
+      contents:[{role:'user',parts:[{text:userText}]}],
+      tools: search?[{google_search:{}}]:undefined,
+      generationConfig:gen
+    };
+  };
   const callOnce=async(body)=>{
     const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
     if(!r.ok) throw new Error('api-'+r.status);
@@ -4980,126 +4987,191 @@ const EQUIP_BRANDS={
   stuffer:['LEM','Hakka','Waltons','Kitchener'],
   other:[]
 };
+// per-sub-type tile emoji (mockup uses a distinct icon per device, not one per category)
+const EQUIP_TYPE_ICON={
+  'ארון / קבינט':'🗄️','אופסט / סטיק-ברנר':'📦','פלטים':'🛢️','קמאדו / קרמי':'🥚','WSM / חבית':'🛢️','קטל (ככלי עישון)':'⚫','גז (עם תיבת עשן)':'🔥','חשמלי':'🔌',
+  'פחם':'⚫','גז':'🔥','קטל':'🔥','פלנצ׳ה / פלטה':'🍳','לבה / אינפרא':'🔥',
+  'ביתי':'♨️','דק':'🍕','פיצה':'🍕',
+  'טבילה (immersion)':'🌀','מיכל ייעודי':'🛁',
+  'מיידי (instant-read)':'🌡️','פרוב נעוץ':'🌡️','פרוב אלחוטי':'📡','בקר-מאוורר':'🌬️',
+  'ייעודית':'🥩','מתאם למיקסר':'🥩','אנכית':'🌭','אופקית':'🌭','מזרק / משפך ידני':'💉'
+};
+function equipTypeIcon(cat,type){ return EQUIP_TYPE_ICON[type] || (equipCat(cat)||{}).icon || '🧰'; }
+const FUEL_EMOJI={charcoal:'⚫',wood:'🪵',pellet:'🛢️',gas:'🔥',electric:'🔌'};
 function equipAiOn(){ return typeof aiAvail==='function' && aiAvail(); }
-// web-grounded spec lookup → normalized {fuel, cap:{...}, note}. Advisory; user confirms before save.
+// web-grounded spec lookup → normalized {subtype, fuel, cap:{...}, area, note}. Advisory; user confirms before save.
 async function aiLookupDevice(query, cat){
   if(!equipAiOn()) throw new Error('no-key');
-  const c=equipCat(cat)||{};
-  const schema='{"fuel":"charcoal|pellet|gas|wood|electric|null","racks":"<number or null>","zones":"<number or null>","channels":"<number or null>","bathL":"<number or null>","note":"<one short line>"}';
-  const task='Look up the cooking-equipment specs for: '+String(query||'')+(cat?(' (category: '+(c.en||cat)+')'):'')+'. Return ONLY orchestration-relevant capacity as JSON: fuel type, number of racks/shelves (smoker/oven), grill heat zones, probe channels, or sous-vide bath litres. Use null for anything not applicable or that you cannot determine.';
-  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:400, outLang:'en'});
+  const c=equipCat(cat)||{}; const types=c.types||[];
+  const schema='{"subtype":"<exact string from the sub-type list, or null>","fuel":"charcoal|pellet|gas|wood|electric|null","racks":"<number or null>","zones":"<number or null>","channels":"<number or null>","bathL":"<number or null>","area":"<cooking area incl. unit, e.g. 575 in² or 2400 cm², or null>","note":"<one short factual line>"}';
+  const task='Look up the real, published specs for this cooking device: "'+String(query||'')+'"'+(cat?(' (a '+(c.en||cat)+')'):'')+'. Search the manufacturer or a retailer page. Return ONLY orchestration-relevant data as JSON: '
+    +'best-fit sub-type'+(types.length?(' — return the EXACT string from this list, do NOT translate it: '+JSON.stringify(types)):'')+'; '
+    +'fuel type; number of racks/shelves (smoker/oven); grill heat zones; probe channels; sous-vide bath litres; total cooking area with its unit. Use null for anything not applicable or that you cannot determine.';
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:700, outLang:'en'});
   const cap={}; ['racks','zones','channels','bathL'].forEach(function(k){ const v=parseInt(raw&&raw[k],10); if(!isNaN(v)&&v>0&&v<1000) cap[k]=v; });
   const FUELS=['charcoal','pellet','gas','wood','electric'];
-  return { fuel:(raw&&FUELS.indexOf(raw.fuel)>=0)?raw.fuel:'', cap:cap, note:(raw&&typeof raw.note==='string')?raw.note:'' };
+  const subtype=(raw&&typeof raw.subtype==='string'&&types.indexOf(raw.subtype)>=0)?raw.subtype:'';
+  const area=(raw&&typeof raw.area==='string'&&raw.area.trim()&&raw.area.toLowerCase()!=='null')?raw.area.trim():'';
+  return { subtype:subtype, fuel:(raw&&FUELS.indexOf(raw.fuel)>=0)?raw.fuel:'', cap:cap, area:area, note:(raw&&typeof raw.note==='string')?raw.note:'' };
 }
-// web-grounded model browse for a brand → array of model-name strings
+// web-grounded model browse for a brand → array of {name, spec} for the catalogue cards
 async function aiBrandModels(brand, cat){
   if(!equipAiOn()) throw new Error('no-key');
   const c=equipCat(cat)||{};
-  const schema='{"models":["<model name>","..."]}';
-  const task='List up to 10 well-known '+(c.en||cat||'cooking equipment')+' models made by "'+String(brand||'')+'". Return ONLY a JSON array of model-name strings, most popular first.';
-  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.3, maxTokens:400, outLang:'en'});
+  const schema='{"models":[{"name":"<model name>","spec":"<one short line: fuel · capacity · size / notable feature>"}]}';
+  const task='List up to 8 well-known '+(c.en||cat||'cooking equipment')+' models made by "'+String(brand||'')+'", most popular first. For each, give the model name and a short one-line spec summary (fuel / racks or size / a notable feature).';
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.3, maxTokens:700, outLang:'en'});
   const arr=(raw&&Array.isArray(raw.models))?raw.models:(Array.isArray(raw)?raw:[]);
-  return arr.filter(function(m){return typeof m==='string'&&m.trim();}).slice(0,10);
+  return arr.map(function(m){ if(typeof m==='string') return {name:m,spec:''}; if(m&&typeof m.name==='string') return {name:m.name,spec:(typeof m.spec==='string'?m.spec:'')}; return null; }).filter(function(m){return m&&m.name.trim();}).slice(0,8);
 }
 function openEquipment(){
-  let view='list', editId=null;
+  let editId=null;
   const cm=function(cat){ return equipCat(cat)||{}; };
-  const head=function(){ return toolTop(L('הציוד שלי','My equipment'),L('הכלים שלך — כל מתכון מתאים את עצמו','Your kit — every recipe adapts'),'🧰','#5a7d8c'); };
-  const typeOpts=function(cat){ const c=cm(cat); return (c.types||[]).map(function(tp){return `<option value="${tp}">${t(tp)}</option>`;}).join('')+`<option value="__custom__">${L('אחר…','Other…')}</option>`; };
-  const brandOpts=function(cat){ return (EQUIP_BRANDS[cat]||[]).map(function(b){return `<option value="${b}">`;}).join(''); };
+  const catName=function(cat){ const c=cm(cat); return L(c.he,c.en); };
+  const fuelLabel=function(f){ if(!f) return ''; return L(({charcoal:'פחם',wood:'עץ',pellet:'פלטים',gas:'גז',electric:'חשמל'})[f]||f, ({charcoal:'Charcoal',wood:'Wood',pellet:'Pellet',gas:'Gas',electric:'Electric'})[f]||f); };
+  const typeOpts=function(cat,sel){ const c=cm(cat); return (c.types||[]).map(function(tp){return `<option value="${esc(tp)}" ${tp===sel?'selected':''}>${esc(t(tp))}</option>`;}).join('')+`<option value="__custom__" ${sel==='__custom__'?'selected':''}>${L('אחר…','Other…')}</option>`; };
+  const brandOpts=function(cat){ return (EQUIP_BRANDS[cat]||[]).map(function(b){return `<option value="${esc(b)}">`;}).join(''); };
+  const fuelOpts=function(sel){ return [['','—'],['charcoal',fuelLabel('charcoal')],['wood',fuelLabel('wood')],['pellet',fuelLabel('pellet')],['gas',fuelLabel('gas')],['electric',fuelLabel('electric')]].map(function(o){return `<option value="${o[0]}" ${o[0]===sel?'selected':''}>${o[1]}</option>`;}).join(''); };
   const chipsFor=function(d){ const c=cm(d.cat); let s='';
     if(c.capKey && d.cap && d.cap[c.capKey]!=null) s+=`<span class="eq-chip spec">${c.capEm?c.capEm+' ':''}${esc(d.cap[c.capKey]+' '+L(c.capHe,c.capEn))}</span>`;
-    if(d.fuel) s+=`<span class="eq-chip">${esc(t(d.fuel))}</span>`;
+    if(d.fuel) s+=`<span class="eq-chip"><span class="em">${FUEL_EMOJI[d.fuel]||''}</span> ${esc(fuelLabel(d.fuel))}</span>`;
     return s; };
+  // mockup .gl-head — Settings kicker + My Equipment title + optional sub + inline Add; .x auto-wires to closePanel
+  const headHtml=function(withAdd, sub){
+    return `<header class="eq-head"><button class="x eq-x" type="button" aria-label="${L('סגור','Close')}">✕</button>`
+      +`<div class="eq-head-t"><p class="eq-kick">${L('הגדרות','Settings')}</p><h1>🧰 ${L('הציוד שלי','My Equipment')}</h1>${sub?`<p class="eq-sub">${sub}</p>`:''}</div>`
+      +(withAdd?`<button class="eq-add" id="eqAddNew" type="button"><span class="pl">＋</span> ${L('הוסף','Add')}</button>`:'')
+      +`</header>`;
+  };
 
   const drawEmpty=function(){
     const miss=EQUIP_CATS.filter(function(c){ return ['smoker','grill','oven','sousvide','probe'].indexOf(c.cat)>=0 && !hasCat(c.cat); }).slice(0,4);
-    const chips=miss.map(function(c){ return `<button class="eq-egchip" data-eqquick="${c.cat}"><span>${c.icon}</span> ${L(c.he,c.en)}</button>`; }).join('');
-    showPanel(head()+`<div class="panel-body eq-wrap"><section class="eq-con"><div class="eq-con-spark">✨</div><div class="eq-con-ic">🔥🍳</div><h2 class="eq-con-h">${L('בוא נכיר את הציוד שלך','Let’s meet your kit')}</h2><p class="eq-con-sub">${L('ספר לי על מה אתה מבשל — כל מתכון יתאים את עצמו לציוד שלך','Tell me what you cook on — every recipe tunes itself to your gear')}</p><div class="eq-prompt"><span class="eq-prompt-ic">✨</span><textarea id="eqDescribe" class="eq-prompt-in" rows="3" placeholder="${L('למשל: וובר קטל ומדחום זול','e.g. a kettle grill and a cheap probe')}"></textarea></div><button id="eqSetup" class="eq-setup">${L('הגדר לי','Set it up for me')} <span>‹</span></button><div class="eq-egrow">${chips}</div><button id="eqManual" class="eq-con-manual">${L('או הוסף ידנית','Or add manually, one by one')}</button></section></div>`);
+    const chips=miss.map(function(c){ return `<button class="eq-egchip" data-eqquick="${c.cat}"><span>${equipTypeIcon(c.cat,(c.types||[])[0])}</span> ${L(c.he,c.en)}</button>`; }).join('');
+    showPanel(headHtml(false,'')+`<div class="panel-body eq-wrap"><section class="eq-con"><div class="eq-con-spark">✨</div><div class="eq-con-ic">🔥🍳</div><h2 class="eq-con-h">${L('בוא נכיר את ','Let’s meet ')}<b>${L('הציוד שלך','your kit')}</b></h2><p class="eq-con-sub">${L('ספר לי על מה אתה מבשל — כל מתכון יתאים את עצמו לציוד שלך','Tell me what you cook on — every recipe tunes itself to your gear')}</p><div class="eq-prompt"><span class="eq-prompt-ic">✨</span><textarea id="eqDescribe" class="eq-prompt-in" rows="3" placeholder="${L('למשל: וובר קטל ומדחום זול','e.g. a kettle grill and a cheap probe')}"></textarea></div><button id="eqSetup" class="eq-setup">${L('הגדר לי','Set it up for me')} <span>‹</span></button><div class="eq-egrow">${chips}</div><button id="eqManual" class="eq-con-manual">${L('או הוסף ידנית','Or add manually, one by one')}</button></section></div>`);
     const pnl=$("#panel"); const dsc=function(){ return $("#eqDescribe"); };
-    const setup=$("#eqSetup"); if(setup) setup.addEventListener('click', function(){ const el=dsc(); const txt=(el&&el.value)||''; if(!txt.trim()){ if(el) el.focus(); return; } const g=gearFromText(txt); gearConciergeApply(g, levelFromText(txt,g)); const b=$("#gearBanner"); if(b) b.remove(); view='list'; drawList(); });
-    pnl.querySelectorAll('[data-eqquick]').forEach(function(b){ b.addEventListener('click', function(){ const el=dsc(); if(el){ el.value=(el.value?el.value.replace(/\s*$/,' '):'')+L(cm(b.dataset.eqquick).he,cm(b.dataset.eqquick).en)+' '; el.focus(); } }); });
-    const man=$("#eqManual"); if(man) man.addEventListener('click', function(){ editId=null; view='form'; drawForm('smoker'); });
+    const setup=$("#eqSetup"); if(setup) setup.addEventListener('click', function(){ const el=dsc(); const txt=(el&&el.value)||''; if(!txt.trim()){ if(el) el.focus(); return; } const g=gearFromText(txt); gearConciergeApply(g, levelFromText(txt,g)); const b=$("#gearBanner"); if(b) b.remove(); drawList(); });
+    pnl.querySelectorAll('[data-eqquick]').forEach(function(b){ b.addEventListener('click', function(){ const el=dsc(); if(el){ el.value=(el.value?el.value.replace(/\s*$/,' '):'')+catName(b.dataset.eqquick)+' '; el.focus(); } }); });
+    const man=$("#eqManual"); if(man) man.addEventListener('click', function(){ editId=null; drawForm('smoker'); });
   };
 
   const drawList=function(){
     const list=equipList();
     if(!list.length){ return drawEmpty(); }
-    const caps=[[canSV(),L('סו-ויד','Sous-vide'),'🌊'],[canSmoke(),L('עישון','Smoke'),'💨'],[canGrill(),L('גריל','Grill'),'🔥']];
+    const nCats=EQUIP_CATS.filter(function(c){return list.some(function(d){return d.cat===c.cat;});}).length;
+    const sub=`${list.length} ${L(list.length===1?'מכשיר':'מכשירים', list.length===1?'device':'devices')} · ${nCats} ${L(nCats===1?'קטגוריה':'קטגוריות', nCats===1?'category':'categories')}`;
+    const caps=[[canSV(),L('סו-ויד','Sous-vide'),'🌊',L('הוסף סו-ויד','add a sous-vide')],[canSmoke(),L('עישון','Smoke'),'💨',L('הוסף מעשנה','add a smoker')],[canGrill(),L('גריל','Grill'),'🔥',L('הוסף גריל','add a grill')]];
     const okN=caps.filter(function(x){return x[0];}).length;
-    const capsHtml=`<div class="eq-caps"><div class="eq-caps-x"><h4>${L('מה אפשר לבשל','What you can cook')}</h4><span class="eq-caps-n">${okN}/${caps.length} ${L('פעילים','unlocked')}</span></div><div class="eq-gcaps">${caps.map(function(x){return `<span class="eq-gcap ${x[0]?'ok':'no'}"><span class="em">${x[2]}</span> ${x[1]}</span>`;}).join('')}</div>${probeChannels()?`<p class="eq-caps-foot">🎯 <b>${probeChannels()} ${L('ערוצי פרוב','probe channels')}</b></p>`:''}</div>`;
-    const conc=`<button class="eq-card eq-conc" id="eqConcierge"><span class="eq-tile eq-tile-ai">✨</span><span class="eq-conc-c"><b>${L('תאר את הציוד במילים','Describe your gear in words')}</b><small>${L('"מעשנה וסו-ויד" ← נוסיף','"a smoker and a sous-vide" → we add them')}</small></span><span class="eq-conc-g">‹</span></button>`;
+    const nProbe=equipByCat('probe').length;
+    const foot=probeChannels()?`<p class="eq-caps-foot">🎯 <b>${nProbe} ${L(nProbe===1?'פרוב':'פרובים', nProbe===1?'probe':'probes')} · ${probeChannels()} ${L('ערוצים','channels')}</b> ${L('למעקב טמפ׳ פנימית','tracked for internal-temp targets')}</p>`:'';
+    const capsHtml=`<div class="eq-caps"><div class="eq-caps-x"><h4>${L('מה אפשר לבשל','What you can cook')}</h4><span class="eq-caps-n">${okN}/${caps.length} ${L('פעילים','unlocked')}</span></div><div class="eq-gcaps">${caps.map(function(x){return `<span class="eq-gcap ${x[0]?'ok':'no'}"><span class="em">${x[2]}</span> ${x[1]}${x[0]?'':' · '+x[3]}</span>`;}).join('')}</div>${foot}</div>`;
+    const conc=`<button class="eq-card eq-conc" id="eqConcierge" type="button"><span class="eq-tile eq-tile-ai">✨</span><span class="eq-conc-c"><b>${L('תאר את הציוד במילים','Describe your gear in words')}</b><small>${L('"מעשנה וסו-ויד" ← נוסיף','“a smoker and a sous-vide” → we add them')}</small></span><span class="eq-conc-g">‹</span></button>`;
     const secs=EQUIP_CATS.map(function(c){ const ds=list.filter(function(d){return d.cat===c.cat;}); if(!ds.length) return '';
-      const cards=ds.map(function(d){ return `<article class="eq-card eq-spine eq-dev" style="--eqacc:${c.acc};--eqacc-l:${c.accL}"><div class="eq-tile">${c.icon}</div><div class="eq-dev-main"><div class="eq-dev-top"><span class="eq-dev-name">${esc(d.name||t(d.type)||'')}</span>${d.specSource==='ai'?`<span class="eq-dev-ai">✨ AI</span>`:''}</div><p class="eq-dev-sub">${esc(t(d.type)||'')}</p>${chipsFor(d)?`<div class="eq-dev-chips">${chipsFor(d)}</div>`:''}</div><div class="eq-dev-acts"><button class="eq-iconbtn" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-iconbtn" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">✕</button></div></article>`; }).join('');
-      return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4>${cards}<button class="eq-add-tile" data-eqaddcat="${c.cat}"><span class="pl">＋</span> ${L('הוסף עוד','Add another')}</button></section>`;
+      const cards=ds.map(function(d){ return `<article class="eq-card eq-spine eq-dev" style="--eqacc:${c.acc};--eqacc-l:${c.accL}"><div class="eq-tile">${equipTypeIcon(d.cat,d.type)}</div><div class="eq-dev-main"><div class="eq-dev-top"><span class="eq-dev-name">${esc(d.name||t(d.type)||'')}</span>${d.specSource==='ai'?`<span class="eq-dev-ai">✨ AI</span>`:''}</div><p class="eq-dev-sub">${esc(t(d.type)||'')}</p>${chipsFor(d)?`<div class="eq-dev-chips">${chipsFor(d)}</div>`:''}</div><div class="eq-dev-acts"><button class="eq-iconbtn" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-iconbtn" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">✕</button></div></article>`; }).join('');
+      return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4>${cards}<button class="eq-add-tile" data-eqaddcat="${c.cat}"><span class="pl">＋</span> ${L('הוסף עוד','Add another')} ${L(c.he,c.en)}</button></section>`;
     }).join('');
-    showPanel(head()+`<div class="panel-body eq-wrap"><button class="eq-addnew" id="eqAddNew"><span class="pl">＋</span> ${L('הוסף מכשיר','Add a device')}</button>${capsHtml}${conc}${secs}</div>`);
+    showPanel(headHtml(true,sub)+`<div class="panel-body eq-wrap">${capsHtml}${conc}${secs}</div>`);
     const pnl=$("#panel");
     const gc=$("#eqConcierge"); if(gc) gc.addEventListener('click', function(){ if(typeof openGearConcierge==='function') openGearConcierge(); });
-    const an=$("#eqAddNew"); if(an) an.addEventListener('click', function(){ editId=null; view='form'; drawForm('smoker'); });
-    pnl.querySelectorAll('[data-eqaddcat]').forEach(function(b){ b.addEventListener('click', function(){ editId=null; view='form'; drawForm(b.dataset.eqaddcat); }); });
-    pnl.querySelectorAll('[data-eqedit]').forEach(function(b){ b.addEventListener('click', function(){ const d=equipList().find(function(x){return x.id===b.dataset.eqedit;}); if(!d) return; editId=d.id; view='form'; drawForm(d.cat, d); }); });
+    const an=$("#eqAddNew"); if(an) an.addEventListener('click', function(){ editId=null; drawForm('smoker'); });
+    pnl.querySelectorAll('[data-eqaddcat]').forEach(function(b){ b.addEventListener('click', function(){ editId=null; drawForm(b.dataset.eqaddcat); }); });
+    pnl.querySelectorAll('[data-eqedit]').forEach(function(b){ b.addEventListener('click', function(){ const d=equipList().find(function(x){return x.id===b.dataset.eqedit;}); if(!d) return; editId=d.id; drawForm(d.cat, d); }); });
     pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); drawList(); }); });
   };
 
   const drawForm=function(cat, dev){
-    const curCat=cat||(dev&&dev.cat)||'smoker'; const c=cm(curCat); const aiOn=equipAiOn();
-    const capVal=(dev&&dev.cap&&c.capKey&&dev.cap[c.capKey]!=null)?dev.cap[c.capKey]:'';
-    showPanel(head()+`<div class="panel-body eq-wrap eq-form">
-      <div class="eq-sheet-head"><span class="eq-tile" style="--eqacc-l:${c.accL}">${c.icon}</span><h3 id="eqFormTitle">${dev?L('ערוך מכשיר','Edit device'):L('הוסף מכשיר','Add a device')}</h3></div>
-      <label class="eq-fl">${L('סוג','Category')}</label><select id="eqCat" class="eq-inp">${EQUIP_CATS.map(function(x){return `<option value="${x.cat}" ${x.cat===curCat?'selected':''}>${L(x.he,x.en)}</option>`;}).join('')}</select>
-      <label class="eq-fl">${L('דגם/סוג','Sub-type')}</label><select id="eqType" class="eq-inp">${typeOpts(curCat)}</select>
-      <label class="eq-fl">${L('שם / מותג','Name / brand')}</label><input id="eqName" class="eq-inp" list="eqBrandList" placeholder="${L('לדוגמה: Weber Smokey Mountain','e.g. Weber Smokey Mountain')}" value="${dev?esc(dev.name||''):''}"><datalist id="eqBrandList">${brandOpts(curCat)}</datalist>
-      ${aiOn?`<div class="eq-aibtns"><button id="eqLookup" class="eq-look primary" type="button">🔎 ${L('מצא מפרט','Look up specs')}</button><button id="eqModels" class="eq-look" type="button">📋 ${L('דגמים','Models')}</button></div>`:''}
-      <div id="eqAiNote" class="eq-ainote"></div><div id="eqModelsWrap"></div>
-      <label class="eq-fl" id="eqCapLbl" ${c.capKey?'':'hidden'}>${c.capKey?L('קיבולת · '+c.capHe,'Capacity · '+c.capEn):''}</label>
-      <input type="number" min="0" id="eqCapKey" class="eq-inp" inputmode="numeric" ${c.capKey?'':'hidden'} value="${capVal}">
-      <div class="eq-form-acts"><button id="eqSave" class="eq-save">${dev?L('שמור','Save'):L('הוסף','Add')}</button><button id="eqCancel" class="eq-ghost" type="button">${L('בטל','Cancel')}</button></div>
-      ${aiOn?'':`<p class="eq-ainote">${L('חבר מפתח AI כדי למלא מפרט אוטומטית — לא חובה','Connect an AI key to auto-fill specs — optional')}</p>`}
-    </div>`);
-    if(dev){ const ts=$("#eqType"); if(ts){ if(Array.prototype.some.call(ts.options,function(o){return o.value===dev.type;})) ts.value=dev.type; else ts.value='__custom__'; } }
+    const curCat=cat||(dev&&dev.cat)||'smoker'; const aiOn=equipAiOn();
+    let vmode = dev ? 'edit' : 'manual';   // → 'ai' after a successful web lookup
     const capC=function(k){ return equipCat(k)||{}; };
+    const title=function(nc){ return dev?L('ערוך מכשיר','Edit device'):L('הוסף '+cm(nc).he, 'Add a '+(cm(nc).en||'').toLowerCase()); };
     const note=function(s,cls){ const n=$("#eqAiNote"); if(n){ n.textContent=s||''; n.className='eq-ainote'+(cls?' '+cls:''); } };
-    const syncCat=function(){ const nc=($("#eqCat")||{}).value; const cc=capC(nc);
-      const ts=$("#eqType"); if(ts) ts.innerHTML=typeOpts(nc);
-      const bl=$("#eqBrandList"); if(bl) bl.innerHTML=brandOpts(nc);
-      const lbl=$("#eqCapLbl"), inp=$("#eqCapKey");
-      if(cc.capKey){ if(lbl){ lbl.hidden=false; lbl.textContent=L('קיבולת · '+cc.capHe,'Capacity · '+cc.capEn); } if(inp){ inp.hidden=false; inp.value=''; } }
-      else { if(lbl) lbl.hidden=true; if(inp){ inp.hidden=true; inp.value=''; } } };
-    const ecc=$("#eqCat"); if(ecc) ecc.addEventListener('change', syncCat);
-    const save=$("#eqSave"); if(save) save.addEventListener('click', function(){
+
+    showPanel(`<div class="panel-body eq-wrap eq-form"><div class="eq-sheet">
+      <div class="eq-sheet-grab"></div>
+      <div class="eq-sheet-head"><span class="eq-tile" id="eqSheetTile" style="--eqacc-l:${cm(curCat).accL}">${equipTypeIcon(curCat,(dev&&dev.type)||((cm(curCat).types||[])[0]))}</span><h3 id="eqFormTitle">${title(curCat)}</h3><button class="eq-sheet-x" id="eqBack" type="button" aria-label="${L('חזרה','Back')}">✕</button></div>
+      <div class="eq-sheet-body">
+        <label class="eq-step-l">${L('קטגוריה','Category')}</label>
+        <select id="eqCat" class="eq-inp">${EQUIP_CATS.map(function(x){return `<option value="${x.cat}" ${x.cat===curCat?'selected':''}>${L(x.he,x.en)}</option>`;}).join('')}</select>
+        ${aiOn?`<label class="eq-step-l">${L('אמור לי את הדגם — אמשוך את המפרט','Tell me the model — I’ll pull the specs')}</label>
+        <input id="eqLookupQ" class="eq-inp" list="eqBrandList" placeholder="${L('לדוגמה: Traeger Pro 575','e.g. Traeger Pro 575')}" value="${dev?esc(dev.name||''):''}">
+        <div class="eq-lookup-acts"><button id="eqLookup" class="eq-look primary" type="button"><span class="em">🔎</span> ${L('מצא מפרט','Look up specs')}</button><button id="eqModels" class="eq-look" type="button"><span class="em">📋</span> ${L('עיין בדגמים','Browse models')}</button></div>`:''}
+        <datalist id="eqBrandList">${brandOpts(curCat)}</datalist>
+        <div id="eqAiNote" class="eq-ainote"></div>
+        <div class="eq-card eq-verify" id="eqVerify"></div>
+        <div class="eq-or" id="eqCatOr" hidden>${L('או בחר מהקטלוג','or pick from the catalogue')}</div>
+        <div id="eqModelsWrap"></div>
+        ${aiOn?`<div class="eq-miniform"><h4>${L('אין חיבור או ציוד מותאם?','No connection or custom rig?')}</h4><p>${L('פשוט מלא את השדות למעלה ביד.','Just fill the fields above by hand.')}</p></div>`:''}
+      </div>
+    </div></div>`);
+
+    const doSave=function(){
       const nc=($("#eqCat")||{}).value; const cc=capC(nc);
-      let type=($("#eqType")||{}).value; if(type==='__custom__') type=(($("#eqName")||{}).value||L('מותאם','custom'));
-      const nm=(($("#eqName")||{}).value||t(type)||type);
+      let type=($("#eqType")||{}).value; const nameEl=$("#eqName"); let nm=((nameEl&&nameEl.value)||'').trim();
+      if(type==='__custom__') type=nm||L('מותאם','Custom');
+      if(!nm) nm=t(type)||type;
       const list2=equipList(); let d;
-      if(editId){ d=list2.find(function(x){return x.id===editId;}); if(!d){ editId=null; view='list'; return drawList(); } }
+      if(editId){ d=list2.find(function(x){return x.id===editId;}); if(!d){ editId=null; return drawList(); } }
       else { d={id:equipId(),cat:nc,type:type,name:nm,brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''}; list2.push(d); }
       d.cat=nc; d.type=type; d.name=nm; d.cap=d.cap||{};
-      if(cc.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) d.cap[cc.capKey]=v; }
-      const nmEl=$("#eqName"); if(nmEl&&nmEl._aifuel){ d.fuel=nmEl._aifuel; d.specSource='ai'; }
+      if(cc.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) d.cap[cc.capKey]=v; else delete d.cap[cc.capKey]; }
+      const fEl=$("#eqvFuel"); if(fEl) d.fuel=fEl.value||''; else if(['smoker','grill','oven'].indexOf(nc)<0) d.fuel='';
+      const aEl=$("#eqvArea"); if(aEl){ const av=(aEl.value||'').trim(); if(av) d.cap.area=av; else delete d.cap.area; }
+      if(vmode==='ai') d.specSource='ai';
       equipSave(list2); equipSetConfigured(); const bb=$("#gearBanner"); if(bb) bb.remove(); if(typeof cRefreshHome==='function') cRefreshHome();
-      editId=null; view='list'; drawList();
+      editId=null; drawList();
+    };
+    const wireVerify=function(){
+      const s=$("#eqSave"); if(s) s.addEventListener('click', doSave);
+      const rd=$("#eqRedo"); if(rd) rd.addEventListener('click', function(){ vmode='manual'; const nm=($("#eqName")||{}).value||''; note(''); paintVerify({name:nm}); });
+      const cx=$("#eqCancel"); if(cx) cx.addEventListener('click', function(){ editId=null; drawList(); });
+    };
+    const paintVerify=function(data){
+      const nc=($("#eqCat")||{}).value||curCat; const cc=capC(nc);
+      const showFuel=['smoker','grill','oven'].indexOf(nc)>=0;
+      const ai=(vmode==='ai'); const fc=ai?' eq-aifilled':''; const sp=ai?' <span class="sp">✨</span>':'';
+      const d=data||{};
+      const nameField=`<div class="eq-vfield"><label>${L('שם','Name')}${sp}</label><input id="eqName" class="eq-vin${fc}" placeholder="${L('שם המכשיר','Device name')}" value="${d.name!=null?esc(d.name):''}"></div>`;
+      const typeField=`<div class="eq-vfield"><label>${L('תת-סוג','Sub-type')}${sp}</label><select id="eqType" class="eq-vin${fc}">${typeOpts(nc, d.type)}</select></div>`;
+      const capField=cc.capKey?`<div class="eq-vfield"><label>${L(cc.capHe,cc.capEn)}${sp}</label><input type="number" min="0" inputmode="numeric" id="eqCapKey" class="eq-vin${fc}" value="${(d.cap!=null&&d.cap!=='')?esc(d.cap):''}"></div>`:'';
+      const grid=`<div class="eq-vrow">${typeField}${capField}</div>`;
+      const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div><div class="eq-vfield"><label>${L('שטח בישול','Cooking area')}${sp}</label><input id="eqvArea" class="eq-vin${fc}" placeholder="${L('לדוגמה 575 in²','e.g. 575 in²')}" value="${d.area?esc(d.area):''}"></div></div>`:'';
+      const heading=ai?`<div class="eq-verify-h"><span>✨</span> ${L('הנה מה שמצאתי — ','Here’s what I found — ')}<b>${L('אמת ושמור','verify & save')}</b></div>`:`<div class="eq-verify-h">${dev?L('פרטי המכשיר','Device details'):L('פרטים','Details')}</div>`;
+      const src=ai?`<p class="eq-v-src">${L('<b>✨ מולא אוטומטית</b> ממקורות רשת. גע בכל שדה כדי לשנות — <b>עדיין לא נשמר.</b>','<b>✨ Auto-filled</b> from web sources. Tap any field to change it — <b>nothing is saved yet.</b>')}</p>`:'';
+      const saveLbl=dev?L('שמור','Save'):(ai?L('נראה טוב — שמור','Looks right — save'):L('הוסף','Add'));
+      const acts=`<div class="eq-v-acts"><button id="eqSave" class="eq-con-go" type="button">${saveLbl}</button>${ai?`<button id="eqRedo" class="eq-ghost" type="button">↺ ${L('אפס','Redo')}</button>`:`<button id="eqCancel" class="eq-ghost" type="button">${L('בטל','Cancel')}</button>`}</div>`;
+      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+fuelRow+src+acts; wireVerify(); }
+      const st=$("#eqSheetTile"); if(st) st.textContent=equipTypeIcon(nc, d.type||((cm(nc).types||[])[0]));
+    };
+
+    const ecc=$("#eqCat"); if(ecc) ecc.addEventListener('change', function(){ const nc=ecc.value;
+      const bl=$("#eqBrandList"); if(bl) bl.innerHTML=brandOpts(nc);
+      const tt=$("#eqFormTitle"); if(tt&&!dev) tt.textContent=title(nc);
+      const st=$("#eqSheetTile"); if(st) st.style.setProperty('--eqacc-l', cm(nc).accL);
+      if(vmode==='ai') vmode='manual';
+      paintVerify({name:($("#eqName")||{}).value||''});
     });
-    const cancel=$("#eqCancel"); if(cancel) cancel.addEventListener('click', function(){ editId=null; view='list'; drawList(); });
     const lookup=$("#eqLookup"); if(lookup) lookup.addEventListener('click', function(){
-      const q=($("#eqName")||{}).value||''; const nc=($("#eqCat")||{}).value; if(!q.trim()){ note(L('הקלד שם/דגם קודם','Type a name/model first')); return; }
-      note(L('מחפש…','Looking up…'));
-      aiLookupDevice(q, nc).then(function(r){ const cc=capC(nc); const inp=$("#eqCapKey"); if(inp&&cc.capKey&&r.cap&&r.cap[cc.capKey]!=null){ inp.hidden=false; const lbl=$("#eqCapLbl"); if(lbl) lbl.hidden=false; inp.value=r.cap[cc.capKey]; inp.classList.add('eq-aifilled'); }
-        const nmEl=$("#eqName"); if(nmEl) nmEl._aifuel=r.fuel||'';
-        const parts=[]; if(r.fuel) parts.push(r.fuel); if(r.note) parts.push(r.note);
-        note('✨ '+(parts.join(' · ')||L('לא נמצא — מלא ידנית','Not found — fill manually'))+L(' · ודא ותקן',' · verify & edit'), 'ok');
-      }).catch(function(e){ note(String(e&&e.message||e).indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל — מלא ידנית','Lookup failed — fill manually')); });
+      const q=((($("#eqLookupQ")||{}).value)||(($("#eqName")||{}).value)||'').trim(); const nc=($("#eqCat")||{}).value;
+      if(!q){ note(L('הקלד שם/דגם קודם','Type a name/model first')); return; }
+      note(L('מחפש באינטרנט…','Searching the web…'));
+      aiLookupDevice(q, nc).then(function(r){ vmode='ai'; const cc=capC(nc);
+        paintVerify({ name:q, type:r.subtype||'', cap:(cc.capKey&&r.cap&&r.cap[cc.capKey]!=null)?r.cap[cc.capKey]:'', fuel:r.fuel||'', area:r.area||'' });
+        note('✨ '+(r.note||L('נמצא — אמת ושמור','Found — verify & save')), 'ok');
+      }).catch(function(e){ const m=String(e&&e.message||e); note(m.indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל — מלא ידנית','Lookup failed — fill by hand')); });
     });
     const models=$("#eqModels"); if(models) models.addEventListener('click', function(){
-      const brand=($("#eqName")||{}).value||''; const nc=($("#eqCat")||{}).value; if(!brand.trim()){ note(L('הקלד מותג קודם','Type a brand first')); return; }
+      const brand=(($("#eqLookupQ")||{}).value||'').trim(); const nc=($("#eqCat")||{}).value;
+      if(!brand){ note(L('הקלד מותג קודם','Type a brand first')); return; }
       note(L('מחפש דגמים…','Finding models…'));
-      aiBrandModels(brand, nc).then(function(ms){ const w=$("#eqModelsWrap"); const cc=capC(nc);
-        if(w){ w.innerHTML=ms.length?`<div class="eq-modellist">${ms.map(function(m){return `<button class="eq-card eq-model" data-eqmodel="${esc(m)}"><span class="eq-tile" style="--eqacc-l:${cc.accL||'#fff2e4'}">${cc.icon||'🧰'}</span><span class="eq-model-main"><b>${esc(m)}</b></span><span class="eq-model-go">＋</span></button>`;}).join('')}</div>`:'';
-          w.querySelectorAll('[data-eqmodel]').forEach(function(b){ b.addEventListener('click', function(){ const nmEl=$("#eqName"); if(nmEl) nmEl.value=b.dataset.eqmodel; w.innerHTML=''; if(lookup) lookup.click(); }); }); }
+      aiBrandModels(brand, nc).then(function(ms){ const w=$("#eqModelsWrap"); const orr=$("#eqCatOr"); const cc=capC(nc);
+        if(orr) orr.hidden=!ms.length;
+        if(w){ w.innerHTML=ms.length?`<div class="eq-modellist">${ms.map(function(m){return `<button class="eq-card eq-model" data-eqmodel="${esc(m.name)}"><span class="eq-tile" style="--eqacc-l:${cc.accL||'#fff2e4'}">${cc.icon||'🧰'}</span><span class="eq-model-main"><b>${esc(m.name)}</b>${m.spec?`<small>${esc(m.spec)}</small>`:''}</span><span class="eq-model-go">＋</span></button>`;}).join('')}</div>`:'';
+          w.querySelectorAll('[data-eqmodel]').forEach(function(b){ b.addEventListener('click', function(){ const lq=$("#eqLookupQ"); if(lq) lq.value=b.dataset.eqmodel; w.querySelectorAll('.eq-model').forEach(function(x){x.classList.remove('on');}); b.classList.add('on'); if(lookup) lookup.click(); }); }); }
         note(ms.length?(ms.length+L(' דגמים — בחר',' models — pick one')):L('לא נמצאו דגמים','No models found'));
-      }).catch(function(e){ note(String(e&&e.message||e).indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל','Search failed')); });
+      }).catch(function(e){ const m=String(e&&e.message||e); note(m.indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל','Search failed')); });
     });
+    const back=$("#eqBack"); if(back) back.addEventListener('click', function(){ editId=null; drawList(); });
+    if(dev){ const cc=capC(dev.cat); paintVerify({ name:dev.name||'', type:dev.type||'', cap:(cc.capKey&&dev.cap&&dev.cap[cc.capKey]!=null)?dev.cap[cc.capKey]:'', fuel:dev.fuel||'', area:(dev.cap&&dev.cap.area)||'' }); }
+    else paintVerify({});
   };
 
   drawList();

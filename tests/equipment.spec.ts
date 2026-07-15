@@ -84,9 +84,10 @@ test('B1: aiLookupDevice + aiBrandModels normalize AI output; no-key guarded', a
   await page.evaluate(`store.set('mk-gemkey','k'); window.__aiMock={fuel:'pellet',racks:3,zones:null,channels:null,bathL:null,note:'stainless'};`);
   const r = await page.evaluate(`aiLookupDevice('Traeger Pro 575','smoker')`) as any;
   expect(r.fuel).toBe('pellet'); expect(r.cap.racks).toBe(3); expect(r.cap.zones).toBeUndefined();
-  await page.evaluate(`window.__aiMock={models:['Pro 575','Ironwood 885','Timberline']}`);
-  const m = await page.evaluate(`aiBrandModels('Traeger','smoker')`) as string[];
-  expect(m).toContain('Ironwood 885'); expect(m.length).toBe(3);
+  await page.evaluate(`window.__aiMock={models:[{name:'Pro 575',spec:'Pellet · 2 racks'},{name:'Ironwood 885',spec:'Pellet · 3 racks'},'Timberline']}`);
+  const m = await page.evaluate(`aiBrandModels('Traeger','smoker')`) as Array<{name:string,spec:string}>;
+  expect(m.map(x=>x.name)).toContain('Ironwood 885'); expect(m.length).toBe(3);
+  expect(m[0]).toHaveProperty('spec');   // catalogue cards render a spec line
   expect(await page.evaluate(`(EQUIP_BRANDS.probe||[]).includes('MEATER')`)).toBe(true);
   await page.evaluate(`store.set('mk-gemkey',''); window.__aiMock=null;`);
   expect(await page.evaluate(`aiLookupDevice('x','smoker').then(()=>'ok').catch(e=>String(e.message))`)).toContain('no-key');
