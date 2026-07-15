@@ -28,33 +28,8 @@ const ALT_RUB = {
 /* ---------- method-toggle engine (Phase 1) ---------- */
 // Each cut gets allowed toggles + a recommended default combo + validation rules.
 // Toggles: sv (סו-ויד), smoke (עישון), grill (גריל/צריבה ישירה)
-// ── user equipment ("הציוד שלי") — filters & adapts preparation routes ──
-const GEAR_GROUPS=[
-  {g:'🔥 בישול ועישון', items:[
-    {id:'smoker', label:'מעשנה', opts:['אין','ארון / קבינט','אופסט / סטיק-ברנר','פלטים','קמאדו / קרמי','WSM / חבית','קטל (ככלי עישון)','גז (עם תיבת עשן)','חשמלי']},
-    {id:'grill', label:'גריל', opts:['אין','פחם','גז','קטל','פלנצ׳ה / פלטה','לבה / אינפרא']},
-    {id:'sousvide', label:'סו-ויד', opts:['אין','טבילה (immersion)','מיכל ייעודי']},
-    {id:'vacuum', label:'ואקום', opts:['אין','חדר (chamber)','שקית חיצונית (edge)']},
-    {id:'thermo', label:'מדחום', opts:['אין','מיידי (instant-read)','פרוב נעוץ','פרוב אלחוטי','בקר-מאוורר']},
-  ]},
-  {g:'🌭 עיבוד בשר', items:[
-    {id:'grinder', label:'מטחנת בשר', opts:['אין','ייעודית','מתאם למיקסר']},
-    {id:'stuffer', label:'מכונת מילוי נקניקים', opts:['אין','אנכית','אופקית','מזרק / משפך ידני']},
-    {id:'injector', label:'מזרק (injection)', opts:['אין','יש']},
-    {id:'slicer', label:'פרוסת / סלייסר', opts:['אין','יש']},
-  ]},
-  {g:'🧫 ריפוי וייבוש', items:[
-    {id:'curechamber', label:'תא ריפוי / ייבוש', opts:['אין','תא ייעודי','מקרר מומר','מייבש','תנור']},
-    {id:'humidity', label:'בקרת לחות', opts:['אין','בקר + מפזר/מייבש']},
-    {id:'scale', label:'משקל דיגיטלי מדויק', opts:['אין','יש (0.1 ג׳)','יש (1 ג׳)']},
-    {id:'hooks', label:'ווים / שבכות לתלייה', opts:['אין','יש']},
-    {id:'torch', label:'מבער / לפיד', opts:['אין','יש']},
-  ]},
-];
-function gearState(){ return store.get('mk-gear')||{}; }
-function saveGear(g){ store.set('mk-gear',g); }
+// ── user equipment ("הציוד שלי") — device model is EQUIP_CATS + the mk-equipment list (defined below) ──
 function gearConfigured(){ return equipConfigured(); }
-function gearSetConfigured(){ store.set('mk-gear-set', true); }
 // ── Equipment 2.0 · mk-equipment device LIST (source of truth; replaces the flat mk-gear) ──
 const EQUIP_CATS=[
   {cat:'smoker', he:'מעשנה', en:'Smoker', types:['ארון / קבינט','אופסט / סטיק-ברנר','פלטים','קמאדו / קרמי','WSM / חבית','קטל (ככלי עישון)','גז (עם תיבת עשן)','חשמלי'], capKey:'racks', capHe:'מדפים/שבכות', capEn:'racks/grates'},
@@ -4938,33 +4913,50 @@ function openGearConcierge(){
       const ap=$("#gcApply"); if(ap) ap.addEventListener('click',function(){ gearConciergeApply(g,level); if(typeof toast==='function') toast(he?'הציוד הוגדר ✓':'Gear set ✓'); if(typeof closePanel==='function') closePanel(); }); }
   });
 }
-function openGear(){
-  const g=gearState();
-  const groups=GEAR_GROUPS.map(grp=>`
-    <div class="gear-group"><h4>${t(grp.g)}</h4>
-      ${grp.items.map(it=>`<div class="gear-row"><label>${t(it.label)}</label>
-        <select data-gear="${it.id}">${it.opts.map(o=>`<option value="${o}" ${((g[it.id]||it.opts[0])===o)?'selected':''}>${t(o)}</option>`).join('')}</select>
-      </div>`).join('')}
-    </div>`).join('');
-  showPanel(`${toolTop(L('הציוד שלי','My gear'),L('בחר מה יש לך — המתכונים יתאימו את עצמם','Pick what you have — recipes adapt themselves'),'🔧','#5a7d8c')}
-   <div class="panel-body">
-     <p class="section-sub" style="margin-bottom:12px">${L('האפליקציה תסמן שיטות שאין לך ציוד עבורן ותציע חלופות. תמיד אפשר להפעיל בכל זאת (override).','The app will flag methods you have no gear for and suggest alternatives. You can always enable them anyway (override).')}</p>
-     <button class="cmore-qchip" id="gearConcierge" style="margin-bottom:12px"><span>✨</span> ${L('תאר במילים במקום','Describe it in words instead')}</button>
-     ${groups}
-     <div id="gearSummary" class="gear-summary"></div>
-     <button class="akc-back" id="gearDone">✓ ${L('שמור וסגור','Save and close')}</button>
-   </div>`);
-  const pnl=$("#panel");
-  const line=(ok,txt)=>`<span class="gcap ${ok?'ok':'no'}">${ok?'✓':'✕'} ${txt}</span>`;
-  const refreshSummary=()=>{ const el=$("#gearSummary"); if(el) el.innerHTML=`<b>${L('יכולות בישול פעילות','Active cooking capabilities')}:</b><div class="gcaps">${line(canSV(),L('סו-ויד','Sous-vide'))}${line(canSmoke(),L('עישון','Smoking'))}${line(canGrill(),L('גריל','Grill'))}</div>`; };
-  pnl.querySelectorAll('[data-gear]').forEach(sel=>sel.addEventListener('change',()=>{
-    const gg=gearState(); gg[sel.dataset.gear]=sel.value; saveGear(gg); gearSetConfigured();
-    const b=$("#gearBanner"); if(b) b.remove();
-    refreshSummary();
-  }));
-  { const d=$("#gearDone"); if(d) d.addEventListener('click',()=>{ gearSetConfigured(); closePanel(); if(typeof render==='function') render(); }); }
-  { const gc=$("#gearConcierge"); if(gc) gc.addEventListener('click',()=>{ if(typeof openGearConcierge==='function') openGearConcierge(); }); }
-  refreshSummary();
+function openEquipment(){
+  const catOpt=EQUIP_CATS.map(function(c){ return `<option value="${c.cat}">${L(c.he,c.en)}</option>`; }).join('');
+  const typeOpts=function(cat){ const c=equipCat(cat)||{types:[]}; return c.types.map(function(tp){return `<option value="${tp}">${t(tp)}</option>`;}).join('')+`<option value="__custom__">${L('אחר…','Other…')}</option>`; };
+  const draw=function(){
+    const list=equipList();
+    const cards=EQUIP_CATS.map(function(c){
+      const ds=list.filter(function(d){return d.cat===c.cat;}); if(!ds.length) return '';
+      return `<div class="eq-group"><h4>${L(c.he,c.en)}</h4>`+ds.map(function(d){
+        const cap=c.capKey&&d.cap&&d.cap[c.capKey]!=null?` · ${d.cap[c.capKey]} ${L(c.capHe,c.capEn)}`:'';
+        return `<div class="eq-card"><div class="eq-main"><b>${esc(d.name||t(d.type)||'')}</b><span>${esc(t(d.type)||'')}${cap}</span></div><button class="eq-rm" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">×</button></div>`;
+      }).join('')+`</div>`;
+    }).join('');
+    showPanel(`${toolTop(L('הציוד שלי','My equipment'),L('הוסף את הכלים שלך — מספר מכשירים מכל סוג','Add your kit — multiple devices per type'),'🧰','#5a7d8c')}
+      <div class="panel-body">
+        <button class="cmore-qchip" id="eqConcierge" style="margin-bottom:12px"><span>✨</span> ${L('תאר במילים במקום','Describe it in words instead')}</button>
+        <div class="miniform"><h4>${L('הוסף מכשיר','Add a device')}</h4>
+          <label>${L('סוג','Category')}<select id="eqCat">${catOpt}</select></label>
+          <label>${L('דגם/סוג','Type')}<select id="eqType">${typeOpts('smoker')}</select></label>
+          <label>${L('שם','Name')}<input id="eqName" placeholder="${L('לדוגמה: Weber Smokey Mountain','e.g. Weber Smokey Mountain')}"></label>
+          <label id="eqCapWrap" hidden><span id="eqCapLbl"></span><input type="number" min="0" id="eqCapKey" inputmode="numeric"></label>
+          <div class="mf-actions"><button id="eqAdd">${L('הוסף','Add')}</button></div>
+        </div>
+        <div id="eqList" style="margin-top:14px">${cards||`<div class="shop-empty">${L('עדיין לא הוגדר ציוד.','No equipment yet.')}</div>`}</div>
+      </div>`);
+    const pnl=$("#panel");
+    const syncType=function(){ const cat=($("#eqCat")||{}).value; const ts=$("#eqType"); if(ts) ts.innerHTML=typeOpts(cat);
+      const c=equipCat(cat); const w=$("#eqCapWrap"), lbl=$("#eqCapLbl"), inp=$("#eqCapKey");
+      if(c&&c.capKey){ if(w) w.hidden=false; if(lbl) lbl.textContent=L(c.capHe,c.capEn); if(inp) inp.value=''; } else if(w){ w.hidden=true; } };
+    const ec=$("#eqCat"); if(ec) ec.addEventListener('change', syncType); syncType();
+    const add=$("#eqAdd"); if(add) add.addEventListener('click', function(){
+      const cat=($("#eqCat")||{}).value; const c=equipCat(cat);
+      let type=($("#eqType")||{}).value; if(type==='__custom__') type=(($("#eqName")||{}).value||L('מותאם','custom'));
+      const name=(($("#eqName")||{}).value||t(type)||type);
+      const dev={id:equipId(), cat:cat, type:type, name:name, brand:'', model:'', fuel:'', cap:{}, specSource:'manual', notes:''};
+      if(c&&c.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) dev.cap[c.capKey]=v; }
+      const l=equipList(); l.push(dev); equipSave(l); equipSetConfigured();
+      const b=$("#gearBanner"); if(b) b.remove();
+      if(typeof cRefreshHome==='function') cRefreshHome();
+      draw();
+    });
+    pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); draw(); }); });
+    const gc=$("#eqConcierge"); if(gc) gc.addEventListener('click', function(){ if(typeof openGearConcierge==='function') openGearConcierge(); });
+  };
+  draw();
 }
 function openBackup(){
   showPanel(`${toolTop(L('גיבוי ושחזור','Backup & restore'),L('ייצוא וייבוא כל הנתונים שלך','Export and import all your data'),'💾','#6a8caf')}
@@ -6325,8 +6317,7 @@ function wcimLocal(){
 function wcimGrounding(){
   const inv=invEnsure().filter(i=>i.qty>0).map(i=>i.name);
   const caps=[canGrill()&&'גריל',canSmoke()&&'עישון',canSV()&&'סו-ויד'].filter(Boolean);
-  const g=gearState();
-  const tools=[g.grinder&&g.grinder!=='אין'&&'מטחנה',g.stuffer&&g.stuffer!=='אין'&&'מילוי'].filter(Boolean);
+  const tools=[hasCat('grinder')&&'מטחנה',hasCat('stuffer')&&'מילוי'].filter(Boolean);
   const cands=cwAllItems().filter(m=>typeof isProjectItem==='function'?isProjectItem(m):(m.kind==='make')).map(m=>({key:m.key,heb:m.heb,cat:m.cat}));
   return 'מלאי במלאי (>0): '+(inv.join(', ')||'ריק')
     +'\nיכולות בישול: '+(caps.join(', ')||'-')+' · כלים: '+(tools.join(', ')||'-')
@@ -7577,13 +7568,13 @@ function openMoreSheet(){
     ['🍽️', L('עבודה','Work'), [['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline',true],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint',true],['🛒',L('רשימת קניות','Shopping list'),'openCart']]],
     ['✨', L('חוויה','Experience'), [['🤖',L('כלי AI','AI tools'),'openAiHub'],['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
     ['🧰', L('עזר','Utilities'), [['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans',true],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders',true],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']]],
-    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🔧',L('הציוד שלי','My gear'),'openGear'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
+    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🧰',L('הציוד שלי','My equipment'),'openEquipment'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
   ];
   const reg={}; GROUPS.forEach(g=>g[2].forEach(it=>reg[it[2]]=it));
   const visible=it=>!(beg && it[3]);                                   // advanced items hidden at beginner level
   // "most-used": recent tools from history, backfilled with a curated default so it's never sparse
   let recent=((typeof store!=='undefined'&&store.get('mk-recent-tools'))||[]).map(fn=>reg[fn]).filter(Boolean).filter(visible).slice(0,5);
-  ['openAsk','openCalc','openSeasonings','openJournal','openGear'].map(fn=>reg[fn]).filter(Boolean).filter(visible).forEach(d=>{ if(recent.length<5 && recent.indexOf(d)<0) recent.push(d); });
+  ['openAsk','openCalc','openSeasonings','openJournal','openEquipment'].map(fn=>reg[fn]).filter(Boolean).filter(visible).forEach(d=>{ if(recent.length<5 && recent.indexOf(d)<0) recent.push(d); });
   const quick=recent.length?`<div class="cmore-grp cmore-quick"><h4>⭐ ${L('בשימוש נפוץ','Most used')}</h4><div class="cmore-quickrow">${recent.map(([ic,label,fn])=>`<button class="cmore-qchip" data-mfn="${fn}"><span>${ic}</span>${label}</button>`).join('')}</div></div>`:'';
   const grp=(ic,title,items)=>{ const its=items.filter(visible); if(!its.length) return ''; return `<div class="cmore-grp"><h4>${ic} ${title}</h4>${its.map(([i,label,fn])=>`<div class="cmore-item" data-mfn="${fn}"><span class="mi">${i}</span>${label}<span class="mg">←</span></div>`).join('')}</div>`; };
   const html=`${typeof toolTop==='function'?toolTop(L('עוד','More'),L('כל הכלים והתכונות','All the tools and features'),'☰','#e07a52'):`<h2 style="padding:16px">${L('עוד','More')}</h2>`}
@@ -7605,7 +7596,7 @@ document.querySelectorAll('[data-cgo]').forEach(b=>{ if(b.dataset.cgo==='wizard'
 // floating Active-now shortcut: click → hub; keep it in sync on boot + a slow tick (for ringing while idle on a screen)
 (()=>{ const fab=$("#cActiveFab"); if(fab) fab.addEventListener('click',()=>{ if(typeof openActive==='function') openActive(); }); try{ if(typeof syncActiveFab==='function'){ syncActiveFab(); setInterval(syncActiveFab, 5000); } }catch(e){} })();
 // Phase 4 home chrome (buttons persist; only their innerHTML is re-rendered, so wire once): gear chip → gear editor, multi-event bar → command center
-(()=>{ const gc=$("#cHomeGearChip"); if(gc) gc.addEventListener('click',()=>{ if(typeof openGear==='function') openGear(); }); const mv=$("#cHomeMultiEv"); if(mv) mv.addEventListener('click',()=>{ if(typeof openCombinedTimeline==='function') openCombinedTimeline(); }); })();
+(()=>{ const gc=$("#cHomeGearChip"); if(gc) gc.addEventListener('click',()=>{ if(typeof openEquipment==='function') openEquipment(); }); const mv=$("#cHomeMultiEv"); if(mv) mv.addEventListener('click',()=>{ if(typeof openCombinedTimeline==='function') openCombinedTimeline(); }); })();
 // "יש לי אירוע" path + FAB → start a NEW clean event (guard unsaved draft)
 function cStartNewEvent(){ setMenuCtx('event'); evGuardBeforeNew(()=>{ cwGo(0); cNavGo('wizard'); cwSyncFromMenu(); }); }
 function cStartCook(){ setMenuCtx('cook'); cwGo(0); cNavGo('wizard'); if(typeof cwSyncFromMenu==='function') cwSyncFromMenu(); }
@@ -7629,7 +7620,7 @@ function syncGearBanner(){
   if(typeof gearConfigured==='function' && !gearConfigured()){
     if(!host.firstChild){
       host.innerHTML=`<button class="gear-banner" id="gearBanner">🔧 <span><b>${L('הגדר את הציוד שלך','Set up your equipment')}</b> — ${L('כדי שהמתכונים יתאימו למה שיש לך','so recipes match what you have')}</span><span class="gb-go">←</span></button>`;
-      const b=$("#gearBanner"); if(b) b.addEventListener('click',()=>{ if(typeof openGear==='function') openGear(); });
+      const b=$("#gearBanner"); if(b) b.addEventListener('click',()=>{ if(typeof openEquipment==='function') openEquipment(); });
     }
   } else host.innerHTML='';
 }

@@ -3,7 +3,7 @@ import { test, expect } from '@playwright/test';
 const boot = async (page: any, seedGear?: any) => {
   await page.addInitScript((g: any) => {
     try {
-      localStorage.clear(); localStorage.setItem('mk-lang', JSON.stringify('en'));
+      localStorage.clear(); localStorage.setItem('mk-lang', JSON.stringify('en')); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
       if (g) { localStorage.setItem('mk-gear', JSON.stringify(g)); localStorage.setItem('mk-gear-set', JSON.stringify(true)); }
     } catch {}
   }, seedGear);
