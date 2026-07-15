@@ -53,7 +53,7 @@ const GEAR_GROUPS=[
 ];
 function gearState(){ return store.get('mk-gear')||{}; }
 function saveGear(g){ store.set('mk-gear',g); }
-function gearConfigured(){ return !!store.get('mk-gear-set'); }
+function gearConfigured(){ return equipConfigured(); }
 function gearSetConfigured(){ store.set('mk-gear-set', true); }
 // ── Equipment 2.0 · mk-equipment device LIST (source of truth; replaces the flat mk-gear) ──
 const EQUIP_CATS=[
@@ -94,22 +94,22 @@ function equipMigrateFromGear(){
   if(store.get('mk-gear-set')) store.set('mk-equip-set', true);
 }
 // capability mapping — permissive (true) until the user configures gear, so nothing changes for them until then
-function canSV(){ if(!gearConfigured()) return true; const g=gearState(); return !!(g.sousvide && g.sousvide!=='אין'); }
-function canSmoke(){ if(!gearConfigured()) return true; const g=gearState();
-  if(g.smoker && g.smoker!=='אין') return true;
-  return !!(g.grill && ['פחם','קטל','גז'].includes(g.grill)); }        // charcoal/kettle/gas-with-box can smoke
-function canGrill(){ if(!gearConfigured()) return true; const g=gearState();
-  if(g.grill && g.grill!=='אין') return true;
-  return !!(g.smoker && ['קמאדו / קרמי','קטל (ככלי עישון)','WSM / חבית','אופסט / סטיק-ברנר'].includes(g.smoker)); }
+function canSV(){ if(!equipConfigured()) return true; return hasCat('sousvide'); }
+function canSmoke(){ if(!equipConfigured()) return true;
+  if(hasCat('smoker')) return true;
+  return equipByCat('grill').some(function(d){ return ['פחם','קטל','גז'].indexOf(d.type)>=0; }); }        // charcoal/kettle/gas grill can smoke
+function canGrill(){ if(!equipConfigured()) return true;
+  if(hasCat('grill')) return true;
+  return equipByCat('smoker').some(function(d){ return ['קמאדו / קרמי','קטל (ככלי עישון)','WSM / חבית','אופסט / סטיק-ברנר'].indexOf(d.type)>=0; }); }
 function gearCan(method){ return method==='sv'?canSV():method==='smoke'?canSmoke():method==='grill'?canGrill():true; }
 function gearLabelFor(method){ return method==='sv'?'סו-ויד':method==='smoke'?'מעשנה':method==='grill'?'גריל':''; }
-// one source of truth for the adaptive home — capability + presence, read from mk-gear each paint
-function homeGear(){ const g=gearState();
+// one source of truth for the adaptive home — capability + presence, read from the device list each paint
+function homeGear(){
   return {
     canSmoke: canSmoke(), canGrill: canGrill(), canSV: canSV(),
-    hasProbe: !!(g.thermo && g.thermo!=='אין'),
-    hasCharcuterie: !!((g.grinder && g.grinder!=='אין') || (g.stuffer && g.stuffer!=='אין')),
-    configured: gearConfigured()
+    hasProbe: hasCat('probe'),
+    hasCharcuterie: hasCat('grinder') || hasCat('stuffer'),
+    configured: equipConfigured()
   };
 }
 // stamp the adaptive-home body classes (gear = relevance, level = density; is-cooking = live). Render-layer only.
