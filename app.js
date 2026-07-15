@@ -3247,7 +3247,7 @@ async function aiJSON(opts){
   const key=gemKey(); if(!key) throw new Error('no-key');
   // W1-P1: output-language plumbing — human-readable string values follow the UI language (keys/ids stay as given). Fixes AI JSON coming back Hebrew in the English UI.
   const outLang=(opts&&opts.outLang) || (typeof getLang==='function'?getLang():'he');
-  const langLine=(outLang==='he')?'':'\n\nIMPORTANT: write every human-readable string VALUE (reason/note/summary/rationale/tip/warning/text/title/desc) in ENGLISH. Keep every key and id EXACTLY as provided.';
+  const langLine=(outLang==='he')?'':('\n\nIMPORTANT: write every human-readable string VALUE (reason/note/summary/rationale/tip/warning/text/title/desc) in '+(LANGNAME[outLang]||'English').toUpperCase()+'. Keep every key and id EXACTLY as provided.');
   const userText=(grounding?grounding+'\n\n':'')+'משימה: '+(task||'')+(schemaHint?('\n\nהחזר JSON במבנה הבא בדיוק:\n'+schemaHint):'')+langLine;
   const mkBody=()=>({
     system_instruction:{parts:[{text:AI_JSON_SYS}]},
@@ -5068,6 +5068,7 @@ const THEME_SCHEME={cream:'light',charcoal:'dark',walnut:'light',slate:'light'};
 const I18N_DICTS = __I18N_DICTS__;
 const I18N_LANGS = (function(){ const o={he:'עברית'}; try{ Object.keys(I18N_DICTS).forEach(function(k){ o[k]=((I18N_DICTS[k]||{}).__meta__||{}).name||k; }); }catch(e){} return o; })();
 const LANG_FLAG = {he:'🇮🇱', en:'🇬🇧', fr:'🇫🇷', de:'🇩🇪', es:'🇪🇸', ar:'🇸🇦', ru:'🇷🇺', it:'🇮🇹'};
+const LANGNAME={en:'English',ar:'Arabic',ru:'Russian',es:'Spanish',fr:'French',de:'German'};   // shared code→language-name map (aiJSON outLang + mtTranslate)
 function langFlag(k){ return LANG_FLAG[k]||'🌐'; }
 function langRowHtml(){ return `<div class="lang-row" role="group" aria-label="Language">`+Object.keys(I18N_LANGS).map(function(k){ return `<button class="lang-flag ${k===getLang()?'on':''}" data-setlang="${k}" title="${I18N_LANGS[k]}" aria-label="${I18N_LANGS[k]}" aria-pressed="${k===getLang()}"><span class="lf-emoji">${langFlag(k)}</span><span class="lf-name">${I18N_LANGS[k]}</span></button>`; }).join('')+`</div>`; }
 function wireLangRow(root){ (root||document).querySelectorAll('[data-setlang]').forEach(function(b){ b.addEventListener('click',function(){ setLang(b.dataset.setlang); }); }); }
@@ -5159,8 +5160,8 @@ async function mtTranslate(src, lang){
     if(typeof window!=='undefined' && window.__mtMock!==undefined && window.__mtMock!==null){
       out=(typeof window.__mtMock==='function'?window.__mtMock(src,lang):window.__mtMock);   // test seam
     } else if(typeof gemFetch==='function' && gemKey()){
-      const LANGNAME={en:'English',ar:'Arabic',ru:'Russian',es:'Spanish',fr:'French',de:'German'}[lang]||lang;
-      const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking text to '+LANGNAME+'. Keep ALL numbers, temperatures, times and units EXACTLY as written — never change, add, or drop a number. Reply with ONLY the translation, no notes.'}]},
+      const LN=LANGNAME[lang]||lang;
+      const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking text to '+LN+'. Keep ALL numbers, temperatures, times and units EXACTLY as written — never change, add, or drop a number. Reply with ONLY the translation, no notes.'}]},
         contents:[{role:'user',parts:[{text:src}]}], generationConfig:{temperature:0.2,maxOutputTokens:600,thinkingConfig:{thinkingBudget:0}} };
       const r=await gemFetch(GEM_MODEL, body, {timeout:20000}); const j=await r.json();
       const cand=j.candidates&&j.candidates[0]; out=cand&&cand.content&&(cand.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();
