@@ -6765,6 +6765,23 @@ function projStepsHTML(p){
     <div class="cpc-steplist">${phases.map((ph,i)=>`<label class="cpc-step ${done.includes(i)?'done':''}"><input type="checkbox" data-cpstep="${p.id}" data-cpi="${i}" ${done.includes(i)?'checked':''}> ${t(ph)}</label>`).join('')}</div>
   </details>`;
 }
+// Wave 3 · charcuterie safety guardian — CHECKS a dry/cure project against vetted thresholds (never invents numbers).
+// ~35% weight loss ≈ safe water activity for dry-cure; nitrite required for dry/cured (botulism). Deterministic.
+function charcuterieGuardian(p){
+  const he=(typeof getLang!=='function'||getLang()==='he'); const out=[]; if(!p) return out;
+  const SAFE_MIN=35;
+  if(p.type==='dry' && p.startW && p.curW){
+    const lossNow=Math.round((1-p.curW/p.startW)*100);
+    const targetLoss=Math.round((1-(p.factor||0.62))*100);
+    if(targetLoss<SAFE_MIN) out.push({level:'danger', text: he?`יעד הירידה (${targetLoss}%) נמוך מהמינימום הבטוח (~${SAFE_MIN}%) למוצר מיובש — פעילות-המים תישאר גבוהה מדי (סכנת פתוגנים/בוטוליזם). העלה את היעד.`:`The loss target (${targetLoss}%) is below the safe minimum (~${SAFE_MIN}%) for a dry-cured product — water activity stays too high (pathogen/botulism risk). Raise the target.`});
+    if(lossNow<Math.max(targetLoss,SAFE_MIN)) out.push({level:'warn', text: he?`ירדת ${lossNow}% — עדיין לא בטוח לאכילה. המשך לייבש עד ~${Math.max(targetLoss,SAFE_MIN)}%.`:`${lossNow}% lost — not safe to eat yet. Keep drying to ~${Math.max(targetLoss,SAFE_MIN)}%.`});
+    else out.push({level:'ok', text: he?`ירדת ${lossNow}% — הגעת לפעילות-מים בטוחה (~${SAFE_MIN}%+).`:`${lossNow}% lost — safe water activity reached (~${SAFE_MIN}%+).`});
+  }
+  if(p.type==='dry'||p.type==='cure') out.push({level:'info', text: he?'מוצר מיובש/כבוש חייב ניטריט (Cure #1/#2) — ודא שהמתכון כלל אותו; היעדרו = סכנת בוטוליזם.':'A dry/cured product requires nitrite (Cure #1/#2) — make sure the recipe included it; without it = botulism risk.'});
+  return out;
+}
+function _guardianTop(p){ const f=charcuterieGuardian(p); if(!f.length) return null;
+  const order={danger:0,warn:1,info:2,ok:3}; f.sort(function(a,b){return order[a.level]-order[b.level];}); return f[0]; }
 function projProgress(p){
   if(p.source==='bought'&&p.type!=='cure'&&p.type!=='dry'){ return {pct:100,label:stageLabel(projStage(p))||L('מוכן','Ready'),day:'',ready:projStage(p)!=='building',sub:L('נקנה מוכן','Bought ready')}; }
   if(p.type==='scratch'){ const ph=projPhases(p); const done=(p.doneSteps||[]).length; const total=Math.max(1,ph.length); const ready=done>=ph.length; return {pct:Math.round(done/total*100),label:`${done}/${ph.length} ${L('שלבים','steps')}`,day:'',ready,sub:L('בנייה מאפס','From scratch')}; }
@@ -6792,6 +6809,7 @@ function cPaintProjects(){
         ${p.source==='bought'?'':`<div class="pbar"><i style="width:${pr.pct}%;background:${pr.ready?'var(--good)':'var(--ember)'}"></i></div>`}
         ${(p.type==='dry'&&p.source!=='bought')?`<div class="cpc-log"><label>${L('משקל נוכחי','Current weight')}</label><input type="number" data-cpw="${p.id}" value="${p.curW}"><span>${L('ג׳','g')} · ${pr.label}</span></div>`:(p.source!=='bought'?`<div class="cpc-log" style="color:var(--smoke)">${pr.label} · ${pr.ready?L('הסתיים ✓','Done ✓'):L('בתהליך','In progress')}</div>`:'')}
         ${pr.ready&&p.source!=='bought'?`<div class="cpc-ready">✓ ${L('מוכן!','Ready!')}</div>`:''}
+        ${((p.type==='dry'||p.type==='cure')&&p.source!=='bought')?(function(){ const gt=_guardianTop(p); return gt?`<div class="cpc-guardian cpc-g-${gt.level}">🛡️ ${esc(gt.text)}</div>`:''; })():''}
         ${projStepsHTML(p)}
         <div class="cpc-actions">
           ${(stg==='ready'||stg==='done')?`<button class="cpc-act cpc-bridge" data-cpplan="${p.id}">➕ ${L('לאירוע/בישול','To event/cook')}</button>`:''}
