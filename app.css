@@ -864,6 +864,10 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .cop-stagesub{font-size:calc(12.5px * var(--fscale));color:var(--smoke);margin-top:2px;line-height:1.4}
 .cop-empty{color:var(--smoke);font-size:calc(13px * var(--fscale));padding:10px 2px;line-height:1.5}
 .cop-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.cop-stall{background:rgba(217,166,43,.1);border:1.5px solid rgba(217,166,43,.45);border-radius:14px;padding:13px 14px;margin-bottom:10px}
+.cop-stall-on{background:rgba(192,57,43,.11);border-color:rgba(192,57,43,.55)}
+.cop-stallh{font-family:var(--font-body);font-weight:800;font-size:calc(13.5px * var(--fscale));color:var(--bone);margin-bottom:4px}
+.cop-stallb{font-size:calc(12.5px * var(--fscale));color:var(--bone);line-height:1.5}
 .cw-presets{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin:0 0 10px;padding-bottom:8px;border-bottom:1px dashed var(--line)}
 .cw-presets-lbl{font-size:calc(11.5px * var(--fscale));font-weight:700;color:var(--smoke)}
 .ask-link{background:none;border:none;color:var(--ember);font-weight:700;cursor:pointer;font-size:calc(12px * var(--fscale));text-decoration:underline;padding:0}

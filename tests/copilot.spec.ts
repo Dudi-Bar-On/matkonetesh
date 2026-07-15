@@ -40,3 +40,28 @@ test('W2-P1: the home cooking banner opens the Copilot when a live session exist
   await page.waitForSelector('#panel .cop-hdr');
   expect(await page.evaluate(`!!document.querySelector('#panel .cop-hdr')`)).toBe(true);   // Copilot, not the Active-now hub
 });
+
+test('W2-P2: stall detection helper + advisory card during smoke stages', async ({ page }) => {
+  await bootCopilot(page);
+  // helper classification (65-77°C band) + bilingual
+  expect(await page.evaluate(`copilotStallInfo(70).phase`)).toBe('stall');
+  expect(await page.evaluate(`copilotStallInfo(70).inStall`)).toBe(true);
+  expect(await page.evaluate(`copilotStallInfo(50).phase`)).toBe('below');
+  expect(await page.evaluate(`copilotStallInfo(90).phase`)).toBe('above');
+  const body = await page.evaluate(`copilotStallInfo(70).body`) as string;
+  expect(/[֐-׿]/.test(body)).toBe(false);   // English body in English UI
+  expect(body).toContain('Crutch');
+  // the stall card shows when the current stage is a smoke stage
+  await page.evaluate(`startLiveCook(); window._wpTasks=[{t:new Date(Date.now()-1000),label:'Smoke',sub:'',dur:3600,tid:'st-cook-cut-1-smoke',kind:'smoke'},{t:new Date(Date.now()+3600000),label:'Rest',sub:'',dur:0,tid:'',kind:'rest'}]; openCopilot();`);
+  await page.waitForSelector('#panel .cop-stall');
+  await page.evaluate(`closePanel()`);
+  // ...but NOT when the current/next stage isn't smoke
+  await page.evaluate(`window._wpTasks=[{t:new Date(Date.now()-1000),label:'Rest',sub:'',dur:0,tid:'',kind:'rest'}]; openCopilot();`);
+  await page.waitForSelector('#panel .cop-actions');
+  expect(await page.evaluate(`!!document.querySelector('#panel .cop-stall')`)).toBe(false);
+  await page.evaluate(`closePanel()`);
+  // a probe reading in the stall band → the "in the stall" state (cop-stall-on + the temp shown)
+  await page.evaluate(`(function(){ var s=liveSession(); s.probes=[{t:Date.now(),tempC:71}]; store.set(liveKey(), s); window._wpTasks=[{t:new Date(Date.now()-1000),label:'Smoke',sub:'',dur:3600,tid:'st-cook-cut-1-smoke',kind:'smoke'}]; openCopilot(); })()`);
+  await page.waitForSelector('#panel .cop-stall-on');
+  expect(await page.evaluate(`document.querySelector('#panel .cop-stallh').textContent`)).toContain('71');
+});

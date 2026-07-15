@@ -4171,14 +4171,36 @@ function _copilotStages(){ const tasks=(typeof window!=='undefined'&&Array.isArr
   if(nextIdx===-1) nextIdx=tasks.length;
   return { cur:tasks[Math.max(0,nextIdx-1)]||null, next:tasks[nextIdx]||null, count:tasks.length };
 }
+// W2-P2: stall detection + wrap/crutch advice, grounded in the app's vetted troubleshooting content (65-77°C evaporative plateau).
+function copilotStallInfo(tempC){
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const t=(typeof tempC==='number' && !isNaN(tempC))?tempC:null;
+  const phase = (t==null)?'unknown' : (t<65?'below' : (t<=77?'stall':'above'));
+  const title = phase==='stall' ? (he?'אתה בתוך הסטָאל':'You’re in the stall')
+              : phase==='above' ? (he?'עברת את הסטָאל':'Past the stall')
+              : (he?'הסטָאל (Stall)':'The stall');
+  const body = he
+    ? 'התאדות-קירור סביב 65–77°C — נורמלי לחלוטין, יכול להימשך 1–3 שעות. אל תעלה חום בפאניקה. אפשרויות: סבלנות, או "Texas Crutch" — עטוף בנייר קצבים/אלומיניום כשהקרום כהה ויציב (בערך 68–70°C) כדי לפרוץ. עטיפה מוקדמת מדי מרככת את הקרום.'
+    : 'Evaporative cooling around 65–77°C — completely normal, can last 1–3 hours. Don’t panic-raise the heat. Options: patience, or the “Texas Crutch” — wrap in butcher paper/foil once the bark is dark and set (around 68–70°C) to break through. Wrapping too early softens the bark.';
+  return { inStall: phase==='stall', phase, title, body };
+}
 function openCopilot(){
   if(typeof showPanel!=='function') return;
   const he=(typeof getLang!=='function'||getLang()==='he');
   const sess=liveSession(); const st=_copilotStages();
+  // stall advisory during smoke stages (uses the last probe reading if one exists — capture arrives in P3)
+  let stallCard='';
+  if((st.cur&&st.cur.kind==='smoke')||(st.next&&st.next.kind==='smoke')){
+    const probes=(sess&&Array.isArray(sess.probes))?sess.probes:[];
+    const lastT=probes.length?probes[probes.length-1].tempC:null;
+    const info=copilotStallInfo(lastT);
+    const head=(lastT!=null&&info.inStall)?`🌡️ ${lastT}°C · ${info.title}`:info.title;
+    stallCard=`<div class="cop-stall${info.inStall?' cop-stall-on':''}"><div class="cop-stallh">🧱 ${esc(head)}</div><div class="cop-stallb">${esc(info.body)}</div><div class="ai-refuse-src">📚 ${he?'מתוך מדריך התקלות של האפליקציה':'From the app’s troubleshooting guide'}</div></div>`;
+  }
   const stageHtml=function(t,tag){ if(!t) return ''; return `<div class="cop-stage"><div class="cop-stagek">${tag}</div><div class="cop-stagel">${esc(t.label||'')}</div>${t.sub?`<div class="cop-stagesub">${esc(t.sub)}</div>`:''}${(t.tid&&t.dur)?timerHTML(t.dur, t.tid, t.label||''):''}</div>`; };
-  const body = st.count
+  const body = (st.count
     ? `${stageHtml(st.cur, he?'עכשיו':'Now')}${stageHtml(st.next, he?'הבא':'Next')}`
-    : `<div class="cop-empty">${he?'פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.':'Open the cook’s work plan to start a live session.'}</div>`;
+    : `<div class="cop-empty">${he?'פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.':'Open the cook’s work plan to start a live session.'}</div>`) + stallCard;
   showPanel(`${typeof toolTop==='function'?toolTop(L('טייס חי','Live Copilot'),L('הבישול שלך בזמן אמת','Your cook, live'),'🔥','#c0392b'):`<h2 style="padding:16px">${L('טייס חי','Live Copilot')}</h2>`}
     <div class="panel-body">
       ${sess?`<div class="cop-hdr">🔥 ${he?'מושב חי פעיל':'Live session active'}${sess.serveTs?` · ${he?'הגשה':'serve'} ${fmtClock(new Date(sess.serveTs))}`:''}</div>`:''}
