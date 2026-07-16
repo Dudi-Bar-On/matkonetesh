@@ -7,7 +7,7 @@ compatibility_date = "2024-11-01"
 # then paste the printed id below (and, if you want `wrangler dev`, the preview_id).
 [[kv_namespaces]]
 binding = "CODES"
-id = "REPLACE_WITH_KV_ID"
+id = "7a23146e41a94c44a7f32da612dd8f2b"
 # preview_id = "REPLACE_WITH_PREVIEW_KV_ID"
 
 # The Gemini key is a SECRET, never in this file:
