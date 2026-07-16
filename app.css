@@ -927,6 +927,11 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .akm-status p{font-size:calc(12px * var(--fscale));color:var(--bone);margin-top:2px}
 .akm-status code{background:var(--char2);padding:1px 6px;border-radius:6px;font-size:calc(11px * var(--fscale))}
 .akm-dot{width:11px;height:11px;border-radius:50%;background:var(--fresh);box-shadow:0 0 0 4px rgba(26,154,122,.18);flex-shrink:0}
+.akm-status.akm-off{background:var(--char3);border-color:var(--line2)}
+.akm-status.akm-off b{color:var(--smoke)}
+.akm-status.akm-off .akm-dot{background:var(--smoke);box-shadow:0 0 0 4px rgba(122,95,76,.14)}
+.akm-central{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.akm-central-h{font-family:var(--font-body);font-weight:800;font-size:calc(14px * var(--fscale));color:var(--bone);margin-bottom:4px}
 .akm-btn{width:100%;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:13px;font-family:var(--font-body);font-weight:700;font-size:calc(14px * var(--fscale));color:var(--bone);cursor:pointer;margin-bottom:9px;text-align:start}
 .akm-danger{color:var(--terra-d);border-color:#e8c0a8}
 .askex{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}

@@ -3168,7 +3168,13 @@ const GEM_HOST='https://generativelanguage.googleapis.com/v1beta/models/';
 const GEM_MODEL='gemini-2.5-flash';
 function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
 async function gemFetch(model, body, opts){
-  opts=opts||{}; const key=opts.key||gemKey(); if(!key) throw new Error('no-key');
+  opts=opts||{};
+  // transport: MANAGED (central Worker holds the key, gated by a per-user access code) → BYOK (own key) → off.
+  // opts.key forces BYOK (used by askValidateKey to test a raw key). A managed access/quota error falls back to BYOK if a key exists.
+  const mode = opts.key ? 'byok' : gemMode();
+  if(mode==='off') throw new Error('no-key');
+  const url = (mode==='managed') ? (centralUrl()+'/v1beta/models/'+(model||GEM_MODEL)+':generateContent') : GEM_URL(model);
+  const headers = (mode==='managed') ? {'Content-Type':'application/json','X-Access-Code':centralCode()} : {'Content-Type':'application/json','x-goog-api-key':(opts.key||gemKey())};
   const timeout=opts.timeout||25000, tries=(opts.retries!=null?opts.retries:1)+1;
   let lastErr;
   for(let i=0;i<tries;i++){
@@ -3176,9 +3182,10 @@ async function gemFetch(model, body, opts){
     const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
     const to=ctl?setTimeout(function(){ try{ctl.abort();}catch(e){} }, timeout):null;
     try{
-      const r=await fetch(GEM_URL(model), {method:'POST', headers:{'Content-Type':'application/json','x-goog-api-key':key}, body:JSON.stringify(body), signal:ctl?ctl.signal:undefined});
+      const r=await fetch(url, {method:'POST', headers, body:JSON.stringify(body), signal:ctl?ctl.signal:undefined});
       if(to) clearTimeout(to);
       if(r.ok) return r;
+      if(mode==='managed' && [401,402,403].indexOf(r.status)>=0 && gemKey()){ return gemFetch(model, body, Object.assign({}, opts, {key:gemKey()})); }   // central code invalid/over-cap → use the user's own key
       if(i<tries-1 && [429,500,502,503,504].indexOf(r.status)>=0){ lastErr=new Error('api-'+r.status); continue; }   // retry only transient statuses
       throw new Error('api-'+r.status);
     }catch(e){ if(to) clearTimeout(to);
@@ -3222,8 +3229,8 @@ async function askValidateKey(key){
    numbers · output→action · transparent · local-first.
    ═══════════════════════════════════════════════════════════════════ */
 
-// A3 · availability gate
-function aiAvail(){ return !!gemKey(); }
+// A3 · availability gate — managed central access OR a personal key
+function aiAvail(){ return gemMode()!=='off'; }
 
 // strip ```json fences / stray prose around a JSON body
 function aiStripFences(t){
@@ -3452,27 +3459,48 @@ function askConnect(){
 }
 // permanent AI-key management — always accessible (☰ settings). Shows status when connected.
 function openKeyManager(){
-  const key=gemKey();
-  if(!key){ askConnect(); return; }
+  const key=gemKey(); const cu=centralUrl(), cc=centralCode();
+  if(!key && !cc){ askConnect(); return; }
   const masked=key.length>8?key.slice(0,4)+'••••••'+key.slice(-4):'••••••';
-  showPanel(`${toolTop(L('ניהול מפתח AI','Manage AI key'),L('מפתח אחד מפעיל AI + הקראה קולית','One key enables AI + voice read-aloud'),'🔑','#e07a52')}
+  const byokBlock = key
+    ? `<div class="akm-status"><span class="akm-dot"></span><div><b>${L('מחובר','Connected')}</b><p>${L('מפתח אישי','Personal key')}: <code>${masked}</code></p></div></div>
+       <button class="akm-btn" id="akmTest">🧪 ${L('בדוק שהמפתח עובד','Test that the key works')}</button>
+       <button class="akm-btn" id="akmReplace">🔁 ${L('החלף מפתח','Replace key')}</button>
+       <button class="akm-btn akm-danger" id="akmOff">🔌 ${L('נתק מפתח','Disconnect key')}</button>`
+    : `<div class="akm-status akm-off"><span class="akm-dot"></span><div><b>${L('אין מפתח אישי','No personal key')}</b><p>${cc?L('פועל דרך גישה מרכזית','Running via central access'):''}</p></div></div>
+       <button class="akm-btn" id="akmConnect">🔑 ${L('חבר מפתח אישי','Connect a personal key')}</button>`;
+  showPanel(`${toolTop(L('ניהול AI','Manage AI'),L('מפתח אישי או גישה מרכזית','A personal key or central access'),'🔑','#e07a52')}
    <div class="panel-body">
-     <div class="akm-status"><span class="akm-dot"></span><div><b>${L('מחובר','Connected')}</b><p>${L('מפתח פעיל','Active key')}: <code>${masked}</code></p></div></div>
+     ${byokBlock}
      <div id="akmMsg" class="akc-msg"></div>
-     <button class="akm-btn" id="akmTest">🧪 ${L('בדוק שהמפתח עובד','Test that the key works')}</button>
-     <button class="akm-btn" id="akmReplace">🔁 ${L('החלף מפתח','Replace key')}</button>
-     <button class="akm-btn akm-danger" id="akmOff">🔌 ${L('נתק מפתח','Disconnect key')}</button>
-     <p class="akc-note">🔒 ${L('המפתח נשמר <b>רק במכשיר שלך</b> ונשלח ישירות ל-Google בלבד. ניתוק יחזיר את AI ואת ההקראה למצב מקומי.','The key is stored <b>only on your device</b> and sent directly to Google only. Disconnecting returns AI and read-aloud to local mode.')}</p><p class="akc-note" style="margin-top:8px">💡 ${L('<b>AI טקסטואלי</b> חינמי. <b>הקראה קולית (TTS)</b> דורשת הפעלת <b>Billing</b> בפרויקט ב-Google AI Studio — אחרת תופיע שגיאת מכסה/הרשאה וההקראה תעבור לקול המערכת.','<b>Text AI</b> is free. <b>Voice read-aloud (TTS)</b> requires enabling <b>Billing</b> on the project in Google AI Studio — otherwise a quota/permission error appears and read-aloud falls back to the system voice.')}</p>
+     <div class="akm-central">
+       <div class="akm-central-h">🛰️ ${L('גישה מרכזית (פיתוח)','Central access (dev)')}</div>
+       <p class="akc-note">${L('קוד גישה מהמפתח מפעיל AI דרך השרת המרכזי — בלי מפתח אישי.','An access code from the developer runs AI through the central server — no personal key needed.')}</p>
+       <label class="eq-step-l" style="margin-top:8px">${L('כתובת השרת','Server URL')}</label>
+       <input id="akmCUrl" class="eq-inp" inputmode="url" placeholder="https://…workers.dev" value="${esc(cu)}">
+       <label class="eq-step-l">${L('קוד גישה','Access code')}</label>
+       <input id="akmCCode" class="eq-inp" value="${esc(cc)}" placeholder="${L('הדבק כאן את הקוד','paste your code here')}">
+       <div style="display:flex;gap:8px;margin-top:10px"><button class="akm-btn" id="akmCSave" style="margin:0;flex:1">${L('שמור ובדוק','Save & test')}</button>${cc?`<button class="akm-btn akm-danger" id="akmCClear" style="margin:0">${L('נתק','Disconnect')}</button>`:''}</div>
+       <div id="akmCMsg" class="akc-msg"></div>
+     </div>
+     <p class="akc-note" style="margin-top:14px">🔒 ${L('מפתח אישי נשמר <b>רק במכשיר</b> ונשלח ישירות ל-Google. גישה מרכזית שולחת לשרת שלך (Cloudflare) שמחזיק את המפתח.','A personal key is stored <b>only on your device</b> and sent straight to Google. Central access sends to your server (Cloudflare) which holds the key.')}</p>
      <button class="akc-back" id="akmBack">→ ${L('חזרה','Back')}</button>
    </div>`);
   const msg=$("#akmMsg");
-  $("#akmTest").addEventListener('click',async()=>{
-    msg.className='akc-msg'; msg.textContent=L('בודק…','Testing…');
+  const tb=$("#akmTest"); if(tb) tb.addEventListener('click',async()=>{ msg.className='akc-msg'; msg.textContent=L('בודק…','Testing…');
     try{ const ok=await askValidateKey(gemKey()); msg.className='akc-msg '+(ok?'ok':'err'); msg.textContent=ok?L('✓ המפתח תקין ופעיל.','✓ The key is valid and active.'):L('✗ המפתח נדחה — כדאי להחליף.','✗ The key was rejected — replace it.'); }
-    catch(e){ msg.className='akc-msg err'; msg.textContent=L('שגיאת רשת — נסה שוב כשיש חיבור.','Network error — try again when connected.'); }
-  });
-  $("#akmReplace").addEventListener('click',askConnect);
-  $("#akmOff").addEventListener('click',async()=>{ if((await appConfirm(L('לנתק את מפתח ה-AI? (משפיע גם על ההקראה הקולית)','Disconnect the AI key? (also affects voice read-aloud)'),{okLabel:L('נתק','Disconnect'),danger:true}))!==true) return; store.set('mk-gemkey',''); setAskMode(false); if(typeof gemCache!=='undefined')gemCache.clear(); toast('המפתח נותק'); openKeyManager(); });
+    catch(e){ msg.className='akc-msg err'; msg.textContent=L('שגיאת רשת — נסה שוב כשיש חיבור.','Network error — try again when connected.'); } });
+  const rb=$("#akmReplace"); if(rb) rb.addEventListener('click',askConnect);
+  const cnb=$("#akmConnect"); if(cnb) cnb.addEventListener('click',askConnect);
+  const ob=$("#akmOff"); if(ob) ob.addEventListener('click',async()=>{ if((await appConfirm(L('לנתק את מפתח ה-AI האישי?','Disconnect the personal AI key?'),{okLabel:L('נתק','Disconnect'),danger:true}))!==true) return; store.set('mk-gemkey',''); setAskMode(false); if(typeof gemCache!=='undefined')gemCache.clear(); toast('המפתח נותק'); openKeyManager(); });
+  const cmsg=$("#akmCMsg");
+  const csb=$("#akmCSave"); if(csb) csb.addEventListener('click',async()=>{
+    store.set('mk-central-url', (($("#akmCUrl")||{}).value||'').trim()); store.set('mk-central-code', (($("#akmCCode")||{}).value||'').trim());
+    if(!centralUrl()||!centralCode()){ cmsg.className='akc-msg'; cmsg.textContent=L('מלא כתובת וקוד.','Enter a URL and a code.'); return; }
+    cmsg.className='akc-msg'; cmsg.textContent=L('בודק גישה…','Testing access…');
+    try{ await gemFetch(GEM_MODEL, {contents:[{parts:[{text:'שלום'}]}], generationConfig:{maxOutputTokens:5, thinkingConfig:{thinkingBudget:0}}}, {retries:0, timeout:15000}); cmsg.className='akc-msg ok'; cmsg.textContent=L('✓ הגישה המרכזית פעילה.','✓ Central access is live.'); openKeyManager(); }
+    catch(e){ const m=String(e&&e.message||e); cmsg.className='akc-msg err'; cmsg.textContent=/api-40[123]/.test(m)?L('✗ הקוד נדחה או נגמרה המכסה.','✗ Code rejected or quota reached.'):L('✗ בדיקה נכשלה — בדוק כתובת/קוד/רשת.','✗ Test failed — check URL / code / network.'); } });
+  const ccl=$("#akmCClear"); if(ccl) ccl.addEventListener('click',()=>{ store.set('mk-central-url',''); store.set('mk-central-code',''); toast(L('גישה מרכזית נותקה','Central access disconnected')); openKeyManager(); });
   $("#akmBack").addEventListener('click',openAsk);
 }
 
@@ -3917,6 +3945,10 @@ const GEM_VOICES=['Kore','Aoede','Puck','Charon','Fenrir','Leda'];
 const gemCache=new Map();           // text → AudioBuffer (מטמון להקראות חוזרות)
 let gemCtx=null, gemSrc=null, vcSpeaking=false;
 function gemKey(){return store.get('mk-gemkey')||'';}
+// managed central AI (dev): a Worker holds the key server-side, gated by a per-user access code. Configured per device.
+function centralUrl(){ const u=store.get('mk-central-url')||''; return u?String(u).trim().replace(/\/+$/,''):''; }
+function centralCode(){ return (store.get('mk-central-code')||'').trim(); }
+function gemMode(){ return (centralUrl() && centralCode()) ? 'managed' : (gemKey() ? 'byok' : 'off'); }
 function gemVoice(){return store.get('mk-gemvoice')||'Kore';}
 function gemStop(){ if(gemSrc){try{gemSrc.stop();}catch(e){} gemSrc=null;} vcSpeaking=false; }
 function b64ToPcm16(b64){

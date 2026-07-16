@@ -1,0 +1,14 @@
+name = "matkonet-ai"
+main = "index.js"
+compatibility_date = "2024-11-01"
+
+# Per-user access codes live in this KV namespace.
+# Create it once with:  wrangler kv namespace create CODES
+# then paste the printed id below (and, if you want `wrangler dev`, the preview_id).
+[[kv_namespaces]]
+binding = "CODES"
+id = "REPLACE_WITH_KV_ID"
+# preview_id = "REPLACE_WITH_PREVIEW_KV_ID"
+
+# The Gemini key is a SECRET, never in this file:
+#   wrangler secret put GEMINI_KEY
