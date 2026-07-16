@@ -5151,8 +5151,8 @@ function openEquipment(){
     };
     // ── multi-value capacity editor: each size is its own removable chip; input + ＋ to add another ──
     const multiHtml=function(){ const cc=capC(($("#eqCat")||{}).value||curCat); if(!cc.multiCap) return '';
-      const u=L(cc.multiCap.uHe,cc.multiCap.uEn);
-      const chips=multiVals.map(function(v,i){ return `<span class="eq-multi-chip">${esc(v)} ${esc(u)}<button type="button" class="eq-multi-x" data-eqmultirm="${i}" aria-label="${L('הסר','Remove')}">✕</button></span>`; }).join('');
+      const u=L(cc.multiCap.uHe,cc.multiCap.uEn); const em=cc.multiCap.em||'';
+      const chips=multiVals.map(function(v,i){ return `<span class="eq-multi-chip">${em?`<span class="eq-multi-em">${em}</span>`:''}<b class="eq-multi-v">${esc(v)} ${esc(u)}</b><button type="button" class="eq-multi-x" data-eqmultirm="${i}" aria-label="${L('הסר','Remove')}">✕</button></span>`; }).join('');
       return chips+`<span class="eq-multi-add"><input id="eqMultiIn" class="eq-multi-in" inputmode="decimal" placeholder="${L('גודל','size')} ${esc(u)}"><button type="button" id="eqMultiAdd" class="eq-multi-addbtn" aria-label="${L('הוסף','Add')}">＋</button></span>`;
     };
     const addMulti=function(){ const inp=$("#eqMultiIn"); if(!inp) return; const v=parseFloat((inp.value||'').replace(/[^\d.]/g,'')); if(!isNaN(v)&&v>0&&v<100000 && multiVals.indexOf(v)<0){ multiVals.push(v); multiVals.sort(function(a,b){return a-b;}); } inp.value=''; repaintMulti(); };
@@ -5170,8 +5170,8 @@ function openEquipment(){
       const typeField=`<div class="eq-vfield"><label>${L('תת-סוג','Sub-type')}${sp}</label><select id="eqType" class="eq-vin${fc}">${typeOpts(nc, d.type)}</select></div>`;
       const capField=cc.capKey?`<div class="eq-vfield"><label>${L(cc.capHe,cc.capEn)}${sp}</label><input type="number" min="0" inputmode="numeric" id="eqCapKey" class="eq-vin${fc}" value="${(d.cap!=null&&d.cap!=='')?esc(d.cap):''}"></div>`:'';
       const multiField=cc.multiCap?`<div class="eq-vfield"><label>${L(cc.multiCap.he,cc.multiCap.en)}${sp}</label><div class="eq-multi${fc}" id="eqMultiWrap">${multiHtml()}</div></div>`:'';
-      const grid=`<div class="eq-vrow">${typeField}${cc.capKey?capField:multiField}</div>`;
-      const extraMulti=(cc.capKey&&cc.multiCap)?multiField:'';   // stuffer: cylinder volume in the grid + output tube sizes full-width below
+      const grid=capField?`<div class="eq-vrow">${typeField}${capField}</div>`:typeField;   // sub-type full-width when there's no single-capacity field
+      const extraMulti=cc.multiCap?multiField:'';   // multi-value editor (bath sizes / output sizes) always full-width below
       const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div><div class="eq-vfield"><label>${L('שטח בישול','Cooking area')}${sp}</label><input id="eqvArea" class="eq-vin${fc}" placeholder="${L('לדוגמה 575 in²','e.g. 575 in²')}" value="${d.area?esc(d.area):''}"></div></div>`:'';
       const heading=ai?`<div class="eq-verify-h"><span>✨</span> ${L('הנה מה שמצאתי — ','Here’s what I found — ')}<b>${L('אמת ושמור','verify & save')}</b></div>`:`<div class="eq-verify-h">${dev?L('פרטי המכשיר','Device details'):L('פרטים','Details')}</div>`;
       const src=ai?`<p class="eq-v-src">${L('<b>✨ מולא אוטומטית</b> ממקורות רשת. גע בכל שדה כדי לשנות — <b>עדיין לא נשמר.</b>','<b>✨ Auto-filled</b> from web sources. Tap any field to change it — <b>nothing is saved yet.</b>')}</p>`:'';
