@@ -14,28 +14,29 @@ You'll run these yourself — I can't log into your Cloudflare account. In this 
 
 **0. Prereqs** — a (free) Cloudflare account and Node installed.
 
-**1. Install + log in to Wrangler**
+**1. Install Wrangler locally (no global/admin) + log in** — run from the repo, in the `worker/` folder:
 ```
-npm install -g wrangler
-wrangler login
+cd worker
+npm install
+npx wrangler login
 ```
+`npx wrangler login` opens a browser — approve access to your Cloudflare account there. (All commands below run from `worker/` and use `npx wrangler`, i.e. the copy installed here.)
 
 **2. Create the KV namespace for access codes**
 ```
-cd worker
-wrangler kv namespace create CODES
+npx wrangler kv namespace create CODES
 ```
 Copy the printed `id` into `worker/wrangler.toml` (replace `REPLACE_WITH_KV_ID`).
 
 **3. Give the Worker your Gemini key** (the same key you use for BYOK today)
 ```
-wrangler secret put GEMINI_KEY
+npx wrangler secret put GEMINI_KEY
 ```
 Paste the key when prompted. It's stored encrypted server-side — never in the repo.
 
 **4. Deploy**
 ```
-wrangler deploy
+npx wrangler deploy
 ```
 Wrangler prints your Worker URL, e.g. `https://matkonet-ai.<your-subdomain>.workers.dev`. Copy it.
 
@@ -67,5 +68,5 @@ Each code carries a **token cap** (default 2,000,000/user) so one code can never
 
 ## Notes
 - **Security:** the key lives only as a Worker secret. Codes live in KV; revoke instantly. For production you'd tighten `Access-Control-Allow-Origin` to your app's origin and swap codes for Paddle subscription entitlements.
-- **Older Wrangler:** the admin script uses `wrangler kv key …` (v3+). Older versions use `wrangler kv:key …`.
+- **Wrangler is a local devDependency** (`worker/package.json`) — always call it via `npx wrangler …` from `worker/`. No global install / admin needed. (It uses `kv key …` syntax, wrangler ≥3.90 / v4.)
 - **This is the dev/beta form** of the managed tier from the architecture research (`docs/research/04a-architecture.md`); the production path adds subscription auth + a fair-use cap on top of the same Worker.

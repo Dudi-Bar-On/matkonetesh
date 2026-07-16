@@ -1,0 +1,15 @@
+{
+  "name": "matkonet-ai",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Managed-AI proxy Worker for Matkonet (holds the Gemini key; per-user access codes).",
+  "scripts": {
+    "login": "wrangler login",
+    "deploy": "wrangler deploy",
+    "dev": "wrangler dev",
+    "whoami": "wrangler whoami"
+  },
+  "devDependencies": {
+    "wrangler": ">=3.90.0"
+  }
+}

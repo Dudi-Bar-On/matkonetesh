@@ -22,7 +22,8 @@ const WORKER_DIR = join(dirname(fileURLToPath(import.meta.url)), '..', 'worker')
 const isWin = process.platform === 'win32';
 
 function wr(args) {
-  return execFileSync(isWin ? 'wrangler.cmd' : 'wrangler', args, { cwd: WORKER_DIR, stdio: ['ignore', 'pipe', 'inherit'] }).toString();
+  // use the wrangler installed locally in worker/ (via npx), so no global install/admin is needed
+  return execFileSync(isWin ? 'npx.cmd' : 'npx', ['wrangler', ...args], { cwd: WORKER_DIR, stdio: ['ignore', 'pipe', 'inherit'] }).toString();
 }
 
 const [cmd, a, b] = process.argv.slice(2);
