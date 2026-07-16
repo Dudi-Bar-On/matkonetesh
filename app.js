@@ -3073,7 +3073,7 @@ function askFire(qRaw){
 }
 
 /* ---- Ask the Fire: AI mode (BYOK Gemini) — optional layer over the local engine ---- */
-function askMode(){ const v=store.get('mk-askai'); if(v==='1')return true; if(v==='0')return false; return gemKey()?true:false; } // default ON only if a key already exists (e.g. from TTS)
+function askMode(){ const v=store.get('mk-askai'); if(v==='1')return true; if(v==='0')return false; return aiAvail()?true:false; } // default ON when AI is available (personal key OR managed central access)
 function setAskMode(on){ store.set('mk-askai', on?'1':'0'); }
 // W1-P4: does the question touch a food-safety topic (cure/nitrite/salt%/temp-safety/botulism/pasteurization/mold/ferment/pH/aw)?
 function askSafetyIntent(q){
@@ -3197,7 +3197,7 @@ async function gemFetch(model, body, opts){
   throw lastErr||new Error('gem-failed');
 }
 async function askGemini(qRaw, history){
-  const key=gemKey(); if(!key) throw new Error('no-key');
+  if(!aiAvail()) throw new Error('no-key');   // available via a personal key OR managed central access; gemFetch routes the transport
   const q=(qRaw||'').trim();
   const {ctx,ents}=askContextFor(q);
   const he=(typeof getLang!=='function'||getLang()==='he');
@@ -3300,7 +3300,7 @@ function aiMockActive(){ return typeof window!=='undefined' && window.__aiMock!=
 async function aiJSON(opts){
   const {task, schemaHint, grounding='', temperature=0.4, maxTokens=1200, search=false}=opts||{};
   if(aiMockActive()){ const m=window.__aiMock; return typeof m==='function' ? m(opts) : m; }
-  const key=gemKey(); if(!key) throw new Error('no-key');
+  if(!aiAvail()) throw new Error('no-key');   // available via a personal key OR managed central access; gemFetch routes the transport
   // W1-P1: output-language plumbing — human-readable string values follow the UI language (keys/ids stay as given). Fixes AI JSON coming back Hebrew in the English UI.
   const outLang=(opts&&opts.outLang) || (typeof getLang==='function'?getLang():'he');
   const langLine=(outLang==='he')?'':('\n\nIMPORTANT: write every human-readable string VALUE (reason/note/summary/rationale/tip/warning/text/title/desc) in '+(LANGNAME[outLang]||'English').toUpperCase()+'. Keep every key and id EXACTLY as provided.');
@@ -3369,7 +3369,7 @@ function aiConfirmPanel(o){
 
 function openAsk(){
   const examples=getLang()==='he'?['כמה זמן לעשן צלעות','טמפ׳ לסלמון','איזה עץ לחזה','כמה בשר ל-10 אנשים','היכן לקנות פחם איכותי בשרון','עשן יצא מר']:['How long to smoke ribs','Temp for salmon','Which wood for brisket','How much meat for 10 people','Where to buy quality charcoal','Smoke came out bitter'];
-  const aiOn=askMode(), hasKey=!!gemKey();
+  const aiOn=askMode(), hasKey=aiAvail();   // "has AI" = personal key OR managed central access
   const hist=[]; // {role:'user'|'ai', text, src}
   showPanel(`${toolTop(L('שאל את האש','Ask the Fire'),L('עוזר בישול — מנוע מקומי או AI','Cooking assistant — local engine or AI'),'🔥','#e85c1c')}
    <div class="panel-body">
@@ -3380,7 +3380,7 @@ function openAsk(){
      <div id="askthread" class="askthread" role="log" aria-live="polite" aria-atomic="false"></div>
      <div class="askex" id="askex">${examples.map(x=>`<button class="askex-chip" data-ex="${x}">${x}</button>`).join('')}</div>
      <div class="askrow"><input id="askq" placeholder="${L('שאל שאלה…','Ask a question…')}" autocomplete="off"><button id="askgo">${L('שאל','Ask')}</button><button id="askclear" class="askclear" title="${L('שיחה חדשה','New conversation')}" hidden>🗑</button></div>
-     <div id="askhint" class="ask-hint">${aiOn?(hasKey?L('🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג.','🤖 AI mode on — free-form answers with web search, grounded in the catalog. A helper only — verify temp/safety numbers against the catalog.')+' <button class="ask-link" data-askmode="disc">'+L('נתק מפתח','Disconnect key')+'</button>':L('🤖 מצב AI נבחר — צריך לחבר מפתח חינמי (חד-פעמי).','🤖 AI mode selected — you need to connect a free key (one-time).')):L('⚡ מנוע מקומי — מיידי, פרטי, בלי רשת. עונה מעל נתוני הקטלוג שלך.','⚡ Local engine — instant, private, no network. Answers over your catalog data.')}</div>
+     <div id="askhint" class="ask-hint">${aiOn?(hasKey?L('🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג.','🤖 AI mode on — free-form answers with web search, grounded in the catalog. A helper only — verify temp/safety numbers against the catalog.')+(gemKey()?' <button class="ask-link" data-askmode="disc">'+L('נתק מפתח','Disconnect key')+'</button>':''):L('🤖 מצב AI נבחר — צריך לחבר מפתח חינמי (חד-פעמי).','🤖 AI mode selected — you need to connect a free key (one-time).')):L('⚡ מנוע מקומי — מיידי, פרטי, בלי רשת. עונה מעל נתוני הקטלוג שלך.','⚡ Local engine — instant, private, no network. Answers over your catalog data.')}</div>
    </div>`);
   const pnl=$("#panel"), thread=$("#askthread");
   const badge=src=>src==='ai'?'<span class="ask-src ai">🤖 AI</span>':`<span class="ask-src loc">⚡ ${L('מקומי','Local')}</span>`;
@@ -3399,7 +3399,7 @@ function openAsk(){
     { const ref=(typeof askRefuse==='function')?askRefuse(q):null;
       if(ref){ addAnswer(askRefuseCardHTML(ref)); hist.push({role:'ai',text:((typeof getLang==='function'&&getLang()==='he')?ref.he:ref.en).title}); if(typeof scrollDown==='function') scrollDown(); $("#askq").focus(); return; } }
     if(askMode()){
-      if(!gemKey()){ askConnect(); return; }
+      if(!aiAvail()){ askConnect(); return; }
       const load=addAnswer(`<div class="abubble ask-loading">${badge('ai')}${aiSpinner(L('האש חושב','The Fire is thinking'))}</div>`);
       try{ const r=await askGemini(q, hist);
         load.innerHTML=`<div class="abubble">${badge('ai')}${esc(r.txt||'').replace(/\n/g,'<br>')}${aiSafetyNote(r.txt, r.ctx)}</div>`;   // W1-P3: verify safety numbers against the grounding; escalate + calculator link if ungrounded
@@ -3426,7 +3426,7 @@ function openAsk(){
   pnl.querySelectorAll('[data-askmode]').forEach(b=>b.addEventListener('click',()=>{
     const m=b.dataset.askmode;
     if(m==='local'){ setAskMode(false); openAsk(); }
-    else if(m==='ai'){ setAskMode(true); if(gemKey()) openAsk(); else askConnect(); }
+    else if(m==='ai'){ setAskMode(true); if(aiAvail()) openAsk(); else askConnect(); }
     else if(m==='disc'){ appConfirm('לנתק את מפתח ה-AI? (משפיע גם על הקראה קולית)',{okLabel:'נתק',danger:true}).then(y=>{ if(y===true){ store.set('mk-gemkey',''); setAskMode(false); openAsk(); } }); }
   }));
   $("#askq").focus();
@@ -4130,7 +4130,7 @@ async function vcTranslateToEn(text){
   if(typeof window!=='undefined' && window.__vcTransMock!==undefined && window.__vcTransMock!==null){
     const m=window.__vcTransMock; const out=(typeof m==='function'?m(src):m); vcTransCache.set(src,out); return out;
   }
-  const key=gemKey(); if(!key) throw new Error('no-key');
+  if(!aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
   const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking-instruction text to natural spoken English. Reply with ONLY the English translation, no quotes, no notes.'}]},
     contents:[{role:'user',parts:[{text:src}]}],
     generationConfig:{temperature:0.2,maxOutputTokens:300,thinkingConfig:{thinkingBudget:0}} };
@@ -4211,7 +4211,7 @@ async function vcAskAI(question){
   if(typeof window!=='undefined' && window.__vcAskMock!==undefined && window.__vcAskMock!==null){
     const m=window.__vcAskMock; return typeof m==='function'?m(question):m;
   }
-  const key=gemKey(); if(!key) throw new Error('no-key');
+  if(!aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
   const ans=vcAnsLang();
   const {sys, userText}=vcBuildAskPrompt(question, ans, vcCookContext());
   const body={ system_instruction:{parts:[{text:sys}]},
@@ -5498,7 +5498,7 @@ async function mtTranslate(src, lang){
   try{
     if(typeof window!=='undefined' && window.__mtMock!==undefined && window.__mtMock!==null){
       out=(typeof window.__mtMock==='function'?window.__mtMock(src,lang):window.__mtMock);   // test seam
-    } else if(typeof gemFetch==='function' && gemKey()){
+    } else if(typeof gemFetch==='function' && aiAvail()){
       const LN=LANGNAME[lang]||lang;
       const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking text to '+LN+'. Keep ALL numbers, temperatures, times and units EXACTLY as written — never change, add, or drop a number. Reply with ONLY the translation, no notes.'}]},
         contents:[{role:'user',parts:[{text:src}]}], generationConfig:{temperature:0.2,maxOutputTokens:600,thinkingConfig:{thinkingBudget:0}} };
@@ -7743,7 +7743,7 @@ const CCAT_TILES=[
 // [icon, title, blurb, fn, needsKey]. Add new AI tools here.
 // Wave 3 · photo analyzer — Gemini multimodal read of bark / doneness / smoke-ring / charcuterie mold. ALWAYS advisory ("probe decides").
 async function gemVision(dataUrl, prompt){
-  const key=(typeof gemKey==='function')?gemKey():''; if(!key) throw new Error('no-key');
+  if(typeof aiAvail!=='function' || !aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
   const m=String(dataUrl||'').match(/^data:([^;]+);base64,(.+)$/); if(!m) throw new Error('bad-image');
   const body={ contents:[{parts:[{inlineData:{mimeType:m[1], data:m[2]}}, {text:prompt}]}], generationConfig:{temperature:0.4, maxOutputTokens:800, thinkingConfig:{thinkingBudget:0}} };
   const r=await gemFetch(GEM_MODEL, body, {timeout:40000}); if(!r.ok) throw new Error('api-'+r.status);

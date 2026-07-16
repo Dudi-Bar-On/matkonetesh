@@ -205,3 +205,60 @@ test('W1-P7: a fabricated safety number is always escalated; a vetted one is not
   const ok = await page.evaluate(`aiSafetyNote('Cure #1 is about 156 ppm', SAFETY_FACTS())`) as string;
   expect(ok).not.toContain('ai-caveat-strong');   // vetted 156ppm → not escalated
 });
+
+// ── v243 — Managed-AI mode regression.
+// v242 added managed mode (central Worker holds the key, gated by a per-user access code, NO personal key).
+// It made the transport (gemFetch) and aiAvail() mode-aware, but left the CORE AI entry points gating on
+// gemKey() (the BYOK-only personal key) — so managed users were bounced to "connect a personal key" and
+// could not use the AI at all. These lock the mode-aware gate everywhere.
+const bootManaged = async (page: any) => {
+  await page.addInitScript(() => { try {
+    localStorage.clear();
+    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+    localStorage.setItem('mk-lang', JSON.stringify('en'));
+    localStorage.setItem('mk-central-url', JSON.stringify('https://example.workers.dev'));
+    localStorage.setItem('mk-central-code', JSON.stringify('TESTCODE123'));
+    // NO mk-gemkey — pure managed mode (central access code, no personal key)
+  } catch {} });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof aiJSON==='function' && typeof askGemini==='function'`);
+  await page.evaluate(`window.__cap=[]; window.gemFetch=async(model,body,opts)=>{ window.__cap.push({model,body,opts}); return { ok:true, status:200, json:async()=>({candidates:[{content:{parts:[{text:'{"x":1}'}]}}]}) }; };`);
+};
+
+test('v243: managed central access enables AI without a personal key', async ({ page }) => {
+  await bootManaged(page);
+  expect(await page.evaluate(`gemMode()`)).toBe('managed');
+  expect(await page.evaluate(`gemKey()`)).toBe('');          // no personal key
+  expect(await page.evaluate(`aiAvail()`)).toBe(true);        // AI is available via the central code
+  expect(await page.evaluate(`askMode()`)).toBe(true);        // AI mode defaults ON when managed access is configured
+});
+
+test('v243: no core AI feature throws "no-key" in managed mode', async ({ page }) => {
+  await bootManaged(page);
+  const calls: Record<string,string> = {
+    askGemini:   `askGemini('how long to smoke ribs')`,
+    aiJSON:      `aiJSON({task:'t',grounding:'g',schemaHint:'{}'})`,
+    vcAskAI:         `vcAskAI('how much longer for the brisket')`,
+    vcTranslateToEn: `vcTranslateToEn('טמפרטורה')`,
+    gemVision:       `gemVision('data:image/png;base64,iVBORw0KGgo=','describe this')`,
+  };
+  for (const [name, call] of Object.entries(calls)) {
+    const err = await page.evaluate(`(async()=>{ try{ await (${call}); return 'ok'; }catch(e){ return String(e.message||e); } })()`) as string;
+    expect(err, `${name} threw a no-key error in managed mode`).not.toContain('no-key');
+  }
+  expect(await page.evaluate(`window.__cap.length`) as number).toBeGreaterThanOrEqual(5);   // every one reached the transport
+});
+
+test('v243: Ask → Smart AI opens the assistant (not the connect-a-key wizard) in managed mode', async ({ page }) => {
+  await bootManaged(page);
+  await page.evaluate(`openAsk()`);
+  await page.waitForSelector(`[data-askmode="ai"]`);
+  await page.click(`[data-askmode="ai"]`);
+  await page.waitForSelector('#panel h2');
+  // must NOT bounce to the personal-key connect wizard ("Connect smart AI")
+  expect(await page.evaluate(`document.querySelector('#panel h2').textContent`)).toContain('Ask the Fire');
+  // and a submitted question reaches the AI transport (captured) instead of redirecting / throwing no-key
+  await page.fill('#askq', 'how long to smoke ribs');
+  await page.click('#askgo');
+  await page.waitForFunction(`window.__cap.length > 0`);
+});
