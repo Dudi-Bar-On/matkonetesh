@@ -262,3 +262,54 @@ test('v243: Ask → Smart AI opens the assistant (not the connect-a-key wizard) 
   await page.click('#askgo');
   await page.waitForFunction(`window.__cap.length > 0`);
 });
+
+// ── v244 — the central-access (Worker URL + code) fields must be REACHABLE on first setup.
+// Regression: openKeyManager() bailed to the personal-key wizard (askConnect) whenever there was
+// no personal key AND no central code — i.e. exactly a brand-new managed user — so the only screen
+// carrying the Worker-URL/code fields was unreachable (chicken-and-egg). The user reported "there was
+// no form and fields to enter this info".
+const bootNoAI = async (page: any) => {
+  await page.addInitScript(() => { try {
+    localStorage.clear();
+    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
+    localStorage.setItem('mk-lang', JSON.stringify('en'));
+    // NO mk-gemkey, NO mk-central-url/code — a fresh user with nothing configured
+  } catch {} });
+  await page.goto('/index.html');
+  await page.waitForFunction(`typeof openKeyManager==='function' && typeof askConnect==='function'`);
+};
+
+test('v244: Manage AI shows the central-access fields for a fresh user (no key, no code)', async ({ page }) => {
+  await bootNoAI(page);
+  await page.evaluate(`openKeyManager()`);
+  await page.waitForSelector('#panel h2');
+  // must land on the Manage-AI hub, NOT bail to the personal-key-only wizard ("Connect smart AI")
+  expect(await page.evaluate(`document.querySelector('#panel h2').textContent`)).toContain('Manage AI');
+  // the Worker URL + access-code + save controls must be present and reachable
+  expect(await page.evaluate(`!!document.querySelector('#akmCUrl')`)).toBe(true);
+  expect(await page.evaluate(`!!document.querySelector('#akmCCode')`)).toBe(true);
+  expect(await page.evaluate(`!!document.querySelector('#akmCSave')`)).toBe(true);
+  // a personal-key path is still offered on the same hub
+  expect(await page.evaluate(`!!document.querySelector('#akmConnect')`)).toBe(true);
+});
+
+test('v244: entering a Worker URL + code on the hub engages managed mode', async ({ page }) => {
+  await bootNoAI(page);
+  await page.evaluate(`window.gemFetch=async()=>({ ok:true, status:200, json:async()=>({candidates:[{content:{parts:[{text:'שלום'}]}}]}) });`);   // stub the test-call
+  await page.evaluate(`openKeyManager()`);
+  await page.waitForSelector('#akmCUrl');
+  await page.fill('#akmCUrl', 'https://example.workers.dev');
+  await page.fill('#akmCCode', 'TESTCODE123');
+  await page.click('#akmCSave');
+  await page.waitForFunction(`gemMode()==='managed'`);
+  expect(await page.evaluate(`aiAvail()`)).toBe(true);
+});
+
+test('v244: the personal-key wizard offers a route to central access', async ({ page }) => {
+  await bootNoAI(page);
+  await page.evaluate(`askConnect()`);
+  await page.waitForSelector('#akcCentral');
+  await page.click('#akcCentral');
+  await page.waitForSelector('#akmCUrl');                       // now on the hub, fields present
+  expect(await page.evaluate(`!!document.querySelector('#akmCCode')`)).toBe(true);
+});

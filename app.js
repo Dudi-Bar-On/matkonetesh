@@ -3442,8 +3442,10 @@ function askConnect(){
         <div id="akcMsg" class="akc-msg"></div>
      </div></div>
      <p class="akc-note">🔒 ${L('המפתח נשמר <b>רק במכשיר שלך</b> ונשלח ישירות ל-Google בלבד. אפשר לנתק בכל רגע.','The key is stored <b>only on your device</b> and sent directly to Google only. You can disconnect anytime.')}</p><p class="akc-note" style="margin-top:8px">💡 ${L('<b>שאל את האש (AI)</b> עובד חינם. <b>הקראה קולית (TTS)</b> היא מודל בתשלום אצל Google — דורש הפעלת <b>Billing</b> בפרויקט (יש מכסה חינמית נדיבה גם אז). בלי חיוב, ההקראה תשתמש בקול המערכת.','<b>Ask the Fire (AI)</b> is free. <b>Voice read-aloud (TTS)</b> is a paid model at Google — it requires enabling <b>Billing</b> on the project (there is a generous free quota even then). Without billing, read-aloud uses the system voice.')}</p>
+     <button class="akc-back" id="akcCentral" style="margin-top:10px">🛰️ ${L('יש לך קוד גישה מרכזי? הגדר גישה מרכזית','Have an access code? Set up central access')}</button>
      <button class="akc-back" id="akcBack">→ ${L('חזרה ל"שאל את האש"','Back to "Ask the Fire"')}</button>
    </div>`);
+  const cnl=$("#akcCentral"); if(cnl) cnl.addEventListener('click',openKeyManager);
   const msg=$("#akcMsg");
   $("#akcSave").addEventListener('click',async()=>{
     const k=($("#akcKey").value||'').trim();
@@ -3460,7 +3462,9 @@ function askConnect(){
 // permanent AI-key management — always accessible (☰ settings). Shows status when connected.
 function openKeyManager(){
   const key=gemKey(); const cu=centralUrl(), cc=centralCode();
-  if(!key && !cc){ askConnect(); return; }
+  // NOTE: no early redirect — this hub is the ONLY place with the central-access (Worker URL + code)
+  // fields, so a fresh user (no personal key AND no code) must still land here to enter them.
+  // The no-key state is handled inline below (status card + "Connect a personal key" button).
   const masked=key.length>8?key.slice(0,4)+'••••••'+key.slice(-4):'••••••';
   const byokBlock = key
     ? `<div class="akm-status"><span class="akm-dot"></span><div><b>${L('מחובר','Connected')}</b><p>${L('מפתח אישי','Personal key')}: <code>${masked}</code></p></div></div>
