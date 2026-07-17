@@ -93,6 +93,40 @@ test('B1: aiLookupDevice + aiBrandModels normalize AI output; no-key guarded', a
   expect(await page.evaluate(`aiLookupDevice('x','smoker').then(()=>'ok').catch(e=>String(e.message))`)).toContain('no-key');
 });
 
+test('B4: aiLookupDevice extracts metric + all category caps (volume/nozzles/area), rejects URL names', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`store.set('mk-gemkey','k')`);
+  // stuffer: cylinder volume (L) + output-tube sizes (mm) + extra details
+  await page.evaluate(`window.__aiMock={name:'Hakka 5L SV-5', subtype:'אנכית', volume:5, nozzles:[10,20,30,40], note:'2-speed', details:'food-grade stainless'};`);
+  const st = await page.evaluate(`aiLookupDevice('haka 5L','stuffer')`) as any;
+  expect(st.name).toBe('Hakka 5L SV-5');
+  expect(st.cap.volume).toBe(5);
+  expect(st.nozzles).toEqual([10,20,30,40]);
+  expect(st.details).toContain('stainless');
+  // smoker: total area from areaCm2 (metric) + a stray cross-category cap is filtered out
+  await page.evaluate(`window.__aiMock={name:'Traeger Pro 575', racks:2, channels:1, areaCm2:3703};`);
+  const sm = await page.evaluate(`aiLookupDevice('traeger','smoker')`) as any;
+  expect(sm.cap.racks).toBe(2);
+  expect(sm.cap.channels).toBeUndefined();     // stray channels on a smoker → dropped
+  expect(sm.area).toBe('3703 cm²');            // metric, not "575 in²"
+  // a URL must NEVER become the device name (Hebrew search URLs render as %-escape codes)
+  await page.evaluate(`window.__aiMock={name:'https://hakka.com/sv5', racks:1};`);
+  expect(await page.evaluate(`aiLookupDevice('https://hakka.com/sv5','smoker').then(r=>r.name)`)).toBe('');
+  // nozzles given as a loose string are parsed to mm numbers
+  await page.evaluate(`window.__aiMock={volume:3, nozzles:'16, 22, 32 mm'};`);
+  expect(await page.evaluate(`aiLookupDevice('x','stuffer').then(r=>JSON.stringify(r.nozzles))`)).toBe('[16,22,32]');
+});
+
+test('B5: acmFmt metric formatting + aiRepairJson recovers the malformed AI JSON that broke stuffer lookups', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(`acmFmt(3703)`)).toBe('3703 cm²');
+  expect(await page.evaluate(`acmFmt(20000)`)).toBe('2 m²');
+  // the real failure: Gemini emitted `"nozzles":,` (empty value) → invalid JSON → whole lookup lost
+  expect(await page.evaluate(`JSON.stringify(JSON.parse(aiRepairJson('{"a":1,"nozzles":,"b":null}')))`)).toBe('{"a":1,"nozzles":null,"b":null}');
+  expect(await page.evaluate(`JSON.stringify(JSON.parse(aiRepairJson('{"a":[1,2,],"b":2,}')))`)).toBe('{"a":[1,2],"b":2}');
+  expect(await page.evaluate(`JSON.stringify(JSON.parse(aiRepairJson('{"a":{},"b":[],"c":"x"}')))`)).toBe('{"a":{},"b":[],"c":"x"}');  // valid JSON untouched
+});
+
 test('B2: edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) => {
   await boot(page);
   await page.evaluate(`equipSave([{id:'eq-1',cat:'smoker',type:'פלטים',name:'Old Name',cap:{racks:1}}]); equipSetConfigured();`);

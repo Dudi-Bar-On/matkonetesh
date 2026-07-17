@@ -209,7 +209,7 @@ test('FORM AI (mock): lookup verify+save, browse catalogue, redo (EN)', async ({
   await page.waitForSelector('#panel #eqLookup');       // key present → AI controls render
 
   // (14) AI lookup path — mock the web result, look up, verify card fills green+✨, then Save as ai
-  await page.evaluate(`window.__aiMock={subtype:'פלטים',fuel:'pellet',racks:3,area:'575 in²',note:'stainless build'};`);
+  await page.evaluate(`window.__aiMock={subtype:'פלטים',fuel:'pellet',racks:3,areaCm2:3703,note:'stainless build'};`);
   await page.selectOption('#panel #eqCat', 'smoker');
   await page.fill('#panel #eqLookupQ', 'Traeger Pro 575');
   await page.click('#panel #eqLookup');
@@ -217,7 +217,7 @@ test('FORM AI (mock): lookup verify+save, browse catalogue, redo (EN)', async ({
   expect(await page.locator('#panel #eqName').inputValue()).toBe('Traeger Pro 575');
   expect(await page.locator('#panel #eqType').inputValue()).toBe('פלטים');
   expect(await page.locator('#panel #eqvFuel').inputValue()).toBe('pellet');
-  expect(await page.locator('#panel #eqvArea').inputValue()).toBe('575 in²');
+  expect(await page.locator('#panel #eqvArea').inputValue()).toBe('3703 cm²');   // metric, converted from in²
   expect(await page.locator('#panel .eq-vin.eq-aifilled').count()).toBeGreaterThan(0);   // green tint
   expect(await page.locator('#panel .eq-vfield label .sp').count()).toBeGreaterThan(0);   // ✨ markers
   const srcNote = await page.locator('#panel .eq-v-src').textContent();
@@ -362,7 +362,7 @@ test('אביה 150 (a) MANUAL: cabinet smoker, 5 racks, charcoal (HE)', async ({
 
 test('אביה 150 (b) LOOKUP FLOW (mock): verify card fills, saved as ai (HE)', async ({ page }) => {
   await boot(page, { lang: 'he', key: 'k' });
-  await page.evaluate(`window.__aiMock={ subtype:'ארון / קבינט', fuel:'charcoal', racks:5, area:'150×60 cm', note:'3mm walls · separate firebox · ~60kg / 5 removable shelves' };`);
+  await page.evaluate(`window.__aiMock={ subtype:'ארון / קבינט', fuel:'charcoal', racks:5, areaCm2:9000, note:'3mm walls · separate firebox · ~60kg / 5 removable shelves' };`);
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel [data-eqpick="smoker"]');
   await page.click('#panel [data-eqpick="smoker"]');
@@ -373,7 +373,7 @@ test('אביה 150 (b) LOOKUP FLOW (mock): verify card fills, saved as ai (HE)',
   await page.waitForFunction(`(document.querySelector('#panel #eqCapKey')||{}).value==='5'`);
   expect(await page.locator('#panel #eqType').inputValue()).toBe('ארון / קבינט');
   expect(await page.locator('#panel #eqvFuel').inputValue()).toBe('charcoal');
-  expect(await page.locator('#panel #eqvArea').inputValue()).toBe('150×60 cm');
+  expect(await page.locator('#panel #eqvArea').inputValue()).toBe('9000 cm²');
   expect(await page.locator('#panel .eq-vin.eq-aifilled').count()).toBeGreaterThan(0);   // green tint
   expect(await page.locator('#panel .eq-vfield label .sp').count()).toBeGreaterThan(0);   // ✨ markers
   const aiNote = await page.locator('#panel #eqAiNote').textContent();
@@ -386,5 +386,5 @@ test('אביה 150 (b) LOOKUP FLOW (mock): verify card fills, saved as ai (HE)',
   expect(dev.specSource).toBe('ai');
   expect(dev.cap.racks).toBe(5);
   expect(dev.fuel).toBe('charcoal');
-  expect(dev.cap.area).toBe('150×60 cm');
+  expect(dev.cap.area).toBe('9000 cm²');
 });

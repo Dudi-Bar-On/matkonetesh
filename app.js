@@ -3331,7 +3331,17 @@ async function aiJSON(opts){
   try{ raw=await callOnce(mkBody()); }
   catch(e){ if(String(e.message).startsWith('api-4')||String(e.message).startsWith('empty-')){ raw=await callOnce(mkBody()); } else throw e; }
   try{ return JSON.parse(aiStripFences(raw)); }
-  catch(_){ try{ return JSON.parse(aiStripFences(raw.replace(/[\u0000-\u001F]+/g,' '))); }catch(e2){ throw new Error('bad-json'); } }
+  catch(_){ try{ return JSON.parse(aiStripFences(raw.replace(/[\u0000-\u001F]+/g,' '))); }catch(e2){ try{ return JSON.parse(aiRepairJson(aiStripFences(String(raw)))); }catch(e3){ throw new Error('bad-json'); } } }
+}
+
+// repair the common LLM JSON malformations that break an otherwise-good object:
+//   "k":,  →  "k":null,   ·   "k":}  →  "k":null}   ·   trailing comma before } or ]
+// (e.g. Gemini emitting `"nozzles":,` when a field has no value). Conservative — only those shapes.
+function aiRepairJson(s){
+  return String(s||'')
+    .replace(/:\s*,/g, ':null,')
+    .replace(/:\s*([}\]])/g, ':null$1')
+    .replace(/,\s*([}\]])/g, '$1');
 }
 
 // A2 · grounding enforcement — every AI-returned key MUST pass here
@@ -5060,19 +5070,42 @@ function typeLabel(type){
 }
 function equipAiOn(){ return typeof aiAvail==='function' && aiAvail(); }
 // web-grounded spec lookup → normalized {subtype, fuel, cap:{...}, area, note}. Advisory; user confirms before save.
+// format a metric cooking area (cm²) → "3710 cm²", or "2.4 m²" for big rigs
+function acmFmt(cm2){ cm2=Math.round(cm2); return cm2>=10000 ? (+(cm2/10000).toFixed(2))+' m²' : cm2+' cm²'; }
 async function aiLookupDevice(query, cat){
   if(!equipAiOn()) throw new Error('no-key');
   const c=equipCat(cat)||{}; const types=c.types||[];
-  const schema='{"subtype":"<exact string from the sub-type list, or null>","fuel":"charcoal|pellet|gas|wood|electric|null","racks":"<number or null>","zones":"<number or null>","channels":"<number or null>","bathL":"<number or null>","area":"<cooking area incl. unit, e.g. 575 in² or 2400 cm², or null>","note":"<one short factual line>"}';
-  const task='Look up the real, published specs for this cooking device: "'+String(query||'')+'"'+(cat?(' (a '+(c.en||cat)+')'):'')+'. Search the manufacturer or a retailer page. Return ONLY orchestration-relevant data as JSON: '
-    +'best-fit sub-type'+(types.length?(' — return the EXACT string from this list, do NOT translate it: '+JSON.stringify(types)):'')+'; '
-    +'fuel type; number of racks/shelves (smoker/oven); grill heat zones; probe channels; sous-vide bath litres; total cooking area with its unit. Use null for anything not applicable or that you cannot determine.';
-  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:700, outLang:'en'});
-  const cap={}; ['racks','zones','channels','bathL'].forEach(function(k){ const v=parseInt(raw&&raw[k],10); if(!isNaN(v)&&v>0&&v<1000) cap[k]=v; });
+  const q=String(query||'').trim(); const isUrl=/^https?:\/\//i.test(q);
+  // Ask for EVERY orchestration-relevant property, always in METRIC; "name" is a clean model name, never a URL.
+  const schema='{"name":"<clean product/model name — NEVER a URL>",'
+    +'"subtype":"<exact string from the sub-type list, or null>",'
+    +'"fuel":"charcoal|pellet|gas|wood|electric|null",'
+    +'"racks":"<racks/shelves count or null>","zones":"<grill heat-zones count or null>",'
+    +'"channels":"<probe channels or null>","bathL":"<sous-vide bath litres or null>",'
+    +'"volume":"<sausage-stuffer cylinder litres or null>",'
+    +'"nozzles":"<array of output-tube diameters in mm, e.g. [10,20,30,40], or null>",'
+    +'"areaCm2":"<TOTAL cooking area in square centimetres as a plain number, or null>",'
+    +'"note":"<one short factual line>","details":"<extra specs — dimensions, weight, material, power — one line, or null>"}';
+  const task=(isUrl?('Extract the published specs for the cooking device on THIS product page: '+q+'. ')
+      :('Look up the real, published specs for this cooking device: "'+q+'"'+(cat?(' (a '+(c.en||cat)+')'):'')+'. Search the manufacturer or a retailer page. '))
+    +'Return ONLY orchestration-relevant data as JSON, with the MOST properties you can verify. '
+    +'ALWAYS use METRIC units — total cooking area as a number of SQUARE CENTIMETRES (areaCm2), volumes in litres, tube diameters in millimetres; convert any imperial spec to metric. '
+    +'"name" must be the clean product/model name, NEVER a URL. '
+    +(types.length?('For "subtype" return the EXACT string from this list, do NOT translate it: '+JSON.stringify(types)+'. '):'')
+    +'Fill every property that applies to this device type: racks/shelves; grill heat zones; probe channels; sous-vide bath litres; sausage-stuffer cylinder litres (volume) and its output-tube diameters in mm (nozzles); total cooking area (areaCm2). Use null for anything not applicable or that you cannot determine.';
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:900, outLang:'en'});
+  const cap={}; ['racks','zones','channels','bathL','volume'].forEach(function(k){ const v=parseFloat(raw&&raw[k]); if(!isNaN(v)&&v>0&&v<100000) cap[k]=(k==='racks'||k==='zones'||k==='channels')?Math.round(v):v; });
+  const keepCap=c.capKey?[c.capKey]:(cat==='sousvide'?['bathL']:[]); Object.keys(cap).forEach(function(k){ if(keepCap.indexOf(k)<0) delete cap[k]; });   // only this category's own capacity (no stray channels on a smoker, etc.)
   const FUELS=['charcoal','pellet','gas','wood','electric'];
   const subtype=(raw&&typeof raw.subtype==='string'&&types.indexOf(raw.subtype)>=0)?raw.subtype:'';
-  const area=(raw&&typeof raw.area==='string'&&raw.area.trim()&&raw.area.toLowerCase()!=='null')?raw.area.trim():'';
-  return { subtype:subtype, fuel:(raw&&FUELS.indexOf(raw.fuel)>=0)?raw.fuel:'', cap:cap, area:area, note:(raw&&typeof raw.note==='string')?raw.note:'' };
+  let nozzles=[];   // stuffer output-tube diameters (mm) → multi-value chips
+  if(raw&&Array.isArray(raw.nozzles)) nozzles=raw.nozzles;
+  else if(raw&&typeof raw.nozzles==='string'&&raw.nozzles.toLowerCase()!=='null') nozzles=raw.nozzles.split(/[^\d.]+/);
+  nozzles=nozzles.map(function(x){return parseFloat(x);}).filter(function(v){return !isNaN(v)&&v>0&&v<1000;});
+  let area=''; const acm=parseFloat(raw&&raw.areaCm2); if(!isNaN(acm)&&acm>0&&acm<1e7) area=acmFmt(acm);
+  const nm=(raw&&typeof raw.name==='string'&&raw.name.trim()&&!/^https?:\/\//i.test(raw.name.trim()))?raw.name.trim():'';
+  const details=(raw&&typeof raw.details==='string'&&raw.details.trim()&&raw.details.toLowerCase()!=='null')?raw.details.trim():'';
+  return { name:nm, subtype:subtype, fuel:(raw&&FUELS.indexOf(raw.fuel)>=0)?raw.fuel:'', cap:cap, nozzles:nozzles, area:area, note:(raw&&typeof raw.note==='string')?raw.note:'', details:details };
 }
 // web-grounded model browse for a brand → array of {name, spec} for the catalogue cards
 async function aiBrandModels(brand, cat){
@@ -5096,6 +5129,7 @@ function openEquipment(){
     if(c.capKey && d.cap && d.cap[c.capKey]!=null) s+=`<span class="eq-chip spec">${c.capEm?c.capEm+' ':''}${esc(d.cap[c.capKey]+' '+L(c.capHe,c.capEn))}</span>`;
     if(c.multiCap){ const mk=c.multiCap; let arr=(d.cap&&Array.isArray(d.cap[mk.key])&&d.cap[mk.key].length)?d.cap[mk.key]:[]; if(!arr.length && mk.key==='baths' && d.cap && d.cap.bathL!=null) arr=[d.cap.bathL];   // legacy single bathL
       if(arr.length) s+=`<span class="eq-chip spec">${mk.em?mk.em+' ':''}${esc(arr.join(' · ')+' '+L(mk.uHe,mk.uEn))}</span>`; }
+    if(d.cap && d.cap.area) s+=`<span class="eq-chip spec">📐 ${esc(d.cap.area)}</span>`;   // total cooking / smoking area (metric)
     if(d.fuel) s+=`<span class="eq-chip"><span class="em">${FUEL_EMOJI[d.fuel]||''}</span> ${esc(fuelLabel(d.fuel))}</span>`;
     return s; };
   // mockup .gl-head — Settings kicker + My Equipment title + optional sub + inline Add; .x auto-wires to closePanel
@@ -5141,6 +5175,7 @@ function openEquipment(){
     const capC=function(k){ return equipCat(k)||{}; };
     // multi-value capacity list (sous-vide bath sizes / stuffer output tube sizes) — several instances, add/remove
     let multiVals = (function(){ const c0=capC(curCat); if(c0.multiCap && dev){ const mk=c0.multiCap.key; if(dev.cap&&Array.isArray(dev.cap[mk])&&dev.cap[mk].length) return dev.cap[mk].slice(); if(mk==='baths'&&dev.cap&&dev.cap.bathL!=null) return [dev.cap.bathL]; } return []; })();
+    let aiDetails='';   // extra web-sourced specs (dimensions/weight/material) → saved into notes
     const title=function(nc){ return dev?L('ערוך מכשיר','Edit device'):L('הוסף '+cm(nc).he, 'Add a '+(cm(nc).en||'').toLowerCase()); };
     const note=function(s,cls){ const n=$("#eqAiNote"); if(n){ n.textContent=s||''; n.className='eq-ainote'+(cls?' '+cls:''); } };
 
@@ -5151,7 +5186,7 @@ function openEquipment(){
         <label class="eq-step-l">${L('קטגוריה','Category')}</label>
         <select id="eqCat" class="eq-inp">${EQUIP_CATS.map(function(x){return `<option value="${x.cat}" ${x.cat===curCat?'selected':''}>${L(x.he,x.en)}</option>`;}).join('')}</select>
         ${aiOn?`<label class="eq-step-l">${L('אמור לי את הדגם — אמשוך את המפרט','Tell me the model — I’ll pull the specs')}</label>
-        <input id="eqLookupQ" class="eq-inp" list="eqBrandList" placeholder="${L('לדוגמה: Traeger Pro 575','e.g. Traeger Pro 575')}" value="${dev?esc(dev.name||''):''}">
+        <input id="eqLookupQ" class="eq-inp" list="eqBrandList" placeholder="${L('לדוגמה: Traeger Pro 575 · או קישור למוצר','e.g. Traeger Pro 575 · or a product link')}" value="${dev?esc(dev.name||''):''}">
         <div class="eq-lookup-acts"><button id="eqLookup" class="eq-look primary" type="button"><span class="em">🔎</span> ${L('מצא מפרט','Look up specs')}</button><button id="eqModels" class="eq-look" type="button"><span class="em">📋</span> ${L('עיין בדגמים','Browse models')}</button></div>`:''}
         <datalist id="eqBrandList">${brandOpts(curCat)}</datalist>
         <div id="eqAiNote" class="eq-ainote"></div>
@@ -5171,12 +5206,12 @@ function openEquipment(){
       if(editId){ d=list2.find(function(x){return x.id===editId;}); if(!d){ editId=null; return drawList(); } }
       else { d={id:equipId(),cat:nc,type:type,name:nm,brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''}; list2.push(d); }
       d.cat=nc; d.type=type; d.name=nm; d.cap=d.cap||{};
-      if(cc.capKey){ const v=parseInt(($("#eqCapKey")||{}).value,10); if(!isNaN(v)) d.cap[cc.capKey]=v; else delete d.cap[cc.capKey]; }
+      if(cc.capKey){ const v=parseFloat(($("#eqCapKey")||{}).value); if(!isNaN(v)) d.cap[cc.capKey]=v; else delete d.cap[cc.capKey]; }
       if(cc.multiCap){ const mi=$("#eqMultiIn"); if(mi&&mi.value){ const pv=parseFloat((mi.value||'').replace(/[^\d.]/g,'')); if(!isNaN(pv)&&pv>0&&pv<100000&&multiVals.indexOf(pv)<0) multiVals.push(pv); }   // flush a typed-but-not-yet-added size
         if(multiVals.length){ multiVals.sort(function(a,b){return a-b;}); d.cap[cc.multiCap.key]=multiVals.slice(); } else delete d.cap[cc.multiCap.key]; if(cc.multiCap.key==='baths') delete d.cap.bathL; }   // sousvide bath sizes / stuffer output-tube sizes
       const fEl=$("#eqvFuel"); if(fEl) d.fuel=fEl.value||''; else if(['smoker','grill','oven'].indexOf(nc)<0) d.fuel='';
       const aEl=$("#eqvArea"); if(aEl){ const av=(aEl.value||'').trim(); if(av) d.cap.area=av; else delete d.cap.area; }
-      if(vmode==='ai') d.specSource='ai';
+      if(vmode==='ai'){ d.specSource='ai'; if(aiDetails) d.notes=aiDetails; }
       equipSave(list2); equipSetConfigured(); const bb=$("#gearBanner"); if(bb) bb.remove(); if(typeof cRefreshHome==='function') cRefreshHome();
       editId=null; drawList();
     };
@@ -5208,7 +5243,7 @@ function openEquipment(){
       const multiField=cc.multiCap?`<div class="eq-vfield"><label>${L(cc.multiCap.he,cc.multiCap.en)}${sp}</label><div class="eq-multi${fc}" id="eqMultiWrap">${multiHtml()}</div></div>`:'';
       const grid=capField?`<div class="eq-vrow">${typeField}${capField}</div>`:typeField;   // sub-type full-width when there's no single-capacity field
       const extraMulti=cc.multiCap?multiField:'';   // multi-value editor (bath sizes / output sizes) always full-width below
-      const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div><div class="eq-vfield"><label>${L('שטח בישול','Cooking area')}${sp}</label><input id="eqvArea" class="eq-vin${fc}" placeholder="${L('לדוגמה 575 in²','e.g. 575 in²')}" value="${d.area?esc(d.area):''}"></div></div>`:'';
+      const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div><div class="eq-vfield"><label>${L('שטח בישול','Cooking area')}${sp}</label><input id="eqvArea" class="eq-vin${fc}" placeholder="${L('לדוגמה 3700 cm²','e.g. 3700 cm²')}" value="${d.area?esc(d.area):''}"></div></div>`:'';
       const heading=ai?`<div class="eq-verify-h"><span>✨</span> ${L('הנה מה שמצאתי — ','Here’s what I found — ')}<b>${L('אמת ושמור','verify & save')}</b></div>`:`<div class="eq-verify-h">${dev?L('פרטי המכשיר','Device details'):L('פרטים','Details')}</div>`;
       const src=ai?`<p class="eq-v-src">${L('<b>✨ מולא אוטומטית</b> ממקורות רשת. גע בכל שדה כדי לשנות — <b>עדיין לא נשמר.</b>','<b>✨ Auto-filled</b> from web sources. Tap any field to change it — <b>nothing is saved yet.</b>')}</p>`:'';
       const saveLbl=dev?L('שמור','Save'):(ai?L('נראה טוב — שמור','Looks right — save'):L('הוסף','Add'));
@@ -5230,8 +5265,14 @@ function openEquipment(){
       if(!q){ note(L('הקלד שם/דגם קודם','Type a name/model first')); return; }
       note(L('מחפש באינטרנט…','Searching the web…'));
       aiLookupDevice(q, nc).then(function(r){ vmode='ai'; const cc=capC(nc);
-        if(cc.multiCap&&cc.multiCap.key==='baths'&&r.cap&&r.cap.bathL!=null&&multiVals.indexOf(r.cap.bathL)<0){ multiVals.push(r.cap.bathL); multiVals.sort(function(a,b){return a-b;}); }
-        paintVerify({ name:q, type:r.subtype||'', cap:(cc.capKey&&r.cap&&r.cap[cc.capKey]!=null)?r.cap[cc.capKey]:'', fuel:r.fuel||'', area:r.area||'' });
+        if(cc.multiCap){ let add=[];   // sous-vide bath litres OR stuffer output-tube sizes → chips
+          if(cc.multiCap.key==='baths' && r.cap && r.cap.bathL!=null) add=[r.cap.bathL];
+          else if(cc.multiCap.key==='nozzles' && r.nozzles && r.nozzles.length) add=r.nozzles;
+          add.forEach(function(v){ if(multiVals.indexOf(v)<0) multiVals.push(v); }); multiVals.sort(function(a,b){return a-b;});
+        }
+        aiDetails=r.details||'';
+        const nm=(r.name||'').trim() || (/^https?:\/\//i.test(q)?'':q);   // a pasted URL must NEVER become the device name
+        paintVerify({ name:nm, type:r.subtype||'', cap:(cc.capKey&&r.cap&&r.cap[cc.capKey]!=null)?r.cap[cc.capKey]:'', fuel:r.fuel||'', area:r.area||'' });
         note('✨ '+(r.note||L('נמצא — אמת ושמור','Found — verify & save')), 'ok');
       }).catch(function(e){ const m=String(e&&e.message||e); note(m.indexOf('no-key')>=0?L('צריך מפתח AI','Needs an AI key'):L('החיפוש נכשל — מלא ידנית','Lookup failed — fill by hand')); });
     });
