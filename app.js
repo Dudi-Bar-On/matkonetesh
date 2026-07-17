@@ -105,6 +105,21 @@ function equipMigrateFromGear(){
   if(list.length) equipSave(list);
   if(store.get('mk-gear-set')) store.set('mk-equip-set', true);
 }
+// one-time cleanup: seed a prop-bearing 'Other' accessory's property from its legacy gear value
+// (e.g. an old scale named 'יש (0.1 ג׳)' → cap.res '0.1g'; a cure chamber named 'מקרר מומר' → cap.kind 'Converted fridge').
+function equipNormalizeOther(){
+  if(typeof EQUIP_OTHER_ITEMS==='undefined') return;
+  const list=equipList(); if(!list.length) return; let changed=false;
+  list.forEach(function(d){ if(!d || d.cat!=='other') return;
+    const it=EQUIP_OTHER_ITEMS.find(function(x){ return x.key===d.type; });
+    if(!it || !it.prop) return; d.cap=d.cap||{}; if(d.cap[it.prop.key]) return;
+    const n=String(d.name||''); let v='';
+    it.prop.opts.forEach(function(o){ if(v) return; const val=(typeof o==='string')?o:o.en, he=(typeof o==='string')?o:o.he; if(n.indexOf(he)>=0||n.indexOf(val)>=0) v=val; });
+    if(!v && it.key==='scale'){ if(/0\.1/.test(n)) v='0.1g'; else if(/1/.test(n)) v='1g'; }
+    if(v){ d.cap[it.prop.key]=v; changed=true; }
+  });
+  if(changed) equipSave(list);
+}
 // capability mapping — permissive (true) until the user configures gear, so nothing changes for them until then
 function canSV(){ if(!equipConfigured()) return true; return hasCat('sousvide'); }
 function canSmoke(){ if(!equipConfigured()) return true;
@@ -5063,22 +5078,29 @@ const FUEL_EMOJI={charcoal:'⚫',wood:'🪵',pellet:'🛢️',gas:'🔥',electri
 // sub-type display per language: legacy English gear keys (migrated 'other' items) → Hebrew/English;
 // strip an English "(hint)" parenthetical in Hebrew (e.g. "טבילה (immersion)" → "טבילה"); else dict via t().
 const LEGACY_TYPE={torch:['מבער / לפיד','Torch'], humidity:['בקר לחות','Humidity control']};
-// The "Other" category is a FIXED checklist of accessories — check what you have (no name/specs/AI lookup).
-// Keys 'torch'/'humidity' match LEGACY_TYPE + hasGear() so migrated gear and recipe tips keep working.
+// The "Other" category is a checklist of accessories — each with a SPECIFIC icon; some carry a small
+// property (scale → resolution, cure chamber → type). Keys mirror the old GEAR_GROUPS ids + LEGACY_TYPE
+// so migrated gear (scale/injector/slicer/cure-chamber/hooks/torch/humidity) and hasGear() keep working.
+// prop.opts entries are plain strings (language-neutral) OR {he,en} (the stored value = the en string).
 const EQUIP_OTHER_ITEMS=[
-  {key:'torch',    he:'מבער / לפיד',       en:'Torch',            em:'🔥'},
-  {key:'chimney',  he:'ארובת הצתה',        en:'Chimney starter',  em:'🕯️'},
-  {key:'gloves',   he:'כפפות חום',         en:'Heat gloves',      em:'🧤'},
-  {key:'tongs',    he:'מלקחיים',           en:'Tongs',            em:'🍢'},
-  {key:'brush',    he:'מברשת גריל',        en:'Grill brush',      em:'🧽'},
-  {key:'drippan',  he:'מגש איסוף / מים',   en:'Drip / water pan', em:'🫗'},
-  {key:'spritz',   he:'בקבוק ריסוס',       en:'Spritz bottle',    em:'💦'},
-  {key:'paper',    he:'נייר קצבים',        en:'Butcher paper',    em:'🧻'},
-  {key:'foil',     he:'רדיד אלומיניום',    en:'Aluminum foil',    em:'🥡'},
-  {key:'blower',   he:'מפוח / מאוורר',     en:'Blower / fan',     em:'💨'},
-  {key:'humidity', he:'בקר לחות',          en:'Humidity control', em:'💧'},
-  {key:'knife',    he:'סכין פריסה',        en:'Slicing knife',    em:'🔪'},
-  {key:'board',    he:'קרש חיתוך',         en:'Cutting board',    em:'🪵'},
+  {key:'scale',       he:'משקל דיגיטלי',        en:'Digital scale',    em:'⚖️', prop:{key:'res',  he:'רזולוציה', en:'Resolution', opts:['1g','0.1g']}},
+  {key:'injector',    he:'מזרק בשר',            en:'Meat injector',    em:'💉'},
+  {key:'slicer',      he:'מכונת פריסה',         en:'Meat slicer',      em:'🍖'},
+  {key:'curechamber', he:'תא ריפוי / ייבוש',    en:'Cure chamber',     em:'🧊', prop:{key:'kind', he:'סוג',      en:'Type',       opts:[{he:'תא ייעודי',en:'Dedicated'},{he:'מקרר מומר',en:'Converted fridge'},{he:'מייבש',en:'Dehydrator'},{he:'תנור',en:'Oven'}]}},
+  {key:'hooks',       he:'ווים / שבכות לתלייה', en:'Hanging hooks',    em:'🪝'},
+  {key:'humidity',    he:'בקר לחות',            en:'Humidity control', em:'💧'},
+  {key:'torch',       he:'מבער / לפיד',         en:'Torch',            em:'🔥'},
+  {key:'chimney',     he:'ארובת הצתה',          en:'Chimney starter',  em:'🕯️'},
+  {key:'gloves',      he:'כפפות חום',           en:'Heat gloves',      em:'🧤'},
+  {key:'tongs',       he:'מלקחיים',             en:'Tongs',            em:'🍢'},
+  {key:'brush',       he:'מברשת גריל',          en:'Grill brush',      em:'🧽'},
+  {key:'drippan',     he:'מגש איסוף / מים',     en:'Drip / water pan', em:'🫗'},
+  {key:'spritz',      he:'בקבוק ריסוס',         en:'Spritz bottle',    em:'💦'},
+  {key:'paper',       he:'נייר קצבים',          en:'Butcher paper',    em:'🧻'},
+  {key:'foil',        he:'רדיד אלומיניום',      en:'Aluminum foil',    em:'🥡'},
+  {key:'blower',      he:'מפוח / מאוורר',       en:'Blower / fan',     em:'💨'},
+  {key:'knife',       he:'סכין פריסה',          en:'Slicing knife',    em:'🔪'},
+  {key:'board',       he:'קרש חיתוך',           en:'Cutting board',    em:'🪵'},
 ];
 function typeLabel(type){
   if(!type) return '';
@@ -5139,6 +5161,8 @@ function openEquipment(){
   let editId=null;
   const cm=function(cat){ return equipCat(cat)||{}; };
   const otherConst=function(type,name){ return EQUIP_OTHER_ITEMS.find(function(x){ return x.key===type||x.he===type||x.en===type||x.he===name||x.en===name; })||null; };   // map an 'other' device → a preset accessory (by key OR name); null = a custom item
+  const otherPropVal=function(it,d){ return (it&&it.prop&&d&&d.cap&&d.cap[it.prop.key])||''; };   // the chosen property value (e.g. scale '0.1g')
+  const propOptLabel=function(prop,val){ if(!prop||!val) return val||''; const o=prop.opts.find(function(x){ return (typeof x==='string'?x:x.en)===val; }); return o?(typeof o==='string'?o:L(o.he,o.en)):val; };
   const catName=function(cat){ const c=cm(cat); return L(c.he,c.en); };
   const fuelLabel=function(f){ if(!f) return ''; return L(({charcoal:'פחם',wood:'עץ',pellet:'פלטים',gas:'גז',electric:'חשמל'})[f]||f, ({charcoal:'Charcoal',wood:'Wood',pellet:'Pellet',gas:'Gas',electric:'Electric'})[f]||f); };
   const typeOpts=function(cat,sel){ const c=cm(cat); return (c.types||[]).map(function(tp){return `<option value="${esc(tp)}" ${tp===sel?'selected':''}>${esc(typeLabel(tp))}</option>`;}).join('')+`<option value="__custom__" ${sel==='__custom__'?'selected':''}>${L('אחר…','Other…')}</option>`; };
@@ -5178,7 +5202,7 @@ function openEquipment(){
     const capsHtml=`<div class="eq-caps"><div class="eq-caps-x"><h4>${L('מה אפשר לבשל','What you can cook')}</h4><span class="eq-caps-n">${okN}/${caps.length} ${L('פעילים','unlocked')}</span></div><div class="eq-gcaps">${caps.map(function(x){return `<span class="eq-gcap ${x[0]?'ok':'no'}"><span class="em">${x[2]}</span> ${x[1]}${x[0]?'':' · '+x[3]}</span>`;}).join('')}</div>${foot}</div>`;
     const secs=EQUIP_CATS.map(function(c){ const ds=list.filter(function(d){return d.cat===c.cat;}); if(!ds.length) return '';
       if(c.cat==='other'){   // accessories → compact chips + an "edit accessories" (checklist) button, not device cards
-        const chips=ds.map(function(d){ const it=otherConst(d.type,d.name); return `<span class="eq-chip">${it?it.em+' ':'🧰 '}${esc(it?L(it.he,it.en):(d.name||typeLabel(d.type)||d.type))}</span>`; }).join('');
+        const chips=ds.map(function(d){ const it=otherConst(d.type,d.name); if(!it) return `<span class="eq-chip">🧰 ${esc(d.name||typeLabel(d.type)||d.type)}</span>`; const v=otherPropVal(it,d); return `<span class="eq-chip">${it.em} ${esc(L(it.he,it.en)+(v?' · '+propOptLabel(it.prop,v):''))}</span>`; }).join('');
         return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4><div class="eq-othchips">${chips}</div><button class="eq-add-tile" data-eqaddcat="other"><span class="pl">＋</span> ${L('ערוך אביזרים','Edit accessories')}</button></section>`;
       }
       const cards=ds.map(function(d){ return `<article class="eq-card eq-spine eq-dev" style="--eqacc:${c.acc};--eqacc-l:${c.accL}"><div class="eq-tile">${equipTypeIcon(d.cat,d.type)}</div><div class="eq-dev-main"><div class="eq-dev-top"><span class="eq-dev-name">${esc(d.name||typeLabel(d.type)||'')}</span>${d.specSource==='ai'?`<span class="eq-dev-ai">✨ AI</span>`:''}</div><p class="eq-dev-sub">${esc(typeLabel(d.type)||'')}</p>${chipsFor(d)?`<div class="eq-dev-chips">${chipsFor(d)}</div>`:''}</div><div class="eq-dev-acts"><button class="eq-iconbtn" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-iconbtn" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">✕</button></div></article>`; }).join('');
@@ -5192,36 +5216,50 @@ function openEquipment(){
     pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); drawList(); }); });
   };
 
-  // "Other" = an accessories CHECKLIST: preset items + any custom items you defined, all editable (add / remove)
+  // "Other" = an accessories CHECKLIST: presets (specific icon, some with a small property) + any custom
+  // items you defined — all editable (check / pick a property value / add your own / remove).
   const drawOtherChecklist=function(){
     const rowHtml=function(attr, val, em, label, on){ return `<button type="button" class="eq-oth-row${on?' on':''}" ${attr}="${esc(val)}" role="checkbox" aria-checked="${on?'true':'false'}"><span class="eq-oth-box">${on?'✓':''}</span><span class="eq-oth-em">${em}</span><span class="eq-oth-lbl">${esc(label)}</span></button>`; };
-    const buildRows=function(){ const devs=equipByCat('other');
-      const presets=EQUIP_OTHER_ITEMS.map(function(it){ const on=devs.some(function(d){ return (otherConst(d.type,d.name)||{}).key===it.key; }); return rowHtml('data-eqothkey', it.key, it.em, L(it.he,it.en), on); }).join('');
-      const custom=devs.filter(function(d){ return !otherConst(d.type,d.name); }).map(function(d){ return rowHtml('data-eqothdev', d.id, '🧰', d.name||typeLabel(d.type)||d.type, true); }).join('');   // items you defined that aren't presets
-      return presets+custom;
+    const propHtml=function(it, dev){ const cur=otherPropVal(it, dev);
+      const chips=it.prop.opts.map(function(o){ const val=(typeof o==='string')?o:o.en, lbl=(typeof o==='string')?o:L(o.he,o.en); return `<button type="button" class="eq-oth-propchip${val===cur?' on':''}" data-eqprop="${esc(it.key)}|${esc(val)}">${esc(lbl)}</button>`; }).join('');
+      return `<div class="eq-oth-prop"><span class="eq-oth-prop-l">${L(it.prop.he,it.prop.en)}:</span>${chips}</div>`;
+    };
+    const buildRows=function(){ const devs=equipByCat('other'); let html='';
+      EQUIP_OTHER_ITEMS.forEach(function(it){ const dev=devs.find(function(d){ return (otherConst(d.type,d.name)||{}).key===it.key; }); const on=!!dev;
+        html+=rowHtml('data-eqothkey', it.key, it.em, L(it.he,it.en), on);
+        if(it.prop && on) html+=propHtml(it, dev);   // e.g. scale → resolution chips (only when checked)
+      });
+      devs.filter(function(d){ return !otherConst(d.type,d.name); }).forEach(function(d){ html+=rowHtml('data-eqothdev', d.id, '🧰', d.name||typeLabel(d.type)||d.type, true); });   // custom items you defined
+      return html;
     };
     showPanel(`<div class="panel-body eq-wrap eq-form"><div class="eq-sheet"><div class="eq-sheet-grab"></div>
       <div class="eq-sheet-head"><span class="eq-tile" style="--eqacc-l:${cm('other').accL}">${cm('other').icon}</span><h3>${L('אביזרים','Accessories')}</h3><button class="eq-sheet-x" id="eqOthBack" type="button" aria-label="${L('חזרה','Back')}">✕</button></div>
       <div class="eq-sheet-body"><p class="eq-oth-hint">${L('סמן מה יש לך — או הוסף אביזר משלך.','Check what you have — or add your own.')}</p>
-        <div class="eq-othlist" id="eqOthlist">${buildRows()}</div>
+        <div class="eq-othlist" id="eqOthlist"></div>
         <div class="eq-oth-add"><input id="eqOthNew" class="eq-oth-newin" placeholder="${L('הוסף אביזר משלך…','Add your own accessory…')}" autocomplete="off"><button type="button" id="eqOthAdd" class="eq-multi-addbtn" aria-label="${L('הוסף','Add')}">＋</button></div>
       </div>
     </div></div>`);
     const pnl=$("#panel");
     const addDev=function(type,name){ const id=equipId(); const list=equipList(); list.push({id:id,cat:'other',type:type,name:name,brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''}); equipSave(list); equipSetConfigured(); if(typeof cRefreshHome==='function') cRefreshHome(); return id; };
     const removeDev=function(pred){ equipSave(equipList().filter(function(d){ return !(d.cat==='other' && pred(d)); })); equipSetConfigured(); if(typeof cRefreshHome==='function') cRefreshHome(); };
-    const wireRow=function(b){ b.addEventListener('click', function(){ const key=b.dataset.eqothkey, did=b.dataset.eqothdev;
-      if(key){ const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===key;}); if(!it) return; const on=!b.classList.contains('on');
-        if(on) addDev(it.key, L(it.he,it.en)); else removeDev(function(d){ return (otherConst(d.type,d.name)||{}).key===key; });
-        b.classList.toggle('on',on); b.setAttribute('aria-checked',on?'true':'false'); const bx=b.querySelector('.eq-oth-box'); if(bx) bx.textContent=on?'✓':'';
-      } else if(did){ removeDev(function(d){ return d.id===did; }); b.remove(); }   // a custom row → unchecking removes it
-    }); };
-    pnl.querySelectorAll('.eq-oth-row').forEach(wireRow);
+    const repaint=function(){ const body=$("#panel .eq-sheet-body"); const sc=body?body.scrollTop:0; const el=$("#eqOthlist"); if(el){ el.innerHTML=buildRows(); wireRows(); } if(body) body.scrollTop=sc; };
+    const wireRows=function(){
+      pnl.querySelectorAll('#eqOthlist .eq-oth-row').forEach(function(b){ b.addEventListener('click', function(){ const key=b.dataset.eqothkey, did=b.dataset.eqothdev;
+        if(key){ const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===key;}); if(!it) return;
+          if(b.classList.contains('on')) removeDev(function(d){ return (otherConst(d.type,d.name)||{}).key===key; }); else addDev(it.key, L(it.he,it.en));
+        } else if(did){ removeDev(function(d){ return d.id===did; }); }
+        repaint();
+      }); });
+      pnl.querySelectorAll('#eqOthlist [data-eqprop]').forEach(function(b){ b.addEventListener('click', function(e){ e.stopPropagation(); const p=b.dataset.eqprop.split('|'); const key=p[0], val=p[1]; const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===key;}); if(!it||!it.prop) return;
+        const list=equipList(); const dev=list.find(function(d){ return d.cat==='other' && (otherConst(d.type,d.name)||{}).key===key; }); if(!dev) return;
+        dev.cap=dev.cap||{}; dev.cap[it.prop.key]=(dev.cap[it.prop.key]===val)?'':val;   // pick / toggle off
+        equipSave(list); equipSetConfigured(); if(typeof cRefreshHome==='function') cRefreshHome(); repaint();
+      }); });
+    };
+    repaint();
     const addCustom=function(){ const inp=$("#eqOthNew"); if(!inp) return; const v=(inp.value||'').trim(); if(!v) return; inp.value='';
       if(otherConst(v,v) || equipList().some(function(d){ return d.cat==='other' && (d.name===v||d.type===v); })){ inp.focus(); return; }   // already a preset / already have it
-      const id=addDev(v, v); const wrap=$("#eqOthlist");
-      if(wrap){ const tmp=document.createElement('div'); tmp.innerHTML=rowHtml('data-eqothdev', id, '🧰', v, true); const el=tmp.firstElementChild; wrap.appendChild(el); wireRow(el); }
-      inp.focus();
+      addDev(v, v); repaint(); inp.focus();
     };
     const ab=$("#eqOthAdd"); if(ab) ab.addEventListener('click', addCustom);
     const ni=$("#eqOthNew"); if(ni) ni.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addCustom(); } });
@@ -5646,6 +5684,7 @@ function setFontScale(n){ if(!FONT_SCALES.includes(n)) return; store.set('mk-fon
 applyAppearance();
 try{ applyLang(); }catch(e){}   // Wave 5: set html lang/dir + translate tagged chrome on boot
 try{ equipMigrateFromGear(); }catch(e){}   // Equipment 2.0: seed mk-equipment from any legacy mk-gear
+try{ equipNormalizeOther(); }catch(e){}     // backfill 'Other' accessory properties from legacy gear values
 /* ── v144: UI levels (beginner/mid/pro) + per-level default work-plan shape ── */
 const UI_LEVELS={
   beginner:{ name:'מתחיל', nameEn:'Beginner', desc:'הדרכה צעד-אחר-צעד, פחות מספרים בבת אחת', descEn:'Step-by-step guidance, fewer numbers at once' },

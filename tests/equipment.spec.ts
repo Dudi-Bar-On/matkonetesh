@@ -110,28 +110,44 @@ test('B6: "Other" is an accessories checklist (presets toggle; add a custom item
   await page.click('#panel [data-eqothkey="torch"]');                    // uncheck → removed
   await page.waitForFunction(`!equipByCat('other').some(d=>d.type==='torch')`);
   expect(await page.evaluate(`hasGear('torch')`)).toBe(false);
-  // add a CUSTOM accessory ("scale") → appears as its own removable row + persists
-  await page.fill('#panel #eqOthNew', 'משקל דיגיטלי');
+  // add a CUSTOM accessory (a ruler — not a preset) → appears as its own removable row + persists
+  await page.fill('#panel #eqOthNew', 'סרגל מדידה');
   await page.click('#panel #eqOthAdd');
-  await page.waitForFunction(`equipByCat('other').some(d=>d.name==='משקל דיגיטלי')`);
+  await page.waitForFunction(`equipByCat('other').some(d=>d.name==='סרגל מדידה')`);
   expect(await page.evaluate(`document.querySelectorAll('#panel [data-eqothdev]').length`)).toBe(1);
   await page.click('#panel [data-eqothdev]');                            // click the custom row → removes it
-  await page.waitForFunction(`!equipByCat('other').some(d=>d.name==='משקל דיגיטלי')`);
+  await page.waitForFunction(`!equipByCat('other').some(d=>d.name==='סרגל מדידה')`);
 });
 
-test('B7: pre-defined custom "Other" items appear in the checklist as editable rows (not orphaned)', async ({ page }) => {
+test('B7: a pre-defined CUSTOM "Other" item appears in the checklist as an editable row (not orphaned)', async ({ page }) => {
   await boot(page);
-  // a preset item (torch) + a CUSTOM item defined before (a scale) — the exact "defined before" case
-  await page.evaluate(`equipSave([{id:'o1',cat:'other',type:'torch',name:'מבער / לפיד',cap:{}},{id:'o2',cat:'other',type:'scale',name:'משקל דיגיטלי',cap:{}}]); equipSetConfigured(); openEquipment();`);
+  // a preset item (torch) + a CUSTOM item defined before (a ruler — not any preset)
+  await page.evaluate(`equipSave([{id:'o1',cat:'other',type:'torch',name:'מבער / לפיד',cap:{}},{id:'o2',cat:'other',type:'סרגל מדידה',name:'סרגל מדידה',cap:{}}]); equipSetConfigured(); openEquipment();`);
   await page.waitForSelector('#panel .eq-othchips');
   expect(await page.evaluate(`document.querySelectorAll('#panel .eq-othchips .eq-chip').length`)).toBe(2);   // both show as chips
   expect(await page.evaluate(`!!document.querySelector('#panel .eq-dev')`)).toBe(false);                     // chips, not device cards
   await page.click('#panel [data-eqaddcat="other"]');                    // "Edit accessories"
   await page.waitForSelector('#panel .eq-othlist');
   expect(await page.evaluate(`document.querySelector('#panel [data-eqothkey="torch"]').getAttribute('aria-checked')`)).toBe('true');   // preset pre-checked
-  // the custom "scale" is NOT dropped — it shows as its own custom row and is removable
-  expect(await page.evaluate(`[...document.querySelectorAll('#panel [data-eqothdev] .eq-oth-lbl')].map(x=>x.textContent).join('|')`)).toContain('משקל דיגיטלי');
-  expect(await page.evaluate(`document.querySelector('#panel [data-eqothkey="board"]').getAttribute('aria-checked')`)).toBe('false');
+  expect(await page.evaluate(`[...document.querySelectorAll('#panel [data-eqothdev] .eq-oth-lbl')].map(x=>x.textContent).join('|')`)).toContain('סרגל מדידה');   // custom preserved
+});
+
+test('B8: "scale" preset carries a resolution property; a legacy gear value normalizes to it', async ({ page }) => {
+  await boot(page);
+  // a legacy migrated scale (old GEAR_GROUPS value) → equipNormalizeOther seeds cap.res
+  await page.evaluate(`equipSave([{id:'sc',cat:'other',type:'scale',name:'יש (0.1 ג׳)',cap:{}}]); equipNormalizeOther(); equipSetConfigured(); openEquipment();`);
+  expect(await page.evaluate(`equipByCat('other')[0].cap.res`)).toBe('0.1g');
+  await page.click('#panel [data-eqaddcat="other"]');
+  await page.waitForSelector('#panel [data-eqothkey="scale"]');
+  expect(await page.evaluate(`document.querySelector('#panel [data-eqothkey="scale"]').getAttribute('aria-checked')`)).toBe('true');   // scale is a preset, checked
+  expect(await page.evaluate(`!!document.querySelector('#panel [data-eqprop="scale|0.1g"].on')`)).toBe(true);                          // resolution 0.1g selected
+  // pick 1g → persists on the device
+  await page.click('#panel [data-eqprop="scale|1g"]');
+  await page.waitForFunction(`equipByCat('other')[0].cap.res==='1g'`);
+  // and it surfaces in the list-view chip
+  await page.click('#panel #eqOthBack');
+  await page.waitForSelector('#panel .eq-othchips');
+  expect(await page.evaluate(`document.querySelector('#panel .eq-othchips .eq-chip').textContent`)).toContain('1g');
 });
 
 test('B4: aiLookupDevice extracts metric + all category caps (volume/nozzles/area), rejects URL names', async ({ page }) => {

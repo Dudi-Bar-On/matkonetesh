@@ -1535,6 +1535,10 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .eq-oth-add{display:flex;gap:8px;margin-top:12px}
 .eq-oth-newin{flex:1;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:11px 13px;font-family:var(--font-body);font-size:calc(14.5px * var(--fscale));color:var(--bone);outline:none}
 .eq-oth-newin:focus{border-color:var(--ember)}
+.eq-oth-prop{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin:-3px 0 5px;padding-inline-start:40px}
+.eq-oth-prop-l{color:var(--smoke);font-size:calc(12.5px * var(--fscale));font-weight:700}
+.eq-oth-propchip{background:var(--char);border:1.5px solid var(--line2);border-radius:999px;padding:5px 13px;font-family:var(--font-body);font-size:calc(12.5px * var(--fscale));font-weight:800;color:var(--bone);cursor:pointer}
+.eq-oth-propchip.on{background:var(--ember);border-color:var(--ember);color:#fff}
 .eq-v-src{font-family:var(--font-body);font-size:calc(11.5px * var(--fscale));color:var(--smoke);line-height:1.5;margin:3px 0 13px}.eq-v-src b{color:var(--fresh)}
 .eq-v-acts{display:flex;gap:8px;align-items:center}
 .eq-miniform{background:var(--char);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-top:16px}
