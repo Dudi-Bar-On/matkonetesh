@@ -93,6 +93,38 @@ test('B1: aiLookupDevice + aiBrandModels normalize AI output; no-key guarded', a
   expect(await page.evaluate(`aiLookupDevice('x','smoker').then(()=>'ok').catch(e=>String(e.message))`)).toContain('no-key');
 });
 
+test('B6: "Other" is a constant accessories checklist (toggle add/remove; hasGear stays consistent)', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'s1',cat:'smoker',type:'פלטים',name:'X',cap:{racks:2}}]); equipSetConfigured(); openEquipment();`);
+  await page.waitForSelector('#panel #eqAddNew');
+  await page.click('#panel #eqAddNew');                                  // header Add → picker
+  await page.click('#panel [data-eqpick="other"]');                      // Other → the checklist (not a device form)
+  await page.waitForSelector('#panel .eq-othlist');
+  expect(await page.evaluate(`!document.querySelector('#panel #eqLookupQ') && !document.querySelector('#panel #eqName')`)).toBe(true);   // no name/lookup form
+  expect(await page.evaluate(`document.querySelectorAll('#panel [data-eqoth]').length`)).toBeGreaterThan(8);
+  // check "torch" → device added + hasGear('torch') true (drives recipe finishing tips)
+  await page.click('#panel [data-eqoth="torch"]');
+  await page.waitForFunction(`equipByCat('other').some(d=>d.type==='torch')`);
+  expect(await page.evaluate(`hasGear('torch')`)).toBe(true);
+  expect(await page.evaluate(`document.querySelector('#panel [data-eqoth="torch"]').classList.contains('on')`)).toBe(true);
+  // uncheck → removed
+  await page.click('#panel [data-eqoth="torch"]');
+  await page.waitForFunction(`!equipByCat('other').some(d=>d.type==='torch')`);
+  expect(await page.evaluate(`hasGear('torch')`)).toBe(false);
+});
+
+test('B7: the "Other" list section shows checked accessories as chips + opens the checklist pre-ticked', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'o1',cat:'other',type:'torch',name:'מבער / לפיד',cap:{}},{id:'o2',cat:'other',type:'gloves',name:'כפפות חום',cap:{}}]); equipSetConfigured(); openEquipment();`);
+  await page.waitForSelector('#panel .eq-othchips');
+  expect(await page.evaluate(`document.querySelectorAll('#panel .eq-othchips .eq-chip').length`)).toBe(2);
+  expect(await page.evaluate(`!!document.querySelector('#panel .eq-dev')`)).toBe(false);   // rendered as chips, not device cards
+  await page.click('#panel [data-eqaddcat="other"]');                    // "Edit accessories"
+  await page.waitForSelector('#panel .eq-othlist');
+  expect(await page.evaluate(`document.querySelector('#panel [data-eqoth="torch"]').getAttribute('aria-checked')`)).toBe('true');
+  expect(await page.evaluate(`document.querySelector('#panel [data-eqoth="board"]').getAttribute('aria-checked')`)).toBe('false');
+});
+
 test('B4: aiLookupDevice extracts metric + all category caps (volume/nozzles/area), rejects URL names', async ({ page }) => {
   await boot(page);
   await page.evaluate(`store.set('mk-gemkey','k')`);

@@ -136,10 +136,11 @@ test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (E
   // no key → no AI lookup controls
   expect(await page.locator('#panel #eqLookup').count()).toBe(0);
 
-  // (11) walk ALL 8 categories: cap field present iff capKey; fuel row iff smoker/grill/oven; sub-type opts change
-  const CATS = ['smoker', 'grill', 'oven', 'sousvide', 'vacuum', 'probe', 'grinder', 'stuffer', 'other'];
-  const HAS_CAP: Record<string, boolean> = { smoker: true, grill: true, oven: true, sousvide: true, vacuum: false, probe: true, grinder: false, stuffer: true, other: false };
-  const HAS_FUEL: Record<string, boolean> = { smoker: true, grill: true, oven: true, sousvide: false, vacuum: false, probe: false, grinder: false, stuffer: false, other: false };
+  // (11) walk the 8 device-form categories: cap field present iff capKey; fuel row iff smoker/grill/oven; sub-type opts change.
+  // 'other' is a constant accessories CHECKLIST (not a device form) — covered by equipment.spec B6/B7.
+  const CATS = ['smoker', 'grill', 'oven', 'sousvide', 'vacuum', 'probe', 'grinder', 'stuffer'];
+  const HAS_CAP: Record<string, boolean> = { smoker: true, grill: true, oven: true, sousvide: true, vacuum: false, probe: true, grinder: false, stuffer: true };
+  const HAS_FUEL: Record<string, boolean> = { smoker: true, grill: true, oven: true, sousvide: false, vacuum: false, probe: false, grinder: false, stuffer: false };
   let prevTypeOpts = '';
   for (const c of CATS) {
     await page.selectOption('#panel #eqCat', c);

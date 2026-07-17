@@ -5063,6 +5063,23 @@ const FUEL_EMOJI={charcoal:'⚫',wood:'🪵',pellet:'🛢️',gas:'🔥',electri
 // sub-type display per language: legacy English gear keys (migrated 'other' items) → Hebrew/English;
 // strip an English "(hint)" parenthetical in Hebrew (e.g. "טבילה (immersion)" → "טבילה"); else dict via t().
 const LEGACY_TYPE={torch:['מבער / לפיד','Torch'], humidity:['בקר לחות','Humidity control']};
+// The "Other" category is a FIXED checklist of accessories — check what you have (no name/specs/AI lookup).
+// Keys 'torch'/'humidity' match LEGACY_TYPE + hasGear() so migrated gear and recipe tips keep working.
+const EQUIP_OTHER_ITEMS=[
+  {key:'torch',    he:'מבער / לפיד',       en:'Torch',            em:'🔥'},
+  {key:'chimney',  he:'ארובת הצתה',        en:'Chimney starter',  em:'🕯️'},
+  {key:'gloves',   he:'כפפות חום',         en:'Heat gloves',      em:'🧤'},
+  {key:'tongs',    he:'מלקחיים',           en:'Tongs',            em:'🍢'},
+  {key:'brush',    he:'מברשת גריל',        en:'Grill brush',      em:'🧽'},
+  {key:'drippan',  he:'מגש איסוף / מים',   en:'Drip / water pan', em:'🫗'},
+  {key:'spritz',   he:'בקבוק ריסוס',       en:'Spritz bottle',    em:'💦'},
+  {key:'paper',    he:'נייר קצבים',        en:'Butcher paper',    em:'🧻'},
+  {key:'foil',     he:'רדיד אלומיניום',    en:'Aluminum foil',    em:'🥡'},
+  {key:'blower',   he:'מפוח / מאוורר',     en:'Blower / fan',     em:'💨'},
+  {key:'humidity', he:'בקר לחות',          en:'Humidity control', em:'💧'},
+  {key:'knife',    he:'סכין פריסה',        en:'Slicing knife',    em:'🔪'},
+  {key:'board',    he:'קרש חיתוך',         en:'Cutting board',    em:'🪵'},
+];
 function typeLabel(type){
   if(!type) return '';
   if(LEGACY_TYPE[type]) return L(LEGACY_TYPE[type][0], LEGACY_TYPE[type][1]);
@@ -5159,6 +5176,10 @@ function openEquipment(){
     const foot=probeChannels()?`<p class="eq-caps-foot">🎯 <b>${nProbe} ${L(nProbe===1?'פרוב':'פרובים', nProbe===1?'probe':'probes')} · ${probeChannels()} ${L('ערוצים','channels')}</b> ${L('למעקב טמפ׳ פנימית','tracked for internal-temp targets')}</p>`:'';
     const capsHtml=`<div class="eq-caps"><div class="eq-caps-x"><h4>${L('מה אפשר לבשל','What you can cook')}</h4><span class="eq-caps-n">${okN}/${caps.length} ${L('פעילים','unlocked')}</span></div><div class="eq-gcaps">${caps.map(function(x){return `<span class="eq-gcap ${x[0]?'ok':'no'}"><span class="em">${x[2]}</span> ${x[1]}${x[0]?'':' · '+x[3]}</span>`;}).join('')}</div>${foot}</div>`;
     const secs=EQUIP_CATS.map(function(c){ const ds=list.filter(function(d){return d.cat===c.cat;}); if(!ds.length) return '';
+      if(c.cat==='other'){   // accessories → compact chips + an "edit accessories" (checklist) button, not device cards
+        const chips=ds.map(function(d){ const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===d.type;}); return `<span class="eq-chip">${it?it.em+' ':''}${esc(it?L(it.he,it.en):(d.name||typeLabel(d.type)||''))}</span>`; }).join('');
+        return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4><div class="eq-othchips">${chips}</div><button class="eq-add-tile" data-eqaddcat="other"><span class="pl">＋</span> ${L('ערוך אביזרים','Edit accessories')}</button></section>`;
+      }
       const cards=ds.map(function(d){ return `<article class="eq-card eq-spine eq-dev" style="--eqacc:${c.acc};--eqacc-l:${c.accL}"><div class="eq-tile">${equipTypeIcon(d.cat,d.type)}</div><div class="eq-dev-main"><div class="eq-dev-top"><span class="eq-dev-name">${esc(d.name||typeLabel(d.type)||'')}</span>${d.specSource==='ai'?`<span class="eq-dev-ai">✨ AI</span>`:''}</div><p class="eq-dev-sub">${esc(typeLabel(d.type)||'')}</p>${chipsFor(d)?`<div class="eq-dev-chips">${chipsFor(d)}</div>`:''}</div><div class="eq-dev-acts"><button class="eq-iconbtn" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-iconbtn" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">✕</button></div></article>`; }).join('');
       return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4>${cards}<button class="eq-add-tile" data-eqaddcat="${c.cat}"><span class="pl">＋</span> ${L('הוסף עוד','Add another')} ${L(c.he,c.en)}</button></section>`;
     }).join('');
@@ -5170,8 +5191,31 @@ function openEquipment(){
     pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); drawList(); }); });
   };
 
+  // "Other" = a constant accessories checklist (check what you have; no name/specs/AI lookup)
+  const drawOtherChecklist=function(){
+    const have=new Set(equipByCat('other').map(function(d){return d.type;}));
+    const rows=EQUIP_OTHER_ITEMS.map(function(it){ const on=have.has(it.key);
+      return `<button type="button" class="eq-oth-row${on?' on':''}" data-eqoth="${it.key}" role="checkbox" aria-checked="${on?'true':'false'}"><span class="eq-oth-box">${on?'✓':''}</span><span class="eq-oth-em">${it.em}</span><span class="eq-oth-lbl">${L(it.he,it.en)}</span></button>`;
+    }).join('');
+    showPanel(`<div class="panel-body eq-wrap eq-form"><div class="eq-sheet"><div class="eq-sheet-grab"></div>
+      <div class="eq-sheet-head"><span class="eq-tile" style="--eqacc-l:${cm('other').accL}">${cm('other').icon}</span><h3>${L('אביזרים','Accessories')}</h3><button class="eq-sheet-x" id="eqOthBack" type="button" aria-label="${L('חזרה','Back')}">✕</button></div>
+      <div class="eq-sheet-body"><p class="eq-oth-hint">${L('סמן מה יש לך — לאביזרים אין מפרט, רק יש/אין.','Check what you have — accessories have no specs, just have / haven’t.')}</p><div class="eq-othlist">${rows}</div></div>
+    </div></div>`);
+    const pnl=$("#panel");
+    pnl.querySelectorAll('[data-eqoth]').forEach(function(b){ b.addEventListener('click', function(){
+      const key=b.dataset.eqoth; const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===key;}); if(!it) return;
+      const list=equipList(); const idx=list.findIndex(function(d){return d.cat==='other'&&d.type===key;}); const on=(idx<0);
+      if(on) list.push({id:equipId(),cat:'other',type:key,name:L(it.he,it.en),brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''});
+      else list.splice(idx,1);
+      equipSave(list); equipSetConfigured(); if(typeof cRefreshHome==='function') cRefreshHome();
+      b.classList.toggle('on',on); b.setAttribute('aria-checked',on?'true':'false'); const bx=b.querySelector('.eq-oth-box'); if(bx) bx.textContent=on?'✓':'';
+    }); });
+    const bk=$("#eqOthBack"); if(bk) bk.addEventListener('click', function(){ drawList(); });
+  };
+
   const drawForm=function(cat, dev){
     const curCat=cat||(dev&&dev.cat)||'smoker'; const aiOn=equipAiOn();
+    if(curCat==='other') return drawOtherChecklist();   // accessories are a checklist, not a device form
     let vmode = dev ? 'edit' : 'manual';   // → 'ai' after a successful web lookup
     const capC=function(k){ return equipCat(k)||{}; };
     // multi-value capacity list (sous-vide bath sizes / stuffer output tube sizes) — several instances, add/remove
@@ -5254,6 +5298,7 @@ function openEquipment(){
     };
 
     const ecc=$("#eqCat"); if(ecc) ecc.addEventListener('change', function(){ const nc=ecc.value;
+      if(nc==='other') return drawOtherChecklist();   // switching to accessories → the checklist
       const bl=$("#eqBrandList"); if(bl) bl.innerHTML=brandOpts(nc);
       const tt=$("#eqFormTitle"); if(tt&&!dev) tt.textContent=title(nc);
       const st=$("#eqSheetTile"); if(st) st.style.setProperty('--eqacc-l', cm(nc).accL);
