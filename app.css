@@ -1532,6 +1532,9 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .eq-oth-em{font-size:calc(20px * var(--fscale));line-height:1;flex:none}
 .eq-oth-lbl{flex:1;font-size:calc(15.5px * var(--fscale));font-weight:700}
 .eq-othchips{display:flex;flex-wrap:wrap;gap:7px;margin:2px 0 11px}
+.eq-oth-add{display:flex;gap:8px;margin-top:12px}
+.eq-oth-newin{flex:1;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:11px 13px;font-family:var(--font-body);font-size:calc(14.5px * var(--fscale));color:var(--bone);outline:none}
+.eq-oth-newin:focus{border-color:var(--ember)}
 .eq-v-src{font-family:var(--font-body);font-size:calc(11.5px * var(--fscale));color:var(--smoke);line-height:1.5;margin:3px 0 13px}.eq-v-src b{color:var(--fresh)}
 .eq-v-acts{display:flex;gap:8px;align-items:center}
 .eq-miniform{background:var(--char);border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-top:16px}

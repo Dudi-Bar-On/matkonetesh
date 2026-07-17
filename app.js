@@ -5138,6 +5138,7 @@ async function aiBrandModels(brand, cat){
 function openEquipment(){
   let editId=null;
   const cm=function(cat){ return equipCat(cat)||{}; };
+  const otherConst=function(type,name){ return EQUIP_OTHER_ITEMS.find(function(x){ return x.key===type||x.he===type||x.en===type||x.he===name||x.en===name; })||null; };   // map an 'other' device → a preset accessory (by key OR name); null = a custom item
   const catName=function(cat){ const c=cm(cat); return L(c.he,c.en); };
   const fuelLabel=function(f){ if(!f) return ''; return L(({charcoal:'פחם',wood:'עץ',pellet:'פלטים',gas:'גז',electric:'חשמל'})[f]||f, ({charcoal:'Charcoal',wood:'Wood',pellet:'Pellet',gas:'Gas',electric:'Electric'})[f]||f); };
   const typeOpts=function(cat,sel){ const c=cm(cat); return (c.types||[]).map(function(tp){return `<option value="${esc(tp)}" ${tp===sel?'selected':''}>${esc(typeLabel(tp))}</option>`;}).join('')+`<option value="__custom__" ${sel==='__custom__'?'selected':''}>${L('אחר…','Other…')}</option>`; };
@@ -5177,7 +5178,7 @@ function openEquipment(){
     const capsHtml=`<div class="eq-caps"><div class="eq-caps-x"><h4>${L('מה אפשר לבשל','What you can cook')}</h4><span class="eq-caps-n">${okN}/${caps.length} ${L('פעילים','unlocked')}</span></div><div class="eq-gcaps">${caps.map(function(x){return `<span class="eq-gcap ${x[0]?'ok':'no'}"><span class="em">${x[2]}</span> ${x[1]}${x[0]?'':' · '+x[3]}</span>`;}).join('')}</div>${foot}</div>`;
     const secs=EQUIP_CATS.map(function(c){ const ds=list.filter(function(d){return d.cat===c.cat;}); if(!ds.length) return '';
       if(c.cat==='other'){   // accessories → compact chips + an "edit accessories" (checklist) button, not device cards
-        const chips=ds.map(function(d){ const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===d.type;}); return `<span class="eq-chip">${it?it.em+' ':''}${esc(it?L(it.he,it.en):(d.name||typeLabel(d.type)||''))}</span>`; }).join('');
+        const chips=ds.map(function(d){ const it=otherConst(d.type,d.name); return `<span class="eq-chip">${it?it.em+' ':'🧰 '}${esc(it?L(it.he,it.en):(d.name||typeLabel(d.type)||d.type))}</span>`; }).join('');
         return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4><div class="eq-othchips">${chips}</div><button class="eq-add-tile" data-eqaddcat="other"><span class="pl">＋</span> ${L('ערוך אביזרים','Edit accessories')}</button></section>`;
       }
       const cards=ds.map(function(d){ return `<article class="eq-card eq-spine eq-dev" style="--eqacc:${c.acc};--eqacc-l:${c.accL}"><div class="eq-tile">${equipTypeIcon(d.cat,d.type)}</div><div class="eq-dev-main"><div class="eq-dev-top"><span class="eq-dev-name">${esc(d.name||typeLabel(d.type)||'')}</span>${d.specSource==='ai'?`<span class="eq-dev-ai">✨ AI</span>`:''}</div><p class="eq-dev-sub">${esc(typeLabel(d.type)||'')}</p>${chipsFor(d)?`<div class="eq-dev-chips">${chipsFor(d)}</div>`:''}</div><div class="eq-dev-acts"><button class="eq-iconbtn" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-iconbtn" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">✕</button></div></article>`; }).join('');
@@ -5191,25 +5192,39 @@ function openEquipment(){
     pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); drawList(); }); });
   };
 
-  // "Other" = a constant accessories checklist (check what you have; no name/specs/AI lookup)
+  // "Other" = an accessories CHECKLIST: preset items + any custom items you defined, all editable (add / remove)
   const drawOtherChecklist=function(){
-    const have=new Set(equipByCat('other').map(function(d){return d.type;}));
-    const rows=EQUIP_OTHER_ITEMS.map(function(it){ const on=have.has(it.key);
-      return `<button type="button" class="eq-oth-row${on?' on':''}" data-eqoth="${it.key}" role="checkbox" aria-checked="${on?'true':'false'}"><span class="eq-oth-box">${on?'✓':''}</span><span class="eq-oth-em">${it.em}</span><span class="eq-oth-lbl">${L(it.he,it.en)}</span></button>`;
-    }).join('');
+    const rowHtml=function(attr, val, em, label, on){ return `<button type="button" class="eq-oth-row${on?' on':''}" ${attr}="${esc(val)}" role="checkbox" aria-checked="${on?'true':'false'}"><span class="eq-oth-box">${on?'✓':''}</span><span class="eq-oth-em">${em}</span><span class="eq-oth-lbl">${esc(label)}</span></button>`; };
+    const buildRows=function(){ const devs=equipByCat('other');
+      const presets=EQUIP_OTHER_ITEMS.map(function(it){ const on=devs.some(function(d){ return (otherConst(d.type,d.name)||{}).key===it.key; }); return rowHtml('data-eqothkey', it.key, it.em, L(it.he,it.en), on); }).join('');
+      const custom=devs.filter(function(d){ return !otherConst(d.type,d.name); }).map(function(d){ return rowHtml('data-eqothdev', d.id, '🧰', d.name||typeLabel(d.type)||d.type, true); }).join('');   // items you defined that aren't presets
+      return presets+custom;
+    };
     showPanel(`<div class="panel-body eq-wrap eq-form"><div class="eq-sheet"><div class="eq-sheet-grab"></div>
       <div class="eq-sheet-head"><span class="eq-tile" style="--eqacc-l:${cm('other').accL}">${cm('other').icon}</span><h3>${L('אביזרים','Accessories')}</h3><button class="eq-sheet-x" id="eqOthBack" type="button" aria-label="${L('חזרה','Back')}">✕</button></div>
-      <div class="eq-sheet-body"><p class="eq-oth-hint">${L('סמן מה יש לך — לאביזרים אין מפרט, רק יש/אין.','Check what you have — accessories have no specs, just have / haven’t.')}</p><div class="eq-othlist">${rows}</div></div>
+      <div class="eq-sheet-body"><p class="eq-oth-hint">${L('סמן מה יש לך — או הוסף אביזר משלך.','Check what you have — or add your own.')}</p>
+        <div class="eq-othlist" id="eqOthlist">${buildRows()}</div>
+        <div class="eq-oth-add"><input id="eqOthNew" class="eq-oth-newin" placeholder="${L('הוסף אביזר משלך…','Add your own accessory…')}" autocomplete="off"><button type="button" id="eqOthAdd" class="eq-multi-addbtn" aria-label="${L('הוסף','Add')}">＋</button></div>
+      </div>
     </div></div>`);
     const pnl=$("#panel");
-    pnl.querySelectorAll('[data-eqoth]').forEach(function(b){ b.addEventListener('click', function(){
-      const key=b.dataset.eqoth; const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===key;}); if(!it) return;
-      const list=equipList(); const idx=list.findIndex(function(d){return d.cat==='other'&&d.type===key;}); const on=(idx<0);
-      if(on) list.push({id:equipId(),cat:'other',type:key,name:L(it.he,it.en),brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''});
-      else list.splice(idx,1);
-      equipSave(list); equipSetConfigured(); if(typeof cRefreshHome==='function') cRefreshHome();
-      b.classList.toggle('on',on); b.setAttribute('aria-checked',on?'true':'false'); const bx=b.querySelector('.eq-oth-box'); if(bx) bx.textContent=on?'✓':'';
-    }); });
+    const addDev=function(type,name){ const id=equipId(); const list=equipList(); list.push({id:id,cat:'other',type:type,name:name,brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''}); equipSave(list); equipSetConfigured(); if(typeof cRefreshHome==='function') cRefreshHome(); return id; };
+    const removeDev=function(pred){ equipSave(equipList().filter(function(d){ return !(d.cat==='other' && pred(d)); })); equipSetConfigured(); if(typeof cRefreshHome==='function') cRefreshHome(); };
+    const wireRow=function(b){ b.addEventListener('click', function(){ const key=b.dataset.eqothkey, did=b.dataset.eqothdev;
+      if(key){ const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===key;}); if(!it) return; const on=!b.classList.contains('on');
+        if(on) addDev(it.key, L(it.he,it.en)); else removeDev(function(d){ return (otherConst(d.type,d.name)||{}).key===key; });
+        b.classList.toggle('on',on); b.setAttribute('aria-checked',on?'true':'false'); const bx=b.querySelector('.eq-oth-box'); if(bx) bx.textContent=on?'✓':'';
+      } else if(did){ removeDev(function(d){ return d.id===did; }); b.remove(); }   // a custom row → unchecking removes it
+    }); };
+    pnl.querySelectorAll('.eq-oth-row').forEach(wireRow);
+    const addCustom=function(){ const inp=$("#eqOthNew"); if(!inp) return; const v=(inp.value||'').trim(); if(!v) return; inp.value='';
+      if(otherConst(v,v) || equipList().some(function(d){ return d.cat==='other' && (d.name===v||d.type===v); })){ inp.focus(); return; }   // already a preset / already have it
+      const id=addDev(v, v); const wrap=$("#eqOthlist");
+      if(wrap){ const tmp=document.createElement('div'); tmp.innerHTML=rowHtml('data-eqothdev', id, '🧰', v, true); const el=tmp.firstElementChild; wrap.appendChild(el); wireRow(el); }
+      inp.focus();
+    };
+    const ab=$("#eqOthAdd"); if(ab) ab.addEventListener('click', addCustom);
+    const ni=$("#eqOthNew"); if(ni) ni.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addCustom(); } });
     const bk=$("#eqOthBack"); if(bk) bk.addEventListener('click', function(){ drawList(); });
   };
 
