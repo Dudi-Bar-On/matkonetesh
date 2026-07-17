@@ -313,3 +313,20 @@ test('v244: the personal-key wizard offers a route to central access', async ({ 
   await page.waitForSelector('#akmCUrl');                       // now on the hub, fields present
   expect(await page.evaluate(`!!document.querySelector('#akmCCode')`)).toBe(true);
 });
+
+// v246 — "when working in Hebrew, use metric units": the AI PROMPTS force metric in Hebrew (English is left
+// to the Phase-3 units preference). The app already displays metric; this closes the AI-output gap.
+test('v246: AI prompts force metric units when the UI language is Hebrew', async ({ page }) => {
+  await bootAI(page);
+  await page.evaluate(`store.set('mk-lang','he')`);
+  const heAsk = await capAfter(page, `askGemini('כמה זמן לעשן חזה')`);
+  expect(heAsk.system_instruction.parts[0].text).toContain('מטריות');            // Ask-the-Fire system prompt
+  const heJson = await capAfter(page, `aiJSON({task:'t', grounding:'g'})`);
+  expect(heJson.contents[0].parts[0].text).toContain('מטריות');                   // structured AI tasks
+  expect(await page.evaluate(`vcBuildAskPrompt('q','he','').sys`)).toContain('מטריות');   // voice Q&A
+  // English UI → no forced-metric directive (that becomes a Phase-3 units preference)
+  await page.evaluate(`store.set('mk-lang','en')`);
+  const enAsk = await capAfter(page, `askGemini('how long to smoke brisket')`);
+  expect(enAsk.system_instruction.parts[0].text).not.toContain('מטריות');
+  expect(await page.evaluate(`vcBuildAskPrompt('q','en','').sys`)).not.toContain('מטריות');
+});

@@ -3201,7 +3201,7 @@ async function askGemini(qRaw, history){
   const q=(qRaw||'').trim();
   const {ctx,ents}=askContextFor(q);
   const he=(typeof getLang!=='function'||getLang()==='he');
-  const sys='אתה "האש" — עוזר בישול מומחה לאש, עישון, גריל, סו-ויד ושרקוטרי, בתוך אפליקציה ישראלית בשם "מתכונת · מדריך האש". '+(he?'ענה תמיד בעברית':'Reply ALWAYS in English (the app UI language is English)')+', בצורה מלאה ומועילה — אורך התשובה לפי הצורך, כולל רשימות, המלצות ופירוט כשזה עוזר. יש לך חיפוש באינטרנט: השתמש בו לשאלות על מידע עדכני/מקומי — עסקים, חנויות, ספקים, מחירים, זמינות, כתובות (למשל "היכן לקנות פחם איכותי בשרון" — תן רשימת עסקים אמיתית עם פרטים). כשסופקו נתונים מהקטלוג של האפליקציה והם רלוונטיים — התבסס עליהם וצטט טמפ׳/זמנים משם. אתה יכול לענות גם על שאלות מעשיות סביב עולם הבישול על אש (ציוד, קניות, מקומות) ולא רק על מתכונים. אל תמציא מספרי בטיחות קריטיים — אם אינך בטוח, אמור זאת והפנה לאימות.';
+  const sys='אתה "האש" — עוזר בישול מומחה לאש, עישון, גריל, סו-ויד ושרקוטרי, בתוך אפליקציה ישראלית בשם "מתכונת · מדריך האש". '+(he?'ענה תמיד בעברית':'Reply ALWAYS in English (the app UI language is English)')+', בצורה מלאה ומועילה — אורך התשובה לפי הצורך, כולל רשימות, המלצות ופירוט כשזה עוזר. יש לך חיפוש באינטרנט: השתמש בו לשאלות על מידע עדכני/מקומי — עסקים, חנויות, ספקים, מחירים, זמינות, כתובות (למשל "היכן לקנות פחם איכותי בשרון" — תן רשימת עסקים אמיתית עם פרטים). כשסופקו נתונים מהקטלוג של האפליקציה והם רלוונטיים — התבסס עליהם וצטט טמפ׳/זמנים משם. אתה יכול לענות גם על שאלות מעשיות סביב עולם הבישול על אש (ציוד, קניות, מקומות) ולא רק על מתכונים. אל תמציא מספרי בטיחות קריטיים — אם אינך בטוח, אמור זאת והפנה לאימות.'+(he?' השתמש תמיד ביחידות מטריות (°C, ס״מ, ק״ג, ליטר, מ״מ) — לא פרנהייט/אינץ׳/פאונד.':'');
   const turns=[];
   (history||[]).slice(-4).forEach(h=>turns.push({role:h.role==='ai'?'model':'user',parts:[{text:h.text}]}));
   turns.push({role:'user',parts:[{text:(ctx?ctx+'\n\n':'')+'שאלה: '+q}]});
@@ -3304,7 +3304,8 @@ async function aiJSON(opts){
   // W1-P1: output-language plumbing — human-readable string values follow the UI language (keys/ids stay as given). Fixes AI JSON coming back Hebrew in the English UI.
   const outLang=(opts&&opts.outLang) || (typeof getLang==='function'?getLang():'he');
   const langLine=(outLang==='he')?'':('\n\nIMPORTANT: write every human-readable string VALUE (reason/note/summary/rationale/tip/warning/text/title/desc) in '+(LANGNAME[outLang]||'English').toUpperCase()+'. Keep every key and id EXACTLY as provided.');
-  const userText=(grounding?grounding+'\n\n':'')+'משימה: '+(task||'')+(schemaHint?('\n\nהחזר JSON במבנה הבא בדיוק:\n'+schemaHint):'')+langLine;
+  const metricLine=(outLang==='he')?'\n\nהשתמש אך ורק ביחידות מטריות (°C, ס״מ, ק״ג, ליטר, מ״מ) — לעולם לא °F/אינץ׳/lb.':'';   // Hebrew → metric
+  const userText=(grounding?grounding+'\n\n':'')+'משימה: '+(task||'')+(schemaHint?('\n\nהחזר JSON במבנה הבא בדיוק:\n'+schemaHint):'')+langLine+metricLine;
   const mkBody=()=>{
     // Gemini rejects responseMimeType:'application/json' together with the google_search tool (HTTP 400).
     // When grounding, omit JSON-mode and recover the JSON from the grounded text via aiStripFences
@@ -4216,7 +4217,7 @@ function vcBuildAskPrompt(question, ansLang, ctx){
     sys='אתה "האש" — עוזר בישול-אש חי בתוך אפליקציה. '
       +'חשוב: ענה אך ורק בעברית. '
       +'בקצרה (2-3 משפטים לכל היותר), מתאים להקראה בזמן בישול פעיל. '
-      +'אל תמציא טמפרטורות בטיחות — אם אינך בטוח, אמור זאת.'+(ctx?(' '+ctx):'');
+      +'אל תמציא טמפרטורות בטיחות — אם אינך בטוח, אמור זאת. השתמש ביחידות מטריות בלבד (°C, ס״מ, ק״ג).'+(ctx?(' '+ctx):'');
   }
   const userText = ansLang==='en' ? (question+'\n\n(Reply in English only.)') : (question+'\n\n(ענה בעברית בלבד.)');
   return {sys, userText};
