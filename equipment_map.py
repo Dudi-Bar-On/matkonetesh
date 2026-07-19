@@ -27,9 +27,11 @@ SPEC KEYS (these are what let the orchestrator reason numerically)
     nozzle_mm   int    stuffer nozzle diameter needed for this casing   -> device cap.nozzles
     grind_mm    float  grinder plate size                               -> (grinder has no cap yet)
     scale_res   str    weighing precision needed ('0.1g' | '1g')        -> device cap.res
-    min_bath_l  float  smallest sous-vide bath that fits this item      -> device cap.baths
-    racks       float  rack/zone slots this item occupies               -> device cap.racks/zones
-    slice_mm    float  slicing thickness                                -> slicer
+    min_bath_l    float  smallest sous-vide bath that fits this item    -> device cap.baths
+    footprint_cm2 int    grate AREA this item needs                     -> device cap.area
+    shape         str    slab | roast | pieces | bird | long            (why the footprint is what it is)
+    kg            float  item weight (from the catalog)
+    slice_mm      float  slicing thickness                              -> slicer
     rh_pct      tuple  target relative humidity for drying              -> humidity / curechamber
     hold_c      int    holding temperature                              -> holding gear
 """
@@ -109,15 +111,47 @@ def _casing_mm(casing):
     return mm if CASING_MIN_MM <= mm <= CASING_MAX_MM else None
 
 
-def _size_slots(kg):
-    """Rack/zone slots an item occupies. Mirrors the Phase-3a spec's size classes."""
-    if kg is None:
-        return 1.0
-    if kg <= 1.5:
-        return 0.5
-    if kg <= 4.0:
-        return 1.0
-    return 2.0
+# ── Footprint model ──────────────────────────────────────────────────────────
+# Grate occupancy is AREA, not mass. An earlier version bucketed items by weight
+# (>4 kg = "2 racks"), which is wrong: a 5.5 kg brisket is a flat slab that lies in a
+# SINGLE layer on one shelf with room beside it, while 1 kg of thighs laid out in one
+# layer can cover MORE shelf than the brisket. Weight tells you nothing about footprint.
+#
+# So each item declares the area it needs (cm²) and each device declares the area it has
+# (cap.area), and occupancy is a division — no invented "slot" unit.
+#
+# Factors are cm² per kg by SHAPE class. Calibrated against a real data point: a 5.5 kg
+# packer brisket measures roughly 45x28 cm ≈ 1,300 cm², i.e. ~55% of a ~2,400 cm² cabinet
+# shelf — matching the observed "one shelf, room left over for another cut".
+SHAPE_CM2_PER_KG = {
+    "slab":    240,   # flat and wide, one layer: brisket, belly, ribs, plate, fillets
+    "roast":   150,   # thick and blocky: picanha, sirloin/rib roast, shoulder, breast
+    "pieces":  330,   # many small pieces spread in one layer: thighs, wings, kebab, sausages
+    "bird":    200,   # whole poultry — bulky but tall, so less footprint per kg
+    "long":    200,   # shank / osso buco / tongue: long bone-in
+}
+_SHAPE_WORDS = [
+    ("slab",   r"בריסקט|בטן|ספייריבס|צלעות|אסאדו|אונטרייב|פסטרמה|פלנק|פילה דג|סלמון|דג|ברוסקט"),
+    ("pieces", r"פרגיות|כנפיים|קבב|המבורגר|נקניקי|שיפוד|קוביות|טחון|שרימפ|קלמארי|פירות ים|ירקות|פירות"),
+    ("bird",   r"עוף שלם|הודו שלם|אווז|ברווז|תרנגול"),
+    ("long",   r"שוק|שריר|אוסובוקו|לשון|זנב"),
+]
+
+
+def _shape(cut):
+    name = f"{cut.get('heb','')} {cut.get('eng','')} {cut.get('cat','')}"
+    for cls, pat in _SHAPE_WORDS:
+        if re.search(pat, name):
+            return cls
+    return "roast"
+
+
+def _footprint_cm2(cut):
+    """Grate area this item needs, in cm². None when the weight is unknown."""
+    kg = cut.get("kg")
+    if not kg:
+        return None
+    return int(round(kg * SHAPE_CM2_PER_KG[_shape(cut)]))
 
 
 def _bath_l(kg):
@@ -167,7 +201,7 @@ def _norm(e):
 
 def cut_equip(c):
     kg = c.get("kg")
-    slots = _size_slots(kg)
+    foot = _footprint_cm2(c)          # cm² of grate this item needs
     by = {}
 
     # sous-vide path
@@ -184,7 +218,7 @@ def cut_equip(c):
             "need": ["smoker", "probe"],
             "opt":  ["drippan", "spritz", "gloves"] + _wrap_gear(c.get("wrap"), c.get("somid")),
             "alt":  {"smoker": ["grill"]},          # a charcoal/kettle/gas grill can smoke
-            "spec": {"racks": slots},
+            "spec": {"footprint_cm2": foot},
         }
         # long cooks are where holding gear actually earns its place
         try:
@@ -202,7 +236,7 @@ def cut_equip(c):
             "need": ["grill"],
             "opt":  ["torch", "tongs", "gloves"],
             "alt":  {"grill": ["smoker"]},
-            "spec": {"racks": slots},
+            "spec": {"footprint_cm2": foot},
         }
 
     need = ["probe"]                    # every cut ends on a bcheck internal-temp gate
@@ -213,7 +247,7 @@ def cut_equip(c):
         opt.append("cooler")
 
     return _norm({"need": need, "opt": opt, "by": by,
-                  "spec": {"racks": slots, "kg": kg}})
+                  "spec": {"footprint_cm2": foot, "kg": kg, "shape": _shape(c)}})
 
 
 # ─────────────────────────────────────────────────────────────────────────────
