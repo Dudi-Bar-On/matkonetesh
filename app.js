@@ -5769,6 +5769,26 @@ function openUiLevel(){
   pnl.querySelectorAll('[data-lvl]').forEach(b=>b.addEventListener('click',()=>{ setUiLevel(b.dataset.lvl); resetTlShapeToLevel(); openUiLevel(); }));
   pnl.querySelectorAll('[data-shp]').forEach(b=>b.addEventListener('click',()=>{ setTlShape(b.dataset.shp); openUiLevel(); }));
 }
+// Behavior & automation — the PREFS hub. Renders only prefs that carry he/en (i.e. have a live consumer);
+// orchestrator knobs stay registered-but-hidden until their solver lands (Slice 2/3). Reuses .ap-opt styling.
+function openPrefGroup(){
+  const rows=Object.keys(PREFS).filter(function(k){ return PREFS[k].he && PREFS[k].opts; }).map(function(k){
+    const p=PREFS[k], cur=pref(k);
+    const opts=p.opts.map(function(o){ return `<button class="ap-opt ${o.v===cur?'on':''}" data-prefkey="${esc(k)}" data-prefval="${esc(String(o.v))}">${esc(L(o.he,o.en))}</button>`; }).join('');
+    // EXACTLY the markup openUiLevel() uses: .ap-lbl label + .ap-opts row + .section-sub hint.
+    // (.ap-row / .ap-hint do NOT exist in app.css — verified. No new CSS is added.)
+    return `<div class="ap-lbl">${esc(L(p.he,p.en))}</div><div class="ap-opts">${opts}</div>`
+      +((p.hintHe||p.hintEn)?`<p class="section-sub" style="margin:8px 2px 0">${esc(L(p.hintHe||'',p.hintEn||''))}</p>`:'');
+  }).join('');
+  showPanel(`${toolTop(L('התנהגות ואוטומציה','Behavior & automation'),L('איך האפליקציה מתנהגת עבורך','How the app behaves for you'),'🎛️','#6a8caf')}
+   <div class="panel-body">${rows}</div>`);
+  $("#panel").querySelectorAll('[data-prefkey]').forEach(function(b){ b.addEventListener('click', function(){
+    const k=b.dataset.prefkey, p=PREFS[k]; if(!p) return;
+    const raw=b.dataset.prefval; const opt=p.opts.find(function(o){ return String(o.v)===raw; });
+    if(!opt || !setPref(k, opt.v)) return;
+    openPrefGroup();   // repaint so the .on marker follows the stored value
+  }); });
+}
 function maybeAskUiLevel(){
   if(store.get('mk-uilevel-asked')) return;
   store.set('mk-uilevel-asked', true);
@@ -8065,7 +8085,7 @@ function openMoreSheet(){
     ['🍽️', L('עבודה','Work'), [['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline',true],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint',true],['🛒',L('רשימת קניות','Shopping list'),'openCart']]],
     ['✨', L('חוויה','Experience'), [['🤖',L('כלי AI','AI tools'),'openAiHub'],['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
     ['🧰', L('עזר','Utilities'), [['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans',true],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders',true],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']]],
-    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🧰',L('הציוד שלי','My equipment'),'openEquipment'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
+    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎛️',L('התנהגות ואוטומציה','Behavior & automation'),'openPrefGroup'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🧰',L('הציוד שלי','My equipment'),'openEquipment'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
   ];
   const reg={}; GROUPS.forEach(g=>g[2].forEach(it=>reg[it[2]]=it));
   const visible=it=>!(beg && it[3]);                                   // advanced items hidden at beginner level

@@ -91,3 +91,25 @@ test('P3: pref("units") governs the metric directive in every AI prompt builder'
   expect(b.contents[0].parts[0].text).not.toContain('מטריות');
   expect(await page.evaluate(`vcBuildAskPrompt('q','he','').sys`)).not.toContain('מטריות');
 });
+
+test('P4: the Behavior & automation hub renders prefs and persists a change (HE + EN)', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`openPrefGroup()`);
+  await page.waitForSelector('#panel [data-prefkey="units"]');
+  // Hebrew UI → no English leak in the panel body
+  const heTxt = await page.evaluate(`document.querySelector('#panel .panel-body').textContent`) as string;
+  expect(/[A-Za-z]{4,}/.test(heTxt.replace(/°C|kg|lb|°F/g,''))).toBe(false);
+  // the current value is marked, and picking the other one persists
+  expect(await page.evaluate(`!!document.querySelector('#panel [data-prefkey="units"][data-prefval="metric"].on')`)).toBe(true);
+  await page.click('#panel [data-prefkey="units"][data-prefval="imperial"]');
+  await page.waitForFunction(`pref('units')==='imperial'`);
+  expect(await page.evaluate(`!!document.querySelector('#panel [data-prefkey="units"][data-prefval="imperial"].on')`)).toBe(true);
+  // English renders too
+  await page.evaluate(`store.set('mk-lang','en'); openPrefGroup()`);
+  await page.waitForSelector('#panel [data-prefkey="units"]');
+  expect(await page.evaluate(`document.querySelector('#panel .panel-body').textContent`)).toContain('Units');
+  // and it is reachable from the More → Settings menu (the menu array is a LOCAL const inside
+  // openMoreSheet(), so assert against the rendered DOM, never a global)
+  await page.evaluate(`openMoreSheet()`);
+  await page.waitForFunction(`/Behavior & automation/.test(document.body.textContent)`);
+});
