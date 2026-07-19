@@ -5513,6 +5513,50 @@ $("#favBtn").addEventListener("click",()=>{
   toast("הסינון נוקה");
 }); })();
 
+/* ═══ preferences framework — one registry for every user-tunable behavior ═══
+   Formalizes the validated-default pattern already used by themeKey()/uiLevel()/fontScale():
+   read the stored value, validate it, else fall back to a default that reproduces today's behavior.
+   `valid` is a PREDICATE (a lazy closure) so this table may be declared before the constants it
+   checks against (THEMES/UI_LEVELS/SHAPE_NAMES are defined further down) — no ordering hazard.
+   Entries with he/en/opts render in the "Behavior & automation" hub; the rest keep their own panels. */
+const PREFS={
+  // existing keys, ADOPTED IN PLACE (no migration, no behavior change)
+  theme:      {store:'mk-theme',      def:'cream',   valid:function(v){ return !!THEMES[v]; }},
+  fontPair:   {store:'mk-fontpair',   def:'current', valid:function(v){ return !!FONT_PAIRS[v]; }},
+  fontScale:  {store:'mk-fontscale',  def:1,         valid:function(v){ return FONT_SCALES.indexOf(v)>=0; }, coerce:Number},
+  uiLevel:    {store:'mk-uilevel',    def:'mid',     valid:function(v){ return !!UI_LEVELS[v]; }},
+  tlShape:    {store:'mk-tlshape',    def:null,      valid:function(v){ return !!SHAPE_NAMES[v]; }},
+  // new — Units is the first live consumer (Task 4)
+  units:      {store:'mk-pref-units', def:'metric',  valid:['metric','imperial'], group:'ai',
+               he:'יחידות מידה', en:'Units', hintHe:'יחידות בתשובות ה-AI', hintEn:'Units in AI answers',
+               opts:[{v:'metric',he:'מטרי (°C, ק״ג)',en:'Metric (°C, kg)'},{v:'imperial',he:'אימפריאלי (°F, lb)',en:'Imperial (°F, lb)'}]},
+  // orchestrator knobs — REGISTERED now so Slice 2/3 only add their consumers + the preset selector.
+  // They intentionally render NO hub UI yet (no consumer = no dead controls).
+  autonomy:   {store:'mk-pref-autonomy', def:'advise', valid:['advise','propose','autopilot']},
+  shareTolC:  {store:'mk-pref-sharetol', def:8,        valid:[0,8,15], coerce:Number},
+  woodSwap:   {store:'mk-pref-woodswap', def:true,     valid:[true,false]},
+  holdEnabled:{store:'mk-pref-hold',     def:true,     valid:[true,false]},
+  aiRank:     {store:'mk-pref-airank',   def:true,     valid:[true,false]},
+  slotModel:  {store:'mk-pref-slots',    def:'size',   valid:['size','count']},
+  holdMaxH:   {store:'mk-pref-holdmax',  def:3,        valid:[1,2,3], coerce:Number},
+};
+function prefOk(p, v){
+  if(typeof p.valid==='function') return !!p.valid(v);
+  if(Array.isArray(p.valid)) return p.valid.indexOf(v)>=0;
+  return false;
+}
+function pref(key){
+  const p=PREFS[key]; if(!p) return undefined;
+  let v=store.get(p.store); if(p.coerce) v=p.coerce(v);
+  return prefOk(p,v) ? v : p.def;
+}
+function setPref(key, val){
+  const p=PREFS[key]; if(!p) return false;
+  let v=val; if(p.coerce) v=p.coerce(v);
+  if(!prefOk(p,v)) return false;
+  store.set(p.store, v); return true;
+}
+
 /* ── v144: appearance system — color themes · font pairs · text scale ── */
 const THEMES={
   cream:{ name:'שמנת חמה', dots:['#fdf6ec','#e76f51','#1a9a7a'],
