@@ -62,3 +62,32 @@ test('P2: the existing helpers delegate to pref() with identical results for eve
   await page.evaluate(`store.set('mk-tlshape','1')`);
   expect(await page.evaluate(`tlShape()`)).toBe('1');
 });
+
+const capBody = async (page: any, call: string) => {
+  await page.evaluate(`window.__cap=[]; window.gemFetch=async(m,b)=>{ window.__cap.push(b); return {ok:true,status:200,json:async()=>({candidates:[{content:{parts:[{text:'{"x":1}'}]}}]})}; };`);
+  await page.evaluate(`(async()=>{ try{ await (${call}); }catch(e){} })()`);
+  await page.waitForFunction(`window.__cap.length>0`);
+  return page.evaluate(`window.__cap[0]`);
+};
+
+test('P3: pref("units") governs the metric directive in every AI prompt builder', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`store.set('mk-gemkey','k')`);
+  // default (metric) → the directive is present, in Hebrew AND English
+  expect(await page.evaluate(`pref('units')`)).toBe('metric');
+  let b = await capBody(page, `askGemini('כמה זמן לעשן חזה')`) as any;
+  expect(b.system_instruction.parts[0].text).toContain('מטריות');
+  b = await capBody(page, `aiJSON({task:'t',grounding:'g'})`) as any;
+  expect(b.contents[0].parts[0].text).toContain('מטריות');
+  expect(await page.evaluate(`vcBuildAskPrompt('q','he','').sys`)).toContain('מטריות');
+  await page.evaluate(`store.set('mk-lang','en')`);
+  b = await capBody(page, `askGemini('how long to smoke brisket')`) as any;
+  expect(b.system_instruction.parts[0].text).toContain('metric');   // English UI, metric pref → still enforced
+  // imperial → no metric directive anywhere
+  await page.evaluate(`setPref('units','imperial'); store.set('mk-lang','he')`);
+  b = await capBody(page, `askGemini('כמה זמן לעשן חזה')`) as any;
+  expect(b.system_instruction.parts[0].text).not.toContain('מטריות');
+  b = await capBody(page, `aiJSON({task:'t',grounding:'g'})`) as any;
+  expect(b.contents[0].parts[0].text).not.toContain('מטריות');
+  expect(await page.evaluate(`vcBuildAskPrompt('q','he','').sys`)).not.toContain('מטריות');
+});
