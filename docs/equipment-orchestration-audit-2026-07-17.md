@@ -131,3 +131,27 @@ never reaches the plan.
 - **Fix D6 first** — ambiguous items must stay in contention, otherwise the solver never sees the clashes
   it exists to resolve.
 - D1-D4 are cheap task-embedding wins that need no solver and could ship inside Slice 1½.
+
+---
+
+## 7. Addendum — hanging vs. grate occupancy (owner, 2026-07-17)
+
+Occupancy has **two modes**, not one. §4's footprint model assumes an item *lies on a grate*. When smoking
+by **hanging** (hooks / hanging bars — common for sausages, salami, ribs, biltong, whole birds, bacon
+slabs, and most dry-curing), the binding constraint is completely different:
+
+| | grate mode | hang mode |
+|---|---|---|
+| capacity unit | grate **area** (cm²) | **hook / rod positions** (count), or linear rod space (cm) |
+| item consumes | `footprint_cm2` | one hook (or N cm of rod) + its hanging **length** |
+| device limit | `cap.area` / per-shelf area | number of hooks + chamber **height** (vertical clearance) |
+| fails when | area exceeded | no free hook, or the item is longer than the chamber is tall |
+
+Consequences for the consumption layer:
+- An item needs a `hang` capability flag plus, when hanging, `hang_len_cm` (drop length) and `hooks: 1`.
+- A cut hung instead of laid **frees its grate area entirely** — hanging is itself an optimization move
+  ("hang the ribs to free a shelf for the brisket").
+- The `hooks` accessory (already in `EQUIP_OTHER_ITEMS`) becomes a real capacity input, not decoration.
+- The device side needs a vertical-clearance figure for cabinet smokers / cure chambers; `cap.area` alone
+  cannot express hang capacity.
+- Dry-curing (`curechamber`) is almost always hang mode — its capacity was never modelled at all.
