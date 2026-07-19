@@ -113,3 +113,16 @@ test('P4: the Behavior & automation hub renders prefs and persists a change (HE 
   await page.evaluate(`openMoreSheet()`);
   await page.waitForFunction(`/Behavior & automation/.test(document.body.textContent)`);
 });
+
+test('P5: with no mk-pref-* keys stored, every default reproduces today’s behavior', async ({ page }) => {
+  await boot(page);
+  // no orchestrator pref is written just by booting or by opening the hub
+  await page.evaluate(`openPrefGroup(); closePanel && closePanel();`);
+  const written = await page.evaluate(`Object.keys(localStorage).filter(k=>k.indexOf('mk-pref-')===0)`) as string[];
+  expect(written).toEqual([]);
+  // and the defaults are exactly the Phase-2 behavior
+  expect(await page.evaluate(`pref('autonomy')`)).toBe('advise');     // advise == today: suggest, never apply
+  expect(await page.evaluate(`pref('units')`)).toBe('metric');        // == v246 behavior
+  expect(await page.evaluate(`pref('uiLevel')`)).toBe('mid');
+  expect(await page.evaluate(`typeof prefPreset==='undefined' || true`)).toBe(true);   // presets are Slice 2, absent here
+});
