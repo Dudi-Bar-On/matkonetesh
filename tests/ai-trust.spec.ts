@@ -330,3 +330,23 @@ test('v246: AI prompts force metric units when the UI language is Hebrew', async
   expect(enAsk.system_instruction.parts[0].text).not.toContain('מטריות');
   expect(await page.evaluate(`vcBuildAskPrompt('q','en','').sys`)).not.toContain('מטריות');
 });
+
+// Phase 3a Slice 1 — the guard must never treat LIVE USER TELEMETRY as vetted grounding.
+// Before the fix, copilotVoiceContext() (which carries the probe reading) was concatenated into
+// aiSafetyNote's grounding, so "55°C is fine" was 'grounded' by the user's own thermometer.
+test('v250: live probe telemetry is NOT vetted grounding for the safety guard', async ({ page }) => {
+  await bootAI(page);
+  await page.evaluate(`
+    document.body.insertAdjacentHTML('beforeend','<div id="copAdvice"></div>');
+    window.liveSession      = () => ({ startedAt: Date.now()-3600000, targetC: 93 });
+    window.copilotPace      = () => ({ lastTemp: 55, state: 'projected', rate: 5, verdict: 'behind', slackMin: 30 });
+    window.copilotAdviceLocal = () => 'local advice';
+    window.askGemini        = async () => ({ txt: '55°C זה בסדר, אפשר להחזיק ככה', ctx: 'מהקטלוג: חזה בקר 93°C' });
+  `);
+  // sanity: the live context really does carry the 55 (that is what used to launder it)
+  expect(await page.evaluate(`copilotVoiceContext()`)).toContain('55');
+  await page.evaluate(`copilotAskNow()`);
+  await page.waitForFunction(`!/ai-spinner|האש חושב/.test(document.querySelector('#copAdvice').innerHTML)`);
+  const html = await page.evaluate(`document.querySelector('#copAdvice').innerHTML`) as string;
+  expect(html).toContain('ai-caveat-strong');   // 55 is absent from the VETTED ctx → must escalate
+});

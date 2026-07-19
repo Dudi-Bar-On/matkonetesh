@@ -4429,7 +4429,10 @@ async function copilotAskNow(){
     const stage=_copilotStages(); const stageLbl=stage.cur?stripEmoji(stage.cur.label||''):'';
     const q=(he?'מצב הבישול:':'Cook situation:')+copilotVoiceContext()+(stageLbl?(' '+(he?'שלב נוכחי:':'current stage:')+' '+stageLbl):'')+' '+(he?'מה כדאי לעשות עכשיו? תשובה קצרה ומעשית.':'What should I do right now? Short, practical answer.');
     const r=await askGemini(q, []);
-    host.innerHTML=`<div class="cop-pacenote">${esc(r.txt||'').replace(/\n/g,'<br>')}${(typeof aiSafetyNote==='function')?aiSafetyNote(r.txt, (r.ctx||'')+' '+copilotVoiceContext()):''}</div>`;
+    // SAFETY: grounding = the VETTED context only. copilotVoiceContext() carries the user's live probe
+    // reading; feeding it here would let the AI "ground" an unsafe number in the user's own telemetry.
+    // It stays in the PROMPT (above) — live state may inform the model, never the guard.
+    host.innerHTML=`<div class="cop-pacenote">${esc(r.txt||'').replace(/\n/g,'<br>')}${(typeof aiSafetyNote==='function')?aiSafetyNote(r.txt, (r.ctx||'')):''}</div>`;
   }catch(e){ host.innerHTML=prev; }   // AI failed → keep the local advice
 }
 function openCopilot(){
