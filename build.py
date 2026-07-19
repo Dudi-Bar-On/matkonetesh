@@ -104,6 +104,17 @@ try:
 except ImportError:
     pass
 
+# Equipment requirements, structured per recipe (recipe.equip -> work plan -> orchestrator).
+# Derived from what each recipe already encodes (casing / grind / cure / smt / svt / age / sear),
+# so requirements cannot drift out of sync when a recipe changes.
+try:
+    import equipment_map as _eqmap
+    _eqstats = _eqmap.apply(CUTS, SPECIALS, MAKES)
+    print("[equip] tagged", len(CUTS) + len(SPECIALS) + len(MAKES), "recipes;",
+          "uncovered:", len(_eqstats["uncovered"]))
+except ImportError:
+    print("[equip] equipment_map.py not found — recipes ship without equipment requirements")
+
 payload = {
     "cuts": CUTS,
     "specials": SPECIALS,
