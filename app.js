@@ -5582,9 +5582,9 @@ const FONT_SCALE_LABELS_EN={0.9:'Small',1:'Regular',1.15:'Large',1.3:'Very large
 function themeName(k){ return getLang()==='he'?(THEMES[k]||{}).name:(THEME_NAMES_EN[k]||(THEMES[k]||{}).name); }
 function fontName(k){ return getLang()==='he'?(FONT_PAIRS[k]||{}).name:(FONT_NAMES_EN[k]||(FONT_PAIRS[k]||{}).name); }
 function scaleLabel(s){ return getLang()==='he'?FONT_SCALE_LABELS[s]:(FONT_SCALE_LABELS_EN[s]||FONT_SCALE_LABELS[s]); }
-function themeKey(){ const t=store.get('mk-theme'); return THEMES[t]?t:'cream'; }          // migrates old coal/vintage/gold → cream
-function fontPairKey(){ const f=store.get('mk-fontpair'); return FONT_PAIRS[f]?f:'current'; }
-function fontScale(){ const s=+store.get('mk-fontscale'); return FONT_SCALES.includes(s)?s:1; }
+function themeKey(){ return pref('theme'); }                       // migrates old coal/vintage/gold → cream
+function fontPairKey(){ return pref('fontPair'); }
+function fontScale(){ return pref('fontScale'); }
 const THEME_SCHEME={cream:'light',charcoal:'dark',walnut:'light',slate:'light'};   // native form-control rendering hint
 /* ═══ i18n foundation (Wave 5) ═══════════════════════════════════════════════
    Hand-authored keyed CHROME table + a pluggable language provider. This layer
@@ -5744,9 +5744,9 @@ const LEVEL_SHAPE={beginner:'5', mid:'1', pro:'3'};   // 5=צירים מתקפל
 const SHAPE_NAMES={'5':'צירים מתקפלים','1':'קו-זמן אנכי','3':'צעדים אופקי'};
 const SHAPE_NAMES_EN={'5':'Collapsible accordion','1':'Vertical timeline','3':'Horizontal steps'};
 function shapeName(k){ return (getLang()==='he'?SHAPE_NAMES:SHAPE_NAMES_EN)[k]||k; }
-function uiLevel(){ const l=store.get('mk-uilevel'); return UI_LEVELS[l]?l:'mid'; }
+function uiLevel(){ return pref('uiLevel'); }
 function setUiLevel(l){ if(!UI_LEVELS[l]) return; store.set('mk-uilevel',l); }
-function tlShapeOverride(){ const s=store.get('mk-tlshape'); return SHAPE_NAMES[s]?s:null; }
+function tlShapeOverride(){ return pref('tlShape'); }
 function tlShape(){ return tlShapeOverride()||LEVEL_SHAPE[uiLevel()]; }
 function setTlShape(s){ if(!SHAPE_NAMES[s]) return; store.set('mk-tlshape',s); }
 function resetTlShapeToLevel(){ store.set('mk-tlshape',''); }

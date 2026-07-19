@@ -34,3 +34,31 @@ test('P1: pref() returns the default for absent and invalid values; setPref vali
   expect(await page.evaluate(`setPref('fontScale',1.15)`)).toBe(true);
   expect(await page.evaluate(`pref('fontScale')`)).toBe(1.15);
 });
+
+test('P2: the existing helpers delegate to pref() with identical results for every input', async ({ page }) => {
+  await boot(page);
+  const cases: Array<[string,string,any,any]> = [
+    // [storeKey, helperExpression, storedValue, expected]
+    ['mk-theme',     'themeKey()',        'charcoal', 'charcoal'],
+    ['mk-theme',     'themeKey()',        'neon',     'cream'],     // invalid → default
+    ['mk-theme',     'themeKey()',        null,       'cream'],     // absent  → default
+    ['mk-uilevel',   'uiLevel()',         'pro',      'pro'],
+    ['mk-uilevel',   'uiLevel()',         'wat',      'mid'],
+    ['mk-fontscale', 'fontScale()',       1.3,        1.3],
+    ['mk-fontscale', 'fontScale()',       7,          1],
+    ['mk-fontscale', 'fontScale()',       null,       1],
+    ['mk-fontpair',  'fontPairKey()',     'editorial','editorial'],
+    ['mk-fontpair',  'fontPairKey()',     'zzz',      'current'],
+    ['mk-tlshape',   'tlShapeOverride()', '3',        '3'],
+    ['mk-tlshape',   'tlShapeOverride()', 'x',        null],
+  ];
+  for (const [key, expr, val, want] of cases) {
+    await page.evaluate(`store.set(${JSON.stringify(key)}, ${JSON.stringify(val)})`);
+    expect(await page.evaluate(expr), `${expr} with ${key}=${JSON.stringify(val)}`).toBe(want);
+  }
+  // tlShape() stays DERIVED: override wins, else it falls back to the level's shape
+  await page.evaluate(`store.set('mk-tlshape',''); store.set('mk-uilevel','pro')`);
+  expect(await page.evaluate(`tlShape()`)).toBe('3');
+  await page.evaluate(`store.set('mk-tlshape','1')`);
+  expect(await page.evaluate(`tlShape()`)).toBe('1');
+});
