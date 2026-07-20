@@ -77,8 +77,19 @@ new shapes (numbers, booleans) go in `props`.
 | | `fan` · `steam` | bool · pro | fan true for ביתי |
 | **sousvide** | `maxL` | num · L · core | טבילה 20 · מיכל ייעודי 12 |
 | | `watts` · `maxC` | num · W/°C · pro | watts 1000 · maxC 95 |
-| **vacuum** | `bagW` | num · cm · core | edge 30 · chamber 30 · ידני 25 |
-| | `pulse` | bool · pro | true for chamber |
+| **vacuum** | `bagW` | num · cm · core | `'שקית חיצונית (edge)'`30 · `'חדר (chamber)'`30 · `'ידני / משאבה'`25 |
+| | `bagKind` | choice · core | `roll` (cuttable sleeve — **length unconstrained**) · `bags` (pre-cut) · `both`; default `both` |
+| | `bagL` | multiCap · cm · core | pre-cut lengths owned — **only asked when `bagKind` includes `bags`** |
+| | `pulse` | bool · pro | true for `'חדר (chamber)'` |
+
+> **Why the vacuum needs three fields, not one.** The seal bar fixes the **width**, but length is a
+> property of the *consumable*, not the machine: a cuttable roll makes length effectively unlimited, while
+> pre-cut bags constrain both dimensions. So "does a 5.5 kg brisket fit?" is answered differently:
+> - `bagKind: roll` → **width alone decides** (cut the sleeve as long as needed)
+> - `bagKind: bags` → the item must fit **within some owned `bagL`** as well
+>
+> Getting this wrong in either direction is a real failure: assuming pre-cut bags would falsely block a
+> roll owner, and assuming a roll would promise a seal that a bag owner cannot actually make.
 | **probe** | `maxC` | num · °C · pro | 300 |
 | | `accuracy` | num · ±°C · pro | 1 |
 | **grinder** | `plates` | **multiCap** · mm · core | — (no default possible; this is the owner's finding) |
@@ -99,7 +110,37 @@ new shapes (numbers, booleans) go in `props`.
 **Deliberately excluded** (derivable from `type`, asking would be redundant): smoker `tempCtl`,
 vacuum liquid-sealing, probe wireless/alarm.
 
-## 4. UI
+## 4. Capture — the AI lookup is the PRIMARY path, the form is the fallback
+
+**Owner's correction, and it reframes this whole feature:** the "add equipment" flow already sends the
+model name to the web and parses the manufacturer's page (`aiLookupDevice`, shipped v245). Nearly every
+property in §3 is printed on a spec sheet — max temperature, wattage, seal-bar width, included grinder
+plates, scale capacity×resolution, water pan, lid, rotisserie. So they should be **extracted, not asked**.
+
+**Capture precedence — first hit wins:**
+1. **AI lookup at add time** — extend `aiLookupDevice`'s schema to request every §3 property. The user
+   pastes a model name (or a product URL, already supported) and the verify card comes back populated.
+2. **Class default by `type`** — for anything the lookup couldn't determine.
+3. **Manual entry / correction** — the form, which is also the whole path when AI is unavailable.
+
+This is what makes "complete all known properties now" humane: the pro pastes a model and gets a full
+`cap` block in one shot, and the basic user gets type defaults without ever seeing a field.
+
+### Extending `aiLookupDevice`
+
+Add the §3 keys to its JSON schema, per category (only ask for what applies — a stuffer has no `maxC`).
+The existing hardening stays and applies to the new fields too:
+- **metric only** (the v246 rule) — `maxC` in °C, `bagW` in cm, `plates` in mm;
+- **plausibility bounds per key**, as `_casing_mm` already does — reject a `maxC` of 2000 or a `bagW` of
+  300 rather than storing nonsense;
+- **`aiRepairJson`** already covers the malformed-output case;
+- **never invent**: a property the page doesn't state must come back `null`, not a guess. A wrong `maxC`
+  is worse than an absent one, because absent falls through to a sane class default.
+
+The verify card keeps its existing "✨ auto-filled — nothing saved yet" treatment, so every extracted
+number is confirmed by the user before it persists. Extraction never silently writes.
+
+### Form (fallback + correction)
 
 Extend `paintVerify` (app.js ~5370) only. After the existing fuel/area row:
 
@@ -133,6 +174,13 @@ unset property never behaves differently from a defaulted one.
 
 ## 6. Testing
 
+0. **Type-key build gate:** every key of every `props[].def` map exists in that category's `types[]`
+   (see the warning in §3). A typo fails the suite instead of silently disabling a default.
+0b. **AI extraction:** with a mocked lookup returning the full property set, every value lands on the
+   device; out-of-bounds values (`maxC: 2000`, `bagW: 300`) are rejected rather than stored; `null` fields
+   fall through to the class default; nothing persists until the user confirms the verify card.
+0c. **Vacuum bag logic:** a brisket-sized item passes with `bagKind: roll` on width alone, and is blocked
+   with `bagKind: bags` when no owned `bagL` is long enough.
 1. **Additive/no-regression:** every existing device round-trips unchanged; `capKey`/`multiCap` behaviour is
    byte-identical (the existing equipment suite must pass untouched).
 2. **Defaults:** `propOf()` returns the class default for an unset property, the stored value when set, and
