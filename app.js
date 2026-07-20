@@ -229,7 +229,13 @@ function cookerFor(itemKey, kind, scope){
   const m=store.get('mk-item-cooker-'+itemCookerScope(scope))||{};
   const asg=m[itemKey+'|'+kind];
   if(asg){ const d=cands.find(function(x){return x.id===asg;}); if(d) return d; }
-  return cands.length===1?cands[0]:null;   // single-fit auto; ambiguous → null (needs a pick)
+  if(cands.length===1) return cands[0];    // single fit → auto
+  // ambiguous → prefer the purpose-built device for this kind: a real smoker outranks a grill-that-can-also-smoke,
+  // so owning both no longer drops the smoke stage to "no device" (and out of contention) the moment you add a kettle.
+  const cat=cookerCatForKind(kind);
+  const native=cands.filter(function(x){return x.cat===cat;});
+  if(native.length===1) return native[0];
+  return null;   // two of the same class → genuinely needs a pick
 }
 function cookerLabel(itemKey, kind, scope){ const d=cookerFor(itemKey,kind,scope); return d?(d.name||t(d.type)||''):''; }
 // Phase 2: within-event cooker contention — two items sharing one smoker/grill in overlapping windows
@@ -1497,6 +1503,7 @@ function openCut(c){
        :`<div class="varitem"><div class="vt">${t(altR[0])}</div><p>${t(altR[1])}</p></div>
        <div class="varitem"><div class="vt">🪵 ${L('עץ מומלץ','Recommended wood')}</div><p>${t(c.wood)}.</p></div>`}
      </div>
+     ${equipSectionHtml(c.equip)}
      ${seasPickerHTML(key, c.cat, isProduce(c), curProject?'edit':'view')}
 
      <div id="servHost"></div>
@@ -5273,6 +5280,65 @@ const EQUIP_OTHER_ITEMS=[
   {key:'knife',       he:'סכין פריסה',          en:'Slicing knife',    em:'🔪'},
   {key:'board',       he:'קרש חיתוך',           en:'Cutting board',    em:'🪵'},
 ];
+// ── recipe equipment (DATA.cuts[].equip) → the catalog's "what you need" section ───────────────────────────
+// Each vocabulary token resolves to either a device category (EQUIP_CATS — carries its own icon + accent colour)
+// or an accessory (EQUIP_OTHER_ITEMS). Ownership is read from the user's kit so every chip reads have/missing.
+function equipTokenInfo(tok){
+  const c=(typeof EQUIP_CATS!=='undefined')?EQUIP_CATS.find(function(x){return x.cat===tok;}):null;
+  if(c) return {key:tok, he:c.he, en:c.en, em:c.icon, acc:c.acc, accL:c.accL, dev:true};
+  const it=EQUIP_OTHER_ITEMS.find(function(x){return x.key===tok;});
+  if(it) return {key:tok, he:it.he, en:it.en, em:it.em, acc:'#7a6a5c', accL:'#ece5df', dev:false};
+  return null;   // unknown token → caller skips it (never render a raw key to the user)
+}
+function equipOwnsToken(tok){
+  const info=equipTokenInfo(tok); if(!info) return false;
+  return info.dev ? equipByCat(tok).length>0
+                  : equipList().some(function(d){return d && d.cat==='other' && d.type===tok;});
+}
+function equipChip(tok, need){
+  const i=equipTokenInfo(tok); if(!i) return '';
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const owned=equipOwnsToken(tok), configured=(typeof equipConfigured==='function')&&equipConfigured();
+  const mark=!configured?'' : (owned?'<span class="eqc-ok">✓</span>':'<span class="eqc-no">✗</span>');
+  const cls='eqc'+(need?' eqc-need':' eqc-opt')+(configured&&!owned?' eqc-miss':'');
+  return `<span class="${cls}" style="--eqc:${i.acc};--eqcl:${i.accL}"><span class="eqc-em">${i.em}</span>${esc(he?i.he:i.en)}${mark}</span>`;
+}
+const EQUIP_PHASE_LABEL={sv:['סו-ויד','Sous-vide'], smoke:['עישון','Smoke'], grill:['גריל','Grill'], cook:['בישול','Cook'], cure:['ריפוי','Cure'], prep:['הכנה','Prep']};
+function equipSpecNote(spec){
+  if(!spec) return '';
+  const he=(typeof getLang!=='function'||getLang()==='he'); const bits=[];
+  if(spec.min_bath_l)    bits.push(`${he?'אמבט':'Bath'} ≥ ${spec.min_bath_l} ${he?'ל׳':'L'}`);
+  if(spec.footprint_cm2) bits.push(`${he?'שטח':'Area'} ~${spec.footprint_cm2} ${he?'סמ״ר':'cm²'}`);
+  if(spec.casing_mm)     bits.push(`${he?'מעטה':'Casing'} ${spec.casing_mm} ${he?'מ״מ':'mm'}`);
+  return bits.length?`<span class="eq-spec">${bits.join(' · ')}</span>`:'';
+}
+function equipSectionHtml(eq){
+  if(!eq) return '';
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const row=(label, need, opt, spec)=>{
+    const chips=(need||[]).map(function(k){return equipChip(k,true);}).join('')
+              + (opt||[]).map(function(k){return equipChip(k,false);}).join('');
+    if(!chips) return '';
+    return `<div class="eq-row">${label?`<div class="eq-rl">${label}</div>`:''}<div class="eq-chips">${chips}</div>${equipSpecNote(spec)}</div>`;
+  };
+  const baseNote=equipSpecNote(eq.spec);
+  let body=row('', eq.need, eq.opt, eq.spec);
+  Object.keys(eq.by||{}).forEach(function(ph){
+    const b=eq.by[ph]||{}, lab=EQUIP_PHASE_LABEL[ph];
+    // a phase that just restates the cut's own footprint adds nothing — show only what's new for that phase
+    const spec=(equipSpecNote(b.spec)===baseNote)?null:b.spec;
+    body+=row(lab?(he?lab[0]:lab[1]):ph, b.need, b.opt, spec);
+  });
+  if(!body) return '';
+  const configured=(typeof equipConfigured==='function')&&equipConfigured();
+  return `<div class="var eq-sec">
+      <h4>🧰 ${L('ציוד לנתח הזה','Equipment for this cut')}</h4>
+      <p class="eq-hint">${configured
+        ? L('✓ יש לך · ✗ חסר לך. מסגרת מלאה = נדרש, מקווקוות = מומלץ.','✓ you have it · ✗ missing. Solid = required, dashed = nice-to-have.')
+        : L('מסגרת מלאה = נדרש, מקווקוות = מומלץ. הגדר את הציוד שלך כדי לראות מה חסר.','Solid = required, dashed = nice-to-have. Set up your kit to see what you are missing.')}</p>
+      ${body}
+    </div>`;
+}
 function typeLabel(type){
   if(!type) return '';
   if(LEGACY_TYPE[type]) return L(LEGACY_TYPE[type][0], LEGACY_TYPE[type][1]);
@@ -6400,7 +6466,18 @@ function cwPaintReview(){
   // event identity fields → persist into working menu (so save snapshots them)
   const nm=$("#cwEvName"); if(nm) nm.addEventListener('input',()=>{ const m=cwMenu(); m.evName=nm.value; cwSave(m); });
   const ds=$("#cwEvDesc"); if(ds) ds.addEventListener('input',()=>{ const m=cwMenu(); m.evDesc=ds.value; cwSave(m); });
-  const dt=$("#cwEvDate"); if(dt) dt.addEventListener('change',()=>{ const m=cwMenu(); m.evDate=dt.value; cwSave(m); });
+  // A native date input paints its own dd/mm/yyyy hint in the BROWSER's locale — Latin text sitting inside the
+  // otherwise-Hebrew wizard, which no page-level translation can reach. So rest it as a text field carrying a real
+  // Hebrew placeholder, and swap to the date control only while picking (or whenever a date is actually set).
+  const dt=$("#cwEvDate");
+  if(dt){
+    dt.addEventListener('focus',()=>{
+      if(dt.type!=='date'){ dt.type='date'; dt.focus(); }   // re-focus: switching type can drop focus, costing the user a second tap
+      try{ if(dt.showPicker) dt.showPicker(); }catch(e){}   // needs a user gesture — throws on a programmatic focus, which is fine
+    });
+    dt.addEventListener('blur', ()=>{ if(!dt.value && dt.type==='date') dt.type='text'; });
+    dt.addEventListener('change',()=>{ const m=cwMenu(); m.evDate=dt.value; cwSave(m); });
+  }
   const se=$("#cwSaveEvent"); if(se) se.addEventListener('click',async()=>{
     const m=cwMenu();
     let name=(m.evName||'').trim();
@@ -6459,8 +6536,20 @@ const HOME_MODULES=[
   { id:'cHomeLanes',   he:'מנות מהירות',          en:'Quick-pick lanes' },
   { id:'cHomeAskWrap', he:'שאל את האש · כלי AI',   en:'Ask the Fire · AI' },
   { id:'cHomePaths',   he:'תכנון אירוע / בישול',   en:'Plan / cook cards' },
-  { id:'cHomeDock',    he:'כלי הפיטמאסטר',         en:'Pit-tools dock' },
+  { id:'cHomeDock',    he:'כלי הפיטמאסטר',         en:'Pit-tools dock', gate:'pro' },
 ];
+// A module with a `gate` is hidden by default below that interface level — but an explicit "show" from Customize-home
+// overrides it. Before this, toggling the dock on at mid level silently did nothing (the level gate always won).
+function homeModGate(id){ const m=HOME_MODULES.find(x=>x.id===id); return (m&&m.gate)||''; }
+function homeModOn(id){
+  const c=homeCustom();
+  const off=(c&&Array.isArray(c.off))?c.off:[];
+  if(off.indexOf(id)>=0) return false;                                   // explicit hide always wins
+  const g=homeModGate(id); if(!g) return true;
+  if(typeof uiLevel==='function' && uiLevel()===g) return true;          // level default turns it on
+  const on=(c&&Array.isArray(c.on))?c.on:[];
+  return on.indexOf(id)>=0;                                             // explicit opt-in beats the level default
+}
 function homeCustom(){ const c=(typeof store!=='undefined')&&store.get('mk-homecustom'); return (c&&Array.isArray(c.order))?c:null; }
 function homeCustomOrder(){ const ids=HOME_MODULES.map(m=>m.id); const c=homeCustom();
   const order=c?c.order.filter(id=>ids.indexOf(id)>=0):ids.slice();
@@ -6469,10 +6558,10 @@ function homeCustomOrder(){ const ids=HOME_MODULES.map(m=>m.id); const c=homeCus
 }
 function applyHomeCustom(){
   const host=$("#cHomeModules"); if(!host) return;
-  const order=homeCustomOrder(); const c=homeCustom(); const off=(c&&Array.isArray(c.off))?c.off:[];
+  const order=homeCustomOrder();
   const cur=[].slice.call(host.children).map(el=>el.id).filter(Boolean);
   if(cur.join(',')!==order.join(',')){ order.forEach(function(id){ const el=document.getElementById(id); if(el&&el.parentNode===host) host.appendChild(el); }); }   // reorder only when it actually differs (avoid DOM churn each paint)
-  order.forEach(function(id){ const el=document.getElementById(id); if(el) el.classList.toggle('home-mod-off', off.indexOf(id)>=0); });
+  order.forEach(function(id){ const el=document.getElementById(id); if(el) el.classList.toggle('home-mod-off', !homeModOn(id)); });
 }
 // Phase 4 — pro/multi-event home chrome: gear-summary chip, multi-event command-center bar, and the pit-tools dock.
 // All gear/level/event derived, re-rendered every cRefreshHome (so language + state changes track live).
@@ -6520,8 +6609,7 @@ function renderHomeChrome(){
   // pit-tools dock — pro level only (the power tools within one tap)
   const dk=$("#cHomeDock");
   if(dk){
-    const pro=(typeof uiLevel==='function' && uiLevel()==='pro');
-    if(pro){
+    if(homeModOn('cHomeDock')){
       const byFn={}; DOCK_POOL.forEach(function(t){ byFn[t[3]]=t; });
       const tools=dockTools().map(function(fn){ return byFn[fn]; }).filter(Boolean);
       const title=`<div class="dock-title">🛠️ ${he?'כלי הפיטמאסטר':'Pitmaster tools'}<button class="dock-edit" data-dockedit aria-label="${he?'התאם':'Customize'}">✎</button></div>`;
@@ -6966,7 +7054,8 @@ function cwSyncFromMenu(){
   const m=(typeof menuState==='function')?menuState():{};
   const nm=$("#cwEvName"); if(nm) nm.value=m.evName||'';
   const ds=$("#cwEvDesc"); if(ds) ds.value=m.evDesc||'';
-  const dt=$("#cwEvDate"); if(dt) dt.value=m.evDate||'';
+  // restore: a stored date needs the real date control (a text field would show the raw ISO string)
+  const dt=$("#cwEvDate"); if(dt){ if(m.evDate){ dt.type='date'; dt.value=m.evDate; } else { dt.type='text'; dt.value=''; } }
   cwPaintBasics();
 }
 const CPROJECTS=[
@@ -8256,21 +8345,22 @@ function openAiHub(){
 function openHomeCustom(){
   if(typeof showPanel!=='function') return;
   const he=(typeof getLang!=='function'||getLang()==='he');
-  const order=homeCustomOrder(); const c=homeCustom(); const off=new Set((c&&c.off)||[]);
+  const order=homeCustomOrder();
   const nameOf=id=>{ const m=HOME_MODULES.find(x=>x.id===id); return m?(he?m.he:m.en):id; };
-  const rows=order.map(function(id){ const on=!off.has(id);
+  const rows=order.map(function(id){ const on=homeModOn(id);   // true visibility, incl. level gates — not just the off-list
     return `<div class="hc-row" data-hcid="${id}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="hc-name">${nameOf(id)}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${id}">${on?(he?'מוצג':'Shown'):(he?'מוסתר':'Hidden')}</button></div>`;
   }).join('');
   showPanel(`${typeof toolTop==='function'?toolTop(L('התאמת מסך הבית','Customize home'),L('גרור לשינוי סדר · הקש להצגה/הסתרה','Drag to reorder · tap to show/hide'),'⚙️','#5a7d8c'):`<h2 style="padding:16px">${L('התאמת מסך הבית','Customize home')}</h2>`}
     <div class="panel-body">
-      <p class="section-sub">${L('בחר אילו חלקים יופיעו במסך הבית ובאיזה סדר. חלקים תלויי-ציוד/רמה עדיין יופיעו רק כשהם רלוונטיים.','Choose which parts of the home show, and in what order. Gear/level-dependent parts still appear only when relevant.')}</p>
+      <p class="section-sub">${L('בחר אילו חלקים יופיעו במסך הבית ובאיזה סדר. חלק שתדליק כאן יוצג גם אם רמת הממשק שלך לא מציגה אותו כברירת מחדל.','Choose which parts of the home show, and in what order. Anything you switch on here shows even if your interface level hides it by default.')}</p>
       <div class="hc-list" id="hcList">${rows}</div>
       <button class="hc-reset" id="hcReset">↺ ${L('אפס לברירת המחדל החכמה','Reset to the smart default')}</button>
     </div>`);
   const listEl=$("#hcList"); if(!listEl) return;
   const save=function(){ const ord=[].slice.call(listEl.querySelectorAll('.hc-row')).map(r=>r.dataset.hcid);
     const offArr=[].slice.call(listEl.querySelectorAll('.hc-toggle:not(.on)')).map(b=>b.dataset.hctoggle);
-    store.set('mk-homecustom',{order:ord, off:offArr}); if(typeof cRefreshHome==='function') cRefreshHome(); };
+    const onArr=[].slice.call(listEl.querySelectorAll('.hc-toggle.on')).map(b=>b.dataset.hctoggle).filter(homeModGate);   // only gated modules need a recorded opt-in
+    store.set('mk-homecustom',{order:ord, off:offArr, on:onArr}); if(typeof cRefreshHome==='function') cRefreshHome(); };
   listEl.querySelectorAll('[data-hctoggle]').forEach(function(b){ b.addEventListener('click',function(){ b.classList.toggle('on');
     b.textContent = b.classList.contains('on')?(he?'מוצג':'Shown'):(he?'מוסתר':'Hidden'); save(); }); });
   { const r=$("#hcReset"); if(r) r.addEventListener('click',function(){ store.set('mk-homecustom',null); if(typeof cRefreshHome==='function') cRefreshHome(); openHomeCustom(); }); }

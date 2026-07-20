@@ -1606,3 +1606,20 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
   .prbtn{inset-inline-end:56px;inset-inline-start:auto;padding:0 10px}
 }
 @media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+/* ── recipe equipment chips (catalog "what you need") ───────────────────────── */
+.eq-sec .eq-hint{margin:0 0 9px;font-size:calc(12.5px * var(--fscale));color:var(--ash);opacity:.85}
+.eq-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-bottom:7px}
+.eq-rl{flex:0 0 auto;font-weight:800;font-size:calc(12.5px * var(--fscale));color:var(--ember2);
+  background:var(--char2);border:1px solid var(--line);border-radius:999px;padding:3px 9px}
+.eq-chips{display:flex;flex-wrap:wrap;gap:6px;flex:1 1 auto}
+.eqc{display:inline-flex;align-items:center;gap:5px;border-radius:999px;padding:4px 10px;
+  font-size:calc(13px * var(--fscale));font-weight:700;color:var(--ash);
+  background:var(--char2);border:1.5px solid var(--eqc,var(--line))}   /* accent border reads on dark + light themes alike */
+.eqc-em{font-size:calc(14px * var(--fscale));line-height:1}
+.eqc-opt{border-style:dashed;opacity:.9}
+.eqc-miss{opacity:.55;filter:grayscale(.5)}
+.eqc-ok{color:#2f8f5b;font-weight:900}
+.eqc-no{color:#c2553f;font-weight:900}
+.eq-spec{flex:0 0 auto;font-size:calc(12px * var(--fscale));color:var(--ash);opacity:.8;
+  background:var(--char2);border-radius:8px;padding:2px 8px}

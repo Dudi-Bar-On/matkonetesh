@@ -194,7 +194,7 @@ HTML = r"""<!DOCTYPE html>
     <div class="cscard" id="cwEvCard">
       <input id="cwEvName" placeholder="שם האירוע — למשל: שישי במשפחה" style="width:100%;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:15px;margin-bottom:10px">
       <input id="cwEvDesc" placeholder="תיאור קצר (אופציונלי)" style="width:100%;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:14px;margin-bottom:10px">
-      <input id="cwEvDate" type="date" style="width:100%;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:14px">
+      <input id="cwEvDate" type="text" placeholder="📅 תאריך האירוע (אופציונלי)" aria-label="תאריך האירוע" style="width:100%;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:14px">
     </div>
     <div class="cwq" style="font-size:18px;margin-top:6px">בסיס</div><div class="cwsub">סועדים, תיאבון וכשרות.</div>
     <div class="cstepper"><button id="cServMinus">−</button><div class="val" id="cServVal">8<small>סועדים</small></div><button id="cServPlus">+</button></div>
@@ -331,7 +331,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 251 · 20.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. הנתונים מקומיים, ללא חיבור לרשת. סימוני ה-checklist נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 252 · 20.7.26</b></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
