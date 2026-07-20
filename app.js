@@ -352,7 +352,7 @@ function deviceOccupancy(devId, tMs, computed, scope){
       if(['smoke','cook','sv'].indexOf(s.kind)<0 || !s.start || !s.end) return;
       const st=s.start.getTime(), en=s.end.getTime();
       if(tMs<st || tMs>=en) return;
-      const d=cookerFor(c.m.key, s.kind, scope); if(!d || d.id!==devId) return;
+      const d=c.devId?{id:c.devId}:cookerFor(c.m.key, s.kind, scope); if(!d || d.id!==devId) return;   // caller may pre-resolve in its own event scope
       const occ=itemOccupancy(c.m, s.kind);
       out.items.push({key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb),
                       kind:s.kind, cm2:occ.cm2, hooks:occ.hooks, litres:occ.litres,
@@ -7069,7 +7069,7 @@ function evGuardBeforeNew(proceed){
 const EV_COLORS=['#e76f51','#1a9a7a','#3550c7','#b5603a','#7a5cc2','#2f6070','#c77d2a'];
 function parseServeTime(s,ev){ const p=(s||'19:00').split(':').map(Number); let d; if(ev&&ev.date){ d=new Date(ev.date+'T00:00:00'); } else { d=new Date(); if(((p[0]||19)*60+(p[1]||0))*60e3 + new Date().setHours(0,0,0,0) < Date.now()) d.setDate(d.getDate()+1); } d.setHours(p[0]||19,p[1]||0,0,0); return d; }   // event → its real date; ad-hoc → today, rolled to tomorrow if the clock passed
 function combinedEventsRows(){
-  const rows=[];
+  const rows=[]; const computed=[];   // occupancy-shaped entries feed the SAME model cookerContention uses — one clash rule for the whole app, not two
   evList().forEach(function(ev,ei){ const serve=parseServeTime(ev.serve, ev);
     const evState = store.get('mk-tlstate-'+ev.id) || {};   // E3: this event's real per-item method/order/ready choices
     ((ev.menu&&ev.menu.keys)||[]).forEach(function(key){ const meta=(typeof resolveItem==='function')?resolveItem(key):null; if(!meta) return;
@@ -7079,16 +7079,47 @@ function combinedEventsRows(){
         stages=itemStages(meta, method, ready, order);
         totalH=stages.reduce(function(a,s){return a+(s.hours||0);},0);
       }catch(e){}
-      // schedule backward from serve to get the start clock and this item's smoke window (for equipment contention)
-      let end=serve.getTime(), smokeWin=null;
-      for(var i=stages.length-1;i>=0;i--){ const s=stages[i]; const sSt=end-(s.hours||0)*3600e3; if(s.kind==='smoke'&&!smokeWin) smokeWin={start:sSt,end:end}; end=sSt; }
-      rows.push({ev:ev, ei:ei, key:key, name:meta.heb, eng:meta.eng, start:new Date(end), serve:serve, totalH:totalH, smoke:smokeWin});
+      // schedule backward from serve to get the start clock, this item's smoke window (for the legend),
+      // and one occupancy entry per device-relevant stage — real Date range + temp kept, not discarded.
+      // The device is resolved in THIS EVENT'S OWN scope (mk-item-cooker-<ev.id>), never the globally
+      // active one — two events' assignments must never bleed into each other.
+      let end=serve.getTime(), smokeWin=null; const row={ev:ev, ei:ei, key:key, name:meta.heb, eng:meta.eng, serve:serve, totalH:totalH, contention:false};
+      for(var i=stages.length-1;i>=0;i--){ const s=stages[i]; const sSt=end-(s.hours||0)*3600e3;
+        if(['smoke','cook','sv'].indexOf(s.kind)>=0){
+          if(s.kind==='smoke' && !smokeWin) smokeWin={start:sSt,end:end};
+          const dev=cookerFor(meta.key, s.kind, ev.id);
+          if(dev) computed.push({m:meta, row:row, devId:dev.id, stages:[{kind:s.kind, start:new Date(sSt), end:new Date(end), temp:(s.temp!=null?s.temp:null)}]});
+        }
+        end=sSt;
+      }
+      row.start=new Date(end); row.smoke=smokeWin;
+      rows.push(row);
     });
   });
   rows.sort(function(a,b){return a.start-b.start;});
-  // E4: single-smoker contention — smoke windows from DIFFERENT events that overlap in time
-  for(var a=0;a<rows.length;a++){ for(var b=a+1;b<rows.length;b++){ const A=rows[a],B=rows[b];
-    if(A.ev.id!==B.ev.id && A.smoke && B.smoke && A.smoke.start<B.smoke.end && B.smoke.start<A.smoke.end){ A.contention=true; B.contention=true; } } }
+  // No-equipment gate: until the user configures a kit we know no capacity, so the occupancy model has
+  // nothing to reason about — and unlike the single-event plan, this view never resolved a device in the
+  // first place. It presumed ONE smoker and warned on overlapping smoke windows, which is still the most
+  // useful thing we can say with no data. Keep that behaviour byte-identical rather than going silent.
+  if(!equipConfigured()){
+    for(var a=0;a<rows.length;a++){ for(var b=a+1;b<rows.length;b++){ const A=rows[a],B=rows[b];
+      if(A.ev.id!==B.ev.id && A.smoke && B.smoke && A.smoke.start<B.smoke.end && B.smoke.start<A.smoke.end){ A.contention=true; B.contention=true; } } }
+    return rows;
+  }
+  // Configured: contention = a real physical conflict on a shared device (over usable capacity, or
+  // temperatures that cannot be reconciled) — never mere time-overlap. Mirrors cookerContention, spanning
+  // multiple events' scopes via each computed entry's own pre-resolved devId (deviceOccupancy honours it).
+  const marksByDev={};
+  computed.forEach(function(c){ c.stages.forEach(function(s){ (marksByDev[c.devId]=marksByDev[c.devId]||[]).push(s.start.getTime()); }); });
+  Object.keys(marksByDev).forEach(function(devId){
+    marksByDev[devId].forEach(function(tMs){
+      const o=deviceOccupancy(devId, tMs, computed, null);
+      if(o.items.length<2) return;                 // one item can never conflict with itself
+      if(!(o.over || !o.compat.tempOk)) return;
+      computed.forEach(function(c){ if(c.devId!==devId) return;
+        c.stages.forEach(function(s){ if(tMs>=s.start.getTime() && tMs<s.end.getTime()) c.row.contention=true; }); });
+    });
+  });
   return rows;
 }
 // Wave E5: consolidated shopping across ALL events — one trip, quantities summed, per-event breakdown.

@@ -1224,3 +1224,53 @@ git commit -m "occupancy: time scrubber across the plan span"
 **Known limitation to carry into the next plan:** `combinedEventsRows` (`app.js:~6880`) still does its own cross-event smoker overlap on time alone, so the multi-event view can still report a false clash. Task 5 deliberately leaves it untouched to keep the diff reviewable; it should be migrated to `deviceOccupancy` in the follow-on.
 
 **Type consistency check.** `deviceCapacity` returns `{mode, areaCm2, usableCm2, racks, hooks, litres, known}` — used with those exact names in Tasks 3, 6, 7. `itemOccupancy` returns `{mode, cm2, hooks, litres, hang}` — consumed in Tasks 3 and 6. `deviceOccupancy` returns `{dev, devName, mode, t, cap, items, usedCm2, usedLitres, hooksUsed, pct, over, compat, hooksOver}` — `compat` added in Task 4, `hooksOver` in Task 6, both consumed in Tasks 5 and 7. `cookerContention` entries change shape from `{a,b}` to `{devId, devName, at, reason, pct, compat, items}`; both consumers are updated in Task 5 Step 4.
+
+---
+
+### Task 9: Migrate the multi-event view to the occupancy model
+
+`combinedEventsRows` (`app.js:~6987`) still flags a cross-event clash whenever two smoke windows overlap in time — the same false positive Task 5 removed from the single-event plan. Until this lands, the app holds two contradictory notions of a clash.
+
+**This is NOT a mechanical swap.** Three real obstacles, which is why it is its own task:
+1. `combinedEventsRows` builds its own lightweight rows — it keeps only a `smoke` window `{start,end}` in ms, **discards temperatures**, and never calls `cookerFor` at all (it assumes a single smoker). `deviceOccupancy` needs `{m, stages:[{kind, start:Date, end:Date, temp}]}`.
+2. Each event has its **own scope** for item→cooker assignments (`mk-item-cooker-<scope>`, `mk-tlstate-<id>`), but `deviceOccupancy(devId, tMs, computed, scope)` takes ONE scope for every item. A cross-event query spans scopes.
+3. Cross-event items may legitimately sit on the same physical device from different events.
+
+**Files:**
+- Modify: `app.js` — `deviceOccupancy` (accept a pre-resolved device per entry); `combinedEventsRows`
+- Test: `tests/occupancy-multievent.spec.ts` (create)
+
+**Interfaces:**
+- Produces: `deviceOccupancy` honours an optional `devId` on a computed entry — `const d = c.devId ? {id:c.devId} : cookerFor(c.m.key, s.kind, scope)`. This is the minimal generalisation: each caller resolves the device in whatever scope it owns, and the model stays scope-agnostic.
+
+- [ ] **Step 1: Write the failing test**
+
+Create `tests/occupancy-multievent.spec.ts`. Two events, each with one cut, smoke windows overlapping, one 4-rack cabinet smoker shared. Assert: `combinedEventsRows()` reports NO contention (they fit), and that a genuinely over-capacity pair (single-grate kamado) DOES report contention. Model the fixtures on `tests/occupancy-clash.spec.ts` C1/C2 and on `tests/wave2-multievent.spec.ts` for how events are seeded.
+
+- [ ] **Step 2: Run it and confirm it fails** — the fitting pair is currently flagged.
+
+- [ ] **Step 3: Let a computed entry carry its own resolved device**
+
+In `deviceOccupancy`, replace the device lookup with:
+
+```js
+      const d=c.devId?{id:c.devId}:cookerFor(c.m.key, s.kind, scope);   // caller may pre-resolve in its own event scope
+      if(!d || d.id!==devId) return;
+```
+
+- [ ] **Step 4: Rebuild `combinedEventsRows` rows into computed shape**
+
+Keep real `Date` stages and carry `temp` through (it is currently discarded), resolve each item's device with that event's own scope, set `devId` on the entry, then derive contention per device via `deviceOccupancy` exactly as `cookerContention` does — over capacity or `!compat.tempOk`. Preserve the existing `rows[].contention` boolean so `cPaintEvents` and the home multi-event bar keep working unchanged.
+
+- [ ] **Step 5: Run the multi-event regression set**
+
+```bash
+npx playwright test tests/occupancy-multievent.spec.ts tests/wave2-multievent.spec.ts tests/wave2-combined.spec.ts tests/waveE-multievent-pro.spec.ts tests/occupancy-clash.spec.ts --workers=1 --retries=2 --reporter=line
+```
+
+- [ ] **Step 6: Commit**
+
+```bash
+git add app.js tests/occupancy-multievent.spec.ts
+git commit -m "occupancy: multi-event clashes derive from the model too"
+```
