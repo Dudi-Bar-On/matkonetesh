@@ -61,14 +61,22 @@ test('W3: the view is Hebrew-clean', async ({ page }) => {
 test('W5: no occupancy chip clips its own label', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });   // the app is mobile-first; a desktop width hides the clip
   await boot(page);
+  // Wait on real conditions, not fixed sleeps: under full-suite load the fixed-timeout version raced
+  // the panel render and measured zero chips, making this test flaky.
+  const until = `function(fn){ return new Promise(function(res,rej){ var t0=Date.now();
+    (function poll(){ var v=fn(); if(v) return res(v);
+      if(Date.now()-t0>15000) return rej(new Error('timed out waiting'));
+      setTimeout(poll,100); })(); }); }`;
   const r = await page.evaluate(`(async function(){
+    var until=${until};
     openTimeline();
-    await new Promise(function(r){setTimeout(r,2000);});
-    var p=document.querySelector('#panel');
-    var wp=[].slice.call(p.querySelectorAll('button,.chip,.mchip')).find(function(e){return /תוכנית עבודה/.test(e.innerText);});
-    if(wp){ wp.click(); await new Promise(function(r){setTimeout(r,1200);}); }
-    document.querySelector('[data-occview]').click();
-    await new Promise(function(r){setTimeout(r,1000);});
+    var wp=await until(function(){ var p=document.querySelector('#panel'); if(!p) return null;
+      return [].slice.call(p.querySelectorAll('button,.chip,.mchip')).find(function(e){return /תוכנית עבודה/.test(e.innerText);})||null; });
+    wp.click();
+    var btn=await until(function(){ return document.querySelector('[data-occview]'); });
+    btn.click();
+    await until(function(){ return document.querySelectorAll('.occ-item').length>1; });
+    await new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});   // let layout settle before measuring
     return [].map.call(document.querySelectorAll('.occ-item'), function(e){
       return { txt:e.innerText.replace(/\\n/g,' '), clipped: e.scrollWidth > e.clientWidth+1 };
     });
@@ -101,4 +109,25 @@ test('W4: scrubbing to a later instant changes what is on the cooker', async ({ 
   expect(r.noSlider).toBe(false);
   expect(r.hasClock).toBe(true);
   expect(r.changed).toBe(true);
+});
+
+// The view used to open on the wall clock, so browsing a plan at 18:56 showed every cooker as "פנוי"
+// (the meat is already resting) and the feature looked broken — which is exactly how W2/W5 started
+// failing once the clock drifted past the cook. It now opens on the busiest instant unless the real
+// clock lands on something. Driven directly so it does not depend on what time the suite runs.
+test('W6: the view opens on a populated instant when the clock is outside the cook', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(function(){
+    var t0=Date.parse('2026-07-24T06:00:00');
+    var mk=function(key,startH,endH,temp){ return { m:resolveItem(key), stages:[{kind:'smoke', start:new Date(t0+startH*3600e3), end:new Date(t0+endH*3600e3), temp:temp}] }; };
+    var computed=[ mk('cut-1',0,12,110), mk('cut-7',6,11,107) ];
+    setItemCooker('cut-1','smoke','d1'); setItemCooker('cut-7','smoke','d1');
+    var span=_occSpan(computed);
+    span.now=t0+20*3600e3;                       // pretend the clock is well past the cook
+    var at=_occOpenAt(computed, span, null);
+    var o=deviceOccupancy('d1', at, computed, null);
+    return { at:at, inSpan: at>=span.lo && at<=span.hi, items:o.items.length };
+  })()`) as any;
+  expect(r.inSpan).toBe(true);
+  expect(r.items).toBeGreaterThan(1);            // opens where both cuts are on — the moment worth seeing
 });

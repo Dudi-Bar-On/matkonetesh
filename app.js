@@ -417,9 +417,30 @@ function occupancyViewHtml(computed, tMs, scope){
     return occupancyDevHtml(deviceOccupancy(d.id, tMs, computed, scope));
   }).join('')}</div>`;
 }
+// Opening on the wall clock is right while you are actually cooking, but useless the rest of the time —
+// browse a plan at 18:56 and every cooker reads "פנוי" because the meat is already resting. So: use the
+// clock when it lands on something, otherwise open on the busiest moment, which is the one worth seeing.
+function _occOpenAt(computed, span, scope){
+  const anyAt=function(tMs){
+    return equipList().some(function(d){
+      return ['smoker','grill','sousvide'].indexOf(d.cat)>=0 && deviceOccupancy(d.id, tMs, computed, scope).items.length>0;
+    });
+  };
+  if(anyAt(span.now)) return span.now;
+  let best=span.now, bestN=-1;
+  (computed||[]).forEach(function(c){ if(!c||!c.stages) return; c.stages.forEach(function(s){
+    if(!s.start) return; const tMs=s.start.getTime();
+    let n=0; equipList().forEach(function(d){
+      if(['smoker','grill','sousvide'].indexOf(d.cat)<0) return;
+      n+=deviceOccupancy(d.id, tMs, computed, scope).items.length; });
+    if(n>bestN){ bestN=n; best=tMs; } }); });
+  return best;
+}
 function openOccupancyView(computed, serve, scope){
   if(typeof showPanel!=='function') return;
   const span=_occSpan(computed);
+  span.clock=span.now;                       // the real wall clock — what the "עכשיו" button jumps back to
+  span.now=_occOpenAt(computed, span, scope);
   window._occT=span.now;
   showPanel(`${toolTop(L('תפוסת התנורים','Cooker occupancy'),L('מה נמצא על כל תנור, ומתי','What is on each cooker, and when'),'🗄️','#7a5c3c')}
     <div class="panel-body">
@@ -452,7 +473,8 @@ function _occWire(computed, span, scope){
     if(body)  body.innerHTML=occupancyViewHtml(computed, window._occT, scope);
   };
   sl.addEventListener('input', paint);
-  const nb=$("#occNow"); if(nb) nb.addEventListener('click',function(){ sl.value=String(span.now); paint(); });
+  // "עכשיו" means the real clock, not whatever instant the view happened to open on.
+  const nb=$("#occNow"); if(nb) nb.addEventListener('click',function(){ sl.value=String(span.clock!=null?span.clock:span.now); paint(); });
 }
 function equipConfigured(){ return !!store.get('mk-equip-set'); }
 function equipSetConfigured(){ store.set('mk-equip-set', true); }
