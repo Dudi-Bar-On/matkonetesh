@@ -77,7 +77,7 @@ const EQUIP_CATS=[
     {key:'maxC',     he:'טמפ׳ מרבית', en:'Max temp', kind:'num', unit:'°C',  em:'🌡️', tier:'pro', bounds:[40,600], alt:['F->C'], def:300},
     {key:'accuracy', he:'דיוק',       en:'Accuracy', kind:'num', unit:'±°C', em:'🎯', tier:'pro', bounds:[0.1,5], alt:['Fdeg->Cdeg'], def:1},
    ]},
-  {cat:'grinder', he:'מטחנת בשר', en:'Grinder', icon:'🥩', acc:'#b5651d', accL:'#f6e3cf', capEm:'', types:['ייעודית','מתאם למיקסר'], capKey:null,
+  {cat:'grinder', he:'מטחנת בשר', en:'Grinder', icon:'🥩', acc:'#b5651d', accL:'#f6e3cf', capEm:'', types:['ייעודית','מתאם למיקסר'], capKey:null, multiCap:{key:'plates', he:'פלטות טחינה (מ״מ)', en:'Grinder plates (mm)', uHe:'מ״מ', uEn:'mm', em:'⚙️'},
    props:[
     {key:'throughput', he:'תפוקה', en:'Throughput', kind:'num', unit:'ק״ג/דק׳', em:'⏱️', tier:'pro', bounds:[0.1,20], alt:['lb->kg'],
      def:{'ייעודית':2,'מתאם למיקסר':0.7}},
@@ -93,12 +93,19 @@ function equipCat(cat){ return EQUIP_CATS.find(function(c){return c.cat===cat;})
 // Resolve an equipment property: stored value -> class default for this device TYPE -> undefined.
 // Every consumer must read through this, so an unset property behaves exactly like a defaulted one
 // and an empty cap is only a precision loss, never a blocker.
-function propSpec(cat, key){
+function propSpec(cat, key, type){
+  // Accessory devices are stored as {cat:'other', type:'<accessory key>'} — their properties live on the
+  // matching EQUIP_OTHER_ITEMS entry (matched by its `key` against the device `type`), not on EQUIP_CATS.
+  if(cat==='other'){
+    const item = (typeof EQUIP_OTHER_ITEMS!=='undefined' ? EQUIP_OTHER_ITEMS : []).find(function(x){ return x.key===type; });
+    if(!item) return null;
+    return (item.props||[]).find(function(p){ return p.key===key; }) || null;
+  }
   const c = equipCat(cat); if(!c) return null;
   return (c.props||[]).find(function(p){ return p.key===key; }) || null;
 }
 function propDef(cat, key, type){
-  const p = propSpec(cat, key); if(!p || p.def===undefined) return undefined;
+  const p = propSpec(cat, key, type); if(!p || p.def===undefined) return undefined;
   if(p.def && typeof p.def==='object' && !Array.isArray(p.def)) return p.def[type];
   return p.def;                                   // scalar default (applies to every type)
 }
@@ -5240,12 +5247,19 @@ const LEGACY_TYPE={torch:['מבער / לפיד','Torch'], humidity:['בקר לח
 // so migrated gear (scale/injector/slicer/cure-chamber/hooks/torch/humidity) and hasGear() keep working.
 // prop.opts entries are plain strings (language-neutral) OR {he,en} (the stored value = the en string).
 const EQUIP_OTHER_ITEMS=[
-  {key:'scale',       he:'משקל דיגיטלי',        en:'Digital scale',    em:'⚖️', prop:{key:'res',  he:'רזולוציה', en:'Resolution', opts:['1g','0.1g']}},
+  {key:'scale',       he:'משקל דיגיטלי',        en:'Digital scale',    em:'⚖️', prop:{key:'res',  he:'רזולוציה', en:'Resolution', opts:['1g','0.1g']},
+   props:[{key:'maxKg', he:'משקל מרבי', en:'Max capacity', kind:'num', unit:'ק״ג', em:'⚖️', tier:'core', bounds:[0.1,200], alt:['lb->kg','g->kg']}]},
   {key:'injector',    he:'מזרק בשר',            en:'Meat injector',    em:'💉'},
-  {key:'slicer',      he:'מכונת פריסה',         en:'Meat slicer',      em:'🍖'},
-  {key:'curechamber', he:'תא ריפוי / ייבוש',    en:'Cure chamber',     em:'🧊', prop:{key:'kind', he:'סוג',      en:'Type',       opts:[{he:'תא ייעודי',en:'Dedicated'},{he:'מקרר מומר',en:'Converted fridge'},{he:'מייבש',en:'Dehydrator'},{he:'תנור',en:'Oven'}]}},
-  {key:'hooks',       he:'ווים / שבכות לתלייה', en:'Hanging hooks',    em:'🪝'},
-  {key:'humidity',    he:'בקר לחות',            en:'Humidity control', em:'💧'},
+  {key:'slicer',      he:'מכונת פריסה',         en:'Meat slicer',      em:'🍖',
+   props:[{key:'maxMm', he:'עובי מרבי', en:'Max thickness', kind:'num', unit:'מ״מ', em:'🔪', tier:'pro', bounds:[0.5,50], alt:['cm->mm','in->mm']}]},
+  {key:'curechamber', he:'תא ריפוי / ייבוש',    en:'Cure chamber',     em:'🧊', prop:{key:'kind', he:'סוג',      en:'Type',       opts:[{he:'תא ייעודי',en:'Dedicated'},{he:'מקרר מומר',en:'Converted fridge'},{he:'מייבש',en:'Dehydrator'},{he:'תנור',en:'Oven'}]},
+   props:[{key:'tempC', he:'טמפ׳ יעד', en:'Target temp', kind:'num', unit:'°C', em:'🌡️', tier:'pro', def:13, bounds:[0,30], alt:['F->C']},
+          {key:'rhPct', he:'לחות יעד',  en:'Target RH',   kind:'num', unit:'%',  em:'💧', tier:'pro', def:78, bounds:[40,95], alt:[]}]},
+  {key:'cooler',      he:'צידנית / קמברו',      en:'Cooler / cambro',  em:'🧊'},
+  {key:'hooks',       he:'ווים / שבכות לתלייה', en:'Hanging hooks',    em:'🪝',
+   props:[{key:'count', he:'מספר ווים', en:'How many', kind:'num', em:'🪝', tier:'core', bounds:[1,200], alt:[]}]},
+  {key:'humidity',    he:'בקר לחות',            en:'Humidity control', em:'💧',
+   props:[{key:'rhPct', he:'לחות יעד', en:'Target RH', kind:'num', unit:'%', em:'💧', tier:'pro', def:78, bounds:[40,95], alt:[]}]},
   {key:'torch',       he:'מבער / לפיד',         en:'Torch',            em:'🔥'},
   {key:'chimney',     he:'ארובת הצתה',          en:'Chimney starter',  em:'🕯️'},
   {key:'gloves',      he:'כפפות חום',           en:'Heat gloves',      em:'🧤'},

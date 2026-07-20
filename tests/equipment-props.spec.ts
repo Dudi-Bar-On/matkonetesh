@@ -100,3 +100,45 @@ test('E3b: propParse converts exactly once, reports .conv accurately, and reject
   expect(await page.evaluate(`propParse(${P}, 'abc')`)).toBe(null);
   expect(await page.evaluate(`propParse(${P}, '')`)).toBe(null);
 });
+
+test('E4: cooler is ownable; grinder has a plates list; accessories carry numeric props', async ({ page }) => {
+  await boot(page);
+  // the cooler was in the recipe vocabulary but not ownable — recipes could require unownable gear
+  expect(await page.evaluate(`EQUIP_OTHER_ITEMS.some(x=>x.key==='cooler')`)).toBe(true);
+  expect(await page.evaluate(`(EQUIP_OTHER_ITEMS.find(x=>x.key==='cooler')||{}).em`)).toBeTruthy();
+  // grinder plates reuse the existing multiCap mechanism (same as stuffer nozzles)
+  const g = await page.evaluate(`(EQUIP_CATS.find(c=>c.cat==='grinder')||{}).multiCap`) as any;
+  expect(g && g.key).toBe('plates');
+  expect(g.uHe).toBeTruthy(); expect(g.em).toBeTruthy();
+  // numeric accessory properties
+  const scale = await page.evaluate(`(EQUIP_OTHER_ITEMS.find(x=>x.key==='scale').props||[]).map(p=>p.key)`) as string[];
+  expect(scale).toContain('maxKg');
+  const hooks = await page.evaluate(`(EQUIP_OTHER_ITEMS.find(x=>x.key==='hooks').props||[]).map(p=>p.key)`) as string[];
+  expect(hooks).toContain('count');
+  // every accessory property also declares an icon
+  const bad = await page.evaluate(`(function(){const o=[];EQUIP_OTHER_ITEMS.forEach(function(x){(x.props||[]).forEach(function(p){if(!p.em)o.push(x.key+'.'+p.key);});});return o;})()`) as string[];
+  expect(bad).toEqual([]);
+});
+
+test('E5: accessory properties declare tier and kind; propOf resolves them via EQUIP_OTHER_ITEMS', async ({ page }) => {
+  await boot(page);
+  // sibling of E2, but for accessories (EQUIP_OTHER_ITEMS) instead of categories (EQUIP_CATS)
+  const bad = await page.evaluate(`(function(){
+    const out=[];
+    EQUIP_OTHER_ITEMS.forEach(function(x){ (x.props||[]).forEach(function(p){
+      if(!p.em) out.push(x.key+'.'+p.key+' missing em');
+      if(['core','pro'].indexOf(p.tier)<0) out.push(x.key+'.'+p.key+' bad tier');
+      if(['num','bool','choice'].indexOf(p.kind)<0) out.push(x.key+'.'+p.key+' bad kind');
+    }); });
+    return out;
+  })()`) as string[];
+  expect(bad).toEqual([]);
+  // propOf must resolve accessory device props by looking up EQUIP_OTHER_ITEMS via dev.type (the accessory key)
+  expect(await page.evaluate(`propOf({cat:'other',type:'curechamber',cap:{}},'tempC')`)).toBe(13);
+  expect(await page.evaluate(`propOf({cat:'other',type:'curechamber',cap:{}},'rhPct')`)).toBe(78);
+  expect(await page.evaluate(`propOf({cat:'other',type:'humidity',cap:{}},'rhPct')`)).toBe(78);
+  // stored value still wins over the class default
+  expect(await page.evaluate(`propOf({cat:'other',type:'curechamber',cap:{tempC:4}},'tempC')`)).toBe(4);
+  // the existing category path must remain byte-identical
+  expect(await page.evaluate(`propOf({cat:'smoker',type:'פלטים',cap:{}},'maxC')`)).toBe(260);
+});
