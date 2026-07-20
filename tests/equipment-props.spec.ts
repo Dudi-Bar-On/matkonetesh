@@ -71,3 +71,32 @@ test('E3: propOf resolves stored value -> class default -> undefined', async ({ 
   expect(await page.evaluate(`propOf({cat:'grill',type:'פלנצ׳ה / פלטה',cap:{}},'lid')`)).toBe(false);
   expect(await page.evaluate(`propOf({cat:'grill',type:'פחם',cap:{}},'lid')`)).toBe(true);
 });
+
+test('E3b: propParse converts exactly once, reports .conv accurately, and rejects mismatched suffixes', async ({ page }) => {
+  await boot(page);
+  const P = `EQUIP_CATS.find(c=>c.cat==='smoker').props.find(p=>p.key==='maxC')`;
+  const V = `EQUIP_CATS.find(c=>c.cat==='vacuum').props.find(p=>p.key==='bagW')`;
+  const G = `EQUIP_CATS.find(c=>c.cat==='grinder').props.find(p=>p.key==='throughput')`; // maxKg-like prop with lb->kg in alt
+
+  // suffix conversion applies exactly once and reports the conversion used
+  expect(await page.evaluate(`propParse(${P}, '500F').v`)).toBe(260);
+  expect(await page.evaluate(`propParse(${P}, '500F').conv`)).toBe('F->C');
+  // bare number (no suffix) = canonical unit, no conversion
+  expect(await page.evaluate(`propParse(${P}, '210').v`)).toBe(210);
+  expect(await page.evaluate(`propParse(${P}, '210').conv`)).toBe(null);
+  // DEFECT 2: propParse must report the conversion it actually applied
+  expect(await page.evaluate(`propParse(${V}, '300mm').v`)).toBe(30);
+  expect(await page.evaluate(`propParse(${V}, '300mm').conv`)).toBe('mm->cm');
+  // DEFECT 1: 3000mm -> 300cm is implausible; must NOT be converted a second time by propCoerce's alt fallback
+  expect(await page.evaluate(`propParse(${V}, '3000mm')`)).toBe(null);
+  // DEFECT 3: a length suffix on a temperature property is a dimension mismatch -> reject, never silently accept
+  expect(await page.evaluate(`propParse(${P}, '300mm')`)).toBe(null);
+  // case-insensitive suffix matching
+  expect(await page.evaluate(`propParse(${P}, '500f')`)).toEqual({ v: 260, conv: 'F->C' });
+  // space between number and suffix is tolerated
+  expect(await page.evaluate(`propParse(${G}, '11 lb').v`)).toBe(4.99);
+  expect(await page.evaluate(`propParse(${G}, '11 lb').conv`)).toBe('lb->kg');
+  // non-numeric / empty text -> null, never a guess
+  expect(await page.evaluate(`propParse(${P}, 'abc')`)).toBe(null);
+  expect(await page.evaluate(`propParse(${P}, '')`)).toBe(null);
+});

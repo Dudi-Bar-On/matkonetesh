@@ -168,26 +168,34 @@ function propParse(p, text){
   if(!m) return propCoerce(p, s);
   const numPart=m[1];
   const suffix=(m[2]||'').trim();
-  if(!suffix) return propCoerce(p, numPart);
+  if(!suffix) return propCoerce(p, numPart);            // no suffix — canonical-first, same as manual coerce
   const suffixKey=suffix.toLowerCase();
   let n=parseFloat(numPart.replace(',','.'));
   if(isNaN(n)) return null;
+  const b=p.bounds;
   // 'in' is ambiguous (in->cm vs in->mm) — resolve to whichever conversion this property actually declares
-  let convKey;
+  let convKey, known;
   if(suffixKey==='in'){
-    convKey=(p.alt||[]).indexOf('in->cm')>=0 ? 'in->cm' : ((p.alt||[]).indexOf('in->mm')>=0 ? 'in->mm' : null);
+    known=true;
+    convKey=(p.alt||[]).indexOf('in->cm')>=0 ? 'in->cm' : ((p.alt||[]).indexOf('in->mm')>=0 ? 'in->mm' : undefined);
+  } else if(PROP_SUFFIX_TO_CONV.hasOwnProperty(suffixKey)){
+    known=true; convKey=PROP_SUFFIX_TO_CONV[suffixKey];
+  } else if(PROP_SUFFIX_TO_CONV.hasOwnProperty(suffix)){
+    // raw (non-lowercased) key for Hebrew suffixes that don't roundtrip through toLowerCase cleanly
+    known=true; convKey=PROP_SUFFIX_TO_CONV[suffix];
   } else {
-    convKey=PROP_SUFFIX_TO_CONV.hasOwnProperty(suffixKey) ? PROP_SUFFIX_TO_CONV[suffixKey] : undefined;
-    if(convKey===undefined){
-      // try raw (non-lowercased) key for Hebrew suffixes that don't roundtrip through toLowerCase cleanly
-      convKey=PROP_SUFFIX_TO_CONV.hasOwnProperty(suffix) ? PROP_SUFFIX_TO_CONV[suffix] : null;
-    }
+    known=false;
   }
-  if(!convKey) return propCoerce(p, n);                 // suffix is the canonical unit itself
-  if((p.alt||[]).indexOf(convKey)<0) return propCoerce(p, n);   // property doesn't recognize this conversion — treat as canonical
-  const f=UNIT_CONV[convKey]; if(!f) return propCoerce(p, n);
-  const converted=f(n);
-  return propCoerce(p, converted);
+  if(!known || convKey===undefined) return null;         // unrecognised suffix, or 'in' with no matching alt — reject, never guess
+  if(convKey===null){                                     // suffix IS the property's own canonical unit — range-check n directly
+    if(!b || (n>=b[0] && n<=b[1])) return {v:n, conv:null};
+    return null;
+  }
+  if((p.alt||[]).indexOf(convKey)<0) return null;         // conversion not offered by this property — wrong dimension, reject
+  const f=UNIT_CONV[convKey]; if(!f) return null;
+  const c=f(n);                                           // convert EXACTLY ONCE — never hand an already-converted number back to propCoerce
+  if(b && !(c>=b[0] && c<=b[1])) return null;
+  return {v:Math.round(c*100)/100, conv:convKey};
 }
 function equipList(){ const l=store.get('mk-equipment'); return Array.isArray(l)?l:[]; }
 function equipSave(list){ store.set('mk-equipment', Array.isArray(list)?list:[]); }
