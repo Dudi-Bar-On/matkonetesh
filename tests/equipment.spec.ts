@@ -285,15 +285,20 @@ test('C2: work plan labels the cooker on cook stages', async ({ page }) => {
   expect(txt).toContain('My Bath');   // the single sous-vide device auto-labels the SV stage
 });
 
-test('P2: cookerContention flags overlapping same-cooker stages', async ({ page }) => {
+// Rewritten for the occupancy layer. This test previously asserted that merely OVERLAPPING in time on
+// one cooker was a clash — the exact false positive the layer removes (a brisket and a rack of ribs on a
+// 4-rack smoker fit with room to spare). Real over-capacity and temperature clashes are covered by
+// tests/occupancy-clash.spec.ts C1-C3. What remains uniquely valuable here is the "never invent a
+// measurement" guard: these synthetic metas carry no equip block and no temp, so there is no footprint
+// and no temperature signal — and with no signal the app must stay silent rather than guess.
+test('P2: cookerContention stays silent when items carry no footprint or temperature signal', async ({ page }) => {
   await boot(page);
   await page.evaluate(`equipSave([{id:'sm1',cat:'smoker',type:'אופסט / סטיק-ברנר',name:'Offset'}]); equipSetConfigured();`);
   const clashes = await page.evaluate(`(function(){ const now=Date.now(); return cookerContention([
     {blocked:false, m:{key:'cut-1',heb:'A',eng:'A'}, stages:[{kind:'smoke',start:new Date(now),end:new Date(now+3600000)}]},
     {blocked:false, m:{key:'cut-2',heb:'B',eng:'B'}, stages:[{kind:'smoke',start:new Date(now+1800000),end:new Date(now+5400000)}]}
   ]); })()`) as any[];
-  expect(clashes.length).toBe(1);
-  expect(clashes[0].devName).toBe('Offset');
+  expect(clashes.length).toBe(0);   // overlapping in time is NOT a clash without a real constraint
   const none = await page.evaluate(`(function(){ const now=Date.now(); return cookerContention([
     {blocked:false, m:{key:'cut-1',heb:'A',eng:'A'}, stages:[{kind:'smoke',start:new Date(now),end:new Date(now+3600000)}]},
     {blocked:false, m:{key:'cut-2',heb:'B',eng:'B'}, stages:[{kind:'smoke',start:new Date(now+7200000),end:new Date(now+10800000)}]}
