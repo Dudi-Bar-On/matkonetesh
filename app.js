@@ -249,22 +249,32 @@ function cookerFor(itemKey, kind, scope){
   return null;   // two of the same class → genuinely needs a pick
 }
 function cookerLabel(itemKey, kind, scope){ const d=cookerFor(itemKey,kind,scope); return d?(d.name||t(d.type)||''):''; }
-// Phase 2: within-event cooker contention — two items sharing one smoker/grill in overlapping windows
+// A clash is now a real physical conflict — over usable capacity, or two items that cannot share one
+// temperature — evaluated at every moment a device's load changes. Overlapping in time is not a clash.
 function cookerContention(computed, scope){
-  const occ=[];
-  (computed||[]).forEach(function(c){ if(!c||c.blocked||!c.stages) return;
-    c.stages.forEach(function(s){ if(['smoke','cook','sv'].indexOf(s.kind)<0 || !s.start || !s.end) return;
-      const d=cookerFor(c.m.key, s.kind, scope); if(!d) return;   // only resolved (single-fit or assigned) devices can clash
-      occ.push({devId:d.id, devName:d.name||t(d.type), start:s.start.getTime(), end:s.end.getTime(), key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb), kind:s.kind, temp:(s.temp!=null?s.temp:null)});
+  const marks={};                                   // every instant a device's load could change
+  (computed||[]).forEach(function(c){
+    if(!c || c.blocked || !c.stages) return;
+    c.stages.forEach(function(s){
+      if(['smoke','cook','sv'].indexOf(s.kind)<0 || !s.start || !s.end) return;
+      const d=cookerFor(c.m.key, s.kind, scope); if(!d) return;
+      (marks[d.id]=marks[d.id]||[]).push(s.start.getTime());
     });
   });
   const clashes=[];
-  for(var a=0;a<occ.length;a++){ for(var b=a+1;b<occ.length;b++){ var A=occ[a],B=occ[b];
-    if(A.devId===B.devId && A.key!==B.key && A.start<B.end && B.start<A.end){
-      if(A.kind==='sv' && B.kind==='sv' && A.temp!=null && B.temp!=null && A.temp===B.temp) continue;   // same-temp sous-vide items share one bath — batch, not a clash
-      clashes.push({devId:A.devId, devName:A.devName, a:A, b:B});
-    }
-  }}
+  Object.keys(marks).forEach(function(devId){
+    let worst=null;
+    marks[devId].forEach(function(tMs){
+      const o=deviceOccupancy(devId, tMs, computed, scope);
+      if(o.items.length<2) return;                  // one item can never conflict with itself
+      const bad=o.over?'area':(!o.compat.tempOk?'temp':null);
+      if(!bad) return;
+      if(!worst || (o.pct||0)>(worst.pct||0)) worst={devId:devId, devName:o.devName, at:tMs,
+        reason:bad, pct:o.pct, compat:o.compat,
+        items:o.items.map(function(i){return {key:i.key, name:i.name, kind:i.kind};})};   // kind drives the move-target lookup
+    });
+    if(worst) clashes.push(worst);
+  });
   return clashes;
 }
 // ── occupancy primitives ───────────────────────────────────────────────────────────────────
@@ -4982,7 +4992,7 @@ function renderTimelinePanel(){
     const _ckScope=(typeof evScope==='function')?evScope():'cook';
     const _ckMap=store.get('mk-item-cooker-'+_ckScope)||{};
     const _clashes=cookerContention(computed, _ckScope);
-    const _clashOcc={}; _clashes.forEach(function(cl){ _clashOcc[cl.a.key+'@'+cl.a.start]=1; _clashOcc[cl.b.key+'@'+cl.b.start]=1; });
+    const _clashOcc={}; _clashes.forEach(function(cl){ cl.items.forEach(function(i){ _clashOcc[i.key]=1; }); });
     // sous-vide batching: same circulator + same temp + overlapping windows → cook together in one bath (the largest available size)
     const _svBatch={}; { const svOcc=[];
       computed.forEach(function(c){ if(c.blocked||!c.stages) return; c.stages.forEach(function(s){ if(s.kind!=='sv'||!s.start||!s.end) return; const d=cookerFor(c.m.key,'sv',_ckScope); if(!d) return; svOcc.push({dev:d, key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb), temp:(s.temp!=null?s.temp:null), start:s.start.getTime(), end:s.end.getTime()}); }); });
@@ -5040,7 +5050,7 @@ function renderTimelinePanel(){
           }
           let _sub=s.note||'';
           if(s.kind==='sv'){ const bt=_svBatch[c.m.key+'@'+s.start.getTime()]; if(bt){ const bn='🌊 '+L('אמבט משותף עם ','shared bath with ')+bt.names.join(', ')+(bt.bath?(' · '+L('השתמש באמבט ','use the ')+bt.bath+L(' ל׳',' L')+L(' לכולם',' bath for all')):''); _sub=_sub?_sub+' · '+bn:bn; } }
-          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:_sub,kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid,cooker:cookerLabel(c.m.key,s.kind),contention:!!_clashOcc[c.m.key+'@'+s.start.getTime()]});
+          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:_sub,kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid,cooker:cookerLabel(c.m.key,s.kind),contention:!!_clashOcc[c.m.key]});
         }
       });
       const sel2=sel.filter(s=>s.kind==='glaze');
@@ -5089,9 +5099,14 @@ function renderTimelinePanel(){
     });
     const cookerStripHtml=_ckRows.length?`<div class="tl-orderstrip"><div class="tl-orderstrip-lbl">🔧 ${L('שיוך תנור/מעשנה:','Assign cooker:')}</div>${_ckRows.join('')}</div>`:'';
     const contentionHtml=_clashes.length?`<div class="wp-advisory wp-clash">⚠️ <b>${L('התנגשות תנור','Cooker clash')}:</b> ${_clashes.map(function(cl){
-      const other=cookerCandidates(cl.a.kind).filter(function(d){return d.id!==cl.devId;});
-      const fix=other.length?` <button class="mchip cookmove" data-cookermove="${cl.b.key}|${cl.b.kind}|${other[0].id}">${L('העבר','Move')} ${esc(cl.b.name)} → ${esc(other[0].name||t(other[0].type))}</button>`:` <i>${L('הסט את ההתחלה של','stagger the start of')} ${esc(cl.b.name)}</i>`;
-      return `${esc(cl.a.name)} + ${esc(cl.b.name)} ${L('חופפים על','overlap on')} <b>${esc(cl.devName)}</b>${fix}`;
+      const names=cl.items.map(function(i){return esc(i.name);}).join(' + ');
+      const last=cl.items[cl.items.length-1];
+      const other=cookerCandidates(last.kind).filter(function(d){return d.id!==cl.devId;});   // candidates for THIS stage kind, not always 'smoke'
+      const move=other.length?` <button class="mchip cookmove" data-cookermove="${esc(last.key)}|${esc(last.kind)}|${esc(other[0].id)}">${L('העבר','Move')} ${esc(last.name)} → ${esc(other[0].name||t(other[0].type))}</button>`:'';
+      const why=cl.reason==='area'
+        ? `${L('חורגים מהשטח של','exceed the capacity of')} <b>${esc(cl.devName)}</b> (${cl.pct}%)`
+        : `${L('דורשים טמפרטורות שונות על','need different temperatures on')} <b>${esc(cl.devName)}</b> (${L('פער','spread')} ${cl.compat.tempSpread}°C)`;
+      return `${names} ${why}${move}`;
     }).join('<br>')}</div>`:'';
     return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}${cookerStripHtml}${contentionHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
     <details class="tl-shapedet"><summary>${L('תצוגה','View')}: ${shapeName(shp)} <span class="tl-shapehint">▾ ${L('שנה','change')}</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
