@@ -61,22 +61,25 @@ test('W3: the view is Hebrew-clean', async ({ page }) => {
 test('W5: no occupancy chip clips its own label', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });   // the app is mobile-first; a desktop width hides the clip
   await boot(page);
-  // Wait on real conditions, not fixed sleeps: under full-suite load the fixed-timeout version raced
-  // the panel render and measured zero chips, making this test flaky.
-  const until = `function(fn){ return new Promise(function(res,rej){ var t0=Date.now();
-    (function poll(){ var v=fn(); if(v) return res(v);
-      if(Date.now()-t0>15000) return rej(new Error('timed out waiting'));
-      setTimeout(poll,100); })(); }); }`;
-  const r = await page.evaluate(`(async function(){
-    var until=${until};
-    openTimeline();
-    var wp=await until(function(){ var p=document.querySelector('#panel'); if(!p) return null;
-      return [].slice.call(p.querySelectorAll('button,.chip,.mchip')).find(function(e){return /תוכנית עבודה/.test(e.innerText);})||null; });
-    wp.click();
-    var btn=await until(function(){ return document.querySelector('[data-occview]'); });
-    btn.click();
-    await until(function(){ return document.querySelectorAll('.occ-item').length>1; });
-    await new Promise(function(r){requestAnimationFrame(function(){requestAnimationFrame(r);});});   // let layout settle before measuring
+  // Use Playwright's auto-waiting locators rather than an in-page poll: under full-suite load the
+  // hand-rolled version timed out waiting for the panel, which made this test flaky in the suite
+  // while passing in isolation.
+  await page.evaluate(`openTimeline()`);
+  await page.locator('#panel').waitFor({ state: 'visible' });
+  await page.locator('#panel').getByText('תוכנית עבודה').first().click();
+  await page.locator('[data-occview]').click();
+  // Pin the instant. The view legitimately opens on the wall clock when the clock lands mid-cook, and at
+  // that moment only ONE cut may be on — so asserting a chip count without pinning makes this test depend
+  // on what time the suite happens to run. Force the busiest moment instead.
+  await page.evaluate(`(function(){
+    var cx=window._wpCtx||{}, computed=cx.computed||[];
+    var span=_occSpan(computed); span.now=span.hi+3600e3;      // outside the cook -> _occOpenAt picks the peak
+    var t=_occOpenAt(computed, span, cx.scope);
+    var sl=document.querySelector('#occRange');
+    sl.value=String(t); sl.dispatchEvent(new Event('input',{bubbles:true}));
+  })()`);
+  await expect(page.locator('.occ-item')).toHaveCount(2, { timeout: 20000 });
+  const r = await page.evaluate(`(function(){
     return [].map.call(document.querySelectorAll('.occ-item'), function(e){
       return { txt:e.innerText.replace(/\\n/g,' '), clipped: e.scrollWidth > e.clientWidth+1 };
     });
