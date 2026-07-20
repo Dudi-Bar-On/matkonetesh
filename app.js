@@ -34,6 +34,10 @@ function gearConfigured(){ return equipConfigured(); }
 const EQUIP_CATS=[
   {cat:'smoker', he:'מעשנה', en:'Smoker', icon:'💨', acc:'#9a6a3a', accL:'#f4e6d6', capEm:'🗄️', types:['ארון / קבינט','אופסט / סטיק-ברנר','פלטים','קמאדו / קרמי','WSM / חבית','קטל (ככלי עישון)','גז (עם תיבת עשן)','חשמלי'], capKey:'racks', capHe:'מדפים/שבכות', capEn:'racks/grates',
    props:[
+    {key:'areaCm2', he:'שטח בישול כולל', en:'Total cooking area', kind:'num', unit:'ס״מ²', em:'📐', tier:'core',
+     bounds:[200,40000], alt:['in2->cm2','m2->cm2','ft2->cm2'],
+     def:{'ארון / קבינט':6000,'אופסט / סטיק-ברנר':5000,'פלטים':3700,'קמאדו / קרמי':1650,
+          'WSM / חבית':3300,'קטל (ככלי עישון)':2400,'גז (עם תיבת עשן)':3500,'חשמלי':4400}},
     {key:'maxC',     he:'טמפ׳ מרבית',  en:'Max temp',  kind:'num',  unit:'°C', em:'🌡️', tier:'core', bounds:[40,600], alt:['F->C'],
      def:{'חשמלי':135,'ארון / קבינט':150,'פלטים':260,'קמאדו / קרמי':350,'אופסט / סטיק-ברנר':300,'WSM / חבית':150,'קטל (ככלי עישון)':300,'גז (עם תיבת עשן)':260}},
     {key:'canHang',  he:'אפשר לתלות',  en:'Can hang',  kind:'bool', em:'🪝', tier:'core',
@@ -44,6 +48,9 @@ const EQUIP_CATS=[
    ]},
   {cat:'grill', he:'גריל', en:'Grill', icon:'🔥', acc:'#e76f51', accL:'#f9ddd3', capEm:'🔥', types:['פחם','גז','קטל','פלנצ׳ה / פלטה','לבה / אינפרא'], capKey:'zones', capHe:'אזורי חום', capEn:'heat zones',
    props:[
+    {key:'areaCm2',    he:'שטח צלייה כולל', en:'Total grilling area', kind:'num', unit:'ס״מ²', em:'📐', tier:'core',
+     bounds:[200,40000], alt:['in2->cm2','m2->cm2','ft2->cm2'],
+     def:{'פחם':2000,'גז':2800,'קטל':2400,'פלנצ׳ה / פלטה':1800,'לבה / אינפרא':1500}},
     {key:'lid',        he:'מכסה',        en:'Lid',        kind:'bool', em:'🔒', tier:'core',
      def:{'פלנצ׳ה / פלטה':false,'לבה / אינפרא':false,'פחם':true,'גז':true,'קטל':true}},
     {key:'maxC',       he:'טמפ׳ מרבית',  en:'Max temp',   kind:'num', unit:'°C', em:'🌡️', tier:'pro', bounds:[40,600], alt:['F->C'],
@@ -129,6 +136,9 @@ const UNIT_CONV={
   'g->kg':    function(v){ return v/1000; },
   'qt->L':    function(v){ return v*0.94635; },
   'gal->L':   function(v){ return v*3.78541; },
+  'in2->cm2': function(v){ return v*6.4516; },
+  'm2->cm2':  function(v){ return v*10000; },
+  'ft2->cm2': function(v){ return v*929.03; },
 };
 // Canonical FIRST: only convert when the value is implausible as-is. 500 stays 500°C (a lava grill really
 // reaches it); 900 is impossible in °C, so it becomes 482°C. Returns null when NO interpretation is
@@ -166,12 +176,13 @@ const PROP_SUFFIX_TO_CONV={
   'מ״מ':'mm->cm', 'ממ':'mm->cm',
   'ס״מ':null, 'סמ':null,
   'ל׳':null, 'ל':null,
+  'in2':'in2->cm2', 'm2':'m2->cm2', 'ft2':'ft2->cm2', 'cm2':null,   // area suffixes ("800in2", "0.5m2")
 };
 function propParse(p, text){
   if(text===undefined||text===null) return null;
   let s=String(text).trim();
   if(!s) return null;
-  const m=s.match(/^(-?[0-9]+(?:[.,][0-9]+)?)\s*(°?[A-Za-z%]+|[֐-׿"'׳״]+)?$/);
+  const m=s.match(/^(-?[0-9]+(?:[.,][0-9]+)?)\s*(°?[A-Za-z%]+[0-9]?|[֐-׿"'׳״]+)?$/);
   if(!m) return propCoerce(p, s);
   const numPart=m[1];
   const suffix=(m[2]||'').trim();
