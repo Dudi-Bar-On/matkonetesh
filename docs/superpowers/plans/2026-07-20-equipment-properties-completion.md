@@ -119,6 +119,20 @@ test('E3: propOf resolves stored value -> class default -> undefined', async ({ 
   expect(await page.evaluate(`propOf({cat:'smoker',type:'פלטים',cap:{maxC:200}},'maxC')`)).toBe(200);
   // no default, not stored -> undefined
   expect(await page.evaluate(`propOf({cat:'smoker',type:'פלטים',cap:{}},'hooks')`)).toBe(undefined);
+  // UNITS: an out-of-range number is usually the wrong unit, not nonsense — convert, never discard
+  const P = `EQUIP_CATS.find(c=>c.cat==='smoker').props.find(p=>p.key==='maxC')`;
+  expect(await page.evaluate(`propCoerce(${P}, 260).v`)).toBe(260);          // plausible as °C -> untouched
+  expect(await page.evaluate(`propCoerce(${P}, 500).v`)).toBe(500);          // 500°C is real (lava/kamado)
+  expect(await page.evaluate(`propCoerce(${P}, 900).v`)).toBe(482.22);       // impossible in °C -> 900°F
+  expect(await page.evaluate(`propCoerce(${P}, 900).conv`)).toBe('F->C');    // and it says so
+  expect(await page.evaluate(`propCoerce(${P}, 99999)`)).toBe(null);         // implausible everywhere
+  const V = `EQUIP_CATS.find(c=>c.cat==='vacuum').props.find(p=>p.key==='bagW')`;
+  expect(await page.evaluate(`propCoerce(${V}, 300).v`)).toBe(30);           // 300 mm -> 30 cm
+  expect(await page.evaluate(`propCoerce(${V}, 30).v`)).toBe(30);            // already cm -> untouched
+  // manual entry accepts a unit suffix, so typing "500F" or "300mm" is not a trap
+  expect(await page.evaluate(`propParse(${P}, '500F').v`)).toBe(260);
+  expect(await page.evaluate(`propParse(${V}, '300mm').v`)).toBe(30);
+  expect(await page.evaluate(`propParse(${P}, '210').v`)).toBe(210);         // bare number = canonical unit
   // unknown key -> undefined, never a throw
   expect(await page.evaluate(`propOf({cat:'smoker',type:'פלטים',cap:{}},'nope')`)).toBe(undefined);
   // bool default
@@ -193,6 +207,71 @@ props:[
    opts:[{v:'1',he:'מהירות אחת',en:'Single'},{v:'2',he:'שתי מהירויות',en:'Two-speed'}]},
 ],
 ```
+
+- [ ] **Step 4b: Add unit metadata to every numeric property**
+
+Owner requirement: an out-of-range number is usually a **unit mismatch**, not nonsense. US spec pages give
+°F; seal widths are quoted in mm; capacities in lb. Discarding those loses correct data.
+
+Add `bounds` (in the canonical metric unit) and `alt` (ordered conversions to try) to each numeric property
+declared in Step 4:
+
+| property | `unit` | `bounds` | `alt` |
+|---|---|---|---|
+| `maxC` (smoker/grill/oven/probe) | `°C` | `[40,600]` | `['F->C']` |
+| `maxL` | `ל׳` | `[2,60]` | `['qt->L','gal->L']` |
+| `watts` | `W` | `[100,3000]` | `[]` |
+| `bagW` | `ס״מ` | `[10,60]` | `['mm->cm','in->cm']` |
+| `accuracy` | `±°C` | `[0.1,5]` | `['Fdeg->Cdeg']` |
+| `throughput` | `ק״ג/דק׳` | `[0.1,20]` | `['lb->kg']` |
+| `hooks` / `count` | — | `[1,200]` | `[]` |
+| `maxKg` (scale) | `ק״ג` | `[0.1,200]` | `['lb->kg','g->kg']` |
+| `maxMm` (slicer) | `מ״מ` | `[0.5,50]` | `['cm->mm','in->mm']` |
+| `tempC` (curechamber) | `°C` | `[0,30]` | `['F->C']` |
+| `rhPct` | `%` | `[40,95]` | `[]` |
+
+- [ ] **Step 4c: Add the converter registry and `propCoerce`** (place beside `propOf`)
+
+```js
+// Unit conversions for values that arrive in the wrong scale — a US spec page gives °F, a seal width is
+// quoted in mm, a capacity in lb. These are CORRECT values in another unit, not garbage, so they must be
+// converted rather than discarded.
+const UNIT_CONV={
+  'F->C':     function(v){ return (v-32)*5/9; },
+  'Fdeg->Cdeg':function(v){ return v*5/9; },      // a DELTA (tolerance), not a temperature
+  'mm->cm':   function(v){ return v/10; },
+  'in->cm':   function(v){ return v*2.54; },
+  'cm->mm':   function(v){ return v*10; },
+  'in->mm':   function(v){ return v*25.4; },
+  'lb->kg':   function(v){ return v*0.45359; },
+  'g->kg':    function(v){ return v/1000; },
+  'qt->L':    function(v){ return v*0.94635; },
+  'gal->L':   function(v){ return v*3.78541; },
+};
+// Canonical FIRST: only convert when the value is implausible as-is. 500 stays 500°C (a lava grill really
+// reaches it); 900 is impossible in °C, so it becomes 482°C. Returns null when NO interpretation is
+// plausible — the caller must then leave it unset and let the user type it, never store a guess.
+function propCoerce(p, raw){
+  if(raw===undefined||raw===null||raw==='') return null;
+  let n=(typeof raw==='number')?raw:parseFloat(String(raw).replace(',','.'));
+  if(isNaN(n)) return null;
+  const b=p.bounds;
+  if(!b) return {v:n, conv:null};
+  if(n>=b[0] && n<=b[1]) return {v:n, conv:null};                 // plausible as given — trust it
+  for(const key of (p.alt||[])){
+    const f=UNIT_CONV[key]; if(!f) continue;
+    const c=f(n);
+    if(c>=b[0] && c<=b[1]) return {v:Math.round(c*100)/100, conv:key};
+  }
+  return null;                                                     // implausible in every unit
+}
+```
+
+- [ ] **Step 4d: Support a unit suffix in MANUAL entry too**
+
+The same rule applies when the user types it. `propParse(p, text)` accepts `"500F"`, `"300mm"`, `"11lb"`,
+`"5 ק״ג"` — strip the suffix, map it to the matching `alt` conversion, then run `propCoerce`. A bare number
+is treated as the canonical unit. This is what makes manual entry forgiving rather than a second trap.
 
 - [ ] **Step 5: Add the accessor** immediately after `function equipCat(cat)` (app.js ~line 45)
 
