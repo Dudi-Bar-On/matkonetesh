@@ -235,3 +235,30 @@ test('O20: a single item is always compatible with itself', async ({ page }) => 
   expect(c.tempSpread).toBe(0);
   expect(c.tempOk).toBe(true);
 });
+
+// Task 4 review gate: the wood-intersection NEGATIVE branch shipped untested, and it is the spot a
+// subtle reduce/seed bug would silently claim two cuts share a wood they do not. occupancyCompat is
+// pure, so these drive it directly rather than through a device fixture.
+test('O21: two cuts with disjoint woods are flagged — no common wood', async ({ page }) => {
+  await boot(page);
+  const c = await page.evaluate(`occupancyCompat([{temp:110,wood:'אלון'},{temp:108,wood:'תפוח'}])`) as any;
+  expect(c.commonWood).toBeNull();
+  expect(c.woodOk).toBe(false);
+  expect(c.tempOk).toBe(true);          // temperature is fine — only the wood conflicts
+});
+
+test('O22: a three-way intersection keeps only the wood common to all', async ({ page }) => {
+  await boot(page);
+  const c = await page.evaluate(`occupancyCompat([
+    {temp:110,wood:'אלון/היקורי'},{temp:108,wood:'היקורי/תפוח'},{temp:112,wood:'היקורי/אלון'}
+  ])`) as any;
+  expect(c.commonWood).toBe('היקורי');   // אלון is in 1 and 3 but not 2 — must not survive
+  expect(c.woodOk).toBe(true);
+});
+
+test('O23: an item with no recorded wood adds no constraint', async ({ page }) => {
+  await boot(page);
+  const c = await page.evaluate(`occupancyCompat([{temp:110,wood:'אלון/היקורי'},{temp:108,wood:''}])`) as any;
+  expect(c.woodOk).toBe(true);           // an unrecorded wood is not a conflict
+  expect(c.tempOk).toBe(true);
+});
