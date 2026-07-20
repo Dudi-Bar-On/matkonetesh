@@ -201,3 +201,37 @@ test('O17: a capacity that rounds away to nothing is treated as unknown, not as 
   expect(r.pct).toBeNull();
   expect(r.over).toBe(false);
 });
+
+test('O18: brisket 110C and ribs 107C are compatible and share hickory', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 6000 } }]);
+  const c = await page.evaluate(`(function(){
+    var f=${FIXTURE};
+    return deviceOccupancy('d1', f.t0+8*3600e3, f.computed).compat;
+  })()`) as any;
+  expect(c.tempSpread).toBe(3);
+  expect(c.tempOk).toBe(true);
+  expect(c.setpoint).toBe(110);            // run at the higher, pull the faster item on internal temp
+  expect(c.commonWood).toBe('היקורי');
+  expect(c.woodOk).toBe(true);
+});
+
+test('O19: a wide temperature spread is flagged incompatible', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 6000 } }]);
+  const c = await page.evaluate(`(function(){
+    var t0=Date.parse('2026-07-24T06:00:00');
+    var mk=function(key,startH,endH,temp){ return { m:resolveItem(key), stages:[{kind:'smoke', start:new Date(t0+startH*3600e3), end:new Date(t0+endH*3600e3), temp:temp}] }; };
+    return deviceOccupancy('d1', t0+8*3600e3, [ mk('cut-1',0,12,110), mk('cut-7',6,11,160) ]).compat;
+  })()`) as any;
+  expect(c.tempSpread).toBe(50);
+  expect(c.tempOk).toBe(false);
+});
+
+test('O20: a single item is always compatible with itself', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 6000 } }]);
+  const c = await page.evaluate(`(function(){
+    var f=${FIXTURE};
+    return deviceOccupancy('d1', f.t0+2*3600e3, f.computed).compat;
+  })()`) as any;
+  expect(c.tempSpread).toBe(0);
+  expect(c.tempOk).toBe(true);
+});

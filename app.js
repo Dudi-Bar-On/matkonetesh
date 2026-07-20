@@ -307,6 +307,28 @@ function itemOccupancy(meta, stageKind){
   return {mode:'area', cm2:Number(spec.footprint_cm2)||0, hooks:0, litres:0, hang:null};
 }
 
+// Two cuts can only share a pit if the pit can be at one temperature that suits both, and if one
+// wood serves both. Area alone was never the whole constraint.
+function occupancyCompat(items){
+  const temps=(items||[]).map(function(i){return i.temp;}).filter(function(v){return v!=null;});
+  const spread=temps.length?(Math.max.apply(null,temps)-Math.min.apply(null,temps)):null;
+  const woodSets=(items||[]).map(function(i){
+    return String(i.wood||'').split('/').map(function(s){return s.trim();}).filter(Boolean);
+  }).filter(function(a){return a.length;});
+  let common=null;
+  if(woodSets.length){
+    common=woodSets.reduce(function(acc,set){ return acc.filter(function(w){return set.indexOf(w)>=0;}); }, woodSets[0].slice());
+  }
+  return {
+    tempSpread: spread,
+    tempOk: spread==null || spread<=TEMP_TOL_C,
+    setpoint: temps.length?Math.max.apply(null,temps):null,
+    woods: woodSets.length?[].concat.apply([],woodSets).filter(function(w,i,a){return a.indexOf(w)===i;}):[],
+    commonWood: (common&&common.length)?common[0]:null,
+    woodOk: !woodSets.length || woodSets.length<2 || !!(common&&common.length)
+  };
+}
+
 // The single source of truth for "what is on this device right now". The occupancy view renders this
 // object and the clash advisories derive from it — so a diagram and a warning can never disagree.
 function deviceOccupancy(devId, tMs, computed, scope){
@@ -341,6 +363,7 @@ function deviceOccupancy(devId, tMs, computed, scope){
       out.over=out.usedCm2>cap.usableCm2;
     }
   }
+  out.compat=occupancyCompat(out.items);
   return out;
 }
 function equipConfigured(){ return !!store.get('mk-equip-set'); }
