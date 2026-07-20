@@ -227,3 +227,19 @@ test('E7b: manual numeric prop input goes through propParse — unit suffix conv
   await page.click('#panel #eqSave');
   await page.waitForFunction(`!(equipList()[0].cap||{}).hasOwnProperty('maxC')`);
 });
+
+test('E8: a stringly "null" from a grounded lookup is treated as absent, never as false', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`store.set('mk-gemkey','k')`);
+  // A grounded call parses JSON out of TEXT, so a not-stated field can arrive as the STRING "null".
+  // Without a guard, a bool would fall through to `false` — asserting a fact the page never stated.
+  await page.evaluate(`window.__aiMock={canHang:'null', waterPan:'N/A', maxC:'null'};`);
+  const r = await page.evaluate(`aiLookupDevice('x','smoker')`) as any;
+  expect(r.props.canHang).toBe(undefined);
+  expect(r.props.waterPan).toBe(undefined);
+  expect(r.props.maxC).toBe(undefined);
+  // a real false must still come through as false
+  await page.evaluate(`window.__aiMock={canHang:false};`);
+  const r2 = await page.evaluate(`aiLookupDevice('x','smoker')`) as any;
+  expect(r2.props.canHang).toBe(false);
+});

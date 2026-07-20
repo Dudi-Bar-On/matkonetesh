@@ -5333,7 +5333,11 @@ async function aiLookupDevice(query, cat){
   const props={};
   catProps.forEach(function(p){
     const v=raw?raw[p.key]:undefined;
-    if(v===undefined||v===null||v==='') return;                      // "the page didn't say" -> class default applies
+    // "the page didn't say" -> leave unset so the class default applies. A grounded call parses JSON out of
+    // TEXT, so a not-stated field can arrive as the literal string "null"/"n/a" — without this guard a bool
+    // would fall through to `false`, asserting "this smoker cannot hang" when the page was simply silent.
+    if(v===undefined||v===null||v==='') return;
+    if(typeof v==='string' && /^(null|none|n\/a|na|unknown|-|—)$/i.test(v.trim())) return;
     if(p.kind==='bool'){ props[p.key]=(v===true||v==='true'); return; }
     if(p.kind==='choice'){ if((p.opts||[]).some(function(o){return o.v===v;})) props[p.key]=v; return; }
     const rc=propCoerce(p, v); if(rc) props[p.key]=rc.v;              // null -> no unit interpretation works -> skip
