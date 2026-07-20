@@ -32,17 +32,163 @@ const ALT_RUB = {
 function gearConfigured(){ return equipConfigured(); }
 // ── Equipment 2.0 · mk-equipment device LIST (source of truth; replaces the flat mk-gear) ──
 const EQUIP_CATS=[
-  {cat:'smoker', he:'מעשנה', en:'Smoker', icon:'💨', acc:'#9a6a3a', accL:'#f4e6d6', capEm:'🗄️', types:['ארון / קבינט','אופסט / סטיק-ברנר','פלטים','קמאדו / קרמי','WSM / חבית','קטל (ככלי עישון)','גז (עם תיבת עשן)','חשמלי'], capKey:'racks', capHe:'מדפים/שבכות', capEn:'racks/grates'},
-  {cat:'grill', he:'גריל', en:'Grill', icon:'🔥', acc:'#e76f51', accL:'#f9ddd3', capEm:'🔥', types:['פחם','גז','קטל','פלנצ׳ה / פלטה','לבה / אינפרא'], capKey:'zones', capHe:'אזורי חום', capEn:'heat zones'},
-  {cat:'oven', he:'תנור', en:'Oven', icon:'♨️', acc:'#f4a261', accL:'#fde9d6', capEm:'🗄️', types:['ביתי','דק','פיצה'], capKey:'racks', capHe:'מדפים', capEn:'racks'},
-  {cat:'sousvide', he:'סו-ויד', en:'Sous-vide', icon:'🌊', acc:'#2b7fb8', accL:'#dcecf6', capEm:'', types:['טבילה (immersion)','מיכל ייעודי'], capKey:null, multiCap:{key:'baths', he:'נפחי אמבט (ל׳)', en:'Bath sizes (L)', uHe:'ל׳', uEn:'L', em:'🛁'}},
-  {cat:'vacuum', he:'ואקום', en:'Vacuum', icon:'🗜️', acc:'#7a8a5c', accL:'#e6ecda', capEm:'', types:['שקית חיצונית (edge)','חדר (chamber)','ידני / משאבה'], capKey:null},
-  {cat:'probe', he:'מדחום', en:'Probe', icon:'🌡️', acc:'#1a9a7a', accL:'#d8f0e8', capEm:'🔌', types:['מיידי (instant-read)','פרוב נעוץ','פרוב אלחוטי','בקר-מאוורר'], capKey:'channels', capHe:'ערוצים', capEn:'channels'},
-  {cat:'grinder', he:'מטחנת בשר', en:'Grinder', icon:'🥩', acc:'#b5651d', accL:'#f6e3cf', capEm:'', types:['ייעודית','מתאם למיקסר'], capKey:null},
-  {cat:'stuffer', he:'מכונת מילוי', en:'Stuffer', icon:'🌭', acc:'#b5651d', accL:'#f6e3cf', capEm:'🛢️', types:['אנכית','אופקית','מזרק / משפך ידני'], capKey:'volume', capHe:'נפח צילינדר (ל׳)', capEn:'cylinder (L)', multiCap:{key:'nozzles', he:'קטרי פייה (מ״מ)', en:'Output sizes (mm)', uHe:'מ״מ', uEn:'mm', em:'🔩'}},
+  {cat:'smoker', he:'מעשנה', en:'Smoker', icon:'💨', acc:'#9a6a3a', accL:'#f4e6d6', capEm:'🗄️', types:['ארון / קבינט','אופסט / סטיק-ברנר','פלטים','קמאדו / קרמי','WSM / חבית','קטל (ככלי עישון)','גז (עם תיבת עשן)','חשמלי'], capKey:'racks', capHe:'מדפים/שבכות', capEn:'racks/grates',
+   props:[
+    {key:'maxC',     he:'טמפ׳ מרבית',  en:'Max temp',  kind:'num',  unit:'°C', em:'🌡️', tier:'core', bounds:[40,600], alt:['F->C'],
+     def:{'חשמלי':135,'ארון / קבינט':150,'פלטים':260,'קמאדו / קרמי':350,'אופסט / סטיק-ברנר':300,'WSM / חבית':150,'קטל (ככלי עישון)':300,'גז (עם תיבת עשן)':260}},
+    {key:'canHang',  he:'אפשר לתלות',  en:'Can hang',  kind:'bool', em:'🪝', tier:'core',
+     def:{'ארון / קבינט':true,'WSM / חבית':true,'קטל (ככלי עישון)':false,'פלטים':false}},
+    {key:'hooks',    he:'מספר ווים',   en:'Hooks',     kind:'num',  em:'🪝', tier:'pro', bounds:[1,200], alt:[]},
+    {key:'waterPan', he:'מגש מים מובנה',en:'Water pan', kind:'bool', em:'💧', tier:'pro',
+     def:{'ארון / קבינט':true,'WSM / חבית':true}},
+   ]},
+  {cat:'grill', he:'גריל', en:'Grill', icon:'🔥', acc:'#e76f51', accL:'#f9ddd3', capEm:'🔥', types:['פחם','גז','קטל','פלנצ׳ה / פלטה','לבה / אינפרא'], capKey:'zones', capHe:'אזורי חום', capEn:'heat zones',
+   props:[
+    {key:'lid',        he:'מכסה',        en:'Lid',        kind:'bool', em:'🔒', tier:'core',
+     def:{'פלנצ׳ה / פלטה':false,'לבה / אינפרא':false,'פחם':true,'גז':true,'קטל':true}},
+    {key:'maxC',       he:'טמפ׳ מרבית',  en:'Max temp',   kind:'num', unit:'°C', em:'🌡️', tier:'pro', bounds:[40,600], alt:['F->C'],
+     def:{'גז':300,'פחם':400,'קטל':350,'פלנצ׳ה / פלטה':300,'לבה / אינפרא':500}},
+    {key:'rotisserie', he:'שיפוד מסתובב',en:'Rotisserie', kind:'bool', em:'🔄', tier:'pro'},
+   ]},
+  {cat:'oven', he:'תנור', en:'Oven', icon:'♨️', acc:'#f4a261', accL:'#fde9d6', capEm:'🗄️', types:['ביתי','דק','פיצה'], capKey:'racks', capHe:'מדפים', capEn:'racks',
+   props:[
+    {key:'maxC',  he:'טמפ׳ מרבית', en:'Max temp', kind:'num', unit:'°C', em:'🌡️', tier:'core', bounds:[40,600], alt:['F->C'],
+     def:{'ביתי':275,'דק':400,'פיצה':500}},
+    {key:'fan',   he:'טורבו',      en:'Fan',      kind:'bool', em:'🌀', tier:'pro', def:{'ביתי':true}},
+    {key:'steam', he:'אדים',       en:'Steam',    kind:'bool', em:'♨️', tier:'pro'},
+   ]},
+  {cat:'sousvide', he:'סו-ויד', en:'Sous-vide', icon:'🌊', acc:'#2b7fb8', accL:'#dcecf6', capEm:'', types:['טבילה (immersion)','מיכל ייעודי'], capKey:null, multiCap:{key:'baths', he:'נפחי אמבט (ל׳)', en:'Bath sizes (L)', uHe:'ל׳', uEn:'L', em:'🛁'},
+   props:[
+    {key:'maxL',  he:'נפח מרבי',   en:'Max volume', kind:'num', unit:'ל׳', em:'🪣', tier:'core', bounds:[2,60], alt:['qt->L','gal->L'],
+     def:{'טבילה (immersion)':20,'מיכל ייעודי':12}},
+    {key:'watts', he:'הספק',       en:'Power',      kind:'num', unit:'W',  em:'⚡', tier:'pro', bounds:[100,3000], alt:[], def:1000},
+    {key:'maxC',  he:'טמפ׳ מרבית', en:'Max temp',   kind:'num', unit:'°C', em:'🌡️', tier:'pro', bounds:[40,600], alt:['F->C'], def:95},
+   ]},
+  {cat:'vacuum', he:'ואקום', en:'Vacuum', icon:'🗜️', acc:'#7a8a5c', accL:'#e6ecda', capEm:'', types:['שקית חיצונית (edge)','חדר (chamber)','ידני / משאבה'], capKey:null,
+   props:[
+    {key:'bagW',    he:'רוחב איטום', en:'Seal width', kind:'num', unit:'ס״מ', em:'📏', tier:'core', bounds:[10,60], alt:['mm->cm','in->cm'],
+     def:{'שקית חיצונית (edge)':30,'חדר (chamber)':30,'ידני / משאבה':25}},
+    {key:'bagKind', he:'סוג שקיות',  en:'Bag type',   kind:'choice', em:'📦', tier:'core', def:'both',
+     opts:[{v:'roll',he:'גליל לחיתוך',en:'Cuttable roll'},{v:'bags',he:'שקיות חתוכות',en:'Pre-cut bags'},{v:'both',he:'שניהם',en:'Both'}]},
+    {key:'pulse',   he:'מצב לח/פולס', en:'Pulse/moist', kind:'bool', em:'〰️', tier:'pro', def:{'חדר (chamber)':true}},
+   ]},
+  {cat:'probe', he:'מדחום', en:'Probe', icon:'🌡️', acc:'#1a9a7a', accL:'#d8f0e8', capEm:'🔌', types:['מיידי (instant-read)','פרוב נעוץ','פרוב אלחוטי','בקר-מאוורר'], capKey:'channels', capHe:'ערוצים', capEn:'channels',
+   props:[
+    {key:'maxC',     he:'טמפ׳ מרבית', en:'Max temp', kind:'num', unit:'°C',  em:'🌡️', tier:'pro', bounds:[40,600], alt:['F->C'], def:300},
+    {key:'accuracy', he:'דיוק',       en:'Accuracy', kind:'num', unit:'±°C', em:'🎯', tier:'pro', bounds:[0.1,5], alt:['Fdeg->Cdeg'], def:1},
+   ]},
+  {cat:'grinder', he:'מטחנת בשר', en:'Grinder', icon:'🥩', acc:'#b5651d', accL:'#f6e3cf', capEm:'', types:['ייעודית','מתאם למיקסר'], capKey:null,
+   props:[
+    {key:'throughput', he:'תפוקה', en:'Throughput', kind:'num', unit:'ק״ג/דק׳', em:'⏱️', tier:'pro', bounds:[0.1,20], alt:['lb->kg'],
+     def:{'ייעודית':2,'מתאם למיקסר':0.7}},
+   ]},
+  {cat:'stuffer', he:'מכונת מילוי', en:'Stuffer', icon:'🌭', acc:'#b5651d', accL:'#f6e3cf', capEm:'🛢️', types:['אנכית','אופקית','מזרק / משפך ידני'], capKey:'volume', capHe:'נפח צילינדר (ל׳)', capEn:'cylinder (L)', multiCap:{key:'nozzles', he:'קטרי פייה (מ״מ)', en:'Output sizes (mm)', uHe:'מ״מ', uEn:'mm', em:'🔩'},
+   props:[
+    {key:'speed', he:'מהירויות', en:'Speeds', kind:'choice', em:'⚙️', tier:'pro',
+     opts:[{v:'1',he:'מהירות אחת',en:'Single'},{v:'2',he:'שתי מהירויות',en:'Two-speed'}]},
+   ]},
   {cat:'other', he:'אחר', en:'Other', icon:'🧰', acc:'#8a6f5c', accL:'#efe6dd', capEm:'', types:[], capKey:null},
 ];
 function equipCat(cat){ return EQUIP_CATS.find(function(c){return c.cat===cat;})||null; }
+// Resolve an equipment property: stored value -> class default for this device TYPE -> undefined.
+// Every consumer must read through this, so an unset property behaves exactly like a defaulted one
+// and an empty cap is only a precision loss, never a blocker.
+function propSpec(cat, key){
+  const c = equipCat(cat); if(!c) return null;
+  return (c.props||[]).find(function(p){ return p.key===key; }) || null;
+}
+function propDef(cat, key, type){
+  const p = propSpec(cat, key); if(!p || p.def===undefined) return undefined;
+  if(p.def && typeof p.def==='object' && !Array.isArray(p.def)) return p.def[type];
+  return p.def;                                   // scalar default (applies to every type)
+}
+function propOf(dev, key){
+  if(!dev) return undefined;
+  const v = dev.cap ? dev.cap[key] : undefined;
+  if(v!==undefined && v!=='' && v!==null) return v;
+  return propDef(dev.cat, key, dev.type);
+}
+// Unit conversions for values that arrive in the wrong scale — a US spec page gives °F, a seal width is
+// quoted in mm, a capacity in lb. These are CORRECT values in another unit, not garbage, so they must be
+// converted rather than discarded.
+const UNIT_CONV={
+  'F->C':     function(v){ return (v-32)*5/9; },
+  'Fdeg->Cdeg':function(v){ return v*5/9; },      // a DELTA (tolerance), not a temperature
+  'mm->cm':   function(v){ return v/10; },
+  'in->cm':   function(v){ return v*2.54; },
+  'cm->mm':   function(v){ return v*10; },
+  'in->mm':   function(v){ return v*25.4; },
+  'lb->kg':   function(v){ return v*0.45359; },
+  'g->kg':    function(v){ return v/1000; },
+  'qt->L':    function(v){ return v*0.94635; },
+  'gal->L':   function(v){ return v*3.78541; },
+};
+// Canonical FIRST: only convert when the value is implausible as-is. 500 stays 500°C (a lava grill really
+// reaches it); 900 is impossible in °C, so it becomes 482°C. Returns null when NO interpretation is
+// plausible — the caller must then leave it unset and let the user type it, never store a guess.
+function propCoerce(p, raw){
+  if(raw===undefined||raw===null||raw==='') return null;
+  let n=(typeof raw==='number')?raw:parseFloat(String(raw).replace(',','.'));
+  if(isNaN(n)) return null;
+  const b=p.bounds;
+  if(!b) return {v:n, conv:null};
+  if(n>=b[0] && n<=b[1]) return {v:n, conv:null};                 // plausible as given — trust it
+  for(const key of (p.alt||[])){
+    const f=UNIT_CONV[key]; if(!f) continue;
+    const c=f(n);
+    if(c>=b[0] && c<=b[1]) return {v:Math.round(c*100)/100, conv:key};
+  }
+  return null;                                                     // implausible in every unit
+}
+// Manual entry accepts a trailing unit suffix ("500F", "300mm", "11lb", "5 ק״ג") so typing the number
+// straight off a spec sheet is never a trap. The suffix is mapped to the matching `alt` conversion key;
+// a bare number is treated as already being in the property's canonical unit.
+const PROP_SUFFIX_TO_CONV={
+  'f':'F->C', '°f':'F->C',
+  'c':null, '°c':null,               // canonical — no conversion needed
+  'mm':'mm->cm', 'мм':null,
+  'cm':null,
+  'in':'in->cm',                     // default in->cm; resolved against p.alt below
+  'lb':'lb->kg', 'lbs':'lb->kg',
+  'kg':null,
+  'g':'g->kg',
+  'qt':'qt->L',
+  'gal':'gal->L',
+  '%':null,
+  'ק״ג':null, 'קג':null,
+  'מ״מ':'mm->cm', 'ממ':'mm->cm',
+  'ס״מ':null, 'סמ':null,
+  'ל׳':null, 'ל':null,
+};
+function propParse(p, text){
+  if(text===undefined||text===null) return null;
+  let s=String(text).trim();
+  if(!s) return null;
+  const m=s.match(/^(-?[0-9]+(?:[.,][0-9]+)?)\s*(°?[A-Za-z%]+|[֐-׿"'׳״]+)?$/);
+  if(!m) return propCoerce(p, s);
+  const numPart=m[1];
+  const suffix=(m[2]||'').trim();
+  if(!suffix) return propCoerce(p, numPart);
+  const suffixKey=suffix.toLowerCase();
+  let n=parseFloat(numPart.replace(',','.'));
+  if(isNaN(n)) return null;
+  // 'in' is ambiguous (in->cm vs in->mm) — resolve to whichever conversion this property actually declares
+  let convKey;
+  if(suffixKey==='in'){
+    convKey=(p.alt||[]).indexOf('in->cm')>=0 ? 'in->cm' : ((p.alt||[]).indexOf('in->mm')>=0 ? 'in->mm' : null);
+  } else {
+    convKey=PROP_SUFFIX_TO_CONV.hasOwnProperty(suffixKey) ? PROP_SUFFIX_TO_CONV[suffixKey] : undefined;
+    if(convKey===undefined){
+      // try raw (non-lowercased) key for Hebrew suffixes that don't roundtrip through toLowerCase cleanly
+      convKey=PROP_SUFFIX_TO_CONV.hasOwnProperty(suffix) ? PROP_SUFFIX_TO_CONV[suffix] : null;
+    }
+  }
+  if(!convKey) return propCoerce(p, n);                 // suffix is the canonical unit itself
+  if((p.alt||[]).indexOf(convKey)<0) return propCoerce(p, n);   // property doesn't recognize this conversion — treat as canonical
+  const f=UNIT_CONV[convKey]; if(!f) return propCoerce(p, n);
+  const converted=f(n);
+  return propCoerce(p, converted);
+}
 function equipList(){ const l=store.get('mk-equipment'); return Array.isArray(l)?l:[]; }
 function equipSave(list){ store.set('mk-equipment', Array.isArray(list)?list:[]); }
 function equipId(){ return 'eq-'+(typeof uid==='function'?uid():Math.random().toString(36).slice(2,9)); }
