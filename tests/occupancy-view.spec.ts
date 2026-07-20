@@ -77,3 +77,28 @@ test('W5: no occupancy chip clips its own label', async ({ page }) => {
   const clipped = r.filter((c: any) => c.clipped).map((c: any) => c.txt);
   expect(clipped, `chips clipping their label: ${clipped.join(' | ')}`).toEqual([]);
 });
+
+test('W4: scrubbing to a later instant changes what is on the cooker', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(async function(){
+    openTimeline();
+    await new Promise(function(r){setTimeout(r,2000);});
+    var p=document.querySelector('#panel');
+    var wp=[].slice.call(p.querySelectorAll('button,.chip,.mchip')).find(function(e){return /תוכנית עבודה/.test(e.innerText);});
+    if(wp){ wp.click(); await new Promise(function(r){setTimeout(r,1200);}); }
+    document.querySelector('[data-occview]').click();
+    await new Promise(function(r){setTimeout(r,1000);});
+    var sl=document.querySelector('#occRange');
+    if(!sl) return {noSlider:true};
+    sl.value=sl.min; sl.dispatchEvent(new Event('input',{bubbles:true}));
+    await new Promise(function(r){setTimeout(r,400);});
+    var early=document.querySelector('#occBody').innerText;
+    sl.value=sl.max; sl.dispatchEvent(new Event('input',{bubbles:true}));
+    await new Promise(function(r){setTimeout(r,400);});
+    var late=document.querySelector('#occBody').innerText;
+    return { noSlider:false, changed: early!==late, hasClock: !!document.querySelector('#occClock') };
+  })()`) as any;
+  expect(r.noSlider).toBe(false);
+  expect(r.hasClock).toBe(true);
+  expect(r.changed).toBe(true);
+});

@@ -437,7 +437,23 @@ function _occSpan(computed){
   const n=Date.now();
   return {lo:lo, hi:hi, now:Math.max(lo, Math.min(hi, n))};
 }
-function _occWire(computed, span, scope){ /* filled in by Task 8 */ }
+function _occWire(computed, span, scope){
+  const host=$("#occScrub"); if(!host) return;
+  const fmt=function(ms){ const d=new Date(ms); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+  host.innerHTML=`<div class="occ-scrub">
+      <input type="range" id="occRange" min="${span.lo}" max="${span.hi}" step="60000" value="${span.now}"
+             aria-label="${L('שעה בתוכנית','Time in the plan')}">
+      <div class="occ-scrubrow"><button class="mchip" id="occNow">${L('עכשיו','Now')}</button><b id="occClock">${fmt(span.now)}</b></div>
+    </div>`;
+  const sl=$("#occRange"), clock=$("#occClock"), body=$("#occBody");
+  const paint=function(){
+    window._occT=Number(sl.value);
+    if(clock) clock.textContent=fmt(window._occT);
+    if(body)  body.innerHTML=occupancyViewHtml(computed, window._occT, scope);
+  };
+  sl.addEventListener('input', paint);
+  const nb=$("#occNow"); if(nb) nb.addEventListener('click',function(){ sl.value=String(span.now); paint(); });
+}
 function equipConfigured(){ return !!store.get('mk-equip-set'); }
 function equipSetConfigured(){ store.set('mk-equip-set', true); }
 // one-time seed from the old flat mk-gear, then mk-gear is never read again

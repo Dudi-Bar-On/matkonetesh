@@ -1644,3 +1644,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ-empty{font-size:calc(12.5px * var(--fscale));color:var(--ash);opacity:.6}
 .occ-unknown{font-size:calc(12px * var(--fscale));color:var(--ash);opacity:.8;margin-bottom:8px}
 .occ-warn{margin-top:8px;font-size:calc(12.5px * var(--fscale));font-weight:700;color:#e07a5f}
+.occ-scrub{margin-bottom:12px}
+.occ-scrub input[type=range]{width:100%;accent-color:var(--ember2)}
+.occ-scrubrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px}
+.occ-scrubrow b{font-size:calc(15px * var(--fscale));color:var(--bone);font-variant-numeric:tabular-nums}
