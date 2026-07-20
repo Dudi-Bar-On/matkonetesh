@@ -243,3 +243,15 @@ test('E8: a stringly "null" from a grounded lookup is treated as absent, never a
   const r2 = await page.evaluate(`aiLookupDevice('x','smoker')`) as any;
   expect(r2.props.canHang).toBe(false);
 });
+
+test('E9: existing devices are unaffected by the property layer', async ({ page }) => {
+  await boot(page);
+  // a device saved before this feature has no props; every existing accessor still works
+  await page.evaluate(`equipSave([{id:'old',cat:'smoker',type:'פלטים',name:'Old',cap:{racks:3},specSource:'manual'}]); equipSetConfigured();`);
+  expect(await page.evaluate(`equipList()[0].cap.racks`)).toBe(3);
+  expect(await page.evaluate(`probeChannels()`)).toBe(0);
+  expect(await page.evaluate(`canSmoke()`)).toBe(true);
+  // an absent property is a precision loss, never a blocker
+  expect(await page.evaluate(`propOf(equipList()[0],'maxC')`)).toBe(260);
+  expect(await page.evaluate(`propOf(equipList()[0],'hooks')`)).toBe(undefined);
+});
