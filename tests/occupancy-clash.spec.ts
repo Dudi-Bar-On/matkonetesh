@@ -83,3 +83,30 @@ test('C6: no advisory ever tells the user to stagger a start (no such control ex
   expect(text).not.toContain('הסט את ההתחלה');
   expect(text).not.toContain('stagger the start');
 });
+
+// Task 5 review gate: the clash flag was keyed by item alone, so an item with stages on TWO devices
+// (a bath, then the smoker) got the warning icon on every one of its rows — including the row for the
+// device that is perfectly fine. The flag must be scoped to the contended stage.
+test('C7: only the contended stage of a multi-device item is flagged', async ({ page }) => {
+  await boot(page, [
+    { id:'d1', cat:'smoker',   type:'קמאדו / קרמי',      name:'קמאדו', cap:{racks:1, areaCm2:1650} },
+    { id:'d2', cat:'sousvide', type:'טבילה (immersion)', name:'מקל',   cap:{baths:[24]} },
+  ]);
+  const r = await page.evaluate(`(function(){
+    var t0=Date.parse('2026-07-24T06:00:00');
+    setItemCooker('cut-1','sv','d2'); setItemCooker('cut-1','smoke','d1'); setItemCooker('cut-7','smoke','d1');
+    // cut-1 sits in the bath early, then joins cut-7 on the over-capacity kamado
+    var a={ m:resolveItem('cut-1'), stages:[
+      {kind:'sv',    start:new Date(t0),          end:new Date(t0+4*3600e3),  temp:68},
+      {kind:'smoke', start:new Date(t0+4*3600e3), end:new Date(t0+12*3600e3), temp:110}] };
+    var b={ m:resolveItem('cut-7'), stages:[
+      {kind:'smoke', start:new Date(t0+5*3600e3), end:new Date(t0+11*3600e3), temp:107}] };
+    var cl=cookerContention([a,b]);
+    var flagged={};
+    cl.forEach(function(c){ c.items.forEach(function(i){ flagged[i.key+'|'+i.kind]=1; }); });
+    return { clashes:cl.length, devs:cl.map(function(c){return c.devName;}), flagged:Object.keys(flagged).sort() };
+  })()`) as any;
+  expect(r.clashes).toBe(1);
+  expect(r.devs).toEqual(['קמאדו']);
+  expect(r.flagged).toEqual(['cut-1|smoke', 'cut-7|smoke']);   // NOT 'cut-1|sv' — the bath is fine
+});

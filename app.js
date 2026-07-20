@@ -4992,7 +4992,9 @@ function renderTimelinePanel(){
     const _ckScope=(typeof evScope==='function')?evScope():'cook';
     const _ckMap=store.get('mk-item-cooker-'+_ckScope)||{};
     const _clashes=cookerContention(computed, _ckScope);
-    const _clashOcc={}; _clashes.forEach(function(cl){ cl.items.forEach(function(i){ _clashOcc[i.key]=1; }); });
+    // Keyed by item AND stage kind: an item can sit on two devices (a bath, then the smoker), and only the
+    // stage on the contended device should carry the warning — not every row belonging to that item.
+    const _clashOcc={}; _clashes.forEach(function(cl){ cl.items.forEach(function(i){ _clashOcc[i.key+'|'+i.kind]=1; }); });
     // sous-vide batching: same circulator + same temp + overlapping windows → cook together in one bath (the largest available size)
     const _svBatch={}; { const svOcc=[];
       computed.forEach(function(c){ if(c.blocked||!c.stages) return; c.stages.forEach(function(s){ if(s.kind!=='sv'||!s.start||!s.end) return; const d=cookerFor(c.m.key,'sv',_ckScope); if(!d) return; svOcc.push({dev:d, key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb), temp:(s.temp!=null?s.temp:null), start:s.start.getTime(), end:s.end.getTime()}); }); });
@@ -5050,7 +5052,7 @@ function renderTimelinePanel(){
           }
           let _sub=s.note||'';
           if(s.kind==='sv'){ const bt=_svBatch[c.m.key+'@'+s.start.getTime()]; if(bt){ const bn='🌊 '+L('אמבט משותף עם ','shared bath with ')+bt.names.join(', ')+(bt.bath?(' · '+L('השתמש באמבט ','use the ')+bt.bath+L(' ל׳',' L')+L(' לכולם',' bath for all')):''); _sub=_sub?_sub+' · '+bn:bn; } }
-          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:_sub,kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid,cooker:cookerLabel(c.m.key,s.kind),contention:!!_clashOcc[c.m.key]});
+          tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:_sub,kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid,cooker:cookerLabel(c.m.key,s.kind),contention:!!_clashOcc[c.m.key+'|'+s.kind]});
         }
       });
       const sel2=sel.filter(s=>s.kind==='glaze');
