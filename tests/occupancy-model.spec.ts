@@ -81,3 +81,44 @@ test('O7: capacity is "unknown" rather than wrong when nothing is configured', a
   expect(c.known).toBe(false);
   expect(c.usableCm2).toBe(0);
 });
+
+test('O8: itemOccupancy(meta,\'sv\') reports volume mode with litres from the recipe spec', async ({ page }) => {
+  await boot(page);
+  const o = await page.evaluate(`itemOccupancy(resolveItem('cut-1'),'sv')`) as any;
+  expect(o.mode).toBe('volume');
+  expect(o.litres).toBe(24);   // brisket's by.sv.spec.min_bath_l
+  expect(o.cm2).toBe(0);
+});
+
+test('O9: deviceCapacity on a grill reads cap.zones into the racks field', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'grill', type: 'פחם', name: 'שלי', cap: { zones: 3, areaCm2: 4000 } }]);
+  const c = await page.evaluate(`deviceCapacity(equipByCat('grill')[0])`) as any;
+  expect(c.mode).toBe('area');
+  expect(c.racks).toBe(3);     // grills use cap.zones where smokers use cap.racks
+});
+
+test('O10: deviceCapacity reports hooks only when the device can actually hang', async ({ page }) => {
+  await boot(page, [
+    { id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'תולה', cap: { canHang: true, hooks: 6 } },
+    { id: 'd2', cat: 'smoker', type: 'קטל (ככלי עישון)', name: 'לא תולה', cap: { canHang: false, hooks: 6 } },
+  ]);
+  const r = await page.evaluate(`(function(){
+    var devs=equipByCat('smoker');
+    return { hanging: deviceCapacity(devs[0]).hooks, notHanging: deviceCapacity(devs[1]).hooks };
+  })()`) as any;
+  expect(r.hanging).toBe(6);
+  expect(r.notHanging).toBe(0);   // canHang false -> hooks:0 even though a hooks count is present
+});
+
+// Finding 1 regression: the AI equipment-lookup path (app.js aiLookupDevice) writes a bare
+// cap.bathL and never populates cap.baths. deviceCapacity must honour that legacy/live field
+// rather than silently substituting the class default (propOf(dev,'maxL')) — substituting a
+// default here would report known:true with an invented number, which is the one thing this
+// layer must never do.
+test('O11: a sous-vide device with only cap.bathL (no cap.baths) reports the real bath size, not the class default', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'sousvide', type: 'טבילה (immersion)', name: 'AI-filled', cap: { bathL: 18 } }]);
+  const c = await page.evaluate(`deviceCapacity(equipByCat('sousvide')[0])`) as any;
+  expect(c.mode).toBe('volume');
+  expect(c.known).toBe(true);
+  expect(c.litres).toBe(18);   // NOT propOf(dev,'maxL') === 20 for 'טבילה (immersion)'
+});

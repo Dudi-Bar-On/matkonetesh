@@ -277,8 +277,14 @@ function deviceCapacity(dev){
   const none={mode:'area', areaCm2:0, usableCm2:0, racks:0, hooks:0, litres:0, known:false};
   if(!dev) return none;
   if(dev.cat==='sousvide'){
+    // Precedence matches the rest of the file (app.js:4924, 5480): cap.baths (array) first, else
+    // the legacy/live single cap.bathL (written by the AI lookup path — app.js:5413/5429 — which
+    // never populates cap.baths), else the class default. Never skip straight to the class
+    // default while a real measurement (bathL) is sitting right there — that would report
+    // known:true with an invented number.
     const baths=(dev.cap&&Array.isArray(dev.cap.baths))?dev.cap.baths.map(Number).filter(function(n){return n>0;}):[];
-    const litres=baths.length?Math.max.apply(null,baths):(propOf(dev,'maxL')||0);
+    const bathL=(dev.cap&&dev.cap.bathL!=null)?Number(dev.cap.bathL):NaN;
+    const litres=baths.length?Math.max.apply(null,baths):((!isNaN(bathL)&&bathL>0)?bathL:(propOf(dev,'maxL')||0));
     return {mode:'volume', areaCm2:0, usableCm2:0, racks:0, hooks:0, litres:litres, known:litres>0};
   }
   const area=Number(propOf(dev,'areaCm2'))||0;
