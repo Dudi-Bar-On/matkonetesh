@@ -43,9 +43,19 @@ new shapes (numbers, booleans) go in `props`.
 
 ### Categories
 
-> **⚠ Type keys must be VERBATIM.** The `def` maps are keyed by the exact `types[]` strings in
-> `EQUIP_CATS`. Abbreviating them (`'קמאדו'` for `'קמאדו / קרמי'`, `'גז'` for `'גז (עם תיבת עשן)'`) produces
-> a default that silently never fires. The exact strings are:
+> **⚠ Type keys must be VERBATIM — and this must be enforced, not trusted.** The `def` maps are keyed by
+> the exact `types[]` strings. Abbreviating one (`'קמאדו'` for `'קמאדו / קרמי'`) produces a default that
+> silently never fires — no error, just a property that is always empty.
+>
+> These are mixed Hebrew+Latin RTL strings, and they are genuinely easy to corrupt when retyped: while
+> writing this spec a verification script mis-compared `'טבילה (immersion)'` purely from bidi byte
+> ordering. **Do not hand-type them.** Copy from a programmatic dump of `EQUIP_CATS[].types`.
+>
+> **REQUIRED TEST (build gate):** assert that every key of every `props[].def` map exists in that
+> category's `types[]`. A typo then fails the suite instead of silently disabling a default. This is
+> cheap and it removes the whole class of error.
+>
+> For reference, the exact strings are:
 > **smoker** `'ארון / קבינט'` `'אופסט / סטיק-ברנר'` `'פלטים'` `'קמאדו / קרמי'` `'WSM / חבית'`
 > `'קטל (ככלי עישון)'` `'גז (עם תיבת עשן)'` `'חשמלי'` ·
 > **grill** `'פחם'` `'גז'` `'קטל'` `'פלנצ׳ה / פלטה'` `'לבה / אינפרא'` ·
