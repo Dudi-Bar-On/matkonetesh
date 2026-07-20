@@ -391,7 +391,7 @@ function occupancyDevHtml(o){
   const items=o.items.length
     ? o.items.map(function(i){
         const frac=(cap.usableCm2>0&&i.cm2>0)?Math.max(8,Math.round(i.cm2/cap.usableCm2*100)):18;
-        return `<span class="occ-item${i.hooks?' occ-hang':''}" style="flex:0 0 ${frac}%" title="${esc(i.name)}">${i.hooks?'🪝':'🥩'} ${esc(i.name)}${i.cm2?`<small>${i.cm2} ${he?'סמ״ר':'cm²'}</small>`:''}</span>`;
+        return `<span class="occ-item${i.hooks?' occ-hang':''}" style="flex:1 1 ${frac}%" title="${esc(i.name)}">${i.hooks?'🪝':'🥩'} ${esc(i.name)}${i.cm2?`<small>${i.cm2} ${he?'סמ״ר':'cm²'}</small>`:''}</span>`;
       }).join('')
     : `<span class="occ-empty">${L('פנוי','Free')}</span>`;
   const facts=[];
