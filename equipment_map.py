@@ -34,6 +34,7 @@ SPEC KEYS (these are what let the orchestrator reason numerically)
     slice_mm      float  slicing thickness                              -> slicer
     rh_pct      tuple  target relative humidity for drying              -> humidity / curechamber
     hold_c      int    holding temperature                              -> holding gear
+    hang        str    'short' | 'long' — a CLASS, never a measurement  -> device cap.hooks (makes only)
 """
 
 import re
@@ -367,6 +368,18 @@ _INTERNAL_TEMP_RE = re.compile(
 )
 GRIND_MIN_MM, GRIND_MAX_MM = 3, 13   # plausible grinder-plate bore
 
+# Hanging is a second occupancy mode — a hung item frees grate area entirely. Length is a CLASS,
+# never a measurement: we have no real dimensions and must not invent centimetres.
+_HANG_RE = re.compile(r'תל(?:ה|יי?ה|ות)|לתלות|ווים|וו\b')
+_HANG_LONG_RE = re.compile(r'סלמי|שוק|צלעות|עוף שלם|ברווז|קולג׳י|לונזה|קופה')
+
+
+def _hang_class(text):
+    """'long' for a full salami / rib rack / whole bird, 'short' for links and coils; None if it never hangs."""
+    if not _HANG_RE.search(text):
+        return None
+    return 'long' if _HANG_LONG_RE.search(text) else 'short'
+
 
 def make_equip(m):
     b = m.get("build") or {}
@@ -448,6 +461,11 @@ def make_equip(m):
         spec.setdefault("rh_pct", (75, 85))
     if "פריסה" in blob or "פרוס" in blob:
         opt.append("slicer")
+
+    # --- hanging (Task 6: a second occupancy channel) --------------------------
+    _hang = _hang_class(blob)          # blob = the concatenated recipe prose already used for token derivation above
+    if _hang:
+        spec['hang'] = _hang
 
     # --- per-phase attachment (this is what a task will render) --------------
     # Match the phase LABEL ("4 · מילוי"), which names the operation exactly. Matching the body

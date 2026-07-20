@@ -262,3 +262,42 @@ test('O23: an item with no recorded wood adds no constraint', async ({ page }) =
   expect(c.woodOk).toBe(true);           // an unrecorded wood is not a conflict
   expect(c.tempOk).toBe(true);
 });
+
+// Task 6: hanging is a second occupancy channel — a hung item frees grate area entirely rather
+// than shrinking its footprint, so it must never accrue cm2 and must consume exactly one hook.
+test('O24: hung items consume hooks and no grate area', async ({ page }) => {
+  await boot(page, [
+    { id:'d1', cat:'smoker', type:'ארון / קבינט', name:'הנפח', cap:{racks:4, areaCm2:6000, canHang:true, hooks:6} },
+    { id:'d2', cat:'other', type:'hooks', name:'ווים', cap:{count:6} },
+  ]);
+  const r = await page.evaluate(`(function(){
+    var hung=Object.keys(DATA.makes).filter(function(k){ var e=DATA.makes[k].equip; return e && e.spec && e.spec.hang; });
+    if(!hung.length) return {none:true};
+    var m=resolveItem('make-'+hung[0]);
+    return { count:hung.length, occ:itemOccupancy(m,'smoke') };
+  })()`) as any;
+  expect(r.none).toBeUndefined();
+  expect(r.count).toBeGreaterThan(0);
+  expect(r.occ.mode).toBe('hang');
+  expect(r.occ.hooks).toBe(1);
+  expect(r.occ.cm2).toBe(0);
+});
+
+test('O25: exceeding the hook count is reported without touching area', async ({ page }) => {
+  await boot(page, [
+    { id:'d1', cat:'smoker', type:'ארון / קבינט', name:'הנפח', cap:{racks:4, areaCm2:6000, canHang:true, hooks:1} },
+    { id:'d2', cat:'other', type:'hooks', name:'ווים', cap:{count:1} },
+  ]);
+  const r = await page.evaluate(`(function(){
+    var hung=Object.keys(DATA.makes).filter(function(k){ var e=DATA.makes[k].equip; return e && e.spec && e.spec.hang; }).slice(0,2);
+    if(hung.length<2) return {skip:true};
+    var t0=Date.parse('2026-07-24T06:00:00');
+    var mk=function(k){ return { m:resolveItem('make-'+k), stages:[{kind:'smoke', start:new Date(t0), end:new Date(t0+6*3600e3), temp:75}] }; };
+    return deviceOccupancy('d1', t0+1*3600e3, hung.map(mk));
+  })()`) as any;
+  // If fewer than 2 makes carry spec.hang, the derivation under-matched — that is a real failure, not a skip.
+  expect(r.skip, 'fewer than 2 makes carry spec.hang — the derivation under-matched').toBeUndefined();
+  expect(r.hooksUsed).toBe(2);
+  expect(r.hooksOver).toBe(true);
+  expect(r.usedCm2).toBe(0);
+});

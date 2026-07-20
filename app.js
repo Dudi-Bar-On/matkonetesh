@@ -373,6 +373,7 @@ function deviceOccupancy(devId, tMs, computed, scope){
       out.over=out.usedCm2>cap.usableCm2;
     }
   }
+  out.hooksOver=cap.hooks>0 && out.hooksUsed>cap.hooks;
   out.compat=occupancyCompat(out.items);
   return out;
 }
