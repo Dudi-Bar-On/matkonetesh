@@ -5286,6 +5286,14 @@ function acmFmt(cm2){ cm2=Math.round(cm2); return cm2>=10000 ? (+(cm2/10000).toF
 async function aiLookupDevice(query, cat){
   if(!equipAiOn()) throw new Error('no-key');
   const c=equipCat(cat)||{}; const types=c.types||[];
+  const catProps=(c.props||[]);   // this category's own props[] (Task 1) — only ask for what applies (a stuffer has no maxC)
+  // Describe each property by its CANONICAL unit (propCoerce prefers it, converting only when the raw value
+  // is implausible as given) so the model's answer needs the least amount of guessing to land in range.
+  const propSchemaField=function(p){
+    if(p.kind==='bool') return '"'+p.key+'":"true|false|null — '+(p.en||p.key)+'"';
+    if(p.kind==='choice') return '"'+p.key+'":"'+(p.opts||[]).map(function(o){return o.v;}).join('|')+'|null — '+(p.en||p.key)+'"';
+    return '"'+p.key+'":"<'+(p.en||p.key)+(p.unit?' in '+p.unit:'')+' as a plain number, or null>"';
+  };
   const q=String(query||'').trim(); const isUrl=/^https?:\/\//i.test(q);
   // Ask for EVERY orchestration-relevant property, always in METRIC; "name" is a clean model name, never a URL.
   const schema='{"name":"<clean product/model name — NEVER a URL>",'
@@ -5296,6 +5304,7 @@ async function aiLookupDevice(query, cat){
     +'"volume":"<sausage-stuffer cylinder litres or null>",'
     +'"nozzles":"<array of output-tube diameters in mm, e.g. [10,20,30,40], or null>",'
     +'"areaCm2":"<TOTAL cooking area in square centimetres as a plain number, or null>",'
+    +(catProps.length?(catProps.map(propSchemaField).join(',')+','):'')
     +'"note":"<one short factual line>","details":"<extra specs — dimensions, weight, material, power — one line, or null>"}';
   const task=(isUrl?('Extract the published specs for the cooking device on THIS product page: '+q+'. ')
       :('Look up the real, published specs for this cooking device: "'+q+'"'+(cat?(' (a '+(c.en||cat)+')'):'')+'. Search the manufacturer or a retailer page. '))
@@ -5303,7 +5312,8 @@ async function aiLookupDevice(query, cat){
     +'ALWAYS use METRIC units — total cooking area as a number of SQUARE CENTIMETRES (areaCm2), volumes in litres, tube diameters in millimetres; convert any imperial spec to metric. '
     +'"name" must be the clean product/model name, NEVER a URL. '
     +(types.length?('For "subtype" return the EXACT string from this list, do NOT translate it: '+JSON.stringify(types)+'. '):'')
-    +'Fill every property that applies to this device type: racks/shelves; grill heat zones; probe channels; sous-vide bath litres; sausage-stuffer cylinder litres (volume) and its output-tube diameters in mm (nozzles); total cooking area (areaCm2). Use null for anything not applicable or that you cannot determine.';
+    +'Fill every property that applies to this device type: racks/shelves; grill heat zones; probe channels; sous-vide bath litres; sausage-stuffer cylinder litres (volume) and its output-tube diameters in mm (nozzles); total cooking area (areaCm2). Use null for anything not applicable or that you cannot determine. '
+    +'Only state a property IF the page actually gives it — use null otherwise. Never guess a value: an absent property falls back to a sane default, but a wrong one silently poisons the plan.';
   const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:900, outLang:'en'});
   const cap={}; ['racks','zones','channels','bathL','volume'].forEach(function(k){ const v=parseFloat(raw&&raw[k]); if(!isNaN(v)&&v>0&&v<100000) cap[k]=(k==='racks'||k==='zones'||k==='channels')?Math.round(v):v; });
   const keepCap=c.capKey?[c.capKey]:(cat==='sousvide'?['bathL']:[]); Object.keys(cap).forEach(function(k){ if(keepCap.indexOf(k)<0) delete cap[k]; });   // only this category's own capacity (no stray channels on a smoker, etc.)
@@ -5316,7 +5326,19 @@ async function aiLookupDevice(query, cat){
   let area=''; const acm=parseFloat(raw&&raw.areaCm2); if(!isNaN(acm)&&acm>0&&acm<1e7) area=acmFmt(acm);
   const nm=(raw&&typeof raw.name==='string'&&raw.name.trim()&&!/^https?:\/\//i.test(raw.name.trim()))?raw.name.trim():'';
   const details=(raw&&typeof raw.details==='string'&&raw.details.trim()&&raw.details.toLowerCase()!=='null')?raw.details.trim():'';
-  return { name:nm, subtype:subtype, fuel:(raw&&FUELS.indexOf(raw.fuel)>=0)?raw.fuel:'', cap:cap, nozzles:nozzles, area:area, note:(raw&&typeof raw.note==='string')?raw.note:'', details:details };
+  // Category properties: canonical-first via propCoerce (Task 1) — an in-range value is kept as given, an
+  // out-of-range one converts ONLY when a declared unit `alt` explains it (a US page's 900°F -> 482°C), and
+  // a value implausible in every unit is DISCARDED, never stored. An absent/null property is left unset so
+  // propOf's class default applies — a missing property is harmless, a wrong one silently poisons the plan.
+  const props={};
+  catProps.forEach(function(p){
+    const v=raw?raw[p.key]:undefined;
+    if(v===undefined||v===null||v==='') return;                      // "the page didn't say" -> class default applies
+    if(p.kind==='bool'){ props[p.key]=(v===true||v==='true'); return; }
+    if(p.kind==='choice'){ if((p.opts||[]).some(function(o){return o.v===v;})) props[p.key]=v; return; }
+    const rc=propCoerce(p, v); if(rc) props[p.key]=rc.v;              // null -> no unit interpretation works -> skip
+  });
+  return { name:nm, subtype:subtype, fuel:(raw&&FUELS.indexOf(raw.fuel)>=0)?raw.fuel:'', cap:cap, nozzles:nozzles, area:area, props:props, note:(raw&&typeof raw.note==='string')?raw.note:'', details:details };
 }
 // web-grounded model browse for a brand → array of {name, spec} for the catalogue cards
 async function aiBrandModels(brand, cat){
@@ -5452,6 +5474,7 @@ function openEquipment(){
     // multi-value capacity list (sous-vide bath sizes / stuffer output tube sizes) — several instances, add/remove
     let multiVals = (function(){ const c0=capC(curCat); if(c0.multiCap && dev){ const mk=c0.multiCap.key; if(dev.cap&&Array.isArray(dev.cap[mk])&&dev.cap[mk].length) return dev.cap[mk].slice(); if(mk==='baths'&&dev.cap&&dev.cap.bathL!=null) return [dev.cap.bathL]; } return []; })();
     let aiDetails='';   // extra web-sourced specs (dimensions/weight/material) → saved into notes
+    let _aiProps={};    // Task 5: properties (props[]) extracted by the AI lookup, keyed like dev.cap — preferred for display in propVal, never persisted until Save
     const title=function(nc){ return dev?L('ערוך מכשיר','Edit device'):L('הוסף '+cm(nc).he, 'Add a '+(cm(nc).en||'').toLowerCase()); };
     const note=function(s,cls){ const n=$("#eqAiNote"); if(n){ n.textContent=s||''; n.className='eq-ainote'+(cls?' '+cls:''); } };
 
@@ -5504,7 +5527,7 @@ function openEquipment(){
     };
     const wireVerify=function(){
       const s=$("#eqSave"); if(s) s.addEventListener('click', doSave);
-      const rd=$("#eqRedo"); if(rd) rd.addEventListener('click', function(){ vmode='manual'; const nm=($("#eqName")||{}).value||''; note(''); paintVerify({name:nm}); });
+      const rd=$("#eqRedo"); if(rd) rd.addEventListener('click', function(){ vmode='manual'; _aiProps={}; const nm=($("#eqName")||{}).value||''; note(''); paintVerify({name:nm}); });
       const cx=$("#eqCancel"); if(cx) cx.addEventListener('click', function(){ editId=null; drawList(); });
     };
     // ── multi-value capacity editor: each size is its own removable chip; input + ＋ to add another ──
@@ -5536,7 +5559,7 @@ function openEquipment(){
       // PLACEHOLDER so an empty field reads as "using the default", never as missing data.
       // Value resolution lives in ONE small helper (propVal) so Task 5 (AI-extracted values) can extend it
       // in one place, without touching propField's rendering logic.
-      const propVal=function(p){ return (dev&&dev.cap&&dev.cap[p.key]!=null&&dev.cap[p.key]!=='')?dev.cap[p.key]:''; };
+      const propVal=function(p){ if(_aiProps && _aiProps[p.key]!==undefined) return _aiProps[p.key]; return (dev&&dev.cap&&dev.cap[p.key]!=null&&dev.cap[p.key]!=='')?dev.cap[p.key]:''; };
       const propField=function(p){
         const dv=propVal(p);
         const dflt=propDef(nc, p.key, (d.type||((cm(nc).types||[])[0])));
@@ -5575,13 +5598,14 @@ function openEquipment(){
       const st=$("#eqSheetTile"); if(st) st.style.setProperty('--eqacc-l', cm(nc).accL);
       if(vmode==='ai') vmode='manual';
       multiVals=[];   // multi sizes are category-specific — reset on category change
+      _aiProps={};    // ditto for AI-extracted properties — a smoker's maxC must not leak into a vacuum form
       paintVerify({name:($("#eqName")||{}).value||''});
     });
     const lookup=$("#eqLookup"); if(lookup) lookup.addEventListener('click', function(){
       const q=((($("#eqLookupQ")||{}).value)||(($("#eqName")||{}).value)||'').trim(); const nc=($("#eqCat")||{}).value;
       if(!q){ note(L('הקלד שם/דגם קודם','Type a name/model first')); return; }
       note(L('מחפש באינטרנט…','Searching the web…'));
-      aiLookupDevice(q, nc).then(function(r){ vmode='ai'; const cc=capC(nc);
+      aiLookupDevice(q, nc).then(function(r){ vmode='ai'; const cc=capC(nc); _aiProps=r.props||{};
         if(cc.multiCap){ let add=[];   // sous-vide bath litres OR stuffer output-tube sizes → chips
           if(cc.multiCap.key==='baths' && r.cap && r.cap.bathL!=null) add=[r.cap.bathL];
           else if(cc.multiCap.key==='nozzles' && r.nozzles && r.nozzles.length) add=r.nozzles;

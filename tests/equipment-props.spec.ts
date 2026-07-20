@@ -180,6 +180,37 @@ test('E6b: core props render inline with icons; pro props hide in Advanced; valu
   expect(await page.evaluate(`propOf(equipList()[0],'maxC')`)).toBe(210);
 });
 
+test('E7: AI lookup extracts properties, bounds them via propCoerce, and never invents', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`store.set('mk-gemkey','k')`);
+  // in-range values are kept as given (canonical unit, no conversion needed)
+  await page.evaluate(`window.__aiMock={name:'X',subtype:'פלטים',maxC:260,canHang:false,waterPan:true};`);
+  let r = await page.evaluate(`aiLookupDevice('x','smoker')`) as any;
+  expect(r.props.maxC).toBe(260);
+  expect(r.props.waterPan).toBe(true);
+  expect(r.props.canHang).toBe(false);          // bool `false` must pass through, not be treated as absent
+  // out-of-range but a unit explains it -> CONVERTED, not discarded (a US page reporting °F)
+  await page.evaluate(`window.__aiMock={maxC:900};`);
+  r = await page.evaluate(`aiLookupDevice('x','smoker')`) as any;
+  expect(r.props.maxC).toBe(482.22);
+  // out-of-range and NOTHING explains it -> discarded (a wrong value is worse than an absent one)
+  await page.evaluate(`window.__aiMock={maxC:99999};`);
+  r = await page.evaluate(`aiLookupDevice('x','smoker')`) as any;
+  expect(r.props.maxC).toBe(undefined);
+  // null means "the page didn't say" -> absent, so the class default applies
+  await page.evaluate(`window.__aiMock={maxC:null};`);
+  r = await page.evaluate(`aiLookupDevice('x','smoker')`) as any;
+  expect(r.props.maxC).toBe(undefined);
+  // vacuum seal width bounded too, via the same propCoerce path — implausible in any unit -> discarded
+  await page.evaluate(`window.__aiMock={bagW:9999};`);
+  r = await page.evaluate(`aiLookupDevice('x','vacuum')`) as any;
+  expect(r.props.bagW).toBe(undefined);
+  // ...while a value only plausible in mm converts rather than being rejected (300mm -> 30cm)
+  await page.evaluate(`window.__aiMock={bagW:300};`);
+  r = await page.evaluate(`aiLookupDevice('x','vacuum')`) as any;
+  expect(r.props.bagW).toBe(30);
+});
+
 test('E7b: manual numeric prop input goes through propParse — unit suffix converts, mismatched unit is rejected', async ({ page }) => {
   await boot(page);
   await page.evaluate(`equipSave([{id:'s1',cat:'smoker',type:'פלטים',name:'X',cap:{racks:2}}]); equipSetConfigured(); openEquipment();`);
