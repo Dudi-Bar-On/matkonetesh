@@ -5344,6 +5344,13 @@ function openEquipment(){
     if(c.multiCap){ const mk=c.multiCap; let arr=(d.cap&&Array.isArray(d.cap[mk.key])&&d.cap[mk.key].length)?d.cap[mk.key]:[]; if(!arr.length && mk.key==='baths' && d.cap && d.cap.bathL!=null) arr=[d.cap.bathL];   // legacy single bathL
       if(arr.length) s+=`<span class="eq-chip spec">${mk.em?mk.em+' ':''}${esc(arr.join(' · ')+' '+L(mk.uHe,mk.uEn))}</span>`; }
     if(d.cap && d.cap.area) s+=`<span class="eq-chip spec">📐 ${esc(d.cap.area)}</span>`;   // total cooking / smoking area (metric)
+    // Property chips: only STORED values (not class defaults) — a chip means "you told us this".
+    (c.props||[]).forEach(function(p){
+      const raw=d.cap?d.cap[p.key]:undefined; if(raw===undefined||raw===''||raw===null) return;
+      if(p.kind==='bool'){ if(raw===true||raw==='true') s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(L(p.he,p.en))}</span>`; return; }
+      if(p.kind==='choice'){ const o=(p.opts||[]).find(function(x){return x.v===raw;}); s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(o?L(o.he,o.en):String(raw))}</span>`; return; }
+      s+=`<span class="eq-chip spec"><span class="em">${p.em}</span> ${esc(String(raw)+(p.unit?' '+p.unit:''))}</span>`;
+    });
     if(d.fuel) s+=`<span class="eq-chip"><span class="em">${FUEL_EMOJI[d.fuel]||''}</span> ${esc(fuelLabel(d.fuel))}</span>`;
     return s; };
   // mockup .gl-head — Settings kicker + My Equipment title + optional sub + inline Add; .x auto-wires to closePanel

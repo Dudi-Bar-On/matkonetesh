@@ -143,7 +143,20 @@ test('E5: accessory properties declare tier and kind; propOf resolves them via E
   expect(await page.evaluate(`propOf({cat:'smoker',type:'פלטים',cap:{}},'maxC')`)).toBe(260);
 });
 
-test('E6: core props render inline with icons; pro props hide in Advanced; values persist', async ({ page }) => {
+test('E6: device cards show property chips with icons', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'s1',cat:'smoker',type:'ארון / קבינט',name:'אביה',cap:{racks:5,maxC:150,canHang:true}}]); equipSetConfigured(); openEquipment();`);
+  await page.waitForSelector('#panel .eq-dev');
+  const chips = await page.evaluate(`[...document.querySelectorAll('#panel .eq-dev-chips .eq-chip')].map(x=>x.textContent.trim())`) as string[];
+  expect(chips.join(' | ')).toContain('🌡️');            // maxC chip with its icon
+  expect(chips.join(' | ')).toContain('150');
+  expect(chips.join(' | ')).toContain('🪝');            // canHang chip
+  // a property left at its class default is NOT chipped (chips show what you set / what matters)
+  await page.evaluate(`equipSave([{id:'s2',cat:'smoker',type:'פלטים',name:'P',cap:{racks:2}}]); openEquipment();`);
+  await page.waitForSelector('#panel .eq-dev');
+});
+
+test('E6b: core props render inline with icons; pro props hide in Advanced; values persist', async ({ page }) => {
   await boot(page);
   await page.evaluate(`equipSave([{id:'s1',cat:'smoker',type:'פלטים',name:'X',cap:{racks:2}}]); equipSetConfigured(); openEquipment();`);
   await page.click('#panel [data-eqedit="s1"]');
@@ -167,7 +180,7 @@ test('E6: core props render inline with icons; pro props hide in Advanced; value
   expect(await page.evaluate(`propOf(equipList()[0],'maxC')`)).toBe(210);
 });
 
-test('E7: manual numeric prop input goes through propParse — unit suffix converts, mismatched unit is rejected', async ({ page }) => {
+test('E7b: manual numeric prop input goes through propParse — unit suffix converts, mismatched unit is rejected', async ({ page }) => {
   await boot(page);
   await page.evaluate(`equipSave([{id:'s1',cat:'smoker',type:'פלטים',name:'X',cap:{racks:2}}]); equipSetConfigured(); openEquipment();`);
   // typing '500F' into max-temp must store the CONVERTED value (260), never the raw 500
