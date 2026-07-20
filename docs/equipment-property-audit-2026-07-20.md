@@ -123,10 +123,28 @@ capability, probe wireless/alarm.
 
 ---
 
+## 3a. REVISION after the UX consultation — capture is demand-driven
+
+The CORE/PRO split above is right about *which properties matter*, but wrong about *when to ask*. Per the
+UX read (see `docs/plan-depth-model-2026-07-20.md` §9):
+
+- **Never ask for a property until a plan needs it.** Onboarding stays the icon picker — tap smoker, tap
+  grill, done. The plan then asks inline, one tap, **carrying its own justification**: "כמה מדפים?" appears
+  the first time two items land on one smoker; sous-vide volume when a bath-preheat task first appears.
+- **Every property gets a class default by `type`** (pellet preheat 15 min · offset 45 · kamado 20 ·
+  24 L bath ≈ 40 min), so an empty `cap` is never a blocker — only a precision loss.
+- Completeness reads as **"ציוד: 3 · דיוק 40%"**, never "incomplete".
+- The pro's fast lane is the **already-shipped AI lookup** — paste a model, get the whole `cap` at once.
+
+So "CORE" now means *"the plan will ask for this when it matters"*, not *"asked during onboarding"*. The
+only thing added to the equipment editor immediately is the `cooler` item (§0) and the two multi-value
+lists that have no default possible: grinder `plates[]` and hooks `count`.
+
 ## 4. Sequencing (per the owner's ground-up rule)
 
 1. **Approve this list** (owner).
-2. Add the approved properties to `EQUIP_CATS` / `EQUIP_OTHER_ITEMS` + the equipment editor UI, tiered.
+2. Add the approved properties to `EQUIP_CATS` / `EQUIP_OTHER_ITEMS` + the equipment editor UI, tiered,
+   **captured on demand per §3a** rather than in onboarding.
 3. Extend `equipment_map.py` so recipes state the matching requirement (e.g. `spec.grind_mm` already
    exists and would now join onto grinder `plates`; `min_bag_cm` for vacuum; hang class for hooks).
 4. **Then** revisit the consumption-layer spec: several of its rules currently assume properties that do
