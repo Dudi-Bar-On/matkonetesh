@@ -377,6 +377,67 @@ function deviceOccupancy(devId, tMs, computed, scope){
   out.compat=occupancyCompat(out.items);
   return out;
 }
+// ── shared-device occupancy view ───────────────────────────────────────────────────────────
+// Renders deviceOccupancy() and nothing else — the diagram and the clash advisories must never
+// be able to disagree, so this computes no occupancy of its own.
+function occupancyDevHtml(o){
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const cap=o.cap;
+  const pct=(o.pct==null)?null:Math.max(0,Math.min(100,o.pct));
+  const barCls=o.over?'occ-bar-over':(o.pct!=null&&o.pct>80?'occ-bar-warn':'');
+  const bar=(o.pct==null)
+    ? `<div class="occ-unknown">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`
+    : `<div class="occ-bar ${barCls}"><i style="width:${pct}%"></i><span>${o.pct}%</span></div>`;
+  const items=o.items.length
+    ? o.items.map(function(i){
+        const frac=(cap.usableCm2>0&&i.cm2>0)?Math.max(8,Math.round(i.cm2/cap.usableCm2*100)):18;
+        return `<span class="occ-item${i.hooks?' occ-hang':''}" style="flex:0 0 ${frac}%" title="${esc(i.name)}">${i.hooks?'🪝':'🥩'} ${esc(i.name)}${i.cm2?`<small>${i.cm2} ${he?'סמ״ר':'cm²'}</small>`:''}</span>`;
+      }).join('')
+    : `<span class="occ-empty">${L('פנוי','Free')}</span>`;
+  const facts=[];
+  if(o.compat.setpoint!=null) facts.push(`🌡️ ${o.compat.setpoint}°C`);
+  if(o.compat.commonWood)     facts.push(`🪵 ${esc(t(o.compat.commonWood))}`);
+  else if(o.compat.woods.length>1) facts.push(`🪵 ${L('עצים שונים','different woods')}`);
+  if(cap.racks)  facts.push(`🗄️ ${cap.racks} ${he?'מדפים':'racks'}`);
+  if(cap.hooks)  facts.push(`🪝 ${o.hooksUsed}/${cap.hooks}`);
+  const warn=o.over
+    ? `<div class="occ-warn">⚠ ${L('חריגה מהקיבולת','Over capacity')}</div>`
+    : (!o.compat.tempOk?`<div class="occ-warn">⚠ ${L('פער טמפרטורות','Temperature spread')} ${o.compat.tempSpread}°C</div>`:'');
+  return `<div class="occ-dev">
+      <div class="occ-h"><b>${esc(o.devName)}</b><span class="occ-facts">${facts.join(' · ')}</span></div>
+      ${bar}
+      <div class="occ-slots">${items}</div>
+      ${warn}
+    </div>`;
+}
+function occupancyViewHtml(computed, tMs, scope){
+  const devs=equipList().filter(function(d){return d && ['smoker','grill','sousvide'].indexOf(d.cat)>=0;});
+  if(!devs.length) return `<div class="occ-wrap"><p class="section-sub">${L('לא הוגדרו תנורים.','No cookers configured.')}</p></div>`;
+  return `<div class="occ-wrap">${devs.map(function(d){
+    return occupancyDevHtml(deviceOccupancy(d.id, tMs, computed, scope));
+  }).join('')}</div>`;
+}
+function openOccupancyView(computed, serve, scope){
+  if(typeof showPanel!=='function') return;
+  const span=_occSpan(computed);
+  window._occT=span.now;
+  showPanel(`${toolTop(L('תפוסת התנורים','Cooker occupancy'),L('מה נמצא על כל תנור, ומתי','What is on each cooker, and when'),'🗄️','#7a5c3c')}
+    <div class="panel-body">
+      <div id="occScrub"></div>
+      <div id="occBody">${occupancyViewHtml(computed, window._occT, scope)}</div>
+    </div>`);
+  _occWire(computed, span, scope);
+}
+// the plan's overall time span, and a sensible starting instant (now, clamped into the span)
+function _occSpan(computed){
+  let lo=Infinity, hi=-Infinity;
+  (computed||[]).forEach(function(c){ if(!c||!c.stages) return; c.stages.forEach(function(s){
+    if(!s.start||!s.end) return; lo=Math.min(lo,s.start.getTime()); hi=Math.max(hi,s.end.getTime()); }); });
+  if(!isFinite(lo)){ const n=Date.now(); return {lo:n, hi:n+3600e3, now:n}; }
+  const n=Date.now();
+  return {lo:lo, hi:hi, now:Math.max(lo, Math.min(hi, n))};
+}
+function _occWire(computed, span, scope){ /* filled in by Task 8 */ }
 function equipConfigured(){ return !!store.get('mk-equip-set'); }
 function equipSetConfigured(){ store.set('mk-equip-set', true); }
 // one-time seed from the old flat mk-gear, then mk-gear is never read again
@@ -4991,6 +5052,7 @@ function renderTimelinePanel(){
     const detail=(store.get('mk-tlplandetail')||'short')==='full';
     const tasks=[];
     const _ckScope=(typeof evScope==='function')?evScope():'cook';
+    window._wpCtx={computed:computed, serve:serve, scope:_ckScope};   // wireRows() is a sibling scope — hand it the context explicitly
     const _ckMap=store.get('mk-item-cooker-'+_ckScope)||{};
     const _clashes=cookerContention(computed, _ckScope);
     // Keyed by item AND stage kind: an item can sit on two devices (a bath, then the smoker), and only the
@@ -5111,7 +5173,7 @@ function renderTimelinePanel(){
         : `${L('דורשים טמפרטורות שונות על','need different temperatures on')} <b>${esc(cl.devName)}</b> (${L('פער','spread')} ${cl.compat.tempSpread}°C)`;
       return `${names} ${why}${move}`;
     }).join('<br>')}</div>`:'';
-    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}${cookerStripHtml}${contentionHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
+    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}${cookerStripHtml}${contentionHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip" data-occview>🗄️ ${L('תפוסת תנורים','Cooker occupancy')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
     <details class="tl-shapedet"><summary>${L('תצוגה','View')}: ${shapeName(shp)} <span class="tl-shapehint">▾ ${L('שנה','change')}</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
     ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
@@ -5227,6 +5289,9 @@ function renderTimelinePanel(){
       const p=String(sel.dataset.tlcooker||'').split('|'); setItemCooker(p[0], p[1], sel.value); buildList();
     }));
     list.querySelectorAll('[data-cookermove]').forEach(b=>b.addEventListener('click',()=>{ const p=String(b.dataset.cookermove||'').split('|'); setItemCooker(p[0],p[1],p[2]); buildList(); }));
+    list.querySelectorAll('[data-occview]').forEach(function(b){ b.addEventListener('click',function(){
+      const cx=window._wpCtx||{}; openOccupancyView(cx.computed||[], cx.serve, cx.scope);
+    }); });
     window._tlSeasOpen=window._tlSeasOpen||new Set();
     const renderTlSeas=(key,ck)=>{
       const host=document.getElementById('tlseas-'+ck); if(!host) return;
