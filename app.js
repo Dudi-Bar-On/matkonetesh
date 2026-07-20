@@ -329,7 +329,10 @@ function deviceOccupancy(devId, tMs, computed, scope){
       out.usedCm2+=occ.cm2; out.usedLitres+=occ.litres; out.hooksUsed+=occ.hooks;
     });
   });
-  if(cap.known){
+  // A zero denominator would yield Infinity/NaN and render as "Infinity%" in the occupancy view, so a
+  // capacity that rounds away to nothing is treated as unknown rather than as a division we can trust.
+  const denom=(cap.mode==='volume')?cap.litres:cap.usableCm2;
+  if(cap.known && denom>0){
     if(cap.mode==='volume'){
       out.pct=Math.round(out.usedLitres/cap.litres*100);
       out.over=out.usedLitres>cap.litres;

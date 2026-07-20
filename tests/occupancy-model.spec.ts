@@ -160,7 +160,7 @@ test('O14: over-capacity is reported when the items genuinely do not fit', async
     var f=${FIXTURE};
     return deviceOccupancy('d1', f.t0+8*3600e3, f.computed);
   })()`) as any;
-  expect(r.over).toBe(true);               // 1680 cm² > 1402 usable on a kamado
+  expect(r.over).toBe(true);               // 1680 cm² > 1403 usable on a kamado (1650 * 0.85, rounded)
   expect(r.pct).toBeGreaterThan(100);
 });
 
@@ -172,4 +172,32 @@ test('O15: unknown capacity yields pct null and never reports over', async ({ pa
   })()`) as any;
   expect(r.pct).toBeNull();
   expect(r.over).toBe(false);              // never warn on a figure we do not have
+});
+
+// Task 3 review gate: the volume branch of deviceOccupancy shipped untested, and Task 5's clash
+// detection derives from it. A sous-vide bath budgets litres, never area.
+test('O16: a sous-vide bath budgets volume, not area', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'sousvide', type: 'טבילה (immersion)', name: 'מקל', cap: { baths: [12, 24] } }]);
+  const r = await page.evaluate(`(function(){
+    var t0=Date.parse('2026-07-24T06:00:00');
+    var mk=function(key,startH,endH,temp){ return { m:resolveItem(key), stages:[{kind:'sv', start:new Date(t0+startH*3600e3), end:new Date(t0+endH*3600e3), temp:temp}] }; };
+    setItemCooker('cut-1','sv','d1');
+    return deviceOccupancy('d1', t0+2*3600e3, [ mk('cut-1',0,30,68) ]);
+  })()`) as any;
+  expect(r.mode).toBe('volume');
+  expect(r.usedLitres).toBe(24);        // brisket declares min_bath_l 24
+  expect(r.usedCm2).toBe(0);            // volume mode must never accrue area
+  expect(r.pct).toBe(100);              // 24 of a 24 L bath
+  expect(r.over).toBe(false);           // exactly full is not over
+});
+
+test('O17: a capacity that rounds away to nothing is treated as unknown, not as Infinity', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 0.4 } }]);
+  const r = await page.evaluate(`(function(){
+    var t0=Date.parse('2026-07-24T06:00:00');
+    var mk=function(key,startH,endH,temp){ return { m:resolveItem(key), stages:[{kind:'smoke', start:new Date(t0+startH*3600e3), end:new Date(t0+endH*3600e3), temp:temp}] }; };
+    return deviceOccupancy('d1', t0+1*3600e3, [ mk('cut-1',0,12,110) ]);
+  })()`) as any;
+  expect(r.pct).toBeNull();
+  expect(r.over).toBe(false);
 });
