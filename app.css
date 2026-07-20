@@ -1513,6 +1513,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .eq-multi.eq-aifilled{background:var(--fresh-l);border-color:var(--fresh)}
 .eq-multi-chip{display:inline-flex;align-items:center;gap:8px;background:var(--char3);border:1.5px solid var(--line2);border-radius:14px;padding-block:8px;padding-inline-start:13px;padding-inline-end:8px;font-family:var(--font-body);color:var(--bone);box-shadow:0 2px 6px rgba(210,105,30,.06)}
 .eq-multi-em{font-size:calc(20px * var(--fscale));line-height:1}
+.eq-pem{font-size:calc(15px * var(--fscale));line-height:1;margin-inline-end:2px}
 .eq-multi-v{font-weight:800;font-size:calc(15px * var(--fscale));white-space:nowrap}
 .eq-multi-x{flex:none;width:22px;height:22px;border-radius:50%;border:none;background:var(--line2);color:var(--smoke);font-size:calc(11px * var(--fscale));cursor:pointer;display:grid;place-items:center;line-height:1;padding:0}
 .eq-multi-x:hover{background:var(--ember);color:#fff}

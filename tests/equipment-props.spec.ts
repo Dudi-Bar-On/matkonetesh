@@ -142,3 +142,44 @@ test('E5: accessory properties declare tier and kind; propOf resolves them via E
   // the existing category path must remain byte-identical
   expect(await page.evaluate(`propOf({cat:'smoker',type:'פלטים',cap:{}},'maxC')`)).toBe(260);
 });
+
+test('E6: core props render inline with icons; pro props hide in Advanced; values persist', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'s1',cat:'smoker',type:'פלטים',name:'X',cap:{racks:2}}]); equipSetConfigured(); openEquipment();`);
+  await page.click('#panel [data-eqedit="s1"]');
+  await page.waitForSelector('#panel #eqProp-maxC');
+  // core visible, pro inside a collapsed <details>
+  expect(await page.evaluate(`!!document.querySelector('#panel #eqProp-maxC')`)).toBe(true);
+  expect(await page.evaluate(`!!document.querySelector('#panel #eqProp-canHang')`)).toBe(true);
+  expect(await page.evaluate(`!!document.querySelector('#panel .eq-adv #eqProp-hooks')`)).toBe(true);
+  expect(await page.evaluate(`document.querySelector('#panel .eq-adv').open`)).toBe(false);
+  // the class default shows as the placeholder, so an empty field is not "missing"
+  expect(await page.evaluate(`document.querySelector('#panel #eqProp-maxC').placeholder`)).toContain('260');
+  // every property label carries its icon
+  expect(await page.evaluate(`document.querySelector('#panel [data-propfor="maxC"]').textContent`)).toContain('🌡️');
+  // set and persist
+  await page.fill('#panel #eqProp-maxC', '210');
+  await page.click('#panel #eqSave');
+  await page.waitForFunction(`(equipList()[0].cap||{}).maxC===210`);
+  // bool round-trips
+  await page.click('#panel [data-eqedit="s1"]');
+  await page.waitForSelector('#panel #eqProp-canHang');
+  expect(await page.evaluate(`propOf(equipList()[0],'maxC')`)).toBe(210);
+});
+
+test('E7: manual numeric prop input goes through propParse — unit suffix converts, mismatched unit is rejected', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`equipSave([{id:'s1',cat:'smoker',type:'פלטים',name:'X',cap:{racks:2}}]); equipSetConfigured(); openEquipment();`);
+  // typing '500F' into max-temp must store the CONVERTED value (260), never the raw 500
+  await page.click('#panel [data-eqedit="s1"]');
+  await page.waitForSelector('#panel #eqProp-maxC');
+  await page.fill('#panel #eqProp-maxC', '500F');
+  await page.click('#panel #eqSave');
+  await page.waitForFunction(`(equipList()[0].cap||{}).maxC===260`);
+  // typing '300mm' into the same field is a dimension mismatch — must be REJECTED, not stored as 300
+  await page.click('#panel [data-eqedit="s1"]');
+  await page.waitForSelector('#panel #eqProp-maxC');
+  await page.fill('#panel #eqProp-maxC', '300mm');
+  await page.click('#panel #eqSave');
+  await page.waitForFunction(`!(equipList()[0].cap||{}).hasOwnProperty('maxC')`);
+});

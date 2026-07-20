@@ -5480,6 +5480,17 @@ function openEquipment(){
         if(multiVals.length){ multiVals.sort(function(a,b){return a-b;}); d.cap[cc.multiCap.key]=multiVals.slice(); } else delete d.cap[cc.multiCap.key]; if(cc.multiCap.key==='baths') delete d.cap.bathL; }   // sousvide bath sizes / stuffer output-tube sizes
       const fEl=$("#eqvFuel"); if(fEl) d.fuel=fEl.value||''; else if(['smoker','grill','oven'].indexOf(nc)<0) d.fuel='';
       const aEl=$("#eqvArea"); if(aEl){ const av=(aEl.value||'').trim(); if(av) d.cap.area=av; else delete d.cap.area; }
+      // Equipment properties: empty -> delete the key so the class default applies (never store 0/''). Numeric
+      // fields route through propParse so a typed unit suffix ('500F') converts, and a mismatched unit
+      // ('300mm' into a temperature field) is REJECTED rather than silently stored as a bogus value.
+      (cc.props||[]).forEach(function(p){
+        const el=$("#eqProp-"+p.key); if(!el) return;
+        const raw=(el.value==null?'':String(el.value)).trim();
+        if(raw===''){ delete d.cap[p.key]; return; }                 // empty -> fall back to the class default
+        if(p.kind==='bool'){ d.cap[p.key]=(raw==='true'); return; }
+        if(p.kind==='choice'){ d.cap[p.key]=raw; return; }
+        const r=propParse(p, raw); if(r) d.cap[p.key]=r.v; else delete d.cap[p.key];
+      });
       if(vmode==='ai'){ d.specSource='ai'; if(aiDetails) d.notes=aiDetails; }
       equipSave(list2); equipSetConfigured(); const bb=$("#gearBanner"); if(bb) bb.remove(); if(typeof cRefreshHome==='function') cRefreshHome();
       editId=null; drawList();
@@ -5513,11 +5524,40 @@ function openEquipment(){
       const grid=capField?`<div class="eq-vrow">${typeField}${capField}</div>`:typeField;   // sub-type full-width when there's no single-capacity field
       const extraMulti=cc.multiCap?multiField:'';   // multi-value editor (bath sizes / output sizes) always full-width below
       const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div><div class="eq-vfield"><label>${L('שטח בישול','Cooking area')}${sp}</label><input id="eqvArea" class="eq-vin${fc}" placeholder="${L('לדוגמה 3700 cm²','e.g. 3700 cm²')}" value="${d.area?esc(d.area):''}"></div></div>`:'';
+      // Equipment properties. Core render inline; pro collapse into one <details>. Each label carries its
+      // own icon, tinted by the category accent already on the sheet. The class default is shown as the
+      // PLACEHOLDER so an empty field reads as "using the default", never as missing data.
+      // Value resolution lives in ONE small helper (propVal) so Task 5 (AI-extracted values) can extend it
+      // in one place, without touching propField's rendering logic.
+      const propVal=function(p){ return (dev&&dev.cap&&dev.cap[p.key]!=null&&dev.cap[p.key]!=='')?dev.cap[p.key]:''; };
+      const propField=function(p){
+        const dv=propVal(p);
+        const dflt=propDef(nc, p.key, (d.type||((cm(nc).types||[])[0])));
+        const lbl=`<label data-propfor="${esc(p.key)}"><span class="eq-pem">${p.em}</span> ${esc(L(p.he,p.en))}${p.unit?` <small>(${esc(p.unit)})</small>`:''}</label>`;
+        if(p.kind==='bool'){
+          const on=(dv===''?(dflt===true):(dv===true||dv==='true'));
+          return `<div class="eq-vfield">${lbl}<select id="eqProp-${esc(p.key)}" class="eq-vin"><option value="true" ${on?'selected':''}>${L('כן','Yes')}</option><option value="false" ${!on?'selected':''}>${L('לא','No')}</option></select></div>`;
+        }
+        if(p.kind==='choice'){
+          const cur=(dv===''?dflt:dv);
+          return `<div class="eq-vfield">${lbl}<select id="eqProp-${esc(p.key)}" class="eq-vin">${(p.opts||[]).map(function(o){return `<option value="${esc(o.v)}" ${o.v===cur?'selected':''}>${esc(L(o.he,o.en))}</option>`;}).join('')}</select></div>`;
+        }
+        // type="text" (not "number") — a native number input CANNOT hold a typed unit suffix like "500F" at
+        // all (the browser strips non-numeric characters as you type), which would silently defeat propParse's
+        // unit-suffix handling on save. inputmode="decimal" still hints a numeric mobile keyboard for the
+        // common bare-number case; propParse validates/converts whatever text ultimately lands here.
+        return `<div class="eq-vfield">${lbl}<input id="eqProp-${esc(p.key)}" class="eq-vin" type="text" inputmode="decimal" value="${esc(dv)}" placeholder="${dflt!==undefined?esc(String(dflt)):''}"></div>`;
+      };
+      const _props=(cm(nc).props||[]);
+      const coreProps=_props.filter(function(p){return p.tier==='core';}).map(propField).join('');
+      const proProps=_props.filter(function(p){return p.tier==='pro';}).map(propField).join('');
+      const propRows=(coreProps?`<div class="eq-vrow">${coreProps}</div>`:'')
+        +(proProps?`<details class="eq-adv vc-gem"><summary>⚙️ ${L('מתקדם','Advanced')}</summary><div class="eq-vrow">${proProps}</div></details>`:'');
       const heading=ai?`<div class="eq-verify-h"><span>✨</span> ${L('הנה מה שמצאתי — ','Here’s what I found — ')}<b>${L('אמת ושמור','verify & save')}</b></div>`:`<div class="eq-verify-h">${dev?L('פרטי המכשיר','Device details'):L('פרטים','Details')}</div>`;
       const src=ai?`<p class="eq-v-src">${L('<b>✨ מולא אוטומטית</b> ממקורות רשת. גע בכל שדה כדי לשנות — <b>עדיין לא נשמר.</b>','<b>✨ Auto-filled</b> from web sources. Tap any field to change it — <b>nothing is saved yet.</b>')}</p>`:'';
       const saveLbl=dev?L('שמור','Save'):(ai?L('נראה טוב — שמור','Looks right — save'):L('הוסף','Add'));
       const acts=`<div class="eq-v-acts"><button id="eqSave" class="eq-con-go" type="button">${saveLbl}</button>${ai?`<button id="eqRedo" class="eq-ghost" type="button">↺ ${L('אפס','Redo')}</button>`:`<button id="eqCancel" class="eq-ghost" type="button">${L('בטל','Cancel')}</button>`}</div>`;
-      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+extraMulti+fuelRow+src+acts; wireVerify(); if(cc.multiCap) wireMulti(); }
+      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+extraMulti+fuelRow+propRows+src+acts; wireVerify(); if(cc.multiCap) wireMulti(); }
       const st=$("#eqSheetTile"); if(st) st.textContent=equipTypeIcon(nc, d.type||((cm(nc).types||[])[0]));
     };
 
