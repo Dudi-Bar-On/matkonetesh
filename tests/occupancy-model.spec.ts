@@ -122,3 +122,54 @@ test('O11: a sous-vide device with only cap.bathL (no cap.baths) reports the rea
   expect(c.known).toBe(true);
   expect(c.litres).toBe(18);   // NOT propOf(dev,'maxL') === 20 for 'טבילה (immersion)'
 });
+
+// A minimal computed[] fixture: two cuts smoking on one device across overlapping windows.
+const FIXTURE = `(function(){
+  var t0=Date.parse('2026-07-24T06:00:00');
+  var mk=function(key,kind,startH,endH,temp){
+    return { m:resolveItem(key), stages:[{kind:kind, start:new Date(t0+startH*3600e3), end:new Date(t0+endH*3600e3), temp:temp}] };
+  };
+  return { t0:t0, computed:[ mk('cut-1','smoke',0,12,110), mk('cut-7','smoke',6,11,107) ] };
+})()`;
+
+test('O12: reports both items and summed area at an instant inside both windows', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 6000 } }]);
+  const r = await page.evaluate(`(function(){
+    var f=${FIXTURE};
+    return deviceOccupancy('d1', f.t0+8*3600e3, f.computed);
+  })()`) as any;
+  expect(r.items.map((i: any) => i.key).sort()).toEqual(['cut-1', 'cut-7']);
+  expect(r.usedCm2).toBe(1680);            // 1320 + 360
+  expect(r.pct).toBe(33);                  // 1680 / 5100 usable
+  expect(r.over).toBe(false);              // fits comfortably — this is the false-positive killer
+});
+
+test('O13: an instant outside a window excludes that item', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 6000 } }]);
+  const r = await page.evaluate(`(function(){
+    var f=${FIXTURE};
+    return deviceOccupancy('d1', f.t0+2*3600e3, f.computed);
+  })()`) as any;
+  expect(r.items.map((i: any) => i.key)).toEqual(['cut-1']);
+  expect(r.usedCm2).toBe(1320);
+});
+
+test('O14: over-capacity is reported when the items genuinely do not fit', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'smoker', type: 'קמאדו / קרמי', name: 'קמאדו', cap: { racks: 1, areaCm2: 1650 } }]);
+  const r = await page.evaluate(`(function(){
+    var f=${FIXTURE};
+    return deviceOccupancy('d1', f.t0+8*3600e3, f.computed);
+  })()`) as any;
+  expect(r.over).toBe(true);               // 1680 cm² > 1402 usable on a kamado
+  expect(r.pct).toBeGreaterThan(100);
+});
+
+test('O15: unknown capacity yields pct null and never reports over', async ({ page }) => {
+  await boot(page, [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 0 } }]);
+  const r = await page.evaluate(`(function(){
+    var f=${FIXTURE};
+    return deviceOccupancy('d1', f.t0+8*3600e3, f.computed);
+  })()`) as any;
+  expect(r.pct).toBeNull();
+  expect(r.over).toBe(false);              // never warn on a figure we do not have
+});

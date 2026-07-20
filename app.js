@@ -306,6 +306,40 @@ function itemOccupancy(meta, stageKind){
   if(hang && equipOwnsToken('hooks')) return {mode:'hang', cm2:0, hooks:1, litres:0, hang:hang};
   return {mode:'area', cm2:Number(spec.footprint_cm2)||0, hooks:0, litres:0, hang:null};
 }
+
+// The single source of truth for "what is on this device right now". The occupancy view renders this
+// object and the clash advisories derive from it — so a diagram and a warning can never disagree.
+function deviceOccupancy(devId, tMs, computed, scope){
+  const dev=equipList().find(function(d){return d && d.id===devId;})||null;
+  const cap=deviceCapacity(dev);
+  const out={dev:dev, devName:dev?(dev.name||t(dev.type)||''):'', mode:cap.mode, t:tMs, cap:cap,
+             items:[], usedCm2:0, usedLitres:0, hooksUsed:0, pct:null, over:false};
+  (computed||[]).forEach(function(c){
+    if(!c || c.blocked || !c.stages || !c.m) return;
+    c.stages.forEach(function(s){
+      if(['smoke','cook','sv'].indexOf(s.kind)<0 || !s.start || !s.end) return;
+      const st=s.start.getTime(), en=s.end.getTime();
+      if(tMs<st || tMs>=en) return;
+      const d=cookerFor(c.m.key, s.kind, scope); if(!d || d.id!==devId) return;
+      const occ=itemOccupancy(c.m, s.kind);
+      out.items.push({key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb),
+                      kind:s.kind, cm2:occ.cm2, hooks:occ.hooks, litres:occ.litres,
+                      start:st, end:en, temp:(s.temp!=null?s.temp:null),
+                      wood:(c.m.obj&&c.m.obj.wood)||c.m.wood||''});
+      out.usedCm2+=occ.cm2; out.usedLitres+=occ.litres; out.hooksUsed+=occ.hooks;
+    });
+  });
+  if(cap.known){
+    if(cap.mode==='volume'){
+      out.pct=Math.round(out.usedLitres/cap.litres*100);
+      out.over=out.usedLitres>cap.litres;
+    } else {
+      out.pct=Math.round(out.usedCm2/cap.usableCm2*100);
+      out.over=out.usedCm2>cap.usableCm2;
+    }
+  }
+  return out;
+}
 function equipConfigured(){ return !!store.get('mk-equip-set'); }
 function equipSetConfigured(){ store.set('mk-equip-set', true); }
 // one-time seed from the old flat mk-gear, then mk-gear is never read again
