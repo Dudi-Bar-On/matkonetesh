@@ -267,6 +267,39 @@ function cookerContention(computed, scope){
   }}
   return clashes;
 }
+// ── occupancy primitives ───────────────────────────────────────────────────────────────────
+// A cooker's stated area is never fully usable — smoke has to circulate, and packing pieces
+// shoulder-to-shoulder gives uneven bark. Everything downstream budgets against usableCm2.
+const PACK_EFF=0.85;
+const TEMP_TOL_C=6;      // items within this many °C of each other may share one cooker
+
+function deviceCapacity(dev){
+  const none={mode:'area', areaCm2:0, usableCm2:0, racks:0, hooks:0, litres:0, known:false};
+  if(!dev) return none;
+  if(dev.cat==='sousvide'){
+    const baths=(dev.cap&&Array.isArray(dev.cap.baths))?dev.cap.baths.map(Number).filter(function(n){return n>0;}):[];
+    const litres=baths.length?Math.max.apply(null,baths):(propOf(dev,'maxL')||0);
+    return {mode:'volume', areaCm2:0, usableCm2:0, racks:0, hooks:0, litres:litres, known:litres>0};
+  }
+  const area=Number(propOf(dev,'areaCm2'))||0;
+  const racks=Number(dev.cap&&(dev.cap.racks||dev.cap.zones))||0;
+  const hooks=(propOf(dev,'canHang')===true)?(Number(propOf(dev,'hooks'))||0):0;
+  return {mode:'area', areaCm2:area, usableCm2:Math.round(area*PACK_EFF), racks:racks, hooks:hooks, known:area>0};
+}
+
+// What one item consumes during a given stage kind. Hanging (Task 6) frees grate area entirely,
+// which is why it is a distinct mode rather than a smaller footprint.
+function itemOccupancy(meta, stageKind){
+  const none={mode:'area', cm2:0, hooks:0, litres:0, hang:null};
+  if(!meta) return none;
+  const eq=(meta.obj&&meta.obj.equip)||meta.equip; if(!eq) return none;
+  const by=(eq.by&&eq.by[stageKind])||{};
+  const spec=Object.assign({}, eq.spec||{}, by.spec||{});
+  if(stageKind==='sv') return {mode:'volume', cm2:0, hooks:0, litres:Number(spec.min_bath_l)||0, hang:null};
+  const hang=spec.hang||null;
+  if(hang && equipOwnsToken('hooks')) return {mode:'hang', cm2:0, hooks:1, litres:0, hang:hang};
+  return {mode:'area', cm2:Number(spec.footprint_cm2)||0, hooks:0, litres:0, hang:null};
+}
 function equipConfigured(){ return !!store.get('mk-equip-set'); }
 function equipSetConfigured(){ store.set('mk-equip-set', true); }
 // one-time seed from the old flat mk-gear, then mk-gear is never read again
