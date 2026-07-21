@@ -293,3 +293,14 @@ URL passes, polling for the build rather than assuming; (b) when the owner repor
 the *simplest* external explanation (has the deploy finished?) before theorising about client caches.
 It did surface one genuine defect worth keeping: the app never called `reg.update()`, so an installed PWA
 that is resumed rather than navigated could go indefinitely without checking for a new worker.
+
+**L15 · An arbitrary wait is a latent flake; a full run is where it detonates (2026-07-21).**
+`copilot.spec.ts` failed once in a full run and passed every time in isolation. Root cause was not the
+product but the test: `await page.waitForTimeout(150)` after clicking "log reading". Under parallel load
+the handler had not yet persisted and re-rendered when the 150 ms expired. Converted to condition waits
+(`waitForFunction` on the probe count AND on the re-rendered card) — DoD #11 exists precisely for this.
+Two further lessons: (a) never diagnose a mass failure while several suite runs race each other — my own
+back-to-back runs produced 12 then 127 bogus ERR_CONNECTION_REFUSED failures and sent me hunting a
+non-existent server bug; run once, alone, and read the result; (b) `grep -c waitForTimeout tests/` found
+46 more arbitrary waits in 9 other files — every one is a flake waiting for an unlucky run. They are
+tracked and should be converted file-by-file, not blindly.

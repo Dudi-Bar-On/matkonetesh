@@ -28,7 +28,7 @@ test('W2-P1: live cook session lifecycle + copilot shell (Now/Next stages)', asy
   expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#panel .cop-stagek').textContent`) as string)).toBe(false);
   // end session → cleared
   await page.click('#copStop');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`!liveSession()`);        // condition, not a 150ms guess (DoD #11)
   expect(await page.evaluate(`!!liveSession()`)).toBe(false);
 });
 
@@ -93,7 +93,10 @@ test('W2-P3: probe check-in UI logs a reading and updates the pace card', async 
   await page.waitForSelector('#panel #copProbe');
   await page.fill('#panel #copProbe', '70');
   await page.click('#panel #copProbeLog');
-  await page.waitForTimeout(150);
+  // the reading must be persisted AND the card re-rendered before asserting — under parallel load the old
+  // fixed 150ms wait expired first, which is what made this test flake in a full run (DoD #11).
+  await page.waitForFunction(`(liveSession()||{}).probes && liveSession().probes.length===1`);
+  await page.waitForFunction(`/another/.test((document.querySelector('#panel .cop-probe')||{}).textContent||'')`);
   expect(await page.evaluate(`liveSession().targetC`)).toBe(95);
   expect(await page.evaluate(`liveSession().probes.length`)).toBe(1);
   expect(await page.evaluate(`document.querySelector('#panel .cop-probe').textContent`)).toContain('another');   // "Log another reading to project…"
@@ -114,7 +117,7 @@ test('W2-P4: adaptive recompute — pushing serve flips the verdict and syncs th
   await page.waitForSelector('#panel [data-copserve="60"]');
   const before = await page.evaluate(`liveSession().serveTs`) as number;
   await page.click('#panel [data-copserve="60"]');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`liveSession().serveTs === ${'${before}'} + 3600000`.replace('${before}', String(before)));
   const after = await page.evaluate(`liveSession().serveTs`) as number;
   expect(after - before).toBe(3600000);
 });
