@@ -286,6 +286,10 @@ function cookerContention(computed, scope){
 // shoulder-to-shoulder gives uneven bark. Everything downstream budgets against usableCm2.
 const PACK_EFF=0.85;
 const TEMP_TOL_C=6;      // items within this many °C of each other may share one cooker
+// A default shelf area is a rough class estimate; a real shelf can plausibly run ~30-50% larger, so a
+// modest overflow on an ESTIMATE is "might be tight", not "won't fit". Past this factor no slack explains
+// it → over even on an estimate. When the user entered a real area, there is no slack (any overflow is hard).
+const FIT_HARD_FACTOR = 1.6;
 
 function deviceCapacity(dev){
   const none={mode:'area', areaCm2:0, usableCm2:0, racks:0, hooks:0, litres:0, known:false};
@@ -304,7 +308,8 @@ function deviceCapacity(dev){
   const area=Number(propOf(dev,'areaCm2'))||0;
   const racks=Number(dev.cap&&(dev.cap.racks||dev.cap.zones))||0;
   const hooks=(propOf(dev,'canHang')===true)?(Number(propOf(dev,'hooks'))||0):0;
-  return {mode:'area', areaCm2:area, usableCm2:Math.round(area*PACK_EFF), racks:racks, hooks:hooks, known:area>0};
+  return {mode:'area', areaCm2:area, usableCm2:Math.round(area*PACK_EFF), racks:racks, hooks:hooks,
+          known:area>0, areaMeasured:!!(dev.cap && Number(dev.cap.areaCm2)>0)};
 }
 
 // What one item consumes during a given stage kind. Hanging (Task 6) frees grate area entirely,
@@ -464,6 +469,22 @@ function deviceOccupancy(devId, tMs, computed, scope){
       out.over=out.usedCm2>cap.usableCm2;
       out.pctFloor=out.unknownCm2Count>0;   // known-area sum excludes unmeasured items → the % is a floor
     }
+  }
+  // Fit verdict (Phase 2 honesty ladder) — a MODEL value so the diagram, the sentence and the a11y list agree.
+  // Only area devices; volume devices fold into the H2 over-rule below.
+  out.fit = {verdict:'ok', measured:!!cap.areaMeasured, hardItems:[], softItems:[]};
+  if(cap.mode==='area' && cap.perSlotCm2!=null){
+    const bad=[];                                   // measured items that overflow a single slot, or fit nowhere
+    (out.slots||[]).forEach(function(sl){ sl.items.forEach(function(it){ if(it.cm2!=null && it.cm2>cap.perSlotCm2) bad.push(it); }); });
+    (out.unplaced||[]).forEach(function(it){ if(it.cm2!=null) bad.push(it); });
+    bad.forEach(function(it){
+      const hard = cap.areaMeasured || (it.cm2 > FIT_HARD_FACTOR*cap.perSlotCm2);
+      (hard?out.fit.hardItems:out.fit.softItems).push(it.name);
+    });
+    out.fit.verdict = out.fit.hardItems.length ? 'over' : (out.fit.softItems.length ? 'tight' : 'ok');
+  } else if(cap.mode==='volume'){
+    // an item needing a bigger bath than owned is a hard over (H2)
+    if(out.over){ out.fit.verdict='over'; out.fit.measured=!!cap.known; }
   }
   out.hooksOver=cap.hooks>0 && out.hooksUsed>cap.hooks;
   out.compat=occupancyCompat(out.items);
