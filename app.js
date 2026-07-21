@@ -332,6 +332,9 @@ function occupancyCompat(items){
   return {
     tempSpread: spread,
     tempOk: spread==null || spread<=TEMP_TOL_C,
+    // ADVISORY / DISPLAY ONLY. setpoint is the highest temp among items sharing a cooker — shown so the user
+    // knows what to run the pit at. It must NEVER be written back onto a stage's `temp`: that would raise a
+    // lower-temp cut above its recipe temperature, a food-safety violation. Fenced by tests/setpoint-fence.spec.
     setpoint: temps.length?Math.max.apply(null,temps):null,
     woods: woodSets.length?[].concat.apply([],woodSets).filter(function(w,i,a){return a.indexOf(w)===i;}):[],
     commonWood: (common&&common.length)?common[0]:null,
