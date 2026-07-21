@@ -908,12 +908,60 @@ const SMOKER_TIPS_EN={
   'חשמלי':'Electric: stable and easy but weak smoke — add chips throughout the cook to keep smoke continuous.'
 };
 function smokerTip(){ if(!equipConfigured()) return ''; const d=primaryOf('smoker'); return d?((getLang()==='he'?SMOKER_TIPS:SMOKER_TIPS_EN)[d.type]||''):''; }
-function preheatHint(){ if(!equipConfigured()) return L('45 דק׳ ייצוב','45 min to stabilize'); const d=primaryOf('smoker'); const s=d&&d.type;
-  if(s==='פלטים') return L('~15 דק׳ (פלט מתחמם מהר)','~15 min (pellet heats fast)');
-  if(s==='גז (עם תיבת עשן)') return L('~10–15 דק׳','~10–15 min');
-  if(s==='חשמלי'||s==='ארון / קבינט') return L('~20–30 דק׳','~20–30 min');
-  if(s&&s!=='אין') return L('ארובת פחם ~30–45 דק׳','Charcoal chimney ~30–45 min');
-  return L('45 דק׳ ייצוב','45 min to stabilize'); }
+// ── equipment → plan (Phase 3, the seam that was waived) ──────────────────────────────────────
+// ONE table for how long a cooker takes to stabilize: `mins` drives the SCHEDULED light-up, the label
+// describes it. They cannot drift apart, which was D1 — the plan hard-coded 45 minutes while this advice
+// separately said a pellet needs ~15, so a pellet owner was told two different things at once. `mins` is
+// the upper end of each range: being ready early is safe, being late is not.
+const PREHEAT={
+  'פלטים':            {mins:15, he:'~15 דק׳ (פלט מתחמם מהר)', en:'~15 min (pellet heats fast)'},
+  'גז (עם תיבת עשן)': {mins:15, he:'~10–15 דק׳',              en:'~10–15 min'},
+  'חשמלי':            {mins:30, he:'~20–30 דק׳',              en:'~20–30 min'},
+  'ארון / קבינט':     {mins:30, he:'~20–30 דק׳',              en:'~20–30 min'},
+  _charcoal:          {mins:45, he:'ארובת פחם ~30–45 דק׳',    en:'Charcoal chimney ~30–45 min'},
+  _none:              {mins:45, he:'45 דק׳ ייצוב',            en:'45 min to stabilize'}
+};
+function _preheatRow(){
+  if(typeof equipConfigured!=='function' || !equipConfigured()) return PREHEAT._none;
+  const d=primaryOf('smoker'), s=d&&d.type;
+  if(!s || s==='אין') return PREHEAT._none;
+  return PREHEAT[s] || PREHEAT._charcoal;
+}
+function preheatMinutes(){ return _preheatRow().mins; }
+function preheatHint(){ const r=_preheatRow(); return L(r.he, r.en); }
+// How often a device needs more fuel. A device fact, not a recipe fact (D4): a pellet hopper feeds itself,
+// a stick burner does not. 0 = nothing to schedule — and an unknown device gets 0 rather than an invented
+// cadence. Only applied when the cook actually outlasts one load.
+const REFUEL_MIN={
+  'אופסט / סטיק-ברנר':45,   // stick burner: a fresh split roughly every 45 min
+  'WSM / חבית':90,          // Minion-method drum burns long, but not all day
+  'קטל (ככלי עישון)':60,    // a kettle is small — top up about hourly
+  'קמאדו / קרמי':0,         // ceramic holds a single load for many hours
+  'פלטים':0, 'גז (עם תיבת עשן)':0, 'חשמלי':0, 'ארון / קבינט':0
+};
+const DEVICE_FUEL={
+  'פלטים':{he:'פלטים',en:'pellets'}, 'גז (עם תיבת עשן)':{he:'גז',en:'gas'}, 'חשמלי':{he:'חשמל',en:'electric'},
+  'WSM / חבית':{he:'פחם',en:'charcoal'}, 'קטל (ככלי עישון)':{he:'פחם',en:'charcoal'},
+  'קמאדו / קרמי':{he:'פחם',en:'charcoal'}, 'אופסט / סטיק-ברנר':{he:'עצים',en:'wood'}
+};
+// The seam itself: equipment facts enter stage generation HERE and nowhere else. Pure — it returns enriched
+// copies and never writes onto the caller's stages — and a complete no-op when no kit is configured, so the
+// app behaves exactly as before for a user who has not described their gear.
+// It may ENRICH a stage. It may never change one: no duration, no temperature, no kind, no order.
+function equipPlan(meta, methodKey, stages, scope){
+  const list=stages||[];
+  if(typeof equipConfigured!=='function' || !equipConfigured()) return list;
+  return list.map(function(s){
+    if(!s || ['smoke','cook'].indexOf(s.kind)<0) return s;
+    const dev=(typeof cookerFor==='function')?cookerFor(meta&&meta.key, s.kind, scope):null;
+    if(!dev) return s;
+    const out=Object.assign({}, s);
+    const f=DEVICE_FUEL[dev.type]; if(f) out.fuelNote=L(f.he, f.en);
+    const rf=REFUEL_MIN[dev.type]||0;
+    if(rf>0 && (Number(s.hours)||0)*60 > rf) out.refuelEveryMin=rf;   // only when the cook outlasts one load
+    return out;
+  });
+}
 function gearMissingHelp(c, methods){
   const items=methods.map(m=>{
     if(m==='sv'){
@@ -5522,6 +5570,7 @@ function renderTimelinePanel(){
       let stages=[], startClock=null;
       if(!blocked){
         stages=itemStages(m,st.method,st.ready,st.svSmokeOrder);
+        stages=equipPlan(m, st.method, stages, (typeof evScope==='function'?evScope():null));   // Phase 3: the seam — equipment facts enter here and nowhere else
         { const _kc={}; stages.forEach((s)=>{ const n=(_kc[s.kind]=(_kc[s.kind]||0)+1); s.tid='st-'+evScope()+'-'+m.key+'-'+s.kind+(n>1?n:''); }); }   // R3: stable per-stage id (kind-based, not array index) so a mid-cook method change doesn't remap a running timer
         // times come from the ONE scheduler (planSchedule); this call site only applies them onto the
         // stages the renderer reads. Removing that mutation is Phase 4b's job, not 4a's.
@@ -5558,7 +5607,8 @@ function renderTimelinePanel(){
     }catch(e){}
     let earliestSmoke=null;
     computed.forEach(c=>{ if(c.blocked) return; c.stages.forEach(s=>{ if(s.kind==='smoke'&&(!earliestSmoke||s.start<earliestSmoke)) earliestSmoke=s.start; }); });
-    const preheat=earliestSmoke? new Date(earliestSmoke.getTime()-45*60e3) : null;
+    const _pmins=(typeof preheatMinutes==='function')?preheatMinutes():45;   // D1: one source for the time AND the label
+    const preheat=earliestSmoke? new Date(earliestSmoke.getTime()-_pmins*60e3) : null;
     const sorted=computed.slice().sort((a,b)=>{
       if(a.blocked&&b.blocked) return 0; if(a.blocked) return 1; if(b.blocked) return -1;
       return a.startClock-b.startClock;
@@ -5579,7 +5629,7 @@ function renderTimelinePanel(){
     if(viewMode==='plan'){
       html+=_wpHtml;
     } else {
-      if(preheat) html+=`<div class="tlrow tl-preheat"><span class="tl-t"><b>${fmtClockRel(preheat, serve)}</b></span><span class="tl-n">🔥 ${L('הדלקת מעשנת (חימום מוקדם, 45 דק׳)','Fire up the smoker (preheat, 45 min)')}</span><span class="tl-lead"></span></div>`;
+      if(preheat) html+=`<div class="tlrow tl-preheat"><span class="tl-t"><b>${fmtClockRel(preheat, serve)}</b></span><span class="tl-n">🔥 ${L('הדלקת מעשנת (חימום מוקדם, '+_pmins+' דק׳)','Fire up the smoker (preheat, '+_pmins+' min)')}</span><span class="tl-lead"></span></div>`;
       html+=sorted.map(c=>itemRowHtml(c,serve)).join('');
       html+=`<div class="tlrow tl-serve"><span class="tl-t"><b>${fmtServe(serve)}</b></span><span class="tl-n"><b>🍽️ ${L('הגשה','Serve')}</b></span><span class="tl-lead"></span></div>`;
     }
@@ -5697,6 +5747,21 @@ function renderTimelinePanel(){
       }
     }
     if(preheat) tasks.push({t:preheat,label:L('🔥 הדלקת מעשנת (חימום מוקדם)','🔥 Fire up the smoker (preheat)'),sub:preheatHint(),kind:'fire',det:''});
+    // Phase 3 (D3/D4): a refuel cadence is a DEVICE fact, so it becomes real tasks on the clock — a stick
+    // burner wants a split every 45 min, a pellet hopper wants nothing. equipPlan attached this; without
+    // these rows it would be another computed-and-never-read field.
+    (computed||[]).forEach(function(c){
+      if(!c || c.blocked || !c.stages) return;
+      c.stages.forEach(function(s){
+        const every=s.refuelEveryMin||0; if(!every || !s.start || !s.end) return;
+        const fuel=s.fuelNote||L('דלק','fuel');
+        for(let t=s.start.getTime()+every*60e3; t<s.end.getTime()-5*60e3; t+=every*60e3){
+          tasks.push({t:new Date(t), kind:'fire', det:'',
+            label:L('🪵 הוספת '+fuel,'🪵 Add '+fuel),
+            sub:L('שמירה על חום יציב · '+itemName(c.m),'keep the temperature steady · '+itemName(c.m))});
+        }
+      });
+    });
     tasks.push({t:serve,label:L('🍽️ הגשה','🍽️ Serve'),sub:'',kind:'serve',det:''});
     tasks.sort((a,b)=>a.t-b.t);
     window._wpTasks=tasks;   // for voice cook mode
