@@ -550,8 +550,21 @@ function _occCabinetBody(o){
   }
   return `<div class="occ2-rack">${rows.join('')}</div>`;
 }
+// Horizontal offset smoker: a lying barrel with a firebox to the side; grates run across.
+function _occOffsetBody(o){
+  const cap=o.cap;
+  if(cap.perSlotCm2==null && !(cap.slots>0))
+    return `<div class="occ2-empty">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`;
+  const rows=[];
+  for(let i=0;i<cap.slots;i++){
+    const sl=(o.slots||[])[i]||{items:[],over:false};
+    const tiles = sl.items.length ? sl.items.map(function(it){return _occTile(it, cap);}).join('')
+                                  : `<span class="occ2-empty">${L('רשת פנויה','grate free')}</span>`;
+    rows.push(`<div class="occ2-grate">${tiles}</div>`);
+  }
+  return `<div class="occ2-offset"><div class="occ2-firebox"><span>${L('תא בערה','firebox')}</span></div><div class="occ2-barrel">${rows.join('')}</div></div>`;
+}
 // interim fallbacks — replaced in T6–T8
-function _occOffsetBody(o){ return _occCabinetBody(o); }
 function _occGrillBody(o){ return _occCabinetBody(o); }
 function _occVesselBody(o){ return _occCabinetBody(o); }
 function _occBayHtml(o){ return ''; }   // real bay in T9
