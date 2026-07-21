@@ -98,7 +98,7 @@ A task is **not done** until every box is checked with evidence pasted in. This 
 - [ ] **9 · Hebrew check.** Any user-facing string: rendered in Hebrew, no English leak, correct singular/plural on interpolated counts, correct domain term. Screenshot.
 - [ ] **10 · Safety invariance.** No `bcheck` stage, `temp`, `safe` value, or cook duration altered. Where the task touches the plan, the assertion that proves this is named.
 - [ ] **11 · No arbitrary waits.** Tests wait on conditions, not `setTimeout` guesses (`condition-based-waiting`).
-- [ ] **12 · Full suite green ×2.** Both runs' output pasted. Any test failing intermittently is treated as a **bug**, debugged via `systematic-debugging` — never retried away.
+- [ ] **12 · Full suite green (once).** Run `npx playwright test` (config pins 8 workers, retries 0 — ~106s). Output pasted. **Run once; if 100% green, the gate is met** (owner decision 2026-07-21, superseding ×2 — the clustered server made the suite fast and deterministic, so a second run adds cost without information). Any failure — including an intermittent one — is treated as a **bug**, debugged via `systematic-debugging`, **never** re-run to make it pass. Never pass `--retries` or `--workers=1`: retries mask flakes, `--workers=1` is the old 13-min serial path.
 
 ### Per-phase DoD gate
 
@@ -223,6 +223,18 @@ Non-negotiable. Memory is not a substitute for re-reading.
 
 ---
 
+## 11a. Testing infrastructure (established 2026-07-21)
+
+**How to run the suite:** `npx playwright test` — nothing else. The config is authoritative.
+
+- **Server:** `serve.js` is a **clustered, in-memory** static server — one worker per core (capped 12) sharing the port, every `dist/` file served from a Buffer (zero per-request disk I/O), large listen backlog. This replaced a single-process server that re-read the 2.4 MB `index.html` from disk on every request and stalled under concurrent load. Playwright starts and tears down this server itself (`webServer.command`); **do not** run `serve.js` by hand for a test run.
+- **Concurrency:** `workers: 8`, pinned in `playwright.config.ts`. Measured reliable ceiling — 308/308 across repeated runs at ~106 s. 16 (the CPU/2 default) is faster (~70 s) but hits occasional client-side `page.goto` timeouts under 16 Chromium instances; reliability was chosen over the last few seconds.
+- **Retries:** `retries: 0`. A flake must surface as a failure and be fixed, never retried away.
+- **Interactive debugging** (MCP browser / chrome-devtools) needs its own manual `serve.js` on 8123 — **stop it before running the suite**, or Playwright's own managed server collides with it (`reuseExistingServer: false`). Every "port 8123 already in use" error traces to a leftover manual server.
+- **Never** run with `--workers=1` or `--retries=N` — those were the old anti-pattern (13 min + masked flakiness).
+
+---
+
 ## 11. Lessons log
 
 Append after every failure. Format: what happened → root cause → the gate that prevents recurrence.
@@ -236,3 +248,7 @@ Append after every failure. Format: what happened → root cause → the gate th
 | L5 | W5 flakiness: three fixes, all guesses | No root-cause phase, no instrumentation, no 3-fix stop | §5, DoD 11 |
 | L6 | `תנור` used as the generic device word, colliding with the oven category | New code ignored a correct pattern already in the codebase | DoD 9 |
 | L7 | Work called shipped while spec DoD lines were NOT MET | No per-phase DoD audit against the spec | §3 per-phase gate |
+| L8 | A DoD-5 "add a consumer" fix can itself be dead if the consumer's render path never runs on the data (scale_res reader added, but makes/specials rendered no equipment section) | Confirmed a reader exists but not that it executes on the shipped rows | DoD 5 must name the render path AND confirm it fires on the real data |
+| L9 | Pinning a browser clock exposed a test mixing page-side and Node-side dates (fixed page date vs real wall time) | `page.clock` only affects the page; a Node-side `new Date()` in an assertion still reads real time | When using `page.clock`, sweep the spec for Node-side clock reads in assertions |
+| L10 | `--workers=1 --retries=2` ran the suite serially (13 min) AND masked flakiness | Command-line overrides fought the config's `fullyParallel`/`retries:0` intent | Run `npx playwright test` plain; never override workers/retries |
+| L11 | A single-process server re-reading a 2.4 MB file per request made high concurrency non-deterministic (ERR_ABORTED) | Server was the bottleneck, not the tests | Clustered + in-memory server; pin workers to the measured reliable ceiling |
