@@ -28,7 +28,7 @@ test('W3-P1: gear concierge — natural-language setup (local parser)', async ({
   await page.click('#panel #gcGo');
   await page.waitForSelector('#panel .gc-preview');
   await page.click('#panel #gcApply');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`/פלט/.test(((typeof primaryOf==='function'&&primaryOf('smoker'))||{}).type||'')`);
   expect(await page.evaluate(`primaryOf('smoker').type`)).toContain('פלט');
   expect(await page.evaluate(`primaryOf('probe').type`)).toContain('אלחוטי');
 });

@@ -43,7 +43,7 @@ test('a fired timer beeps, vibrates and marks itself fired (background watcher)'
   await init(page, true);
   await page.evaluate(`store.set('mk-timers', {'st-ev-A-cut-1-smoke':{end:Date.now()-500, name:'עישון חזה'}})`);
   await page.evaluate(`if(typeof startTimerWatch==='function') startTimerWatch();`);
-  await page.waitForTimeout(1300);
+  await page.waitForFunction(`!!(store.get('mk-timers')['st-ev-A-cut-1-smoke']||{}).fired`, null, {timeout:15000});
   expect(await page.evaluate(`store.get('mk-timers')['st-ev-A-cut-1-smoke'].fired`)).toBeTruthy();
   expect(await page.evaluate(`(window.__vib||[]).length`)).toBeGreaterThan(0);   // vibration pattern was issued on fire
 });

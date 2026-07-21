@@ -7,14 +7,14 @@ import { test, expect } from '@playwright/test';
 const init = async (page: any) => {
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
   await page.goto('/index.html');
-  await page.waitForTimeout(200);
+  await page.waitForFunction(`typeof openCut==='function' && typeof setLang==='function'`);
 };
 
 test('a cut detail panel renders steps in English with no AI key', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('en')`);
   await page.evaluate(`openCut(DATA.cuts.find(x=>x.n===1)||DATA.cuts[0])`);
-  await page.waitForTimeout(400);
+  await page.waitForFunction(`!!document.getElementById('methodArea') && (document.getElementById('methodArea').textContent||'').trim().length>0`);
   const txt = await page.evaluate(`document.getElementById('methodArea').textContent`);
   // step titles + bodies are English, no Hebrew letters in the generated plan
   expect(txt).toMatch(/sous-vide|smoke|sear|prep|rest/i);
@@ -25,9 +25,9 @@ test('switching the open panel to Hebrew regenerates the steps in Hebrew', async
   await init(page);
   await page.evaluate(`setLang('en')`);
   await page.evaluate(`openCut(DATA.cuts.find(x=>x.n===1)||DATA.cuts[0])`);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(`!!document.getElementById('methodArea') && (document.getElementById('methodArea').textContent||'').trim().length>0`);
   await page.evaluate(`setLang('he')`);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(`/[֐-׿]/.test(document.getElementById('methodArea').textContent||'')`);
   const txt = await page.evaluate(`document.getElementById('methodArea').textContent`);
   expect(txt).toMatch(/[֐-׿]/);   // Hebrew is back
 });
@@ -37,10 +37,10 @@ test('numbers in a generated step survive translation to English', async ({ page
   // Hebrew plan numbers
   await page.evaluate(`setLang('he')`);
   await page.evaluate(`openCut(DATA.cuts.find(x=>x.n===1)||DATA.cuts[0])`);
-  await page.waitForTimeout(300);
-  const he = await page.evaluate(`document.getElementById('methodArea').textContent`);
+  await page.waitForFunction(`!!document.getElementById('methodArea') && (document.getElementById('methodArea').textContent||'').trim().length>0`);
+  const he = await page.evaluate(`document.getElementById('methodArea').textContent`) as string;
   await page.evaluate(`setLang('en')`);
-  await page.waitForTimeout(300);
+  await page.waitForFunction((prev: string) => ((document.getElementById('methodArea')||{}) as any).textContent !== prev, he);
   const en = await page.evaluate(`document.getElementById('methodArea').textContent`);
   const nums = (s: string) => (s.match(/\d+/g) || []).map(Number).sort((a, b) => a - b);
   // every temperature/time figure present in Hebrew is still present in English

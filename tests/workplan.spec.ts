@@ -31,6 +31,4 @@ test('work plan shows a "days before serving" badge for a 30h sous-vide (brisket
   // Screenshot the plan for the record.
   await panel.screenshot({ path: 'scratch/workplan-days-before.png' });
 
-  // Headed: hold a moment so it's watchable.
-  await page.waitForTimeout(3500);
 });

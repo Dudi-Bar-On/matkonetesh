@@ -64,7 +64,7 @@ test('global alarm: an expired timer is detected + fired even without its screen
   await page.goto('/index.html');
   await page.evaluate(`store.set('mk-timers', {'st-ev-A-cut-1-2':{end:Date.now()-500, name:'עישון חזה'}})`);   // already expired, unfired
   await page.evaluate(`if(typeof startTimerWatch==='function') startTimerWatch();`);
-  await page.waitForTimeout(1300);
+  await page.waitForFunction(`!!(store.get('mk-timers')['st-ev-A-cut-1-2']||{}).fired`, null, {timeout:15000});
   const rec = await page.evaluate(`store.get('mk-timers')['st-ev-A-cut-1-2']`) as any;
   expect(rec.fired).toBeTruthy();   // the global watcher fired the alarm
 });

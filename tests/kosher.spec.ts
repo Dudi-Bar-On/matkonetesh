@@ -40,7 +40,7 @@ test('kosher filter excludes shellfish everywhere (catalog + wizard)', async ({ 
   const before = await page.evaluate(`Array.from(document.querySelectorAll('#cwPickList [data-cwpick]')).filter(el=>['shellfish','pork','treif'].includes(kosherStatus(el.dataset.cwpick))).length`);
   expect(before).toBeGreaterThan(0);
   await page.evaluate(`document.getElementById('cwKosher').click()`);
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`Array.from(document.querySelectorAll('#cwPickList [data-cwpick]')).filter(function(el){return ['shellfish','pork','treif'].includes(kosherStatus(el.dataset.cwpick));}).length===0`);
   const after = await page.evaluate(`Array.from(document.querySelectorAll('#cwPickList [data-cwpick]')).filter(el=>['shellfish','pork','treif'].includes(kosherStatus(el.dataset.cwpick))).length`);
   expect(after).toBe(0);
 });

@@ -46,7 +46,8 @@ test('multi-event hero: tapping a combined-timeline row opens that event, focuse
   // REAL click on a row that belongs to ev-b (cut-4)
   await page.evaluate(`(function(){ const rows=Array.from(document.querySelectorAll('#cEvBody .cet-hero .cet-row[data-cetgo="ev-b"]')); const r=rows.find(x=>x.getAttribute('data-cetitem')==='cut-4'); r.setAttribute('data-pick','1'); })()`);
   await page.locator('[data-pick="1"]').click();
-  await page.waitForSelector('#panel.open #tlBody'); await page.waitForTimeout(400);
+  await page.waitForSelector('#panel.open #tlBody');
+  await page.waitForFunction(`store.get('mk-active')==='ev-b' && _tlFocusKey==='cut-4'`);
   expect(await page.evaluate(`store.get('mk-active')`)).toBe('ev-b');           // that event became active
   expect(await page.evaluate(`(menuState().keys||[]).join(',')`)).toBe('cut-3,cut-4');   // its menu loaded
   expect(await page.evaluate(`_tlFocusKey`)).toBe('cut-4');                     // focused on the tapped item

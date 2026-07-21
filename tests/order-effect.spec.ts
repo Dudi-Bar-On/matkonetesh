@@ -49,5 +49,4 @@ test('order-effect UI: brisket offers reverse order with the pasteurization safe
   await orderSel.selectOption('smoke-sv');
   await expect(panel.locator('.tl-safety-warn')).toContainText('טמפ׳-סכנה');
   await panel.screenshot({ path: 'scratch/order-effect.png' });
-  await page.waitForTimeout(3000);
 });

@@ -44,7 +44,7 @@ test('wizard picker: kosher toggle removes every pork item from the pick list', 
 
   // toggle the kosher filter via its real bound handler (the control lives on the setup step)
   await page.evaluate(`document.getElementById('cwKosher').click()`);
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`Array.from(document.querySelectorAll('#cwPickList [data-cwpick]')).filter(function(el){return ['shellfish','pork','treif'].includes(kosherStatus(el.dataset.cwpick));}).length===0`);
   expect(await porkCount()).toBe(0);
 });
 

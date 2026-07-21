@@ -21,7 +21,8 @@ test('data-MT: hydrateMT is a no-op in Hebrew mode', async ({ page }) => {
   await init(page);   // Hebrew by default
   await page.evaluate(`window.__mtMock=function(){ return 'SHOULD NOT APPEAR'; };`);
   await page.evaluate(`showPanel('<div class="panel-body"><p class="itemdesc" data-mt>חזה בקר</p></div>')`);
-  await page.waitForTimeout(200);
+  await page.waitForFunction(`!!document.querySelector('.itemdesc')`);
+  await page.evaluate(`new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); })`);
   expect(await page.evaluate(`document.querySelector('.itemdesc').textContent`)).toBe('חזה בקר');   // untouched
 });
 
@@ -30,6 +31,7 @@ test('data-MT: a number-mangling translation is rejected — prose stays in Hebr
   await page.evaluate(`setLang('en')`);
   await page.evaluate(`window.__mtMock=function(){ return 'Brisket with no numbers at all.'; };`);   // drops the 95
   await page.evaluate(`showPanel('<div class="panel-body"><p class="itemdesc" data-mt>חזה בקר ל-95 מעלות</p></div>')`);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(`!!(document.querySelector('.itemdesc')||{})._mtDone`);
+  await page.evaluate(`new Promise(function(r){ requestAnimationFrame(function(){ requestAnimationFrame(r); }); })`);
   expect(await page.evaluate(`document.querySelector('.itemdesc').textContent`)).toBe('חזה בקר ל-95 מעלות');   // guard kept the safe source
 });

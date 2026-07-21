@@ -43,7 +43,7 @@ test('a11y #3: timers are labeled, announce completion via role=alert, and beep 
   // a 1-second timer reaches completion: ringing state + a live alert announcement
   await page.evaluate(`(function(){ document.body.insertAdjacentHTML('beforeend','<div id="tmtest">'+timerHTML(1)+'</div>'); wireTimer(document.querySelector('#tmtest .timer')); })()`);
   await page.click('#tmtest [data-play]');
-  await page.waitForTimeout(1500);
+  await page.waitForFunction(`document.querySelector('#tmtest .timer').classList.contains('ringing')`, null, {timeout:15000});
   expect(await page.evaluate(`document.querySelector('#tmtest .timer').classList.contains('ringing')`)).toBe(true);
   expect(await page.evaluate(`document.querySelector('#tmtest .tt-alert').textContent`)).toContain('הסתיים');
 });

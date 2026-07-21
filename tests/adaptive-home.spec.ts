@@ -43,7 +43,7 @@ test('adaptive home Phase 1: merged hosting card + gear-aware kick, i18n round-t
   await page.setViewportSize({ width: 390, height: 820 });
   await page.goto('/index.html');
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
-  await page.waitForTimeout(300);
+  await page.waitForFunction(`document.querySelectorAll('#scr-home .cpaths .cpath').length===2`);
   // two path cards now (merged hosting + project), the "or just cook" branch lives inside the hosting card, and the old chrome is gone
   expect(await page.evaluate(`document.querySelectorAll('#scr-home .cpaths .cpath').length`)).toBe(2);
   expect(await page.evaluate(`!!document.querySelector('.cpath.event #cPathCook')`)).toBe(true);
@@ -51,22 +51,22 @@ test('adaptive home Phase 1: merged hosting card + gear-aware kick, i18n round-t
   // gear-aware kick (default persona has no sous-vide)
   expect(await page.evaluate(`document.querySelector('#cHomeKick').textContent`)).toBe('Smoke · Grill · Fire');
   // the two flows don't collide: card tap = new event; branch tap = cook (no double-fire)
-  await page.evaluate(`document.querySelector('.cpath.event .pico').click()`); await page.waitForTimeout(120);
+  await page.evaluate(`document.querySelector('.cpath.event .pico').click()`); await page.waitForFunction(`menuCtx()==='event'`);
   expect(await page.evaluate(`menuCtx()`)).toBe('event');
-  await page.evaluate(`cNavGo('home')`); await page.waitForTimeout(100);
-  await page.evaluate(`document.querySelector('#cPathCook').click()`); await page.waitForTimeout(120);
+  await page.evaluate(`cNavGo('home')`); await page.waitForFunction(`!!document.querySelector('#cPathCook')`);
+  await page.evaluate(`document.querySelector('#cPathCook').click()`); await page.waitForFunction(`menuCtx()==='cook'`);
   expect(await page.evaluate(`menuCtx()`)).toBe('cook');
   // adding a sous-vide brings the word back
-  await page.evaluate(`(function(){ ${equipStmts(DEFAULT_SV)} cNavGo('home'); })()`); await page.waitForTimeout(100);
+  await page.evaluate(`(function(){ ${equipStmts(DEFAULT_SV)} cNavGo('home'); })()`); await page.waitForFunction(`(document.querySelector('#cHomeKick')||{}).textContent==='Sous-vide · Smoke · Grill · Fire'`);
   expect(await page.evaluate(`document.querySelector('#cHomeKick').textContent`)).toBe('Sous-vide · Smoke · Grill · Fire');
   // EN → HE → EN round-trips both the merged card title AND the kick (regression guard for the cloneNode _mkO bug)
-  await page.evaluate(`(function(){ ${equipStmts(DEFAULT)} store.set('mk-lang','he'); applyLang(); cNavGo('home'); })()`); await page.waitForTimeout(150);
+  await page.evaluate(`(function(){ ${equipStmts(DEFAULT)} store.set('mk-lang','he'); applyLang(); cNavGo('home'); })()`); await page.waitForFunction(`/מארח/.test((document.querySelector('.cpath.event h3')||{}).textContent||'')`);
   expect(await page.evaluate(`document.querySelector('.cpath.event h3').textContent`)).toContain('מארח');
   expect(/סו-ויד/.test(await page.evaluate(`document.querySelector('#cHomeKick').textContent`))).toBe(false);
   // RTL: the "most-popular" badge sits on the leading (right) edge via inset-inline-start (resolves to `right` in RTL, `left` in LTR)
   const ptagHe = await page.evaluate(`(function(){ const cs=getComputedStyle(document.querySelector('.cpath.event .ptag')); return {left:cs.left, right:cs.right}; })()`);
   expect(ptagHe.right).toBe('16px');   // RTL: inset-inline-start resolves to the right (leading) edge
-  await page.evaluate(`(function(){ store.set('mk-lang','en'); applyLang(); cNavGo('home'); })()`); await page.waitForTimeout(150);
+  await page.evaluate(`(function(){ store.set('mk-lang','en'); applyLang(); cNavGo('home'); })()`); await page.waitForFunction(`(document.querySelector('.cpath.event h3')||{}).textContent==='Hosting? Plan the cookout'`);
   expect(await page.evaluate(`document.querySelector('.cpath.event h3').textContent`)).toBe('Hosting? Plan the cookout');
   const ptagEn = await page.evaluate(`(function(){ const cs=getComputedStyle(document.querySelector('.cpath.event .ptag')); return {left:cs.left, right:cs.right}; })()`);
   expect(ptagEn.left).toBe('16px');   // LTR: inset-inline-start resolves to the left (leading) edge
@@ -150,7 +150,7 @@ test('adaptive home Phase 3: editing gear from Home re-gates the lanes on panel 
   await page.waitForSelector('#panel.open [data-eqrm="eq-sousvide"]');
   await page.click('#panel [data-eqrm="eq-sousvide"]');   // remove the sous-vide device
   await page.evaluate(`closePanel()`);
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`document.querySelector('#scr-home').classList.contains('on') && !document.querySelector('.lane-sv')`);
   // home re-gated on close WITHOUT any navigation: the 💧 lane is gone
   expect(await page.evaluate(`document.querySelector('#scr-home').classList.contains('on')`)).toBe(true);
   expect(await page.evaluate(`!document.querySelector('.lane-sv')`)).toBe(true);
@@ -198,7 +198,7 @@ test('adaptive home Phase 4: gear chip + multi-event bar + pro pit-tools dock (w
   await page.evaluate(`closePanel()`);
   // NEGATIVE gating: not pro → no dock; <2 events → no bar; gear unconfigured → no chip
   await page.evaluate(`(function(){ store.set('mk-uilevel','mid'); store.set('mk-events',[{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1']}}]); store.set('mk-equip-set',false); cNavGo('home'); })()`);
-  await page.waitForTimeout(120);
+  await page.waitForFunction(`(document.querySelector('#cHomeDock')||{}).hidden===true`);
   expect(await page.evaluate(`document.querySelector('#cHomeDock').hidden`)).toBe(true);
   expect(await page.evaluate(`document.querySelector('#cHomeMultiEv').hidden`)).toBe(true);
   expect(await page.evaluate(`document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
@@ -226,12 +226,12 @@ test('adaptive home Phase 4: gear banner <-> chip stay symmetric across (un)conf
   await page.setViewportSize({ width: 390, height: 820 });
   await page.goto('/index.html');
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
-  await page.evaluate(`cNavGo('home')`); await page.waitForTimeout(80);
+  await page.evaluate(`cNavGo('home')`); await page.waitForFunction(`!!document.querySelector('#cHomeGearChip') && !document.querySelector('#cHomeGearChip').hidden`);
   // configured → chip shown, no set-up banner
   expect(await page.evaluate(`!document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
   expect(await page.evaluate(`document.querySelector('#cGearBanner').children.length`)).toBe(0);
   // gear becomes unconfigured (as a full data reset does) → the set-up banner comes BACK, chip hides
-  await page.evaluate(`(function(){ store.set('mk-equip-set',false); cRefreshHome(); })()`); await page.waitForTimeout(80);
+  await page.evaluate(`(function(){ store.set('mk-equip-set',false); cRefreshHome(); })()`); await page.waitForFunction(`(document.querySelector('#cHomeGearChip')||{}).hidden===true && !!document.querySelector('#cGearBanner #gearBanner')`);
   expect(await page.evaluate(`document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
   expect(await page.evaluate(`!!document.querySelector('#cGearBanner #gearBanner')`)).toBe(true);
   expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#cGearBanner').textContent`) as string)).toBe(false);   // English, no leak
@@ -239,7 +239,7 @@ test('adaptive home Phase 4: gear banner <-> chip stay symmetric across (un)conf
   await page.waitForSelector('#panel.open #eqAddNew');
   await page.evaluate(`closePanel()`);
   // re-configure → chip returns, banner clears again
-  await page.evaluate(`(function(){ store.set('mk-equip-set',true); cRefreshHome(); })()`); await page.waitForTimeout(80);
+  await page.evaluate(`(function(){ store.set('mk-equip-set',true); cRefreshHome(); })()`); await page.waitForFunction(`!!document.querySelector('#cHomeGearChip') && !document.querySelector('#cHomeGearChip').hidden`);
   expect(await page.evaluate(`!document.querySelector('#cHomeGearChip').hidden`)).toBe(true);
   expect(await page.evaluate(`document.querySelector('#cGearBanner').children.length`)).toBe(0);
 });
@@ -252,17 +252,17 @@ test('adaptive home Phase 5: uiLevel adjusts density (beginner promotes how-to +
   const abt = (prop:string) => page.evaluate(`getComputedStyle(document.querySelector('.chome-about'))['${prop}']`);
   const projP = () => page.evaluate(`getComputedStyle(document.querySelector('#cPathProj p')).display`);
   // mid + full gear: standard how-to card, project card full
-  await page.evaluate(`(function(){ ${FULLGEAR} store.set('mk-uilevel','mid'); cNavGo('home'); })()`); await page.waitForTimeout(80);
+  await page.evaluate(`(function(){ ${FULLGEAR} store.set('mk-uilevel','mid'); cNavGo('home'); })()`); await page.waitForFunction(`document.body.classList.contains('lvl-mid')`);
   expect(await abt('flexDirection')).toBe('column');
   expect(await page.evaluate(`getComputedStyle(document.querySelector('.chome-about .cha-sub')).display`)).not.toBe('none');
   expect(await projP()).not.toBe('none');
   // beginner: how-to promoted to an accent card + advanced-project detail hidden
-  await page.evaluate(`(function(){ store.set('mk-uilevel','beginner'); cRefreshHome(); })()`); await page.waitForTimeout(80);
+  await page.evaluate(`(function(){ store.set('mk-uilevel','beginner'); cRefreshHome(); })()`); await page.waitForFunction(`document.body.classList.contains('lvl-beg')`);
   expect(await page.evaluate(`document.body.classList.contains('lvl-beg')`)).toBe(true);
   expect(await abt('borderTopColor')).toBe('rgb(231, 111, 81)');   // --ember accent
   expect(await projP()).toBe('none');
   // pro: how-to collapses to a quiet inline link (sub hidden, row layout)
-  await page.evaluate(`(function(){ store.set('mk-uilevel','pro'); cRefreshHome(); })()`); await page.waitForTimeout(80);
+  await page.evaluate(`(function(){ store.set('mk-uilevel','pro'); cRefreshHome(); })()`); await page.waitForFunction(`document.body.classList.contains('lvl-pro')`);
   expect(await page.evaluate(`document.body.classList.contains('lvl-pro')`)).toBe(true);
   expect(await abt('flexDirection')).toBe('row');
   expect(await page.evaluate(`getComputedStyle(document.querySelector('.chome-about .cha-sub')).display`)).toBe('none');
@@ -298,7 +298,7 @@ test('adaptive home Phase 6: More sheet has a most-used row, learns, and trims a
   // most-used LEARNS: using a tool makes it lead the row next open
   await page.evaluate(`(function(){ store.set('mk-uilevel','mid'); openMoreSheet(); })()`);
   await page.click('#panel [data-mfn="openWoods"]');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`(store.get('mk-recent-tools')||[])[0]==='openWoods'`);
   expect(await page.evaluate(`(store.get('mk-recent-tools')||[])[0]`)).toBe('openWoods');
   await page.evaluate(`closePanel(); openMoreSheet();`);
   await page.waitForSelector('#panel .cmore-quick .cmore-qchip');
@@ -333,7 +333,7 @@ test('adaptive home Phase 8: AI hub gathers every AI tool, key-gated not level-g
   expect(await page.evaluate(`!!document.querySelector('#panel [data-mfn="openAiHub"]')`)).toBe(true);
   await page.evaluate(`closePanel()`);
   // home "more AI tools" link (all levels) opens the hub
-  await page.evaluate(`cNavGo('home')`); await page.waitForTimeout(80);
+  await page.evaluate(`cNavGo('home')`); await page.waitForFunction(`/More AI tools/.test((document.querySelector('#cHomeAiMore')||{}).textContent||'')`);
   expect(await page.evaluate(`document.querySelector('#cHomeAiMore').textContent`)).toContain('More AI tools');
   await page.click('#cHomeAiMore');
   await page.waitForSelector('#panel .ai-tools');
@@ -356,7 +356,7 @@ test('adaptive home Phase 7: customize home — toggle hide, drag-reorder, persi
   expect(/[֐-׿]/.test(await page.evaluate(`document.querySelector('#hcList').textContent`) as string)).toBe(false);
   // toggle OFF the pit-tools dock → home hides it + persists
   await page.click('#hcList .hc-row[data-hcid="cHomeDock"] .hc-toggle');
-  await page.waitForTimeout(120);
+  await page.waitForFunction(`(((store.get('mk-homecustom')||{}).off)||[]).indexOf('cHomeDock')>=0`);
   expect(await page.evaluate(`(store.get('mk-homecustom')||{}).off`)).toContain('cHomeDock');
   expect(await page.evaluate(`document.querySelector('#cHomeDock').classList.contains('home-mod-off')`)).toBe(true);
   // DRAG the first row (Quick-pick lanes) to the bottom via real pointer events
@@ -366,7 +366,7 @@ test('adaptive home Phase 7: customize home — toggle hide, drag-reorder, persi
   await page.mouse.down();
   await page.mouse.move(h!.x + h!.width/2, lastRow!.y + lastRow!.height + 12, { steps: 12 });
   await page.mouse.up();
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`JSON.stringify(((store.get('mk-homecustom')||{}).order)||[])===JSON.stringify(['cHomeAskWrap','cHomePaths','cHomeDock','cHomeLanes'])`);
   // new order persisted + applied to the home container (lanes now last)
   expect(await page.evaluate(`(store.get('mk-homecustom')||{}).order`)).toEqual(['cHomeAskWrap','cHomePaths','cHomeDock','cHomeLanes']);
   expect(await homeOrder()).toBe('cHomeAskWrap,cHomePaths,cHomeDock,cHomeLanes');
@@ -377,7 +377,7 @@ test('adaptive home Phase 7: customize home — toggle hide, drag-reorder, persi
   // reset → smart default restored, custom cleared
   await page.evaluate(`openHomeCustom()`);
   await page.click('#hcReset');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`store.get('mk-homecustom')===null`);
   expect(await page.evaluate(`store.get('mk-homecustom')`)).toBe(null);
   await page.evaluate(`closePanel(); cNavGo('home');`);
   expect(await homeOrder()).toBe('cHomeLanes,cHomeAskWrap,cHomePaths,cHomeDock');
@@ -406,13 +406,13 @@ test('adaptive home: pit-tools dock is customizable — choose tools + order (ow
   // toggle a tool IN (Seasonings) and one OFF (Journal) → the dock reflects it + persists
   await page.click('#dkList .hc-row[data-hcid="openSeasonings"] .hc-toggle');
   await page.click('#dkList .hc-row[data-hcid="openJournal"] .hc-toggle');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`(store.get('mk-dock-tools')||[]).indexOf('openSeasonings')>=0 && (store.get('mk-dock-tools')||[]).indexOf('openJournal')<0`);
   const fns = await dockFns();
   expect(fns).toContain('openSeasonings');
   expect(fns).not.toContain('openJournal');
   expect(await page.evaluate(`(store.get('mk-dock-tools')||[]).indexOf('openSeasonings')>=0`)).toBe(true);
   // reset → back to the default 4
   await page.click('#dkReset');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`JSON.stringify(store.get('mk-dock-tools')||null)===JSON.stringify(null) || (store.get('mk-dock-tools')||[]).join(',')==='openCalc,openWoods,openCombinedTimeline,openJournal'`);
   expect(await dockFns()).toBe('openCalc,openWoods,openCombinedTimeline,openJournal');
 });

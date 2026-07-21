@@ -196,7 +196,7 @@ test('B2: edit + AI lookup prefills; no-key hides AI buttons', async ({ page }) 
   await page.waitForFunction(`(document.querySelector('#panel #eqName')||{}).value==='Old Name'`);
   await page.fill('#panel #eqName','New Name');
   await page.click('#panel #eqSave');
-  await page.waitForTimeout(120);
+  await page.waitForFunction(`equipList().length===1 && equipList()[0].name==='New Name'`);   // DoD #11: condition, not a guess
   expect(await page.evaluate(`equipList().length`)).toBe(1);   // updated, not duplicated
   expect(await page.evaluate(`equipList()[0].name`)).toBe('New Name');
   // with key: add a new device via the AI lookup
