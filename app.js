@@ -606,13 +606,19 @@ function _occBayHtml(o){
 // Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items.
 function _occFitHtml(o){
   const f=o.fit||{verdict:'ok'};
+  const overMsgs=[];
   if(f.verdict==='over'){
     const who = (f.hardItems&&f.hardItems.length) ? esc(f.hardItems.join(', '))+' — ' : '';
     const slotHe=(o.cap.slotKind==='zone')?'אזור':'מדף', slotEn=(o.cap.slotKind==='zone')?'zone':'shelf';
     const msg = (o.mode==='volume') ? L('חריגה מהקיבולת','Over capacity')
                                     : L('לא נכנס ל'+slotHe+' בודד','does not fit a single '+slotEn);
-    return `<div class="occ2-fit-over">⚠ ${who}${msg}</div>`;
+    overMsgs.push(who+msg);
   }
+  // Hanging is a SEPARATE channel from shelf/bath area (o.fit covers area only): more hung items than hooks
+  // is also an honest "over", so surface it here — the fit line must never read a false "✓ everything fits"
+  // while items have nowhere to hang. (This restored the old view's hooks warning, dropped in the T5 rewrite.)
+  if(o.hooksOver) overMsgs.push(`${L('יותר תלויים מהווים','more hung items than hooks')} <span dir="ltr">(${o.hooksUsed}/${o.cap.hooks})</span>`);
+  if(overMsgs.length) return `<div class="occ2-fit-over">⚠ ${overMsgs.join(' · ')}</div>`;
   if(f.verdict==='tight'){
     const who = (f.softItems&&f.softItems.length) ? esc(f.softItems.join(', '))+' — ' : '';
     return `<div class="occ2-fit-tight">◐ ${who}${L('ייתכן צפוף — השטח מוערך. הזן שטח בישול אמיתי לבדיקה מדויקת','might be tight — area is estimated. Enter a real cooking area for a precise check')}</div>`;
