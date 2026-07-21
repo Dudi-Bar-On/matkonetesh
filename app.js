@@ -627,8 +627,14 @@ function _occVesselBody(o){
   const bags=(o.items||[]).map(function(it){ return `<div class="occ2-bag">${esc(it.name)}</div>`; }).join('')
     || `<span class="occ2-free">${L('ריק','empty')}</span>`;
   const need=o.usedLitres||0, has=(o.cap&&o.cap.litres)||0, u=he?'ל׳':'L';
+  const bath=(typeof chooseBath==='function')?chooseBath(o.dev, need):{ok:false,pick:null,sizes:[]};
   const isl=function(n){ return `<span dir="ltr">${n} ${u}</span>`; };   // number+unit LTR island (L13) — never wrap the whole Hebrew sentence in ltr
-  const cap = `${(o.items||[]).length} ${L('שקיות','bags')} · ${L('הגדולה דורשת','largest needs')} ${isl(need)} · ${L('האמבט','bath')} ${isl(has)}`;
+  // name the actual container from the sizes you registered, instead of implying your biggest one
+  const vessel = (bath.sizes && bath.sizes.length)
+    ? (bath.ok ? ` · ${L('השתמש בכלי','use the')} ${isl(bath.pick)}`
+               : ` · ${L('אין כלי גדול מספיק','no vessel large enough')}`)
+    : '';
+  const cap = `${(o.items||[]).length} ${L('שקיות','bags')} · ${L('הגדולה דורשת','largest needs')} ${isl(need)} · ${L('האמבט','bath')} ${isl(has)}${vessel}`;
   return `<div class="occ2-vessel"><div class="occ2-wl"></div><div class="occ2-circ"></div><div class="occ2-bags">${bags}</div></div><div class="occ2-svcap">${cap}</div>`;
 }
 // Hanging bay overlay — a separate channel above the shelves. Lit hooks = in use, dimmed = free. Longer
@@ -2983,6 +2989,46 @@ function planSchedule(stages, serveMs){
     end=start;
   }
   return {stages:out, startMs:end};
+}
+// ── registered equipment -> actual instructions (owner request) ───────────────────────────────
+// A property you filled in that nothing reads is a promise the app does not keep. These turn the kit you
+// registered into a specific instruction: WHICH vessel, WHICH plate, WHICH nozzle. Each returns pick:null
+// with ok:false when your kit cannot do the job — it never silently substitutes something that does not fit.
+function _sizesOf(dev, key){
+  const raw=(dev&&dev.cap&&Array.isArray(dev.cap[key]))?dev.cap[key]:[];
+  return raw.map(Number).filter(function(n){return !isNaN(n)&&n>0;}).sort(function(a,b){return a-b;});
+}
+// The SMALLEST registered vessel that holds the job. deviceCapacity takes max(baths), which assumes you
+// always haul out the biggest tub; in practice you pick the smallest one that works — less water to heat,
+// less time to come up — and different stages may use different vessels.
+function chooseBath(dev, needL){
+  const sizes=_sizesOf(dev,'baths');
+  if(!sizes.length) return {pick:null, sizes:sizes, ok:false, reason:'none-registered'};
+  const need=Number(needL)||0;
+  const fit=sizes.find(function(v){ return v>=need; });
+  return {pick:fit!=null?fit:null, sizes:sizes, ok:fit!=null, biggest:sizes[sizes.length-1],
+          reason:fit!=null?null:'too-small'};
+}
+// The plate to grind through: the exact size the recipe asks for when you own it, otherwise the closest you
+// do own — reported as inexact so the step can say so rather than pretend.
+function choosePlate(dev, wantMm){
+  const owned=_sizesOf(dev,'plates');
+  if(!owned.length) return {pick:null, owned:owned, ok:false, exact:false, reason:'none-registered'};
+  const want=Number(wantMm);
+  if(isNaN(want)||want<=0) return {pick:null, owned:owned, ok:false, exact:false, reason:'no-target'};
+  let best=owned[0], bestD=Math.abs(owned[0]-want);
+  owned.forEach(function(v){ const d=Math.abs(v-want); if(d<bestD){ best=v; bestD=d; } });
+  return {pick:best, owned:owned, ok:true, exact:best===want, want:want};
+}
+// The stuffing nozzle: the LARGEST that still passes into the casing. Too fat simply will not go on.
+function chooseNozzle(dev, casingMm){
+  const owned=_sizesOf(dev,'nozzles');
+  if(!owned.length) return {pick:null, owned:owned, ok:false, reason:'none-registered'};
+  const c=Number(casingMm);
+  if(isNaN(c)||c<=0) return {pick:null, owned:owned, ok:false, reason:'no-target'};
+  const fits=owned.filter(function(v){ return v<=c; });
+  const pick=fits.length?fits[fits.length-1]:null;
+  return {pick:pick, owned:owned, ok:pick!=null, reason:pick!=null?null:'all-too-large', casing:c};
 }
 // ── the safety invariant (runtime, not just a test) ───────────────────────────────────────────
 // The rule the whole plan layer lives under: nothing may shorten a cook, alter a temperature, touch a
