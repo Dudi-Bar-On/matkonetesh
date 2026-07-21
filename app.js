@@ -2906,6 +2906,150 @@ function planSchedule(stages, serveMs){
   }
   return {stages:out, startMs:end};
 }
+// ── the placement pass (Phase 4b) ─────────────────────────────────────────────────────────────
+// The relaxation ends EVERY item at serve, so a shared cooker is over-subscribed by construction. This
+// pass moves stages EARLIER — never later, which would miss serve — until no instant exceeds the device's
+// honest capacity. It is the first code in the app where one item's time depends on another's.
+//
+// Safety boundary (docs/.../scheduler-phase4-spec.md §6): a placement carries ONLY a new start/end pair of
+// the SAME length. There is no representation here for a different duration, a different temperature, or a
+// different stage order — the forbidden moves are structurally unreachable, not filtered after the fact.
+// How far earlier a cook may be pulled before the app stops rescheduling and starts advising. An item moved
+// earlier finishes early and must WAIT; until the hold/refrigerate spine exists (Phase 3) the model cannot
+// state where it waits, so a long silent wait would be a fabrication. Two hours is roughly how long a large
+// cut rests/holds wrapped without a plan for it; past that the honest output is an advisory.
+const SCHED_PULL_MAX_MS = 2*3600e3;
+function _peakDemand(placed, t){
+  let sum=0;
+  for(let i=0;i<placed.length;i++){ const p=placed[i]; if(t>=p.startMs && t<p.endMs) sum+=(p.demandCm2||0); }
+  return sum;
+}
+// Would [from,to) fit alongside what is already on this device? Demands are constant across an interval, so
+// it suffices to test the window's own start plus every placed interval's start that falls inside it.
+function _windowFits(placed, from, to, demand, capacity){
+  const pts=[from];
+  for(let i=0;i<placed.length;i++){ const st=placed[i].startMs; if(st>from && st<to) pts.push(st); }
+  for(let i=0;i<pts.length;i++){ if(_peakDemand(placed, pts[i])+demand > capacity) return false; }
+  return true;
+}
+function schedulePlacements(computed, scope){
+  const placements={}, conflicts=[], byDev={};
+  (computed||[]).forEach(function(c){
+    if(!c || c.blocked || !c.stages || !c.m) return;
+    c.stages.forEach(function(s,si){
+      if(['smoke','cook','sv'].indexOf(s.kind)<0 || !s.start || !s.end) return;
+      const d=c.devId?{id:c.devId}:cookerFor(c.m.key, s.kind, scope);
+      const tid=s.tid||(c.m.key+'|'+s.kind+'|'+si);
+      const endMs=s.end.getTime();
+      const rec={tid:tid, key:c.m.key, kind:s.kind, devId:d?d.id:null,
+                 startMs:s.start.getTime(), endMs:endMs,
+                 latestFinishMs:endMs, slackMs:0, temp:(s.temp!=null?s.temp:null),
+                 demandCm2:0, hooks:0, litres:0, mode:'none'};
+      if(!d){ placements[tid]=rec; return; }                       // no device resolved → nothing to contend for
+      const dev=equipList().find(function(x){return x&&x.id===d.id;})||null;
+      const occ=itemOccupancy(c.m, s.kind, dev);
+      rec.mode=occ.mode; rec.hooks=occ.hooks||0; rec.litres=occ.litres||0;
+      rec.demandCm2=(occ.mode==='area')?occ.cm2:0;                 // may be null = unmeasured (H1)
+      (byDev[d.id]=byDev[d.id]||[]).push(rec);
+    });
+  });
+  Object.keys(byDev).forEach(function(devId){
+    const dev=equipList().find(function(x){return x&&x.id===devId;})||null;
+    const cap=deviceCapacity(dev);
+    const slotCount=Math.max(1, cap.racks||1);
+    const perSlot=(cap.mode==='area' && cap.known && cap.usableCm2>0) ? Math.round(cap.usableCm2/slotCount) : null;
+    // least slack -> largest demand -> stable key. Slack is 0 for everything on the first pass, so in
+    // practice the biggest, hardest-to-place item claims its latest window first.
+    const list=byDev[devId].slice().sort(function(a,b){
+      return (a.slackMs-b.slackMs) || ((b.demandCm2||0)-(a.demandCm2||0)) || (a.tid<b.tid?-1:a.tid>b.tid?1:0);
+    });
+    const placed=[];
+    list.forEach(function(r){
+      const L=r.endMs-r.startMs;
+      // An unmeasured item cannot be reasoned about: it must not block others, and must not be used to
+      // claim a fit either. Leave it where the relaxation put it; the occupancy view already says "unknown".
+      if(r.mode!=='area' || r.demandCm2==null || perSlot==null){
+        if(r.mode==='hang' && cap.hooks>0){
+          // hooks are a count, not an area — the same sweep with capacity = hooks
+          const okHang=_windowFits(placed.filter(function(p){return p.mode==='hang';}), r.startMs, r.endMs, 1, cap.hooks);
+          if(!okHang) conflicts.push({devId:devId, key:r.key, tid:r.tid, reason:'hooks'});
+        }
+        if(r.mode==='volume'){
+          // a bath is shared, not summed (H2) — but two items may only share it at the SAME temperature
+          const clash=placed.some(function(p){ return p.mode==='volume' && p.temp!==r.temp && r.startMs<p.endMs && p.startMs<r.endMs; });
+          if(clash) conflicts.push({devId:devId, key:r.key, tid:r.tid, reason:'bath-temp'});
+          if(cap.litres>0 && r.litres>cap.litres) conflicts.push({devId:devId, key:r.key, tid:r.tid, reason:'bath-too-small'});
+        }
+        placements[r.tid]=r; placed.push(r); return;
+      }
+      // fits no single shelf at ANY time — staggering cannot rescue it, so say so rather than overlap it
+      if(r.demandCm2>perSlot){
+        conflicts.push({devId:devId, key:r.key, tid:r.tid, reason:'no-single-slot', cm2:r.demandCm2, perSlotCm2:perSlot});
+        placements[r.tid]=r; placed.push(r); return;
+      }
+      // latest-first: try the relaxed window, then each earlier boundary where something already placed begins
+      const cands=[r.latestFinishMs];
+      placed.forEach(function(p){ if(p.startMs<r.latestFinishMs) cands.push(p.startMs); });
+      cands.sort(function(a,b){return b-a;});
+      let chosen=null;
+      for(let i=0;i<cands.length;i++){
+        const end=cands[i], start=end-L;
+        if(_windowFits(placed, start, end, r.demandCm2, cap.usableCm2)){ chosen=end; break; }
+      }
+      if(chosen==null){
+        conflicts.push({devId:devId, key:r.key, tid:r.tid, reason:'no-window'});
+        placements[r.tid]=r; placed.push(r); return;
+      }
+      // Phase 4c — the pull is BOUNDED. Moving a cook earlier is safe for time and temperature, but the
+      // item then finishes early and has to wait, and this app cannot yet say WHERE it waits (the hold /
+      // refrigerate spine is Phase 3). An unbounded pull is arithmetically valid and practically absurd —
+      // it will happily tell you to finish the ribs 12 hours before dinner. Past the bound we refuse to
+      // reschedule silently and raise an advisory instead: the honest answer is "these cannot share this
+      // cooker", not a plan that serves cold food.
+      const pull=r.latestFinishMs-chosen;
+      if(pull>SCHED_PULL_MAX_MS){
+        conflicts.push({devId:devId, key:r.key, tid:r.tid, reason:'pull-too-far', neededMs:pull, maxMs:SCHED_PULL_MAX_MS});
+        placements[r.tid]=r; placed.push(r); return;                          // left where the relaxation put it, and flagged
+      }
+      r.endMs=chosen; r.startMs=chosen-L; r.slackMs=pull;                     // duration L is carried through untouched
+      placements[r.tid]=r; placed.push(r);
+    });
+  });
+  return {placements:placements, conflicts:conflicts};
+}
+// Phase 4c — the advisory. When the placer cannot make a load fit, the app says so in the user's own terms
+// and names what to change. It never invents a fix it cannot justify: shortening a cook, raising a
+// temperature or dropping a check are not representable moves, so the honest last rung of the ladder is
+// advice. Each reason maps to the one remedy that is actually safe.
+function _schedAdviceHtml(conflicts, computed){
+  const list=(conflicts||[]); if(!list.length) return '';
+  const nameOf=function(key){
+    const c=(computed||[]).find(function(x){return x&&x.m&&x.m.key===key;});
+    return c?(typeof itemName==='function'?itemName(c.m):c.m.heb):key;
+  };
+  const devOf=function(devId){ const d=equipList().find(function(x){return x&&x.id===devId;}); return d?(typeof deviceDisplayName==='function'?deviceDisplayName(d):(d.name||'')):''; };
+  const seen={}, lines=[];
+  list.forEach(function(cf){
+    const sig=cf.reason+'|'+cf.key; if(seen[sig]) return; seen[sig]=1;
+    const who=esc(nameOf(cf.key)), dev=esc(devOf(cf.devId));
+    if(cf.reason==='pull-too-far'){
+      const h=Math.round((cf.neededMs/3600e3)*10)/10;
+      lines.push(`<b>${who}</b> ${L('לא נכנס יחד עם השאר ל'+dev+' — כדי לפנות מקום היה צריך להקדים אותו ב-'+h+' שע׳, וזה יסתיים הרבה לפני ההגשה. עדיף לבשל בסבבים, או לפנות מקום במכשיר.','does not fit alongside the rest on '+dev+' — freeing room would mean starting it '+h+'h earlier, finishing long before serving. Better to cook in batches, or free up capacity.')}`);
+    } else if(cf.reason==='no-single-slot'){
+      lines.push(`<b>${who}</b> ${L('גדול מכל מדף בודד ב'+dev+' ('+cf.cm2+' מול '+cf.perSlotCm2+' סמ״ר) — חתוך לשניים או השתמש במכשיר גדול יותר.','is larger than any single shelf on '+dev+' ('+cf.cm2+' vs '+cf.perSlotCm2+' cm²) — split it or use a bigger cooker.')}`);
+    } else if(cf.reason==='no-window'){
+      lines.push(`<b>${who}</b> ${L('לא נמצא חלון פנוי ב'+dev+' — בשל בסבבים או הוסף מכשיר.','has no free window on '+dev+' — cook in batches or add a cooker.')}`);
+    } else if(cf.reason==='bath-temp'){
+      lines.push(`<b>${who}</b> ${L('דורש טמפרטורת אמבט שונה משאר הפריטים באותו זמן — סו-ויד לא מתפשר על טמפרטורה. הפרד לסבבים.','needs a different bath temperature from the other items at that time — sous-vide does not compromise on temperature. Split into batches.')}`);
+    } else if(cf.reason==='bath-too-small'){
+      lines.push(`<b>${who}</b> ${L('דורש אמבט גדול מזה שברשותך.','needs a bigger bath than you own.')}`);
+    } else if(cf.reason==='hooks'){
+      lines.push(`<b>${who}</b> ${L('אין מספיק ווים פנויים ב'+dev+' באותו זמן.','has no free hook on '+dev+' at that time.')}`);
+    }
+  });
+  if(!lines.length) return '';
+  return `<div class="sched-advice"><b>⚠ ${L('התזמון לא נפתר לבד','The schedule could not resolve itself')}</b><ul>${lines.map(function(x){return '<li>'+x+'</li>';}).join('')}</ul></div>`;
+}
 function itemStages(meta,methodKey,ready,order){
   const p=itemProfile(meta); if(!p) return [];
   const m=p.methods.find(x=>x.key===methodKey)||p.methods[0];
@@ -5374,6 +5518,30 @@ function renderTimelinePanel(){
       return {m,profile,st,stages,startClock,blocked};
     });
     tlSetState(allState);
+    // Phase 4b: the walk above is the resource-unconstrained relaxation — it ends EVERY item at serve, so a
+    // shared cooker is over-subscribed by construction. Place against real capacity, moving items EARLIER
+    // only. A cook cannot move without its own prep (which feeds it), so the whole chain shifts together:
+    // durations, temperatures and order are all carried through untouched. The item then genuinely becomes
+    // ready before serve — recorded as readyEarlyMs so the plan can SAY so rather than surprise the cook.
+    try{
+      const _plc=schedulePlacements(computed, null);
+      window._plcConflicts=_plc.conflicts;
+      computed.forEach(function(c){
+        if(c.blocked || !c.stages || !c.stages.length || !c.startClock) return;
+        const slacks=[];
+        c.stages.forEach(function(s,si){
+          const p=_plc.placements[s.tid||(c.m.key+'|'+s.kind+'|'+si)];
+          if(p && p.devId) slacks.push(p.slackMs||0);
+        });
+        if(!slacks.length) return;
+        const uniq=slacks.filter(function(v,i,a){return a.indexOf(v)===i;});
+        if(uniq.length!==1 || !uniq[0]) return;    // nothing to shift, or stages want different shifts → leave it to the advisory (4c)
+        const d=uniq[0];
+        c.stages.forEach(function(s){ s.start=new Date(s.start.getTime()-d); s.end=new Date(s.end.getTime()-d); });
+        c.startClock=new Date(c.startClock.getTime()-d);
+        c.readyEarlyMs=d;
+      });
+    }catch(e){}
     let earliestSmoke=null;
     computed.forEach(c=>{ if(c.blocked) return; c.stages.forEach(s=>{ if(s.kind==='smoke'&&(!earliestSmoke||s.start<earliestSmoke)) earliestSmoke=s.start; }); });
     const preheat=earliestSmoke? new Date(earliestSmoke.getTime()-45*60e3) : null;
@@ -5391,6 +5559,9 @@ function renderTimelinePanel(){
     const viewMode=store.get('mk-tlview')||'items';
     let html=`<div class="tl-viewtoggle"><button class="mchip ${viewMode==='items'?'on':''}" data-tlview="items">📦 ${L('לפי פריט','By item')}</button><button class="mchip ${viewMode==='plan'?'on':''}" data-tlview="plan">📋 ${L('תוכנית עבודה','Work plan')}</button><button class="mchip tl-allbtn" data-tlallopen>${_tlAllOpen?'⤡ '+L('כווץ הכל','Collapse all'):'⤢ '+L('הרחב הכל','Expand all')}</button></div>`;
     const _wpHtml=workPlanHtml(computed, preheat, serve);   // F5: always build the plan (populates window._wpTasks for voice cook even when the items view is showing)
+    // Phase 4c: a load the placer could not resolve is STATED, never silently left over-subscribed. The
+    // occupancy view already shows the overload; this says what to do about it in the plan itself.
+    html+=_schedAdviceHtml(window._plcConflicts, computed);
     if(viewMode==='plan'){
       html+=_wpHtml;
     } else {
@@ -5609,6 +5780,17 @@ function renderTimelinePanel(){
     }
     const methodOpts=profile.methods.length>1?`<select data-tlmethod="${m.key}">${profile.methods.map(mm=>`<option value="${mm.key}" ${mm.key===st.method?'selected':''}>${t(mm.label)}</option>`).join('')}</select>`:'';
     const woodNote=profile.wood?`<span class="tl-wood">🪵 ${t(profile.wood)}</span>`:'';
+    // Phase 4b: this item was pulled earlier so it would fit the cooker alongside the others, which means it
+    // is genuinely DONE before serving. Say so — a silent shift would leave the cook holding meat they were
+    // never told about. (It is never pushed later; that would miss serve.)
+    const readyEarlyNote=(function(){
+      const ms=c.readyEarlyMs||0; if(!(ms>0)) return '';
+      const h=Math.floor(ms/3600e3), mn=Math.round((ms%3600e3)/60e3);
+      // L13: do NOT wrap this in dir="ltr" — it mixes Hebrew words with numbers, and forcing LTR reorders
+      // the segments ("מוכן שע׳ 45 דק׳ 12"). Left in the document's own direction it reads correctly.
+      const span=h?(h+' '+L('שע׳','h')+(mn?' '+mn+' '+L('דק׳','m'):'')):(mn+' '+L('דק׳','m'));
+      return `<span class="tl-early" title="${L('הוקדם כדי להיכנס למכשיר יחד עם השאר','Pulled earlier so it fits the cooker alongside the rest')}">⏳ ${L('מוכן','ready')} ${span} ${L('לפני ההגשה','before serving')}</span>`;
+    })();
     const ck=cssKey(m.key);
     // v144: sv/smoke order — only relevant when this item's chosen method actually combines both
     const showOrder=comboHasSvSmoke(m, st.method);
@@ -5630,6 +5812,7 @@ function renderTimelinePanel(){
       <div class="tlc-head">
         <span class="tl-startt"><b>${fmtClockRel(startClock, serve)}</b></span>
         <b class="tl-name">${itemName(m)}</b>
+        ${readyEarlyNote}
         ${woodNote}
         <button class="tl-expand" data-tlexp="${m.key}" data-ck="${ck}" aria-label="${L('הרחב פירוט שלבים','Expand step details')}">▾</button>
       </div>

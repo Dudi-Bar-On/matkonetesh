@@ -1317,6 +1317,11 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .tl-startt{min-width:58px;font-size:calc(14px * var(--fscale))}
 .tl-name{flex:1;font-size:calc(14.5px * var(--fscale))}
 .tl-wood{font-size:calc(11.5px * var(--fscale));color:var(--smoke)}
+.sched-advice{margin:0 0 12px;padding:10px 12px;border:1px solid var(--over);border-radius:12px;background:var(--over-l);font-size:calc(12.5px * var(--fscale));color:var(--bone)}
+.sched-advice b{color:var(--over)}
+.sched-advice ul{margin:6px 0 0;padding-inline-start:18px}
+.sched-advice li{margin:3px 0;line-height:1.45}
+.tl-early{font-size:calc(11px * var(--fscale));font-weight:700;color:var(--ember);background:var(--tint-warm2);border:1px solid var(--line2);border-radius:999px;padding:1px 7px;white-space:nowrap}
 /* v144: sv/smoke order selector + safety callout */
 .tl-order{display:flex;align-items:center;gap:7px;font-family:var(--font-body);font-size:calc(12.5px * var(--fscale));color:var(--smoke)}
 .tl-order select{background:var(--char2);border:1.5px solid var(--line2);border-radius:9px;padding:6px 9px;font-family:var(--font-body);font-size:calc(12.5px * var(--fscale));color:var(--bone)}
