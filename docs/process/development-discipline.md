@@ -221,6 +221,15 @@ After each task or step completes, show the owner a summary. Not at the end of a
 ### 10.7 Read this file at the start of every task
 Non-negotiable. Memory is not a substitute for re-reading.
 
+### 10.8 Only interrupt for decisions that are genuinely important
+> **Ask the owner only when the decision is important. If it is not, do not ask — proceed by the order / the recommended option, and note the choice in the step summary.**
+
+A decision is **important** (→ ask) when it: is hard to reverse or destructive; involves safety or a legal/health number; **waives or reinterprets a spec requirement** (§4 Waiver Gate — always ask); materially changes scope, cost, or the deliverable; or turns on the owner's preference in a way that cannot be reasonably inferred.
+
+A decision is **routine** (→ do not ask, just do it) when it is: task ordering among items already agreed; an obvious or conventional default; an implementation detail; or anything where a careful colleague would simply pick the sensible option and move on.
+
+When genuinely unsure which bucket a decision falls in, **prefer proceeding over interrupting** — make the call, state it in the summary, and let the owner redirect if they disagree. Interrupting for a routine choice wastes the owner's time; the summary-after-every-step (§10.6) is the safety net.
+
 ---
 
 ## 11a. Testing infrastructure (established 2026-07-21)
