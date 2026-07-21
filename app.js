@@ -665,7 +665,7 @@ function _occListHtml(o){
 }
 function occupancyViewHtml(computed, tMs, scope){
   const devs=equipList().filter(function(d){return d && ['smoker','grill','sousvide','oven'].indexOf(d.cat)>=0;});
-  if(!devs.length) return `<div class="occ-wrap"><p class="section-sub">${L('לא הוגדרו תנורים.','No cookers configured.')}</p></div>`;
+  if(!devs.length) return `<div class="occ-wrap"><p class="section-sub">${L('לא הוגדרו מכשירים.','No cookers configured.')}</p></div>`;
   return `<div class="occ-wrap">${devs.map(function(d){
     return occupancyDevHtml(deviceOccupancy(d.id, tMs, computed, scope));
   }).join('')}</div>`;
@@ -695,7 +695,7 @@ function openOccupancyView(computed, serve, scope){
   span.clock=span.now;                       // the real wall clock — what the "עכשיו" button jumps back to
   span.now=_occOpenAt(computed, span, scope);
   window._occT=span.now;
-  showPanel(`${toolTop(L('תפוסת התנורים','Cooker occupancy'),L('מה נמצא על כל תנור, ומתי','What is on each cooker, and when'),'🗄️','#7a5c3c')}
+  showPanel(`${toolTop(L('תפוסת המכשירים','Cooker occupancy'),L('מה נמצא על כל מכשיר, ומתי','What is on each cooker, and when'),'🗄️','#7a5c3c')}
     <div class="panel-body">
       <div id="occScrub"></div>
       <div id="occBody">${occupancyViewHtml(computed, window._occT, scope)}</div>
@@ -5786,7 +5786,7 @@ function renderTimelinePanel(){
         _ckRows.push(`<div class="tl-order"><span class="tl-order-lbl">${esc(itemName(c.m))} · ${kl}:</span><select data-tlcooker="${c.m.key}|${kind}"><option value="">${L('אוטומטי','Auto')}</option>${cands.map(function(d){return `<option value="${d.id}" ${d.id===cur?'selected':''}>${esc(d.name||t(d.type))}</option>`;}).join('')}</select></div>`);
       });
     });
-    const cookerStripHtml=_ckRows.length?`<div class="tl-orderstrip"><div class="tl-orderstrip-lbl">🔧 ${L('שיוך תנור/מעשנה:','Assign cooker:')}</div>${_ckRows.join('')}</div>`:'';
+    const cookerStripHtml=_ckRows.length?`<div class="tl-orderstrip"><div class="tl-orderstrip-lbl">🔧 ${L('שיוך מכשיר:','Assign cooker:')}</div>${_ckRows.join('')}</div>`:'';
     // S3 / residual D6: two devices of the SAME class → cookerFor is ambiguous (null), and the item is then
     // silently skipped by clash detection and occupancy. Rather than leave that gap invisible, surface it:
     // list the items that still need a cooker pick so the user knows capacity checks are pending their choice.
@@ -5799,8 +5799,8 @@ function renderTimelinePanel(){
         }
       });
     });
-    const unresolvedHtml=_unresolved.length?`<div class="wp-advisory wp-assign">🔧 <b>${L('ממתין לשיוך תנור','Awaiting cooker assignment')}:</b> ${L('יש לך יותר ממכשיר אחד מאותו סוג — לא אוכל לבדוק קיבולת/חפיפות עד שתשייך כל פריט למכשיר (למעלה). ממתינים:','You have more than one device of the same type — I cannot check capacity or clashes until each item is assigned to a device (above). Waiting:')} ${_unresolved.join(', ')}</div>`:'';
-    const contentionHtml=_clashes.length?`<div class="wp-advisory wp-clash">⚠️ <b>${L('התנגשות תנור','Cooker clash')}:</b> ${_clashes.map(function(cl){
+    const unresolvedHtml=_unresolved.length?`<div class="wp-advisory wp-assign">🔧 <b>${L('ממתין לשיוך מכשיר','Awaiting cooker assignment')}:</b> ${L('יש לך יותר ממכשיר אחד מאותו סוג — לא אוכל לבדוק קיבולת/חפיפות עד שתשייך כל פריט למכשיר (למעלה). ממתינים:','You have more than one device of the same type — I cannot check capacity or clashes until each item is assigned to a device (above). Waiting:')} ${_unresolved.join(', ')}</div>`:'';
+    const contentionHtml=_clashes.length?`<div class="wp-advisory wp-clash">⚠️ <b>${L('התנגשות מכשיר','Cooker clash')}:</b> ${_clashes.map(function(cl){
       const names=cl.items.map(function(i){return esc(i.name);}).join(' + ');
       const last=cl.items[cl.items.length-1];
       const other=cookerCandidates(last.kind).filter(function(d){return d.id!==cl.devId;});   // candidates for THIS stage kind, not always 'smoke'
@@ -5810,7 +5810,7 @@ function renderTimelinePanel(){
         : `${L('דורשים טמפרטורות שונות על','need different temperatures on')} <b>${esc(cl.devName)}</b> (${L('פער','spread')} ${cl.compat.tempSpread}°C)`;
       return `${names} ${why}${move}`;
     }).join('<br>')}</div>`:'';
-    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}${cookerStripHtml}${unresolvedHtml}${contentionHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip" data-occview>🗄️ ${L('תפוסת תנורים','Cooker occupancy')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
+    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}${cookerStripHtml}${unresolvedHtml}${contentionHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip" data-occview>🗄️ ${L('תפוסת מכשירים','Cooker occupancy')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
     <details class="tl-shapedet"><summary>${L('תצוגה','View')}: ${shapeName(shp)} <span class="tl-shapehint">▾ ${L('שנה','change')}</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
     ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
@@ -5828,13 +5828,13 @@ function renderTimelinePanel(){
       const cue = i===nextIdx?'wp-next':'';
       return `<label class="wp-row wp-${tk.kind} ${done?'wp-done':''} ${cue}" data-tlitem="${tk.ikey||''}"><input type="checkbox" class="wp-ck" data-wpck="${encodeURIComponent(key)}" ${done?'checked':''}>
         <span class="wp-time">${cue?`<span class="wp-nowtag">${L('הבא','Next')}</span>`:''}${fmtClockRel(tk.t, serve)}</span>
-        <span class="wp-body"><b>${tk.label}</b>${tk.cooker?`<span class="wp-cooker">🔧 ${esc(tk.cooker)}</span>`:''}${tk.contention?`<span class="wp-clashwarn" title="${L('התנגשות תנור','Cooker clash')}">⚠</span>`:''}${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpv-'+i), tk.label)}</span>`:''}</span>
+        <span class="wp-body"><b>${tk.label}</b>${tk.cooker?`<span class="wp-cooker">🔧 ${esc(tk.cooker)}</span>`:''}${tk.contention?`<span class="wp-clashwarn" title="${L('התנגשות מכשיר','Cooker clash')}">⚠</span>`:''}${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpv-'+i), tk.label)}</span>`:''}</span>
       </label>`;}).join('')}</div>`;
   }
   function renderWpAccordion(tasks, detail, serve){
     return `<div class="workplan wp-accordion ${detail?'wp-full':''}">${tasks.map((tk,i)=>`
       <div class="wp-acc ${i===0?'open':''}" data-wpacc="${i}" data-tlitem="${tk.ikey||''}">
-        <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClockRel(tk.t, serve)}</span><b class="wp-atitle">${tk.label}</b>${tk.cooker?`<span class="wp-cooker">🔧 ${esc(tk.cooker)}</span>`:''}${tk.contention?`<span class="wp-clashwarn" title="${L('התנגשות תנור','Cooker clash')}">⚠</span>`:''}<span class="wp-caret">▾</span></div>
+        <div class="wp-acch"><span class="wp-bar wp-bar-${tk.kind}"></span><span class="wp-time">${fmtClockRel(tk.t, serve)}</span><b class="wp-atitle">${tk.label}</b>${tk.cooker?`<span class="wp-cooker">🔧 ${esc(tk.cooker)}</span>`:''}${tk.contention?`<span class="wp-clashwarn" title="${L('התנגשות מכשיר','Cooker clash')}">⚠</span>`:''}<span class="wp-caret">▾</span></div>
         <div class="wp-accb">${tk.sub?`<small>${tk.sub}</small>`:''}${tk.det?`<span class="wp-det">${tk.det}</span>`:''}${!tk.sub&&!tk.det?`<small>${L('אין פרטים נוספים לשלב זה.','No further details for this step.')}</small>`:''}${tk.dur?`<span class="wp-timer">${timerHTML(tk.dur, tk.tid||('wpa-'+i), tk.label)}</span>`:''}</div>
       </div>`).join('')}</div>`;
   }

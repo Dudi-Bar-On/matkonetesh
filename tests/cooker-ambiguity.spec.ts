@@ -46,7 +46,7 @@ test('A2: the work plan surfaces an "awaiting cooker assignment" advisory (not s
   await boot(page, TWO_SMOKERS);
   const r = await page.evaluate(workPlanText) as any;
   expect(r.hasAdvisory).toBe(true);
-  expect(r.text).toContain('שיוך תנור');     // names the need to assign a cooker
+  expect(r.text).toContain('שיוך מכשיר');    // names the need to assign a cooker (מכשיר, not תנור — that means OVEN)
   expect(r.text).toContain('בריסקט');        // and lists the unassigned item(s)
 });
 
