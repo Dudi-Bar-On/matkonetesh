@@ -314,7 +314,9 @@ function itemOccupancy(meta, stageKind){
   if(stageKind==='sv') return {mode:'volume', cm2:0, hooks:0, litres:Number(spec.min_bath_l)||0, hang:null};
   const hang=spec.hang||null;
   if(hang && equipOwnsToken('hooks')) return {mode:'hang', cm2:0, hooks:1, litres:0, hang:hang};
-  return {mode:'area', cm2:Number(spec.footprint_cm2)||0, hooks:0, litres:0, hang:null};
+  const fp=spec.footprint_cm2;
+  const cm2=(fp!=null && !isNaN(Number(fp))) ? Number(fp) : null;   // null = unknown, never silently 0
+  return {mode:'area', cm2:cm2, hooks:0, litres:0, hang:null};
 }
 
 // Two cuts can only share a pit if the pit can be at one temperature that suits both, and if one
@@ -348,7 +350,7 @@ function deviceOccupancy(devId, tMs, computed, scope){
   const dev=equipList().find(function(d){return d && d.id===devId;})||null;
   const cap=deviceCapacity(dev);
   const out={dev:dev, devName:dev?(dev.name||t(dev.type)||''):'', mode:cap.mode, t:tMs, cap:cap,
-             items:[], usedCm2:0, usedLitres:0, hooksUsed:0, pct:null, over:false};
+             items:[], usedCm2:0, usedLitres:0, hooksUsed:0, unknownCm2Count:0, pct:null, over:false};
   (computed||[]).forEach(function(c){
     if(!c || c.blocked || !c.stages || !c.m) return;
     c.stages.forEach(function(s){
@@ -361,7 +363,9 @@ function deviceOccupancy(devId, tMs, computed, scope){
                       kind:s.kind, cm2:occ.cm2, hooks:occ.hooks, litres:occ.litres,
                       start:st, end:en, temp:(s.temp!=null?s.temp:null),
                       wood:(c.m.obj&&c.m.obj.wood)||c.m.wood||''});
-      out.usedCm2+=occ.cm2; out.usedLitres+=occ.litres; out.hooksUsed+=occ.hooks;
+      if(occ.cm2!=null) out.usedCm2+=occ.cm2;                                   // sum KNOWN area only — an unknown must never masquerade as a 0
+      if(occ.mode==='area' && occ.cm2==null) out.unknownCm2Count++;             // ...but it must still be counted, so the view can qualify the % as a floor
+      out.usedLitres+=occ.litres; out.hooksUsed+=occ.hooks;
     });
   });
   // A zero denominator would yield Infinity/NaN and render as "Infinity%" in the occupancy view, so a
@@ -390,7 +394,12 @@ function occupancyDevHtml(o){
   const barCls=o.over?'occ-bar-over':(o.pct!=null&&o.pct>80?'occ-bar-warn':'');
   const bar=(o.pct==null)
     ? `<div class="occ-unknown">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`
-    : `<div class="occ-bar ${barCls}"><i style="width:${pct}%"></i><span>${o.pct}%</span></div>`;
+    : `<div class="occ-bar ${barCls}"><i style="width:${pct}%"></i><span dir="ltr">${o.unknownCm2Count>0?'≥':''}${o.pct}%</span></div>`;
+  // usedCm2 excludes unknown-footprint items, so once any exist the % above is a FLOOR — at least
+  // this full, plus whatever the unmeasured item(s) also take. Flag it rather than invent a number.
+  const unknownNote=(o.unknownCm2Count>0)
+    ? `<div class="occ-unknown">+${o.unknownCm2Count} ${L('פריט/ים ללא מידה ידועה','item(s) of unknown size')}</div>`
+    : '';
   const items=o.items.length
     ? o.items.map(function(i){
         const frac=(cap.usableCm2>0&&i.cm2>0)?Math.max(8,Math.round(i.cm2/cap.usableCm2*100)):18;
@@ -409,6 +418,7 @@ function occupancyDevHtml(o){
   return `<div class="occ-dev">
       <div class="occ-h"><b>${esc(o.devName)}</b><span class="occ-facts">${facts.join(' · ')}</span></div>
       ${bar}
+      ${unknownNote}
       <div class="occ-slots">${items}</div>
       ${warn}
     </div>`;
