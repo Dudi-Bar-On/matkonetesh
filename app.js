@@ -305,7 +305,11 @@ function deviceCapacity(dev){
 
 // What one item consumes during a given stage kind. Hanging (Task 6) frees grate area entirely,
 // which is why it is a distinct mode rather than a smaller footprint.
-function itemOccupancy(meta, stageKind){
+// Can THIS device hang items? Its own canHang capability + a positive hook count — not a separate
+// accessory. (A "hooks" accessory in the pantry can't hang anything without a device that supports it.)
+function deviceCanHang(dev){ return !!dev && propOf(dev,'canHang')===true && (Number(propOf(dev,'hooks'))||0)>0; }
+function ownsHangingDevice(){ return (typeof equipList==='function') && equipList().some(deviceCanHang); }
+function itemOccupancy(meta, stageKind, dev){
   const none={mode:'area', cm2:0, hooks:0, litres:0, hang:null};
   if(!meta) return none;
   const eq=(meta.obj&&meta.obj.equip)||meta.equip; if(!eq) return none;
@@ -313,7 +317,10 @@ function itemOccupancy(meta, stageKind){
   const spec=Object.assign({}, eq.spec||{}, by.spec||{});
   if(stageKind==='sv') return {mode:'volume', cm2:0, hooks:0, litres:Number(spec.min_bath_l)||0, hang:null};
   const hang=spec.hang||null;
-  if(hang && equipOwnsToken('hooks')) return {mode:'hang', cm2:0, hooks:1, litres:0, hang:hang};
+  // Hanging is decided by the DEVICE the item is on (its own canHang + hooks). Called with a device →
+  // that device's capability; called standalone → fall back to "do you own any device that can hang".
+  const canHangHere = dev ? deviceCanHang(dev) : ownsHangingDevice();
+  if(hang && canHangHere) return {mode:'hang', cm2:0, hooks:1, litres:0, hang:hang};
   const fp=spec.footprint_cm2;
   const cm2=(fp!=null && !isNaN(Number(fp))) ? Number(fp) : null;   // null = unknown, never silently 0
   return {mode:'area', cm2:cm2, hooks:0, litres:0, hang:null};
@@ -358,7 +365,7 @@ function deviceOccupancy(devId, tMs, computed, scope){
       const st=s.start.getTime(), en=s.end.getTime();
       if(tMs<st || tMs>=en) return;
       const d=c.devId?{id:c.devId}:cookerFor(c.m.key, s.kind, scope); if(!d || d.id!==devId) return;   // caller may pre-resolve in its own event scope
-      const occ=itemOccupancy(c.m, s.kind);
+      const occ=itemOccupancy(c.m, s.kind, dev);   // device-aware: hang only if THIS device can hang
       out.items.push({key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb),
                       kind:s.kind, cm2:occ.cm2, hooks:occ.hooks, litres:occ.litres,
                       start:st, end:en, temp:(s.temp!=null?s.temp:null),
@@ -423,9 +430,11 @@ function occupancyDevHtml(o){
   else if(o.compat.woods.length>1) facts.push(`🪵 ${L('עצים שונים','different woods')}`);
   if(cap.racks)  facts.push(`🗄️ ${cap.racks} ${he?'מדפים':'racks'}`);
   if(cap.hooks)  facts.push(`🪝 ${o.hooksUsed}/${cap.hooks}`);
-  const warn=o.over
-    ? `<div class="occ-warn">⚠ ${L('חריגה מהקיבולת','Over capacity')}</div>`
-    : (!o.compat.tempOk?`<div class="occ-warn">⚠ ${L('פער טמפרטורות','Temperature spread')} ${o.compat.tempSpread}°C</div>`:'');
+  const warns=[];
+  if(o.over) warns.push(L('חריגה מהקיבולת','Over capacity'));
+  if(!o.compat.tempOk) warns.push(`${L('פער טמפרטורות','Temperature spread')} ${o.compat.tempSpread}°C`);
+  if(o.hooksOver) warns.push(`${L('יותר תלויים מהווים','More hung items than hooks')} (${o.hooksUsed}/${cap.hooks})`);
+  const warn=warns.length?`<div class="occ-warn">⚠ ${warns.join(' · ')}</div>`:'';
   return `<div class="occ-dev">
       <div class="occ-h"><b>${esc(o.devName)}</b><span class="occ-facts">${facts.join(' · ')}</span></div>
       ${bar}

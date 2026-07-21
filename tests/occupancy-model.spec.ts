@@ -266,9 +266,10 @@ test('O23: an item with no recorded wood adds no constraint', async ({ page }) =
 // Task 6: hanging is a second occupancy channel — a hung item frees grate area entirely rather
 // than shrinking its footprint, so it must never accrue cm2 and must consume exactly one hook.
 test('O24: hung items consume hooks and no grate area', async ({ page }) => {
+  // H3: the DEVICE's own canHang+hooks enables hanging — NO separate 'hooks' accessory is seeded
+  // (that accessory previously masked the broken gate; removing it proves the device drives it).
   await boot(page, [
     { id:'d1', cat:'smoker', type:'ארון / קבינט', name:'הנפח', cap:{racks:4, areaCm2:6000, canHang:true, hooks:6} },
-    { id:'d2', cat:'other', type:'hooks', name:'ווים', cap:{count:6} },
   ]);
   const r = await page.evaluate(`(function(){
     var hung=Object.keys(DATA.makes).filter(function(k){ var e=DATA.makes[k].equip; return e && e.spec && e.spec.hang; });
@@ -286,7 +287,6 @@ test('O24: hung items consume hooks and no grate area', async ({ page }) => {
 test('O25: exceeding the hook count is reported without touching area', async ({ page }) => {
   await boot(page, [
     { id:'d1', cat:'smoker', type:'ארון / קבינט', name:'הנפח', cap:{racks:4, areaCm2:6000, canHang:true, hooks:1} },
-    { id:'d2', cat:'other', type:'hooks', name:'ווים', cap:{count:1} },
   ]);
   const r = await page.evaluate(`(function(){
     var hung=Object.keys(DATA.makes).filter(function(k){ var e=DATA.makes[k].equip; return e && e.spec && e.spec.hang; }).slice(0,2);
