@@ -234,6 +234,7 @@ function cookerCandidates(kind){
   const cat=cookerCatForKind(kind); if(!cat) return [];
   let list=equipByCat(cat);
   if(kind==='smoke') list=list.concat(equipByCat('grill').filter(function(d){return ['פחם','קטל','גז'].indexOf(d.type)>=0;}));   // a charcoal/kettle/gas grill can also smoke
+  if(kind==='cook')  list=list.concat(equipByCat('oven'));   // an oven can roast/finish a 'cook' stage, not just a grill
   return list;
 }
 function itemCookerScope(scope){ return scope||((typeof evScope==='function')?evScope():'cook'); }
@@ -354,13 +355,55 @@ function occupancyCompat(items){
   };
 }
 
+// H4 packer — assign each AREA item to ONE slot (shelf / grill zone) for its whole life, by replaying the
+// cook chronologically: place each on the lowest slot with room; an over-sized single item still goes on an
+// empty slot (flagged over there); only when no slot fits AND none is empty is it truly unplaced. Assign-once
+// is deterministic, scrub-stable, and physically true — you put meat on whichever shelf has room when you
+// carry it out, and you don't move it mid-cook. Pure; cheap to recompute per call (2-12 items).
+function packDevice(devId, computed, scope){
+  const dev=equipList().find(function(d){return d && d.id===devId;})||null;
+  const cap=deviceCapacity(dev);
+  const cc=(typeof EQUIP_CATS!=='undefined')?EQUIP_CATS.find(function(x){return dev&&x.cat===dev.cat;}):null;
+  const slotKind=cap.mode==='volume'?'bath':((dev&&dev.cat==='grill')?'zone':'rack');
+  const slotCount=cap.mode==='volume'?1:Math.max(1, cap.racks||1);   // racks | zones; unknown count → 1 (whole interior)
+  const perSlotCm2=(cap.mode==='volume'||!cap.known||!(cap.usableCm2>0))?null:Math.round(cap.usableCm2/slotCount);
+  const meta={slots:slotCount, slotKind:slotKind, perSlotCm2:perSlotCm2,
+              slotLabelHe:cc?cc.capHe:'', slotLabelEn:cc?cc.capEn:''};
+  const itemSlot={}, unplacedKeys={};
+  if(perSlotCm2==null) return {meta:meta, itemSlot:itemSlot, unplacedKeys:unplacedKeys};   // no area → no placement invented
+  const events=[];
+  (computed||[]).forEach(function(c){ if(!c||c.blocked||!c.stages||!c.m) return;
+    c.stages.forEach(function(s){ if(['smoke','cook','sv'].indexOf(s.kind)<0||!s.start||!s.end) return;
+      const d=c.devId?{id:c.devId}:cookerFor(c.m.key, s.kind, scope); if(!d||d.id!==devId) return;
+      const occ=itemOccupancy(c.m, s.kind, dev);
+      if(occ.mode!=='area') return;                 // hung / sous-vide items take no shelf slot
+      events.push({key:c.m.key, start:s.start.getTime(), end:s.end.getTime(), cm2:occ.cm2});
+    });
+  });
+  events.sort(function(a,b){ return a.start-b.start || (b.cm2||0)-(a.cm2||0) || (a.key<b.key?-1:a.key>b.key?1:0); });   // total order → deterministic
+  const slots=[]; for(var i=0;i<slotCount;i++) slots.push({free:perSlotCm2, occ:[]});   // occ entries: {end, cm2}
+  events.forEach(function(e){
+    if(e.cm2==null){ itemSlot[e.key]=null; return; }   // unmeasured (H1) → not slotted, and NOT "unplaced"
+    slots.forEach(function(sl){ sl.occ=sl.occ.filter(function(o){ if(o.end<=e.start){ sl.free+=o.cm2; return false; } return true; }); });   // release anything already off
+    var placed=-1;
+    for(i=0;i<slotCount;i++){ if(slots[i].free>=e.cm2){ placed=i; break; } }                       // a shelf it fits on
+    if(placed<0){ for(i=0;i<slotCount;i++){ if(slots[i].free===perSlotCm2){ placed=i; break; } } } // else an empty shelf (over-sized single item still goes on it, flagged over)
+    if(placed<0){ itemSlot[e.key]=null; unplacedKeys[e.key]=1; return; }                            // no fit, no empty → genuinely nowhere
+    slots[placed].free-=e.cm2; slots[placed].occ.push({end:e.end, cm2:e.cm2}); itemSlot[e.key]=placed;
+  });
+  return {meta:meta, itemSlot:itemSlot, unplacedKeys:unplacedKeys};
+}
 // The single source of truth for "what is on this device right now". The occupancy view renders this
 // object and the clash advisories derive from it — so a diagram and a warning can never disagree.
 function deviceOccupancy(devId, tMs, computed, scope){
   const dev=equipList().find(function(d){return d && d.id===devId;})||null;
   const cap=deviceCapacity(dev);
+  const pack=packDevice(devId, computed, scope);   // stable item→slot assignment for the whole plan
+  cap.slots=pack.meta.slots; cap.slotKind=pack.meta.slotKind; cap.perSlotCm2=pack.meta.perSlotCm2;
+  cap.slotLabelHe=pack.meta.slotLabelHe; cap.slotLabelEn=pack.meta.slotLabelEn;
   const out={dev:dev, devName:dev?(dev.name||t(dev.type)||''):'', mode:cap.mode, t:tMs, cap:cap,
-             items:[], usedCm2:0, usedLitres:0, hooksUsed:0, unknownCm2Count:0, pct:null, over:false, pctFloor:false};
+             items:[], usedCm2:0, usedLitres:0, hooksUsed:0, unknownCm2Count:0, pct:null, over:false, pctFloor:false,
+             slots:[], unplaced:[], slotOver:false};
   (computed||[]).forEach(function(c){
     if(!c || c.blocked || !c.stages || !c.m) return;
     c.stages.forEach(function(s){
@@ -370,7 +413,8 @@ function deviceOccupancy(devId, tMs, computed, scope){
       const d=c.devId?{id:c.devId}:cookerFor(c.m.key, s.kind, scope); if(!d || d.id!==devId) return;   // caller may pre-resolve in its own event scope
       const occ=itemOccupancy(c.m, s.kind, dev);   // device-aware: hang only if THIS device can hang
       out.items.push({key:c.m.key, name:(typeof itemName==='function'?itemName(c.m):c.m.heb),
-                      kind:s.kind, cm2:occ.cm2, hooks:occ.hooks, litres:occ.litres,
+                      kind:s.kind, cm2:occ.cm2, hooks:occ.hooks, litres:occ.litres, mode:occ.mode,
+                      slot:(Object.prototype.hasOwnProperty.call(pack.itemSlot,c.m.key)?pack.itemSlot[c.m.key]:null),
                       start:st, end:en, temp:(s.temp!=null?s.temp:null),
                       wood:(c.m.obj&&c.m.obj.wood)||c.m.wood||''});
       if(occ.cm2!=null) out.usedCm2+=occ.cm2;                                   // sum KNOWN area only — an unknown must never masquerade as a 0
@@ -378,6 +422,19 @@ function deviceOccupancy(devId, tMs, computed, scope){
       out.usedLitres+=occ.litres; out.hooksUsed+=occ.hooks;
     });
   });
+  // Per-slot occupancy at this instant: place each LIVE area item in its packer-assigned slot, then a slot
+  // is "over" when the items on it exceed one slot's capacity. This is what makes the % a claim about slots
+  // that exist — a brisket that fits no single shelf is flagged, not hidden inside a comfortable cabinet %.
+  if(cap.perSlotCm2!=null && cap.slots>0){
+    for(var si=0; si<cap.slots; si++) out.slots.push({i:si, capCm2:cap.perSlotCm2, usedCm2:0, over:false, pct:0, items:[]});
+    out.items.forEach(function(it){
+      if(it.mode!=='area') return;                       // hung / sv items are not on a shelf
+      if(it.slot!=null && out.slots[it.slot]){ const sl=out.slots[it.slot]; sl.items.push({key:it.key, name:it.name, cm2:it.cm2}); if(it.cm2!=null) sl.usedCm2+=it.cm2; }
+      else if(it.cm2!=null){ out.unplaced.push({key:it.key, name:it.name, cm2:it.cm2}); }   // measured but fits nowhere (unmeasured items have cm2==null → neither slotted nor unplaced)
+    });
+    out.slots.forEach(function(sl){ sl.over=sl.usedCm2>sl.capCm2; sl.pct=Math.round(sl.usedCm2/sl.capCm2*100); });
+    out.slotOver = out.slots.some(function(s){return s.over;}) || out.unplaced.length>0;
+  }
   // A zero denominator would yield Infinity/NaN and render as "Infinity%" in the occupancy view, so a
   // capacity that rounds away to nothing is treated as unknown rather than as a division we can trust.
   const denom=(cap.mode==='volume')?cap.litres:cap.usableCm2;
@@ -410,7 +467,7 @@ function occupancyDevHtml(o){
   const he=(typeof getLang!=='function'||getLang()==='he');
   const cap=o.cap;
   const pct=(o.pct==null)?null:Math.max(0,Math.min(100,o.pct));
-  const barCls=o.over?'occ-bar-over':(o.pct!=null&&o.pct>80?'occ-bar-warn':'');
+  const barCls=(o.slotOver||o.over)?'occ-bar-over':(o.pct!=null&&o.pct>80?'occ-bar-warn':'');
   const bar=(o.pct==null)
     ? `<div class="occ-unknown">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`
     : `<div class="occ-bar ${barCls}"><i style="width:${pct}%"></i><span dir="ltr">${o.pctFloor?'≥':''}${o.pct}%</span></div>`;
@@ -431,10 +488,19 @@ function occupancyDevHtml(o){
   if(o.compat.setpoint!=null) facts.push(`🌡️ ${o.compat.setpoint}°C`);
   if(o.compat.commonWood)     facts.push(`🪵 ${esc(t(o.compat.commonWood))}`);
   else if(o.compat.woods.length>1) facts.push(`🪵 ${L('עצים שונים','different woods')}`);
-  if(cap.racks)  facts.push(`🗄️ ${cap.racks} ${he?'מדפים':'racks'}`);
+  // slot count with the CATEGORY's own label (fixes "מדפים" printed on a kettle grill — its slots are אזורי חום)
+  if(cap.slots)  facts.push(`🗄️ ${cap.slots} ${he?(cap.slotLabelHe||'מדפים'):(cap.slotLabelEn||'racks')}`);
   if(cap.hooks)  facts.push(`🪝 ${o.hooksUsed}/${cap.hooks}`);
+  // H4: over-capacity is a per-SLOT truth. Name the item(s) that fit no single slot rather than hiding an
+  // impossible arrangement inside a comfortable whole-device %. (Two 600 cm² items never over-pack one shelf —
+  // the packer sends the second elsewhere — so a slot is over only when a single item alone exceeds it.)
+  const slotHe=cap.slotKind==='zone'?'אזור':'מדף', slotEn=cap.slotKind==='zone'?'zone':'shelf';
+  const tooBig=[];
+  (o.slots||[]).forEach(function(sl){ if(sl.over) sl.items.forEach(function(it){ if(it.cm2!=null && it.cm2>cap.perSlotCm2 && tooBig.indexOf(it.name)<0) tooBig.push(it.name); }); });
+  (o.unplaced||[]).forEach(function(it){ if(tooBig.indexOf(it.name)<0) tooBig.push(it.name); });
   const warns=[];
-  if(o.over) warns.push(L('חריגה מהקיבולת','Over capacity'));
+  if(o.mode==='area' && tooBig.length) warns.push(`${esc(tooBig.join(', '))} — ${L('לא נכנס ל'+slotHe+' בודד','does not fit a single '+slotEn)}`);
+  else if(o.mode==='volume' && o.over) warns.push(L('חריגה מהקיבולת','Over capacity'));
   if(!o.compat.tempOk) warns.push(`${L('פער טמפרטורות','Temperature spread')} ${o.compat.tempSpread}°C`);
   if(o.hooksOver) warns.push(`${L('יותר תלויים מהווים','More hung items than hooks')} (${o.hooksUsed}/${cap.hooks})`);
   const warn=warns.length?`<div class="occ-warn">⚠ ${warns.join(' · ')}</div>`:'';
