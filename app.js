@@ -521,7 +521,9 @@ function _occHeaderHtml(o){
   const cap=o.cap, facts=[];
   if(o.compat && o.compat.commonWood) facts.push(`🪵 ${esc(t(o.compat.commonWood))}`);
   else if(o.compat && o.compat.woods && o.compat.woods.length>1) facts.push(`🪵 ${L('עצים שונים','different woods')}`);
-  if(cap.slots) facts.push(`🗄️ ${cap.slots} ${he?(cap.slotLabelHe||'מדפים'):(cap.slotLabelEn||'racks')}`);
+  // A bath has no shelves — printing "1 מדפים / 1 racks" on a sous-vide is the same mislabel class H4 killed
+  // on the kettle. The vessel's own capacity sentence carries its litres, so skip the slot fact entirely.
+  if(cap.slots && cap.slotKind!=='bath') facts.push(`🗄️ ${cap.slots} ${he?(cap.slotLabelHe||'מדפים'):(cap.slotLabelEn||'racks')}`);
   if(cap.hooks) facts.push(`🪝 ${o.hooksUsed}/${cap.hooks}`);
   const set = (o.compat && o.compat.setpoint!=null) ? `<span class="occ2-set" dir="ltr">${o.compat.setpoint}°</span>` : '';
   return `<div class="occ2-h"><span class="occ2-nm">${esc(o.devName)}</span>${set}<div class="occ2-facts">${facts.join('')}</div></div>`;

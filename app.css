@@ -1634,7 +1634,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ-scrubrow b{font-size:calc(15px * var(--fscale));color:var(--bone);font-variant-numeric:tabular-nums}
 
 /* ── Phase 2 device diagrams ─────────────────────────────────────────── */
-.occ2-dev{background:var(--char2);border:1px solid var(--line);border-radius:16px;padding:13px 13px 11px;direction:rtl}
+.occ2-dev{background:var(--char2);border:1px solid var(--line);border-radius:16px;padding:13px 13px 11px}
 .occ2-h{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:11px}
 .occ2-nm{font-size:calc(16px * var(--fscale));font-weight:800;color:var(--bone)}
 .occ2-set{font-size:calc(16px * var(--fscale));font-weight:800;color:var(--ember);font-variant-numeric:tabular-nums;margin-inline-start:auto}
@@ -1642,7 +1642,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ2-ty{font-weight:800;color:var(--ember2)}
 /* rack / cabinet / oven */
 .occ2-rack{display:flex;flex-direction:column;gap:5px}
-.occ2-shelf{position:relative;min-height:38px;display:flex;align-items:stretch;gap:4px;padding:3px 24px 8px 3px;border-radius:8px}
+.occ2-shelf{position:relative;min-height:38px;display:flex;flex-wrap:wrap;align-items:stretch;gap:4px;padding:3px 3px 8px;padding-inline-start:24px;border-radius:8px}
 .occ2-shelf::after{content:"";position:absolute;inset-inline:6px;bottom:2px;height:5px;border-radius:2px;background:repeating-linear-gradient(90deg,var(--grate) 0 7px,transparent 7px 11px)}
 .occ2-n{position:absolute;inset-inline-start:6px;top:50%;transform:translateY(-60%);font-size:calc(11px * var(--fscale));font-weight:800;color:var(--smoke);font-variant-numeric:tabular-nums}
 .occ2-shelf.occ2-over{background:var(--over-l)}
@@ -1656,10 +1656,11 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ2-bleed{flex:0 0 14px;align-self:center;height:26px;border-radius:0 3px 3px 0;background:repeating-linear-gradient(45deg,var(--over) 0 3px,transparent 3px 7px);opacity:.6}
 .occ2-empty{align-self:center;font-size:calc(11px * var(--fscale));color:var(--smoke);opacity:.7}
 /* offset barrel */
-.occ2-offset{position:relative;padding-inline-end:34px}
+.occ2-offset{position:relative;padding-inline-end:34px;padding-bottom:14px}
+.occ2-firebox span{position:absolute;bottom:-3px;inset-inline:0;transform:translateY(100%);font-size:calc(8.5px * var(--fscale));line-height:1.05;color:var(--smoke);text-align:center;white-space:normal}
 .occ2-barrel{border:2px solid var(--ash);border-radius:22px;background:var(--char3);padding:9px 12px;display:flex;flex-direction:column;gap:5px}
 .occ2-firebox{position:absolute;inset-inline-end:2px;bottom:14px;width:30px;height:46px;border:2px solid var(--ash);border-radius:7px;background:repeating-linear-gradient(45deg,var(--ember2) 0 4px,transparent 4px 9px);opacity:.85}
-.occ2-grate{position:relative;min-height:30px;display:flex;gap:4px;align-items:stretch;padding:2px 4px 6px}
+.occ2-grate{position:relative;min-height:30px;display:flex;flex-wrap:wrap;gap:4px;align-items:stretch;padding:2px 4px 6px}
 .occ2-grate::after{content:"";position:absolute;inset-inline:2px;bottom:1px;height:4px;border-radius:2px;background:repeating-linear-gradient(90deg,var(--grate) 0 6px,transparent 6px 10px)}
 /* grill zones */
 .occ2-grill{border:2.5px solid var(--ash);overflow:hidden;background:repeating-linear-gradient(90deg,var(--grate) 0 6px,transparent 6px 10px),repeating-linear-gradient(0deg,var(--grate) 0 6px,transparent 6px 10px);background-color:var(--char3)}
@@ -1678,7 +1679,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ2-bag{background:var(--char2);border:1.5px solid var(--cool);border-radius:8px;padding:7px 11px;text-align:center;font-size:calc(12.5px * var(--fscale));font-weight:700;color:var(--bone)}
 .occ2-svcap{text-align:center;font-size:calc(11.5px * var(--fscale));color:var(--smoke);margin-top:9px;font-variant-numeric:tabular-nums}
 /* hanging bay */
-.occ2-bay{border:1px dashed var(--line2);border-radius:10px;padding:8px 24px 9px 8px;margin-bottom:8px;position:relative;background:var(--fresh-l)}
+.occ2-bay{border:1px dashed var(--line2);border-radius:10px;padding:8px 8px 9px;padding-inline-start:24px;margin-bottom:8px;position:relative;background:var(--fresh-l)}
 .occ2-bay .occ2-n{color:var(--fresh);top:9px;transform:none}
 .occ2-hooks{display:flex;gap:3px;font-size:calc(13px * var(--fscale));margin-bottom:7px;color:var(--fresh)}
 .occ2-hooks .occ2-off{opacity:.32}
