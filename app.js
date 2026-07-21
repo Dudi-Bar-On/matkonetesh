@@ -584,9 +584,10 @@ function _occVesselBody(o){
   const he=(typeof getLang!=='function'||getLang()==='he');
   const bags=(o.items||[]).map(function(it){ return `<div class="occ2-bag">${esc(it.name)}</div>`; }).join('')
     || `<span class="occ2-free">${L('ריק','empty')}</span>`;
-  const need=o.usedLitres||0, has=(o.cap&&o.cap.litres)||0;
-  const cap = `${(o.items||[]).length} ${L('שקיות','bags')} · ${L('הגדולה דורשת','largest needs')} ${need} ${he?'ל׳':'L'} · ${L('האמבט','bath')} ${has} ${he?'ל׳':'L'}`;
-  return `<div class="occ2-vessel"><div class="occ2-wl"></div><div class="occ2-circ"></div><div class="occ2-bags">${bags}</div></div><div class="occ2-svcap" dir="ltr">${cap}</div>`;
+  const need=o.usedLitres||0, has=(o.cap&&o.cap.litres)||0, u=he?'ל׳':'L';
+  const isl=function(n){ return `<span dir="ltr">${n} ${u}</span>`; };   // number+unit LTR island (L13) — never wrap the whole Hebrew sentence in ltr
+  const cap = `${(o.items||[]).length} ${L('שקיות','bags')} · ${L('הגדולה דורשת','largest needs')} ${isl(need)} · ${L('האמבט','bath')} ${isl(has)}`;
+  return `<div class="occ2-vessel"><div class="occ2-wl"></div><div class="occ2-circ"></div><div class="occ2-bags">${bags}</div></div><div class="occ2-svcap">${cap}</div>`;
 }
 function _occBayHtml(o){ return ''; }   // real bay in T9
 // Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items.

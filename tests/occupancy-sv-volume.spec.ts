@@ -68,7 +68,7 @@ test('V4: a single item that fits is exactly full, not a floor', async ({ page }
 // plain-language cap line: bag count + the largest single requirement. Re-asserted here for the same fitting
 // pair: still NOT a red over line, still an LTR-wrapped numeric readout — just via the new markup.
 test('V5: the rendered bath shows bag count + largest-needs (no %), not a red over-capacity warning, for a fitting pair', async ({ page }) => {
-  await boot(page, 24);
+  await boot(page, 40);                        // bath 40 L, DISTINCT from the pair's largest single requirement
   const r = await page.evaluate(`(function(){
     var t0=Date.parse('2026-07-24T06:00:00');
     var mk=function(key){ return { m:resolveItem(key), stages:[{kind:'sv', start:new Date(t0), end:new Date(t0+30*3600e3), temp:68}] }; };
@@ -78,13 +78,21 @@ test('V5: the rendered bath shows bag count + largest-needs (no %), not a red ov
     var div=document.createElement('div'); div.innerHTML=occupancyDevHtml(o);
     var over=!!div.querySelector('.occ2-fit-over');
     var cap=div.querySelector('.occ2-svcap');
+    var islands=cap?Array.prototype.map.call(cap.querySelectorAll('span[dir="ltr"]'),function(s){return s.textContent;}):[];
     return { hasOverLine:over, bags:div.querySelectorAll('.occ2-bag').length,
-             capText:cap?cap.textContent:'', capDir:cap?cap.getAttribute('dir'):null,
+             need:o.usedLitres, bathHas:o.cap.litres,
+             capText:cap?cap.textContent:'', islands:islands, capDir:cap?cap.getAttribute('dir'):null,
              hasPct:/%/.test(div.textContent||'') };
   })()`) as any;
-  expect(r.hasOverLine).toBe(false);          // NOT the red over line — they fit a bath sized to the largest
+  expect(r.hasOverLine).toBe(false);          // NOT the red over line — they fit a bath sized above the largest
   expect(r.bags).toBe(2);                     // both items drawn as bags — the floor concept (displacement unknown)
-  expect(r.capText).toContain('24');          // the largest single requirement, shown plainly
+  // The rendered "largest needs" number MUST be the model's max-not-sum litres (H2), and the bath is a
+  // DISTINCT number — so this assertion actually pins max-not-sum in the RENDER, not just "some 24 appears".
+  expect(r.need).not.toBe(r.bathHas);         // guard: the two numbers differ, so the next checks are meaningful
+  expect(r.capText).toContain(String(r.need));    // sentence shows the max single requirement (not summed, not the bath)
+  expect(r.capText).toContain(String(r.bathHas)); // and the bath size, shown distinctly
   expect(r.hasPct).toBe(false);               // sous-vide never shows a % (H2) — no floor % anymore
-  expect(r.capDir).toBe('ltr');               // the numeric readout stays an LTR island (H1 RTL fix)
+  // L13: the NUMBERS are LTR islands, but the surrounding Hebrew sentence is NOT force-ltr (that flips segments)
+  expect(r.capDir).toBeNull();                // the svcap container is not whole-sentence dir=ltr
+  expect(r.islands.some(function(s: string){return s.indexOf(String(r.need))>=0;})).toBe(true);   // the max-needs number is an LTR island
 });
