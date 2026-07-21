@@ -1686,6 +1686,10 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ2-hung{border:1.5px solid var(--fresh);border-top:2px dotted var(--fresh);border-radius:0 0 7px 7px;background:var(--char2);padding:5px 9px 6px;position:relative;text-align:center;font-size:calc(12px * var(--fscale));font-weight:700;color:var(--bone)}
 .occ2-hung.occ2-long{min-height:42px;display:flex;align-items:flex-end}
 /* fit line + a11y list */
+/* unmeasured items (H1): shown, dashed, unnumbered — and explicitly NOT on a shelf */
+.occ2-unknown{margin-top:7px;border:1px dashed var(--line2);border-radius:9px;padding:7px 9px}
+.occ2-ul{display:block;font-size:calc(10.5px * var(--fscale));color:var(--smoke);margin-bottom:5px}
+.occ2-unknown-row{display:flex;gap:4px;flex-wrap:wrap}
 .occ2-fit-ok{margin-top:9px;font-size:calc(11.5px * var(--fscale));color:var(--fresh);font-weight:700}
 .occ2-fit-tight{margin-top:9px;font-size:calc(12px * var(--fscale));font-weight:700;color:var(--ember);display:flex;align-items:center;gap:5px}
 .occ2-fit-over{margin-top:9px;font-size:calc(12px * var(--fscale));font-weight:700;color:var(--over);display:flex;align-items:center;gap:5px}

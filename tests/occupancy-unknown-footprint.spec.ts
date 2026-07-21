@@ -126,14 +126,18 @@ test('U4: the rendered occupancy view marks a floor percentage and notes the unk
   })()`) as any;
   expect(scrub.found, 'the unknown-footprint make never produced a smoke stage in the real plan').toBe(true);
 
-  // Phase 2: there is no %-fill bar to floor any more (H2 — no invented measurement). An unmeasured
-  // item instead renders as its own dashed, unnumbered tile inside the shelf rack — the device still
-  // appears, and the item is never silently dropped from the diagram.
+  // Phase 2: there is no %-fill bar to floor any more (H1/H2 — no invented measurement). An unmeasured
+  // item renders as a dashed, unnumbered tile in its OWN "not placed — size unknown" bucket: it is never
+  // silently dropped from the diagram, and it never claims a shelf the packer never assigned it.
   const devCard = page.locator('.occ2-dev').first();
   await expect(devCard).toBeVisible();
-  const dashed = devCard.locator('.occ2-rack .occ2-tile.occ2-dashed');
+  const dashed = devCard.locator('.occ2-unknown .occ2-tile.occ2-dashed');
   await expect.poll(async () => (await dashed.count())).toBeGreaterThan(0);
   await expect(dashed.first()).toBeVisible();
+  // ...and it is NOT rendered inside any shelf (that would imply a placement the model does not have)
+  expect(await devCard.locator('.occ2-shelf .occ2-tile.occ2-dashed').count()).toBe(0);
+  // the dashed tile carries no fabricated number
+  await expect(dashed.first()).not.toContainText(/\d/);
   // never a fabricated number for the unmeasured item — its size line reads the Hebrew "unknown" note
   await expect(dashed.first().locator('.occ2-tile-m')).toHaveText('מידה לא ידועה');
 });

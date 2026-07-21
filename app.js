@@ -541,19 +541,24 @@ function _occCabinetBody(o){
   const cap=o.cap;
   if(cap.perSlotCm2==null && !(cap.slots>0))
     return `<div class="occ2-empty">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`;
-  // Unmeasured items (H1): the packer deliberately gives them no capacity slot — they must never count
-  // toward a shelf's area math (S4/S5 lock this at the model level, `it.slot` stays null). But the diagram
-  // must still show them (never silently dropped) — they land as dashed, unnumbered tiles on the first shelf.
-  const unknown=(o.items||[]).filter(function(it){return it.mode==='area' && it.cm2==null;});
   const rows=[];
   for(let i=0;i<cap.slots;i++){
     const sl=(o.slots||[])[i]||{items:[],over:false};
-    const items = (i===0) ? sl.items.concat(unknown) : sl.items;
-    const tiles = items.length ? items.map(function(it){return _occTile(it, cap);}).join('')
-                                : `<span class="occ2-empty">${L('מדף פנוי','shelf free')}</span>`;
+    const tiles = sl.items.length ? sl.items.map(function(it){return _occTile(it, cap);}).join('')
+                                  : `<span class="occ2-empty">${L('מדף פנוי','shelf free')}</span>`;
     rows.push(`<div class="occ2-shelf${sl.over?' occ2-over':''}"><span class="occ2-n">${i+1}</span>${tiles}</div>`);
   }
-  return `<div class="occ2-rack">${rows.join('')}</div>`;
+  return `<div class="occ2-rack">${rows.join('')}</div>${_occUnknownHtml(o)}`;
+}
+// Unmeasured items (H1): the packer deliberately gives them NO slot — they must never count toward a
+// shelf's area math (S4/S5 lock `it.slot===null` at the model level). The diagram must still show them
+// (never silently dropped) but must NOT imply a shelf they were never assigned — so they get their own
+// dashed bucket beneath the silhouette: visible, unnumbered, and explicitly marked as not placed.
+function _occUnknownHtml(o){
+  const unknown=(o.items||[]).filter(function(it){return it.mode==='area' && it.cm2==null;});
+  if(!unknown.length) return '';
+  const tiles=unknown.map(function(it){ return _occTile(it, o.cap); }).join('');
+  return `<div class="occ2-unknown"><span class="occ2-ul">${L('לא שובץ — מידה לא ידועה','not placed — size unknown')}</span><div class="occ2-unknown-row">${tiles}</div></div>`;
 }
 // Horizontal offset smoker: a lying barrel with a firebox to the side; grates run across.
 function _occOffsetBody(o){
@@ -567,7 +572,7 @@ function _occOffsetBody(o){
                                   : `<span class="occ2-empty">${L('רשת פנויה','grate free')}</span>`;
     rows.push(`<div class="occ2-grate">${tiles}</div>`);
   }
-  return `<div class="occ2-offset"><div class="occ2-firebox"><span>${L('תא בערה','firebox')}</span></div><div class="occ2-barrel">${rows.join('')}</div></div>`;
+  return `<div class="occ2-offset"><div class="occ2-firebox"><span>${L('תא בערה','firebox')}</span></div><div class="occ2-barrel">${rows.join('')}</div></div>${_occUnknownHtml(o)}`;
 }
 // Grill: a TOP-VIEW of heat zones side by side. Round contour for a kettle (a true circle), rect otherwise.
 // Zone labels are "אזור N" only — the model does NOT know direct vs indirect, so it never claims to.
@@ -581,7 +586,7 @@ function _occGrillBody(o, isRound){
                                   : `<span class="occ2-free">${L('פנוי','free')}</span>`;
     cells.push(`<div class="occ2-zone">${inner}<span class="occ2-zl">${he?'אזור':'zone'} ${i+1}</span></div>`);
   }
-  return `<div class="occ2-grill ${isRound?'occ2-round':'occ2-rect'}"><div class="occ2-zones">${cells.join('')}</div></div>`;
+  return `<div class="occ2-grill ${isRound?'occ2-round':'occ2-rect'}"><div class="occ2-zones">${cells.join('')}</div></div>${_occUnknownHtml(o)}`;
 }
 // Sous-vide: an open-topped vessel with a water line + circulator, one bag per item. NO % (H2): we count
 // bags and the largest single required litres; true fill needs displacement we do not have.
