@@ -526,7 +526,21 @@ function _occHeaderHtml(o){
   if(cap.slots && cap.slotKind!=='bath') facts.push(`🗄️ ${cap.slots} ${he?(cap.slotLabelHe||'מדפים'):(cap.slotLabelEn||'racks')}`);
   if(cap.hooks) facts.push(`🪝 ${o.hooksUsed}/${cap.hooks}`);
   const set = (o.compat && o.compat.setpoint!=null) ? `<span class="occ2-set" dir="ltr">${o.compat.setpoint}°</span>` : '';
-  return `<div class="occ2-h"><span class="occ2-nm">${esc(o.devName)}</span>${set}<div class="occ2-facts">${facts.join('')}</div></div>`;
+  // The setpoint is the MAXIMUM of what the items need. Running the cooker there raises every cooler item
+  // by the difference — a temperature change presented as a neutral fact about the device. State the delta
+  // and name who pays it. (Scheduler spec §6.3: this must be a visible cost now, and may never become an
+  // automatic "share the device" move later without the user seeing exactly this number.)
+  let delta='';
+  if(o.compat && o.compat.setpoint!=null && o.compat.tempSpread>0){
+    const sp=o.compat.setpoint;
+    const raised=(o.items||[]).filter(function(i){ return i.temp!=null && i.temp<sp; });
+    if(raised.length){
+      const names=raised.map(function(i){return esc(i.name);}).filter(function(v,ix,a){return a.indexOf(v)===ix;}).join(', ');
+      let worst=0; raised.forEach(function(i){ const d=sp-i.temp; if(d>worst) worst=d; });
+      delta=`<span class="occ2-tdelta" title="${L('הפעלת המכשיר בטמפרטורה הגבוהה מעלה את הפריט הקר יותר','Running the cooker at the higher temperature raises the cooler item')}">⚠ ${names} ${L('מבושל ב-','runs ')}${worst}°${L(' מעל הנדרש לו','above its own target')}</span>`;
+    }
+  }
+  return `<div class="occ2-h"><span class="occ2-nm">${esc(o.devName)}</span>${set}<div class="occ2-facts">${facts.join('')}${delta}</div></div>`;
 }
 // One tile for one item. Solid = measured; dashed (no number) = unmeasured (H1); over = capped + hatched bleed.
 function _occTile(it, cap){

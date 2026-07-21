@@ -1644,6 +1644,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ2-nm{font-size:calc(16px * var(--fscale));font-weight:800;color:var(--bone)}
 .occ2-set{font-size:calc(16px * var(--fscale));font-weight:800;color:var(--ember);font-variant-numeric:tabular-nums;margin-inline-start:auto}
 .occ2-facts{width:100%;font-size:calc(11.5px * var(--fscale));color:var(--smoke);margin-top:2px;display:flex;gap:10px;flex-wrap:wrap}
+.occ2-tdelta{width:100%;margin-top:3px;font-size:calc(11px * var(--fscale));font-weight:700;color:var(--over)}
 .occ2-ty{font-weight:800;color:var(--ember2)}
 /* rack / cabinet / oven */
 .occ2-rack{display:flex;flex-direction:column;gap:5px}
