@@ -327,6 +327,17 @@ function deviceSilhouette(dev){
   if(dev.cat==='smoker' && dev.type==='אופסט / סטיק-ברנר') return 'offset';
   return 'cabinet';   // all other smokers + all ovens: a truthful stacked-grate view
 }
+// The card shows the device's OWN name (e.g. "אביה 150"), not just its function. When two devices share a
+// base name, disambiguate them with a sequential number in equipList() order — "אביה 150 · מס׳ 1 / 2".
+function deviceDisplayName(dev){
+  if(!dev) return '';
+  const base = dev.name || (typeof t==='function'?t(dev.type):dev.type) || '';
+  const same = equipList().filter(function(d){ return d && (d.name||(typeof t==='function'?t(d.type):d.type)||'')===base; });
+  if(same.length<2) return base;
+  const idx = same.findIndex(function(d){ return d===dev || d.id===dev.id; });
+  const he = (typeof getLang!=='function'||getLang()==='he');
+  return base + (he ? ' · מס׳ '+(idx+1) : ' · #'+(idx+1));
+}
 function itemOccupancy(meta, stageKind, dev){
   const none={mode:'area', cm2:0, hooks:0, litres:0, hang:null};
   if(!meta) return none;
@@ -415,7 +426,7 @@ function deviceOccupancy(devId, tMs, computed, scope){
   const pack=packDevice(devId, computed, scope);   // stable item→slot assignment for the whole plan
   cap.slots=pack.meta.slots; cap.slotKind=pack.meta.slotKind; cap.perSlotCm2=pack.meta.perSlotCm2;
   cap.slotLabelHe=pack.meta.slotLabelHe; cap.slotLabelEn=pack.meta.slotLabelEn;
-  const out={dev:dev, devName:dev?(dev.name||t(dev.type)||''):'', mode:cap.mode, t:tMs, cap:cap,
+  const out={dev:dev, devName:dev?deviceDisplayName(dev):'', mode:cap.mode, t:tMs, cap:cap,
              items:[], usedCm2:0, usedLitres:0, hooksUsed:0, unknownCm2Count:0, pct:null, over:false, pctFloor:false,
              slots:[], unplaced:[], slotOver:false};
   (computed||[]).forEach(function(c){
