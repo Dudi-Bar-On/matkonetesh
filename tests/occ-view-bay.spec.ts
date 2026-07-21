@@ -29,3 +29,18 @@ test('a hanging device draws a bay with lit hooks and keeps the shelves below em
   expect(r.litHooks).toBeGreaterThan(0);
   expect(r.emptyShelves).toBe(3);   // all 3 shelves stay empty — hanging frees grate area (H3)
 });
+
+test('the bay itself reads over when there are more hung items than hooks', async ({ page }) => {
+  await boot(page, [{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{racks:3, areaCm2:9000, canHang:true, hooks:1} }]);
+  const r = await page.evaluate(`(function(){
+    var hung=Object.keys(DATA.makes).filter(function(k){ var e=DATA.makes[k].equip; return e&&e.spec&&e.spec.hang; }).slice(0,2);
+    var t0=Date.parse('2026-07-24T06:00:00');
+    hung.forEach(function(k){ setItemCooker('make-'+k,'smoke','d1'); });
+    var computed=hung.map(function(k){ return { m:resolveItem('make-'+k), stages:[{kind:'smoke', start:new Date(t0), end:new Date(t0+6*3600e3), temp:75}] }; });
+    var o=deviceOccupancy('d1', t0+1*3600e3, computed, null);
+    var div=document.createElement('div'); div.innerHTML=occupancyDevHtml(o);
+    return { hooksOver:o.hooksOver, bayOver:!!div.querySelector('.occ2-bay-over') };
+  })()`) as any;
+  expect(r.hooksOver).toBe(true);
+  expect(r.bayOver).toBe(true);   // the bay, not only the fit line, shows the overflow
+});

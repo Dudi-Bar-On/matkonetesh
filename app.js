@@ -334,7 +334,11 @@ function deviceDisplayName(dev){
   const base = dev.name || (typeof t==='function'?t(dev.type):dev.type) || '';
   const same = equipList().filter(function(d){ return d && (d.name||(typeof t==='function'?t(d.type):d.type)||'')===base; });
   if(same.length<2) return base;
-  const idx = same.findIndex(function(d){ return d===dev || d.id===dev.id; });
+  // equipList() re-parses from storage on every call, so object identity never survives the boundary —
+  // match on id alone. A device with no id cannot be told apart from its namesakes, and a wrong number is
+  // worse than none, so it gets the bare name.
+  const idx = dev.id ? same.findIndex(function(d){ return d && d.id===dev.id; }) : -1;
+  if(idx<0) return base;
   const he = (typeof getLang!=='function'||getLang()==='he');
   return base + (he ? ' · מס׳ '+(idx+1) : ' · #'+(idx+1));
 }
@@ -627,7 +631,7 @@ function _occBayHtml(o){
     const longCls = (it.name && it.name.length>6) ? ' occ2-long' : '';
     return `<div class="occ2-hung${longCls}">${esc(it.name)}</div>`;
   }).join('');
-  return `<div class="occ2-bay"><span class="occ2-n" dir="ltr">${used}/${total}</span><div class="occ2-hooks">${hooks}</div><div class="occ2-hungrow">${tags}</div></div>`;
+  return `<div class="occ2-bay${o.hooksOver?' occ2-bay-over':''}"><span class="occ2-n" dir="ltr">${used}/${total}</span><div class="occ2-hooks">${hooks}</div><div class="occ2-hungrow">${tags}</div></div>`;
 }
 // Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items.
 function _occFitHtml(o){

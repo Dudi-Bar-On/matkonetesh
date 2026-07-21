@@ -27,3 +27,15 @@ test('a device with no name falls back to its translated type', async ({ page })
   expect(n.length).toBeGreaterThan(0);
   expect(n).not.toContain('מס׳');
 });
+
+// Minor found in review: equipList() re-parses on every call, so object identity never matches across the
+// boundary and numbering leant entirely on id. A device with no id used to match index 0 and be numbered
+// "1" — a wrong number is worse than none.
+test('a device with no id gets the bare name, never a fabricated number', async ({ page }) => {
+  await boot(page, [
+    { cat:'smoker', type:'ארון / קבינט', name:'אביה 150', cap:{racks:5} },
+    { cat:'smoker', type:'ארון / קבינט', name:'אביה 150', cap:{racks:5} },
+  ] as any);
+  const names = await page.evaluate(`equipList().map(function(d){return deviceDisplayName(d);})`) as string[];
+  names.forEach(n => expect(n).not.toContain('מס׳'));
+});
