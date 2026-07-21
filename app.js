@@ -59,6 +59,9 @@ const EQUIP_CATS=[
    ]},
   {cat:'oven', he:'תנור', en:'Oven', icon:'♨️', acc:'#f4a261', accL:'#fde9d6', capEm:'🗄️', types:['ביתי','דק','פיצה'], capKey:'racks', capHe:'מדפים', capEn:'racks',
    props:[
+    {key:'areaCm2', he:'שטח בישול כולל', en:'Total cooking area', kind:'num', unit:'ס״מ²', em:'📐', tier:'core',
+     bounds:[200,40000], alt:['in2->cm2','m2->cm2','ft2->cm2'],
+     def:{'ביתי':4400,'דק':3000,'פיצה':1600}},
     {key:'maxC',  he:'טמפ׳ מרבית', en:'Max temp', kind:'num', unit:'°C', em:'🌡️', tier:'core', bounds:[40,600], alt:['F->C'],
      def:{'ביתי':275,'דק':400,'פיצה':500}},
     {key:'fan',   he:'טורבו',      en:'Fan',      kind:'bool', em:'🌀', tier:'pro', def:{'ביתי':true}},
@@ -444,7 +447,7 @@ function occupancyDevHtml(o){
     </div>`;
 }
 function occupancyViewHtml(computed, tMs, scope){
-  const devs=equipList().filter(function(d){return d && ['smoker','grill','sousvide'].indexOf(d.cat)>=0;});
+  const devs=equipList().filter(function(d){return d && ['smoker','grill','sousvide','oven'].indexOf(d.cat)>=0;});
   if(!devs.length) return `<div class="occ-wrap"><p class="section-sub">${L('לא הוגדרו תנורים.','No cookers configured.')}</p></div>`;
   return `<div class="occ-wrap">${devs.map(function(d){
     return occupancyDevHtml(deviceOccupancy(d.id, tMs, computed, scope));
@@ -456,7 +459,7 @@ function occupancyViewHtml(computed, tMs, scope){
 function _occOpenAt(computed, span, scope){
   const anyAt=function(tMs){
     return equipList().some(function(d){
-      return ['smoker','grill','sousvide'].indexOf(d.cat)>=0 && deviceOccupancy(d.id, tMs, computed, scope).items.length>0;
+      return ['smoker','grill','sousvide','oven'].indexOf(d.cat)>=0 && deviceOccupancy(d.id, tMs, computed, scope).items.length>0;
     });
   };
   if(anyAt(span.now)) return span.now;
@@ -464,7 +467,7 @@ function _occOpenAt(computed, span, scope){
   (computed||[]).forEach(function(c){ if(!c||!c.stages) return; c.stages.forEach(function(s){
     if(!s.start) return; const tMs=s.start.getTime();
     let n=0; equipList().forEach(function(d){
-      if(['smoker','grill','sousvide'].indexOf(d.cat)<0) return;
+      if(['smoker','grill','sousvide','oven'].indexOf(d.cat)<0) return;
       n+=deviceOccupancy(d.id, tMs, computed, scope).items.length; });
     if(n>bestN){ bestN=n; best=tMs; } }); });
   return best;
