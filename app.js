@@ -589,7 +589,20 @@ function _occVesselBody(o){
   const cap = `${(o.items||[]).length} ${L('שקיות','bags')} · ${L('הגדולה דורשת','largest needs')} ${isl(need)} · ${L('האמבט','bath')} ${isl(has)}`;
   return `<div class="occ2-vessel"><div class="occ2-wl"></div><div class="occ2-circ"></div><div class="occ2-bags">${bags}</div></div><div class="occ2-svcap">${cap}</div>`;
 }
-function _occBayHtml(o){ return ''; }   // real bay in T9
+// Hanging bay overlay — a separate channel above the shelves. Lit hooks = in use, dimmed = free. Longer
+// items hang lower. The shelves below still render empty: the visual proof that hanging frees grate area.
+function _occBayHtml(o){
+  const cap=o.cap, used=o.hooksUsed||0, total=cap.hooks||0;
+  const hung=(o.items||[]).filter(function(it){return it.mode==='hang';});
+  if(!hung.length && !used) return '';
+  let hooks='';
+  for(let i=0;i<total;i++) hooks += `<span class="${i<used?'':'occ2-off'}">🪝</span>`;
+  const tags=hung.map(function(it){
+    const longCls = (it.name && it.name.length>6) ? ' occ2-long' : '';
+    return `<div class="occ2-hung${longCls}">${esc(it.name)}</div>`;
+  }).join('');
+  return `<div class="occ2-bay"><span class="occ2-n" dir="ltr">${used}/${total}</span><div class="occ2-hooks">${hooks}</div><div class="occ2-hungrow">${tags}</div></div>`;
+}
 // Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items.
 function _occFitHtml(o){
   const f=o.fit||{verdict:'ok'};
