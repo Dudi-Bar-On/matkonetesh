@@ -27,8 +27,9 @@ const openPlanThenView = `(async function(){
   b.click();
   await new Promise(function(r){setTimeout(r,1200);});
   var v=document.querySelector('.occ-wrap');
-  return { present: !!v, text: v?v.innerText:'', devices: document.querySelectorAll('.occ-dev').length,
-           chips: document.querySelectorAll('.occ-item').length, bars: document.querySelectorAll('.occ-bar').length };
+  return { present: !!v, text: v?v.innerText:'', devices: document.querySelectorAll('.occ2-dev').length,
+           chips: document.querySelectorAll('.occ2-tile').length, racks: document.querySelectorAll('.occ2-rack').length,
+           tileNums: [].slice.call(document.querySelectorAll('.occ2-tile-m')).map(function(e){return e.innerText;}) };
 })()`;
 
 test('W1: the work plan offers an occupancy view and it opens', async ({ page }) => {
@@ -36,15 +37,18 @@ test('W1: the work plan offers an occupancy view and it opens', async ({ page })
   const r = await page.evaluate(openPlanThenView) as any;
   expect(r.noButton).toBeUndefined();
   expect(r.present).toBe(true);
-  expect(r.devices).toBeGreaterThan(0);
+  expect(r.devices).toBeGreaterThan(0);   // one .occ2-dev per configured cooker
+  expect(r.racks).toBeGreaterThan(0);     // KIT is a cabinet smoker -> the shelf-rack silhouette body rendered
 });
 
-test('W2: the view places the cuts and shows a usage percentage', async ({ page }) => {
+// Phase 2 dropped the %-fill bar by design (H2: no invented measurement) — a placed, measured item now
+// renders as a solid tile carrying its own honest cm² figure instead of contributing to a fabricated
+// usage percentage. The intent this test guards (cuts get placed and their real size is shown) survives.
+test('W2: the view places the cuts and shows their honest measured area', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(openPlanThenView) as any;
   expect(r.chips).toBeGreaterThan(0);
-  expect(r.bars).toBeGreaterThan(0);
-  expect(r.text).toMatch(/%/);
+  expect(r.tileNums.some((n: string) => /\d/.test(n))).toBe(true);
   expect(r.text).toContain('הנפח אביה 150');
 });
 
@@ -78,9 +82,9 @@ test('W5: no occupancy chip clips its own label', async ({ page }) => {
     var sl=document.querySelector('#occRange');
     sl.value=String(t); sl.dispatchEvent(new Event('input',{bubbles:true}));
   })()`);
-  await expect(page.locator('.occ-item')).toHaveCount(2, { timeout: 20000 });
+  await expect(page.locator('.occ2-tile')).toHaveCount(2, { timeout: 20000 });
   const r = await page.evaluate(`(function(){
-    return [].map.call(document.querySelectorAll('.occ-item'), function(e){
+    return [].map.call(document.querySelectorAll('.occ2-tile'), function(e){
       return { txt:e.innerText.replace(/\\n/g,' '), clipped: e.scrollWidth > e.clientWidth+1 };
     });
   })()`) as any[];

@@ -1628,24 +1628,6 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 
 /* ── cooker occupancy view ──────────────────────────────────────────────────── */
 .occ-wrap{display:flex;flex-direction:column;gap:12px}
-.occ-dev{background:var(--char2);border:1px solid var(--line);border-radius:12px;padding:12px}
-.occ-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;margin-bottom:8px}
-.occ-h b{font-size:calc(15px * var(--fscale));color:var(--bone)}
-.occ-facts{font-size:calc(12.5px * var(--fscale));color:var(--ash);opacity:.9}
-.occ-bar{position:relative;height:20px;background:var(--char);border:1px solid var(--line);border-radius:999px;overflow:hidden;margin-bottom:8px}
-.occ-bar i{display:block;height:100%;background:linear-gradient(90deg,#2f8f5b,#7ab648);transition:width .2s}
-.occ-bar span{position:absolute;inset-inline-end:8px;top:0;line-height:20px;font-size:calc(11.5px * var(--fscale));font-weight:800;color:var(--bone)}
-.occ-bar-warn i{background:linear-gradient(90deg,#c98a2e,#e0b153)}
-.occ-bar-over i{background:linear-gradient(90deg,#c2553f,#e07a5f)}
-.occ-slots{display:flex;flex-wrap:wrap;gap:5px}
-/* min-width floors the proportional flex-basis: a 360 cm² item beside a brisket is ~7% of the row,
-   which cannot hold Hebrew text — without a floor the name and the cm² figure clip. */
-.occ-item{display:flex;flex-direction:column;justify-content:center;min-width:104px;background:var(--char);border:1.5px solid var(--line2);border-radius:8px;padding:6px 8px;font-size:calc(12.5px * var(--fscale));font-weight:700;color:var(--ash);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.occ-item small{font-weight:600;opacity:.75;font-size:calc(11px * var(--fscale))}
-.occ-hang{border-style:dashed}
-.occ-empty{font-size:calc(12.5px * var(--fscale));color:var(--ash);opacity:.6}
-.occ-unknown{font-size:calc(12px * var(--fscale));color:var(--ash);opacity:.8;margin-bottom:8px}
-.occ-warn{margin-top:8px;font-size:calc(12.5px * var(--fscale));font-weight:700;color:#e07a5f}
 .occ-scrub{margin-bottom:12px}
 .occ-scrub input[type=range]{width:100%;accent-color:var(--ember2)}
 .occ-scrubrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px}

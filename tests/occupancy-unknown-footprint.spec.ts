@@ -126,14 +126,14 @@ test('U4: the rendered occupancy view marks a floor percentage and notes the unk
   })()`) as any;
   expect(scrub.found, 'the unknown-footprint make never produced a smoke stage in the real plan').toBe(true);
 
-  const devCard = page.locator('.occ-dev').first();
+  // Phase 2: there is no %-fill bar to floor any more (H2 — no invented measurement). An unmeasured
+  // item instead renders as its own dashed, unnumbered tile inside the shelf rack — the device still
+  // appears, and the item is never silently dropped from the diagram.
+  const devCard = page.locator('.occ2-dev').first();
   await expect(devCard).toBeVisible();
-  await expect.poll(async () => (await devCard.locator('.occ-item').count())).toBeGreaterThan(0);
-
-  const text = await devCard.innerText();
-  expect(text).toMatch(/≥\d+%/);                                          // floor marker on the bar
-  expect(text).toMatch(/ללא מידה ידועה/);                                  // Hebrew unknown-size note
-  // the ≥ readout must be an LTR island — without dir="ltr" the RTL bidi flips it to read as "≤26%"
-  // (at most), the opposite of the intended floor. This guards that fix.
-  await expect(devCard.locator('.occ-bar span')).toHaveAttribute('dir', 'ltr');
+  const dashed = devCard.locator('.occ2-rack .occ2-tile.occ2-dashed');
+  await expect.poll(async () => (await dashed.count())).toBeGreaterThan(0);
+  await expect(dashed.first()).toBeVisible();
+  // never a fabricated number for the unmeasured item — its size line reads the Hebrew "unknown" note
+  await expect(dashed.first().locator('.occ2-tile-m')).toHaveText('מידה לא ידועה');
 });

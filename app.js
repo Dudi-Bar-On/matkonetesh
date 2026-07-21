@@ -541,11 +541,16 @@ function _occCabinetBody(o){
   const cap=o.cap;
   if(cap.perSlotCm2==null && !(cap.slots>0))
     return `<div class="occ2-empty">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`;
+  // Unmeasured items (H1): the packer deliberately gives them no capacity slot — they must never count
+  // toward a shelf's area math (S4/S5 lock this at the model level, `it.slot` stays null). But the diagram
+  // must still show them (never silently dropped) — they land as dashed, unnumbered tiles on the first shelf.
+  const unknown=(o.items||[]).filter(function(it){return it.mode==='area' && it.cm2==null;});
   const rows=[];
   for(let i=0;i<cap.slots;i++){
     const sl=(o.slots||[])[i]||{items:[],over:false};
-    const tiles = sl.items.length ? sl.items.map(function(it){return _occTile(it, cap);}).join('')
-                                  : `<span class="occ2-empty">${L('מדף פנוי','shelf free')}</span>`;
+    const items = (i===0) ? sl.items.concat(unknown) : sl.items;
+    const tiles = items.length ? items.map(function(it){return _occTile(it, cap);}).join('')
+                                : `<span class="occ2-empty">${L('מדף פנוי','shelf free')}</span>`;
     rows.push(`<div class="occ2-shelf${sl.over?' occ2-over':''}"><span class="occ2-n">${i+1}</span>${tiles}</div>`);
   }
   return `<div class="occ2-rack">${rows.join('')}</div>`;
