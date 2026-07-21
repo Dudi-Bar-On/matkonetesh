@@ -271,7 +271,13 @@ function cookerContention(computed, scope){
     marks[devId].forEach(function(tMs){
       const o=deviceOccupancy(devId, tMs, computed, scope);
       if(o.items.length<2) return;                  // one item can never conflict with itself
-      const bad=o.over?'area':(!o.compat.tempOk?'temp':null);
+      // Judge the fit by the HONEST per-slot verdict, not by the whole-device area sum. o.over compares
+      // total cm² against the whole cooker, so a brisket that fits no single shelf left a 5-shelf cabinet at
+      // ~35% and this banner said "no clash" while the occupancy card said it fits nowhere — the exact lie
+      // H4 removed, still alive in this second code path. o.fit is the one signal both surfaces now read.
+      // 'tight' is deliberately NOT escalated here: on an estimated area that is an advisory (shown orange
+      // on the card), and a clash banner is a confident claim we have not earned.
+      const bad=((o.fit&&o.fit.verdict==='over')||o.over)?'area':(!o.compat.tempOk?'temp':null);
       if(!bad) return;
       if(!worst || (o.pct||0)>(worst.pct||0)) worst={devId:devId, devName:o.devName, at:tMs,
         reason:bad, pct:o.pct, compat:o.compat,
@@ -290,6 +296,11 @@ const TEMP_TOL_C=6;      // items within this many °C of each other may share o
 // modest overflow on an ESTIMATE is "might be tight", not "won't fit". Past this factor no slack explains
 // it → over even on an estimate. When the user entered a real area, there is no slack (any overflow is hard).
 const FIT_HARD_FACTOR = 1.6;
+// Even a MEASURED shelf gets a small physical tolerance before we call something impossible. A shelf is not
+// an exact rectangle the meat must sit inside: PACK_EFF already discounts 15% for airflow, and a brisket
+// deforms and can overhang slightly. Without this, a 1320 cm² brisket on a 1275 cm² shelf — a 3.5% overhang
+// that any cook handles without thinking — was reported as "fits nowhere" AND raised a clash banner.
+const FIT_SLOT_TOL = 1.10;
 
 function deviceCapacity(dev){
   const none={mode:'area', areaCm2:0, usableCm2:0, racks:0, hooks:0, litres:0, known:false};
@@ -493,7 +504,8 @@ function deviceOccupancy(devId, tMs, computed, scope){
     (out.slots||[]).forEach(function(sl){ sl.items.forEach(function(it){ if(it.cm2!=null && it.cm2>cap.perSlotCm2) bad.push(it); }); });
     (out.unplaced||[]).forEach(function(it){ if(it.cm2!=null) bad.push(it); });
     bad.forEach(function(it){
-      const hard = cap.areaMeasured || (it.cm2 > FIT_HARD_FACTOR*cap.perSlotCm2);
+      // measured → a 10% overhang is still workable; estimated → far more slack before claiming failure
+      const hard = it.cm2 > cap.perSlotCm2 * (cap.areaMeasured ? FIT_SLOT_TOL : FIT_HARD_FACTOR);
       (hard?out.fit.hardItems:out.fit.softItems).push(it.name);
     });
     out.fit.verdict = out.fit.hardItems.length ? 'over' : (out.fit.softItems.length ? 'tight' : 'ok');
@@ -2998,6 +3010,16 @@ function _windowFits(placed, from, to, demand, capacity){
   for(let i=0;i<pts.length;i++){ if(_peakDemand(placed, pts[i])+demand > capacity) return false; }
   return true;
 }
+// SAFETY: can this cooker actually reach that temperature? cookerCandidates filters by category alone, so
+// a 160 °C stage could sit on a 135 °C electric smoker with nothing said. maxC has lived on every device
+// (with per-type class defaults) and been read by nothing. An unknown ceiling judges nothing — it must not
+// invent a limit any more than it may invent headroom.
+function deviceCanReach(dev, tempC){
+  const maxC=dev?Number(propOf(dev,'maxC')):NaN;
+  const have=(!isNaN(maxC) && maxC>0)?maxC:null;
+  if(tempC==null || have==null) return {ok:true, maxC:have};   // nothing stated → nothing to claim
+  return {ok:Number(tempC)<=have, maxC:have};
+}
 function schedulePlacements(computed, scope){
   const placements={}, conflicts=[], byDev={};
   (computed||[]).forEach(function(c){
@@ -3013,6 +3035,10 @@ function schedulePlacements(computed, scope){
                  demandCm2:0, hooks:0, litres:0, mode:'none'};
       if(!d){ placements[tid]=rec; return; }                       // no device resolved → nothing to contend for
       const dev=equipList().find(function(x){return x&&x.id===d.id;})||null;
+      // SAFETY: a stage hotter than this cooker can reach is not a scheduling problem to solve, it is an
+      // assignment that cannot happen. Say so — never quietly plan it, and never "fix" it by moving time.
+      const reach=deviceCanReach(dev, rec.temp);
+      if(!reach.ok) conflicts.push({devId:d.id, key:c.m.key, tid:tid, reason:'temp-ceiling', tempC:rec.temp, maxC:reach.maxC});
       const occ=itemOccupancy(c.m, s.kind, dev);
       rec.mode=occ.mode; rec.hooks=occ.hooks||0; rec.litres=occ.litres||0;
       rec.demandCm2=(occ.mode==='area')?occ.cm2:0;                 // may be null = unmeasured (H1)
@@ -3109,6 +3135,8 @@ function _schedAdviceHtml(conflicts, computed){
       lines.push(`<b>${who}</b> ${L('דורש טמפרטורת אמבט שונה משאר הפריטים באותו זמן — סו-ויד לא מתפשר על טמפרטורה. הפרד לסבבים.','needs a different bath temperature from the other items at that time — sous-vide does not compromise on temperature. Split into batches.')}`);
     } else if(cf.reason==='bath-too-small'){
       lines.push(`<b>${who}</b> ${L('דורש אמבט גדול מזה שברשותך.','needs a bigger bath than you own.')}`);
+    } else if(cf.reason==='temp-ceiling'){
+      lines.push(`<b>${who}</b> ${L('דורש '+cf.tempC+'° אבל '+dev+' מגיע ל-'+cf.maxC+'° לכל היותר — המכשיר לא יכול להגיע לטמפרטורה הזו. שייך אותו למכשיר אחר.','needs '+cf.tempC+'° but '+dev+' reaches at most '+cf.maxC+'° — this cooker cannot get there. Assign it elsewhere.')}`);
     } else if(cf.reason==='hooks'){
       lines.push(`<b>${who}</b> ${L('אין מספיק ווים פנויים ב'+dev+' באותו זמן.','has no free hook on '+dev+' at that time.')}`);
     }
