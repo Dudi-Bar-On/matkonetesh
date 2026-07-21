@@ -53,7 +53,9 @@ test('active hub: a plan-timer jump opens the timeline focused on that item', as
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
   await page.waitForSelector('#tlList .tlcard');
-  await page.waitForTimeout(300);
+  // Wait for the focus flash to actually land AND its card to expand — the exact end-state the assertions
+  // check — instead of guessing 300ms. The fixed wait raced the render under parallel load and flaked.
+  await page.waitForFunction(`(function(){ var f=document.querySelector('.tl-focus'); if(!f) return false; var stg=f.closest('.tl-stages'); return stg && getComputedStyle(stg).display==='block'; })()`);
   // the flash lands on the exact stage row inside cut-1's card, and the steps are expanded
   expect(await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); const c=f&&f.closest('.tlcard'); const xb=c&&c.querySelector('[data-tlexp]'); return xb?xb.getAttribute('data-tlexp'):'NONE'; })()`)).toBe('cut-1');
   const stagesShown = await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); const stg=f&&f.closest('.tl-stages'); return stg?getComputedStyle(stg).display:'n/a'; })()`);
