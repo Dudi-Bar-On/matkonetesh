@@ -4,7 +4,10 @@ import { test, expect } from '@playwright/test';
 const init = async (page: any) => {
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
   await page.goto('/index.html');
-  await page.waitForFunction(`typeof openActive==='function'`);
+  // gate on the app being genuinely ready, not merely on one symbol existing: under full-suite contention
+  // the gap between "openActive is defined" and "boot finished" widens, and calling into a half-booted app
+  // left the panel unopened until the 30s timeout.
+  await page.waitForFunction(`document.readyState==='complete' && typeof openActive==='function' && typeof store!=='undefined' && typeof cRefreshHome==='function'`);
 };
 
 test('active hub: aggregates timers, plans and long-term projects with a jump-back', async ({ page }) => {

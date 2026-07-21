@@ -2984,6 +2984,26 @@ function planSchedule(stages, serveMs){
   }
   return {stages:out, startMs:end};
 }
+// ── the safety invariant (runtime, not just a test) ───────────────────────────────────────────
+// The rule the whole plan layer lives under: nothing may shorten a cook, alter a temperature, touch a
+// bcheck gate, or reorder stages. Until now that was asserted only by tests, so a future edit to equipPlan,
+// placement or a repair rung could break it silently and only the cases someone happened to write would
+// catch it. This compares a plan against its own pre-transform self and returns every violation found.
+// start/end are deliberately NOT compared — moving a stage in time is exactly what placement is for.
+function safetyDiff(before, after){
+  const out=[], A=before||[], B=after||[];
+  if(A.length!==B.length){ out.push({at:-1, field:'count', was:A.length, now:B.length}); return out; }
+  for(let i=0;i<A.length;i++){
+    const a=A[i]||{}, b=B[i]||{};
+    if(a.kind!==b.kind)   out.push({at:i, field:'kind', was:a.kind, now:b.kind});          // reorder/replace
+    if(Number(a.hours||0)!==Number(b.hours||0)) out.push({at:i, field:'hours', was:a.hours, now:b.hours});
+    if((a.temp==null?null:Number(a.temp))!==(b.temp==null?null:Number(b.temp)))
+      out.push({at:i, field:'temp', was:a.temp, now:b.temp});
+    if((a.safe==null?null:Number(a.safe))!==(b.safe==null?null:Number(b.safe)))
+      out.push({at:i, field:'safe', was:a.safe, now:b.safe});
+  }
+  return out;
+}
 // ── the placement pass (Phase 4b) ─────────────────────────────────────────────────────────────
 // The relaxation ends EVERY item at serve, so a shared cooker is over-subscribed by construction. This
 // pass moves stages EARLIER — never later, which would miss serve — until no instant exceeds the device's
@@ -5589,6 +5609,7 @@ function renderTimelinePanel(){
     const serve=serveDateTime();
     { const sd=$("#tlServeDate"); if(sd) sd.value=isoDate(serve); }   // keep the date picker in sync with the (possibly rolled) serve day
     const allState=tlState();
+    const _planSafetyBase={};   // per-item snapshot of the safety-bearing fields, taken before any transform
     const computed=items.map(m=>{
       const profile=itemProfile(m);
       let st=allState[m.key];
@@ -5602,7 +5623,9 @@ function renderTimelinePanel(){
       let stages=[], startClock=null;
       if(!blocked){
         stages=itemStages(m,st.method,st.ready,st.svSmokeOrder);
+        const _safeBefore=stages.map(function(s){ return {kind:s.kind, hours:s.hours, temp:s.temp, safe:s.safe}; });   // the invariant's baseline
         stages=equipPlan(m, st.method, stages, (typeof evScope==='function'?evScope():null));   // Phase 3: the seam — equipment facts enter here and nowhere else
+        _planSafetyBase[m.key]=_safeBefore;
         { const _kc={}; stages.forEach((s)=>{ const n=(_kc[s.kind]=(_kc[s.kind]||0)+1); s.tid='st-'+evScope()+'-'+m.key+'-'+s.kind+(n>1?n:''); }); }   // R3: stable per-stage id (kind-based, not array index) so a mid-cook method change doesn't remap a running timer
         // times come from the ONE scheduler (planSchedule); this call site only applies them onto the
         // stages the renderer reads. Removing that mutation is Phase 4b's job, not 4a's.
@@ -5637,6 +5660,16 @@ function renderTimelinePanel(){
         c.readyEarlyMs=d;
       });
     }catch(e){}
+    // RUNTIME INVARIANT: verify the plan layer did not violate the rule it lives under. A violation is a bug
+    // in our own transform, so it is recorded and surfaced rather than quietly shipped into a cook.
+    window._planSafetyViolations=[];
+    computed.forEach(function(c){
+      if(!c || !c.m || !c.stages) return;
+      const base=_planSafetyBase[c.m.key]; if(!base) return;
+      const now=c.stages.map(function(s){ return {kind:s.kind, hours:s.hours, temp:s.temp, safe:s.safe}; });
+      const bad=safetyDiff(base, now);
+      if(bad.length) window._planSafetyViolations.push({key:c.m.key, violations:bad});
+    });
     let earliestSmoke=null;
     computed.forEach(c=>{ if(c.blocked) return; c.stages.forEach(s=>{ if(s.kind==='smoke'&&(!earliestSmoke||s.start<earliestSmoke)) earliestSmoke=s.start; }); });
     const _pmins=(typeof preheatMinutes==='function')?preheatMinutes():45;   // D1: one source for the time AND the label
