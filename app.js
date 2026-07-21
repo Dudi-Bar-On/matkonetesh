@@ -2267,7 +2267,10 @@ function shopData(){
       const c=DATA.cuts.find(x=>"cut-"+x.n===k); if(!c)return;
       items.push({cat:c.cat,name:(getLang&&getLang()!=='he'?c.eng:c.heb+" · "+c.eng),key:k});
       collectSeas(k,nm(c,k));
-      meat.push(`${nm(c,k)}${qkg(k)||` — ~${c.kg} ${kg}`}${ilFor(c.heb,c.eng)}`);
+      // per-guest RAW quantity via the shared rawGramsFor — never the whole-cut catalog weight (c.kg),
+      // and computed live so it can't go stale against the menu screen or the print menu.
+      { const _m=resolveItem(k); const _raw=_m?rawGramsFor(_m):0;
+        meat.push(`${nm(c,k)} — ~${(_raw/1000).toFixed(1)} ${kg}${ilFor(c.heb,c.eng)}`); }
       if(k==='cut-18'){ const dn=burgerDiners(); const tps=[...new Set(dn.flatMap(d=>d.tops||[]))]; const chs=[...new Set(dn.filter(d=>d.cheesePos!=='none').map(d=>d.cheese))]; const scs=[...new Set(dn.map(d=>d.sauce).filter(Boolean))]; const bns=[...new Set(dn.map(d=>d.bun).filter(Boolean))];
         meat.push(`🍔 ${L('לבורגרים','for the burgers')} (${dn.length} ${L('סועדים','guests')}): ${L('לחמניות','buns')} ${bns.map(x=>t(x)).join('/')||'—'} ×${dn.length}${chs.length?` · ${L('גבינות','cheeses')}: ${chs.map(x=>t(x)).join(', ')}`:''}${tps.length?` · ${L('תוספות','toppings')}: ${tps.map(x=>t(x)).join(', ')}`:''}${scs.length?` · ${L('רטבים','sauces')}: ${scs.map(x=>t(x)).join(', ')}`:''}`); }
       // house rub flows through collectSeas as the default selection — no separate season.add (avoids double-listing)
@@ -2277,14 +2280,16 @@ function shopData(){
       const s=DATA.specials.find(x=>"spec-"+x.n===k); if(!s)return;
       items.push({cat:s.cat,name:(getLang&&getLang()!=='he'?s.eng:s.heb+" · "+s.eng),key:k});
       collectSeas(k,nm(s,k));
-      meat.push(`${nm(s,k)}${qkg(k)||''}`);
+      { const _m=resolveItem(k); const _raw=_m?rawGramsFor(_m):0;
+        meat.push(`${nm(s,k)} — ~${(_raw/1000).toFixed(1)} ${kg}`); }
       if(s.wood&&s.wood!=="ללא") String(s.wood).split("/").forEach(w=>wood.add(w.trim()));
       const b=DATA.builds["spec-"+s.n]; if(b&&b.materials) b.materials.forEach(m=>equip.add(m));
     } else if(k.startsWith("make-")){
       const id=k.slice(5), m=DATA.makes[id]; if(!m)return;
       items.push({cat:m.cat,name:(getLang&&getLang()!=='he'?m.eng:m.heb+" · "+m.eng),key:k});
       collectSeas(k,nm(m,k));
-      meat.push(`${nm(m,k)} (${t(m.cat)})${qkg(k)||''}`);
+      { const _m=resolveItem(k); const _raw=_m?rawGramsFor(_m):0;
+        meat.push(`${nm(m,k)} (${t(m.cat)}) — ~${(_raw/1000).toFixed(1)} ${kg}`); }
       if(m.build&&m.build.materials) m.build.materials.forEach(x=>equip.add(x));
     }
   });
@@ -4130,6 +4135,18 @@ function menuState(){return store.get(menuKey())||{guests:8,appetite:'reg',koshe
 function saveMenu(s){ if(s&&Array.isArray(s.keys)) s.keys=[...new Set(s.keys)]; store.set(menuKey(),s); }
 function gpp(a){return {light:200,reg:280,heavy:380}[a]||280;}  // cooked g/guest, aggregate for whole meal
 function dishYield(m){return m.kind==='cut'?(m.obj.tgt>=88?0.6:0.72):0.82;}
+// Single source of truth for how much RAW meat one main dish needs for the active menu. The menu screen,
+// the print menu and the shopping cart all call this — three separate copies of this formula had drifted
+// (the cart fell back to the whole-cut catalog weight, showing a 5.5 kg brisket where the menu showed 3.7).
+// guests × per-guest cooked grams × sides factor, split across the dishes, divided by the cut's raw→cooked yield.
+function rawGramsFor(meta, s){
+  s = s || ((typeof menuState==='function') ? menuState() : {});
+  const n = (s.keys && s.keys.length) ? s.keys.length : 1;
+  const basePerGuest = (s.gpm && s.gpm>0) ? s.gpm : gpp(s.appetite);
+  const sidesFactor = (s.sides && s.sides.length) ? 0.75 : 1;   // sides fill plates → less meat
+  const budget = (s.guests||8) * basePerGuest * sidesFactor;
+  return (budget / n) / dishYield(meta);
+}
 function presetMenu(style){
   const s=menuState();
   const pick=cat=>{const l=recipesInCat(cat,s.kosher);return l.length?l[Math.floor(Math.random()*l.length)]:null;};
@@ -4171,10 +4188,9 @@ function openBuilder(){ if(typeof cwGo==='function' && typeof cNavGo==='function
 function openMenuPrint(){
   const s=menuState();
   if(!s.keys||!s.keys.length){ if(typeof toast==='function') toast('אין מנות להדפסה'); return; }
-  const basePerGuest=(s.gpm&&s.gpm>0)?s.gpm:gpp(s.appetite);
-  const budget=basePerGuest*(s.guests||8); const n=s.keys.length; let totalRaw=0;
+  let totalRaw=0;
   const kg=L('ק״ג','kg'), raw_=L('נא','raw');
-  const lines=s.keys.map(k=>{const m=resolveItem(k); if(!m) return ''; const raw=(budget/n)/dishYield(m); totalRaw+=raw; return `<li>${(typeof itemName==='function'?itemName(m):m.heb)} — ~${(raw/1000).toFixed(1)} ${kg} ${raw_}</li>`;}).join('');
+  const lines=s.keys.map(k=>{const m=resolveItem(k); if(!m) return ''; const raw=rawGramsFor(m, s); totalRaw+=raw; return `<li>${(typeof itemName==='function'?itemName(m):m.heb)} — ~${(raw/1000).toFixed(1)} ${kg} ${raw_}</li>`;}).join('');
   const appName={light:L('קל','Light'),reg:L('רגיל','Regular'),heavy:L('כבד','Heavy')}[s.appetite]||L('רגיל','Regular');
   const serve=store.get('mk-tlserve')||'19:00'; const evName=s.evName||'';
   const menuHTML=`<div class="menuprint" style="display:block">
@@ -4197,16 +4213,11 @@ function renderMenu(){
   const host=$("#menuBody"); if(!host) return;
   const s=menuState();
   const cats=menuCats(s.keys);
-  const n=s.keys.length||1;
-  const basePerGuest = (s.gpm&&s.gpm>0)? s.gpm : gpp(s.appetite);   // cooked g/guest
-  const sidesFactor = s.sides.length? 0.75 : 1;                       // sides fill plates → less meat
-  const perGuest = basePerGuest * sidesFactor;
-  const budget = s.guests * perGuest;
   let totalRaw=0;
   const qtyMap={};
   const dish=s.keys.map((k,i)=>{
     const m=resolveItem(k); if(!m) return ['',0];
-    const raw=(budget/n)/dishYield(m); totalRaw+=raw; qtyMap[k]=Math.round(raw);
+    const raw=rawGramsFor(m, s); totalRaw+=raw; qtyMap[k]=Math.round(raw);
     return [`<div class="mdish"><div class="md-main"><span class="si-cat" style="color:${catColor(m.cat)}">${t(m.cat)} ${kosherTag(k)}</span><b>${(typeof itemName==='function'?itemName(m):m.heb)}</b><small>~${(raw/1000).toFixed(1)} ${L('ק״ג','kg')} ${L('נא','raw')}</small></div><div class="md-act"><button data-mswap="${i}" aria-label="${L('החלף','Swap')}">↻</button><button data-mrm="${i}" aria-label="${L('הסר','Remove')}">✕</button></div></div>`, raw];
   });
   store.set(mkMenuqtyKey(), qtyMap);   // flows into the shopping list (per-event scope — Wave E)
@@ -7212,7 +7223,10 @@ function crossEventShopData(){
     ((ev.menu&&ev.menu.keys)||[]).forEach(function(key){
       const meta=(typeof resolveItem==='function')?resolveItem(key):null; if(!meta) return;
       const c=meta.obj||{};
-      const kg = mq[key]? mq[key]/1000 : (c.kg||0);
+      // per-guest RAW quantity from the shared rawGramsFor, computed against THIS event's own menu
+      // (guests/appetite/sides live in ev.menu) — never the whole-cut catalog weight (c.kg). Prefer the
+      // menu-screen cache when present (same formula), else compute live so a wizard-built event is correct too.
+      const kg = (mq[key]!=null ? mq[key] : rawGramsFor(meta, ev.menu)) / 1000;
       if(!map[key]) map[key]={key:key, name:meta.heb, eng:meta.eng, cat:meta.cat, totalKg:0, events:[]};
       map[key].totalKg += kg; map[key].events.push({name:ev.name, kg:kg});
       if(c.wood) String(c.wood).split('/').forEach(function(w){ w=w.trim(); if(w&&w!=='ללא') woods[w]=1; });
