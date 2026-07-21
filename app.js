@@ -313,6 +313,15 @@ function deviceCapacity(dev){
 // accessory. (A "hooks" accessory in the pantry can't hang anything without a device that supports it.)
 function deviceCanHang(dev){ return !!dev && propOf(dev,'canHang')===true && (Number(propOf(dev,'hooks'))||0)>0; }
 function ownsHangingDevice(){ return (typeof equipList==='function') && equipList().some(deviceCanHang); }
+// Type-based device contour (Phase 2). Model-based per-body shape capture is deferred to the
+// add-device AI lookup; today the silhouette is a pure function of (cat, type).
+function deviceSilhouette(dev){
+  if(!dev) return 'cabinet';
+  if(dev.cat==='sousvide') return 'vessel';
+  if(dev.cat==='grill') return (['קטל','פחם'].indexOf(dev.type)>=0) ? 'grill-round' : 'grill-rect';
+  if(dev.cat==='smoker' && dev.type==='אופסט / סטיק-ברנר') return 'offset';
+  return 'cabinet';   // all other smokers + all ovens: a truthful stacked-grate view
+}
 function itemOccupancy(meta, stageKind, dev){
   const none={mode:'area', cm2:0, hooks:0, litres:0, hang:null};
   if(!meta) return none;
