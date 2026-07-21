@@ -564,8 +564,21 @@ function _occOffsetBody(o){
   }
   return `<div class="occ2-offset"><div class="occ2-firebox"><span>${L('תא בערה','firebox')}</span></div><div class="occ2-barrel">${rows.join('')}</div></div>`;
 }
-// interim fallbacks — replaced in T6–T8
-function _occGrillBody(o){ return _occCabinetBody(o); }
+// Grill: a TOP-VIEW of heat zones side by side. Round contour for a kettle (a true circle), rect otherwise.
+// Zone labels are "אזור N" only — the model does NOT know direct vs indirect, so it never claims to.
+function _occGrillBody(o, isRound){
+  const cap=o.cap, n=Math.max(1, cap.slots||1);
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const cells=[];
+  for(let i=0;i<n;i++){
+    const sl=(o.slots||[])[i]||{items:[]};
+    const inner = sl.items.length ? sl.items.map(function(it){return _occTile(it, cap);}).join('')
+                                  : `<span class="occ2-free">${L('פנוי','free')}</span>`;
+    cells.push(`<div class="occ2-zone">${inner}<span class="occ2-zl">${he?'אזור':'zone'} ${i+1}</span></div>`);
+  }
+  return `<div class="occ2-grill ${isRound?'occ2-round':'occ2-rect'}"><div class="occ2-zones">${cells.join('')}</div></div>`;
+}
+// interim fallback — replaced in T8
 function _occVesselBody(o){ return _occCabinetBody(o); }
 function _occBayHtml(o){ return ''; }   // real bay in T9
 // Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items.
