@@ -56,7 +56,11 @@ deviceOccupancy(devId, tMs, computed, scope) -> {
 
 **Grill** → `slotKind:'zone'`, `slots = cap.zones`, packed the same way (an item takes a zone-share of area). **Sous-vide** → `slotKind:'bath'`, one slot; the H2 volume logic (max-not-sum, no honest %) is unchanged — slots don't apply a per-area split to a bath.
 
-`hooksOver` (H3) and the hung channel are unchanged — hung items never enter `slots[]`.
+**Oven** (owner request) → a rack-based device exactly like a cabinet smoker: `slotKind:'rack'`, `slots = cap.racks`, packed by area against `perSlotCm2`. Two additions H4 must make for the oven to be a real slot device:
+1. Add it to the occupancy view's device set (`occupancyViewHtml` currently filters `['smoker','grill','sousvide']` — add `'oven'`).
+2. Give the `oven` category an `areaCm2` property with per-type class defaults (it never got one in Phase 0 — smoker/grill did). Oven types are `ביתי` / `דק` / `פיצה`. Without `areaCm2` the packer can only report the shelf *count*, not place items — the §2.8-case-3 degradation, which is honest but weak. Defaults are ballpark and user-editable via the device form (same as smoker/grill): a home oven rack is ~45×35 cm.
+
+`hooksOver` (H3) and the hung channel are unchanged — hung items never enter `slots[]`. An oven does not hang (`canHang` absent → `cap.hooks:0`).
 
 ---
 
@@ -114,8 +118,9 @@ The full shelf **drawing** is Phase 2; H4 makes the **number and the warning** h
 4. **Grill zones:** a 2-zone grill packs into 2 slots labelled from `capHe` (`אזורי חום`), never "מדפים".
 5. **Unknown area:** `areaCm2` unset → `item.slot === null`, no placement, no fabricated %.
 6. **Unmeasured item:** `cm2 === null` → not placed on a shelf, not in `unplaced`; floor semantics intact (H1 still green).
-7. **Regression:** H1/H2/H3 specs stay green; sous-vide (bath) still uses max-not-sum with no per-area %.
-8. Hebrew + English; UI-verified at 390px; full suite green.
+7. **Oven:** an oven with `racks:3` packs items into 3 slots; appears in the occupancy view; `areaCm2` class default present for each oven type (build gate E1 stays green). An oven with area but no `racks` set → 1 slot (degradation), not zero.
+8. **Regression:** H1/H2/H3 specs stay green; sous-vide (bath) still uses max-not-sum with no per-area %.
+9. Hebrew + English; UI-verified at 390px; full suite green.
 
 ---
 

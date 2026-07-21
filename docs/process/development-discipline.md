@@ -221,6 +221,11 @@ After each task or step completes, show the owner a summary. Not at the end of a
 ### 10.7 Read this file at the start of every task
 Non-negotiable. Memory is not a substitute for re-reading.
 
+### 10.9 Show a mockup before building any significant graphics/visual redesign
+> **Owner instruction (2026-07-21): before implementing new graphics — the Phase-2 device diagrams, or any comparable visual redesign — build an interactive mockup/demo and show it to the owner to discuss, improve, and approve FIRST. Do not implement the visuals until the mockup is approved.**
+
+Applies specifically to Phase 2 (the device diagrams: shelf stacks, hook bay, grill zones, sous-vide vessel, ribbon). Build the mockup as a self-contained HTML artifact (publishable via the Artifact tool or a local file the owner can open), covering each device type at 390px with realistic data, then get sign-off before writing production view code.
+
 ### 10.8 Only interrupt for decisions that are genuinely important
 > **Ask the owner only when the decision is important. If it is not, do not ask — proceed by the order / the recommended option, and note the choice in the step summary.**
 
