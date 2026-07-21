@@ -31,7 +31,7 @@ test('active hub: the ✕ stops (removes) a timer', async ({ page }) => {
   await page.waitForSelector('#panel.open .ar-x');
   expect(await page.evaluate(`Object.keys(store.get('mk-timers')||{}).length`)).toBe(2);
   await page.click('#panel .active-row .ar-x');
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`Object.keys(store.get('mk-timers')||{}).length===1`);   // wait on the store, not a guess
   expect(await page.evaluate(`Object.keys(store.get('mk-timers')||{}).length`)).toBe(1);
 });
 
@@ -100,7 +100,8 @@ test('active hub: timer focus works in the WORK-PLAN view too (exact timer eleme
   await page.waitForSelector('#panel.open .active-row[data-ajump]');
   await page.click('#panel .active-row[data-ajump] .ar-main');
   await page.waitForSelector('#tlList .workplan');
-  await page.waitForTimeout(700);
+  // wait for the focus to land on the exact timer's task — not a fixed 700ms that races the render under load
+  await page.waitForFunction(`(function(){ var f=document.querySelector('.tl-focus'); if(!f) return false; var t=f.querySelector('[data-tid]'); return (t?t.getAttribute('data-tid'):f.getAttribute('data-tid'))==='st-ev-a-cut-1-smoke'; })()`);
   // the exact smoke timer's task is highlighted (not just the plan opened at the top)
   const tid = await page.evaluate(`(function(){ const f=document.querySelector('.tl-focus'); if(!f) return 'NONE'; const t=f.querySelector('[data-tid]'); return t?t.getAttribute('data-tid'):(f.getAttribute('data-tid')||'NO-TID'); })()`);
   expect(tid).toBe('st-ev-a-cut-1-smoke');
@@ -112,7 +113,8 @@ test('work-plan shows an event-identity banner (which event you are in)', async 
   await page.goto('/index.html');
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
-  await page.waitForSelector('#tlBody .tl-evbanner');
+  // wait for the banner AND its name content to be populated (the div can appear a beat before its <b> text)
+  await page.waitForFunction(`(function(){ var b=document.querySelector('#tlBody .tl-evbanner b'); return b && b.textContent.trim().length>0; })()`);
   expect(await page.evaluate(`document.querySelector('#tlBody .tl-evbanner b').textContent`)).toBe('Friday BBQ');
 });
 
@@ -138,6 +140,6 @@ test('floating Active-now shortcut: shows while cooking, opens the hub, hides wi
   expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(true);
   // close + clear timers → hidden
   await page.evaluate(`(function(){ closePanel(); store.set('mk-timers',{}); cNavGo('home'); })()`);
-  await page.waitForTimeout(150);
+  await page.waitForFunction(`document.querySelector('#cActiveFab').hidden===true`);   // wait on the state, not a guess
   expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(true);
 });

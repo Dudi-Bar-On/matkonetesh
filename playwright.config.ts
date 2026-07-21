@@ -9,10 +9,12 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,   // surface flakes as failures — never retry them away (a flake is a bug to fix)
-  // 8 workers is the measured reliable ceiling against the clustered in-memory serve.js: 308/308 across
-  // repeated runs at ~106s (~7× faster than serial). 16 (the CPU/2 default) hits occasional client-side
-  // page.goto timeouts under 16 concurrent Chromium instances. Reliability over the last few seconds.
-  workers: 8,
+  // Measured reliable ceiling against the clustered in-memory serve.js. As the suite grew (308→324 tests)
+  // 8 workers began an occasional short run (a burst of client-side page.goto timeouts under contention,
+  // ~2.5min instead of 1.8), so it was lowered to 6: 324/324 across repeated runs at ~145s. Re-measure and
+  // adjust if the suite grows substantially again. Reliability over the last ~40s — a flake is a bug, not
+  // something to average out. (16 = the CPU/2 default is much faster but clearly non-deterministic here.)
+  workers: 6,
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
