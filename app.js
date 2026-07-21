@@ -350,7 +350,7 @@ function deviceOccupancy(devId, tMs, computed, scope){
   const dev=equipList().find(function(d){return d && d.id===devId;})||null;
   const cap=deviceCapacity(dev);
   const out={dev:dev, devName:dev?(dev.name||t(dev.type)||''):'', mode:cap.mode, t:tMs, cap:cap,
-             items:[], usedCm2:0, usedLitres:0, hooksUsed:0, unknownCm2Count:0, pct:null, over:false};
+             items:[], usedCm2:0, usedLitres:0, hooksUsed:0, unknownCm2Count:0, pct:null, over:false, pctFloor:false};
   (computed||[]).forEach(function(c){
     if(!c || c.blocked || !c.stages || !c.m) return;
     c.stages.forEach(function(s){
@@ -373,11 +373,20 @@ function deviceOccupancy(devId, tMs, computed, scope){
   const denom=(cap.mode==='volume')?cap.litres:cap.usableCm2;
   if(cap.known && denom>0){
     if(cap.mode==='volume'){
-      out.pct=Math.round(out.usedLitres/cap.litres*100);
-      out.over=out.usedLitres>cap.litres;
+      // min_bath_l is each item's REQUIRED bath size (a per-item constraint), NOT additive displacement —
+      // summing it produced a false "over" for items that share one bath. The binding requirement is the
+      // largest single item's need; with 2+ items the true fill is higher (displacement we don't have), so
+      // the % is a floor, and "over" means an item literally needs a bigger bath than you own.
+      const reqs=out.items.map(function(i){return i.litres;}).filter(function(v){return v>0;});
+      const maxReq=reqs.length?Math.max.apply(null,reqs):0;
+      out.usedLitres=maxReq;
+      out.pct=Math.round(maxReq/cap.litres*100);
+      out.over=maxReq>cap.litres;
+      out.pctFloor=reqs.length>=2;
     } else {
       out.pct=Math.round(out.usedCm2/cap.usableCm2*100);
       out.over=out.usedCm2>cap.usableCm2;
+      out.pctFloor=out.unknownCm2Count>0;   // known-area sum excludes unmeasured items → the % is a floor
     }
   }
   out.hooksOver=cap.hooks>0 && out.hooksUsed>cap.hooks;
@@ -394,12 +403,14 @@ function occupancyDevHtml(o){
   const barCls=o.over?'occ-bar-over':(o.pct!=null&&o.pct>80?'occ-bar-warn':'');
   const bar=(o.pct==null)
     ? `<div class="occ-unknown">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`
-    : `<div class="occ-bar ${barCls}"><i style="width:${pct}%"></i><span dir="ltr">${o.unknownCm2Count>0?'≥':''}${o.pct}%</span></div>`;
-  // usedCm2 excludes unknown-footprint items, so once any exist the % above is a FLOOR — at least
-  // this full, plus whatever the unmeasured item(s) also take. Flag it rather than invent a number.
-  const unknownNote=(o.unknownCm2Count>0)
+    : `<div class="occ-bar ${barCls}"><i style="width:${pct}%"></i><span dir="ltr">${o.pctFloor?'≥':''}${o.pct}%</span></div>`;
+  // The % is a FLOOR when the model can't see the full load: area with unmeasured-footprint items, or a
+  // shared bath whose true fill depends on displacement we don't have. Flag it rather than invent a number.
+  const floorNote = (o.mode==='area' && o.unknownCm2Count>0)
     ? `<div class="occ-unknown">+${o.unknownCm2Count} ${L('פריט/ים ללא מידה ידועה','item(s) of unknown size')}</div>`
-    : '';
+    : (o.mode==='volume' && o.pctFloor)
+      ? `<div class="occ-unknown">${o.items.length} ${L('פריטים חולקים את האמבט — ודא שהם נכנסים','items share the bath — make sure they fit')}</div>`
+      : '';
   const items=o.items.length
     ? o.items.map(function(i){
         const frac=(cap.usableCm2>0&&i.cm2>0)?Math.max(8,Math.round(i.cm2/cap.usableCm2*100)):18;
@@ -418,7 +429,7 @@ function occupancyDevHtml(o){
   return `<div class="occ-dev">
       <div class="occ-h"><b>${esc(o.devName)}</b><span class="occ-facts">${facts.join(' · ')}</span></div>
       ${bar}
-      ${unknownNote}
+      ${floorNote}
       <div class="occ-slots">${items}</div>
       ${warn}
     </div>`;
