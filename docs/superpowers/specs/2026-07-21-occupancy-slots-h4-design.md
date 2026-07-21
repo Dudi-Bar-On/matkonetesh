@@ -106,7 +106,7 @@ The full shelf **drawing** is Phase 2; H4 makes the **number and the warning** h
 - **No scheduler/temporal changes.** The packer replays the existing timeline; it never moves an item in time or reassigns devices. Timeline optimization is Phase 4.
 - **Never invent a measurement.** Unknown area → no slot assignment, no fabricated %. Unmeasured item → its own bucket, floor semantics.
 - **One source of truth.** The packer lives in the model (`deviceOccupancy`), never the view — the plan's architecture rule. The view renders `slots[]`; it computes no placement.
-- The packer must be **pure and deterministic** (memoised by plan revision) — same plan → identical assignment every render, so the scrubber never reshuffles.
+- The packer must be **pure and deterministic** — same plan → identical assignment every render, so the scrubber never reshuffles. **RESOLVED (owner + expert review, 2026-07-21): recompute-per-call, NOT memoised.** The packer is microseconds; the per-frame cost is the `innerHTML` re-parse (which runs regardless); determinism (not caching) gives scrub-stability; memoising would add a cache-invalidation surface (plan + equipment + cooker-assignment) that could silently show stale slots. Revisit only if a single paint's packer work reaches ~10⁴–10⁵ ops; the cheaper fix then is to debounce the scrub repaint, not memoise.
 
 ---
 
