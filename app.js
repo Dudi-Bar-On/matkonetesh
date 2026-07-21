@@ -1503,6 +1503,52 @@ function catView(mode){
 /* ---------- detail panel ---------- */
 /* ---------- calculators ---------- */
 function fmtG(g){ if(g<=0) return '0'; const kg=(typeof L==='function')?L('ק״ג','kg'):'ק״ג', gr=(typeof L==='function')?L('ג׳','g'):'ג׳'; return g>=1000 ? (g/1000).toFixed((g%1000)?2:0)+' '+kg : (g>=10?Math.round(g):g.toFixed(1))+' '+gr; }
+// ---------- cure-scale guard ----------
+// A cure (Cure #1, nitrite) dose too small for the user's scale to actually resolve is a safety defect,
+// not a cosmetic one: under-dosing risks botulism, and the app's default rate (2.5 g/kg = 156ppm) already
+// sits at the US regulatory maximum with zero headroom for over-dosing either. This layer is ADDITIVE
+// ONLY — it reads an already-computed dose and never feeds back into any computed figure.
+// Rule (20d is NIST Handbook 44 §2.20 UR.3.1 Table 8's recommended minimum load for a Class III scale):
+//   dose < 5*d  -> hard warning (unweighable)     dose < 20*d -> advisory (poor accuracy)     else -> silent
+function scaleReadability(){
+  const dev=(typeof equipList==='function')?equipList().find(function(d){return d && d.cat==='other' && d.type==='scale';}):null;
+  const res=dev?propOf(dev,'res'):undefined;
+  if(res==='0.1g') return {d:0.1, known:true};
+  if(res==='1g')   return {d:1,   known:true};
+  // Fail-safe (owner-approved divergence from canSV()'s usual permissive-until-configured default):
+  // an unknown scale must never stay silent — assume a typical 1g kitchen scale and phrase conditionally.
+  return {d:1, known:false};
+}
+function fmtQty(n){ const r=n>=10?Math.round(n):Math.round(n*10)/10; return String(r); }
+// doseG: the already-computed cure grams for this figure (read-only input — never modified).
+// perUnitG: grams of cure produced per 1 unit of whatever batch variable the user types (kg meat,
+// liters brine water, kg meat+water) — used only to phrase the "scale the batch up to X" suggestion.
+function cureScaleGuardHTML(doseG, perUnitG, unitHe, unitEn){
+  if(!(doseG>0)) return '';
+  const ro=scaleReadability(), d=ro.d, known=ro.known;
+  const hardMax=5*d, advMax=20*d;
+  if(doseG>=advMax) return '';
+  const hard=doseG<hardMax;
+  const dTxt=(d===0.1)?L('0.1 גרם','0.1 g'):L('1 גרם','1 g');
+  const doseTxt=esc(doseG.toFixed(2))+' '+L('גרם','g');
+  const errPct=esc(String(Math.round((d/doseG)*100)));
+  const target=perUnitG>0?advMax/perUnitG:0;
+  const targetTxt=target>0?(esc(fmtQty(target))+' '+L(unitHe,unitEn)):'';
+  const altScale=(d===1)?L('לחלופין, שקלו במשקל מדויק יותר (0.1 גרם).','Or weigh on a more precise 0.1 g scale.'):'';
+  const msg = hard
+    ? (known
+        ? L(`⚠ מינון ה-Cure כאן הוא ${doseTxt} — כמות קטנה מדי לשקילה מדויקת במשקל שלכם (מדייק ל-${dTxt}). שגיאת השקילה עלולה להגיע ל-${errPct}%, ולגרום למינון חסר (סיכון בוטוליזם) או למינון עודף. הגדילו את האצווה ל-${targetTxt} לפחות. ${altScale}`,
+             `⚠ This Cure dose is ${doseTxt} — too small to weigh accurately on your scale (reads to ${dTxt}). The weighing error could reach ${errPct}%, risking either under-dosing (botulism risk) or over-dosing. Scale the batch up to at least ${targetTxt}. ${altScale}`)
+        : L(`⚠ מינון ה-Cure כאן הוא ${doseTxt}. לא הוגדר משקל בציוד — בהנחה שהמשקל שלכם מדייק ל-${dTxt} (משקל מטבח טיפוסי), הכמות קטנה מדי לשקילה מדויקת. שגיאת השקילה עלולה להגיע ל-${errPct}%, ולגרום למינון חסר (סיכון בוטוליזם) או למינון עודף. הגדילו את האצווה ל-${targetTxt} לפחות. ${altScale}`,
+             `⚠ This Cure dose is ${doseTxt}. No scale is configured — assuming your scale reads to ${dTxt} (a typical kitchen scale), this amount is too small to weigh accurately. The weighing error could reach ${errPct}%, risking either under-dosing (botulism risk) or over-dosing. Scale the batch up to at least ${targetTxt}. ${altScale}`))
+    : (known
+        ? L(`מינון ה-Cure (${doseTxt}) קרוב לגבול הדיוק של המשקל שלכם (מדייק ל-${dTxt}) — שגיאת שקילה אפשרית עד ${errPct}%. לדיוק גבוה יותר, שקלו להגדיל את האצווה ל-${targetTxt}. ${altScale}`,
+             `The Cure dose (${doseTxt}) is close to your scale's accuracy limit (reads to ${dTxt}) — possible weighing error up to ${errPct}%. For better accuracy, consider scaling the batch up to ${targetTxt}. ${altScale}`)
+        : L(`מינון ה-Cure (${doseTxt}) עשוי להיות קרוב לגבול הדיוק של המשקל — לא הוגדר משקל בציוד; בהנחת משקל טיפוסי (${dTxt}), שגיאת שקילה אפשרית עד ${errPct}%. לדיוק גבוה יותר, שקלו להגדיל את האצווה ל-${targetTxt}. ${altScale}`,
+             `The Cure dose (${doseTxt}) may be close to the scale's accuracy limit — no scale is configured; assuming a typical scale (${dTxt}), possible weighing error up to ${errPct}%. For better accuracy, consider scaling the batch up to ${targetTxt}. ${altScale}`));
+  const cls=hard?'ai-caveat ai-caveat-strong':'calcnote';
+  return `<div class="${cls}" data-cureguard="${hard?'hard':'advisory'}">${msg}</div>`;
+}
 function calcBoxHTML(calc){
   if(!calc) return '';
   const brine=calc.brine;
@@ -1514,17 +1560,20 @@ function calcBoxHTML(calc){
     ${brine?`<div class="calcrow"><label>${L('משקל הנתח','Cut weight')} <small>(${L('לא חובה','optional')})</small></label><input type="number" data-mw min="0" step="100" value="0"><span class="u">${L('גרם','grams')}</span></div>`:''}
     <div class="calcout" data-out></div>
     <div class="calcnote" data-note></div>
+    <div data-guard></div>
   </div>`;
 }
 function wireCalcBox(root, calc){
   const box=root.querySelector("[data-saltcalc]"); if(!box||!calc) return;
-  const w=box.querySelector("[data-w]"), out=box.querySelector("[data-out]"), note=box.querySelector("[data-note]"), mw=box.querySelector("[data-mw]");
+  const w=box.querySelector("[data-w]"), out=box.querySelector("[data-out]"), note=box.querySelector("[data-note]"), mw=box.querySelector("[data-mw]"), guard=box.querySelector("[data-guard]");
   const line=(l,v,s)=>`<div class="cl"><span>${l}</span><b>${v}</b>${s?`<small>${s}</small>`:''}</div>`;
   function recompute(){
-    const x=Math.max(0,parseFloat(w.value)||0); let h=''; const gL=L('ג׳/ליטר','g/liter'), gKg=L('ג׳/ק״ג','g/kg');
+    const x=Math.max(0,parseFloat(w.value)||0); let h=''; let g=''; const gL=L('ג׳/ליטר','g/liter'), gKg=L('ג׳/ק״ג','g/kg');
     if(calc.brine){
       h+=line(L('מלח','Salt'), fmtG(x*calc.saltL), calc.saltL+' '+gL);
-      h+=line('Cure #1', fmtG(x*calc.cureL), calc.cureL+' '+gL);
+      const dipDoseG=x*calc.cureL;
+      h+=line('Cure #1', fmtG(dipDoseG), calc.cureL+' '+gL);
+      if(calc.cureL) g+=cureScaleGuardHTML(dipDoseG, calc.cureL, 'ליטר מים','L water');
       h+=line(L('סוכר','Sugar'), fmtG(x*calc.sugarL), calc.sugarL+' '+gL);
       const meat=mw?Math.max(0,parseFloat(mw.value)||0):0;
       if(meat>0){
@@ -1533,18 +1582,27 @@ function wireCalcBox(root, calc){
         h+=`<div class="cl cl-note"><span>${L('שיטת שיווי-משקל (מומלץ, מדויק):','Equilibrium method (recommended, precise):')}</span></div>`;
         h+=line(L('מים מומלצים לכיסוי','Recommended water to cover'), suggestL+' '+L('ליטר','liter'), L('≈1 ל׳/ק״ג בשר בשקית ואקום','≈1 L/kg meat in a vacuum bag'));
         h+=line(L('מלח לשיווי-משקל','Salt for equilibrium'), fmtG(eqSalt), L('2.8% ממשקל בשר+מים','2.8% of meat+water weight'));   // D4: eqSalt is already grams — the previous /1000 showed ~1000× too little
-        if(calc.cureL) h+=line(L('Cure #1 לשיווי-משקל','Cure #1 for equilibrium'), fmtG(totalKg*2.5), L('2.5 ג׳/ק״ג בשר+מים ≈156ppm','2.5 g/kg meat+water ≈156ppm'));   // D4: equilibrium nitrite dose — was left at the per-liter dip rate → unvalidated in the one calc where it's acutely dangerous
+        if(calc.cureL){
+          const eqDoseG=totalKg*2.5;
+          h+=line(L('Cure #1 לשיווי-משקל','Cure #1 for equilibrium'), fmtG(eqDoseG), L('2.5 ג׳/ק״ג בשר+מים ≈156ppm','2.5 g/kg meat+water ≈156ppm'));   // D4: equilibrium nitrite dose — was left at the per-liter dip rate → unvalidated in the one calc where it's acutely dangerous
+          g+=cureScaleGuardHTML(eqDoseG, 2.5, 'ק״ג בשר+מים','kg meat+water');
+        }
       }
       note.textContent=L('תמלחת כבישה — שקלו לכסות את הנתח. שיטת שיווי-משקל (בשקית ואקום עם מעט מים) בטוחה מפני מליחות-יתר, ומינון ה-Cure מחושב לפי המשקל הכולל (בטוח). כבישה ~24ש לכל 1 ס״מ עובי.','Curing brine — weigh out to cover the cut. The equilibrium method (in a vacuum bag with a little water) is safe from over-salting, and the Cure dose is calculated from the total weight (safe). Cure ~24h per 1 cm of thickness.');
     } else {
       h+=line(L('מלח','Salt'), fmtG(x*calc.salt/1000), calc.salt+' '+gKg);
-      if(calc.cure) h+=line('Cure #'+calc.cure, fmtG(x*(calc.cureRate||2.5)/1000), (calc.cureRate||2.5)+' '+gKg);
+      if(calc.cure){
+        const doseG=x*(calc.cureRate||2.5)/1000;
+        h+=line('Cure #'+calc.cure, fmtG(doseG), (calc.cureRate||2.5)+' '+gKg);
+        g+=cureScaleGuardHTML(doseG, calc.cureRate||2.5, 'ק״ג בשר','kg meat');
+      }
       if(calc.sugar) h+=line(L('סוכר/דקסטרוז','Sugar/dextrose'), fmtG(x*calc.sugar/1000), calc.sugar+' '+gKg);
       if(calc.water) h+=line(L('קרח/מים','Ice/water'), fmtG(x*calc.water/100), calc.water+'%');
       note.textContent = calc.cure==='2' ? L('⚠ מוצר מיובש לא מבושל — דיוק ה-Cure קריטי לבטיחות.','⚠ Dry-cured, uncooked product — Cure accuracy is critical for safety.')
         : (calc.cure==='1' ? L('Cure #1 ב-2.5 ג׳/ק״ג ≈ 156ppm ניטריט (תקני ובטוח).','Cure #1 at 2.5 g/kg ≈ 156ppm nitrite (standard and safe).') : '');
     }
     out.innerHTML=h;
+    if(guard) guard.innerHTML=g;
   }
   w.addEventListener('input',recompute); if(mw) mw.addEventListener('input',recompute); recompute();
 }
@@ -2067,6 +2125,7 @@ function openSpec(s){
      </div>`:''}
      <div class="progress"><i id="prog"></i></div>
      <div id="methodArea"></div>
+     ${equipSectionHtml(s.equip)}
      <div id="extras"></div>
      ${sourcesBlock(s)}
    </div>`;
@@ -2101,7 +2160,7 @@ function openMake(id){
      <h2>${itemName(m)}</h2>
      <div class="en">${m.eng} · ${L('רמת קושי','difficulty')} ${dots(m.diff)}</div>
    </div>
-   <div class="panel-body">${m.desc?`<p class="itemdesc" data-mt>${m.desc}</p>`:''}<div class="progress"><i id="prog"></i></div><div id="methodArea"></div><div id="extras"></div>${sourcesBlock(m)}</div>`;
+   <div class="panel-body">${m.desc?`<p class="itemdesc" data-mt>${m.desc}</p>`:''}<div class="progress"><i id="prog"></i></div><div id="methodArea"></div>${equipSectionHtml(m.equip)}<div id="extras"></div>${sourcesBlock(m)}</div>`;
   showPanel(html);
   renderBuildInto("#methodArea", "make-"+id, m.build);
   fillExtras("make-"+id);
@@ -5541,6 +5600,7 @@ function equipSpecNote(spec){
   if(spec.min_bath_l)    bits.push(`${he?'אמבט':'Bath'} ≥ ${spec.min_bath_l} ${he?'ל׳':'L'}`);
   if(spec.footprint_cm2) bits.push(`${he?'שטח':'Area'} ~${spec.footprint_cm2} ${he?'סמ״ר':'cm²'}`);
   if(spec.casing_mm)     bits.push(`${he?'מעטה':'Casing'} ${spec.casing_mm} ${he?'מ״מ':'mm'}`);
+  if(spec.scale_res)     bits.push(`${he?'משקל':'Scale'} ≥ ${spec.scale_res} ${he?'(למינון קיור מדויק)':'(for accurate cure dosing)'}`);
   return bits.length?`<span class="eq-spec">${bits.join(' · ')}</span>`:'';
 }
 function equipSectionHtml(eq){
