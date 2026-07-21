@@ -235,6 +235,19 @@ A decision is **routine** (→ do not ask, just do it) when it is: task ordering
 
 When genuinely unsure which bucket a decision falls in, **prefer proceeding over interrupting** — make the call, state it in the summary, and let the owner redirect if they disagree. Interrupting for a routine choice wastes the owner's time; the summary-after-every-step (§10.6) is the safety net.
 
+### 10.10 Verify every shipped version on the LIVE site with Playwright
+> **Owner, 2026-07-21: "test with playwright every time a version is shipped."**
+
+A push is not a release. **A release is not done until the live URL has been verified with Playwright** — by me, not by the owner discovering it.
+
+After every deploy, drive `https://matkonetesh.pages.dev` with Playwright and assert **both**:
+1. **The version stamp matches what was shipped** — read `.foot-stamp`; it must equal the version just built (`מהדורה NNN`). A mismatch means the release did not land.
+2. **A feature probe from this release is actually present** — e.g. a new global (`typeof deviceSilhouette==='function'`), a new CSS class, or new markup. The stamp alone can be right while the payload is stale.
+
+**Deploys are not instant — poll, do not assume.** Cloudflare Pages rebuilds from source (`build.py` on a ~2.6 MB bundle) and this takes minutes. Re-check the live URL on an interval until the stamp matches, and only then report the release as done. **Never tell the owner a version is live before the live check passes** — on v255 I announced the ship immediately after `git push`, the owner looked before the build finished, saw the previous version, and I then mis-diagnosed it as their device cache. The build was simply still running.
+
+Also verify the delivery path itself, once, when it changes: `/` and `/index.html` should serve the new HTML with a revalidating `Cache-Control`, and `/sw.js` must be `no-cache` with a fresh content-hash `CACHE` name.
+
 ---
 
 ## 11a. Testing infrastructure (established 2026-07-21)
@@ -269,3 +282,14 @@ Append after every failure. Format: what happened → root cause → the gate th
 | L11 | A single-process server re-reading a 2.4 MB file per request made high concurrency non-deterministic (ERR_ABORTED) | Server was the bottleneck, not the tests | Clustered + in-memory server; pin workers to the measured reliable ceiling |
 | L12 | A UI check verified a STALE build — the in-memory serve.js caches dist/ at startup, so a rebuild never reached the running manual server | Restart the manual server after every build before a manual UI check (Playwright restarts its own) |
 | L13 | A ≥ floor marker rendered as ≤ (opposite meaning) in RTL — the DOM-text test asserted the char was present but not its visual order | Numeric/math readouts in Hebrew UI must be LTR islands (dir="ltr"); catch bidi order by LOOKING, and guard with a dir assertion |
+
+**L14 · A push is not a release; a deploy takes minutes (v255, 2026-07-21).**
+I announced "v255 is shipped" the moment `git push` returned. The owner looked, still saw 254, and my first
+diagnosis was wrong — I blamed their service-worker cache and started engineering a cache fix. The truth was
+mundane: Cloudflare Pages was still rebuilding (build.py over a ~2.6 MB single-file bundle). Verifying the
+live URL with Playwright showed the server was already correct once the build finished.
+Two rules came out of it: (a) §10.10 — never report a version live until a Playwright check against the live
+URL passes, polling for the build rather than assuming; (b) when the owner reports "I don't see it", check
+the *simplest* external explanation (has the deploy finished?) before theorising about client caches.
+It did surface one genuine defect worth keeping: the app never called `reg.update()`, so an installed PWA
+that is resumed rather than navigated could go indefinitely without checking for a new worker.

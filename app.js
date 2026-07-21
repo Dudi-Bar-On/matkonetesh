@@ -9149,6 +9149,13 @@ if('serviceWorker' in navigator && location.protocol==='https:'){
           if((typeof anyTimerActive==='function'&&anyTimerActive())||(typeof planStarted==='function'&&planStarted())) return;   // don't interrupt a live cook — the update applies on the next natural reload
           toast('גרסה חדשה זמינה', function(){location.reload();}, 'רענן עכשיו'); } });
       });
+      // Actively ASK for a new worker instead of waiting for the browser to notice. An installed PWA that is
+      // resumed (phone picked up by the smoker) may never issue a navigation, so without this a shipped
+      // version can sit undelivered indefinitely — v255 reached the server but not the device. Check on
+      // launch, and again whenever the app comes back to the foreground.
+      const _swPoke=function(){ try{ reg.update(); }catch(e){} };
+      _swPoke();
+      document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') _swPoke(); });
     }).catch(function(){});
   });
 }
