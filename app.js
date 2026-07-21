@@ -5873,6 +5873,22 @@ function openEquipment(){
       let type=($("#eqType")||{}).value; const nameEl=$("#eqName"); let nm=((nameEl&&nameEl.value)||'').trim();
       if(type==='__custom__') type=nm||L('מותאם','Custom');
       if(!nm) nm=t(type)||type;
+      // Validate every non-empty user-typed value BEFORE saving. A value that fails validation must never be
+      // silently dropped — the old code did `else delete d.cap[key]` and then closed the form, so the user's
+      // input vanished with no message (and the capacity data the occupancy layer relies on was corrupted).
+      // On any invalid value: surface it, mark the field, and keep the form open with the input intact.
+      // Only the numeric PROPERTY fields are text inputs (they accept unit suffixes like '500F'), so only they
+      // can receive an unparseable value. The capacity field (#eqCapKey) is type="number" — the browser itself
+      // rejects non-numeric text, and empty→class-default is correct — so it needs no guard here.
+      const _invalid=[];
+      document.querySelectorAll('#panel .eq-invalid').forEach(function(el){ el.classList.remove('eq-invalid'); });
+      (cc.props||[]).forEach(function(p){ if(p.kind!=='num') return;
+        const pe=$("#eqProp-"+p.key); if(!pe) return; const pv=(pe.value==null?'':String(pe.value)).trim();
+        if(pv!=='' && !propParse(p, pv)){ _invalid.push(L(p.he,p.en)); pe.classList.add('eq-invalid'); } });
+      if(_invalid.length){
+        if(typeof toast==='function') toast(L('לא נשמר — ערכים לא תקינים: ','Not saved — invalid values: ')+_invalid.join(', '));
+        return;   // keep the form open, values intact, so the user can correct them
+      }
       const list2=equipList(); let d;
       if(editId){ d=list2.find(function(x){return x.id===editId;}); if(!d){ editId=null; return drawList(); } }
       else { d={id:equipId(),cat:nc,type:type,name:nm,brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''}; list2.push(d); }

@@ -220,12 +220,15 @@ test('E7b: manual numeric prop input goes through propParse — unit suffix conv
   await page.fill('#panel #eqProp-maxC', '500F');
   await page.click('#panel #eqSave');
   await page.waitForFunction(`(equipList()[0].cap||{}).maxC===260`);
-  // typing '300mm' into the same field is a dimension mismatch — must be REJECTED, not stored as 300
+  // typing '300mm' into the same field is a dimension mismatch — REJECTED (never stored as 300). And per
+  // M2, an invalid value must not silently WIPE the previously-saved good value (260) either: the save is
+  // blocked, the form stays open, and the stored maxC is left untouched.
   await page.click('#panel [data-eqedit="s1"]');
   await page.waitForSelector('#panel #eqProp-maxC');
   await page.fill('#panel #eqProp-maxC', '300mm');
   await page.click('#panel #eqSave');
-  await page.waitForFunction(`!(equipList()[0].cap||{}).hasOwnProperty('maxC')`);
+  await expect(page.locator('#panel #eqProp-maxC')).toBeVisible();        // rejected → form stays open
+  expect(await page.evaluate(`(equipList()[0].cap||{}).maxC`)).toBe(260); // never 300, never deleted
 });
 
 test('E8: a stringly "null" from a grounded lookup is treated as absent, never as false', async ({ page }) => {

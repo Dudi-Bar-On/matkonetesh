@@ -1648,3 +1648,6 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ-scrub input[type=range]{width:100%;accent-color:var(--ember2)}
 .occ-scrubrow{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-top:4px}
 .occ-scrubrow b{font-size:calc(15px * var(--fscale));color:var(--bone);font-variant-numeric:tabular-nums}
+
+/* M2: an equipment field whose typed value failed validation on save — flag it, don't silently drop it */
+.eq-invalid{border-color:#c2553f !important;background:rgba(194,85,63,.06)}
