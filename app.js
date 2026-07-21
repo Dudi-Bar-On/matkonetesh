@@ -504,54 +504,84 @@ function deviceOccupancy(devId, tMs, computed, scope){
 // ── shared-device occupancy view ───────────────────────────────────────────────────────────
 // Renders deviceOccupancy() and nothing else — the diagram and the clash advisories must never
 // be able to disagree, so this computes no occupancy of its own.
+// Phase 2: a device-shaped diagram per cooker, rendered from `o` (deviceOccupancy) ALONE. The dispatcher
+// picks the silhouette; each *_Body renders only the interior; the header, fit line and a11y list are shared.
 function occupancyDevHtml(o){
+  const sil = deviceSilhouette(o.dev);
+  let body;
+  if(sil==='vessel')       body=_occVesselBody(o);
+  else if(sil==='offset')  body=_occOffsetBody(o);
+  else if(sil==='grill-round'||sil==='grill-rect') body=_occGrillBody(o, sil==='grill-round');
+  else                     body=_occCabinetBody(o);
+  const bay = (o.cap && o.cap.hooks>0) ? _occBayHtml(o) : '';
+  return `<div class="occ2-dev">${_occHeaderHtml(o)}${bay}${body}${_occFitHtml(o)}${_occListHtml(o)}</div>`;
+}
+function _occHeaderHtml(o){
   const he=(typeof getLang!=='function'||getLang()==='he');
+  const cap=o.cap, facts=[];
+  if(o.compat && o.compat.commonWood) facts.push(`🪵 ${esc(t(o.compat.commonWood))}`);
+  else if(o.compat && o.compat.woods && o.compat.woods.length>1) facts.push(`🪵 ${L('עצים שונים','different woods')}`);
+  if(cap.slots) facts.push(`🗄️ ${cap.slots} ${he?(cap.slotLabelHe||'מדפים'):(cap.slotLabelEn||'racks')}`);
+  if(cap.hooks) facts.push(`🪝 ${o.hooksUsed}/${cap.hooks}`);
+  const set = (o.compat && o.compat.setpoint!=null) ? `<span class="occ2-set" dir="ltr">${o.compat.setpoint}°</span>` : '';
+  return `<div class="occ2-h"><span class="occ2-nm">${esc(o.devName)}</span>${set}<div class="occ2-facts">${facts.join('')}</div></div>`;
+}
+// One tile for one item. Solid = measured; dashed (no number) = unmeasured (H1); over = capped + hatched bleed.
+function _occTile(it, cap){
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  if(it.cm2==null)  // unmeasured → dashed, never numbered
+    return `<div class="occ2-tile occ2-dashed" title="${esc(it.name)}"><span class="occ2-tile-t">${esc(it.name)}</span><span class="occ2-tile-m">${L('מידה לא ידועה','size unknown')}</span></div>`;
+  if(cap.perSlotCm2!=null && it.cm2>cap.perSlotCm2)  // over a single slot
+    return `<div class="occ2-tile occ2-big" title="${esc(it.name)}"><span class="occ2-tile-t">${esc(it.name)}</span><span class="occ2-tile-m" dir="ltr">${it.cm2} ${he?'סמ״ר':'cm²'}</span></div><div class="occ2-bleed"></div>`;
+  const frac=(cap.perSlotCm2>0)?Math.max(18,Math.round(it.cm2/cap.perSlotCm2*100)):40;
+  return `<div class="occ2-tile" style="flex:0 0 ${frac}%" title="${esc(it.name)}"><span class="occ2-tile-t">${esc(it.name)}</span><span class="occ2-tile-m" dir="ltr">${it.cm2}</span></div>`;
+}
+// Cabinet / oven: a vertical shelf stack; empty shelves drawn, not hidden.
+function _occCabinetBody(o){
   const cap=o.cap;
-  const pct=(o.pct==null)?null:Math.max(0,Math.min(100,o.pct));
-  const barCls=(o.slotOver||o.over)?'occ-bar-over':(o.pct!=null&&o.pct>80?'occ-bar-warn':'');
-  const bar=(o.pct==null)
-    ? `<div class="occ-unknown">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`
-    : `<div class="occ-bar ${barCls}"><i style="width:${pct}%"></i><span dir="ltr">${o.pctFloor?'≥':''}${o.pct}%</span></div>`;
-  // The % is a FLOOR when the model can't see the full load: area with unmeasured-footprint items, or a
-  // shared bath whose true fill depends on displacement we don't have. Flag it rather than invent a number.
-  const floorNote = (o.mode==='area' && o.unknownCm2Count>0)
-    ? `<div class="occ-unknown">+${o.unknownCm2Count} ${L('פריט/ים ללא מידה ידועה','item(s) of unknown size')}</div>`
-    : (o.mode==='volume' && o.pctFloor)
-      ? `<div class="occ-unknown">${o.items.length} ${L('פריטים חולקים את האמבט — ודא שהם נכנסים','items share the bath — make sure they fit')}</div>`
-      : '';
-  const items=o.items.length
-    ? o.items.map(function(i){
-        const frac=(cap.usableCm2>0&&i.cm2>0)?Math.max(8,Math.round(i.cm2/cap.usableCm2*100)):18;
-        return `<span class="occ-item${i.hooks?' occ-hang':''}" style="flex:1 1 ${frac}%" title="${esc(i.name)}">${i.hooks?'🪝':'🥩'} ${esc(i.name)}${i.cm2?`<small>${i.cm2} ${he?'סמ״ר':'cm²'}</small>`:''}</span>`;
-      }).join('')
-    : `<span class="occ-empty">${L('פנוי','Free')}</span>`;
-  const facts=[];
-  if(o.compat.setpoint!=null) facts.push(`🌡️ ${o.compat.setpoint}°C`);
-  if(o.compat.commonWood)     facts.push(`🪵 ${esc(t(o.compat.commonWood))}`);
-  else if(o.compat.woods.length>1) facts.push(`🪵 ${L('עצים שונים','different woods')}`);
-  // slot count with the CATEGORY's own label (fixes "מדפים" printed on a kettle grill — its slots are אזורי חום)
-  if(cap.slots)  facts.push(`🗄️ ${cap.slots} ${he?(cap.slotLabelHe||'מדפים'):(cap.slotLabelEn||'racks')}`);
-  if(cap.hooks)  facts.push(`🪝 ${o.hooksUsed}/${cap.hooks}`);
-  // H4: over-capacity is a per-SLOT truth. Name the item(s) that fit no single slot rather than hiding an
-  // impossible arrangement inside a comfortable whole-device %. (Two 600 cm² items never over-pack one shelf —
-  // the packer sends the second elsewhere — so a slot is over only when a single item alone exceeds it.)
-  const slotHe=cap.slotKind==='zone'?'אזור':'מדף', slotEn=cap.slotKind==='zone'?'zone':'shelf';
-  const tooBig=[];
-  (o.slots||[]).forEach(function(sl){ if(sl.over) sl.items.forEach(function(it){ if(it.cm2!=null && it.cm2>cap.perSlotCm2 && tooBig.indexOf(it.name)<0) tooBig.push(it.name); }); });
-  (o.unplaced||[]).forEach(function(it){ if(tooBig.indexOf(it.name)<0) tooBig.push(it.name); });
-  const warns=[];
-  if(o.mode==='area' && tooBig.length) warns.push(`${esc(tooBig.join(', '))} — ${L('לא נכנס ל'+slotHe+' בודד','does not fit a single '+slotEn)}`);
-  else if(o.mode==='volume' && o.over) warns.push(L('חריגה מהקיבולת','Over capacity'));
-  if(!o.compat.tempOk) warns.push(`${L('פער טמפרטורות','Temperature spread')} ${o.compat.tempSpread}°C`);
-  if(o.hooksOver) warns.push(`${L('יותר תלויים מהווים','More hung items than hooks')} (${o.hooksUsed}/${cap.hooks})`);
-  const warn=warns.length?`<div class="occ-warn">⚠ ${warns.join(' · ')}</div>`:'';
-  return `<div class="occ-dev">
-      <div class="occ-h"><b>${esc(o.devName)}</b><span class="occ-facts">${facts.join(' · ')}</span></div>
-      ${bar}
-      ${floorNote}
-      <div class="occ-slots">${items}</div>
-      ${warn}
-    </div>`;
+  if(cap.perSlotCm2==null && !(cap.slots>0))
+    return `<div class="occ2-empty">${L('שטח לא ידוע — הוסף את שטח הבישול בכרטיס הציוד','Area unknown — add the cooking area on the device card')}</div>`;
+  const rows=[];
+  for(let i=0;i<cap.slots;i++){
+    const sl=(o.slots||[])[i]||{items:[],over:false};
+    const tiles = sl.items.length ? sl.items.map(function(it){return _occTile(it, cap);}).join('')
+                                  : `<span class="occ2-empty">${L('מדף פנוי','shelf free')}</span>`;
+    rows.push(`<div class="occ2-shelf${sl.over?' occ2-over':''}"><span class="occ2-n">${i+1}</span>${tiles}</div>`);
+  }
+  return `<div class="occ2-rack">${rows.join('')}</div>`;
+}
+// interim fallbacks — replaced in T6–T8
+function _occOffsetBody(o){ return _occCabinetBody(o); }
+function _occGrillBody(o){ return _occCabinetBody(o); }
+function _occVesselBody(o){ return _occCabinetBody(o); }
+function _occBayHtml(o){ return ''; }   // real bay in T9
+// Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items.
+function _occFitHtml(o){
+  const f=o.fit||{verdict:'ok'};
+  if(f.verdict==='over'){
+    const who = (f.hardItems&&f.hardItems.length) ? esc(f.hardItems.join(', '))+' — ' : '';
+    const slotHe=(o.cap.slotKind==='zone')?'אזור':'מדף', slotEn=(o.cap.slotKind==='zone')?'zone':'shelf';
+    const msg = (o.mode==='volume') ? L('חריגה מהקיבולת','Over capacity')
+                                    : L('לא נכנס ל'+slotHe+' בודד','does not fit a single '+slotEn);
+    return `<div class="occ2-fit-over">⚠ ${who}${msg}</div>`;
+  }
+  if(f.verdict==='tight'){
+    const who = (f.softItems&&f.softItems.length) ? esc(f.softItems.join(', '))+' — ' : '';
+    return `<div class="occ2-fit-tight">◐ ${who}${L('ייתכן צפוף — השטח מוערך. הזן שטח בישול אמיתי לבדיקה מדויקת','might be tight — area is estimated. Enter a real cooking area for a precise check')}</div>`;
+  }
+  return `<div class="occ2-fit-ok">✓ ${L('הכל נכנס','everything fits')}</div>`;
+}
+// The accessible / printable layer: item · slot · cm² for every placed area item.
+function _occListHtml(o){
+  if(o.mode==='volume') return '';
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const slotHe=(o.cap.slotKind==='zone')?'אזור':'מדף', slotEn=(o.cap.slotKind==='zone')?'zone':'shelf';
+  const lis=(o.items||[]).filter(function(it){return it.mode==='area';}).map(function(it){
+    const where = (it.slot!=null) ? `${he?slotHe:slotEn} ${it.slot+1}` : L('לא משובץ','unplaced');
+    const size = (it.cm2!=null) ? ` · ${it.cm2} ${he?'סמ״ר':'cm²'}` : ` · ${L('מידה לא ידועה','size unknown')}`;
+    return `<li><b>${esc(it.name)}</b><span class="occ2-s">· ${where}${size}</span></li>`;
+  });
+  return lis.length ? `<ul class="occ2-list">${lis.join('')}</ul>` : '';
 }
 function occupancyViewHtml(computed, tMs, scope){
   const devs=equipList().filter(function(d){return d && ['smoker','grill','sousvide','oven'].indexOf(d.cat)>=0;});

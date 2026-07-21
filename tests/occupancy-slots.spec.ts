@@ -98,9 +98,9 @@ test('S7: the rendered view names the item that fits no single shelf (not a comf
     ['cut-1','cut-7','cut-9','cut-10'].forEach(function(k){ setItemCooker(k,'smoke','d1'); });
     var o=deviceOccupancy('d1', t0+2*3600e3, computed, null);
     var div=document.createElement('div'); div.innerHTML=occupancyDevHtml(o);
-    return { warn:(div.querySelector('.occ-warn')||{}).innerText||'', overStyled:!!div.querySelector('.occ-bar-over'), brisketHeb:resolveItem('cut-1').heb };
+    return { warn:(div.querySelector('.occ2-fit-over')||{}).innerText||'', overStyled:!!div.querySelector('.occ2-big'), brisketHeb:resolveItem('cut-1').heb };
   })()`) as any;
   expect(r.warn).toContain(r.brisketHeb);        // the brisket is named as the item that doesn't fit
   expect(r.warn).toMatch(/מדף בודד/);            // "a single shelf"
-  expect(r.overStyled).toBe(true);               // the bar reads over, not a comfortable green
+  expect(r.overStyled).toBe(true);               // the tile reads over, not a comfortable green
 });
