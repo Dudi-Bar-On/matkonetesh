@@ -578,8 +578,16 @@ function _occGrillBody(o, isRound){
   }
   return `<div class="occ2-grill ${isRound?'occ2-round':'occ2-rect'}"><div class="occ2-zones">${cells.join('')}</div></div>`;
 }
-// interim fallback — replaced in T8
-function _occVesselBody(o){ return _occCabinetBody(o); }
+// Sous-vide: an open-topped vessel with a water line + circulator, one bag per item. NO % (H2): we count
+// bags and the largest single required litres; true fill needs displacement we do not have.
+function _occVesselBody(o){
+  const he=(typeof getLang!=='function'||getLang()==='he');
+  const bags=(o.items||[]).map(function(it){ return `<div class="occ2-bag">${esc(it.name)}</div>`; }).join('')
+    || `<span class="occ2-free">${L('ריק','empty')}</span>`;
+  const need=o.usedLitres||0, has=(o.cap&&o.cap.litres)||0;
+  const cap = `${(o.items||[]).length} ${L('שקיות','bags')} · ${L('הגדולה דורשת','largest needs')} ${need} ${he?'ל׳':'L'} · ${L('האמבט','bath')} ${has} ${he?'ל׳':'L'}`;
+  return `<div class="occ2-vessel"><div class="occ2-wl"></div><div class="occ2-circ"></div><div class="occ2-bags">${bags}</div></div><div class="occ2-svcap" dir="ltr">${cap}</div>`;
+}
 function _occBayHtml(o){ return ''; }   // real bay in T9
 // Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items.
 function _occFitHtml(o){

@@ -63,7 +63,11 @@ test('V4: a single item that fits is exactly full, not a floor', async ({ page }
   expect(r.pctFloor).toBe(false);             // one item → exact, no floor marker
 });
 
-test('V5: the rendered bath shows a floor %, not a red over-capacity warning, for a fitting pair', async ({ page }) => {
+// Phase 2 (T8): the occupancy view no longer draws a percentage bar for sous-vide at all (H2 — displacement
+// is unknown, so any % would be a fabricated number). The old floor marker "≥68%" is replaced by the vessel's
+// plain-language cap line: bag count + the largest single requirement. Re-asserted here for the same fitting
+// pair: still NOT a red over line, still an LTR-wrapped numeric readout — just via the new markup.
+test('V5: the rendered bath shows bag count + largest-needs (no %), not a red over-capacity warning, for a fitting pair', async ({ page }) => {
   await boot(page, 24);
   const r = await page.evaluate(`(function(){
     var t0=Date.parse('2026-07-24T06:00:00');
@@ -72,10 +76,15 @@ test('V5: the rendered bath shows a floor %, not a red over-capacity warning, fo
     ['cut-1','cut-2'].forEach(function(k){ setItemCooker(k,'sv','sv1'); });
     var o=deviceOccupancy('sv1', t0+2*3600e3, computed, null);
     var div=document.createElement('div'); div.innerHTML=occupancyDevHtml(o);
-    var t=div.innerText; var over=!!div.querySelector('.occ-bar-over');
-    return { text:t, hasOverBar:over, barDir:(div.querySelector('.occ-bar span')||{}).getAttribute?div.querySelector('.occ-bar span').getAttribute('dir'):null };
+    var over=!!div.querySelector('.occ2-fit-over');
+    var cap=div.querySelector('.occ2-svcap');
+    return { hasOverLine:over, bags:div.querySelectorAll('.occ2-bag').length,
+             capText:cap?cap.textContent:'', capDir:cap?cap.getAttribute('dir'):null,
+             hasPct:/%/.test(div.textContent||'') };
   })()`) as any;
-  expect(r.hasOverBar).toBe(false);           // NOT the red over style
-  expect(r.text).toMatch(/≥\d+%/);            // a floor marker
-  expect(r.barDir).toBe('ltr');               // the % readout stays an LTR island (H1 RTL fix)
+  expect(r.hasOverLine).toBe(false);          // NOT the red over line — they fit a bath sized to the largest
+  expect(r.bags).toBe(2);                     // both items drawn as bags — the floor concept (displacement unknown)
+  expect(r.capText).toContain('24');          // the largest single requirement, shown plainly
+  expect(r.hasPct).toBe(false);               // sous-vide never shows a % (H2) — no floor % anymore
+  expect(r.capDir).toBe('ltr');               // the numeric readout stays an LTR island (H1 RTL fix)
 });
