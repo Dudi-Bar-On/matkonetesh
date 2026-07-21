@@ -392,8 +392,6 @@ html.light,html.t-vintage{
   --ember:#8a2a0a; --ember2:#c04a20;
   --ash:#7a4e2a; --bone:#2d0f0a; --smoke:#8a6a4a; --line:#c9a87e;
   --good:#4f7d33; --r:4px;
-  --fresh-l:#cfe8de; --over:#8a2a12; --over-l:#f0d8ce;
-  --grate:#d8c4a4; --cool:#3a6a80; --cooll:#e2eef2;
 }
 /* ruled-paper lines */
 html.t-vintage body,html.light body{background-image:repeating-linear-gradient(0deg,transparent,transparent 28px,rgba(160,120,80,.12) 28px,rgba(160,120,80,.12) 29px)!important}
@@ -440,8 +438,6 @@ html.t-gold{
   --ember:#e8a030; --ember2:#f5d080;
   --ash:rgba(245,208,128,.7); --bone:#f5d080; --smoke:rgba(245,208,128,.42);
   --line:rgba(232,160,48,.2); --good:#70a850; --r:14px;
-  --fresh-l:rgba(127,201,168,.14); --over:#e8795f; --over-l:rgba(232,121,95,.16);
-  --grate:rgba(245,222,180,.16); --cool:#9fc7d6; --cooll:rgba(143,184,201,.14);
 }
 /* radial warm-black body */
 html.t-gold body{background:radial-gradient(ellipse at 60% -10%,#3a1a00 0%,#0a0500 70%);background-attachment:fixed}
