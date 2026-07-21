@@ -5271,6 +5271,19 @@ function renderTimelinePanel(){
       });
     });
     const cookerStripHtml=_ckRows.length?`<div class="tl-orderstrip"><div class="tl-orderstrip-lbl">🔧 ${L('שיוך תנור/מעשנה:','Assign cooker:')}</div>${_ckRows.join('')}</div>`:'';
+    // S3 / residual D6: two devices of the SAME class → cookerFor is ambiguous (null), and the item is then
+    // silently skipped by clash detection and occupancy. Rather than leave that gap invisible, surface it:
+    // list the items that still need a cooker pick so the user knows capacity checks are pending their choice.
+    const _unresolved=[];
+    computed.forEach(function(c){ if(c.blocked||!c.stages) return; const seen={};
+      c.stages.forEach(function(s){ const kind=s.kind; if(['sv','smoke','cook'].indexOf(kind)<0||seen[kind]) return; seen[kind]=1;
+        if(cookerCandidates(kind).length>=2 && !cookerFor(c.m.key, kind, _ckScope)){
+          const kl=kind==='sv'?L('סו-ויד','SV'):kind==='smoke'?L('עישון','smoke'):L('גריל','grill');
+          _unresolved.push(esc(itemName(c.m))+' ('+kl+')');
+        }
+      });
+    });
+    const unresolvedHtml=_unresolved.length?`<div class="wp-advisory wp-assign">🔧 <b>${L('ממתין לשיוך תנור','Awaiting cooker assignment')}:</b> ${L('יש לך יותר ממכשיר אחד מאותו סוג — לא אוכל לבדוק קיבולת/חפיפות עד שתשייך כל פריט למכשיר (למעלה). ממתינים:','You have more than one device of the same type — I cannot check capacity or clashes until each item is assigned to a device (above). Waiting:')} ${_unresolved.join(', ')}</div>`:'';
     const contentionHtml=_clashes.length?`<div class="wp-advisory wp-clash">⚠️ <b>${L('התנגשות תנור','Cooker clash')}:</b> ${_clashes.map(function(cl){
       const names=cl.items.map(function(i){return esc(i.name);}).join(' + ');
       const last=cl.items[cl.items.length-1];
@@ -5281,7 +5294,7 @@ function renderTimelinePanel(){
         : `${L('דורשים טמפרטורות שונות על','need different temperatures on')} <b>${esc(cl.devName)}</b> (${L('פער','spread')} ${cl.compat.tempSpread}°C)`;
       return `${names} ${why}${move}`;
     }).join('<br>')}</div>`:'';
-    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}${cookerStripHtml}${contentionHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip" data-occview>🗄️ ${L('תפוסת תנורים','Cooker occupancy')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
+    return `${_blk.length?`<div class="wp-advisory">📋 <b>${L('הכנה מראש (רב-יומי):','Prep ahead (multi-day):')}</b> ${_blk.join(', ')} — ${L('תהליך של ימים-שבועות (כבישה/ייבוש). נהל ב"המזווה שלי" והכן מבעוד מועד; לא נכלל בלוח היומי.','a days-to-weeks process (curing/drying). Manage in "My pantry" and prepare in advance; not included in the daily schedule.')}</div>`:''}${orderControlsHtml}${cookerStripHtml}${unresolvedHtml}${contentionHtml}<div class="tl-detailtoggle"><span>${L('רמת פירוט:','Detail level:')}</span><button class="mchip ${!detail?'on':''}" data-tldetail="short">${L('מקוצר','Short')}</button><button class="mchip ${detail?'on':''}" data-tldetail="full">${L('מלא — עצמאי להדפסה','Full — self-contained for print')}</button><button class="mchip" data-occview>🗄️ ${L('תפוסת תנורים','Cooker occupancy')}</button><button class="mchip cop-launch" data-copilotlaunch>🔥 ${L('טייס חי','Live Copilot')}</button><button class="mchip vc-launch" data-vclaunch>🎙️ ${L('מצב בישול קולי','Voice cooking mode')}</button></div>
     <details class="tl-shapedet"><summary>${L('תצוגה','View')}: ${shapeName(shp)} <span class="tl-shapehint">▾ ${L('שנה','change')}</span></summary><div class="tl-shaperow">${shapeBtns}</div></details>
     ${renderWorkplanShape(tasks, shp, detail, serve)}`;
   }
