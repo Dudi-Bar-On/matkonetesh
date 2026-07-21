@@ -5,6 +5,10 @@ import { test, expect } from '@playwright/test';
 
 const init = async (page: any) => {
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
+  // Pin "now" to a deterministic mid-day. These tests assert today/tomorrow rollover with clock-only
+  // serve times ('23:59', '00:01'), which are only reliably ahead/behind away from the midnight boundary
+  // — without this the suite failed whenever it happened to execute them near 00:00 (real failure 2026-07-21).
+  await page.clock.setFixedTime(new Date('2026-07-15T12:00:00'));
   await page.goto('/index.html');
 };
 
@@ -31,8 +35,10 @@ test('serveDateTime: an explicit future date pins the serve day (no roll)', asyn
 test('serveDateTime: a stale past ad-hoc date is dropped (not pinned behind forever)', async ({ page }) => {
   await init(page);
   await page.evaluate(`(function(){ setMenuCtx('cook'); store.set('mk-tlserve','19:00'); store.set('mk-tlservedate-cook','2020-01-01'); })()`);
-  const iso = await page.evaluate(`isoDate(serveDateTime())`) as string;
-  expect(iso >= new Date().toISOString().slice(0,10)).toBeTruthy();   // fell back to today/tomorrow, not 2020
+  // Compare entirely page-side: the page clock is pinned (init), so a Node-side `new Date()` here would
+  // compare a fixed 2026-07-15 against the real wall-clock date and spuriously fail.
+  const ok = await page.evaluate(`isoDate(serveDateTime()) >= isoDate(new Date())`) as boolean;
+  expect(ok).toBeTruthy();   // stale 2020 date dropped → fell back to today/tomorrow, not 2020
 });
 
 test('parseServeTime: an event schedules against its own calendar date', async ({ page }) => {
