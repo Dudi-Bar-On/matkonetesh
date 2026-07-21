@@ -8,7 +8,11 @@ export default defineConfig({
   testDir: './tests',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
-  retries: 0,
+  retries: 0,   // surface flakes as failures — never retry them away (a flake is a bug to fix)
+  // 8 workers is the measured reliable ceiling against the clustered in-memory serve.js: 308/308 across
+  // repeated runs at ~106s (~7× faster than serial). 16 (the CPU/2 default) hits occasional client-side
+  // page.goto timeouts under 16 concurrent Chromium instances. Reliability over the last few seconds.
+  workers: 8,
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
