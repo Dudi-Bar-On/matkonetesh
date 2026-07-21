@@ -2878,6 +2878,34 @@ function coldSmokeTemp(hotTemp){ const t=Math.round((hotTemp||110)*0.55); return
 // v145 fix: fridge-dry duration scales with the item's own sv-cook length — a flat 4h was absurd for
 // quick-cook items (shrimp/produce, svHours≈0) which only need a brief towel-pat, not hours in the fridge.
 function drySurfaceHours(svHours){ return Math.min(4, Math.max(0.25, (svHours||0)*0.3)); }
+// ── the scheduler's relaxation pass (Phase 4a) ────────────────────────────────────────────────
+// Lay a stage chain backward from serve: start(i) = serve − Σ_{j≥i} hours_j. In scheduling terms this is
+// the backward critical-path pass of an RCPSP with every resource constraint removed — the correct FIRST
+// step of a real scheduler (it yields each stage's latest-feasible finish, hence its slack), which the app
+// currently ships as the final answer. It contains no cross-item term, so it cannot avoid a device clash;
+// a placer (Phase 4b) moves stages EARLIER than this, never later, or serve is missed.
+//
+// This was implemented twice — buildList (Date arithmetic, UNGUARDED s.hours) and combinedEventsRows (ms
+// arithmetic, (s.hours||0)) — which diverged: a stage with no `hours` produced NaN in the first, poisoning
+// every earlier stage in the chain, and 0 in the second. Unified here on the safe reading.
+//
+// Pure: it returns placements and never writes onto the generator's output, so two candidate schedules can
+// coexist — the prerequisite for comparing alternatives at all.
+function planSchedule(stages, serveMs){
+  const list=stages||[], out=new Array(list.length);
+  let end=Number(serveMs);
+  for(let i=list.length-1;i>=0;i--){
+    const s=list[i]||{};
+    const hrs=Number(s.hours)||0;                 // never NaN: an unmeasured duration is 0, not a poisoned chain
+    const start=end-hrs*3600e3;
+    out[i]={ i:i, tid:s.tid||null, kind:s.kind||null, hours:hrs,
+             startMs:start, endMs:end,
+             latestFinishMs:end,                  // the relaxation IS the latest feasible finish...
+             slackMs:0 };                         // ...so nothing has slack until a placer moves it earlier
+    end=start;
+  }
+  return {stages:out, startMs:end};
+}
 function itemStages(meta,methodKey,ready,order){
   const p=itemProfile(meta); if(!p) return [];
   const m=p.methods.find(x=>x.key===methodKey)||p.methods[0];
@@ -5337,12 +5365,11 @@ function renderTimelinePanel(){
       if(!blocked){
         stages=itemStages(m,st.method,st.ready,st.svSmokeOrder);
         { const _kc={}; stages.forEach((s)=>{ const n=(_kc[s.kind]=(_kc[s.kind]||0)+1); s.tid='st-'+evScope()+'-'+m.key+'-'+s.kind+(n>1?n:''); }); }   // R3: stable per-stage id (kind-based, not array index) so a mid-cook method change doesn't remap a running timer
-        let end=serve;
-        for(let i=stages.length-1;i>=0;i--){
-          const s=stages[i]; const start=new Date(end.getTime()-s.hours*3600e3);
-          s.start=start; s.end=end; end=start;
-        }
-        startClock=end;
+        // times come from the ONE scheduler (planSchedule); this call site only applies them onto the
+        // stages the renderer reads. Removing that mutation is Phase 4b's job, not 4a's.
+        const _sched=planSchedule(stages, serve.getTime());
+        _sched.stages.forEach(function(p,i){ stages[i].start=new Date(p.startMs); stages[i].end=new Date(p.endMs); });
+        startClock=new Date(_sched.startMs);
       }
       return {m,profile,st,stages,startClock,blocked};
     });
@@ -7444,16 +7471,19 @@ function combinedEventsRows(){
       // and one occupancy entry per device-relevant stage — real Date range + temp kept, not discarded.
       // The device is resolved in THIS EVENT'S OWN scope (mk-item-cooker-<ev.id>), never the globally
       // active one — two events' assignments must never bleed into each other.
-      let end=serve.getTime(), smokeWin=null; const row={ev:ev, ei:ei, key:key, name:meta.heb, eng:meta.eng, serve:serve, totalH:totalH, contention:false};
-      for(var i=stages.length-1;i>=0;i--){ const s=stages[i]; const sSt=end-(s.hours||0)*3600e3;
-        if(['smoke','cook','sv'].indexOf(s.kind)>=0){
-          if(s.kind==='smoke' && !smokeWin) smokeWin={start:sSt,end:end};
-          const dev=cookerFor(meta.key, s.kind, ev.id);
-          if(dev) computed.push({m:meta, row:row, devId:dev.id, stages:[{kind:s.kind, start:new Date(sSt), end:new Date(end), temp:(s.temp!=null?s.temp:null)}]});
+      // times come from the ONE scheduler (planSchedule) — this used to be a second, independent copy of
+      // the backward walk. Still iterated BACKWARD: `smokeWin` takes the first smoke seen walking back,
+      // i.e. the LAST smoke stage of the chain, and the push order is preserved.
+      const _sched=planSchedule(stages, serve.getTime());
+      let smokeWin=null; const row={ev:ev, ei:ei, key:key, name:meta.heb, eng:meta.eng, serve:serve, totalH:totalH, contention:false};
+      for(var i=_sched.stages.length-1;i>=0;i--){ const p=_sched.stages[i], s=stages[i]||{};
+        if(['smoke','cook','sv'].indexOf(p.kind)>=0){
+          if(p.kind==='smoke' && !smokeWin) smokeWin={start:p.startMs,end:p.endMs};
+          const dev=cookerFor(meta.key, p.kind, ev.id);
+          if(dev) computed.push({m:meta, row:row, devId:dev.id, stages:[{kind:p.kind, start:new Date(p.startMs), end:new Date(p.endMs), temp:(s.temp!=null?s.temp:null)}]});
         }
-        end=sSt;
       }
-      row.start=new Date(end); row.smoke=smokeWin;
+      row.start=new Date(_sched.startMs); row.smoke=smokeWin;
       rows.push(row);
     });
   });
