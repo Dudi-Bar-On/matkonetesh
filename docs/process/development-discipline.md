@@ -305,6 +305,22 @@ non-existent server bug; run once, alone, and read the result; (b) `grep -c wait
 46 more arbitrary waits in 9 other files — every one is a flake waiting for an unlucky run. They are
 tracked and should be converted file-by-file, not blindly.
 
+**L16 · A summary written from recollection is not the source (2026-07-22).**
+Asked whether the discipline reaches every mission, I found the real gap — this repo had no `CLAUDE.md`,
+so the 391 lines here were reachable only through one line in my private memory, and **subagents inherit
+`CLAUDE.md` but never that memory**. Nineteen extraction agents had been dispatched that morning with no
+automatic knowledge of any of this; they complied only because every rule was hand-pasted into each brief.
+Correct diagnosis. Then I wrote the fix **from my own recent scar tissue instead of from this file** — and
+shipped a `CLAUDE.md` that omitted §3, which this document calls *"the core of this proposal"*, and §4,
+which it calls *"the single most important new rule"*. I had summarised the discipline without re-reading
+it, while the file's own first instruction is to re-read it, and §1 warns that *"I remember this skill"*
+is a red flag. The owner caught it in one line: *"a very poor and small part of my discipline."*
+Root cause: identical in shape to L2/L8 and to the 42 refutations of the 2026-07-22 sweep — **a single
+remembered artifact trusted in place of the thing itself.** Gate: when writing anything that *represents*
+a source document — a CLAUDE.md, an index, a summary, a brief for an agent — open the source and work
+section by section through it. Derived artifacts state which document is authoritative and defer to it.
+See `docs/process/skills/verify-against-the-runtime-path/SKILL.md`; the rule generalises past code.
+
 ### 10.11 Query graphify GLOBAL before searching the internet for tool help
 > **Owner instruction, 2026-07-22.** When you need documentation or help about a TOOL, framework or
 > methodology, query the graphify **global** graph first. Only if the answer is not there, search the web.
