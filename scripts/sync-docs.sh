@@ -17,15 +17,21 @@ PUSH=1
 
 export PATH="$HOME/.local/bin:$PATH"
 
-echo "── 1/3 · graphify update (docs) ─────────────────────────────"
-if command -v graphify >/dev/null 2>&1; then
-  if [ -f graphify-out/graph.json ]; then
-    graphify update docs || echo "   ! graphify update failed — continuing, but the graph is now STALE"
-  else
-    echo "   · no graph yet (graphify-out/graph.json missing) — run the full build first: /graphify docs"
-  fi
+echo "── 1/3 · graphify update (docs, --mode deep) ────────────────"
+# HONEST LIMITATION: the bare CLI `graphify update` is the CODE path ("no LLM needed" per its own help).
+# Documents need the SKILL-driven flow (/graphify docs --update --mode deep), which runs LLM semantic
+# re-extraction — and a shell script cannot invoke a Claude skill. So this step DETECTS whether documents
+# changed and refuses to report success it did not achieve.
+DOCS_CHANGED=$(git diff --name-only HEAD -- docs/ | wc -l | tr -d ' ')
+DOCS_NEW=$(git ls-files --others --exclude-standard docs/ | wc -l | tr -d ' ')
+TOTAL_DOCS=$((DOCS_CHANGED + DOCS_NEW))
+if [ "$TOTAL_DOCS" -gt 0 ]; then
+  echo "   ! $TOTAL_DOCS document(s) changed."
+  echo "   ! The graph is NOT updated by this script. Run the skill flow, with deep mode:"
+  echo "   !     /graphify docs --update --mode deep"
+  echo "   ! (owner standing instruction 2026-07-22: always --mode deep)"
 else
-  echo "   ! graphify not on PATH — graph NOT updated"
+  echo "   · no document changes — graph unaffected"
 fi
 
 echo "── 2/3 · stage documents ────────────────────────────────────"

@@ -346,12 +346,24 @@ here because our corpus is bilingual: a Hebrew query will not match English labe
 "doc/image changes are ignored by the hook". Our graph is a **documentation** graph, so the hook would
 leave it silently stale, which is worse than having no graph: a stale map is trusted and wrong.
 
-**What to do:**
-```bash
-export PATH="$HOME/.local/bin:$PATH"
-graphify update docs          # incremental re-extraction, only new/changed files
-# or, via the skill:  /graphify docs --update
+**What to do — always with `--mode deep` (owner standing instruction, 2026-07-22):**
 ```
+/graphify docs --update --mode deep      # incremental, LLM semantic re-extraction, aggressive INFERRED edges
+```
+
+**Do NOT use the bare CLI for documents.** `graphify update <path>` is the CODE path — its own help says
+"no LLM needed", so on a documentation corpus it re-extracts nothing semantic while appearing to succeed.
+Documents require the skill-driven flow above, which checks `code_only` and routes non-code changes through
+LLM extraction. `scripts/sync-docs.sh` therefore does not attempt the doc update itself; it detects that
+documents changed and tells you to run the skill flow, rather than reporting a success it did not achieve.
+
+**Deep mode costs more and must be chunked harder.** `--mode deep` sets DEEP_MODE in the extraction prompt
+("be aggressive with INFERRED edges — indirect deps"), so each chunk emits materially more JSON. graphify's
+default chunking is by FILE COUNT (`ceil(files / 22)`), which assumes files of ordinary size. This corpus
+averages ~5,900 words per document and ranges from 63 to 1,276 lines, so a 22-file chunk can be 5k or 60k
+words depending on which files land in it. That is what killed the first build: chunk 3 held 22 dense
+research and orchestrator specs and its extraction agent hit its own output-token cap, so the chunk file was
+never written. **Chunk by WORD BUDGET, not file count** — roughly 12k words per chunk under deep mode.
 
 - **Sooner is better.** After writing or substantially editing a document — especially an analysis,
   spec, plan or sweep report — update the graph then, not later.
