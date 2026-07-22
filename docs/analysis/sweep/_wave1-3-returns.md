@@ -1,7 +1,7 @@
 # Wave 1 (browser) + Wave 2 (verification) + Wave 3 (synthesis) — agent returns, verbatim
 
 
-## ?
+## W1-C-app-walkthrough
 
 Report: `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W1-C-app-walkthrough.md` · 188 screenshots in `docs\analysis\shots\sweep\`
 
@@ -21,7 +21,7 @@ Report: `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W1-C-app-wa
 
 I dropped 9 claims that did not survive measurement, listed in §3 — including two bidi "scrambles" (per-character `getBoundingClientRect` proved both render correctly), a task-ordering bug (array is monotonic; the day marker is what's missing, and only in voice-cook), a nav-overlap, and a voice-cook "dead end" that was an artefact of my own no-arg call.
 
-## ?
+## W1-G-workflows
 
 Report written. No tracked source file modified.
 
@@ -48,7 +48,7 @@ Report written. No tracked source file modified.
 
 Also verified as *not* bugs: `schedulePlacements(computed, null)` resolves the correct scope via `itemCookerScope` (240); the runtime safety invariant (3039) genuinely runs and found no violations. Separately, `_svBatch` (5782) tells the cook "use the 24L bath for all" with no volume check, while `deviceOccupancy` (485) states it cannot verify that fill.
 
-## ?
+## VERIFY-W1-D
 
 Report written to `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\VERIFY-W1-D-nonfunctional.md`. (The two modified PNGs are screenshots touched at 09:21 by a concurrent browser-driving agent; `build.py` has zero references to `docs/analysis` — I modified no source.)
 
@@ -68,7 +68,7 @@ NEW defect the report missed (found while refuting #2): toast *action-button* la
 
 The report's §1.4 sub-claim survives and is the *real* i18n finding it mis-assigned to English: **fr/de/es cover 0 of 53 toasts** (83-key dicts, exact lookup, no English fallback in `tr()`), vs 53/53 for English. All of §2 (PWA), §3 (performance, incl. the 4×/sec TreeWalker mechanism), §1.2 `cwLbl`, §1.3 (all three doc conflicts), and six §4 accessibility findings are CONFIRMED; charcoal/walnut/slate contrast is UNVERIFIABLE and was correctly not claimed.
 
-## ?
+## VERIFY-W1-F
 
 CONFIRMED 16 · REFUTED 8 · UNVERIFIABLE 3 — written to C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\VERIFY-W1-F-ai.md
 
@@ -84,7 +84,7 @@ REFUTED findings:
 
 The headline finding (Tier D — Voice Cook Q&A unguarded, spoken, search-grounded) is CONFIRMED by independent re-derivation: guard sites are exactly 4454/5464/8499/8664/9326 and `askRefuse(` has one call site (4448).
 
-## ?
+## VERIFY-W1-G
 
 **CONFIRMED 24 · REFUTED 1 · UNVERIFIABLE 1** — written to `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\VERIFY-W1-G-workflows.md`
 
@@ -98,7 +98,7 @@ Corrections that do not flip a verdict: (1) five anchors drift by one line (`570
 
 No source file was modified. I stopped two stale `node serve.js 8123` processes left over from the audit so Playwright could start its own server.
 
-## ?
+## VERIFY-W1-H
 
 CONFIRMED 28 · REFUTED 8 · UNVERIFIABLE 4 (40 claims). Report at C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\VERIFY-W1-H-probes.md. All Section 0 code cites (app.js:229, 6425, 85, 88, 5381, 5395-5416, 3261, 5159-5161, 5815, 5993) are exact; zero Bluetooth code repo-wide, not just in app.js.
 
@@ -116,7 +116,7 @@ UNVERIFIABLE: Android Doze scan-deferral/connection-drop (cited Android page doe
 
 Survived intact: Anova (UUID 0e140000-0af1-4582-a242-773e63054c68, protobuf+COBS, "available to everyone"), MEATER Cloud API details verbatim, ThermoWorks, Weber, Inkbird BLE, Combustion MIT spec + SDKs, caniuse 76.78%, and the §5/§6 wiring analysis.
 
-## ?
+## VERIFY-W1-B
 
 CONFIRMED 57 | REFUTED 4 | UNVERIFIABLE 2 — full detail at C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\VERIFY-W1-B-conformance.md
 
@@ -134,7 +134,7 @@ Fresh evidence run: 23/23 Playwright tests passed (14.1s); `python build.py` →
 
 UNVERIFIABLE: (1) "passes live" for the ~14 occupancy specs I did not re-run (names all verified to exist); (2) commit 92961db's "366/366 green" — a past-run claim not settleable from the repo today.
 
-## ?
+## VERIFY-W1-A
 
 CONFIRMED: 22 · REFUTED: 5 · UNVERIFIABLE: 1
 Report: C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\VERIFY-W1-A-code.md
@@ -154,7 +154,7 @@ REFUTED findings:
 
 Two corrections inside CONFIRMED findings: the stale-offline footer (§4) **is** translated — `lang/en.json:261` → "Data is local, no network connection", so the false claim ships in both languages (finding survives, supporting evidence was unsound); and §5's "all outbound network traffic" excludes Google Fonts `<link>` tags at `build.py:144-146`.
 
-## ?
+## VERIFY-W1-E
 
 CONFIRMED 16 · REFUTED 9 · UNVERIFIABLE 1. Report: C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\VERIFY-W1-E-food-safety.md (no source file touched).
 
@@ -171,7 +171,7 @@ REFUTED, with evidence:
 
 Also corrected inside CONFIRMED items: §3.1's table omits 2 of 13 categories (12 organ cuts incl. four at 72°C, plus one at 71); §3.4's comparator is 72°C not 74°C; §2.3's discriminator cite should be app.js:1919/1922-1923 not 8533-8534; §4's unresolved `grz` question is now settled — one consumer only (app.js:2035), not wired into the scheduler.
 
-## ?
+## VERIFY-W1-C
 
 CONFIRMED 21 · REFUTED 3 · UNVERIFIABLE 0. Report at C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\VERIFY-W1-C-app-walkthrough.md. All 20 cited line numbers are exact; no source file modified.
 
@@ -185,7 +185,7 @@ REFUTED:
 
 Three CONFIRMED findings carry number corrections: D12's "~900 px of empty space" is impossible in an 844 px viewport (≈430); D6's "9 of 70 Hebrew nodes" is seed-dependent (5/58 unseeded — the 2 % build figure replicated exactly, 83/3985 for de/es/fr); D16's "both render their value as a placeholder" is wrong for `#eqProp-areaCm2` (no placeholder). D1 I reproduced from scratch — injecting `.calcrow input[type=date]` value `2026-07-22` into the live page paints `22/07/202` at w120/sw118/cw118.
 
-## ?
+## ULTIMATE
 
 `C:\Users\dudib\source\repos\matconetesh\docs\analysis\2026-07-22-ULTIMATE-knowledge-and-gaps.md`
 

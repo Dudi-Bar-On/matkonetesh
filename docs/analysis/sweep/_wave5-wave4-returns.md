@@ -3,7 +3,7 @@
 Captured from the workflow journal.
 
 
-## ?
+## W5-D-api-docs
 
 Report at `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W5-D-api-docs.md`.
 
@@ -21,7 +21,7 @@ Report at `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W5-D-api-
 
 One near-miss recorded to prevent a fourth false alarm: `Grep` renders `app.js:4214` with backslashes in the URL. `Read` shows correct forward slashes — display artifact, not a bug. I verified before reporting.
 
-## ?
+## W5-E-diagrams
 
 Nothing tracked was modified — three new files only.
 
@@ -39,7 +39,7 @@ Nothing tracked was modified — three new files only.
 
 I re-measured every inherited number; three changed (482 not 483 guards; 3,985 not 3,986 merged keys; 19 not 32 stale `cure=2.5` overlays out of 32 `calc` overrides). Corrections are recorded in a "Measurements taken" table. No conclusion changed.
 
-## ?
+## W5-C-second-opinion
 
 Report written to `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W5-C-second-opinion.md`.
 
@@ -57,7 +57,7 @@ Report written to `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W
 
 **Disagreements with W1-A** (full table in §8): its 4 worker findings are correct but all secondary — it missed both quota-breaking ones (#1, #2). It calls the AI layer "best-engineered" without auditing the one regex enforcing the safety contract (#8). Its `build.py` findings are latent (`</script`, measured zero occurrences) while the live pipeline drop (#3) went unexamined, and it quotes `build.py:96-102`'s Wave-0 comment without testing it — that comment's stated root cause is impossible at the actual merge destination (a CAPA closed on an unverified cause). It says `serve.js` warrants "no findings" (#10 disagrees). It has **zero** i18n (#4, #5) and **zero** date/time (#6, #7) findings. Framing disagreement: its 14 captured-but-unread device properties are filed as dead code — the form *asks the user to type them*, so that's a UX defect, not housekeeping. I confirm and do not dispute its §0 re-checks, the `store.set()` return-value gap, and the pluralization bug (which I'd rank last).
 
-## ?
+## W5-B-ux
 
 Report at `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W5-B-ux.md`. No source file modified; scratch PNGs deleted.
 
@@ -77,7 +77,7 @@ Report at `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W5-B-ux.m
 
 **Corrected a would-be false alarm:** `app.css:390–464` (~70 lines of hardcoded theme hex) is **dead code** — `applyAppearance()` strips `t-vintage`/`t-gold`/`light` and nothing re-adds them. Live hardcoded hexes are ~120, not 258.
 
-## ?
+## W5-A-measured
 
 Report: `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W5-A-measured.md`
 
@@ -93,7 +93,7 @@ Report: `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W5-A-measur
 
 **New, not in W1-D:** a first visit transfers **2,117,219 bytes — three full copies of the document** (`SHELL=['./','index.html',…]` in the shipped sw.js + `no-cache`), 62% waste; the origin returns **HTTP 200 + 2.27 MB for every unknown path** (no real 404), which is the sole cause of both SEO failures.
 
-## ?
+## W4-B-pricing
 
 **`C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W4-B-pricing.md`**
 
@@ -114,7 +114,7 @@ Report: `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W5-A-measur
 
 Two findings beyond the brief: **TTS already meters against the same cap** (`app.js:5030`) but its audio-token price differs 4× across sources — allowances are placeholders until measured; and **MT hydration is an uncapped leak** — per-element calls at 600 tokens (`6974`) with the cache silently ceasing to persist above 3,000 entries (`6981`), so translation re-runs forever. Move it to build time; `6993` already short-circuits on a pre-translated dict. Also flagged: W1-F's Tier-D gap (`vcAskAI:5269-5300`, unguarded and *spoken*) is a **paid-launch blocker** — selling an unguarded spoken safety number is a different liability from giving one away.
 
-## ?
+## W4-A-unit-economics
 
 No source files modified. Report at `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W4-A-unit-economics.md`; model at `scratchpad/unit_econ.py`.
 
@@ -133,7 +133,7 @@ No source files modified. Report at `C:\Users\dudib\source\repos\matconetesh\doc
 
 **MINIMUM VIABLE PRICE: $4.99/mo floor, $7.99 defensible.** $2.99 is gross-margin **negative** (−8.7%) against persona C today. $4.99 gives only 37.7% worst-case as the code stands, but **78.3% after the search-conditional fix**. $7.99 is safe either way (62% → 87%). No flat plan is honest without a dollar-denominated per-user ceiling, given cliff #4.
 
-## ?
+## W4-C-market
 
 **Report: `C:\Users\dudib\source\repos\matconetesh\docs\analysis\sweep\W4-C-market.md`**
 
@@ -147,7 +147,7 @@ No source files modified. Report at `C:\Users\dudib\source\repos\matconetesh\doc
 
 Verdict: not venture-scale — a credible solo/lifestyle business or OEM/acquisition target. Highest-leverage move is shipping the two safety gates, which converts the one uncopyable asset from marketing into product.
 
-## ?
+## business-model (Wave 4 synthesis)
 
 `C:\Users\dudib\source\repos\matconetesh\docs\analysis\2026-07-22-business-model.md`
 
