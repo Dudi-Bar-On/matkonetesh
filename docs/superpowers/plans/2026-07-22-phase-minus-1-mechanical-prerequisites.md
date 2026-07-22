@@ -211,34 +211,17 @@ Categories, applied per failure:
 - **TIMING** — the test raced; narrower layout changed render order.
 - **REAL-BUG** — behaviour differs, not just presentation.
 
-- [ ] **Step 5: Commit the change and the register together**
+> **Owner ruling, 2026-07-22 (pre-flight conflict scan):** the original plan split "change the viewport
+> and measure" from "fix what broke", which would have committed a **red suite** between two tasks and
+> narrowed DoD line 12. §4 makes that the owner's call, and the owner merged the two. **The steps below
+> continue in this same task; it does not commit until the suite is green.**
 
-```bash
-git add playwright.config.ts docs/analysis/program/PRE-7-viewport-failures.md
-git commit -m "test(config): run the suite at 390x844, and register what broke
+**This task's size is not knowable until Step 3 runs.** If the register holds more than about eight
+failures, or any **REAL-BUG** row, **stop and raise it with the owner before fixing** — a wave of real
+mobile layout defects is a finding that belongs in the gap register, not a prerequisite to be quietly
+absorbed.
 
-The app is mobile-first and DoD line 8 mandates evidence at 390x844, but the suite ran Desktop
-Chrome and only 2 of 82 specs set a mobile viewport - so a screenshot taken inside a test was
-usually the wrong size.
-
-Failures from this change are recorded, categorized and NOT fixed here. A layout that breaks at
-390x844 in a mobile-first app is a finding, not test noise."
-```
-
----
-
-## Task 3: PRE-7b — fix the viewport failures
-
-**Files:**
-- Modify: whichever spec or source files the Task 2 register names.
-
-**Interfaces:**
-- Consumes: `docs/analysis/program/PRE-7-viewport-failures.md`.
-- Produces: a green suite at 390 × 844.
-
-**This task's size is not knowable until Task 2 runs.** If the register holds more than about eight failures, or any **REAL-BUG** row, stop and raise it with the owner before fixing — a wave of real mobile layout defects is a finding that belongs in the gap register, not a prerequisite to be quietly absorbed.
-
-- [ ] **Step 1: Confirm each failure reproduces in isolation**
+- [ ] **Step 5: Confirm each failure reproduces in isolation**
 
 For each row:
 
@@ -248,35 +231,39 @@ npx playwright test <spec-file> -g "<test name>"
 
 Expected: the same failure. A failure that does not reproduce alone is a **TIMING** row and is treated as a flake — that is a bug, debugged via `systematic-debugging`, never retried away.
 
-- [ ] **Step 2: Fix SELECTOR and TIMING rows in the tests**
+- [ ] **Step 6: Fix SELECTOR and TIMING rows in the tests**
 
 A SELECTOR fix targets something present in both layouts. A TIMING fix replaces whatever raced with a condition wait — **`waitForFunction`, never `waitForTimeout`** (DoD line 11; the suite currently has zero arbitrary waits and must keep zero).
 
-- [ ] **Step 3: Escalate LAYOUT and REAL-BUG rows**
+- [ ] **Step 7: Escalate LAYOUT and REAL-BUG rows**
 
 These are product defects, not test defects. Do **not** widen the viewport to make them pass — that would delete the finding. Add each to `docs/analysis/program/PRE-7-viewport-failures.md` with a proposed gap ID and raise them with the owner. If a fix is small and clearly correct, propose it; otherwise it becomes a gap in the register.
 
-- [ ] **Step 4: Full suite**
+- [ ] **Step 8: Full suite — must be green before committing**
 
 ```bash
 npx playwright test
 ```
 
-Expected: all tests passing at 390 × 844. Paste the output and exit code.
+Expected: all tests passing at 390 × 844. Paste the output and exit code. **Do not commit while red** — per the owner's pre-flight ruling this task carries DoD line 12 unmodified.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 9: Commit the change, the register and the fixes together**
 
 ```bash
-git add tests/ docs/analysis/program/PRE-7-viewport-failures.md
-git commit -m "test: fix the 390x844 failures from the viewport standardization
+git add playwright.config.ts tests/ docs/analysis/program/PRE-7-viewport-failures.md
+git commit -m "test: run the suite at 390x844, and fix what that broke
 
-Test-side failures (SELECTOR, TIMING) fixed here. LAYOUT and REAL-BUG rows are product defects and
-are escalated in the register rather than hidden by widening the viewport."
+The app is mobile-first and DoD line 8 mandates evidence at 390x844, but the suite ran Desktop
+Chrome and only 2 of 82 specs set a mobile viewport - so a screenshot taken inside a test was
+usually the wrong size.
+
+Test-side failures (SELECTOR, TIMING) are fixed here. LAYOUT and REAL-BUG rows are product defects
+and are escalated in the register rather than hidden by widening the viewport back."
 ```
 
 ---
 
-## Task 4: PRE-7c — remove the now-redundant viewport overrides
+## Task 3: PRE-7c — remove the now-redundant viewport overrides
 
 **Why:** 19 `setViewportSize` calls across 5 files set five *different* sizes (390 × 900 ×7, 390 × 820 ×7, 390 × 844 ×2, 390 × 780 ×2, 390 × 1000 ×1). With the project default now 390 × 844, each is either redundant or an undocumented deliberate exception. Two conventions in one suite is how DoD line 8 got missed in the first place.
 
@@ -350,7 +337,7 @@ came to be satisfied by only 2 of 82 specs."
 
 ---
 
-## Task 5: PRE-5 — cover the three grounding validators
+## Task 4: PRE-5 — cover the three grounding validators
 
 **Why:** `aiValidateKeys` (`app.js:4387`), `aiValidateItems` (`app.js:4394`) and `aiValidateSeasonings` (`app.js:8393`) are described as the primary defence for seven AI features, and **`grep -rn` across all 82 spec files returns zero references to any of them.** They are pure functions over an allow-list — cheap to test and currently unproven.
 
@@ -481,7 +468,7 @@ deliberately does not have."
 
 ---
 
-## Task 6: PRE-2 — CI on GitHub Actions
+## Task 5: PRE-2 — CI on GitHub Actions
 
 **Why:** there is no CI. `package.json`'s `test` script is `echo "Error: no test specified" && exit 1`. Every DoD line-12 run is manual, on one machine, and nothing prevents a red suite from being pushed. `forbidOnly: !!process.env.CI` is already wired in the config and does nothing today.
 
@@ -602,7 +589,7 @@ Expected: `tests` completes **success**. Paste the result. If it fails, debug it
 
 ---
 
-## Task 7: PRE-8 — re-measure the worker ceiling
+## Task 6: PRE-8 — re-measure the worker ceiling
 
 **Why:** `playwright.config.ts:17` pins `workers: 6`, and the comment above it records that this was measured at **324 tests**. The suite is now 413, and will be ~418 after Task 5 — roughly 29% past the measured point. The comment itself says "Re-measure and adjust if the suite grows substantially again."
 
@@ -699,7 +686,7 @@ red suite, not as a slow one."
 
 ## Self-Review
 
-**1. Spec coverage.** Charter §3: PRE-1 → Task 1 · PRE-7 → Tasks 2, 3, 4 · PRE-5 → Task 5 · PRE-2 → Task 6 · PRE-8 → Task 7. PRE-3, PRE-4 and PRE-6 are explicitly out of scope and named as such in the header. **All five in-scope prerequisites have a task.**
+**1. Spec coverage.** Charter §3: PRE-1 → Task 1 · PRE-7 → Tasks 2, 3 · PRE-5 → Task 4 · PRE-2 → Task 5 · PRE-8 → Task 6. PRE-3, PRE-4 and PRE-6 are explicitly out of scope and named as such in the header. **All five in-scope prerequisites have a task.**
 
 **2. Placeholder scan.** No "TBD" or "add error handling". Task 3's size genuinely cannot be known before Task 2 executes — that is stated as a measurement dependency with an escalation threshold (>8 failures, or any REAL-BUG row), not left vague. Task 7's config values are `<X>`/`<Y>` placeholders **by design**: they are measurements the implementer takes, and pre-filling them would invite copying a fabricated number.
 
@@ -707,4 +694,4 @@ red suite, not as a slow one."
 
 **4. Ordering.** Port before everything (unlocks concurrency) · viewport standardization before CI (so CI is not born red) · validator tests before CI (so CI covers them) · ceiling re-measured last (so it measures the final suite).
 
-**One risk worth stating.** Task 2 could surface a large number of layout failures rather than a handful. Task 3 carries an explicit escalation threshold for exactly that case, because a wave of real mobile defects in a mobile-first app belongs in the gap register as findings — not absorbed silently into a prerequisite.
+**One risk worth stating.** Task 2 could surface a large number of layout failures rather than a handful. Task 2 carries an explicit escalation threshold for exactly that case, because a wave of real mobile defects in a mobile-first app belongs in the gap register as findings — not absorbed silently into a prerequisite.
