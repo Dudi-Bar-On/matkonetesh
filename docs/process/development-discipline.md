@@ -363,6 +363,15 @@ graphify update docs          # incremental re-extraction, only new/changed file
   `graphify claude install` writes an always-on section into `CLAUDE.md`. Neither removes the need for
   the manual doc update above.
 
+**Use the one command.** `scripts/sync-docs.sh "commit message"` does all three steps in order —
+graphify update, stage documents (plus a copy of `GRAPH_REPORT.md` into `docs/analysis/graph/`), commit and
+push. Use it instead of remembering three separate steps. It warns loudly when the graph could not be
+updated, because a silent stale graph is the failure this rule exists to prevent.
+
+**Honest note on how this rule came to be written properly (2026-07-22).** The rule was added, and then six
+agent reports were committed and pushed WITHOUT ever updating the graph — the owner had to point out that
+he could not see it happening. Writing a rule is not the same as having a mechanism. Hence the script.
+
 **Why it matters here.** This project accumulated ~40 documents and ~12,000 lines of specification that
 were never reconciled; four outright contradictions and an entire unbuilt orchestrator specification were
 found only by exhaustive auditing. The graph exists to make that visible continuously instead of
