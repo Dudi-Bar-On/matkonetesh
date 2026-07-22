@@ -1,0 +1,4 @@
+Hebrew toast literals: 53
+  lang/en.json: 309 keys | covers 1 of the toasts
+  lang/en.data.json: 3677 keys | covers 48 of the toasts
+COMBINED coverage: 48 / 53 | MISSING: 5
