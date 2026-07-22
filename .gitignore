@@ -28,3 +28,7 @@ scratch/*.output
 # graphify generated artifacts (only docs/analysis/graph/GRAPH_REPORT.md is versioned)
 graphify-out/
 docs/graphify-out/
+
+# graphify writes graphify-out/ relative to CWD; a subagent running it from a subfolder
+# creates a stray cache tree. Ignore it anywhere, not just at the root.
+**/graphify-out/
