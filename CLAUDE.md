@@ -77,7 +77,11 @@ your hypothesis needs 3+ things to go wrong at once, look for a single-point fai
 apply any of this: a stack trace naming file and line gets fixed, not fault-treed.
 
 **§10.3** Work in cycles; don't stop mid-loop to ask whether to continue.
-**§10.6** Show a summary after every task or step — not only at the end of a phase.
+**§10.6** Show a summary after every task or step — not only at the end of a phase — and give it
+**three parts, always**: **DONE** (what this delivered, with evidence) · **NEXT** (the immediate step and
+any decision blocking it) · **LEFT UNTIL THE GRAND FINAL** (distance still to run on the WHOLE
+programme, with the burn-down number where one exists). Without the third part a long programme reads
+as an unbounded run of green ticks. Never count work as done before its review is clean.
 **§10.8** Interrupt only for *important* decisions (hard to reverse, safety/legal, **any spec waiver**,
 material scope change, or true owner preference). Routine calls: just make them and note them. When
 unsure, **prefer proceeding**.

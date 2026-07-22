@@ -215,8 +215,26 @@ Every failure, defect, or wrong turn gets recorded in §11 with its root cause a
 ### 10.5 Maximize subagent usage
 Delegate aggressively: implementers, reviewers, debuggers, analysts, verifiers. Parallelise wherever the work is independent. The controller coordinates and verifies; it does not do work a subagent could do.
 
-### 10.6 Summarize after every task or step
+### 10.6 Summarize after every task or step — in three parts
 After each task or step completes, show the owner a summary. Not at the end of a phase — after each step.
+
+**Owner instruction, 2026-07-22: every such summary has three parts, in this order.**
+
+1. **DONE** — what this completion actually delivered, with the evidence (commit, test counts, what was
+   verified). Findings and surprises belong here, not buried.
+2. **NEXT** — the immediate next step, and anything that must be decided before it can start.
+3. **LEFT UNTIL THE GRAND FINAL** — the distance still to run on the *whole* programme, not just this
+   phase. Where a burn-down number exists (gaps closed of 141, tasks done of N, phases done of M), state
+   it. Where one does not, say so rather than implying progress that has not been measured.
+
+**Why part 3 exists.** A per-task summary tells the owner a task finished; it does not tell them whether
+the programme is on course. Without the third part, a long programme reads as an unbounded sequence of
+green ticks. The owner asked for the distance, every time, so that "we finished a task" can never be
+mistaken for "we are nearly there."
+
+**The honesty rule applies hardest here.** A burn-down that counts a gap as closed before its review is
+clean, or that omits gaps added along the way, is worse than no burn-down — it manufactures confidence.
+State work-in-progress as in-progress.
 
 ### 10.7 Read this file at the start of every task
 Non-negotiable. Memory is not a substitute for re-reading.
