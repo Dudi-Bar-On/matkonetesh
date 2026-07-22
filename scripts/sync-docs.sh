@@ -35,7 +35,11 @@ else
 fi
 
 echo "── 2/3 · stage documents ────────────────────────────────────"
-git add docs/ .claude/skills/ scripts/ 2>/dev/null
+# CLAUDE.md lives at the REPO ROOT, not under docs/. It was omitted from this list until
+# 2026-07-22, so three consecutive runs committed discipline updates while silently leaving
+# CLAUDE.md — the only file every subagent inherits — uncommitted. Root-level agreement files
+# are staged explicitly for that reason.
+git add docs/ .claude/skills/ scripts/ CLAUDE.md 2>/dev/null
 # graphify-out/ is generated and stays out of git, except the human-readable report
 if [ -f graphify-out/GRAPH_REPORT.md ]; then
   mkdir -p docs/analysis/graph

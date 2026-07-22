@@ -25,7 +25,8 @@ the discipline document, which is authoritative wherever the two differ.**
 | 9 | Settled decisions — full suite per task; **work on `main`, no worktrees**; brainstorm only when unclear |
 | 10.1–10.12 | The owner's standing instructions — **re-read before every task** |
 | 11a | Testing infrastructure — worker ceiling, the port-8123 collision, server restart after build |
-| 11 | **Lessons log L1–L15** — read it before repeating a mistake someone already paid for |
+| 11 | **Lessons log L1–L16** — read it before repeating a mistake someone already paid for |
+| 12 | **Thinking models** (15, three clusters) + gate-prompt shapes + **when NOT to think** |
 
 ---
 
@@ -66,6 +67,14 @@ into a later phase without explicit owner agreement.
 
 **§5 — the 3-fix rule.** After 3 failed fixes, **STOP** and question the architecture with the owner.
 Do not attempt fix #4. Debugging starts with **evidence and instrumentation**, never a guess.
+
+**§12 — thinking models** (adopted from the graphify global `methodology` corpus). The four that earn
+their keep most often here: **PREDICT → TEST → OBSERVE → CONCLUDE** — never skip PREDICT, never change two
+variables at once · **Occam's Razor** — rule out typo/stale cache/wrong path before race conditions; if
+your hypothesis needs 3+ things to go wrong at once, look for a single-point failure (this is L14) ·
+**Circle of Control** — "while I'm here" fixes are scope creep; note them, don't do them ·
+**Chesterton's Fence** — never delete code whose purpose you don't understand. §12.6 says when NOT to
+apply any of this: a stack trace naming file and line gets fixed, not fault-treed.
 
 **§10.3** Work in cycles; don't stop mid-loop to ask whether to continue.
 **§10.6** Show a summary after every task or step — not only at the end of a phase.
@@ -129,10 +138,22 @@ key, never commit one, never paste one into a report.
 - **The knowledge graph** — `graphify-out/graph.json`; report at `docs/analysis/graph/GRAPH_REPORT.md`.
   Query it before grepping the corpus.
 
+**§10.13 — the graph is the evidence tool. Query it BEFORE grepping.** "What specifies this function",
+"what tests prove it", "does anything actually read this" are graph questions: `graphify query`,
+`graphify path "A" "B"`, `graphify explain "X"`. A grep finds a string; the graph holds the relationship,
+which is what the claim is usually about. **But an edge is a lead, not a verdict** — deep mode emits
+`INFERRED`/`AMBIGUOUS` edges on purpose. Query to find the evidence, then read the source before
+asserting it. This does not repeal L16.
+
 **§10.11** Query the graphify **global** graph (`~/.graphify/global-graph.json`) for tool/framework
 documentation **before** searching the web. Expand your query against the graph's own vocabulary first —
 it matches by case-folded substring, with **no stemming, no synonyms, no cross-language matching**. If no
 vocabulary token matches, say so and stop; never invent tokens to force a hit.
+**A miss is a task, not a dead end:** when it isn't there, search the web — then **add what you found back
+to the global graph** so the next session doesn't repeat the search:
+`graphify add <url>` (or graph a docs folder), then `graphify global add <graph.json> --as <tool>-docs`;
+verify with `graphify global list`. Only documentation of general cross-project value — **never this
+project's private documents, never anything containing a key.**
 
 **§10.12** Keep the local graph current — **always `--mode deep`**. Commit and push with
 `bash scripts/sync-docs.sh "<message>"`. Chunk by **word budget (~12k)**, never by file count.

@@ -434,6 +434,20 @@ a source document — a CLAUDE.md, an index, a summary, a brief for an agent —
 section by section through it. Derived artifacts state which document is authoritative and defer to it.
 See `docs/process/skills/verify-against-the-runtime-path/SKILL.md`; the rule generalises past code.
 
+**L17 · A commit script that stages a directory silently omits everything outside it (2026-07-22).**
+`scripts/sync-docs.sh` staged `docs/ .claude/skills/ scripts/`. **`CLAUDE.md` is at the repo root**, so
+three consecutive runs committed and pushed discipline updates — §10.13, §12, the §10.11 addendum, L16 —
+while leaving `CLAUDE.md` itself uncommitted, and printed `pushed — origin is up to date` every time.
+The script was honest about the graph and blind about its own file list. **The one file every subagent
+inherits was the one file not being saved**, which is precisely the gap §CLAUDE.md exists to close, so the
+failure was self-concealing: the rules looked present in the working copy and would have vanished on a
+fresh clone or in CI. Found by an analysis subagent that ran `git status` as background context, not by me
+and not by the script. Root cause: **an allow-list of directories is a silent deny-list of everything
+else.** Gate: a script that reports a push must verify it staged the files the task actually changed —
+compare `git status --short` before and after, and warn on any modified tracked file left unstaged. Same
+family as the earlier `tail -1` bug in this same script, which printed "Everything up-to-date" while the
+branch was one commit ahead.
+
 ### 10.11 Query graphify GLOBAL before searching the internet for tool help
 > **Owner instruction, 2026-07-22.** When you need documentation or help about a TOOL, framework or
 > methodology, query the graphify **global** graph first. Only if the answer is not there, search the web.
