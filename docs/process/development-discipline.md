@@ -304,3 +304,35 @@ back-to-back runs produced 12 then 127 bogus ERR_CONNECTION_REFUSED failures and
 non-existent server bug; run once, alone, and read the result; (b) `grep -c waitForTimeout tests/` found
 46 more arbitrary waits in 9 other files — every one is a flake waiting for an unlucky run. They are
 tracked and should be converted file-by-file, not blindly.
+
+### 10.11 Query graphify GLOBAL before searching the internet for tool help
+> **Owner instruction, 2026-07-22.** When you need documentation or help about a TOOL, framework or
+> methodology, query the graphify **global** graph first. Only if the answer is not there, search the web.
+
+**How.** The graphify CLI lives at `~/.local/bin/graphify`; the global graph is `~/.graphify/global-graph.json`
+(~6.8 MB, two merged corpora per `global-manifest.json`: `vendor-docs` 2,435 nodes and `methodology`
+4,335 nodes). It currently holds **playwright-docs, vitest-docs, superpowers-docs, bmad-docs, serena-docs**
+plus methodology artifacts (Phase Prompt Template, Gate Prompt Patterns, Model Profiles).
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+G="$HOME/.graphify/global-graph.json"
+graphify god-nodes --graph "$G" --top 25          # what the corpus is actually about
+graphify query "<expanded tokens>" --graph "$G" --budget 1500
+graphify query "<expanded tokens>" --graph "$G" --dfs      # trace a specific chain
+graphify explain "<node>" --graph "$G"
+graphify path "A" "B" --graph "$G"
+```
+
+**LOCAL vs GLOBAL.** Local = this project's own graph at `graphify-out/graph.json` (the default when
+`--graph` is omitted) — use it for questions about *our* docs and code. Global = the pre-built tool and
+methodology corpora above — use it for questions about *how a tool works*.
+
+**The non-optional step (learned by doing it wrong).** graphify matches node labels by case-folded
+substring + IDF: **no stemming, no synonyms, no cross-language matching.** A naive natural-language query
+returns noise — my first global query pulled 113 nodes including an eslint command and unrelated workflow
+files. Before traversing you MUST expand the question against the graph's own vocabulary and pick only
+tokens that actually exist in it (`references/query.md`, Step 0). If no vocabulary token matches, say the
+corpus has no relevant vocabulary and stop — **never invent tokens to force a hit.** This matters doubly
+here because our corpus is bilingual: a Hebrew query will not match English labels.
+
