@@ -33,6 +33,16 @@ test('aiValidateKeys returns empty for a non-array', async ({ page }) => {
   expect(r.dropped).toEqual([]);
 });
 
+test('aiValidateKeys keeps both copies of a duplicate valid key — no dedup, unlike aiValidateItems', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(function(){
+    var real = cwAllItems()[0].key;
+    return aiValidateKeys([real, real]);
+  })()`);
+  expect(r.kept).toHaveLength(2);
+  expect(r.dropped).toEqual([]);
+});
+
 test('aiValidateItems drops a duplicate key rather than keeping it twice', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(`(function(){
