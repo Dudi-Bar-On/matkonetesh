@@ -28,6 +28,19 @@ program analyses commissioned 2026-07-22 and committed alongside this charter:
 | R8 | **Unearned claims corrected now; pricing deferred** | Four marketing claims fixed in this program; the free-vs-paid model is a separate commercial decision |
 | R11 | **Offline copy made precise, not binary** | "Catalog, work plan, timers and safety data work without a connection; AI features need one" |
 
+### 1.1 Charter-review decisions (owner, 2026-07-22)
+
+Taken after the owner reviewed the six points where the assistant judged itself most likely to be wrong.
+
+| # | Decision | Consequence |
+|---|---|---|
+| D3 | **P0 splits into P0-app and P0-worker** | The original P0 was 8 workstreams sized at "one week" — an underestimate, and its worker half is blocked by PRE-3 while its spoken-guard half is not. Two deploys, each independently revertible |
+| D4 | **All of Phase −1 completes before any gap closes** | Owner chose the stricter path *against* the assistant's recommendation of a minimal-infrastructure fast path. The spoken-AI guards wait for the full harness. Rationale: this project has shipped inert code three times, and the harness is what stops a fourth |
+| D5 | **The plan-pipeline extraction gets its own spec and its own phase** | Promoted out of a table row in P5 to phase **P5a**. Requires a compatibility shim for the 5 `window` globals and **`safetyDiff` as an equivalence oracle** proving the extracted pipeline yields an identical plan |
+| D6 | **The capacity unification ships only after a before/after review** | Build it, render the same real plan under the old and new rules, show both, get explicit sign-off. It is a user-visible behaviour change and therefore an owner decision under §4 |
+| D7 | **Rough envelope now, firm estimate at each spec gate** | See §10 |
+| D8 | **The whole suite standardizes on 390 × 844** | One dedicated task converts every ad-hoc viewport (390×900 ×7, 390×820 ×7, 390×844 ×2, 390×780 ×2, 390×1000 ×1). Whatever breaks is treated as a real finding. Suite runtime unchanged; DoD line 8 satisfied by default thereafter |
+
 ---
 
 ## 2. What the program is closing
@@ -84,7 +97,7 @@ gate, so the gate gets built first.
 | **PRE-4** | **Live-model eval harness + incumbent baseline** | **Hard blocker, deadline-bound** — see §6 |
 | PRE-5 | Coverage for the 3 grounding validators | `aiValidateKeys / aiValidateItems / aiValidateSeasonings` → 0 test hits, described as "the primary defence for 7 features" |
 | PRE-6 | A service-worker-exercisable environment | `app.js:9546` gates on `protocol === 'https:'`, so the whole update-delivery channel is untestable |
-| PRE-7 | A **390 × 844** Playwright project | The config declares only Desktop Chrome; **DoD line 8 mandates 390 × 844** and only 2 specs use it |
+| PRE-7 | **Standardize the whole suite on 390 × 844** (D8) | The config declares only Desktop Chrome; **DoD line 8 mandates 390 × 844** and only 2 specs use it. Convert every ad-hoc viewport in one task and fix what breaks — expect a batch of layout failures on the first run, and treat them as findings, not noise |
 | PRE-8 | Re-measure the worker ceiling | Pinned at a 324-test measurement; the suite is now 415 declarations (~28 % past it) |
 
 ---
@@ -95,12 +108,14 @@ Each row is a separate spec → approval → plan → build cycle.
 
 | # | Phase | Subsystems | Contents and rationale |
 |---|---|---|---|
-| **P0** | **Stage 0 — the bleeding** | S5 · S6 · S8 | Guard `vcAskAI` and `vcTranslateToEn` (the only paths where a wrong safety number is **spoken**; both guards already exist, one 1,700 lines away) · make `google_search` conditional (**COGS $1.22 → $0.39 *and* closes hallucination surface #3**) · fix `aiSafetyNums` unit-blindness (74 °F passing as grounded against 74 °C) · Worker fail **closed**, debit-before-forward, rate limit, drop `streamGenerateContent` · route TTS through the managed path · **`addDays` DST fix** (moved up from §7 Step 4: hours of work, **zero** test blast radius, and its error direction *shortens a nitrite cure*) · **neutralise the false cross-event warning** (R5 interim) |
+| **P0-app** | **Stage 0 — the spoken bleeding** | S5 · S8 | Guard `vcAskAI` and `vcTranslateToEn` — **the only paths where a wrong safety number is spoken** to a cook with busy hands and no visible caveat; both guards already exist, one 1,700 lines away · fix `aiSafetyNums` unit-blindness (74 °F passing as grounded against 74 °C) · make `google_search` conditional (**COGS $1.22 → $0.39 *and* closes hallucination surface #3** — the best ratio in the document) · route TTS through the managed path · **`addDays` DST fix** (moved up from §7 Step 4: hours of work, **zero** test blast radius, and its error direction *shortens a nitrite cure*) · **neutralise the false cross-event warning** (R5 interim — it false-flags two events on different smokers and stays silent on two sharing one bath) |
+| **P0-worker** | Stage 0 — the meter | S6 | Fail **closed** on a malformed KV record (today it yields `{active:true}` with no cap — unmetered spend on the owner's key) · debit **before** forwarding · per-code rate limit · drop `streamGenerateContent` from the router until metering handles it · tighten CORS. **Blocked on PRE-3** |
 | **P1** | **Model migration** | S5 | The only externally-dated item. Requires PRE-4 |
 | **P2** | Safety gates | S2 | Thermometer admission gate; cure task **blocks** without a 0.1 g scale. Binding per R1. `cureScaleGuardHTML`'s thresholds are already correct — only the *effect* is missing |
 | **P3** | Monitoring → control | S2 | **Surface `safetyDiff`** — 6 lines from its answer; `_plcConflicts` already shows the way. **Precondition for the orchestrator: an invariant nobody sees cannot gate anything.** Record the `bcheck` *reading*, not just the tick |
 | **P4** | Build assertions, **then** data | S1 | **Assertions first (ordering constraint P5):** the mechanism that would silently drop the corrections is the same one that dropped the last 18. Then the R3-gated data corrections, the `calc.cure` key collision, and the silent `except ImportError: pass` that would drop all 279 citations **and** 130 cuts' grill path with no message |
-| **P5** | Structural boundaries | S2 · S3 · S4 | Extract the plan pipeline from its render closure · **one** capacity verdict · migration registry (blocks the re-keying work) · keyspace schema · one task identity · one day vocabulary. **Track S runs alone** — see §7 |
+| **P5a** | **Plan-pipeline extraction** | S2 | **Its own spec and its own phase (D5)** — the riskiest single change in the program. 413 tests reach the pipeline only through the DOM and 5 `window` globals. Requires a compatibility shim for those globals and **`safetyDiff` as an equivalence oracle**: the extracted pipeline must produce a byte-identical plan before anything is removed. Closes 13 gaps |
+| **P5b** | Remaining structural boundaries | S3 · S4 | **One** capacity verdict — **ships only after the before/after review (D6)** · migration registry (blocks the re-keying work) · keyspace schema · one task identity · one day vocabulary. **Track S runs alone** — see §7 |
 | **P6** | Localization | S7 | Hebrew-leak assertion **first** (ordering constraint P9) — it is the only regression net for changing how every string is translated. Then collapse the two competing mechanisms |
 | **P7** | Product surface | S9 · S10 | **Opens with the new home-screen spec (R7)**, which consumes R1's 47 deferred `planDepth` proposals so the triage happens once. Then delivery shell and presentation tokens |
 | **P8** | **Orchestrator** | S2 · S3 | Phase 3a: `orchestrate`, `movesForClash`, `applyMove`, `safetyGate`, the hold-safety spine. **Requires P3 and P5.** Last, per D1 |
@@ -201,6 +216,40 @@ reverse-engineer the format by prefix-scanning `localStorage`.
 bypassed by one consumer, seven times over** — and its own detector already exists in `safetyDiff`. Four
 values deserve that treatment: the capacity verdict, the serve instant, the day key, and the active
 methods. Four assertions, not a refactor.
+
+---
+
+## 10. Timeline envelope (D7 — deliberately wide, superseded phase by phase)
+
+**This is an envelope, not an estimate.** A firm, defensible number is produced at each phase's spec gate,
+where the tasks are actually enumerated. Anyone quoting the figures below as a commitment is misreading
+them.
+
+**What is countable:** ~60–70 DoD-gated code tasks, plus Phase −1's 8–12. Each carries the real gate cost
+— witnessed RED, GREEN, a full suite run (3–5 runs per task, ~3 min each at the current 415 tests), review
+and fix loops.
+
+**What is not countable:** **72 of the 141 gaps are specified nowhere.** They need roughly **8 design
+cycles** (brainstorm → spec → owner approval → plan), and a design cycle's length is set almost entirely by
+how many review rounds it takes — which depends on the owner, not the assistant.
+
+| Segment | Envelope | Confidence |
+|---|---|---|
+| Phase −1 | ~1 week | **High** — the tasks are known and small; PRE-1 is one line |
+| P0-app + P0-worker | 1–2 weeks | Medium-high — mostly wiring guards that already exist |
+| P1 migration | 2–3 weeks, **anchored to §6's dates** | Medium — the harness is new work, the flip is one constant |
+| P2 + P3 + P4 (safety gates, monitoring→control, data) | 3–5 weeks | Medium — P4 carries per-value owner sign-off |
+| P5a + P5b (structural) | 4–8 weeks | **Low** — P5a is the riskiest change in the program |
+| P6 + P7 (localization, product surface) | 4–8 weeks | **Low** — contains most of the 72 unspecified gaps and the new home-screen spec |
+| P8 + P9 (orchestrator, cross-event) | 4–6 weeks | Low — fully specified, but large |
+| P10 commercial | deferred | — |
+
+**Calendar reading: roughly August through November/December 2026**, with Phase −1, P0 and P1 forced into
+place by the 2026-10-16 shutdown. The back half is where the range is widest, and honestly so.
+
+**The three things that would move this most:** how many review rounds the 8 design cycles take · whether
+P5a's equivalence oracle works first time or forces a rethink · whether standardizing on 390 × 844 (D8)
+surfaces a handful of layout failures or a wave of them.
 
 ---
 
