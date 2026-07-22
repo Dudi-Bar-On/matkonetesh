@@ -2,7 +2,11 @@ import { defineConfig, devices } from '@playwright/test';
 
 // Serves the freshly-built single-file app. `python build.py` regenerates index.html
 // from data.py + friends, then python's http.server serves the project root.
-const PORT = 8123;
+// Overridable so two suite runs can execute concurrently on different ports. serve.js already
+// reads its port from process.argv[2] (serve.js:18), so only this constant needed changing.
+// Concurrent runs on the SAME port remain forbidden — that produced 127 phantom
+// ERR_CONNECTION_REFUSED failures on 2026-07-21 (CLAUDE.md §11a).
+const PORT = Number(process.env.MK_TEST_PORT) || 8123;
 
 export default defineConfig({
   testDir: './tests',
