@@ -250,6 +250,119 @@ Also verify the delivery path itself, once, when it changes: `/` and `/index.htm
 
 ---
 
+## 12. Thinking models — adopted from the graphify global `methodology` corpus (2026-07-22)
+
+**Where this came from.** The owner asked whether the global graph's `methodology` corpus (4,335 nodes)
+held anything worth adopting. It holds the **GSD** framework from the `matkonet` project, whose thinking
+models are curated from the [thinking-partner](https://github.com/mattnowdev/thinking-partner) catalog
+(150+ models). **Fifteen models across three clusters are adopted below. The rest is deliberately not.**
+
+**How to read it yourself:**
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+G="$HOME/.graphify/global-graph.json"
+graphify god-nodes --graph "$G" --top 30                      # what the corpus is about
+graphify explain "Thinking Models: Planning Cluster" --graph "$G"
+graphify explain "Thinking Models: Execution Cluster" --graph "$G"
+graphify explain "Thinking Models: Debug Cluster" --graph "$G"
+graphify explain "Gate Prompt Patterns" --graph "$G"
+graphify query "premortem mece constraint reversibility fault tree hypothesis occam chesterton" --graph "$G"
+```
+The graph gives structure and labels; the prose lives in
+`C:\Users\dudib\source\repos\matkonet\.claude\gsd-core\references\thinking-models-{planning,execution,debug}.md`
+and `gate-prompts.md`. **That path is another local repo and may vanish — the graph is the durable
+record.** Per §10.13, the graph located the material; the source files were then read before adopting it.
+
+### 12.1 What was REJECTED, and why
+
+GSD's workflow machinery — its phases/waves, `PLAN.md`/`SUMMARY.md`/`VERIFICATION.md` artifacts, `/gsd-*`
+commands, `checkpoint:decision` task types, and per-agent model profiles — is **not adopted.** Our
+pipeline is superpowers-based (§2). Importing a second, competing process would create exactly the
+"same subject specified twice, neither document citing the other" defect the knowledge graph found four
+instances of in our own corpus. **One process, or none.**
+
+### 12.2 Debug cluster — sharpens §5, and independently re-derives L14
+
+Apply at decision points during investigation, not continuously.
+
+1. **Fault Tree first, Hypothesis-Driven second.** Build the tree of possible causes (symptom as root;
+   branch into software / config / data / environment; AND vs OR gates) *before* testing anything. Do not
+   prune a branch for being unlikely if it is cheap to test.
+2. **Hypothesis-Driven protocol: PREDICT → TEST → OBSERVE → CONCLUDE.** *"If H is correct, test T
+   produces result R."* **Never skip PREDICT** — without a prediction you cannot tell a meaningful result
+   from noise. Never change more than one variable per test.
+3. **Occam's Razor.** Rule out typo / wrong path / missing import / stale cache / wrong env var *before*
+   race conditions and framework bugs. **If your hypothesis needs 3+ things to go wrong at once, stop and
+   look for a single-point failure.** — *This is L14 restated by an independent source: the owner could
+   not see v255, and I theorised about their service-worker cache instead of asking whether the deploy
+   had finished.*
+4. **Counterfactual.** Change exactly one thing and predict the bug appears/disappears. Tests the
+   mechanism, not the timeline — stronger than "it broke after deploy X".
+
+Our **3-fix rule (§5) still governs**: these models make each attempt evidence-led; they do not buy a
+fourth attempt.
+
+### 12.3 Execution cluster — names failure modes we have already paid for
+
+1. **Circle of Concern vs Circle of Control.** Before touching code not in the task's scope: is this mine
+   to fix, or merely something I noticed? Note it as a deviation; do not fix it. *"While I'm here" is the
+   single biggest source of executor overrun.*
+2. **Chesterton's Fence.** Do not remove or rewrite code whose purpose you don't understand — check git
+   blame, comments, tests. If the purpose stays unclear, keep it and note the uncertainty.
+3. **First Principles.** Before copying a nearby pattern, ask what constraint it satisfies and whether
+   this task shares it. Otherwise it is cargo cult. — *L6 is exactly this: `תנור` was used as the generic
+   device word because new code copied without checking the correct pattern already in the codebase.*
+4. **Occam's Razor (build).** The simplest implementation satisfying the requirement is the correct one.
+   No abstraction, generic, or config option the spec did not ask for. (YAGNI, with a name.)
+5. **Forcing Function.** Resolve an ambiguous requirement at build time rather than hiding it behind a
+   TODO or a runtime check. If it truly cannot be resolved now, **raise it — see §4.**
+
+### 12.4 Planning cluster — two of these close real gaps in this discipline
+
+1. **Constraint Analysis, then Pre-Mortem** (in that order). Identify the single hardest constraint — the
+   one that makes everything else irrelevant if it fails — and **schedule it as task 1 or 2, never last.**
+   Then assume the plan has already failed and list the 3 likeliest reasons, adding a check for each.
+2. **MECE at the requirement level.** Every requirement maps to exactly one task's done-condition; flag
+   any requirement covered by no task. This is the per-phase DoD audit (§3) done *before* the work.
+3. **Reversibility Test.** Classify each decision REVERSIBLE or IRREVERSIBLE and **spend analysis time in
+   proportion to irreversibility.** — *This sharpens §10.8: "is it hard to reverse" is already our first
+   test for interrupting the owner; this adds the corollary that cheap reversible decisions deserve less
+   deliberation, not just less asking.*
+4. **Curse of Knowledge Counter.** Re-read every instruction as if you have never seen this codebase. Is
+   every noun unambiguous (which file, which function) and every verb specific (modify *how*)? — *Directly
+   applicable to subagent briefs, which is where this project's instructions actually fail.*
+5. **Base Rate Neglect Counter.** Every LOW-confidence item and open decision must be either resolved or
+   documented with why the risk is acceptable. **Silently accepted low-confidence items become
+   undocumented technical debt** — the same shape as §4's waiver failure.
+
+### 12.5 Gate prompt patterns — §10.8 says *when* to ask; this says *how*
+
+Constraints: **max 4 options**, `header` ≤ 12 characters, never multi-select for a gate, and always
+handle the freeform "Other" answer. If more than 4 options are needed, use a two-step flow.
+
+Ready-made shapes: `approve-revise-abort` (Approve | Request changes | Abort) · `yes-no` ·
+`stale-continue` (Refresh | Continue anyway) · `multi-option-failure` (Retry | Skip | Rollback | Abort) ·
+`multi-option-escalation` (Accept gaps | Re-plan | Debug | Retry) · `multi-option-gaps`
+(Auto-fix | Override | Manual | Skip) · `multi-option-priority` (Must-fix only | Must + should |
+Everything | Let me pick) · `scope-confirm` · `depth-select` · `action-routing` (last option always
+"Something else") · `gray-area-option` (last option always "Let Claude decide").
+
+### 12.6 When NOT to think — the anti-ceremony rule, and it is load-bearing
+
+All three clusters ship this section, and it is adopted with them. **This discipline is already heavy;
+a reasoning model applied where it adds nothing is cost with no evidence.** Skip them for:
+
+- **Single-task work** with one clear requirement — write the task, do not pre-mortem it.
+- **Obvious single-cause bugs** — a stack trace naming file, line and cause gets fixed, not fault-treed.
+- **Following an established project pattern** the plan asks you to extend (Chesterton's Fence governs
+  *removal*, not repetition).
+- **Trivial mechanical edits** — an import, a typo, a version bump.
+- **Procedural steps** — running a verify command is not a decision point. Invoke a model only when it
+  *fails* and you must choose how to respond.
+- **Revision passes** — apply only the model relevant to the flagged issue, not the whole suite again.
+
+---
+
 ## 11a. Testing infrastructure (established 2026-07-21)
 
 **How to run the suite:** `npx playwright test` — nothing else. The config is authoritative.
