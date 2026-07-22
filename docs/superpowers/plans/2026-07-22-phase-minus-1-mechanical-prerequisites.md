@@ -267,6 +267,16 @@ and are escalated in the register rather than hidden by widening the viewport ba
 
 **Why:** 19 `setViewportSize` calls across 5 files set five *different* sizes (390 × 900 ×7, 390 × 820 ×7, 390 × 844 ×2, 390 × 780 ×2, 390 × 1000 ×1). With the project default now 390 × 844, each is either redundant or an undocumented deliberate exception. Two conventions in one suite is how DoD line 8 got missed in the first place.
 
+> **⚠️ CORRECTION FROM TASK 2 — this task's original title was wrong.** Task 2's implementer verified that
+> **only the 2 calls at exactly 390 × 844 are strictly redundant.** The other **17 set a different height
+> (780–1000) on specs that assert height-adaptive behaviour** — how many home cards fit without scrolling,
+> what collapses on a short viewport. **Removing those changes what is under test.**
+>
+> So this task is **not** "delete 19 redundant lines". It is: delete the 2 that restate the default, and for
+> each of the other 17 decide — *is this height load-bearing for what the test proves?* If yes it **stays,
+> with a comment saying what it proves**. If no it goes. **An override that survives without a comment is a
+> failure of this task**, and so is deleting one that was carrying an assertion.
+
 **Files:**
 - Modify: `tests/adaptive-home.spec.ts` (12 calls: lines 43, 77, 104, 142, 167, 209, 226, 249, 275, 310, 345, 389)
 - Modify: `tests/occupancy-unknown-footprint.spec.ts` (line 77)
