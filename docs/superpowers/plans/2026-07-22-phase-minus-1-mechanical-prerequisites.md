@@ -14,11 +14,11 @@
 
 ## Global Constraints
 
-- **`npx playwright test` — plain.** Never pass `--retries` or `--workers=N` in a committed script or in a verification step. Retries mask flakes; `--workers=1` is the old 13-minute serial path. (`CLAUDE.md` §11a, DoD line 12.) The single exception is Task 5, whose entire purpose is measuring worker counts, and which changes no committed default until its final step.
+- **`npx playwright test` — plain.** Never pass `--retries` or `--workers=N` in a committed script or in a verification step. Retries mask flakes; `--workers=1` is the old 13-minute serial path. (`CLAUDE.md` §11a, DoD line 12.) The single exception is Task 6, whose entire purpose is measuring worker counts, and which changes no committed default until its final step.
 - **`retries: 0` stays.** A flake is a bug to be debugged, never averaged out.
 - **Never run two suite runs concurrently on the same port.** Racing runs previously produced 12 then 127 phantom `ERR_CONNECTION_REFUSED` failures and sent a debugging session after a server bug that did not exist. After Task 1 this becomes possible *on different ports*; it is still forbidden on the same one.
 - **After `python build.py`, restart any manual `serve.js`** before a UI check — it caches `dist/` in memory at startup, so you will otherwise verify a stale build.
-- **Do not modify `app.js`, `app.css`, `build.py` or the Python data layer in this plan.** The only exception is Task 4, which adds no logic and only touches test files.
+- **Do not modify `app.js`, `app.css`, `build.py` or the Python data layer in this plan.** The only exception is Task 4, which adds no production logic and only creates a test file.
 - **Baseline at plan time:** 413 tests in 82 files. `workers: 6`. `PORT = 8123`. `.github/` does not exist. `package.json`'s `test` script is an error stub.
 - Every task ends with a full `npx playwright test` run, output pasted, per DoD line 12.
 
@@ -28,12 +28,12 @@
 
 | File | Responsibility | Tasks |
 |---|---|---|
-| `playwright.config.ts` | Single source of truth for port, workers, projects, webServer | 1, 2, 5 |
+| `playwright.config.ts` | Single source of truth for port, workers, projects, webServer | 1, 2, 6 |
 | `serve.js` | Static server. **Already reads `process.argv[2]`** (`serve.js:18`) — no change needed | — |
-| `tests/*.spec.ts` (5 files) | Remove now-redundant `setViewportSize` calls | 4 |
-| `tests/ai-validators.spec.ts` | **New.** Coverage for the three grounding validators | 3 |
-| `.github/workflows/test.yml` | **New.** CI: build + full suite on every push and PR | 6 |
-| `package.json` | Replace the error-stub `test` script | 6 |
+| `tests/*.spec.ts` (5 files) | Remove now-redundant `setViewportSize` calls | 3 |
+| `tests/ai-validators.spec.ts` | **New.** Coverage for the three grounding validators | 4 |
+| `.github/workflows/test.yml` | **New.** CI: build + full suite on every push and PR | 5 |
+| `package.json` | Replace the error-stub `test` script | 5 |
 
 ---
 
@@ -139,7 +139,7 @@ that did not exist."
 
 **Why:** `playwright.config.ts:28` declares only `devices['Desktop Chrome']`. DoD line 8 **mandates** a 390 × 844 screenshot for any UI change, but the suite runs desktop-width by default, so a screenshot taken inside a test is the wrong size unless that test happens to set the viewport. The app is mobile-first; the suite should be too.
 
-**This task is expected to produce failures.** They are findings, not noise — a layout that breaks at 390 × 844 is a real defect in a mobile-first app. This task's deliverable is *the change plus a recorded, categorized failure list*. The fixes are Task 3.
+**This task is expected to produce failures.** They are findings, not noise — a layout that breaks at 390 × 844 is a real defect in a mobile-first app. Its deliverable is the change, a recorded categorized failure list, AND the test-side fixes — per the owner's pre-flight ruling it does not commit until the suite is green.
 
 **Files:**
 - Modify: `playwright.config.ts:27-29`
@@ -147,7 +147,7 @@ that did not exist."
 
 **Interfaces:**
 - Consumes: `MK_TEST_PORT` from Task 1.
-- Produces: every test now runs at **390 × 844** unless it explicitly overrides. Task 4 removes the redundant overrides.
+- Produces: every test now runs at **390 × 844** unless it explicitly overrides. Task 3 removes the redundant overrides.
 
 - [ ] **Step 1: Record the current baseline**
 
