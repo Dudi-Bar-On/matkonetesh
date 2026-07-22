@@ -336,3 +336,35 @@ tokens that actually exist in it (`references/query.md`, Step 0). If no vocabula
 corpus has no relevant vocabulary and stop — **never invent tokens to force a hit.** This matters doubly
 here because our corpus is bilingual: a Hebrew query will not match English labels.
 
+
+### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
+> **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
+> changed. Update it as part of committing and pushing — and sooner than that where practical.
+
+**The catch that makes this a rule rather than a hook.** graphify's own post-commit hook
+(`graphify hook install`) re-extracts **code** files only — its documentation states plainly that
+"doc/image changes are ignored by the hook". Our graph is a **documentation** graph, so the hook would
+leave it silently stale, which is worse than having no graph: a stale map is trusted and wrong.
+
+**What to do:**
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+graphify update docs          # incremental re-extraction, only new/changed files
+# or, via the skill:  /graphify docs --update
+```
+
+- **Sooner is better.** After writing or substantially editing a document — especially an analysis,
+  spec, plan or sweep report — update the graph then, not later.
+- **At minimum, before `git push`.** A push that adds or changes documents must be accompanied by a graph
+  update in the same working session.
+- **`graphify-out/` is generated** — keep it out of git except `GRAPH_REPORT.md`, which is the
+  plain-language map worth versioning.
+- Optional: `graphify hook install` still earns its place for code changes, and
+  `graphify claude install` writes an always-on section into `CLAUDE.md`. Neither removes the need for
+  the manual doc update above.
+
+**Why it matters here.** This project accumulated ~40 documents and ~12,000 lines of specification that
+were never reconciled; four outright contradictions and an entire unbuilt orchestrator specification were
+found only by exhaustive auditing. The graph exists to make that visible continuously instead of
+retrospectively — which only holds if it is current.
+
