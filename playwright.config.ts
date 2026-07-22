@@ -29,7 +29,15 @@ export default defineConfig({
     launchOptions: { args: ['--host-resolver-rules=MAP fonts.googleapis.com 127.0.0.1, MAP fonts.gstatic.com 127.0.0.1'] },
   },
   projects: [
-    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+    // The app is mobile-first and DoD line 8 mandates evidence at 390x844, so the suite runs at
+    // that size by default. Before 2026-07-22 the default was Desktop Chrome and only 5 of 82
+    // specs set a mobile viewport at all (and only 2 of those at exactly 390x844), so a screenshot
+    // taken inside a test was usually the wrong size.
+    // Individual tests may still override with page.setViewportSize for a specific check.
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 } },
+    },
   ],
   webServer: {
     // build, then serve the clean deploy folder (dist/) so tests exercise the real artifact
