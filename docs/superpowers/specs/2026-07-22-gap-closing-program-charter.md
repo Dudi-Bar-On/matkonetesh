@@ -1,6 +1,7 @@
 # Gap-Closing Program — Charter
 
-**Date:** 2026-07-22 · **Status:** awaiting owner approval of this charter
+**Date:** 2026-07-22 · **Status: APPROVED by the owner, 2026-07-22**
+(approved after the §1.1 charter-review decisions D3–D8 were folded in)
 **Baseline audited:** v258 · **Scope:** all 141 gaps in `docs/analysis/2026-07-22-ULTIMATE-knowledge-and-gaps.md`
 
 **Inputs.** The 47-tool, 5-wave discovery sweep (206 confirmed / 42 refuted / 13 unverifiable), plus three
