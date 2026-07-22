@@ -352,6 +352,54 @@ tokens that actually exist in it (`references/query.md`, Step 0). If no vocabula
 corpus has no relevant vocabulary and stop — **never invent tokens to force a hit.** This matters doubly
 here because our corpus is bilingual: a Hebrew query will not match English labels.
 
+**The feedback loop — a miss is a task, not a dead end (owner instruction, 2026-07-22).** When the global
+graph does not hold the documentation you need, you search the web *and then put what you found into the
+global graph*, so the next session does not repeat the search. This is what makes the corpus grow instead
+of staying frozen at whatever it held on 2026-07-21.
+
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+# 1. Bring the docs in locally (a folder of pages, or fetch them into ./raw)
+graphify add <url>                                # fetches a URL into ./raw and graphs it
+#    ...or graph a folder of downloaded docs:  /graphify <folder> --mode deep
+# 2. Publish that graph into the global corpus under a clear tag
+graphify global add <path-to-graph.json> --as <tool-name>-docs
+graphify global list                              # verify it landed
+```
+
+`graphify global list` / `global remove <tag>` / `global path` manage the corpus. Tag by what the docs
+*are* (`playwright-docs`, `cloudflare-workers-docs`), matching the existing convention — the global graph
+currently merges two corpora, `vendor-docs` (2,435 nodes) and `methodology` (4,335 nodes).
+
+**Honest limit to state when you do this:** the global graph is a *shared, cross-project* resource. Only
+add documentation of general value — a vendor's API docs, a framework's guide. Never add this project's
+private documents, and never add anything containing a key or a secret.
+
+### 10.13 Reach for the graph BEFORE grepping — it is the evidence tool, not a curiosity
+> **Owner instruction, 2026-07-22.** Always try the semantic graphs first when looking for evidence and
+> references across code and documents. And keep them updated — always.
+
+The **local** graph (`graphify-out/graph.json`) now spans the documentation *and* the code, so a question
+like "what specifies this function", "what tests prove it", "where else is this value consumed", or "does
+anything actually read this" is a graph query rather than a grep. Use `graphify query`, `graphify path`
+(shortest path between two concepts), and `graphify explain` (a node and its neighbours).
+
+**Why this is a discipline rule and not a preference.** The 2026-07-22 sweep refuted **42 of 261
+findings — 16%** — and every refutation shared one shape: *a grep, a quote, or one artifact trusted
+without tracing what the program actually executes.* A grep finds a string. The graph holds the
+relationship — which is what the claim was actually about. `equipPlan` was described in a document and
+implemented in `app.js`, and for months nothing connected the two; the graph now does.
+
+**But it is a lead, not a verdict.** The graph carries `INFERRED` and `AMBIGUOUS` edges by design (deep
+mode is aggressive on purpose). An edge is a place to look, and the claim is confirmed against the source
+— §10.13 does not repeal L16 or the runtime-path skill. Query first to find the evidence; read the file
+before asserting it.
+
+**Keeping it current is the other half.** A stale graph is worse than no graph, because it is trusted and
+wrong. See §10.12 — every document change, always `--mode deep`. Note the two defaults that trip in
+opposite directions: `graphify update` is the code/AST path ("no LLM needed") and re-extracts **no**
+documents, while a **pure-code corpus skips semantic extraction entirely** and gets AST only. Overriding
+either is a deliberate choice to state out loud.
 
 ### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
 > **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
