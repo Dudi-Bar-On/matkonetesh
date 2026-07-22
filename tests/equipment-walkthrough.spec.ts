@@ -7,6 +7,13 @@ import { test, expect, Page } from '@playwright/test';
 
 const SHOT = 'mockups/walkthrough/';
 
+// TASK-3 (viewport convention sweep): kept deliberately larger than the 390x844 suite default.
+// This file's purpose IS its screenshots (documentation for human review), not just its assertions.
+// Experiment: at 390x844 the "OR PICK FROM THE CATALOGUE" section is entirely cut out of the
+// en-form-catalogue.png frame; at 430x920 the divider is visible and more of the catalogue shows.
+// Assertions pass at either size, but the screenshots this spec exists to produce are materially
+// worse at the suite default, so 430x920 stays. (width also differs from the 390 convention —
+// likely chosen to mimic a larger phone so less scrolling is needed per shot; left as-is.)
 test.use({ viewport: { width: 430, height: 920 } });
 
 // seed localStorage BEFORE the app boots, then land on index and wait for the equip API

@@ -63,7 +63,6 @@ test('W3: the view is Hebrew-clean', async ({ page }) => {
 // 1320 cm² brisket landed at ~7% of the row and clipped its own name and figure. Proportion must not
 // cost legibility — flex-grow plus a CSS min-width floors it.
 test('W5: no occupancy chip clips its own label', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });   // the app is mobile-first; a desktop width hides the clip
   await boot(page);
   // Use Playwright's auto-waiting locators rather than an in-page poll: under full-suite load the
   // hand-rolled version timed out waiting for the panel, which made this test flaky in the suite

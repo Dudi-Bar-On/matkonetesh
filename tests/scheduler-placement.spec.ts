@@ -128,7 +128,6 @@ test('C1: a pull beyond the bound is refused and advised, not silently applied',
 });
 
 test('C2: the REAL plan states an unresolvable load instead of leaving it silently over-subscribed', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 900 });
   await page.addInitScript(() => { try {
     localStorage.clear();
     localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
@@ -151,7 +150,6 @@ test('C2: the REAL plan states an unresolvable load instead of leaving it silent
 // The small-pull regime in the real UI: two quick grill items on a grill too small for both. This is the
 // everyday case the feature exists for — cook one, then the other, half an hour apart.
 test('C3: a small pull staggers the real plan and the timeline says the item is ready early', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 900 });
   await page.addInitScript(() => { try {
     localStorage.clear();
     localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));

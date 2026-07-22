@@ -56,7 +56,6 @@ test('work-plan: a REAL tap highlights that exact task (not another), one marker
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
     localStorage.setItem('mk-tlview', JSON.stringify('plan'));
     localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
-  await page.setViewportSize({ width: 390, height: 780 });
   await page.goto('/index.html');
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
@@ -87,7 +86,6 @@ test('view switch re-focuses the SELECTED task, not the item first task (grillâ‰
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
     localStorage.setItem('mk-tlview', JSON.stringify('plan'));
     localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
-  await page.setViewportSize({ width: 390, height: 780 });
   await page.goto('/index.html');
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
@@ -128,7 +126,6 @@ test('coming from a specific step marks that step inside the by-item card', asyn
   await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
     localStorage.setItem('mk-tlview', JSON.stringify('plan'));
     localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
-  await page.setViewportSize({ width: 390, height: 820 });
   await page.goto('/index.html');
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);

@@ -74,7 +74,6 @@ test('U3: two known-footprint cuts report zero unknowns and an exact (non-floor)
 });
 
 test('U4: the rendered occupancy view marks a floor percentage and notes the unknown-size item', async ({ page }) => {
-  await page.setViewportSize({ width: 390, height: 844 });   // the app is mobile-first
   // Step 1: a bare boot just to discover a footprint-less make whose OWN default cook method is
   // 'smoke' (MAKE_COOK[cat].methods[0].key==='smoke') — needed because this test drives the real
   // menu -> timeline -> work-plan pipeline, which derives stages from the recipe itself rather
