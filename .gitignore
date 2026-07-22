@@ -24,3 +24,7 @@ scratch/*.output
 
 # Machine-local Claude Code settings
 .claude/settings.local.json
+
+# graphify generated artifacts (only docs/analysis/graph/GRAPH_REPORT.md is versioned)
+graphify-out/
+docs/graphify-out/

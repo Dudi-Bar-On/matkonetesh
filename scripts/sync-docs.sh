@@ -48,6 +48,14 @@ echo "── 3/3 · commit${PUSH:+ and push} ───────────�
 git commit -q -m "$MSG" || { echo "   ! commit failed"; exit 1; }
 echo "   · committed $(git rev-parse --short HEAD)"
 if [ "$PUSH" = "1" ]; then
-  git push origin main 2>&1 | tail -1
+  # Report the REAL push outcome. An earlier version piped to `tail -1` and printed a stale
+  # "Everything up-to-date" line while the branch was still ahead — a silent failure to publish.
+  if git push origin main; then
+    AHEAD=$(git rev-list --count @{u}..HEAD 2>/dev/null || echo "?")
+    if [ "$AHEAD" = "0" ]; then echo "   · pushed — origin is up to date"
+    else echo "   ! PUSH DID NOT PUBLISH — still $AHEAD commit(s) ahead of origin"; exit 1; fi
+  else
+    echo "   ! PUSH FAILED"; exit 1
+  fi
 fi
 echo "done."
