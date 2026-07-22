@@ -4,6 +4,13 @@ import { test, expect } from '@playwright/test';
 // construction. schedulePlacements() moves stages EARLIER (never later — that would miss serve) until no
 // instant exceeds the device's honest capacity. It may never alter a duration, a temperature, or an order.
 
+// Run-artefact screenshots go to test-results/ (gitignored), NOT docs/analysis/shots/ (tracked).
+// Writing them into a tracked directory left every full suite run — and therefore every CI run —
+// with two modified tracked PNGs, i.e. a permanently dirty working tree. The committed
+// docs/analysis/shots/p4-*.png remain as the deliberate, audit-cited evidence of that state;
+// they are simply no longer overwritten by a test run.
+const SHOTS = 'test-results/';
+
 const boot = async (page: any, kit: any[]) => {
   await page.addInitScript(([k]: [any[]]) => { try {
     localStorage.clear();
@@ -144,7 +151,7 @@ test('C2: the REAL plan states an unresolvable load instead of leaving it silent
   const advice = page.locator('.sched-advice');
   await expect.poll(async () => await advice.count()).toBeGreaterThan(0);
   await expect(advice.first()).toBeVisible();
-  await page.locator('#panel').screenshot({ path: 'docs/analysis/shots/p4-advice-he.png' });
+  await page.locator('#panel').screenshot({ path: SHOTS + 'p4-advice-he.png' });
 });
 
 // The small-pull regime in the real UI: two quick grill items on a grill too small for both. This is the
@@ -188,5 +195,5 @@ test('C3: a small pull staggers the real plan and the timeline says the item is 
   const early = page.locator('.tl-early');
   await expect.poll(async () => await early.count()).toBeGreaterThan(0);
   await expect(early.first()).toContainText('לפני ההגשה');
-  await page.locator('#panel').screenshot({ path: 'docs/analysis/shots/p4-early-he.png' });
+  await page.locator('#panel').screenshot({ path: SHOTS + 'p4-early-he.png' });
 });
