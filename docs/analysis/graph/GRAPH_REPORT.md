@@ -1,3 +1,21 @@
+> ## ⚠️ STALE BELOW THIS LINE — describes the DOCS-ONLY graph of 2026-07-22 morning
+>
+> **Current graph: 4,355 nodes · 13,828 edges · 37 communities.** Everything below describes the
+> earlier 1,579-node / 2,837-edge / 99-community state, before the code was merged in.
+>
+> What changed: Pass A (AST over 101 code files, 1,101 nodes, free) + Pass B (the Python data layer —
+> `sources.py`, `data.py`, `seasonings*`, `equipment_map`, `build.py` — 1,816 nodes / 5,174 edges) +
+> Pass C (`app.js` by line range, `worker/index.js`, all 82 test specs — 94 nodes / 2,617 edges).
+> All **72 ghost nodes** — doc-mentions of functions that pointed at no implementation — are now connected.
+> Community count *fell* 99 → 37 because the code edges fused clusters that were separate islands while the
+> graph held documents alone.
+>
+> The hub list below is therefore wrong: the current top hubs are `app.js` (778) and `sources.py` (741),
+> followed by data-semantic nodes such as *"`calc.cure` = cure TYPE; `calc.cureRate` = dose in g/kg"*.
+>
+> Regenerating the prose report needs an LLM community-labelling pass and has not been run. This banner
+> exists so the numbers below are not mistaken for current ones.
+
 # Graph Report - docs  (2026-07-22)
 
 ## Corpus Check
