@@ -135,6 +135,11 @@ the correct fix is sometimes a better ingredient. Both: find by research, judge 
 **§10.16** Conclude every significant session/arc with its **lessons** (failures → the §11 log, successes →
 "adopted wins") **and deposit** the session's useful doc finds into the graphify global (§10.11 gate) — the
 controller runs the deposit pass before the arc closes; untracked lessons and undeposited finds are paid for twice.
+**§10.17** **Maximize Serena** (the project's `serena` MCP server) for symbol-shaped code work — find/refs/
+overview/surgical symbol edits beat grep + text edits on the ~9.5k-line app.js. Learn it from its docs FIRST:
+the `serena-docs` corpus in the graphify global + Serena's own `initial_instructions` manual. Division of
+labor: Serena = live locate/edit-exact · graphify = cross-doc provenance + vendor docs · grep = fallback
+(docs/process/serena-adoption.md). Point code-editing subagents at Serena when their task is symbol-shaped.
 
 ## The product
 

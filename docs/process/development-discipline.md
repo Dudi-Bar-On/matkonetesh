@@ -644,6 +644,25 @@ feedback also goes to the assistant's persistent memory); docs → `graphify add
 subagents are told to *list* deposit candidates; the controller owns running the deposit pass before the
 arc closes.
 
+### 10.17 Maximize the use of Serena for code work — and learn it from its docs first
+> **Owner instruction, 2026-07-24.** Whenever possible, maximize the use of **Serena** (the LSP-backed
+> semantic code toolkit, live as this project's `serena` MCP server). Read its documentation **carefully**
+> to learn how to best use it — it is in the graphify **global** knowledgebase (`serena-docs` corpus), and
+> Serena's own `initial_instructions` tool serves its usage manual (its MCP server says to call it before
+> coding tasks — do).
+
+**When Serena is the right tool (the adopted division of labor — `docs/process/serena-adoption.md`):**
+symbol-shaped code work on live sources — *find this function* (`find_symbol`), *who calls/reads this*
+(`find_referencing_symbols`), *map this file's structure* (`get_symbols_overview`), *edit exactly this
+symbol* (`replace_symbol_body` / `insert_after_symbol`), *rename safely* (`rename_symbol`) — is Serena's
+home turf, and on a ~9.5k-line `app.js` a surgical symbol edit beats a fragile text-match edit. The split
+stands: **Serena** = live locate-exact/edit-exact (always fresh, LSP-accurate) · **graphify** = cross-doc
+provenance, spec↔code↔test relationships, vendor docs · **grep** = fallback for literal/non-code text.
+Dispatch prompts for code-editing subagents should point them at Serena's tools where the task is
+symbol-shaped. Learning it is not optional polish: query `serena-docs` in the global graph (§10.11
+vocabulary rules apply) and the `initial_instructions` manual before leaning on conventions from memory —
+tools evolve, and a mis-used symbol edit on a monolith is worse than a careful text one.
+
 ### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
 > **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
 > changed. Update it as part of committing and pushing — and sooner than that where practical.
