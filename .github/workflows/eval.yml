@@ -1,0 +1,66 @@
+name: eval
+
+# PRE-4 live-model eval harness — MANUAL trigger ONLY, never on push or PR.
+#
+# Why a separate file and not a job in test.yml: a workflow_dispatch job cannot be dispatched on its
+# own — dispatching test.yml would re-run the whole (free, deterministic) Playwright suite, and this
+# suite makes live, paid, non-deterministic Gemini calls once a key is present. Keeping it in its own
+# file lets the owner trigger the eval alone, without paying for or waiting on the push suite.
+# Design doc: docs/analysis/program/PRE-4-eval-harness-design.md §8 (workflow_dispatch-only gating).
+on:
+  workflow_dispatch:
+
+jobs:
+  eval:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      # evals/playwright.config.ts's webServer runs `python build.py && node serve.js <port>` — the
+      # same build the root suite uses — so Python is required exactly as in test.yml. build.py imports
+      # only the standard library, so no pip install step is needed.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      # npm run eval → playwright test --config evals/playwright.config.ts (package.json).
+      # With GEMINI_EVAL_KEY set, the live baseline cases call the real model; without it they skip
+      # cleanly (evals/tests/live-suite.spec.ts test.skip guard) while the deterministic scorer tests
+      # still run — so this step is GREEN both with and without the secret, and a red run is a real bug.
+      - name: Run the eval harness
+        run: npm run eval
+        env:
+          GEMINI_EVAL_KEY: ${{ secrets.GEMINI_EVAL_KEY }}
+
+      # The scorecard (raw model responses + human-readable markdown) is the one irreplaceable artifact
+      # once gemini-2.5-flash retires 2026-10-16 (design doc §10). It is written to
+      # docs/analysis/program/eval/ only when the live run actually fires (a key was present); on a
+      # no-secret run the live cases skip and nothing is written, so if-no-files-found: ignore.
+      - name: Upload eval scorecard
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-scorecard
+          path: docs/analysis/program/eval/
+          if-no-files-found: ignore
+          retention-days: 90
+
+      - name: Upload traces on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: eval-traces
+          path: test-results/
+          retention-days: 7
