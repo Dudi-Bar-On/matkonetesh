@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // H1 (docs/analysis/2026-07-21-refactoring-report.md §3): itemOccupancy used to end with
 // `cm2:Number(spec.footprint_cm2)||0`, so an item with NO recorded footprint (make_equip in

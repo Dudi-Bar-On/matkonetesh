@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // cookerContention still judged a clash by o.over — the WHOLE-DEVICE area sum — which is the exact lie the
 // H4/Phase-2 work removed from the occupancy card: a brisket that fits no single shelf leaves a 5-shelf

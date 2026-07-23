@@ -1,17 +1,19 @@
-// Static server for the Playwright test webServer.
-// Python's http.server AND a naive single-process node server both stall under concurrent test load
-// (many Playwright workers each fetching the ~2.4MB dist/index.html), causing random page.goto
-// ERR_ABORTED / 30s timeouts. Root cause: one event loop doing a fresh 2.4MB disk read per request.
+// Static server for the Playwright test webServer. SINGLE in-memory process.
 //
-// This server removes both bottlenecks so high --workers counts stay reliable:
-//   1. CLUSTER — forks one worker per core (capped), all sharing the port; the OS load-balances
-//      connections across cores instead of funnelling every request through a single process.
-//   2. IN-MEMORY — each worker reads dist/ into memory once at startup and serves from a Buffer,
-//      so there is zero per-request disk I/O even under a burst of concurrent navigations.
-//   3. BACKLOG — a large listen backlog absorbs connection bursts instead of refusing them.
+// It serves dist/ from an in-memory Buffer map (zero per-request disk I/O). That in-memory property — not
+// clustering — is what keeps high --workers reliable: the original Python/naive server stalled because it did
+// a fresh ~2.4MB DISK read per request, which got conflated with "single process is too slow". A Node cluster
+// was added to fix the disk problem, but its `cluster.on('exit', () => cluster.fork())` respawn (no
+// exitedAfterDisconnect guard — Node's own documented anti-pattern) meant a killed worker respawned into a
+// wedged ZOMBIE server that held the port, accepted connections, and never responded — wedging 8123 for every
+// later run. Dropping the cluster removes that whole risk class. The suite peaks at ≤10-20 concurrent
+// connections; a single in-memory process serves that with orders of magnitude to spare.
+// (Analysis: docs/research/test-stack-alternatives-research.md.)
+//
+// TEARDOWN (§11a — every setup owns its teardown): Playwright owns start/stop via webServer.command and
+// tree-kills on teardown; NEVER kill a suite mid-run. The SIGINT/SIGTERM handlers below are defense-in-depth
+// so a direct signal also closes the listener cleanly instead of leaving an orphan.
 const http = require('http');
-const os = require('os');
-const cluster = require('cluster');
 const fs = require('fs');
 const path = require('path');
 
@@ -24,34 +26,30 @@ const TYPES = {
   '.ico': 'image/x-icon',
 };
 
-// Enough workers to absorb a burst of parallel navigations without oversubscribing the box.
-const WORKERS = Math.max(2, Math.min(12, os.cpus().length));
-const isPrimary = cluster.isPrimary !== undefined ? cluster.isPrimary : cluster.isMaster;
+// Read every file under dist/ into memory once. The cache keys ARE the only servable paths, so a traversal
+// like /../secret simply misses the map → 404 (safer than a startsWith(root) guard).
+const cache = new Map();
+(function load(dir) {
+  for (const name of fs.readdirSync(dir)) {
+    const fp = path.join(dir, name);
+    const st = fs.statSync(fp);
+    if (st.isDirectory()) load(fp);
+    else cache.set('/' + path.relative(root, fp).split(path.sep).join('/'), fs.readFileSync(fp));
+  }
+})(root);
 
-if (isPrimary) {
-  for (let i = 0; i < WORKERS; i++) cluster.fork();
-  cluster.on('exit', () => cluster.fork());   // keep the pool full if a worker dies
-  console.log('node clustered static server on :' + port + ' (' + WORKERS + ' workers) serving dist/');
-} else {
-  // Read every file under dist/ into memory once. The cache keys ARE the only servable paths, so a
-  // traversal like /../secret simply misses the map → 404 (safer than the old startsWith(root) guard).
-  const cache = new Map();
-  (function load(dir) {
-    for (const name of fs.readdirSync(dir)) {
-      const fp = path.join(dir, name);
-      const st = fs.statSync(fp);
-      if (st.isDirectory()) load(fp);
-      else cache.set('/' + path.relative(root, fp).split(path.sep).join('/'), fs.readFileSync(fp));
-    }
-  })(root);
+const server = http.createServer((req, res) => {
+  let p = decodeURIComponent((req.url || '/').split('?')[0]);
+  if (p === '/' || p === '') p = '/index.html';
+  const data = cache.get(p);
+  if (!data) { res.writeHead(404); res.end('not found'); return; }
+  res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream', 'Content-Length': data.length });
+  res.end(data);
+});
+server.keepAliveTimeout = 60_000;             // reuse connections across a worker's many navigations
+server.listen({ port, backlog: 1024 });       // large backlog absorbs connection bursts
+console.log('node in-memory static server on :' + port + ' serving dist/ (single process)');
 
-  const server = http.createServer((req, res) => {
-    let p = decodeURIComponent((req.url || '/').split('?')[0]);
-    if (p === '/' || p === '') p = '/index.html';
-    const data = cache.get(p);
-    if (!data) { res.writeHead(404); res.end('not found'); return; }
-    res.writeHead(200, { 'Content-Type': TYPES[path.extname(p)] || 'application/octet-stream', 'Content-Length': data.length });
-    res.end(data);
-  });
-  server.listen({ port, backlog: 1024 });
-}
+function shutdown() { try { server.close(() => process.exit(0)); } catch (e) { process.exit(0); } setTimeout(() => process.exit(0), 2000).unref(); }
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);

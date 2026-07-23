@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Behavioral seam tests for the AI model-selection registry (design:
 // docs/analysis/program/model-selection-architecture-design.md). Asserts the emitted

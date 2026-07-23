@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // The setpoint hazard (scheduler spec §6.3): occupancyCompat.setpoint = max(temps) is rendered as a device
 // fact. Running a pit at the maximum of two items' required temperatures RAISES the cooler item's cook

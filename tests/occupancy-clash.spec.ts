@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 const boot = async (page: any, kit: any[]) => {
   await page.addInitScript(([k]: [any[]]) => { try {

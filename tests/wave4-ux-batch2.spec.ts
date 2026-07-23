@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 4 UX batch 2 — More-sheet regroup (UX #10) + collapsed timeline shape controls (UX #7).
 

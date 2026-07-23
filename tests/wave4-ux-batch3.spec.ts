@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 4 UX batch 3 — real global home search (UX #12) + shared AI-loading spinner (UX #13).
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave D remainder (come-up + equilibrium cure) and Wave F (workflow legibility).
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // PRE-6 (Phase -1, Part 2, Task 1): app.js:9546 used to gate SW registration on the literal string
 // check location.protocol==='https:', so under this suite's http://localhost server the entire

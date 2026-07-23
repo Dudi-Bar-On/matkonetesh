@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 1b — keyboard operability + ARIA.
 //  a11y #1: cards, home paths and wizard chips are focusable + Enter/Space activates them.

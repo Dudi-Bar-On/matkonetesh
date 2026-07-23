@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Food-safety guard: warn when the computed cure (Cure #1, nitrite) dose is too small for the
 // configured scale's readability to weigh accurately. Under-dosing risks botulism; the app's

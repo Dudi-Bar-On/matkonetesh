@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // H3 (refactoring report §3): hanging was inert from BOTH ends. (1) itemOccupancy gated on
 // equipOwnsToken('hooks') — a separate accessory — so a cabinet smoker declaring canHang:true/hooks:8

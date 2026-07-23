@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // H2 (refactoring report §3): the sous-vide branch summed each item's min_bath_l (the bath size an item
 // REQUIRES) as if it were additive displacement. Two cuts each needing a 24 L bath reported 48 L used of

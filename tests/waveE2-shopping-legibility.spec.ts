@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave E5 (consolidated cross-event shopping) + Wave F leftovers (persistent checkboxes, now/next cue).
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // CLAUDE-CODE-GUIDE §5.4 — regressions for the recurring UI bugs (each marked "*(באג עבר!)*").
 

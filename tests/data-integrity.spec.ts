@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Pull the app's DATA once per test (top-level `const DATA` is reachable by bare name).
 async function getData(page: any) {

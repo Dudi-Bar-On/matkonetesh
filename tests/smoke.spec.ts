@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Hygiene: isolate every spec — reset localStorage before each (per project lesson).
 test.beforeEach(async ({ page }) => {

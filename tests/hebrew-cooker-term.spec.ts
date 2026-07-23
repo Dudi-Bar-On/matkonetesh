@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Owner complaint #2: "all the devices including sous vide have title ovens". תנור means OVEN specifically
 // and is also the app's oven CATEGORY name, so using it as the generic word for a smoker / grill / bath is

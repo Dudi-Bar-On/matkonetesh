@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 5 — coverage: the wizard translates, panels auto-translate, and switch-back restores Hebrew.
 

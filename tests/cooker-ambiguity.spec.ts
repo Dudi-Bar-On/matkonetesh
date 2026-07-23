@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // S3 / residual D6 (refactoring report §2): with two devices of the SAME class (e.g. two smokers),
 // cookerFor returns null (ambiguous), and cookerContention + deviceOccupancy then silently skip the item.

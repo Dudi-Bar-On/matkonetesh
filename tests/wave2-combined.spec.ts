@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Combined multi-event timeline: every event's item-start actions merged onto one color-coded schedule.
 

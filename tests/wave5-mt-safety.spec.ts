@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 5 — T1 numeric-invariant guard: machine translation of recipe prose is accepted only if it
 // preserves every number; a number-mangling translation is rejected to the safe Hebrew source.

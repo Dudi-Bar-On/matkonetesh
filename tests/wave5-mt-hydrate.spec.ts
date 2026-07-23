@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 5 — data-MT hydration: [data-mt] recipe prose is async-translated into the active language
 // behind the numeric guard (via showPanel's hook). No-op in Hebrew; safe fallback without an AI key.

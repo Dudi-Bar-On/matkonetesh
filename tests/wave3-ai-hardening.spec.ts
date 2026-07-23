@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 3 (original roadmap) — AI hardening: centralized transport (key-in-header, timeout, retry,
 // endpoint seam) + a numeric-invariant safety guard over AI prose.

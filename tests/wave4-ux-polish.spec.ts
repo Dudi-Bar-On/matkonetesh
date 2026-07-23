@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 4 UX polish — clickable wizard progress steps (UX #14) + a single primary review CTA (UX #6).
 

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Task 9: combinedEventsRows() (the multi-event view) must derive contention from the SAME occupancy
 // model as single-event cookerContention — not from a bare time-overlap check. Two events, each with

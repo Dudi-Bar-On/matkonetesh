@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave B — serve time is a full datetime, not a clock-only value anchored to "today".
 // An 18h cook served tomorrow must schedule against tomorrow's serve, not instantly read "behind".

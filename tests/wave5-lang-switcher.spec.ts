@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 5 — accessible flag language switcher (home globe button → language menu; also in More/Appearance).
 

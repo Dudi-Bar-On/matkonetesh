@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Covers three real-usage defects the owner hit in v251:
 //  V1-V3  cookerFor dropped the smoke stage to "no device" once a grill was owned alongside a smoker

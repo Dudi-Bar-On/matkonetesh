@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // S2 (refactoring report §2): occupancyCompat.setpoint = max(temps) among items sharing a cooker. It is
 // advisory / display-only. If a future scheduler ever wrote it back onto a stage's `temp`, it would raise

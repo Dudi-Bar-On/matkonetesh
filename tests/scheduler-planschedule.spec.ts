@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Phase 4a: the backward walk (start = serve - Σ durations) is the app's entire scheduler. It was
 // implemented TWICE — buildList (Date arithmetic, unguarded s.hours) and combinedEventsRows (ms

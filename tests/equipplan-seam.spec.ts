@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Phase 3: equipPlan is the seam where equipment enters stage generation. It was waived, and its absence is
 // the root cause of the whole refactoring report — without it no equipment fact can change a duration or a

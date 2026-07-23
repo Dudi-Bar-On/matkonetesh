@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Phase 4b: the relaxation ends every item at serve, so a shared cooker is maximally over-subscribed by
 // construction. schedulePlacements() moves stages EARLIER (never later — that would miss serve) until no

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 0 — Safety & Security hotfix regression tests.
 // (1) The cure calculator must expose a cure TYPE ('1'/'2') + a real cureRate, so the

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 5 — item descriptions are pre-translated (lang/en.data.json) so they render in English
 // OFFLINE (no AI key), via hydrateMT's dict-first path; MT is only the fallback.

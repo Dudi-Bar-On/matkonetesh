@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // SAFETY (audit): cookerCandidates filters by CATEGORY only — it never asks whether a cooker can actually
 // reach the temperature a cut needs. An electric smoker tops out at 135 °C; a 160 °C stage assigned to it is

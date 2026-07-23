@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // In-app alarm banner — a ringing (fired) timer is visible and stoppable from any screen, not only
 // from its own timer's panel.

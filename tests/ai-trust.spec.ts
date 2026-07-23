@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 1 — AI trust & infra foundation.
 // gemFetch is intercepted to capture the outgoing prompt (no real network / key needed).

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 4 a11y depth — skip-link (a11y #10) + a live region on the AI answer thread (a11y #6).
 

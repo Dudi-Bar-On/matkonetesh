@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 5 — i18n core: per-language dictionaries, t(hebrew), dir/lang switch, non-destructive
 // translation (Hebrew restored on switch-back), host-locale seam, and a second language (French).

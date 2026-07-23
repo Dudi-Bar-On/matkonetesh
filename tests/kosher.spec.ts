@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Correct kashrut classification across every item type (species/recipe-based).
 const EXPECT: Record<string, string[]> = {

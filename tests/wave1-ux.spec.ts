@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 1a — core UX loop:
 //  UX #1: the catalog is no longer a dead-end — a real add-to-menu control (wired to the

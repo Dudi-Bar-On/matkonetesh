@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // H4: deviceOccupancy assigns each area item to a specific slot (shelf/zone) via a deterministic
 // chronological arrival-order packer, so occupancy becomes a claim about slots that exist. Fixes the

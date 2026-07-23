@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // M2 (refactoring report §9): the equipment form silently discarded values that failed validation —
 // `doSave` did `else delete d.cap[key]` for an unparseable prop/capacity, then closed the form. The user

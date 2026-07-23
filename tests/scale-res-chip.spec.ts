@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // scale_res ships on 67 cured recipes (54 makes + 13 specials) as a dosing-precision
 // recommendation but had no consumer: equipSpecNote() never read it, and openMake/openSpec

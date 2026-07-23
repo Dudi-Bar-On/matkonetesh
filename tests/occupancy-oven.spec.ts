@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // H4 (owner request): an oven is a rack-based cooking device like a cabinet smoker, so it belongs in the
 // occupancy model. It needs (1) an areaCm2 property with per-type class defaults (it never got one in

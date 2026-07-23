@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 5 — the recipe engine renders cooking steps in native English OFFLINE (no AI key),
 // via generation-time i18n (L()), and a language switch regenerates the open panel. Numbers

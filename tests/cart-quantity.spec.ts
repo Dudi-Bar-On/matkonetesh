@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // C1 (refactoring report): the shopping cart showed a cut's WHOLE-CUT catalog weight (brisket 5.5 kg)
 // instead of the per-guest quantity, while the print menu correctly showed ~3.7 kg for the same event.

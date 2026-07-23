@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 1d — theme robustness (UI #1/#2, a11y #2).
 // Raised-panel tints + strong ink are now theme-aware tokens, so the charcoal (dark) theme

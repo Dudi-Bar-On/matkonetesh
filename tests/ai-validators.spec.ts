@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // aiValidateKeys / aiValidateItems / aiValidateSeasonings are the allow-list filters that stop a
 // model inventing a recipe or a seasoning. Before 2026-07-22 no spec referenced any of them.

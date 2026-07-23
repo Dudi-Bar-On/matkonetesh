@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // SAFETY (audit): "no move may shorten a cook, alter a temp, or touch a bcheck" was enforced only by TESTS.
 // Nothing in production checked it, so any future edit to equipPlan / placement / a repair rung could break

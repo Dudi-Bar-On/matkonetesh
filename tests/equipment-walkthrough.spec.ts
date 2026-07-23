@@ -1,4 +1,4 @@
-import { test, expect, Page } from '@playwright/test';
+import { test, expect, Page } from './_fixtures';
 
 // ── Equipment 2.0 / "My Equipment" (openEquipment) exhaustive walkthrough ──
 // Verifies every option of the feature in EN and HE (RTL). Read-only QA: it never

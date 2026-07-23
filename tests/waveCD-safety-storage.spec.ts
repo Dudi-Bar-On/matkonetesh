@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave C (stop silent data loss) + Wave D (operational safety gaps).
 

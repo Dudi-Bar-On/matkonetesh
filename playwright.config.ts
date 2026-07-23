@@ -13,37 +13,34 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,   // surface flakes as failures — never retry them away (a flake is a bug to fix)
-  // Measured reliable ceiling against the clustered in-memory serve.js.
-  // Re-measured 2026-07-23 at 419 tests (previous measurement was taken at 324, then lowered to 6):
-  //   6 workers  -> 3/3 clean, ~175s (175/176/174)
-  //   8 workers  -> 3/3 clean, ~139s (143/142/133)
-  //   10 workers -> 3/3 clean, ~110s (116/107/108)   <- chosen
-  // 10 was both the fastest and as reliable as 6 and 8 on this measurement — the earlier flakiness at
-  // 8 workers (recorded below at 324 tests) did not reproduce at any of the three candidates this time.
-  // Reliability over speed: retries is 0, so a count that fails 1 run in 3 surfaces as a red suite.
-  // Re-measure again if the suite grows substantially.
-  // Prior note (2026-07-21, 308→324 tests): 8 workers began an occasional short run (a burst of
-  // client-side page.goto timeouts under contention, ~2.5min instead of 1.8), so it was lowered to 6.
-  // (16 = the CPU/2 default is much faster but was clearly non-deterministic at that time.)
-  //
-  // CI CAVEAT (2026-07-23): the ceiling above was measured on THIS multi-core machine. GitHub's
-  // ubuntu-latest runner is 4-vCPU, where 10 over-subscribes ~2.5× and starves interaction handlers —
-  // equipment-walkthrough's #eqAddNew click timed out under that contention on CI run 29983060583
-  // (a genuine flake: the same test also fails on Node 20, and the test itself uses proper condition
-  // waits). §11a and the sequencing analysis both predicted the local ceiling would be wrong for the
-  // runner. So CI uses a conservative 2 (Playwright's 50%-of-cores default for 4 vCPU) — reliability
-  // over speed, since retries is 0. Local stays at the measured 10.
-  workers: process.env.CI ? 2 : 10,
+  // Test-level timeout is the hard ceiling over EVERYTHING a test does, navigation included (Playwright default
+  // 30s, made explicit here). navigationTimeout (use.navigationTimeout below) is deliberately kept UNDER this.
+  timeout: 30_000,
+  // Worker count = fit the 8 PERFORMANCE cores. This machine is an i9-14900: 8 P-cores + 16 E-cores (24C/32T).
+  // Every test parses+executes the heavy ~2.2MB inlined app on navigation — P-core-bound work. Above ~8 the
+  // P-cores oversubscribe and the heaviest-init tests (active-hub / adaptive-home inject the MOST localStorage
+  // state → most app-init) get CPU-STARVED, so their `domcontentloaded` blows the 30s test timeout — a
+  // DETERMINISTIC 10-test failure (always the same specs). Root-caused 2026-07-23 via systematic-debugging.
+  // Measured that evening (WITH the domcontentloaded fixture in tests/_fixtures.ts + the de-clustered serve.js):
+  //   10 workers -> 10 FAILED (P-core oversubscription)
+  //    8 workers -> 433 passed, 2.5m, CLEAN   <- chosen (one per P-core: reliable AND fastest reliable count)
+  //    6 workers -> 433 passed, 3.1m, CLEAN
+  //   the same 10 failing specs pass 23/23 in ISOLATION (proof it is contention, not a bug).
+  // An earlier "10 = 3/3 clean" note here was WRONG — contaminated by orphaned zombie servers from
+  // kill-restart cycles + a broken /usr/bin/time measurement, and lucky low-load windows. Reliability over
+  // speed (retries:0). Re-measure ONLY on a clean/idle machine, single runs to completion, NEVER killing
+  // mid-run (§11a setup⟺teardown). CI stays 2 (GitHub ubuntu-latest is 4-vCPU; 10 over-subscribed ~2.5x there).
+  workers: process.env.CI ? 2 : 8,
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    // Navigation timeout — raised from Playwright's 30s default. The suite has 154 bare page.goto calls,
-    // all waiting for the full 'load' event. Under N-worker contention 'load' occasionally stretches past
-    // 30s even though the page HAS rendered (verified: DOM present, isolated reruns ~2.8s), producing an
-    // intermittent nav-timeout flake (2026-07-23, migration Task 3, active-hub.spec.ts). 60s gives the
-    // slow-but-successful contention loads room to finish while still catching a genuinely hung navigation.
-    // No happy-path cost: a fast load is unaffected; this is a ceiling, not a wait.
-    navigationTimeout: 60_000,
+    // Navigation timeout — kept BELOW the test-level timeout (30s) on purpose. The test timeout is the hard
+    // ceiling over EVERYTHING including navigation, so a value above it (the old 60s) was dead config — the
+    // 30s test timeout always fired first. Below it, a nav that genuinely hangs gets a nav-specific error.
+    // The REAL nav-flake fix is tests/_fixtures.ts (every page.goto now defaults to waitUntil:'domcontentloaded':
+    // the app is interactive at DCL; 'load' only waited on fonts/icons and blew the 30s wall under contention —
+    // docs/research/playwright-reliability-research.md). A correct nav is now ~ms, so 15s is pure headroom.
+    navigationTimeout: 15_000,
     // retries is 0 (see above), so 'on-first-retry' never fires — a zero-retry suite never gets a
     // second attempt to trace. 'retain-on-failure' captures a trace on the first (only) failure, which
     // is what the CI workflow's "Upload traces on failure" step actually needs to have something to upload.

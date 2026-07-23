@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 5 — the dictionary translator (tnode): exact, emoji-prefixed, and interpolated chrome; plus
 // itemName() swapping to the item's English name in English mode.

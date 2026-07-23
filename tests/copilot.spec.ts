@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 2 — Live Cook Copilot.
 const bootCopilot = async (page: any) => {

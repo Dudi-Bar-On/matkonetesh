@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // The event wizard's date field used type="date", whose dd/mm/yyyy hint is painted by the BROWSER's locale.
 // On an English-locale browser that put Latin text inside the otherwise-Hebrew wizard, and no page-level

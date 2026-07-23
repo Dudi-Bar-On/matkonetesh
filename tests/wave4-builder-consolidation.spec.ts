@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave 4 UX #3 — one builder: the guided wizard. The legacy openMenu panel is retired as an entry
 // point, its preset quick-starts moved into the wizard picker, and the in-wizard jump button removed.

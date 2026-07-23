@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave E (pro multi-event): per-event cart scope, event-named alarms, combined view reads each
 // event's real method, and single-smoker equipment-contention flags.

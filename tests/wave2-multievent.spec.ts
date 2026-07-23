@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Parallel multi-event: each event (or the 'cook' route) is an independent session — timers are
 // namespaced per event, start-state is per event, and a global watcher fires alarms across all events.

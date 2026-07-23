@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 test('the round-grill class computes to a true circle (equal w/h, 50% radius)', async ({ page }) => {
   await page.goto('/index.html');
   const r = await page.evaluate(() => {

@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Owner: "the bath sizes I have are registered, so the optimizer should choose the correct bath for the
 // mission — it can use different sizes at different times. Same for grinder plate sizes, and the plan

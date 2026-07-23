@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Work-plan + voice-cook countdown timers (user-requested addition during Wave 2).
 

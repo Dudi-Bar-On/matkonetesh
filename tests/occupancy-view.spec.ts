@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 const KIT = [{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'הנפח אביה 150', cap:{racks:4, areaCm2:6000} }];
 

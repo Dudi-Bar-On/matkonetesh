@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Adaptive home — Phase 0 plumbing: cRefreshHome stamps body classes by gear + level + live state.
 const boot = async (page:any) => {

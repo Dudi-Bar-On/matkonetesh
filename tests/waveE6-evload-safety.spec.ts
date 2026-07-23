@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave E6 (data-safety): switching events must never lose unsaved work, and must be explicit.
 

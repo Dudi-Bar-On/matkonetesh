@@ -1,4 +1,4 @@
-import { test, expect } from '@playwright/test';
+import { test, expect } from './_fixtures';
 
 // Wave A — background-resilient alarms: wake-lock keeps the page alive, alarms route through the
 // SW registration (so they show on mobile), and a fired timer vibrates + re-pulses until acknowledged.
