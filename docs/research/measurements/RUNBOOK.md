@@ -108,12 +108,17 @@ sampler, not a past run.
 session** (sized to comfortably outlast the suite's measured ~2.3–2.5 min — see `playwright.config.ts`'s
 own comment):
 ```powershell
-$sampler = Start-Process pwsh -ArgumentList '-File','scripts\m-cpu-sampler.ps1','-DurationSeconds','400','-Label','m0-baseline-8w' -NoNewWindow -PassThru
+$stop = 'docs\research\measurements\.m0-stop'; Remove-Item $stop -ErrorAction SilentlyContinue
+$sampler = Start-Process pwsh -ArgumentList '-File','scripts\m-cpu-sampler.ps1','-DurationSeconds','400','-Label','m0-baseline-8w','-StopFile',$stop -NoNewWindow -PassThru
 
 npx playwright test
 
-if (-not $sampler.HasExited) { Stop-Process -Id $sampler.Id }   # stop early once the suite is done — no need to wait out the full 400s window
+New-Item $stop -ItemType File -Force | Out-Null      # GRACEFUL early stop — the sampler breaks at the next tick and its `finally` writes the CSV+summary
+Wait-Process -Id $sampler.Id -Timeout 40 -ErrorAction SilentlyContinue; Remove-Item $stop -ErrorAction SilentlyContinue
 ```
+> **Never `Stop-Process` the sampler** — a process kill skips its `finally`, so the CSV/summary are lost
+> (this exact mistake ate the first M0 run's data on 2026-07-23; §11a L18 applies to instruments too — use
+> the script's own `-StopFile` teardown).
 
 **Optional but recommended — a mid-run process census** (in a *third*, separate PowerShell invocation,
 run once while the suite from above is still mid-flight, e.g. ~30–60s after starting it):
@@ -147,11 +152,13 @@ This mirrors exactly how the current `workers: 8` setting was originally establi
 comment history).
 
 ```powershell
-$sampler = Start-Process pwsh -ArgumentList '-File','scripts\m-cpu-sampler.ps1','-DurationSeconds','400','-Label','m1-10-workers' -NoNewWindow -PassThru
+$stop = 'docs\research\measurements\.m1-stop'; Remove-Item $stop -ErrorAction SilentlyContinue
+$sampler = Start-Process pwsh -ArgumentList '-File','scripts\m-cpu-sampler.ps1','-DurationSeconds','400','-Label','m1-10-workers','-StopFile',$stop -NoNewWindow -PassThru
 
 npx playwright test --workers=10
 
-if (-not $sampler.HasExited) { Stop-Process -Id $sampler.Id }
+New-Item $stop -ItemType File -Force | Out-Null      # graceful stop — same StopFile pattern as M0; never Stop-Process (kills the finally → data lost)
+Wait-Process -Id $sampler.Id -Timeout 40 -ErrorAction SilentlyContinue; Remove-Item $stop -ErrorAction SilentlyContinue
 ```
 
 **This run is EXPECTED to fail ~10 tests, always the same specs** (per §11a's own prior measurement:
