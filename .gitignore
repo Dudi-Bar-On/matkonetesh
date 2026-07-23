@@ -38,3 +38,9 @@ docs/graphify-out/
 .serena/cache/
 .serena/logs/
 .serena/*.local.yml
+
+# CPU-max program measurement data (scripts/w0-*.mjs, m-cpu-sampler.ps1, m2-*.ps1) — raw per-run
+# numbers, regenerated every invocation, not reviewed/diffed like prose. Only the RUNBOOK (and any
+# hand-written follow-up analysis doc) is tracked. See docs/research/measurements/RUNBOOK.md.
+docs/research/measurements/*.json
+docs/research/measurements/*.csv
