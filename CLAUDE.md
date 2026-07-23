@@ -119,6 +119,19 @@ the local worker count assumes an idle machine, so competing load makes even a s
 After `python build.py`, **restart any manual `serve.js`** before a UI check — it caches `dist/` in memory
 at startup, so you will otherwise verify a stale build. Stop the manual server on 8123 before running the
 suite, or Playwright's managed server collides with it.
+**Every SETUP owns a matching TEARDOWN** (§11a) — let a run COMPLETE (Playwright tears down its own server);
+**never kill a suite mid-flight.** `serve.js` is a cluster that RESPAWNS killed workers, so a port-based
+`taskkill` leaves a respawning zombie server that accepts connections but never responds and wedges 8123 for
+every later run. If you must kill, kill the whole tree from the primary, then verify the port refuses + 0 orphans.
+
+## When stuck, RESEARCH (not fix #4)
+
+**§10.14** For a genuinely complex problem, or after a few non-converging iterations, STOP guessing and do
+**deep research** — read in detail the official docs, help, and blogs/issues of every product/technology
+involved (§10.11: graphify global first, then the web, deposit useful finds). This is where
+systematic-debugging's 3-fix STOP hands off. **§10.15** Be skeptical: when a component *repeatedly* causes
+trouble, evaluate a **better alternative** (a different server/runner/pattern) instead of stacking band-aids —
+the correct fix is sometimes a better ingredient. Both: find by research, judge on evidence, write the answer down.
 
 ## The product
 

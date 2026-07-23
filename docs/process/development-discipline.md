@@ -394,6 +394,15 @@ a reasoning model applied where it adds nothing is cost with no evidence.** Skip
 - **After every `python build.py`, RESTART the manual `serve.js` before a UI check.** The clustered server caches `dist/` in memory at startup, so a rebuild does not reach a still-running manual server — you will verify a stale build. (Playwright is unaffected: its `webServer.command` rebuilds+restarts per run.) Also clear the PWA service worker if a stale page persists.
 - **Interactive debugging** (MCP browser / chrome-devtools) needs its own manual `serve.js` on 8123 — **stop it before running the suite**, or Playwright's own managed server collides with it (`reuseExistingServer: false`). Every "port 8123 already in use" error traces to a leftover manual server.
 - **Never** run with `--workers=1` or `--retries=N` — those were the old anti-pattern (13 min + masked flakiness).
+- **Every SETUP owns a matching TEARDOWN — like a test's setup/teardown (owner instruction, 2026-07-23).**
+  Whenever you start a server, spawn a process, bind a port, or acquire a resource, you own its clean
+  shutdown. **Prefer letting a run COMPLETE** (Playwright tears its own `webServer` down) — never kill a
+  suite mid-flight. If you must kill: `serve.js` runs a cluster with `cluster.on('exit', () => cluster.fork())`,
+  so killing a port-worker makes the **primary respawn it** — a port-based `taskkill` leaves a *respawning
+  zombie server* that listens and accepts connections but never responds, wedging 8123 for every later run
+  (this is exactly what turned a worker measurement into hours of thrash on 2026-07-23). Kill the **whole
+  tree from the primary**, then **verify the resource is released** (port refuses connections, 0 orphan
+  `node`/`serve.js`). A kill without a verified teardown is a defect, not a cleanup.
 
 ---
 
@@ -556,6 +565,28 @@ wrong. See §10.12 — every document change, always `--mode deep`. Note the two
 opposite directions: `graphify update` is the code/AST path ("no LLM needed") and re-extracts **no**
 documents, while a **pure-code corpus skips semantic extraction entirely** and gets AST only. Overriding
 either is a deliberate choice to state out loud.
+
+### 10.14 When it's complex or the iterations aren't converging — RESEARCH, don't guess
+> **Owner instruction, 2026-07-23.** When a problem is genuinely complex, OR after a few iterations that
+> did not solve it, STOP guessing and do **deep research**: read *in detail* the official documentation,
+> help, and the blogs / forums / issue trackers of **every product, technology, and adjacent subject
+> involved**. §10.11 applies (query the graphify **global** graph first — it holds `playwright-docs`,
+> `vitest-docs`, etc. — then the web; deposit useful finds back per the usefulness gate). Only *then*
+> converge on the best, correct solution.
+
+This is the escalation that **systematic-debugging's 3-fix STOP** hands off to: after failed fixes the next
+move is **documented research**, not fix #4. This rule was written after a worker-flake debug burned many
+iterations of guess-and-kill that a careful read of Playwright's navigation/timeout/webServer docs would
+have short-circuited. Write the correct solution down (a doc or an instruction) once you find it, so the
+next session inherits it.
+
+### 10.15 Be skeptical — evaluate a better ingredient, don't just patch the current one
+> **Owner instruction, 2026-07-23.** When a component (a server, a runner, a framework, a library)
+> **repeatedly** causes trouble, question whether it is the right tool — do not keep stacking band-aids on
+> it. Research and weigh **better alternatives** (a different static server, a different test pattern, a
+> different runtime) against the incumbent, and switch when the alternative is genuinely better. The
+> correct fix is sometimes a better ingredient, not another workaround. Pair this with §10.14: the
+> alternatives are found by research, then judged on evidence.
 
 ### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
 > **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
