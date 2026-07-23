@@ -113,6 +113,9 @@ that release is present. Cloudflare Pages takes minutes — **poll, do not assum
 `npx playwright test` — the config is authoritative. Workers pinned to the measured reliable ceiling;
 `retries: 0`. **Never run two suite runs concurrently** — racing runs produced 12 then 127 phantom
 `ERR_CONNECTION_REFUSED` failures and sent a debugging session chasing a server bug that did not exist.
+**And run the suite SERIALIZED more broadly — never while other heavy subagents/processes compete for CPU:**
+the local worker count assumes an idle machine, so competing load makes even a single run flake
+(`ERR_ABORTED` on navigation). Pause CPU-heavy background agents for the duration of a suite run.
 After `python build.py`, **restart any manual `serve.js`** before a UI check — it caches `dist/` in memory
 at startup, so you will otherwise verify a stale build. Stop the manual server on 8123 before running the
 suite, or Playwright's managed server collides with it.
