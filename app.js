@@ -4214,7 +4214,11 @@ const GEM_MODELS = {
   tts:  { id:'gemini-2.5-flash-preview-tts', kind:'audio', tier:'tts', voiceDefault:'Kore',
           think:{ knob:'none' },                   // audio model — no thinking field is ever emitted
           caps:{ audio:true } },
-  // textLegacy rollback pin (a commented row) is added by Task 6, once the migration is imminent.
+  // ROLLBACK PIN (decision 3): the outgoing text model, kept as a one-line flip-back. To roll the text
+  // migration back, swap this object into the `text` row above. It uses the 2.5/3.5 NUMERIC knob.
+  // textLegacy: { id:'gemini-2.5-flash', kind:'text', tier:'fast',
+  //               think:{ knob:'budget', map:{minimal:0, low:512, medium:2048, high:8192} },
+  //               caps:{ search:true, jsonMode:true, jsonModeExcludesSearch:true } },
 };
 function gemModel(role){ return GEM_MODELS[role] || GEM_MODELS.text; }
 function gemId(role){ return gemModel(role).id; }
