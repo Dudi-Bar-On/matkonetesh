@@ -196,6 +196,12 @@ registry role, use `gemModel(role).id`; else treat it as a literal id (keeps `as
 any direct-id call working). This is the whole seam: **id lives in the registry, thinking-quirk lives in
 `gemGen`, transport is untouched.**
 
+> **Revised by §2.2 (owner-approved extension).** Live probing after this section confirmed the text model is
+> `gemini-3.6-flash` and that thinking is a per-model **enum** (`thinkingLevel`), not a single on/off. So the row's
+> `thinking:'off'` string above becomes a `think:{knob,levels|map}` object, `gemGen` takes a third `{think}`
+> argument, and the call becomes `gemGen('text', {…}, {think:'…'})`. §2.2 is authoritative for the registry's
+> thinking field and the `text` row's id; the role/id/kind seam shown here is unchanged.
+
 ### 2.1 TTS is a first-class role, with its OWN payload builder and response reader
 
 TTS must sit *in* the registry (so its migration is a config change too) while keeping its audio-shaped request
@@ -248,6 +254,191 @@ first step — see §7 decision 4.
 
 ---
 
+## 2.2 Per-usage thinking level (owner-requested extension)
+
+> Added after owner review approved §2–§6 and decisions 1–6. This section resolves the one remaining ask:
+> *"control the thinking level in the app … different AI usages … require or benefit from higher or lower
+> thinking levels … do we add cases to a setting? user- or developer-accessible? or hardcode per place?"*
+> It **extends** the approved registry; it does not reopen the other decisions.
+
+### 2.2.0 Two verified facts that revise the §2 sketch
+
+Live probing (full evidence + empirical table: `docs/analysis/program/gemini-3.6-thinking-research.md`, CI run
+`29994213742`, 2026-07-23) settles the migration and forces a small revision to §2's `thinking` field:
+
+1. **The text model is confirmed `gemini-3.6-flash`** — a valid developer-API id; the earlier "Vertex-only"
+   note at `app.js:4206` was wrong. Every call 400'd for one reason: 3.6-flash **rejects `thinkingBudget:0`**.
+   This **resolves §7 decision 5's open id** (ListModels still worth keeping as the preflight, but the id is known).
+2. **How thinking is expressed is per-model, and the two knobs are mutually exclusive:**
+   - Gemini **3.x** (`gemini-3.6-flash`): an **enum** `thinkingConfig:{thinkingLevel:'minimal'|'low'|'medium'|'high'}`.
+     `'minimal'` drove `thoughtsTokenCount` to **0** on the app's short structured calls — the same outcome
+     2.5-flash gets from `thinkingBudget:0`.
+   - Gemini **2.5 / 3.5** (`gemini-2.5-flash`): a **numeric** `thinkingConfig:{thinkingBudget:N}` (`0` = off on 2.5);
+     these **reject `thinkingLevel` with 400**. Setting both knobs at once is also a 400.
+   - **Cost consequence:** thinking tokens bill at the **output** rate ($7.50/1M on 3.6). Higher thinking = real
+     money, so per-usage tuning is a **cost lever as well as a quality lever** — which is exactly why it belongs in
+     one owner-controlled place, not sprinkled across call sites or exposed to users.
+
+So §2's single `thinking:'off'|'unsupported'|'on'` string is **insufficient**: it conflated *which knob the model
+uses* with *how much thinking this usage wants*. §2.2 splits them.
+
+### 2.2.1 The abstraction — abstract per-usage level, translated per-model
+
+**Vocabulary:** the app speaks one ordered, model-agnostic scale — **`'minimal' | 'low' | 'medium' | 'high'`** —
+chosen to match Gemini 3.x's enum verbatim (so on the current model the translation is identity) and to map cleanly
+onto 2.x's numeric budget. A call site declares *intent* (how much the usage benefits from reasoning); the layer
+translates that to whatever knob the *currently configured* model exposes — so the choice **survives a model
+migration** untouched.
+
+**Registry revision** — each text row declares its knob and the values it accepts; TTS declares no knob:
+
+```js
+const GEM_MODELS = {
+  text: { id:'gemini-3.6-flash', kind:'text', tier:'fast',
+          think:{ knob:'level', levels:['minimal','low','medium','high'] },   // Gemini 3.x enum
+          caps:{ search:true, jsonMode:true, jsonModeExcludesSearch:true } },
+  // A pinned 2.5/3.5 model would instead declare the NUMERIC knob + an abstract→budget map:
+  // textLegacy:{ id:'gemini-2.5-flash', kind:'text',
+  //   think:{ knob:'budget', map:{minimal:0, low:512, medium:2048, high:8192} }, caps:{…} },
+  tts:  { id:'gemini-2.5-flash-preview-tts', kind:'audio', tier:'tts', voiceDefault:'Kore',
+          think:{ knob:'none' }, caps:{ audio:true } },   // ← TTS untouched: audio, no thinking
+};
+```
+
+**Translation + clamp — one function, replacing §2's `thinking` branch:**
+
+```js
+const THINK_ORDER  = ['minimal','low','medium','high'];              // the abstract scale, ascending
+const THINK_BUDGET = { minimal:0, low:512, medium:2048, high:8192 }; // representative budgets for NUMERIC-knob
+// models; tunable, grounded in the empirical table (2.5-flash: 0→0 thoughts, 512→267, up from there).
+
+function gemThink(role, level){                 // → the thinkingConfig object, or undefined if no knob
+  const t = (gemModel(role).think) || {knob:'none'};
+  if(t.knob==='none') return undefined;         // TTS / non-thinking model → emit nothing
+  let want = THINK_ORDER.includes(level) ? level : 'minimal';        // unknown string → safe cheap floor
+  if(t.knob==='level'){                          // Gemini 3.x enum
+    if(t.levels && !t.levels.includes(want)){ want = nearestLevel(want, t.levels); warnClamp(role,level,want); }
+    return { thinkingLevel: want };
+  }
+  if(t.knob==='budget'){                          // Gemini 2.5/3.5 numeric
+    return { thinkingBudget: (t.map||THINK_BUDGET)[want] };
+  }
+}
+// nearest supported enum value; PREFER LOWER on a tie (cheaper, and never an accidental cost/quality *increase*).
+function nearestLevel(want, supported){
+  const i = THINK_ORDER.indexOf(want);
+  for(let d=0; d<THINK_ORDER.length; d++){
+    const lo=THINK_ORDER[i-d]; if(lo && supported.includes(lo)) return lo;
+    const hi=THINK_ORDER[i+d]; if(hi && supported.includes(hi)) return hi;
+  }
+  return supported[0];
+}
+
+function gemGen(role, gen, opts){                 // supersedes §2's gemGen
+  const out = Object.assign({}, gen||{});
+  const tc = gemThink(role, (opts && opts.think) || 'minimal');
+  if(tc) out.thinkingConfig = tc; else delete out.thinkingConfig;    // never emit BOTH knobs → the 400 is impossible
+  return out;
+}
+```
+
+A call site requests a level explicitly, or (preferred) via the usage map in §2.2.2:
+
+```js
+generationConfig: gemGen('text', {temperature:0.8, maxOutputTokens:1600}, {think:'high'})
+```
+
+**Unsupported-level handling, documented:** an unknown/garbage level falls to the **`'minimal'` floor**; an enum
+model that does not list the requested value clamps to the **nearest supported, preferring the lower** (cost- and
+safety-conservative) and **logs the clamp** (`warnClamp`) so a safety-critical downgrade is never silent; a numeric
+model reads its `map`; a `knob:'none'` model emits no thinking field. The mutual-exclusivity 400 is structurally
+impossible because `gemThink` returns exactly one shape.
+
+### 2.2.2 WHERE the selection lives — three framings, with a recommendation for each
+
+The owner posed three: hardcode per place · a developer config map · a user setting. Evaluated:
+
+| Option | What it is | Pros | Cons | Verdict |
+|---|---|---|---|---|
+| **(a) Hardcoded per call-site** | `gemGen('text', gen, {think:'high'})` inline at each usage | level sits next to the code that knows the stakes; zero indirection | the cost/quality policy is scattered across 9+ sites; retuning the whole app means editing N places; nothing to audit at a glance — the **exact** disease this design cures for model ids | **Reject** as primary |
+| **(b) Developer-only usage→level map** | one table `AI_THINK`, owner-edited; call sites pass a *usage key*; `aiJSON` callers pass their level | one auditable place = the app's thinking/cost policy; retune in one edit; owner owns the **safety-critical** assignments; config-as-data, same philosophy as the approved registry; survives migration | a build-time change (rebuild to retune) — fine for a policy, not a per-session control | **RECOMMEND (primary)** |
+| **(c) User-facing setting** | a global "faster ↔ smarter" toggle and/or per-feature control | lets a power user trade latency/cost for quality; a "smarter answers" lever | a user (or a careless default) dropping Diagnose / grounded Ask to `'minimal'` degrades the **never-invent-a-safety-number / grounding** contract — the same do-no-harm risk that sank the user-facing model picker; on the **managed tier** higher thinking is **our** cost, so an unbounded user knob is a wallet-DoS; most users don't know what "thinking" means | **Reject** as the mechanism; only a **bounded** form is acceptable |
+| **(d) Hybrid — (b) as the floor, optional bounded (c) on top** | developer map is the source of truth **and** the safety floor; an *optional* single global "faster ↔ smarter" preference may only move a usage **within `[floor, cap]`** | gives the owner exactly "control thinking in the app"; a safe user knob if ever wanted; safety floors are unbreakable | one extra concept (the floor) | **RECOMMEND the map now; the bounded toggle only if demand appears (YAGNI)** |
+
+**The map (option b/d):**
+
+```js
+// The ONE owner-edited table = the app's thinking policy. `floor` = the level a user preference may never go below.
+const AI_THINK = {
+  ask:        { level:'low',     floor:'low'    },   // grounded prose that can emit safety numbers → floored
+  diagnose:   { level:'high',    floor:'medium' },   // highest-stakes reasoning → never cheap
+  vcAsk:      { level:'low',     floor:'low'    },   // voice, safety-adjacent, latency-capped
+  eventPlan:  { level:'medium'                  },
+  wcim:       { level:'minimal'                 },
+  seasonRec:  { level:'minimal'                 },
+  dataMT:     { level:'minimal'                 },   // recipe MT — the numeric guard (mtNumSig) is the safety net
+  translate:  { level:'minimal'                 },
+  vision:     { level:'low'                     },   // advisory read; the probe decides
+  keyProbe:   { level:'minimal'                 },
+  centralTest:{ level:'minimal'                 },
+};
+function thinkFor(usage, userPref){          // userPref only exists if the bounded toggle ships
+  const u = AI_THINK[usage] || {level:'minimal'};
+  let lvl = u.level;
+  if(userPref){ lvl = clampLevel(userPref, u.floor||'minimal', 'high'); }
+  return lvl;                                 // → passed as {think: lvl} to gemGen
+}
+```
+
+`aiJSON` (the generic JSON caller, `app.js:4338`) gains an optional `think` in its `opts`, defaulting to `'minimal'`;
+its callers set their usage's level — this is how one function serves usages at different levels (Diagnose `'high'`,
+seasoning `'minimal'`).
+
+### 2.2.3 User vs developer — the direct verdict
+
+- **Developer: YES.** `AI_THINK` is owner-owned and is the whole answer to *"control the thinking level in the
+  app."* The owner tunes any usage in one table; safety-critical assignments are the owner's to set.
+- **User: NO general access — for the same do-no-harm reason as the model picker (§3).** A user-facing per-feature
+  thinking control can silently pull a **safety-exposed** feature (Diagnose, grounded Ask-the-Fire, any
+  safety-number emitter) below the reasoning its answer quality depends on, weakening the trust contract that is the
+  product's moat; and on the managed tier it is a lever pointed at the owner's cost. That crosses the line.
+- **If any user knob is ever wanted, this is its only safe shape:** a **single global "faster ↔ smarter"
+  preference**, clamped into `[floor, cap]` per usage, so it may *raise* thinking anywhere and *lower* it only for
+  **non-floored** usages — **never** below a safety floor — and on the managed tier `cap` is held down to bound
+  cost. Recommendation: **ship developer-map-only; do not build the user toggle now** (YAGNI; add later only on
+  real demand, and even then bounded as above).
+
+### 2.2.4 The starting configuration — recommended level per catalogued call site
+
+The nine sites from §1.2, with the recommended default and a one-line rationale (cost vs stakes). TTS carries no
+thinking knob.
+
+| # | Call site (`app.js`) | Usage key | Level | Rationale |
+|---|---|---|---|---|
+| 1 | `askGemini` — Ask-the-Fire chat (`4250`) | `ask` | **low** *(floor low)* | grounded free-prose that **can** state safety numbers; web search carries much of the load, but it is a safety-exposed surface → never `minimal` |
+| 2 | `askValidateKey` — key probe (`4261`) | `keyProbe` | **minimal** | a ~20-token "does this key work" ping; thinking is pure waste |
+| 3 | `aiJSON` — generic JSON (`4351`) | *(per caller)* | **minimal default** | most structured features pick ids from a validated set with app-owned numbers; callers override upward: |
+| 3a | ↳ Diagnose-a-cook (via `aiJSON`) | `diagnose` | **high** *(floor medium)* | the highest-stakes reasoning feature; strategy §A flags it as an unguarded safety exposure — it benefits most from thinking |
+| 3b | ↳ Event / Cookout planning (via `aiJSON`) | `eventPlan` | **medium** | multi-constraint backward scheduling; reasoning helps, not safety-critical |
+| 3c | ↳ seasoning-rec / what-can-I-make / pantry (via `aiJSON`) | `seasonRec`/`wcim` | **minimal** | choose ids from a validated list; numbers are app-owned; no reasoning needed |
+| 4 | central-access test (`4554`) | `centralTest` | **minimal** | a ~5-token "is the code live" ping |
+| 5 | `gemSpeak` — TTS (`5030`) | — | **n/a** | audio model; `think:{knob:'none'}` → no thinking field emitted |
+| 6 | `vcTranslateToEn` — voice EN (`5195`) | `translate` | **minimal** | short translation, latency-sensitive (feeds TTS); no safety numbers in spoken content |
+| 7 | `vcAskAI` — voice Q&A (`5279`) | `vcAsk` | **low** *(floor low)* | live cooking answer that can touch safety; floored to `low`, capped there for TTS-turnaround latency |
+| 8 | `mtTranslate` — recipe data MT (`6974`) | `dataMT` | **minimal** | translation gated by the numeric-invariant guard (`mtNumSig`, `app.js:6951`) — the guard is the safety net, reasoning would add cost + latency without benefit |
+| 9 | `gemVision` — photo read (`9299`) | `vision` | **low** | advisory visual read that **always** defers to the probe; light reasoning helps assess bark/doneness, but it is explicitly non-authoritative |
+
+This is the starting point, not a law — it lives in `AI_THINK`, so the owner retunes any row in one edit, and the
+whole thing translates automatically to whatever model the registry points `text` at.
+
+### 2.2.5 Fit
+
+Pure data + one function change: `AI_THINK` (a table), `gemThink`/`nearestLevel` (small helpers), and `gemGen`
+gains a third argument. No framework, no per-session runtime state (unless the optional toggle ships later),
+single-file-inline-friendly, and TTS is untouched. It extends the approved registry rather than reopening it.
+
+---
+
 ## 3. Q2 / Q3 — runtime selection and per-feature calls
 
 These two questions share one answer: **the role is the feature-facing contract; the registry resolves it.**
@@ -267,6 +458,12 @@ wants*; the registry owns *which concrete model that is today*.
 `textStrong` is **reserved but not populated** now (YAGNI, §12.3 of the discipline). The day the Copilot/Diagnose
 quality lever is wanted, it is one registry row plus changing those call sites from `'text'` to `'textStrong'` —
 no plumbing.
+
+**Note (post-§2.2): a stronger *model* and a higher *thinking level* are orthogonal, composable levers.** `textStrong`
+is a heavier *model*; the per-usage thinking level (§2.2) is how hard the *current* model reasons. With §2.2,
+Diagnose already gets its reasoning boost **today** via `think:'high'` on the `text` model — so `textStrong` stays
+deferred until a genuinely stronger model (e.g. a pro tier) is worth its cost. A future `textStrong` row would carry
+its **own** `think` knob, and the same `AI_THINK` levels would translate onto it unchanged.
 
 ### Q2 — where selection is decided
 
@@ -311,6 +508,11 @@ text: { id:'gemini-3.6-flash', thinking:'unsupported', tier:'fast',
 `gemGen('text', …)` now emits **no** `thinkingConfig` for every one of the eight call sites at once — the 400
 cause is removed in a single edit. A genuinely new quirk (say a model needs a new `generationConfig` field) costs
 **one new capability flag + one branch in `gemGen`** — small and localized, still no call-site churn.
+
+> **Superseded by §2.2.** This `thinking:'unsupported'` example predates the live probing. The confirmed reality is
+> that 3.6-flash *does* support thinking — via the `thinkingLevel` enum, not `thinkingBudget` — so the row is now
+> `think:{knob:'level', levels:[…]}` and the migration keeps thinking controllable (defaulting to `'minimal'` = 0
+> thinking tokens). Read §2.2.0–§2.2.1 for the corrected shape; the "data-only new model" principle here is unchanged.
 
 **What the registry alone cannot fix — and the preflight that covers it.** The 3.6 failure had a *second* cause
 the registry can't express: `'gemini-3.6-flash'` may not be a valid id on the developer API at all (the comment at
@@ -371,12 +573,15 @@ owner's users hit it.
 
 **How it would have caught the 3.6 incompatibility before shipping — both failure modes:**
 
-1. **The `thinkingConfig` 400.** Setting `thinking:'unsupported'` on the 3.6 row makes `gemGen` omit the field
-   everywhere in one place. Even absent that foresight, the **preflight** (§4) fires one real call per role; the
-   400 surfaces in CI/pre-ship, not in the owner's hands.
-2. **The invalid-id 400.** The **ListModels preflight** (§4) confirms the id exists on the developer API *before*
-   the flip — the precise check the `app.js:4206` comment says is owed. The registry can't invent a correct id,
-   but the preflight refuses to ship a wrong one.
+1. **The `thinkingConfig` 400 (the real cause).** With the §2.2 registry, the `text` row declares
+   `think:{knob:'level',…}`, so `gemGen` emits `thinkingConfig:{thinkingLevel:'minimal'}` — never the
+   `thinkingBudget:0` that 3.6 rejects — for all eight sites in one place. Even absent that, the **preflight** (§4)
+   fires one real call per role and the 400 surfaces in CI/pre-ship, not in the owner's hands. *(This is exactly the
+   failure that shipped: all 8 sites sent `thinkingBudget:0`; the registry + preflight remove it structurally.)*
+2. **The "invalid-id" red herring.** The **ListModels preflight** (§4) confirms the id exists — which for
+   `gemini-3.6-flash` it does; the `app.js:4206` "Vertex-only" diagnosis was wrong (§2.2.0). The registry can't
+   invent a correct id, but the preflight both confirms a real one and, via its one-real-call check, catches the
+   payload 400 that the id check alone would miss.
 
 **And the test stops fighting the migration.** `tests/wave3-ai-hardening.spec.ts:62-63` currently freezes the
 literal `gemini-2.5-flash`. Re-pointing it at `gemId('text')` / `gemId('tts')` makes the suite assert *"the
@@ -418,6 +623,10 @@ safety/grounding layers are untouched.
 
 ## 7. Decisions for the owner
 
+> **Decisions 1–6 were reviewed and APPROVED as-is (owner, 2026-07-23).** They are retained below for the record.
+> Decision 5's open unknown is now **resolved** (see the inline update). **Decisions 7–8 are new** — they cover the
+> per-usage thinking-level extension (§2.2) and are the only ones still open.
+
 1. **Runtime-selection lever.** Ship the **build-time registry** only now (solves the migration with the least
    machinery), and **defer** the managed-Worker `role→id` override until the managed tier is live? *(Recommended.
    Reversible.)* Or build the Worker override in the same pass?
@@ -430,16 +639,35 @@ safety/grounding layers are untouched.
    role-resolution in `gemFetch` + the ~9 call-site wraps (this alone unblocks the migration) — and treat the
    fuller **`gemText()`/`gemCall()` consolidation** (strategy A1: retire the 5 hand-rolled callers, centralize
    the JSON+search 400 workaround) as a **follow-up**? *(Recommended.)* Or do both together?
-5. **The migration's open unknown (not answerable from code).** The correct 3.x **developer-API** model id is
-   still unknown — the `app.js:4206` comment says a **ListModels** lookup is required, and 2.5-flash shuts down
-   **2026-10-16**. Approve making a **ListModels + one-real-call-per-role preflight** a mode of the existing eval
-   harness (`PRE-4-eval-harness-design.md`) and running it to pick the id? This is the step that converts "flip a
-   constant and hope" into "flip a row that a preflight proved."
+5. **The migration's open unknown — now RESOLVED.** The correct id is **`gemini-3.6-flash`** (live-verified,
+   `gemini-3.6-thinking-research.md`); the `app.js:4206` "Vertex-only" note was wrong — every call 400'd solely
+   because 3.6 rejects `thinkingBudget:0`. 2.5-flash still shuts down **2026-10-16**, so the migration remains
+   owed. **Keep** the ListModels + one-real-call-per-role preflight (a mode of `PRE-4-eval-harness-design.md`) as a
+   standing pre-ship gate for *every* model change — it converts "flip a row and hope" into "flip a row a preflight
+   proved," and it is what would have caught the `thinkingBudget:0` 400 before it shipped. *(Approved.)*
 6. **The TTS migration is in scope of the same mechanism.** Confirm that TTS is a **first-class registry role**
    (`kind:'audio'`, its own `gemTtsGen` builder and `gemReadAudio` reader, §2.1) so that moving
    `gemini-2.5-flash-preview-tts` → the new *"3.1 tts"* id is the **same one-line config change** as the text
    migration (§5), covered by the **same per-role preflight** (which for `tts` asserts a real audio part, not
    text)? *(Recommended. The alternative — leaving the TTS id a buried literal at `app.js:5030` — repeats exactly
    the single-hard-coded-model failure this design exists to remove, for a model the owner is about to migrate.)*
+
+### New — per-usage thinking level (§2.2)
+
+7. **Where the thinking level lives.** Adopt the **developer-owned `AI_THINK` usage→level map** (option b) as the
+   single source of truth, with per-usage **safety floors** and abstract levels the registry translates per model
+   (§2.2.1–§2.2.2)? *(Recommended.)* The rejected alternatives: hardcoding the level at each of the 9+ call sites
+   (a) — scatters the cost/quality policy, the same disease this design cures for model ids; or a user-facing
+   control (c) as the mechanism. Sub-question: accept the **starting level map in §2.2.4** (Diagnose `high`,
+   grounded Ask/voice `low`-floored, probes/translation/seasoning `minimal`, etc.) as the initial configuration
+   to tune from?
+8. **User vs developer access — the bound.** Confirm the thinking level is **developer-only** and **not exposed to
+   users**, for the same do-no-harm reason as the model picker (§3): a user (or a careless default) dropping
+   Diagnose or grounded Ask to `minimal` would degrade the never-invent-a-safety-number / grounding contract, and
+   on the managed tier an unbounded user knob is a cost-DoS on the owner's key. *(Recommended: ship
+   developer-map-only.)* If the owner later wants **any** user knob, approve only the **bounded** form — a single
+   global "faster ↔ smarter" preference clamped into `[floor, cap]` per usage, which may raise thinking anywhere
+   but lower it only for non-safety-floored usages, with `cap` held down on the managed tier — and treat building
+   it as **deferred until real demand** (YAGNI). Is developer-only-now the accepted scope?
 
 *No source file was modified in producing this document.*
