@@ -237,3 +237,191 @@ first-class tool call). Proposed; not wired here (touches project MCP config = o
 **What still needs the owner:** (a) run `/graphify docs --update --mode deep` to land the 5 new docs;
 (b) decide on `graphify global remove methodology` (private-doc hygiene); (c) optionally `graphify hook
 install` for code freshness. Everything else in this document is done and verified.
+
+---
+
+## Deposit pass (2026-07-23)
+
+**Scope:** §10.11/§10.16 deposit pass — bank the external documentation this session's four research docs
+(`docs/research/playwright-reliability-research.md`, `test-stack-alternatives-research.md`,
+`gpu-dev-tools-landscape.md`, `gpu-local-model-integration.md`) flagged as "deposit-worthy" into the
+graphify **global** knowledgebase, so no future session on any project sharing the global re-searches the
+same ground. All work happened in a session temp dir + `~/.graphify/`; the project repo and
+`graphify-out/graph.json` were never touched (confirmed: `git status` before/after is identical, and
+`graphify-out/graph.json`'s mtime — `Jul 23 10:21` — predates this pass).
+
+### What was deposited
+
+| Tag | Nodes | Source URLs |
+|---|---|---|
+| **`playwright-official-docs`** | **27** | [test-timeouts](https://playwright.dev/docs/test-timeouts) · [test-webserver](https://playwright.dev/docs/test-webserver) · [test-use-options](https://playwright.dev/docs/test-use-options) · [test-fixtures](https://playwright.dev/docs/test-fixtures) · [api/class-page](https://playwright.dev/docs/api/class-page) (full Page-class reference — no isolated `#page-goto` fragment exists on playwright.dev; the full page is the only source, and it does carry the `goto()` method + its `waitUntil` table, confirmed below) |
+| **`nodejs-v8-docs`** | **48** | [nodejs.org/api/cluster.html](https://nodejs.org/api/cluster.html) · [v8.dev/blog/code-caching-for-devs](https://v8.dev/blog/code-caching-for-devs) |
+| **`ollama-docs`** | **27** | [docs.ollama.com/capabilities/embeddings](https://docs.ollama.com/capabilities/embeddings) · [ollama.com/blog/openai-compatibility](https://ollama.com/blog/openai-compatibility) |
+| **`semantic-search-mcp-docs`** | **24** | [github.com/adam-hanna/semantic-search-mcp](https://github.com/adam-hanna/semantic-search-mcp) |
+| **Total new** | **126** | 10 URLs, 4 tags |
+
+Kept deliberately separate from the existing `playwright-docs` tag (the 30-file GUI-walk-driver/MCP-tool
+corpus from a different project) per the task instruction — `playwright-official-docs` is the deep
+API-reference material that tag was proven (by this session's own research doc) to lack.
+
+### Before → after `graphify global list`
+
+```
+BEFORE                                        AFTER
+  vendor-docs               2435                vendor-docs               2435
+  methodology               4335                methodology               4335
+  gemini-api-docs             71                gemini-api-docs             71
+  cloudflare-workers-docs     56                cloudflare-workers-docs     56
+                                                 playwright-official-docs    27   ← new
+                                                 nodejs-v8-docs              48   ← new
+                                                 ollama-docs                 27   ← new
+                                                 semantic-search-mcp-docs    24   ← new
+  total 6897 nodes                              total 7023 nodes  (+126, node-count-UP)
+```
+
+### Method hazard found and fixed mid-pass: `graphify add`'s fetcher hard-caps around ~8.3 KB
+
+The established `graphify add <url>` → `graphify extract . --mode deep --backend claude-cli` → `graphify
+global add` pipeline (§6 above) worked cleanly for `semantic-search-mcp-docs`'s first attempt in isolation,
+but depositing the **`api/class-page#page-goto`** page — the whole reason that URL was on the list, since
+it carries the `waitUntil: "load"|"domcontentloaded"|"networkidle"|"commit"` enum this session's Playwright
+research needed — exposed a real limitation: `graphify add` truncated **every** fetch of that page to
+**~8.3 KB**, cutting off alphabetically after `addLocatorHandler` and never reaching `goto()`. Verified
+systematic, not transient, across **4 independent attempts on 2 different URLs** (the rendered
+`playwright.dev` page twice, the raw GitHub markdown source twice) — all landed at 8276–8496 bytes. The
+same cap silently truncated `test-use-options.md`, `test-fixtures.md`, and the `semantic-search-mcp` README
+too (confirmed by tail-checking each file: pages that end on a real page footer were captured in full;
+pages that cut off mid-word/mid-sentence were not — 3 of the first 4 files fetched this way were silently
+incomplete despite `graphify add` reporting success).
+
+**Fix (per live owner correction — "do not use fetcher use download then update"):** stopped using
+`graphify add` for content fetching entirely. Downloaded each page directly with `curl --ssl-no-revoke`
+(the `--ssl-no-revoke` flag is required in this environment — plain `curl` hits `schannel:
+CRYPT_E_NO_REVOCATION_CHECK` against the org's TLS-inspecting proxy, the same proxy class documented in
+`docs/research/gpu-local-model-integration.md`'s `uv`/`UV_NATIVE_TLS` finding, just hitting curl's Schannel
+revocation check instead of a bundled CA list this time), then converted HTML → text with a small
+dependency-free stdlib script (`html.parser`-based; PyPI/`pip install` is blocked by the same proxy for
+bundled-CA-list clients — confirmed again here — so no third-party HTML converter was installable) that
+strips `<script>/<style>/<svg>`, keeps block-level structure as newlines, and decodes entities. Result: the
+`class-page` fetch went from 8.3 KB → **137 KB**, and the target content is now actually present —
+`grep -c waitUntil` finds the `"load"|"domcontentloaded"|"networkidle"|"commit"` union type **8 times**,
+including a real `goto()` usage example (`page.goto('https://playwright.dev', { waitUntil:
+'domcontentloaded' })`). `test-fixtures.md` grew 8.3 KB → 28 KB, `test-use-options.md` 8.3 KB → 14.7 KB,
+`semantic-search-mcp` README 8.4 KB → 10.9 KB (now ends on GitHub's real footer, not mid-word). The two
+already-deposited truncated tags (`playwright-official-docs` first pass, `semantic-search-mcp-docs` first
+pass) were removed with `graphify global remove` and rebuilt clean before the final numbers above.
+**Lesson for the next depositor: verify a `graphify add` fetch by tail-checking for a real page footer
+before trusting it succeeded — a clean exit code is not proof of a complete capture.** The stdlib HTML→text
+converter script was kept only in the session scratch dir, not persisted (it's a generic ~70-line utility,
+not vendor content); reproduce with `curl --ssl-no-revoke -L -o page.html <url>` piped through any
+dependency-free HTML→text step (`html.parser`, strip `script`/`style`/`svg`, keep block tags as newlines,
+`html.unescape` the entities) if this recurs.
+
+### Extraction backend used: `claude-cli --model fable` (after a real Ollama-local attempt, per owner direction)
+
+The owner asked mid-pass to try the local RTX 3090 (Ollama) for extraction instead of `claude-cli`, "look
+for the best model," with Claude Haiku-tier as an explicit authorized fallback. Both tried, honestly:
+
+- **`qwen2.5-coder:7b`** (graphify's own coded-in `ollama`-backend default; pulled clean, no proxy issue —
+  confirms `gpu-local-model-integration.md`'s earlier finding again) — mechanically worked
+  (`--backend ollama` needs the `openai` PyPI extra, installed via `uv tool install "graphifyy[ollama]"
+  --force --native-tls`, which also silently upgraded the graphify binary 0.9.22→0.9.25) but the **extraction
+  quality was unusable**: 2 files → **2 nodes, 0 edges** (one bare "this file exists" node per doc, zero
+  semantic content extracted at all) on the `nodejs-v8-docs` pair.
+- **`qwen2.5-coder:14b`** (9 GB pull, confirmed `100% GPU`/15 GB VRAM via `ollama ps`, so not a
+  CPU-fallback problem) — **timed out** at the default 600 s `GRAPHIFY_API_TIMEOUT` on the same input; a
+  second attempt with `GRAPHIFY_API_TIMEOUT=1200` was still running in the background when this pass
+  otherwise wrapped up (an idle-GPU "Stopping..." state in `ollama ps` with no output after ~25+ minutes
+  suggests it did not resolve cleanly either, though this was not force-killed to confirm — see follow-up
+  below).
+- **`claude-cli --model fable`** (the fast/cheap tier — this environment's current alias for what the owner
+  called "haiku"; `sonnet`/`opus`/`fable` are the aliases `claude --help` actually lists here) —
+  **worked immediately and well**: 48 nodes/47 edges on the same `nodejs-v8-docs` pair in **3m48s**, real
+  granular API-reference nodes (`cluster.fork([env])`, `worker.exitedAfterDisconnect`,
+  `cluster.schedulingPolicy`, …), cost **$0.0000** (same as the default `claude-cli` model — this backend
+  isn't metered per-token the way a raw API key would be). All four deposited corpora above used
+  `--backend claude-cli --model fable` except `playwright-official-docs`, which had already completed on
+  `claude-cli`'s default model before the local-model detour started (27 nodes, also good quality — left
+  as-is rather than re-spent rebuilding for no quality gain).
+
+**Owner follow-up, written down as asked ("write it down" — because Fable/Claude models are considered
+costly for constant use despite showing $0.0000 in this CLI-backed setup, and the owner wants a genuinely
+free, always-available local default):** *after this mission*, do a deeper, dedicated research pass to find
+a **local** model that actually delivers usable `--mode deep` semantic-extraction quality on documentation
+content, and wire it as the standing default — not `qwen2.5-coder:7b` (proven too weak: 0 edges) and not
+yet proven-out at 14b (timed out twice). Candidates **not yet tried** worth investigating first, roughly in
+order of promise given the 24 GB card and doc-not-code content:
+- **`qwen2.5-coder:32b`** (Q4_K_M, ~19.85 GB) — the size `docs/research/gpu-local-model-integration.md`
+  already named as its "concrete recommendation... it's code/architecture-aware" pick, not yet actually
+  tested end-to-end against graphify's `--mode deep` prompt.
+- A **non-coder** general-instruction model in the 20-30B class (Mistral-Small-24B, or similar) — this
+  pass's content was prose documentation, not code, so a coder-specialized model's edge may not be the
+  right axis; worth a head-to-head against qwen2.5-coder:32b on the same doc corpus.
+- Diagnose the 14B **timeout** specifically before assuming it needs more parameters — it may be a
+  prompt-length/repetition-loop issue fixable with a smaller `--token-budget` or a different sampling
+  setting, which would be cheaper than jumping straight to 32B.
+- Whatever ships as "current-generation" by the time that research runs — this environment's own Ollama
+  registry already shows the field moved past Qwen2.5 (Granite4.1, Mistral-Medium-3.5, newer Qwen tiers);
+  re-check the library fresh rather than reusing this pass's picks verbatim.
+
+The still-running 14b background job (`GRAPHIFY_API_TIMEOUT=1200`, PID tracked as background task
+`bg12o8nl6`) was left to finish or time out on its own rather than force-killed mid-flight; if it produced
+a usable graph after this report was written, it was not deposited here — that's for the dedicated
+follow-up task to evaluate properly (a stray late success on one two-file corpus isn't a substitute for
+the head-to-head comparison above).
+
+### Verification — 4 vocabulary-expanded `graphify query` probes (target: 2-3; ran 4 for full coverage)
+
+All four ran against `~/.graphify/global-graph.json` post-deposit and surfaced the new nodes at the top of
+results (full output captured in this session; representative hits below):
+
+1. **`"waitUntil domcontentloaded navigation timeout"`** → top hits: `Navigation Timeout
+   (navigationTimeout)`, `Test Timeout`, `Page Class`, `Test Fixtures`, `Action Timeout (actionTimeout)`,
+   `webServer Config Option` — all from `playwright_dev_docs_test-timeouts.md` /
+   `playwright_dev_docs_api_class-page.md` / `playwright_dev_docs_test-fixtures.md`. 48 nodes found total.
+2. **`"webServer teardown reuseExistingServer gracefulShutdown"`** → top hit: `webServer Config Option`
+   (`playwright_dev_docs_test-webserver.md`), plus the rest of the new Playwright corpus. 57 nodes found.
+3. **`"ollama openai compatible embeddings local model"`** → top hits: `OpenAI Compatibility (Ollama
+   Blog)`, `Embeddings Capability`, `Ollama Python Library (ollama.embed)`, `/api/embed Endpoint`,
+   `/v1/chat/completions Endpoint`, `Retrieval-Augmented Generation (RAG)`, `Vector Database` — all from
+   the new `ollama-docs` tag. 47 nodes found.
+4. **`"node cluster worker fork exitedAfterDisconnect semantic code search"`** → top hits:
+   `cluster.fork([env])`, `worker.exitedAfterDisconnect`, `node:cluster Module`, `worker.disconnect()`,
+   `Cluster Event: 'exit'` (all `nodejs-v8-docs`) interleaved with `Semantic Search MCP Server`, `Hybrid
+   Search`, `reindex Tool` (all `semantic-search-mcp-docs`), correctly co-occurring with pre-existing
+   `vendor-docs` Cloudflare nodes. 100 nodes found.
+
+**Usefulness gate: passes cleanly.** Before this pass, every one of these four vocabulary sets returned
+either zero real hits or pure cross-project substring noise (documented per-doc in each research report's
+own §10.11 method note). Now each returns the actual target documentation as the top-ranked result.
+
+### Skipped, with reasons (per the usefulness gate and the task's own scope)
+
+- **`github.com/lukeed/sirv`** (from `test-stack-alternatives-research.md` §7) — that doc's own text
+  qualifies it as "only if this project or another starts actually evaluating sirv for something; a
+  one-off lookup otherwise, skip unless reused." Not reused elsewhere. Skipped.
+- **A general "Ollama vs LM Studio vs vLLM vs llama.cpp" decision-matrix page** (one of
+  `gpu-dev-tools-landscape.md`'s 3 named candidates) — the source doc names no concrete single URL ("there
+  were several reasonable 2026 comparison posts found; any one clear one would save re-deriving this
+  table"). Per §10.11 ("never invent tokens to force a hit"), extended here to URLs: not depositing a page
+  the research itself never pinned down. Skipped.
+- **Hugging Face GGUF quant-size table** (`bartowski/Qwen2.5-Coder-32B-Instruct-GGUF`, from
+  `gpu-local-model-integration.md`) — the task instruction explicitly scoped that doc's deposit to "its
+  cited Ollama/serving pages... if listed as deposit-worthy" only; this is a model-card reference, not an
+  Ollama/serving page. Out of the instructed scope. Skipped.
+- **"A graphify local-backend + embedding status note"** (`gpu-local-model-integration.md`'s third
+  candidate) — not an external URL at all; it's a proposal to write an internal note about *this project's*
+  installed tool version and open upstream PR numbers. The source doc itself flags it as "arguably
+  project-specific... may not clear the general cross-project value bar... flagging for the owner to decide
+  rather than assuming either way." Not deposited; flagging it here again for the owner, as asked.
+- **The graphify GitHub issues** (`Graphify-Labs/graphify` #1, #7, #38, #198, #424, #1126) — heavily cited
+  as primary sources throughout `gpu-local-model-integration.md` but never listed under that doc's own
+  "Deposit-worthy docs" section. Per the task's "collect the recommended... URLs" scope (deposit-worthy
+  sections only, not general source lists), not deposited.
+
+### Reproducibility
+
+All four graphs + their `raw/*.md` sources are persisted at
+`~/.graphify/vendor-sources/{playwright-official-docs,nodejs-v8-docs,ollama-docs,semantic-search-mcp-docs}/`.
+Re-add or refresh any of them with `graphify global add
+~/.graphify/vendor-sources/<tag>/graph.json --as <tag>` (idempotent by content hash), same pattern as §6.
