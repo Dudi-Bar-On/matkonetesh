@@ -4218,6 +4218,50 @@ const GEM_MODELS = {
 };
 function gemModel(role){ return GEM_MODELS[role] || GEM_MODELS.text; }
 function gemId(role){ return gemModel(role).id; }
+// ── Per-usage thinking level: one abstract scale (minimal<low<medium<high), translated per model.
+const THINK_ORDER  = ['minimal','low','medium','high'];
+const THINK_BUDGET = { minimal:0, low:512, medium:2048, high:8192 };   // representative budgets for the NUMERIC (2.5/3.5) knob
+function warnClamp(role, requested, resolved){ try{ console.warn('[AI] thinking level clamped', role, requested, '→', resolved); }catch(e){} }
+// nearest supported enum value, PREFERRING LOWER on a tie (cheaper; never an accidental cost/quality increase).
+function nearestLevel(want, supported){
+  const i = THINK_ORDER.indexOf(want);
+  for(let d=0; d<THINK_ORDER.length; d++){
+    const lo=THINK_ORDER[i-d]; if(lo && supported.indexOf(lo)>=0) return lo;   // lower checked first at equal distance
+    const hi=THINK_ORDER[i+d]; if(hi && supported.indexOf(hi)>=0) return hi;
+  }
+  return supported[0];
+}
+// → the thinkingConfig object for a role at a level, or undefined when the model exposes no knob.
+function gemThink(role, level){
+  const t = gemModel(role).think || {knob:'none'};
+  if(t.knob==='none') return undefined;                                   // TTS / non-thinking model → emit nothing
+  let want = THINK_ORDER.indexOf(level)>=0 ? level : 'minimal';           // unknown/garbage → safe cheap floor
+  if(t.knob==='level'){                                                    // Gemini 3.x enum
+    if(t.levels && t.levels.indexOf(want)<0){ const got=nearestLevel(want, t.levels); warnClamp(role, level, got); want=got; }
+    return { thinkingLevel: want };
+  }
+  if(t.knob==='budget'){                                                   // Gemini 2.5/3.5 numeric
+    return { thinkingBudget: (t.map||THINK_BUDGET)[want] };
+  }
+  return undefined;
+}
+// The ONE owner-edited thinking/cost policy table (§2.2.2 / §2.2.4). `floor` = the level a future bounded
+// user preference may never go below (decision 8: developer-only NOW, the toggle is deferred). `floor` is
+// approved safety-floor metadata — do NOT drop it; it is intentionally not yet read by thinkFor.
+const AI_THINK = {
+  ask:        { level:'low',     floor:'low'    },   // grounded prose that can emit safety numbers → floored
+  diagnose:   { level:'high',    floor:'medium' },   // highest-stakes reasoning → never cheap
+  vcAsk:      { level:'low',     floor:'low'    },   // voice, safety-adjacent, latency-capped
+  eventPlan:  { level:'medium'                  },
+  wcim:       { level:'minimal'                 },
+  seasonRec:  { level:'minimal'                 },
+  dataMT:     { level:'minimal'                 },   // recipe MT — the numeric guard (mtNumSig) is the safety net
+  translate:  { level:'minimal'                 },
+  vision:     { level:'low'                     },   // advisory read; the probe decides
+  keyProbe:   { level:'minimal'                 },
+  centralTest:{ level:'minimal'                 },
+};
+function thinkFor(usage){ return (AI_THINK[usage]||{level:'minimal'}).level; }   // developer-only (decision 8): no userPref knob
 const GEM_MODEL='gemini-2.5-flash';   // 3.6-flash REVERTED 2026-07-23: returned api-400 on EVERY call via the Gemini Developer API (generativelanguage). 'gemini-3.6-flash' is not a valid id on this endpoint (likely Vertex-only). Migration still owed before the 2.5 shutdown (2026-10-16) — needs ListModels to find the correct developer-API id first.
 function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
 async function gemFetch(model, body, opts){
