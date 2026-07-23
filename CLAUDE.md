@@ -149,15 +149,19 @@ which is what the claim is usually about. **But an edge is a lead, not a verdict
 `INFERRED`/`AMBIGUOUS` edges on purpose. Query to find the evidence, then read the source before
 asserting it. This does not repeal L16.
 
-**§10.11** Query the graphify **global** graph (`~/.graphify/global-graph.json`) for tool/framework
-documentation **before** searching the web. Expand your query against the graph's own vocabulary first —
-it matches by case-folded substring, with **no stemming, no synonyms, no cross-language matching**. If no
-vocabulary token matches, say so and stop; never invent tokens to force a hit.
-**A miss is a task, not a dead end:** when it isn't there, search the web — then **add what you found back
-to the global graph** so the next session doesn't repeat the search:
-`graphify add <url>` (or graph a docs folder), then `graphify global add <graph.json> --as <tool>-docs`;
-verify with `graphify global list`. Only documentation of general cross-project value — **never this
-project's private documents, never anything containing a key.**
+**§10.11** Query the graphify **global** graph (`~/.graphify/global-graph.json`) for **any** documentation or
+external help — a tool, framework, methodology, an API's capabilities, a vendor's model specs — **before**
+searching the web. Expand your query against the graph's own vocabulary first — it matches by case-folded
+substring, with **no stemming, no synonyms, no cross-language matching**. If no vocabulary token matches, say
+so and stop; never invent tokens to force a hit.
+**A miss is a task, not a dead end:** when it isn't there, search/research the web — then apply the
+**usefulness gate**: ask *"is this source useful, and likely to be needed again — here or on another project
+sharing the global?"* If **yes**, **download the docs and add them back to the global corpus** so no session
+repeats the search: `graphify add <url>` (or graph a docs folder), then
+`graphify global add <graph.json> --as <name>-docs` (lands in the shared `vendor-docs`/vendors family);
+verify with `graphify global list`. If it's a genuine one-off, skip the deposit and say so. Only
+documentation of general cross-project value — **never this project's private documents, never anything
+containing a key.**
 
 **§10.12** Keep the local graph current — **always `--mode deep`**. Commit and push with
 `bash scripts/sync-docs.sh "<message>"`. Chunk by **word budget (~12k)**, never by file count.

@@ -466,9 +466,12 @@ compare `git status --short` before and after, and warn on any modified tracked 
 family as the earlier `tail -1` bug in this same script, which printed "Everything up-to-date" while the
 branch was one commit ahead.
 
-### 10.11 Query graphify GLOBAL before searching the internet for tool help
-> **Owner instruction, 2026-07-22.** When you need documentation or help about a TOOL, framework or
-> methodology, query the graphify **global** graph first. Only if the answer is not there, search the web.
+### 10.11 Query graphify GLOBAL before the internet — for ANY docs/help — then feed useful finds back
+> **Owner instruction, 2026-07-22; generalized to all documentation/help 2026-07-23.** When you need
+> documentation or any external help/reference — a tool, a framework, a methodology, an API's capabilities,
+> a vendor's model specs, *anything* — query the graphify **global** graph FIRST. Only if the answer is not
+> there, search or research the web. After a web find, apply the **usefulness gate** (below) before moving on.
+> (The Google/Gemini model-capability docs were the example that prompted this; the rule is general.)
 
 **How.** The graphify CLI lives at `~/.local/bin/graphify`; the global graph is `~/.graphify/global-graph.json`
 (~6.8 MB, two merged corpora per `global-manifest.json`: `vendor-docs` 2,435 nodes and `methodology`
@@ -497,10 +500,15 @@ tokens that actually exist in it (`references/query.md`, Step 0). If no vocabula
 corpus has no relevant vocabulary and stop — **never invent tokens to force a hit.** This matters doubly
 here because our corpus is bilingual: a Hebrew query will not match English labels.
 
-**The feedback loop — a miss is a task, not a dead end (owner instruction, 2026-07-22).** When the global
-graph does not hold the documentation you need, you search the web *and then put what you found into the
-global graph*, so the next session does not repeat the search. This is what makes the corpus grow instead
-of staying frozen at whatever it held on 2026-07-21.
+**The feedback loop — a miss is a task, and a useful find is a deposit (owner instruction, 2026-07-22;
+the usefulness gate added 2026-07-23).** When the global graph does not hold what you need, search or
+research the web. Once you have the helpful source, ask ONE question: **"Is this source useful, and likely
+to be needed again — here or on another project sharing the global graph?"** If **yes**, you are instructed
+to **download the documentation and add it to the graphify global corpus** (as a `…-docs` tag, which merges
+into the shared `vendor-docs`/vendors family) so the next session — in THIS workspace or any other that
+shares `~/.graphify/global-graph.json` — never repeats the search. If it is a genuine one-off (a stale blog,
+a question you will not ask again), skip the deposit and say so. The gate keeps the corpus growing with
+signal instead of noise, and lets one project's research pay off for every project that shares the global.
 
 ```bash
 export PATH="$HOME/.local/bin:$PATH"
