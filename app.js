@@ -4294,11 +4294,12 @@ const GEM_MODEL='gemini-2.5-flash';   // 3.6-flash REVERTED 2026-07-23: returned
 function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
 async function gemFetch(model, body, opts){
   opts=opts||{};
+  const mdl = GEM_MODELS[model] ? GEM_MODELS[model].id : (model||GEM_MODEL);   // role → concrete id; a literal id passes through
   // transport: MANAGED (central Worker holds the key, gated by a per-user access code) → BYOK (own key) → off.
   // opts.key forces BYOK (used by askValidateKey to test a raw key). A managed access/quota error falls back to BYOK if a key exists.
   const mode = opts.key ? 'byok' : gemMode();
   if(mode==='off') throw new Error('no-key');
-  const url = (mode==='managed') ? (centralUrl()+'/v1beta/models/'+(model||GEM_MODEL)+':generateContent') : GEM_URL(model);
+  const url = (mode==='managed') ? (centralUrl()+'/v1beta/models/'+mdl+':generateContent') : GEM_URL(mdl);
   const headers = (mode==='managed') ? {'Content-Type':'application/json','X-Access-Code':centralCode()} : {'Content-Type':'application/json','x-goog-api-key':(opts.key||gemKey())};
   const timeout=opts.timeout||25000, tries=(opts.retries!=null?opts.retries:1)+1;
   let lastErr;

@@ -72,3 +72,19 @@ test('safety guard: a caveat appears only when an AI answer carries safety numbe
   expect(withNum).toContain('אינם מאומתים');   // temperature present → flagged
   expect(plain).toBe('');                        // no safety numbers → no caveat
 });
+
+test('transport: gemFetch resolves a registry role to its concrete model id in the request URL', async ({ page }) => {
+  await init(page);
+  const r = await page.evaluate(`(async function(){
+    store.set('mk-gemkey','K');
+    const urls=[];
+    window.fetch = async (url, opts)=>{ urls.push(url); return { ok:true, status:200, json: async()=>({}) }; };
+    await gemFetch('text', {contents:[]}, {retries:0});
+    await gemFetch('tts', {contents:[]}, {retries:0});
+    await gemFetch('gemini-2.5-flash-preview-tts', {contents:[]}, {retries:0});   // a literal id must still pass through
+    return { urls, textId: gemId('text'), ttsId: gemId('tts') };
+  })()`) as any;
+  expect(r.urls[0]).toContain(r.textId + ':generateContent');   // 'text' → concrete id
+  expect(r.urls[1]).toContain(r.ttsId + ':generateContent');    // 'tts'  → concrete id
+  expect(r.urls[2]).toContain('gemini-2.5-flash-preview-tts:generateContent');   // literal passthrough
+});
