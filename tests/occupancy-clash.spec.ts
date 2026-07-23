@@ -1,16 +1,14 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify(k));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-    localStorage.setItem('mk-menu', JSON.stringify({guests:8,appetite:'reg',kosher:false,keys:['cut-1','cut-7'],sides:[],drinks:[],desserts:[],gpm:0}));
-    localStorage.setItem('mk-tlserve', JSON.stringify('19:00'));
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify(kit),
+    'mk-equip-set': 'true',
+    'mk-menu': JSON.stringify({guests:8,appetite:'reg',kosher:false,keys:['cut-1','cut-7'],sides:[],drinks:[],desserts:[],gpm:0}),
+    'mk-tlserve': JSON.stringify('19:00'),
+  });
   await page.waitForFunction(`typeof cookerContention==='function' && typeof deviceOccupancy==='function'`);
 };
 

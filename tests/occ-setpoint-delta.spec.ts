@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // The setpoint hazard (scheduler spec §6.3): occupancyCompat.setpoint = max(temps) is rendered as a device
 // fact. Running a pit at the maximum of two items' required temperatures RAISES the cooler item's cook
@@ -6,14 +6,12 @@ import { test, expect } from './_fixtures';
 // solver can turn "share a device" into an automatic move.
 
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify(k));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify(kit),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof occupancyDevHtml==='function' && typeof deviceOccupancy==='function'`);
 };
 

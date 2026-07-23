@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // H2 (refactoring report §3): the sous-vide branch summed each item's min_bath_l (the bath size an item
 // REQUIRES) as if it were additive displacement. Two cuts each needing a 24 L bath reported 48 L used of
@@ -7,14 +7,12 @@ import { test, expect } from './_fixtures';
 // with 2+ items the true fill is higher (displacement we don't have), so the % is a floor, not "over".
 
 const boot = async (page: any, litres: number) => {
-  await page.addInitScript(([L]: [number]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id: 'sv1', cat: 'sousvide', type: 'טבילה (immersion)', name: 'אמבט', cap: { baths: [L] } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} }, [litres]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id: 'sv1', cat: 'sousvide', type: 'טבילה (immersion)', name: 'אמבט', cap: { baths: [litres] } }]),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof deviceOccupancy==='function' && typeof itemOccupancy==='function'`);
 };
 

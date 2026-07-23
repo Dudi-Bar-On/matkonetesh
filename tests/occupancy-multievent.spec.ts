@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Task 9: combinedEventsRows() (the multi-event view) must derive contention from the SAME occupancy
 // model as single-event cookerContention — not from a bare time-overlap check. Two events, each with
@@ -7,23 +7,23 @@ import { test, expect } from './_fixtures';
 // path); a cramped single-grate kamado does not (genuine over-capacity contention).
 
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify(k));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-    const day = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
-    localStorage.setItem('mk-events', JSON.stringify([
+  // day computed here (Node), not in-browser — toISOString() is UTC-normalized so both environments
+  // agree; identical to the pre-migration in-browser Date.now() modulo an unreachable UTC-midnight race.
+  const day = new Date(Date.now() + 2 * 86400000).toISOString().slice(0, 10);
+  // pin both events to the plain smoke-only method (matches occupancy-clash.spec.ts C1/C2 fixtures:
+  // cut-1 = brisket, footprint 1320 cm², smoke-only 110°C/12h; cut-7 = spareribs, 360 cm², 107°C/5h)
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify(kit),
+    'mk-equip-set': 'true',
+    'mk-events': JSON.stringify([
       { id: 'ev-A', name: 'חתונה', serve: '19:00', date: day, menu: { keys: ['cut-1'], guests: 8 } },
       { id: 'ev-B', name: 'בר מצווה', serve: '19:00', date: day, menu: { keys: ['cut-7'], guests: 8 } }
-    ]));
-    // pin both events to the plain smoke-only method (matches occupancy-clash.spec.ts C1/C2 fixtures:
-    // cut-1 = brisket, footprint 1320 cm², smoke-only 110°C/12h; cut-7 = spareribs, 360 cm², 107°C/5h)
-    localStorage.setItem('mk-tlstate-ev-A', JSON.stringify({ 'cut-1': { method: 'c:smoke', ready: true } }));
-    localStorage.setItem('mk-tlstate-ev-B', JSON.stringify({ 'cut-7': { method: 'c:smoke', ready: true } }));
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+    ]),
+    'mk-tlstate-ev-A': JSON.stringify({ 'cut-1': { method: 'c:smoke', ready: true } }),
+    'mk-tlstate-ev-B': JSON.stringify({ 'cut-7': { method: 'c:smoke', ready: true } }),
+  });
   await page.waitForFunction(`typeof combinedEventsRows==='function' && typeof deviceOccupancy==='function'`);
 };
 

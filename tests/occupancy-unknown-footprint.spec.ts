@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // H1 (docs/analysis/2026-07-21-refactoring-report.md §3): itemOccupancy used to end with
 // `cm2:Number(spec.footprint_cm2)||0`, so an item with NO recorded footprint (make_equip in
@@ -9,13 +9,9 @@ import { test, expect } from './_fixtures';
 const KIT = [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 6000 } }];
 
 const boot = async (page: any, kit: any[] = KIT) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    if (k.length) { localStorage.setItem('mk-equipment', JSON.stringify(k)); localStorage.setItem('mk-equip-set', JSON.stringify(true)); }
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  const kv: Record<string, string> = { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') };
+  if (kit.length) { kv['mk-equipment'] = JSON.stringify(kit); kv['mk-equip-set'] = 'true'; }
+  await seedApp(page, kv);
   await page.waitForFunction(`typeof resolveItem==='function' && typeof itemOccupancy==='function' && typeof DATA==='object'`);
 };
 
@@ -92,16 +88,14 @@ test('U4: the rendered occupancy view marks a floor percentage and notes the unk
 
   // Step 2: re-boot with a real kit + menu containing a known cut (cut-1) and the footprint-less
   // make, both eligible for the sole smoker in the kit (cookerFor auto-assigns — only one candidate).
-  await page.addInitScript(([kk]: [string]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 6000 } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-    localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1', 'make-' + kk], sides: [], drinks: [], desserts: [], gpm: 0 }));
-    localStorage.setItem('mk-tlserve', JSON.stringify('19:00'));
-  } catch {} }, [k]);
-  await page.reload();
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח', cap: { racks: 4, areaCm2: 6000 } }]),
+    'mk-equip-set': 'true',
+    'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1', 'make-' + k], sides: [], drinks: [], desserts: [], gpm: 0 }),
+    'mk-tlserve': JSON.stringify('19:00'),
+  });
   await page.waitForFunction(`typeof openOccupancyView==='function'`);
 
   await page.evaluate(`openTimeline()`);

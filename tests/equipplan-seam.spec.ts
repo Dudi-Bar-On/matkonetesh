@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Phase 3: equipPlan is the seam where equipment enters stage generation. It was waived, and its absence is
 // the root cause of the whole refactoring report — without it no equipment fact can change a duration or a
@@ -6,13 +6,9 @@ import { test, expect } from './_fixtures';
 // preheatHint() separately knows a pellet smoker needs ~15, so the scheduled time and the advice contradict.
 
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    if (k.length) { localStorage.setItem('mk-equipment', JSON.stringify(k)); localStorage.setItem('mk-equip-set', JSON.stringify(true)); }
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  const kv: Record<string, string> = { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') };
+  if (kit.length) { kv['mk-equipment'] = JSON.stringify(kit); kv['mk-equip-set'] = 'true'; }
+  await seedApp(page, kv);
   await page.waitForFunction(`typeof equipPlan==='function' && typeof preheatMinutes==='function'`);
 };
 
@@ -42,16 +38,14 @@ test('P3b: the scheduled light-up and its label state the SAME number (D1 — on
 });
 
 test('P3c: the real plan lights the fire preheatMinutes before the first smoke, not a hardcoded 45', async ({ page }) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id:'d1', cat:'smoker', type:'פלטים', name:'פלט', cap:{ racks:4, areaCm2:9000 } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-    localStorage.setItem('mk-menu', JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1'], sides:[], drinks:[], desserts:[], gpm:0 }));
-    localStorage.setItem('mk-tlserve', JSON.stringify('19:00'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id:'d1', cat:'smoker', type:'פלטים', name:'פלט', cap:{ racks:4, areaCm2:9000 } }]),
+    'mk-equip-set': 'true',
+    'mk-menu': JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1'], sides:[], drinks:[], desserts:[], gpm:0 }),
+    'mk-tlserve': JSON.stringify('19:00'),
+  });
   await page.waitForFunction(`typeof openTimeline==='function' && typeof preheatMinutes==='function'`);
   await page.evaluate(`openTimeline()`);
   await page.locator('#panel').waitFor({ state: 'visible' });
@@ -112,16 +106,14 @@ test('P3e: a pellet smoker gets no refuel cadence — the fact comes from the de
 // computed-and-never-read field — the exact failure this whole refactor exists to stop.
 test('P3f: a stick burner gets refuel tasks in the plan; a pellet smoker gets none', async ({ page }) => {
   const run = async (type: string) => {
-    await page.addInitScript(([t]: [string]) => { try {
-      localStorage.clear();
-      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      localStorage.setItem('mk-lang', JSON.stringify('he'));
-      localStorage.setItem('mk-equipment', JSON.stringify([{ id:'d1', cat:'smoker', type:t, name:'x', cap:{ racks:4, areaCm2:9000 } }]));
-      localStorage.setItem('mk-equip-set', JSON.stringify(true));
-      localStorage.setItem('mk-menu', JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1'], sides:[], drinks:[], desserts:[], gpm:0 }));
-      localStorage.setItem('mk-tlserve', JSON.stringify('19:00'));
-    } catch {} }, [type]);
-    await page.goto('/index.html');
+    await seedApp(page, {
+      'mk-uilevel-asked': 'true',
+      'mk-lang': JSON.stringify('he'),
+      'mk-equipment': JSON.stringify([{ id:'d1', cat:'smoker', type, name:'x', cap:{ racks:4, areaCm2:9000 } }]),
+      'mk-equip-set': 'true',
+      'mk-menu': JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1'], sides:[], drinks:[], desserts:[], gpm:0 }),
+      'mk-tlserve': JSON.stringify('19:00'),
+    });
     await page.waitForFunction(`typeof openTimeline==='function'`);
     await page.evaluate(`openTimeline()`);
     await page.locator('#panel').waitFor({ state: 'visible' });

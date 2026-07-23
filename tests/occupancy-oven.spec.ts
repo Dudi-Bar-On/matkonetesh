@@ -1,17 +1,13 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // H4 (owner request): an oven is a rack-based cooking device like a cabinet smoker, so it belongs in the
 // occupancy model. It needs (1) an areaCm2 property with per-type class defaults (it never got one in
 // Phase 0) and (2) inclusion in the occupancy view's device set (which covered only smoker/grill/sousvide).
 
 const boot = async (page: any, kit: any[] = []) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    if (k.length) { localStorage.setItem('mk-equipment', JSON.stringify(k)); localStorage.setItem('mk-equip-set', JSON.stringify(true)); }
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  const kv: Record<string, string> = { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') };
+  if (kit.length) { kv['mk-equipment'] = JSON.stringify(kit); kv['mk-equip-set'] = 'true'; }
+  await seedApp(page, kv);
   await page.waitForFunction(`typeof propOf==='function' && Array.isArray(EQUIP_CATS) && typeof deviceOccupancy==='function'`);
 };
 

@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Covers three real-usage defects the owner hit in v251:
 //  V1-V3  cookerFor dropped the smoke stage to "no device" once a grill was owned alongside a smoker
@@ -13,13 +13,9 @@ const KIT = [
 ];
 
 const boot = async (page: any, kit: any[] | null = KIT) => {
-  await page.addInitScript(([k]: [any[] | null]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    if (k) { localStorage.setItem('mk-equipment', JSON.stringify(k)); localStorage.setItem('mk-equip-set', JSON.stringify(true)); }
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  const kv: Record<string, string> = { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') };
+  if (kit) { kv['mk-equipment'] = JSON.stringify(kit); kv['mk-equip-set'] = 'true'; }
+  await seedApp(page, kv);
   await page.waitForFunction(`typeof cookerFor==='function' && typeof homeModOn==='function' && typeof equipSectionHtml==='function'`);
 };
 

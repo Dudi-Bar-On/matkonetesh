@@ -1,6 +1,6 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 test('the round-grill class computes to a true circle (equal w/h, 50% radius)', async ({ page }) => {
-  await page.goto('/index.html');
+  await seedApp(page);
   const r = await page.evaluate(() => {
     const el = document.createElement('div');
     el.className = 'occ2-grill occ2-round';
@@ -16,7 +16,7 @@ test('the round-grill class computes to a true circle (equal w/h, 50% radius)', 
   expect(r.radius).toMatch(/50%|108px/); // border-radius:50% (or its resolved px)
 });
 test('the over token resolves (theme tokens present)', async ({ page }) => {
-  await page.goto('/index.html');
+  await seedApp(page);
   const over = await page.evaluate(() =>
     getComputedStyle(document.documentElement).getPropertyValue('--over').trim());
   expect(over.length).toBeGreaterThan(0);
@@ -24,7 +24,7 @@ test('the over token resolves (theme tokens present)', async ({ page }) => {
 // The real themes are the JS THEMES object (applied as inline styles on <html>), not CSS class blocks.
 // So the diagram tokens must live in EVERY theme — a dark theme must not fall back to the light --over.
 test('diagram tokens are themed per theme (dark charcoal differs from light cream)', async ({ page }) => {
-  await page.goto('/index.html');
+  await seedApp(page);
   await page.waitForFunction(`typeof setTheme==='function' && typeof THEMES!=='undefined'`);
   const read = async () => await page.evaluate(() => {
     const cs = getComputedStyle(document.documentElement);

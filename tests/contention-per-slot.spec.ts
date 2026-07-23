@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // cookerContention still judged a clash by o.over — the WHOLE-DEVICE area sum — which is the exact lie the
 // H4/Phase-2 work removed from the occupancy card: a brisket that fits no single shelf leaves a 5-shelf
@@ -6,14 +6,12 @@ import { test, expect } from './_fixtures';
 // The honest signal is the fit ladder (o.fit.verdict), and both surfaces must read the same one.
 
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify(k));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify(kit),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof cookerContention==='function' && typeof deviceOccupancy==='function'`);
 };
 

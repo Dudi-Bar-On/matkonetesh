@@ -1,13 +1,9 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 const boot = async (page: any, seedGear?: any) => {
-  await page.addInitScript((g: any) => {
-    try {
-      localStorage.clear(); localStorage.setItem('mk-lang', JSON.stringify('en')); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      if (g) { localStorage.setItem('mk-gear', JSON.stringify(g)); localStorage.setItem('mk-gear-set', JSON.stringify(true)); }
-    } catch {}
-  }, seedGear);
-  await page.goto('/index.html');
+  const kv: Record<string, string> = { 'mk-lang': JSON.stringify('en'), 'mk-uilevel-asked': 'true' };
+  if (seedGear) { kv['mk-gear'] = JSON.stringify(seedGear); kv['mk-gear-set'] = 'true'; }
+  await seedApp(page, kv);
   await page.waitForFunction(`typeof equipList==='function' && typeof equipMigrateFromGear==='function'`);
 };
 

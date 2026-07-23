@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Owner: "the bath sizes I have are registered, so the optimizer should choose the correct bath for the
 // mission — it can use different sizes at different times. Same for grinder plate sizes, and the plan
@@ -9,14 +9,12 @@ import { test, expect } from './_fixtures';
 // and casing_mm. These choosers turn registered properties into instructions.
 
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify(k));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify(kit),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof chooseBath==='function' && typeof choosePlate==='function' && typeof chooseNozzle==='function'`);
 };
 

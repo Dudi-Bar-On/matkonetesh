@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // M2 (refactoring report §9): the equipment form silently discarded values that failed validation —
 // `doSave` did `else delete d.cap[key]` for an unparseable prop/capacity, then closed the form. The user
@@ -7,12 +7,7 @@ import { test, expect } from './_fixtures';
 // with the user's input intact — never silently drop it, never store a bogus number either.
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') });
   await page.waitForFunction(`typeof openEquipment==='function' && typeof propParse==='function'`);
 };
 

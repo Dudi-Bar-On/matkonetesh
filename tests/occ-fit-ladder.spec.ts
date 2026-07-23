@@ -1,16 +1,14 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // A 5-shelf cabinet. areaCm2 8500 → usable ~7225 / 5 = ~1445 per shelf... we want ~1020, so use 6000.
 // Estimated (class-default) area vs user-measured area is the axis under test.
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify(k));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify(kit),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof deviceOccupancy==='function' && typeof FIT_HARD_FACTOR!=='undefined'`);
 };
 // cabinet with NO cap.areaCm2 → area comes from the class default (estimate). racks:5.

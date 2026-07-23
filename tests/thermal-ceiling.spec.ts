@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // SAFETY (audit): cookerCandidates filters by CATEGORY only — it never asks whether a cooker can actually
 // reach the temperature a cut needs. An electric smoker tops out at 135 °C; a 160 °C stage assigned to it is
@@ -6,14 +6,12 @@ import { test, expect } from './_fixtures';
 // class defaults) and was read by nothing that matters.
 
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify(k));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify(kit),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof deviceCanReach==='function' && typeof schedulePlacements==='function'`);
 };
 
