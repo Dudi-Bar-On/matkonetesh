@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // C1 (refactoring report): the shopping cart showed a cut's WHOLE-CUT catalog weight (brisket 5.5 kg)
 // instead of the per-guest quantity, while the print menu correctly showed ~3.7 kg for the same event.
@@ -10,13 +10,11 @@ import { test, expect } from './_fixtures';
 //   → raw = 8*280/1/0.6 = 3733 g ≈ 3.7 kg   (NOT the 5.5 kg whole cut)
 
 const boot = async (page: any, menu: any) => {
-  await page.addInitScript(([m]: [any]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-menu', JSON.stringify(m));
-  } catch {} }, [menu]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-menu': JSON.stringify(menu),
+  });
   await page.waitForFunction(`typeof openCart==='function' && typeof shopData==='function'`);
 };
 

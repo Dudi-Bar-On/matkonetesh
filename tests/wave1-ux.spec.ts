@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 1a — core UX loop:
 //  UX #1: the catalog is no longer a dead-end — a real add-to-menu control (wired to the
@@ -7,8 +7,7 @@ import { test, expect } from './_fixtures';
 //         and the resume card returns you to the wizard, not the events list.
 
 test('UX #1: add-to-menu from a catalog card puts the item in the plan (toggleCart is wired)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.click('[data-cnav="catalog"]');
   await page.fill('#q', 'בקר');                 // search populates #grid (default catalog is category tiles)
   await page.waitForSelector('#grid .card [data-addmenu]');
@@ -25,8 +24,7 @@ test('UX #1: add-to-menu from a catalog card puts the item in the plan (toggleCa
 });
 
 test('UX #1: the item panel exposes an add-to-menu button too', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ var c=DATA.cuts.find(function(x){return x.n===1}); openCut(c); })()`); // brisket panel
   await page.waitForSelector('#extras .exaddmenu');
   await page.click('#extras .exaddmenu');
@@ -35,16 +33,12 @@ test('UX #1: the item panel exposes an add-to-menu button too', async ({ page })
 });
 
 test('UX #2: a Cook draft surfaces on home and resumes into the wizard (not the events list)', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      localStorage.setItem('mk-context', JSON.stringify('cook'));
-      localStorage.setItem('mk-cook', JSON.stringify({ guests: 4, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
-      localStorage.setItem('mk-cresume', JSON.stringify({ title: 'בישול', serv: 4, ctx: 'cook', step: 5, ts: 1 }));
-    } catch {}
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-context': JSON.stringify('cook'),
+    'mk-cook': JSON.stringify({ guests: 4, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }),
+    'mk-cresume': JSON.stringify({ title: 'בישול', serv: 4, ctx: 'cook', step: 5, ts: 1 }),
   });
-  await page.goto('/index.html');
   await page.evaluate(`cRefreshHome()`);
   // previously stayed hidden because it validated mk-menu (empty in cook context)
   expect(await page.evaluate(`document.getElementById('cResume').hidden`)).toBe(false);

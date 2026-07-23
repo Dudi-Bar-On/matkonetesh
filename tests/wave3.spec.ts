@@ -1,8 +1,7 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof gearFromText==='function' && typeof openGearConcierge==='function'`);
 };
 

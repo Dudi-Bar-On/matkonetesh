@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 1d — theme robustness (UI #1/#2, a11y #2).
 // Raised-panel tints + strong ink are now theme-aware tokens, so the charcoal (dark) theme
@@ -8,8 +8,7 @@ const cs = (page: any, v: string) =>
   page.evaluate(`getComputedStyle(document.documentElement).getPropertyValue('${v}').trim()`);
 
 test('UI #1/#2: tint + ink tokens flip correctly between cream (light) and charcoal (dark)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 
   // default "Warm Cream": warm/cool tints are light, strong ink is dark
   expect(await cs(page, '--tint-warm')).toBe('#fff6ec');
@@ -27,8 +26,7 @@ test('UI #1/#2: tint + ink tokens flip correctly between cream (light) and charc
 });
 
 test('UI #1: a real raised panel resolves its background to the token (not a fixed light hex)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-theme', JSON.stringify('charcoal')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-theme': JSON.stringify('charcoal') });
   // the home "about" panel used a hard-coded warm gradient; in charcoal it must now be dark
   const bg = await page.evaluate(`(function(){var e=document.querySelector('.chome-about'); if(!e) return ''; return getComputedStyle(e).backgroundImage||getComputedStyle(e).background;})()`) as string;
   // dark charcoal tint (#2c2519 -> rgb(44,37,25)); must NOT contain the old light 255,246,236

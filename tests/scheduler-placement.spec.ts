@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Phase 4b: the relaxation ends every item at serve, so a shared cooker is maximally over-subscribed by
 // construction. schedulePlacements() moves stages EARLIER (never later — that would miss serve) until no
@@ -12,14 +12,12 @@ import { test, expect } from './_fixtures';
 const SHOTS = 'test-results/';
 
 const boot = async (page: any, kit: any[]) => {
-  await page.addInitScript(([k]: [any[]]) => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify(k));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} }, [kit]);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify(kit),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof schedulePlacements==='function' && typeof deviceOccupancy==='function'`);
 };
 
@@ -135,16 +133,14 @@ test('C1: a pull beyond the bound is refused and advised, not silently applied',
 });
 
 test('C2: the REAL plan states an unresolvable load instead of leaving it silently over-subscribed', async ({ page }) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{ racks:1, areaCm2:1700 } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-    localStorage.setItem('mk-menu', JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1','cut-7'], sides:[], drinks:[], desserts:[], gpm:0 }));
-    localStorage.setItem('mk-tlserve', JSON.stringify('19:00'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{ racks:1, areaCm2:1700 } }]),
+    'mk-equip-set': 'true',
+    'mk-menu': JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1','cut-7'], sides:[], drinks:[], desserts:[], gpm:0 }),
+    'mk-tlserve': JSON.stringify('19:00'),
+  });
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`openTimeline()`);
   await page.locator('#panel').waitFor({ state: 'visible' });
@@ -157,12 +153,7 @@ test('C2: the REAL plan states an unresolvable load instead of leaving it silent
 // The small-pull regime in the real UI: two quick grill items on a grill too small for both. This is the
 // everyday case the feature exists for — cook one, then the other, half an hour apart.
 test('C3: a small pull staggers the real plan and the timeline says the item is ready early', async ({ page }) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') });
   await page.waitForFunction(`typeof itemStages==='function' && typeof resolveItem==='function'`);
   // find two quick 'cook' items with known footprints, so the needed pull is well inside the bound
   const keys = await page.evaluate(`(function(){
@@ -182,13 +173,14 @@ test('C3: a small pull staggers the real plan and the timeline says the item is 
   test.skip(keys.length < 2, 'no two quick cook-items with known footprints in the data');
 
   const area = Math.round((keys[0].cm2 + keys[1].cm2) * 0.8 / 0.85);   // fits either alone, never both
-  await page.addInitScript(([k, a]: [any[], number]) => { try {
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id:'g1', cat:'grill', type:'גז', name:'גריל', cap:{ zones:1, areaCm2:a } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-    localStorage.setItem('mk-menu', JSON.stringify({ guests:6, appetite:'reg', kosher:false, keys:[k[0].key, k[1].key], sides:[], drinks:[], desserts:[], gpm:0 }));
-    localStorage.setItem('mk-tlserve', JSON.stringify('19:00'));
-  } catch {} }, [keys, area]);
-  await page.reload();
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id: 'g1', cat: 'grill', type: 'גז', name: 'גריל', cap: { zones: 1, areaCm2: area } }]),
+    'mk-equip-set': 'true',
+    'mk-menu': JSON.stringify({ guests: 6, appetite: 'reg', kosher: false, keys: [keys[0].key, keys[1].key], sides: [], drinks: [], desserts: [], gpm: 0 }),
+    'mk-tlserve': JSON.stringify('19:00'),
+  });
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`openTimeline()`);
   await page.locator('#panel').waitFor({ state: 'visible' });

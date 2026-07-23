@@ -1,9 +1,8 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Adaptive home — Phase 0 plumbing: cRefreshHome stamps body classes by gear + level + live state.
 const boot = async (page:any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
 };
 const cls = (page:any) => page.evaluate(`Array.from(document.body.classList).filter(c=>/^(is-cooking|gear-|lvl-)/.test(c)).sort().join(' ')`);
@@ -38,9 +37,12 @@ test('adaptive home: greeting is localized (no Hebrew leak in English mode)', as
 });
 
 test('adaptive home Phase 1: merged hosting card + gear-aware kick, i18n round-trips', async ({ page }) => {
-  await page.addInitScript((dd:string) => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true)); localStorage.setItem('mk-equipment', dd); } catch {} }, DEFAULT_DEVICES);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-equip-set': 'true',
+    'mk-equipment': DEFAULT_DEVICES,
+  });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   await page.waitForFunction(`document.querySelectorAll('#scr-home .cpaths .cpath').length===2`);
   // two path cards now (merged hosting + project), the "or just cook" branch lives inside the hosting card, and the old chrome is gone
@@ -72,8 +74,7 @@ test('adaptive home Phase 1: merged hosting card + gear-aware kick, i18n round-t
 });
 
 test('adaptive home Phase 2: a live cook lifts the banner to the top of the fold (gated on is-cooking)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   // a running timer = a live cook → the banner shows and body.is-cooking is stamped
   await page.evaluate(`(function(){ store.set('mk-timers',{'cut-1-sv-0':{end:Date.now()+3600000,name:'SV'}}); cNavGo('home'); })()`);
@@ -98,8 +99,7 @@ test('adaptive home Phase 2: a live cook lifts the banner to the top of the fold
 const FULLGEAR = equipStmts(FULL);
 
 test('adaptive home Phase 3: gear-gated quick-pick lanes jump straight to a cut, no dead chips, no h-scroll', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   // full-gear (Pitmaster) → all three lanes
   await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
@@ -135,8 +135,7 @@ test('adaptive home Phase 3: gear-gated quick-pick lanes jump straight to a cut,
 });
 
 test('adaptive home Phase 3: editing gear from Home re-gates the lanes on panel close (no nav needed)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
   await page.waitForSelector('.lane-sv');
@@ -154,13 +153,15 @@ test('adaptive home Phase 3: editing gear from Home re-gates the lanes on panel 
 });
 
 test('adaptive home Phase 4: gear chip + multi-event bar + pro pit-tools dock (with negative gating)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-uilevel', JSON.stringify('pro'));
-    localStorage.setItem('mk-events', JSON.stringify([
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-uilevel': JSON.stringify('pro'),
+    'mk-events': JSON.stringify([
       {id:'ev-a',name:'Fri BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1']}},
       {id:'ev-b',name:'Sat BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:6,keys:['cut-1']}}
-    ])); } catch {} });
-  await page.goto('/index.html');
+    ]),
+  });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
   await page.waitForSelector('.chome-lanes .lane');
@@ -200,8 +201,7 @@ test('adaptive home Phase 4: gear chip + multi-event bar + pro pit-tools dock (w
 });
 
 test('adaptive home Phase 4: projects card demotes when there is no charcuterie gear', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   // charcuterie gear present → full project card (description shown)
   await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
@@ -215,9 +215,12 @@ test('adaptive home Phase 4: projects card demotes when there is no charcuterie 
 });
 
 test('adaptive home Phase 4: gear banner <-> chip stay symmetric across (un)configure (e.g. full reset)', async ({ page }) => {
-  await page.addInitScript((dd:string) => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true)); localStorage.setItem('mk-equipment', dd); } catch {} }, DEFAULT_DEVICES);
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-equip-set': 'true',
+    'mk-equipment': DEFAULT_DEVICES,
+  });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   await page.evaluate(`cNavGo('home')`); await page.waitForFunction(`!!document.querySelector('#cHomeGearChip') && !document.querySelector('#cHomeGearChip').hidden`);
   // configured → chip shown, no set-up banner
@@ -238,8 +241,7 @@ test('adaptive home Phase 4: gear banner <-> chip stay symmetric across (un)conf
 });
 
 test('adaptive home Phase 5: uiLevel adjusts density (beginner promotes how-to + hides advanced detail; pro quiets how-to)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   const abt = (prop:string) => page.evaluate(`getComputedStyle(document.querySelector('.chome-about'))['${prop}']`);
   const projP = () => page.evaluate(`getComputedStyle(document.querySelector('#cPathProj p')).display`);
@@ -263,8 +265,7 @@ test('adaptive home Phase 5: uiLevel adjusts density (beginner promotes how-to +
 });
 
 test('adaptive home Phase 6: More sheet has a most-used row, learns, and trims advanced items for beginners', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof openMoreSheet==='function'`);
   // mid: most-used row present (curated default), English, advanced items visible
   await page.evaluate(`(function(){ store.set('mk-uilevel','mid'); openMoreSheet(); })()`);
@@ -305,8 +306,7 @@ test('adaptive home Phase 6: More sheet has a most-used row, learns, and trims a
 });
 
 test('adaptive home Phase 8: AI hub gathers every AI tool, key-gated not level-gated, reachable everywhere', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); localStorage.setItem('mk-uilevel', JSON.stringify('beginner')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en'), 'mk-uilevel': JSON.stringify('beginner') });
   await page.waitForFunction(`typeof openAiHub==='function'`);
   // NO key: all 4 tools listed; key-requiring ones locked → route to key manager; Ask stays usable; unlock banner shown
   await page.evaluate(`(function(){ store.set('mk-gemkey',''); openAiHub(); })()`);
@@ -339,8 +339,7 @@ test('adaptive home Phase 8: AI hub gathers every AI tool, key-gated not level-g
 });
 
 test('adaptive home Phase 7: customize home — toggle hide, drag-reorder, persist, reset', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); localStorage.setItem('mk-uilevel', JSON.stringify('pro')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en'), 'mk-uilevel': JSON.stringify('pro') });
   await page.waitForFunction(`typeof openHomeCustom==='function'`);
   await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
   const homeOrder = () => page.evaluate(`Array.from(document.querySelectorAll('#cHomeModules > [id]')).map(e=>e.id).join(',')`);
@@ -382,8 +381,7 @@ test('adaptive home Phase 7: customize home — toggle hide, drag-reorder, persi
 });
 
 test('adaptive home: pit-tools dock is customizable — choose tools + order (owner request)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); localStorage.setItem('mk-uilevel', JSON.stringify('pro')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en'), 'mk-uilevel': JSON.stringify('pro') });
   await page.waitForFunction(`typeof cRefreshHome==='function'`);
   await page.evaluate(`(function(){ ${FULLGEAR} cNavGo('home'); })()`);
   await page.waitForSelector('#cHomeDock .dockbtn');

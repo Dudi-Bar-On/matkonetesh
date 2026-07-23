@@ -1,15 +1,12 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {}
-  });
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 });
 
 // Regression for the long-activity scheduling bug: a 30h sous-vide (brisket) must be shown
 // starting on an EARLIER calendar day than serving — the work plan now renders a "N days before" badge.
 test('work plan shows a "days before serving" badge for a 30h sous-vide (brisket)', async ({ page }) => {
-  await page.goto('/index.html');
 
   // Seed an event menu with brisket (cut-1: 30h sous-vide) and open the plan view.
   await page.evaluate(`(function(){

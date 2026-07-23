@@ -1,15 +1,12 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // CLAUDE-CODE-GUIDE §5.4 — regressions for the recurring UI bugs (each marked "*(באג עבר!)*").
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {}
-  });
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 });
 
 test('kosher filter: pork cards vanish from the red-meat group and the chip stays "on"', async ({ page }) => {
-  await page.goto('/index.html');
   await page.click('[data-cnav="catalog"]');
   // drill into the red-meat group (בקר/חזיר/טלה) so pork cut cards render
   await page.evaluate(`(function(){ setCatNav('בשר אדום',['בקר','חזיר','טלה']); catView('cat'); })()`);
@@ -24,7 +21,6 @@ test('kosher filter: pork cards vanish from the red-meat group and the chip stay
 });
 
 test('AI graceful degradation: recipe generator shows a connect prompt without a key', async ({ page }) => {
-  await page.goto('/index.html');
   // no mk-gemkey seeded -> aiAvail() is false
   await page.evaluate(`openRecipeGen()`);
   await expect(page.locator('#panel #genConnect')).toBeVisible();
@@ -32,7 +28,6 @@ test('AI graceful degradation: recipe generator shows a connect prompt without a
 });
 
 test('wizard picker: kosher toggle removes every pork item from the pick list', async ({ page }) => {
-  await page.goto('/index.html');
   await page.click('[data-cnav="wizard"]');          // opens the event wizard
   await page.evaluate(`cwGo(1)`);                     // step 1 = item picker
   await page.waitForSelector('#cwPickList [data-cwpick]');
@@ -49,8 +44,7 @@ test('wizard picker: kosher toggle removes every pork item from the pick list', 
 });
 
 test('AI recipe generator: mocked recipe → unverified badge → save → appears in "my recipes"', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-gemkey', JSON.stringify('TEST')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-gemkey': JSON.stringify('TEST') });
 
   // grounded-only mock recipe (the app supplies safe numbers, never the AI)
   await page.evaluate(() => {
@@ -70,8 +64,7 @@ test('AI recipe generator: mocked recipe → unverified badge → save → appea
 });
 
 test('bilingual voice: the answer follows the selected answer-language (text Q&A)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-gemkey', JSON.stringify('TEST')); } catch {} }); // aiAvail() -> ask row shows
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-gemkey': JSON.stringify('TEST') });   // aiAvail() -> ask row shows
   await page.evaluate(`openVoiceCook([{t:new Date(), label:'עישון 105°', sub:'', kind:'smoke', det:''}])`);
   await expect(page.locator('#vcAskInput')).toBeVisible();
   // mock the AI answer to echo the CURRENT answer-language (string form so bare vcAnsLang resolves in-page)
@@ -89,7 +82,6 @@ test('bilingual voice: the answer follows the selected answer-language (text Q&A
 });
 
 test('method sync: choosing sous-vide for an item puts a sous-vide step in the work plan', async ({ page }) => {
-  await page.goto('/index.html');
   await page.evaluate(`(function(){
     saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-83'],sides:[],drinks:[],desserts:[],gpm:0});
     store.set(methodKeyFor('cut-83'), ['sv','grill']);   // eggplant: sous-vide + grill
@@ -100,8 +92,7 @@ test('method sync: choosing sous-vide for an item puts a sous-vide step in the w
 });
 
 test('event planner double-guard: AI-returned pork is dropped for a kosher request', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-gemkey', JSON.stringify('TEST')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-gemkey': JSON.stringify('TEST') });
   // AI returns a kosher plan that (wrongly) includes pork ribs (cut-7) alongside kosher brisket (cut-1)
   await page.evaluate(() => {
     (window as any).__aiMock = { guests: 10, appetite: 'reg', kosher: true,

@@ -1,10 +1,9 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Timeline/voice enhancements: focus sync across views, expand/collapse-all, voice jump-to-item.
 const ev = (keys:string[]) => JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys}}]);
 const init = async (page:any, keys:string[]) => {
-  await page.addInitScript((e:string) => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-events', e); } catch {} }, ev(keys));
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-events': ev(keys) });
   await page.waitForFunction(`typeof openTimeline==='function'`);
 };
 
@@ -53,10 +52,12 @@ test('voice cook has a jump-to-step selector that lists every task and jumps dir
 });
 
 test('work-plan: a REAL tap highlights that exact task (not another), one marker, persists across views', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-tlview', JSON.stringify('plan'));
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-tlview': JSON.stringify('plan'),
+    'mk-events': JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}]),
+  });
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
   await page.waitForSelector('#tlList .workplan');
@@ -83,10 +84,12 @@ test('work-plan: a REAL tap highlights that exact task (not another), one marker
 });
 
 test('view switch re-focuses the SELECTED task, not the item first task (grillâ‰ sous-vide bug)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-tlview', JSON.stringify('plan'));
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-tlview': JSON.stringify('plan'),
+    'mk-events': JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}]),
+  });
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
   await page.waitForSelector('#tlList .workplan');
@@ -109,10 +112,13 @@ test('view switch re-focuses the SELECTED task, not the item first task (grillâ‰
 });
 
 test('doneness scale is English in English mode (no Hebrew rare/medium/well)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-tlview', JSON.stringify('items')); localStorage.setItem('mk-tlplandetail', JSON.stringify('full'));
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-108']}}])); } catch {} });   // cut-108 (Hanger) has a doneness scale
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-tlview': JSON.stringify('items'),
+    'mk-tlplandetail': JSON.stringify('full'),
+    'mk-events': JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-108']}}]),   // cut-108 (Hanger) has a doneness scale
+  });
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
   await page.waitForSelector('#tlList .tlcard');
@@ -123,10 +129,12 @@ test('doneness scale is English in English mode (no Hebrew rare/medium/well)', a
 });
 
 test('coming from a specific step marks that step inside the by-item card', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-tlview', JSON.stringify('plan'));
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}])); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-tlview': JSON.stringify('plan'),
+    'mk-events': JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','cut-2']}}]),
+  });
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
   await page.waitForSelector('#tlList .workplan');

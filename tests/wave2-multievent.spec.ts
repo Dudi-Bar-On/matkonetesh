@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Parallel multi-event: each event (or the 'cook' route) is an independent session — timers are
 // namespaced per event, start-state is per event, and a global watcher fires alarms across all events.
 
 test('scoping: evScope reflects the active context/event and namespaces stage timer ids', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   expect(await page.evaluate(`(function(){ setMenuCtx('cook'); return evScope(); })()`)).toBe('cook');
   expect(await page.evaluate(`(function(){ setMenuCtx('event'); store.set('mk-active','ev-A'); return evScope(); })()`)).toBe('ev-A');
 
@@ -18,16 +17,14 @@ test('scoping: evScope reflects the active context/event and namespaces stage ti
 });
 
 test('isolation: plan start-state is per event (starting A does not start B)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ setMenuCtx('event'); store.set('mk-active','ev-A'); setPlanStarted(Date.now()); })()`);
   expect(await page.evaluate(`(function(){ store.set('mk-active','ev-A'); return planStarted(); })()`)).toBe(true);
   expect(await page.evaluate(`(function(){ store.set('mk-active','ev-B'); return planStarted(); })()`)).toBe(false);   // event B independent
 });
 
 test('dashboard: the events list shows a running-timer badge per event', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ var now=Date.now();
     store.set('mk-events', [{id:'ev-A', name:'חתונה', serve:'19:00', menu:{keys:['cut-1']}, updated:now}]);
     store.set('mk-timers', { 'st-ev-A-cut-1-2':{end:now+3600000,name:'עישון'}, 'st-ev-A-cut-1-4':{end:now+1800000,name:'סו-ויד'} });
@@ -40,16 +37,14 @@ test('dashboard: the events list shows a running-timer badge per event', async (
 });
 
 test('R2: tlState (method/order/stage-done) is isolated per event', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ setMenuCtx('event'); store.set('mk-active','ev-A'); tlSetState({'cut-1':{method:'sv',ready:false}}); })()`);
   expect(await page.evaluate(`(function(){ store.set('mk-active','ev-A'); return (tlState()['cut-1']||{}).method; })()`)).toBe('sv');
   expect(await page.evaluate(`(function(){ store.set('mk-active','ev-B'); return Object.keys(tlState()).length; })()`)).toBe(0);   // event B independent
 });
 
 test('R1: resetPlanTimers clears only the current event, not parallel events', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ var f=Date.now()+1e6;
     store.set('mk-timers', {'st-ev-A-cut-1-smoke':{end:f}, 'st-ev-B-cut-1-smoke':{end:f}});
     setMenuCtx('event'); store.set('mk-active','ev-A'); resetPlanTimers();
@@ -60,8 +55,7 @@ test('R1: resetPlanTimers clears only the current event, not parallel events', a
 });
 
 test('global alarm: an expired timer is detected + fired even without its screen open (parallel events)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`store.set('mk-timers', {'st-ev-A-cut-1-2':{end:Date.now()-500, name:'עישון חזה'}})`);   // already expired, unfired
   await page.evaluate(`if(typeof startTimerWatch==='function') startTimerWatch();`);
   await page.waitForFunction(`!!(store.get('mk-timers')['st-ev-A-cut-1-2']||{}).fired`, null, {timeout:15000});

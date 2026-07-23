@@ -1,12 +1,11 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 1b — keyboard operability + ARIA.
 //  a11y #1: cards, home paths and wizard chips are focusable + Enter/Space activates them.
 //  a11y #4: toggle-like controls expose aria-pressed reflecting their .on state.
 
 test('a11y #1: catalog cards are keyboard-operable (tabindex/role + Enter opens the panel)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.click('[data-cnav="catalog"]');
   await page.fill('#q', 'בקר');
   await page.waitForSelector('#grid .card');
@@ -20,8 +19,7 @@ test('a11y #1: catalog cards are keyboard-operable (tabindex/role + Enter opens 
 });
 
 test('a11y #1: home paths become focusable and Enter enters the wizard', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   const path = page.locator('.cpath[data-cgo="wizard"]');
   await expect(path).toHaveAttribute('tabindex', '0');   // added by the a11y observer
   await expect(path).toHaveAttribute('role', 'button');
@@ -31,8 +29,7 @@ test('a11y #1: home paths become focusable and Enter enters the wizard', async (
 });
 
 test('a11y #3: timers are labeled, announce completion via role=alert, and beep for real', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   const html = await page.evaluate(`timerHTML(90)`) as string;
   expect(html).toContain('role="timer"');
   expect(html).toContain('aria-label="הפעל טיימר"');
@@ -49,8 +46,7 @@ test('a11y #3: timers are labeled, announce completion via role=alert, and beep 
 });
 
 test('a11y #4: wizard appetite chips expose a live aria-pressed state', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ if(typeof setMenuCtx==='function') setMenuCtx('event'); cwGo(0); cNavGo('wizard'); })()`);
   await page.waitForSelector('[data-app]');
   // every appetite chip carries aria-pressed; exactly the selected one is "true"

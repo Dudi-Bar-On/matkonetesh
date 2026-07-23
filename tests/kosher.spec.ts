@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Correct kashrut classification across every item type (species/recipe-based).
 const EXPECT: Record<string, string[]> = {
@@ -17,7 +17,7 @@ const EXPECT: Record<string, string[]> = {
 };
 
 test('kosher classification is correct across every item type', async ({ page }) => {
-  await page.goto('/index.html');
+  await seedApp(page);
   const keys = Object.values(EXPECT).flat();
   const got = await page.evaluate(
     `(function(){var ks=${JSON.stringify(keys)},o={};ks.forEach(function(k){o[k]=kosherStatus(k);});return o;})()`
@@ -31,8 +31,7 @@ test('kosher classification is correct across every item type', async ({ page })
 });
 
 test('kosher filter excludes shellfish everywhere (catalog + wizard)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   // wizard picker with kosher on must contain NO shellfish or pork
   await page.click('[data-cnav="wizard"]');
   await page.evaluate(`cwGo(1)`);

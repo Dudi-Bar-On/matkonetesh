@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 0 — Safety & Security hotfix regression tests.
 // (1) The cure calculator must expose a cure TYPE ('1'/'2') + a real cureRate, so the
@@ -7,8 +7,7 @@ import { test, expect } from './_fixtures';
 // (2) esc() must neutralize HTML so AI/user text cannot inject markup (XSS → mk-gemkey exfiltration).
 
 async function getMakes(page: any) {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   return await page.evaluate(`DATA.makes`) as Record<string, any>;
 }
 
@@ -52,8 +51,7 @@ test('cure calc: the dried warning text is gated on cure type 2 (renders for a d
 });
 
 test('esc(): neutralizes HTML so AI output cannot inject an executing element', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   const out = await page.evaluate(`esc('<img src=x onerror=alert>')`) as string;
   expect(out).toBe('&lt;img src=x onerror=alert&gt;');
   expect(out).not.toContain('<');
@@ -65,8 +63,7 @@ test('esc(): neutralizes HTML so AI output cannot inject an executing element', 
 });
 
 test('esc(): a malicious AI answer rendered into the DOM stays inert (no live <img>)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   // Simulate the exact interpolation the Ask/voice/diagnose paths use: esc(text).replace newlines.
   const hasLiveImg = await page.evaluate(`(function(){
     var payload='<img src=x onerror="window.__xss=1">';

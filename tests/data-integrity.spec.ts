@@ -1,9 +1,8 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Pull the app's DATA once per test (top-level `const DATA` is reachable by bare name).
 async function getData(page: any) {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   return await page.evaluate(`({cuts: DATA.cuts, specials: DATA.specials, makes: DATA.makes})`);
 }
 
@@ -74,8 +73,7 @@ test('MAKES cure safety: dry/fermented sausages carry a valid nitrite cure TYPE 
 });
 
 test('taxonomy: every item category is wired into CAT_GROUPS (no orphans like מעורב)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   const { grouped, cats, cut16 } = await page.evaluate(`(function(){
     var g=new Set(); CAT_GROUPS.forEach(function(gr){ gr.cats.forEach(function(c){ g.add(c); }); });
     var cats=new Set();

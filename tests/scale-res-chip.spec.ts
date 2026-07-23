@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // scale_res ships on 67 cured recipes (54 makes + 13 specials) as a dosing-precision
 // recommendation but had no consumer: equipSpecNote() never read it, and openMake/openSpec
@@ -7,12 +7,7 @@ import { test, expect } from './_fixtures';
 // where scale_res is absent (a plain cut).
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') });
   await page.waitForFunction(`typeof openMake==='function' && typeof openSpec==='function' && typeof openCut==='function' && typeof equipSectionHtml==='function'`);
 };
 

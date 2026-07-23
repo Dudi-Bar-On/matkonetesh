@@ -1,10 +1,9 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 2a — foundations (perf + PWA/offline).
 
 test('perf #2: DATA still loads fully via JSON.parse (single-quote wrapping is intact)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   const c = await page.evaluate(`({cuts:DATA.cuts.length, specials:DATA.specials.length, makes:Object.keys(DATA.makes).length, seasonings:DATA.seasonings.length})`) as any;
   expect(c.cuts).toBe(130);
   expect(c.specials).toBe(47);
@@ -15,8 +14,7 @@ test('perf #2: DATA still loads fully via JSON.parse (single-quote wrapping is i
 });
 
 test('PWA: service worker + _headers are emitted, and theme-color tracks the active theme', async ({ page, request }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 
   const tc = () => page.evaluate(`document.querySelector('meta[name="theme-color"]').getAttribute('content')`) as Promise<string>;
   expect((await tc()).toLowerCase()).toBe('#fdf6ec');           // cream base (was stale #16110d)

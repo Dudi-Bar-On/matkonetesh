@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // S2 (refactoring report §2): occupancyCompat.setpoint = max(temps) among items sharing a cooker. It is
 // advisory / display-only. If a future scheduler ever wrote it back onto a stage's `temp`, it would raise
@@ -7,14 +7,12 @@ import { test, expect } from './_fixtures';
 // by temporarily injecting `s.temp = setpoint` into cookerContention — see the commit notes.)
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id: 'sm1', cat: 'smoker', type: 'ארון / קבינט', name: 'ארון', cap: { racks: 4, areaCm2: 6000 } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id: 'sm1', cat: 'smoker', type: 'ארון / קבינט', name: 'ארון', cap: { racks: 4, areaCm2: 6000 } }]),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof occupancyCompat==='function' && typeof cookerContention==='function'`);
 };
 

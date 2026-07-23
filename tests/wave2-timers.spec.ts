@@ -1,16 +1,12 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Work-plan + voice-cook countdown timers (user-requested addition during Wave 2).
 
 test('work-plan: timed stages get a real countdown timer', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
-    } catch {}
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }),
   });
-  await page.goto('/index.html');
   await page.evaluate(`openTimeline()`);
   await page.waitForSelector('#tlList .tlcard');
   const timers = await page.evaluate(`document.querySelectorAll('#tlList .tl-stage .timer').length`);
@@ -21,8 +17,7 @@ test('work-plan: timed stages get a real countdown timer', async ({ page }) => {
 });
 
 test('voice-cook: a prominent timer appears with a next task and is wired for spoken alerts', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   // two tasks 1h apart -> the current task's timer counts down to the next
   await page.evaluate(`(function(){ var now=Date.now(); openVoiceCook([
     {t:new Date(now+60000), label:'עשן את החזה', kind:'smoke'},
@@ -37,14 +32,10 @@ test('voice-cook: a prominent timer appears with a next task and is wired for sp
 });
 
 test('work-plan PLAN view (תוכנית עבודה) also shows countdown timers', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
-    } catch {}
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }),
   });
-  await page.goto('/index.html');
   await page.evaluate(`openTimeline()`);
   await page.waitForSelector('#tlList [data-tlview="plan"]');
   await page.click('[data-tlview="plan"]');                    // switch to the plan (work-plan) view
@@ -54,14 +45,10 @@ test('work-plan PLAN view (תוכנית עבודה) also shows countdown timers'
 });
 
 async function openPlan(page: any) {
-  await page.addInitScript(() => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
-    } catch {}
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }),
   });
-  await page.goto('/index.html');
   await page.evaluate(`openTimeline()`);
   await page.waitForSelector('#tlList [data-tlview="plan"]');
   await page.click('[data-tlview="plan"]');
@@ -95,8 +82,7 @@ test('all 3 plan shapes (vertical/accordion/horizontal) render timers', async ({
 });
 
 test('voice-cook shows a "running now" strip for parallel timers, tappable to jump', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ var now=Date.now();
     store.set('mk-timers', { 'st-a-0':{end:now+3600000}, 'st-b-0':{end:now+1800000} });   // two timers running
     openVoiceCook([
@@ -111,15 +97,11 @@ test('voice-cook shows a "running now" strip for parallel timers, tappable to ju
 });
 
 test('start plan: timers are gated until "התחל תוכנית" is pressed', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
-      localStorage.setItem('mk-tlserve', JSON.stringify('23:59'));   // far enough that the plan is feasible mid-day
-    } catch {}
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }),
+    'mk-tlserve': JSON.stringify('23:59'),   // far enough that the plan is feasible mid-day
   });
-  await page.goto('/index.html');
   await page.evaluate(`openTimeline()`);
   await page.waitForSelector('#planStartRow .plan-startbtn');
   expect(await page.evaluate(`document.getElementById('tlList').classList.contains('plan-idle')`)).toBe(true);   // timers disabled
@@ -129,16 +111,12 @@ test('start plan: timers are gated until "התחל תוכנית" is pressed', as
 });
 
 test('feasibility: strict mode warns + blocks starting when the plan cannot finish by serve time', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
-      localStorage.setItem('mk-tlserve', JSON.stringify('00:01'));   // serve already in the past -> plan is behind
-      localStorage.setItem('mk-plan-strict', JSON.stringify(true));
-    } catch {}
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }),
+    'mk-tlserve': JSON.stringify('00:01'),   // serve already in the past -> plan is behind
+    'mk-plan-strict': 'true',
   });
-  await page.goto('/index.html');
   await page.evaluate(`openTimeline()`);
   await page.waitForSelector('#planStartRow .plan-startbtn');
   expect(await page.evaluate(`!!document.querySelector('#planStartRow .plan-warn')`)).toBe(true);            // warning shown
@@ -146,14 +124,10 @@ test('feasibility: strict mode warns + blocks starting when the plan cannot fini
 });
 
 test('work-plan shows a live "time until serving" bar with a progress fill', async ({ page }) => {
-  await page.addInitScript(() => {
-    try {
-      localStorage.clear();
-      localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-      localStorage.setItem('mk-menu', JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }));
-    } catch {}
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['cut-1'], sides: [], drinks: [], desserts: [], gpm: 0 }),
   });
-  await page.goto('/index.html');
   await page.evaluate(`openTimeline()`);
   await page.waitForSelector('#tlList .tlcard');
   const bar = await page.evaluate(`(function(){ var b=document.getElementById('serveBar');
@@ -166,8 +140,7 @@ test('work-plan shows a live "time until serving" bar with a progress fill', asy
 });
 
 test('timers persist: a running voice-cook timer survives a re-render (was: reset on return)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ var now=Date.now(); openVoiceCook([
     {t:new Date(now+60000), label:'עשן', kind:'smoke'},
     {t:new Date(now+3660000), label:'עטוף', kind:'smoke'}

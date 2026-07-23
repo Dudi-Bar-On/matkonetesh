@@ -1,9 +1,8 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // "Active now" hub — one place for ongoing/long-term timers + a way back to an active plan/cook/project.
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   // gate on the app being genuinely ready, not merely on one symbol existing: under full-suite contention
   // the gap between "openActive is defined" and "boot finished" widens, and calling into a half-booted app
   // left the panel unopened until the 30s timeout.
@@ -50,9 +49,10 @@ test('active hub: the home cooking banner opens it', async ({ page }) => {
 });
 
 test('active hub: a plan-timer jump opens the timeline focused on that item', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1','make-1']}}])); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-events': JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1','make-1']}}]),
+  });
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline('st-ev-a-cut-1-smoke'); })()`);
   await page.waitForSelector('#tlList .tlcard');
@@ -66,9 +66,10 @@ test('active hub: a plan-timer jump opens the timeline focused on that item', as
 });
 
 test('events: tapping an event opens its work-plan; the ✏️ Edit button opens the wizard', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1']}}])); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-events': JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1']}}]),
+  });
   await page.evaluate(`cNavGo('events')`);
   await page.waitForSelector('.cevcard .cev-name');
   await page.click('.cevcard .cev-name');   // tap the event body
@@ -82,9 +83,11 @@ test('events: tapping an event opens its work-plan; the ✏️ Edit button opens
 });
 
 test('active hub: a timer with a stale Hebrew name shows a localized name (derived from its key)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1']}}])); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-events': JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1']}}]),
+  });
   await page.waitForFunction(`typeof openActive==='function'`);
   await page.evaluate(`(function(){ store.set('mk-timers',{ 'st-ev-a-cut-1-smoke':{end:Date.now()+3600000,name:'עישון 105° · בריסקט'} }); openActive(); })()`);
   await page.waitForSelector('#panel.open .active-row[data-ajump]');
@@ -94,10 +97,11 @@ test('active hub: a timer with a stale Hebrew name shows a localized name (deriv
 });
 
 test('active hub: timer focus works in the WORK-PLAN view too (exact timer element)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-tlview', JSON.stringify('plan'));   // chronological work-plan view
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','make-1']}}])); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-tlview': JSON.stringify('plan'),   // chronological work-plan view
+    'mk-events': JSON.stringify([{id:'ev-a',name:'BBQ',serve:'19:00',menu:{guests:8,keys:['cut-1','make-1']}}]),
+  });
   await page.waitForFunction(`typeof openActive==='function'`);
   await page.evaluate(`(function(){ store.set('mk-timers',{ 'st-ev-a-cut-1-smoke':{end:Date.now()+3600000,name:'x'} }); openActive(); })()`);
   await page.waitForSelector('#panel.open .active-row[data-ajump]');
@@ -111,9 +115,11 @@ test('active hub: timer focus works in the WORK-PLAN view too (exact timer eleme
 });
 
 test('work-plan shows an event-identity banner (which event you are in)', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-events', JSON.stringify([{id:'ev-a',name:'Friday BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1']}}])); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-events': JSON.stringify([{id:'ev-a',name:'Friday BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1']}}]),
+  });
   await page.waitForFunction(`typeof openTimeline==='function'`);
   await page.evaluate(`(function(){ evLoad('ev-a'); openTimeline(); })()`);
   // wait for the banner AND its name content to be populated (the div can appear a beat before its <b> text)
@@ -122,8 +128,7 @@ test('work-plan shows an event-identity banner (which event you are in)', async 
 });
 
 test('floating Active-now shortcut: shows while cooking, opens the hub, hides with panels / when idle', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof syncActiveFab==='function'`);
   // idle → hidden (property AND actually not painted — the [hidden] attr must beat the class's display:flex)
   expect(await page.evaluate(`document.querySelector('#cActiveFab').hidden`)).toBe(true);

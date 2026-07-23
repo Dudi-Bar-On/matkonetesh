@@ -1,16 +1,12 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 test.beforeEach(async ({ page }) => {
-  await page.addInitScript(() => {
-    try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {}
-  });
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 });
 
 // #1: the sv<->smoke order effect must be driven by CITED data (order_smokesv), not a formula,
 // and the reverse (smoke->sv) order must only be offered for items that carry that cited data.
 test('order-effect engine: reverse order gated on cited data and uses cited temps', async ({ page }) => {
-  await page.goto('/index.html');
-
   // Brisket (cut-1) carries cited order_smokesv (cold smoke 75°C). Reverse order offered; cold-smoke = 75°.
   const brisket = await page.evaluate(`(function(){
     var meta=resolveItem('cut-1');
@@ -34,7 +30,6 @@ test('order-effect engine: reverse order gated on cited data and uses cited temp
 
 // Visible UI: the reverse order + its safety warning render in the timeline for a cited item.
 test('order-effect UI: brisket offers reverse order with the pasteurization safety warning', async ({ page }) => {
-  await page.goto('/index.html');
   await page.evaluate(`(function(){
     saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-1'],sides:[],drinks:[],desserts:[],gpm:0});
     store.set('mk-tlserve','19:00');

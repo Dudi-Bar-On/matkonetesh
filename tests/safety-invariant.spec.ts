@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // SAFETY (audit): "no move may shorten a cook, alter a temp, or touch a bcheck" was enforced only by TESTS.
 // Nothing in production checked it, so any future edit to equipPlan / placement / a repair rung could break
@@ -6,12 +6,7 @@ import { test, expect } from './_fixtures';
 // a runtime invariant: the plan layer verifies its own output and refuses a transformation that violates it.
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') });
   await page.waitForFunction(`typeof safetyDiff==='function'`);
 };
 
@@ -63,16 +58,14 @@ test('V6: moving a stage in TIME is allowed — that is the whole point of place
 });
 
 test('V7: the real plan passes its own invariant after equipPlan + placement', async ({ page }) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{ racks:1, areaCm2:1700 } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-    localStorage.setItem('mk-menu', JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1','cut-7'], sides:[], drinks:[], desserts:[], gpm:0 }));
-    localStorage.setItem('mk-tlserve', JSON.stringify('19:00'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{ racks:1, areaCm2:1700 } }]),
+    'mk-equip-set': 'true',
+    'mk-menu': JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1','cut-7'], sides:[], drinks:[], desserts:[], gpm:0 }),
+    'mk-tlserve': JSON.stringify('19:00'),
+  });
   await page.waitForFunction(`typeof openTimeline==='function' && typeof safetyDiff==='function'`);
   await page.evaluate(`openTimeline()`);
   await page.locator('#panel').waitFor({ state: 'visible' });

@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Food-safety guard: warn when the computed cure (Cure #1, nitrite) dose is too small for the
 // configured scale's readability to weigh accurately. Under-dosing risks botulism; the app's
@@ -10,12 +10,7 @@ import { test, expect } from './_fixtures';
 // 2.5 g/kg, so dose = grams-of-meat * 2.5 / 1000 — exactly the doses the brief specifies.
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') });
   await page.waitForFunction(`typeof openCalc==='function' && typeof equipList==='function'`);
 };
 

@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Phase 4a: the backward walk (start = serve - Σ durations) is the app's entire scheduler. It was
 // implemented TWICE — buildList (Date arithmetic, unguarded s.hours) and combinedEventsRows (ms
@@ -6,12 +6,7 @@ import { test, expect } from './_fixtures';
 // and records latestFinish/slack, which a real placer (4b) needs. No time may change.
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') });
   await page.waitForFunction(`typeof planSchedule==='function'`);
 };
 
@@ -81,16 +76,14 @@ test('P4: it is pure — it does not mutate the stages passed in, and repeats id
 // The real regression fence: the shipped renderer must produce exactly the times planSchedule computes.
 // If buildList kept its own copy of the walk, this drifts — which is the defect Phase 4a removes.
 test('P5: the work-plan renderer produces exactly the times planSchedule computes', async ({ page }) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{ racks:4, areaCm2:6000 } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-    localStorage.setItem('mk-menu', JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1','cut-7'], sides:[], drinks:[], desserts:[], gpm:0 }));
-    localStorage.setItem('mk-tlserve', JSON.stringify('19:00'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{ racks:4, areaCm2:6000 } }]),
+    'mk-equip-set': 'true',
+    'mk-menu': JSON.stringify({ guests:8, appetite:'reg', kosher:false, keys:['cut-1','cut-7'], sides:[], drinks:[], desserts:[], gpm:0 }),
+    'mk-tlserve': JSON.stringify('19:00'),
+  });
   await page.waitForFunction(`typeof openTimeline==='function' && typeof planSchedule==='function'`);
   await page.evaluate(`openTimeline()`);
   await page.locator('#panel').waitFor({ state: 'visible' });

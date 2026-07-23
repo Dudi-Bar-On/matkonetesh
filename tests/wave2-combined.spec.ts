@@ -1,10 +1,9 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Combined multi-event timeline: every event's item-start actions merged onto one color-coded schedule.
 
 test('combined timeline merges all events\' starts, sorted by time, color-coded per event', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.evaluate(`(function(){ var now=Date.now();
     store.set('mk-events', [
       {id:'ev-A', name:'חתונה', serve:'19:00', menu:{keys:['cut-1'],guests:8}, updated:now},
@@ -31,12 +30,14 @@ test('combined timeline merges all events\' starts, sorted by time, color-coded 
 });
 
 test('multi-event hero: tapping a combined-timeline row opens that event, focused on the item', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-events', JSON.stringify([
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-events': JSON.stringify([
       {id:'ev-a',name:'Friday BBQ',serve:'19:00',date:'2026-07-20',menu:{guests:8,keys:['cut-1','cut-2']}},
       {id:'ev-b',name:'Sat Wedding',serve:'18:00',date:'2026-07-21',menu:{guests:20,keys:['cut-3','cut-4']}}
-    ])); } catch {} });
-  await page.goto('/index.html');
+    ]),
+  });
   await page.waitForFunction(`typeof cNavGo==='function'`);
   await page.evaluate(`cNavGo('events')`);
   await page.waitForSelector('#cEvBody .cet-hero .cet-row[data-cetgo]');

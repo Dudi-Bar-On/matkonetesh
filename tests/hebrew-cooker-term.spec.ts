@@ -1,18 +1,16 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Owner complaint #2: "all the devices including sous vide have title ovens". תנור means OVEN specifically
 // and is also the app's oven CATEGORY name, so using it as the generic word for a smoker / grill / bath is
 // simply wrong. The generic term is מכשיר. This fences the regression.
 
 test('H1: the occupancy view of a SOUS-VIDE bath never calls it an oven', async ({ page }) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-    localStorage.setItem('mk-equipment', JSON.stringify([{ id:'s1', cat:'sousvide', type:'טבילה (immersion)', name:'אמבט', cap:{ baths:[12] } }]));
-    localStorage.setItem('mk-equip-set', JSON.stringify(true));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([{ id:'s1', cat:'sousvide', type:'טבילה (immersion)', name:'אמבט', cap:{ baths:[12] } }]),
+    'mk-equip-set': 'true',
+  });
   await page.waitForFunction(`typeof occupancyViewHtml==='function' && typeof deviceOccupancy==='function'`);
   const r = await page.evaluate(`(function(){
     var t0=Date.parse('2026-07-24T06:00:00');
@@ -27,7 +25,7 @@ test('H1: the occupancy view of a SOUS-VIDE bath never calls it an oven', async 
 });
 
 test('H2: no user-facing string uses תנור as the generic word for a cooker', async ({ page }) => {
-  await page.goto('/index.html');
+  await seedApp(page);
   await page.waitForFunction(`typeof L==='function'`);
   // the phrases that used to say "oven" when they meant "any cooker"
   const generic = await page.evaluate(`(function(){
@@ -43,7 +41,7 @@ test('H2: no user-facing string uses תנור as the generic word for a cooker',
 });
 
 test('H3: the oven CATEGORY itself is still called תנור — the word is correct there', async ({ page }) => {
-  await page.goto('/index.html');
+  await seedApp(page);
   await page.waitForFunction(`Array.isArray(EQUIP_CATS)`);
   const he = await page.evaluate(`(EQUIP_CATS.find(function(c){return c.cat==='oven';})||{}).he`) as string;
   expect(he).toBe('תנור');   // an oven really is an oven; only the GENERIC use was wrong
