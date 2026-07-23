@@ -4207,9 +4207,8 @@ const GEM_HOST='https://generativelanguage.googleapis.com/v1beta/models/';
 // role → { id, kind, tier, think, caps }. A migration or a new model is a DATA edit here, not code
 // (decision 1: build-time config-as-data, no runtime Worker override; decision 2: no `textStrong` row until a feature needs it).
 const GEM_MODELS = {
-  // 'text' still points at gemini-2.5-flash (NUMERIC thinking knob) until the migration flips it (Task 7).
-  text: { id:'gemini-2.5-flash', kind:'text', tier:'fast',
-          think:{ knob:'budget' },                 // 2.5/3.5 numeric budget; values from THINK_BUDGET (added by the thinking layer, Task 2)
+  text: { id:'gemini-3.6-flash', kind:'text', tier:'fast',
+          think:{ knob:'level', levels:['minimal','low','medium','high'] },   // Gemini 3.x enum; 'minimal' = 0 thinking tokens
           caps:{ search:true, jsonMode:true, jsonModeExcludesSearch:true } },
   tts:  { id:'gemini-2.5-flash-preview-tts', kind:'audio', tier:'tts', voiceDefault:'Kore',
           think:{ knob:'none' },                   // audio model — no thinking field is ever emitted

@@ -19,11 +19,26 @@ test('registry: gemId/gemModel resolve roles to concrete ids and default unknown
     ttsKind: gemModel('tts').kind,
     unknownId: gemId('nope'),
   })`) as any;
-  expect(r.textId).toBe('gemini-2.5-flash');
+  expect(r.textId).toBe('gemini-3.6-flash');
   expect(r.ttsId).toBe('gemini-2.5-flash-preview-tts');
   expect(r.textKind).toBe('text');
   expect(r.ttsKind).toBe('audio');
-  expect(r.unknownId).toBe('gemini-2.5-flash');   // unknown role falls back to the text row
+  expect(r.unknownId).toBe('gemini-3.6-flash');   // unknown role falls back to the text row
+});
+
+test('migration(text): text resolves to gemini-3.6-flash and emits the thinkingLevel enum (never thinkingBudget)', async ({ page }) => {
+  await init(page);
+  const r = await page.evaluate(`({
+    id: gemId('text'),
+    minimal: gemThink('text','minimal'),
+    high: gemThink('text','high'),
+    gen: gemGen('text', {temperature:0.8, maxOutputTokens:1600}, {think:'low'}),
+  })`) as any;
+  expect(r.id).toBe('gemini-3.6-flash');
+  expect(r.minimal).toEqual({ thinkingLevel: 'minimal' });   // 3.x enum — 0 thinking tokens on short calls
+  expect(r.high).toEqual({ thinkingLevel: 'high' });
+  expect(r.gen).toEqual({ temperature:0.8, maxOutputTokens:1600, thinkingConfig:{ thinkingLevel:'low' } });
+  expect(r.gen.thinkingConfig.thinkingBudget).toBeUndefined();   // never the knob 3.6 rejects
 });
 
 test('thinking: numeric-knob translation, no-knob returns nothing, unknown level floors to minimal', async ({ page }) => {
@@ -153,12 +168,12 @@ test('wiring: text sites emit role text + their AI_THINK level; TTS emits audio 
     };
   })()`) as any;
   expect(r.roles).toEqual(['text','tts']);                       // every caller went out as a ROLE, not a literal id
-  // order: askGemini, aiDiagnose, aiPlanEvent, aiJSON — on 2.5-flash the knob is the NUMERIC budget
+  // order: askGemini, aiDiagnose, aiPlanEvent, aiJSON — on 3.6-flash the knob is the thinkingLevel ENUM
   expect(r.textThinking).toEqual([
-    { thinkingBudget: 512 },    // ask = low
-    { thinkingBudget: 8192 },   // diagnose = high
-    { thinkingBudget: 2048 },   // eventPlan = medium
-    { thinkingBudget: 0 },      // aiJSON default = minimal
+    { thinkingLevel: 'low' },      // ask
+    { thinkingLevel: 'high' },     // diagnose
+    { thinkingLevel: 'medium' },   // eventPlan
+    { thinkingLevel: 'minimal' },  // aiJSON default
   ]);
   expect(r.ttsGen.responseModalities).toEqual(['AUDIO']);        // audio modality
   expect(r.ttsGen.thinkingConfig).toBeUndefined();               // TTS carries no thinking field
