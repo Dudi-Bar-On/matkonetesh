@@ -13,16 +13,26 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,   // surface flakes as failures — never retry them away (a flake is a bug to fix)
-  // Measured reliable ceiling against the clustered in-memory serve.js. As the suite grew (308→324 tests)
-  // 8 workers began an occasional short run (a burst of client-side page.goto timeouts under contention,
-  // ~2.5min instead of 1.8), so it was lowered to 6: 324/324 across repeated runs at ~145s. Re-measure and
-  // adjust if the suite grows substantially again. Reliability over the last ~40s — a flake is a bug, not
-  // something to average out. (16 = the CPU/2 default is much faster but clearly non-deterministic here.)
-  workers: 6,
+  // Measured reliable ceiling against the clustered in-memory serve.js.
+  // Re-measured 2026-07-23 at 419 tests (previous measurement was taken at 324, then lowered to 6):
+  //   6 workers  -> 3/3 clean, ~175s (175/176/174)
+  //   8 workers  -> 3/3 clean, ~139s (143/142/133)
+  //   10 workers -> 3/3 clean, ~110s (116/107/108)   <- chosen
+  // 10 was both the fastest and as reliable as 6 and 8 on this measurement — the earlier flakiness at
+  // 8 workers (recorded below at 324 tests) did not reproduce at any of the three candidates this time.
+  // Reliability over speed: retries is 0, so a count that fails 1 run in 3 surfaces as a red suite.
+  // Re-measure again if the suite grows substantially.
+  // Prior note (2026-07-21, 308→324 tests): 8 workers began an occasional short run (a burst of
+  // client-side page.goto timeouts under contention, ~2.5min instead of 1.8), so it was lowered to 6.
+  // (16 = the CPU/2 default is much faster but was clearly non-deterministic at that time.)
+  workers: 10,
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    trace: 'on-first-retry',
+    // retries is 0 (see above), so 'on-first-retry' never fires — a zero-retry suite never gets a
+    // second attempt to trace. 'retain-on-failure' captures a trace on the first (only) failure, which
+    // is what the CI workflow's "Upload traces on failure" step actually needs to have something to upload.
+    trace: 'retain-on-failure',
     // The app links Google Fonts externally; page.goto waits for 'load', so a slow/throttled
     // fonts.googleapis.com (many parallel test requests) stalls navigation to the 30s timeout.
     // Fonts are progressive enhancement — make them fail fast so 'load' fires promptly.
