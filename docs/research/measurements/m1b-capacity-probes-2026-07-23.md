@@ -79,3 +79,89 @@ Campaign total: 69 failed test-instances across 4 of 7 runs — by spec file: `a
 1.1m, median 1.3m, max 2.6m.
 
 **§11a verdict line:** 12 workers: 4/8 clean total (incl. the Phase B probe).
+
+---
+
+## Phase C RERUN — 12-worker campaign with disturbance monitoring (2026-07-24)
+
+**Why:** the owner was unsure whether the campaign above was disturbed by other activity. This rerun
+repeats the identical protocol — 7 serialized `npx playwright test --workers=12` runs (env
+`MK_TEST_PORT=8123`), config untouched (`workers: 8`), each foreground to completion, none killed, none
+re-run-to-green (failures banked as data) — and adds two things the first campaign did not have: a
+disturbance gate checked immediately before every run, and a per-run grep-based proof that
+`tests/warm-fixture.spec.ts`'s 5 contract tests actually ran green (the activation evidence for the
+warm-page architecture). No modification to the shipped architecture — measurement only.
+
+**Baseline census** (once, before Run 1, 5 s process-CPU-delta sample): total CPU **8.27%**. No listener
+on 8123 or 8124. No `serve.js`/`playwright test` orphans. Two node processes matched the orphan-check
+regex on "playwright" — both are the **`@playwright/mcp` CLI** (PIDs 33248, 39600), the Playwright MCP
+plugin server backing this session's own tool access, not a suite leftover; both persisted unchanged at
+0.00% CPU through every single gate and teardown check for the rest of the campaign. Other processes
+>1%-or-name-matching at baseline: `NavigraphSimlink` (2.93%) and `ElgatoAudioControlServer` (2.91%) —
+unrelated desktop apps; ~60 `chrome.exe` PIDs, all ≤0.51% (the user's real desktop browser — none were
+`chrome-headless-shell.exe`, confirming no suite browser was running); 5 `python`/`python3.10` processes
+(≤0.09%); `ollama`/`ollama app` (0.00%, idle); assorted `node`/`node20` at 0.00% (other MCP-server/tooling
+children, tsserver-class residents). All noted as expected residents, none actionable.
+
+**Disturbance gate, all 7 runs:** every pre-run gate passed on the first check — no run ever needed the
+2-minute wait window, none ever came close to the 10% halt-line. Total CPU immediately before each run:
+8.2%, 8.83%, 9.51%, 8.3%, 9.61%, 8.28%, 12.1% (Runs 1–7 respectively) — all well under the 20% threshold,
+and no node/chrome/python/ollama process beyond the two ambient MCP processes ever read >5% CPU at any
+gate. **One disturbance was actually observed**, at the Run 6 teardown check (not a pre-run gate — no
+gate ever failed): a single 1 s sample read **16.29%** total CPU, driven by a transient burst of desktop
+activity — `ElgatoAudioControlServer` (3.30%), a newly-active `StreamDeck` process (3.15%),
+`NavigraphSimlink` (3.01%), and two `chrome.exe` PIDs (2.67%, 1.75%) — none of it test infrastructure (no
+`chrome-headless-shell.exe`, no new serve.js/playwright process, port 8123/8124 still refused
+connections). It had cleared by the Run 7 pre-gate ~13 s later (12.1%, no process >5% beyond the same
+ambient apps at baseline-comparable levels) and never required a wait or a halt.
+
+**Per-run table:**
+
+| Run | Start–End (UTC) | Raw result | Failing spec(s) | Warm-proof | Disturbance gate | Teardown |
+|---|---|---|---|---|---|---|
+| 1 | 23:05:30.521–23:07:48.331 | `426 passed (2.3m)` — **12 failed**, exit 1 | active-hub.spec.ts (9), adaptive-home.spec.ts (3) | 5/5 green | PASS (8.2%) | OK — refuses, 0 orphans (9.86%) |
+| 2 | 23:08:28.993–23:09:33.695 | `438 passed (1.1m)`, exit 0 | — | 5/5 green | PASS (8.83%) | OK — refuses, 0 orphans (9.37%) |
+| 3 | 23:10:08.451–23:11:23.858 | `438 passed (1.2m)`, exit 0 | — | 5/5 green | PASS (9.51%) | OK — refuses, 0 orphans (10%) |
+| 4 | 23:11:52.893–23:13:56.584 | `426 passed (2.0m)` — **12 failed**, exit 1 | active-hub.spec.ts (9), adaptive-home.spec.ts (3) | 5/5 green | PASS (8.3%) | OK — refuses, 0 orphans (9.94%) |
+| 5 | 23:14:26.114–23:15:50.799 | `428 passed (1.4m)` — **10 failed**, exit 1 | active-hub.spec.ts (6), adaptive-home.spec.ts (4) | 5/5 green | PASS (9.61%) | OK — refuses, 0 orphans (8.64%) |
+| 6 | 23:16:20.694–23:20:08.420 | `414 passed (3.8m)` — **24 failed**, exit 1 | active-hub.spec.ts (5), adaptive-home.spec.ts (13), ai-model-registry.spec.ts (6) | 5/5 green | PASS (8.28%) | OK — refuses, 0 orphans (16.29%\*) |
+| 7 | 23:21:11.021–23:24:21.426 | `405 passed (3.2m)` — **29 failed**, exit 1 | ai-trust.spec.ts (12), data-integrity.spec.ts (6), equip-chooser.spec.ts (2), thermal-ceiling.spec.ts (2), timeline-enhancements.spec.ts (2), wave-a-alarm-banner.spec.ts (3), wave0-safety.spec.ts (1), **warm-fixture.spec.ts (1)** | **FAILED** — test A timed out; B–E skipped (serial mode) → 0/5 confirmed | PASS (12.1%) | OK — refuses, 0 orphans (8.12%) |
+
+\* Run 6's teardown reading — see the disturbance paragraph above: transient desktop-app activity, not
+test infrastructure, under the 20% gate threshold throughout.
+
+**Failing specs, all runs combined:** 87 failed test-instances across 5 of 7 runs — by spec file:
+`active-hub.spec.ts` 29 (9+9+6+5), `adaptive-home.spec.ts` 23 (3+3+4+13), `ai-model-registry.spec.ts` 6,
+`ai-trust.spec.ts` 12, `data-integrity.spec.ts` 6, `equip-chooser.spec.ts` 2, `thermal-ceiling.spec.ts` 2,
+`timeline-enhancements.spec.ts` 2, `wave-a-alarm-banner.spec.ts` 3, `wave0-safety.spec.ts` 1,
+`warm-fixture.spec.ts` 1.
+
+**Root error signature — two call-sites within the same warm-page nav-timeout family, both under
+`tests/_fixtures.ts`:**
+- Runs 1, 5, 6, 7: `TimeoutError: page.reload: Timeout 15000ms exceeded` at `_fixtures.ts:165`
+  (`seedApp`'s `page.reload({waitUntil:'domcontentloaded'})` — the standard per-test reset nearly every
+  spec calls). Runs 1 and 6 additionally logged `_fixtures.ts:122` (`warmContext.clearCookies()` inside
+  the `warm` fixture's between-test teardown) plus "Tearing down 'warm' exceeded the test timeout of
+  30000ms" (Run 1 ×9, Run 6 ×18, Run 7 ×7) — a teardown-phase timeout stacked on top of the setup-phase
+  one.
+- Run 4: `TimeoutError: page.orig: Timeout 15000ms exceeded` at `_fixtures.ts:50`/`:56` (the `dclGoto`
+  `page.goto` override) — the exact signature the FIRST campaign's Runs 3/4/6 hit.
+
+**Warm-preload activation proof, per run:** Runs 1, 2, 3, 4, 5, 6 — all confirmed **5/5 green**
+(`__mkWarmServed` reuse counter ≥2, the `addInitScript` trap throws, storage isolation holds between A and
+B, the default `page` IS the warm page). **Run 7 is the one exception**: the contract spec's own first
+test (`A: seeds its own state...`) hit the identical `_fixtures.ts:165` nav-timeout that hit the
+production specs in the other failing runs, so tests B–E never ran (`test.describe.configure({mode:
+'serial'})`). Read plainly: in 6/7 runs the warm-page mechanism's own proof held; in 1/7 the proof-test
+was itself caught by the same contention failure being measured, so that run's activation was NOT
+independently confirmed.
+
+**Tally:** 2/7 clean this rerun (Runs 2, 3). 5/7 failed (Runs 1, 4, 5, 6, 7) — 87 failed test-instances
+total. Wall time (stopwatch, start-to-end): min 64.7s (Run 2), median 123.7s (Run 4), max 227.7s (Run 6).
+
+**Comparison to the first Phase C campaign:** first campaign — 3/7 clean (Runs 1, 5, 7), 69 failed
+test-instances across 4 failing runs. This rerun — 2/7 clean (Runs 2, 3), 87 failed test-instances across
+5 failing runs. Disturbance monitoring on this rerun: every one of the 7 pre-run gates passed (max
+reading 12.1% total CPU against a 20% threshold), no gate ever required the 2-minute wait, and the single
+anomaly recorded (Run 6 teardown, 16.29%) was transient desktop-app activity, not test infrastructure, and
+had cleared by the next gate. No recommendation is made here — the worker-count decision is the owner's.
