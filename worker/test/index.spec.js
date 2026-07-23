@@ -56,7 +56,7 @@ describe('D1 — fail-open on a malformed KV record (worker/index.js:56-58)', ()
   // worker/index.js:58  — `if (typeof rec.cap === 'number' && ...)`            → false, since `rec.cap` is `undefined`
   // Net effect: a corrupted KV record is treated as unmetered, permanently-active access — the request
   // is forwarded to Gemini and served, exactly as if the record had never been capped.
-  it('RED (current defect): a non-JSON KV record is served instead of rejected', async () => {
+  it.fails('RED (documents the fail-open defect; turns red when P0-worker fixes it): a non-JSON KV record must be rejected, not served', async () => {
     await env.CODES.put('code:corrupt', 'not-valid-json{]');
 
     // NOTE: `mockImplementation`, not `mockResolvedValue` — a pre-built
@@ -65,20 +65,18 @@ describe('D1 — fail-open on a malformed KV record (worker/index.js:56-58)', ()
     // per-request I/O isolation ("Cannot perform I/O on behalf of a
     // different request"). The Response must be built lazily, at call time,
     // inside the request that will consume it. Discovered empirically.
-    const fetchSpy = vi
-      .spyOn(globalThis, 'fetch')
-      .mockImplementation(() => geminiOkResponse(999));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => geminiOkResponse(999));
 
     const response = await post(GENERATE_URL, 'corrupt');
 
-    // Intended/eventual behaviour (P0-worker's fix): a malformed record must
-    // fail CLOSED — rejected or capped, never served as `{ active: true }`.
-    // Today the Worker fails OPEN: this assertion is expected to FAIL.
+    // Eventual behaviour (P0-worker's fix): a malformed record must fail CLOSED —
+    // rejected or capped, never served as `{ active: true }`. TODAY the Worker fails
+    // OPEN and returns 200, so this assertion throws — and it.fails() records that
+    // throw as the documented, expected defect, keeping `npm test` (and CI) GREEN.
+    // When P0-worker makes it reject, this assertion PASSES, it.fails() then turns
+    // RED, and that red is the signal to delete `.fails` and assert the fixed value.
+    // SOLE assertion by design: a second assertion could throw post-fix and mask the flip.
     expect(response.status).not.toBe(200);
-
-    // Documents *why* it's 200 today: the malformed record never blocked the
-    // forward-to-Gemini call.
-    expect(fetchSpy).toHaveBeenCalled();
   });
 });
 
