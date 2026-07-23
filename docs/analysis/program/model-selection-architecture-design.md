@@ -319,9 +319,10 @@ future-proofing has two halves:
 1. **Payload quirks → the registry** (above).
 2. **"Is this id real and does a real call succeed?" → a preflight**, run before shipping a model change: hit the
    developer API's **ListModels** to confirm the id exists, then fire **one real call per role** against the
-   candidate and assert a 200 + non-empty body. This is the natural job of the eval harness already designed in
-   this same folder (`docs/analysis/program/PRE-4-eval-harness-design.md`) — the model-migration preflight should
-   be a mode of it (§7 decision 5).
+   candidate and assert a 200 with the response its `kind` requires — a non-empty `text` for text roles, a
+   non-empty `inlineData` audio part for the `tts` role. This is the natural job of the eval harness already
+   designed in this same folder (`docs/analysis/program/PRE-4-eval-harness-design.md`) — the model-migration
+   preflight should be a mode of it (§7 decision 5), and it must cover **every** role, TTS included.
 
 ### Fallback chain (try model A, fall back to B)?
 
@@ -387,24 +388,31 @@ string — while a **new** preflight test asserts the live id is reachable.
 ## 6. Recommended shape, in one picture
 
 ```
- feature code ──asks for a ROLE──▶  GEM_MODELS[role]         (data: id + caps + thinking rule)
-   gemFetch('text', body)                 │
-   gemGen('text', {temp,max})             ├─ gemId(role)  ─────────▶ concrete id  ─┐
-                                          └─ gemGen(role, gen) ▶ correct payload  ─┤
-                                                                                   ▼
+ feature code ──asks for a ROLE──▶  GEM_MODELS[role]     (data: id + kind + caps + thinking rule)
+                                          │
+   REQUEST builder (per kind):            ├─ gemId(role) ─────────────▶ concrete id ─┐
+     text  → gemGen(role, gen)            ├─ gemGen(role, gen) ───────▶ text payload │
+     audio → gemTtsGen(voice)            └─ gemTtsGen(voice) ────────▶ audio payload ┤
+                                                                                     ▼
                                                             gemFetch (UNCHANGED transport:
                                                             managed→BYOK→off, retry/backoff,
-                                                            resolves role→id at the top)
-                                                                                   │
-                                            ┌──────────────────────────────────────┤
-                                            ▼                                       ▼
-                                  BYOK: developer API                    Managed: Worker (verbatim
-                                  (build-time registry id)               forward; OPTIONAL Phase-2
-                                                                         role→id override in KV)
+                                                            resolves role→id; returns raw Response)
+                                                                                     │
+   RESPONSE reader (per kind, caller-selected):                                      │
+     kind:'text'  → gemReadText(json)  ◀──────────────── audio never reaches here ───┤
+     kind:'audio' → gemReadAudio(json) ◀── text never reaches here ──────────────────┘
+                                                                                     │
+                                            ┌────────────────────────────────────────┤
+                                            ▼                                        ▼
+                                  BYOK: developer API                     Managed: Worker (verbatim
+                                  (build-time registry id)                forward; OPTIONAL Phase-2
+                                                                          role→id override in KV)
 ```
 
-Everything new is **data + two small functions** (`gemGen`, role-resolution in `gemFetch`). The transport, the
-Worker, and the safety/grounding layers are untouched.
+Everything new is **data + four small functions** (`gemGen` + `gemTtsGen` on the request side, `gemReadText` +
+`gemReadAudio` on the response side, plus role-resolution in `gemFetch`). Text and audio share the registry and
+the transport but never share a payload builder or a response reader. The transport, the Worker, and the
+safety/grounding layers are untouched.
 
 ---
 
@@ -427,5 +435,11 @@ Worker, and the safety/grounding layers are untouched.
    **2026-10-16**. Approve making a **ListModels + one-real-call-per-role preflight** a mode of the existing eval
    harness (`PRE-4-eval-harness-design.md`) and running it to pick the id? This is the step that converts "flip a
    constant and hope" into "flip a row that a preflight proved."
+6. **The TTS migration is in scope of the same mechanism.** Confirm that TTS is a **first-class registry role**
+   (`kind:'audio'`, its own `gemTtsGen` builder and `gemReadAudio` reader, §2.1) so that moving
+   `gemini-2.5-flash-preview-tts` → the new *"3.1 tts"* id is the **same one-line config change** as the text
+   migration (§5), covered by the **same per-role preflight** (which for `tts` asserts a real audio part, not
+   text)? *(Recommended. The alternative — leaving the TTS id a buried literal at `app.js:5030` — repeats exactly
+   the single-hard-coded-model failure this design exists to remove, for a model the owner is about to migrate.)*
 
 *No source file was modified in producing this document.*
