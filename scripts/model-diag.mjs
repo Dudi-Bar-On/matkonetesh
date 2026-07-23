@@ -129,4 +129,79 @@ for (const model of MODELS) {
   }
 }
 
+// ---------------------------------------------------------------------------------------------------
+// 4) TTS MIGRATION PROBE — find & VERIFY the "3.1 tts" developer-API id (do not guess it).
+//    The app's real TTS call (app.js:5030) is reproduced exactly. Success is defined by what
+//    gemReadAudio (app.js:5034-5037) actually needs: HTTP 200 AND an inlineData part whose
+//    mimeType contains rate=NNN. Control = gemini-2.5-flash-preview-tts (today's model).
+// ---------------------------------------------------------------------------------------------------
+line('\n===== TTS · candidate model ids (ListModels, matching /tts/i | /3\\.1/ | /preview-tts/i) =====');
+const ttsIds = new Set();
+if (list.ok) {
+  try {
+    const models = JSON.parse(list.body).models || [];
+    for (const m of models) {
+      if (/tts/i.test(m.name) || /3\.1/.test(m.name) || /preview-tts/i.test(m.name)) {
+        const methods = (m.supportedGenerationMethods || []).join(',') || '(none advertised)';
+        const audio = /audio|tts|speech/i.test((m.description || '') + m.name) ? 'audio?' : '';
+        line(`  ${m.name.padEnd(42)} methods=[${methods}] ${audio}`);
+        if (/tts/i.test(m.name)) ttsIds.add(m.name.replace(/^models\//, ''));
+      }
+    }
+  } catch (e) { line('  parse failed: ' + e.message); }
+}
+// Always probe the control + the primary 3.1 candidate even if list ordering/paging hides them.
+const TTS_CONTROL = 'gemini-2.5-flash-preview-tts';
+ttsIds.add(TTS_CONTROL);
+ttsIds.add('gemini-3.1-flash-tts-preview');   // the visible 3.1 tts id — VERIFY, don't trust
+
+// The app's exact TTS payload (app.js:5030), voiceName parameterised.
+const ttsPayload = (voice) => ({
+  contents: [{ parts: [{ text: 'שלום, זו בדיקה' }] }],
+  generationConfig: { responseModalities: ['AUDIO'], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: voice } } } },
+});
+async function ttsProbe(model, voice) {
+  const r = await call(`models/${model}:generateContent`, ttsPayload(voice));
+  if (!r.ok) return { ok: false, status: r.status, err: r.body.replace(/\s+/g, ' ').slice(0, 300) };
+  try {
+    const j = JSON.parse(r.body);
+    const parts = (j.candidates && j.candidates[0] && j.candidates[0].content && j.candidates[0].content.parts) || [];
+    const part = parts.find(p => p.inlineData);
+    if (!part) return { ok: true, status: 200, hasAudio: false, note: '200 but NO inlineData; body: ' + r.body.replace(/\s+/g, ' ').slice(0, 200) };
+    const mime = part.inlineData.mimeType || '';
+    const rateMatch = mime.match(/rate=(\d+)/);
+    return { ok: true, status: 200, hasAudio: true, mime, rate: rateMatch ? rateMatch[1] : '(no rate= in mimeType!)', b64len: (part.inlineData.data || '').length };
+  } catch (e) { return { ok: true, status: 200, hasAudio: false, note: 'parse failed: ' + e.message }; }
+}
+
+line('\n===== TTS · POST the app payload (voiceName:"Kore") — control first, then candidates =====');
+const ordered = [TTS_CONTROL, ...[...ttsIds].filter(m => m !== TTS_CONTROL)];
+const ttsWinners = [];
+for (const model of ordered) {
+  const p = await ttsProbe(model, 'Kore');
+  if (p.ok && p.hasAudio) {
+    line(`  ${model.padEnd(42)} -> AUDIO OK  mimeType="${p.mime}"  rate=${p.rate}  b64len=${p.b64len}`);
+    if (model !== TTS_CONTROL) ttsWinners.push({ model, mime: p.mime, rate: p.rate });
+  } else if (p.ok) {
+    line(`  ${model.padEnd(42)} -> 200 but NO AUDIO — ${p.note}`);
+  } else {
+    line(`  ${model.padEnd(42)} -> FAIL ${p.status}`);
+    line(`      ${p.err}`);
+  }
+}
+
+// 4b) On each 3.x winner, check whether the voice-config shape / encoding differs from 2.5-preview-tts:
+//     re-probe with a DIFFERENT prebuilt voice to confirm prebuiltVoiceConfig is still honoured.
+if (ttsWinners.length) {
+  line('\n===== TTS · winner detail — alternate voice ("Puck") to confirm voice-config shape =====');
+  for (const w of ttsWinners) {
+    const p = await ttsProbe(w.model, 'Puck');
+    if (p.ok && p.hasAudio) line(`  ${w.model.padEnd(42)} voice=Puck -> AUDIO OK  mimeType="${p.mime}"  rate=${p.rate}`);
+    else if (p.ok) line(`  ${w.model.padEnd(42)} voice=Puck -> 200 but NO AUDIO — ${p.note}`);
+    else { line(`  ${w.model.padEnd(42)} voice=Puck -> FAIL ${p.status}`); line(`      ${p.err}`); }
+  }
+} else {
+  line('\n===== TTS · NO 3.x TTS id returned audio — the app must stay on gemini-2.5-flash-preview-tts =====');
+}
+
 line('\n===== done =====');
