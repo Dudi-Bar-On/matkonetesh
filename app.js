@@ -9541,7 +9541,8 @@ try{ let _tnTmo=null; const _mo=new MutationObserver(function(){ if(getLang()===
 try{ if(typeof requestPersist==='function') requestPersist(); }catch(e){}   // Wave C: ask for persistent storage so a live cook's data isn't evicted
 try{ document.addEventListener('pointerdown', function(){ if(typeof timerAudioPrime==='function') timerAudioPrime(); }, {once:true}); }catch(e){}   // R4: unlock audio on first gesture so timers restored after a reload still beep
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}
-/* T4: register the service worker in production (https only — the http test server skips it).
+/* T4: register the service worker wherever the context is secure — https in production, and
+   http://localhost under test (isSecureContext), so the update-delivery channel is testable.
    Prompts a refresh when a new build has been fetched and is waiting. */
 if('serviceWorker' in navigator && self.isSecureContext){   // was location.protocol==='https:' — isSecureContext is browser-computed, agrees with https on every real user session, and additionally covers trusted localhost so the update-delivery channel is testable (2026-07-23, owner §4 sign-off)
   window.addEventListener('load',function(){
