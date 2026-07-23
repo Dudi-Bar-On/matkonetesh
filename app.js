@@ -4437,7 +4437,7 @@ async function aiJSON(opts){
     // Gemini rejects responseMimeType:'application/json' together with the google_search tool (HTTP 400).
     // When grounding, omit JSON-mode and recover the JSON from the grounded text via aiStripFences
     // (AI_JSON_SYS already mandates "return ONLY valid JSON"). Non-search calls keep strict JSON mode.
-    const gen=gemGen('text', {temperature,maxOutputTokens:maxTokens}, {think});   // 'text' still resolves to 2.5-flash; minimal→thinkingBudget:0 (identical)
+    const gen=gemGen('text', {temperature,maxOutputTokens:maxTokens}, {think});   // 'text' resolves to gemini-3.6-flash; thinking translates to the thinkingLevel enum per the row's knob
     if(!search) gen.responseMimeType='application/json';
     return {
       system_instruction:{parts:[{text:AI_JSON_SYS}]},
