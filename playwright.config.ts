@@ -37,6 +37,13 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
+    // Navigation timeout — raised from Playwright's 30s default. The suite has 154 bare page.goto calls,
+    // all waiting for the full 'load' event. Under N-worker contention 'load' occasionally stretches past
+    // 30s even though the page HAS rendered (verified: DOM present, isolated reruns ~2.8s), producing an
+    // intermittent nav-timeout flake (2026-07-23, migration Task 3, active-hub.spec.ts). 60s gives the
+    // slow-but-successful contention loads room to finish while still catching a genuinely hung navigation.
+    // No happy-path cost: a fast load is unaffected; this is a ceiling, not a wait.
+    navigationTimeout: 60_000,
     // retries is 0 (see above), so 'on-first-retry' never fires — a zero-retry suite never gets a
     // second attempt to trace. 'retain-on-failure' captures a trace on the first (only) failure, which
     // is what the CI workflow's "Upload traces on failure" step actually needs to have something to upload.
