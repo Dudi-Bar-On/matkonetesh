@@ -463,3 +463,129 @@ harness internals) — private to this repo, excluded by the "never this project
 proxy blocks `ollama pull`/Hugging Face downloads the same way it blocks `uv`; Hebrew retrieval quality of
 BGE-M3/nomic-embed-v2-moe/multilingual-e5-large (no source found benchmarking Hebrew specifically);
 whether Playwright-automated Chromium can drive `webkitSpeechRecognition` against real audio at all.
+
+---
+
+## Proxy test result (2026-07-23)
+
+*Gating step for GPU local-model integration, plan #1/#3. Real install, real pull, real inference — not
+research-only. Environment: Windows 11, RTX 3090 24 GB (idle, baseline 3659 MiB / 1% util from an
+unrelated process), the same TLS-inspecting proxy noted above that broke `uv`'s cert validation until
+`UV_NATIVE_TLS=1` forced the Windows cert store.*
+
+### The open question, answered: **`ollama pull` is NOT blocked by the proxy.**
+
+No workaround was needed — no `HTTPS_PROXY` env var, no CA import, no `--native-tls`-equivalent flag.
+It worked out of the box.
+
+### 1. Install
+
+`winget install --id Ollama.Ollama -e` **partially failed on the first attempt** — but not for a reason
+related to the target task:
+
+```
+Failed when searching source: msstore
+0x8a15005e : The server certificate did not match any of the expected values.
+```
+
+This is the Microsoft Store metadata source (`msstore`) hitting the proxy's cert-inspection wall — the
+same class of failure `uv` hit. Winget still found the package via its own `winget` source in the same
+run and printed the disambiguation hint. Pinning the source resolved it with zero other changes:
+
+```
+winget install --id Ollama.Ollama -e --source winget --accept-package-agreements --accept-source-agreements
+```
+
+Result: `Found Ollama [Ollama.Ollama] Version 0.32.1` → downloaded
+`https://github.com/ollama/ollama/releases/download/v0.32.1/OllamaSetup.exe` → **`Successfully verified
+installer hash`** → `Successfully installed`. **The actual installer download, from GitHub releases over
+HTTPS, was not blocked** — only the unrelated `msstore` metadata source was. Installed to
+`C:\Users\dudib\AppData\Local\Programs\Ollama\ollama.exe`, version confirms as `0.32.1`.
+
+### 2. Service up
+
+`Invoke-WebRequest http://127.0.0.1:11434/api/tags` → `200 OK`, `{"models":[]}` — service was already
+running as a background process immediately after install, no manual start needed.
+
+### 3. THE KEY TEST — `ollama pull qwen2.5:0.5b`
+
+```
+ollama pull qwen2.5:0.5b
+```
+
+Result: **downloaded cleanly, exit code 0.** Full progress trace: `pulling manifest` → five layers
+(largest 397 MB) → `100%` each → `verifying sha256 digest` → `writing manifest` → `success`. **No
+TLS/cert/`UnknownIssuer` error at any point** — the exact failure mode `uv` hit against GitHub/PyPI did
+**not** reproduce against Ollama's model registry. `ollama list` afterward confirms:
+`qwen2.5:0.5b  a8b0c5157701  397 MB  <just pulled>`.
+
+**Why this differs from `uv`'s failure (technical read, not just an observation):** Go's `net/http` /
+`crypto/tls` stack — which both `winget`'s installer-fetch path and Ollama's own pull client are built
+on — calls into the OS certificate store (`crypto/x509.SystemCertPool`, backed by the Windows CryptoAPI/
+`crypt32`) by default on Windows. The proxy's inspection CA is evidently already trusted there (an org
+device-management enrollment, most likely). `uv` is written in Rust and by default validates against a
+bundled `webpki`/Mozilla CA list rather than the OS store, which is exactly why it needed
+`UV_NATIVE_TLS=1` to opt into the OS store and start trusting the proxy's CA. **Practical rule for this
+environment going forward: OS-cert-store-based HTTP clients (Go, most native Windows tooling) pass
+through this proxy silently; bundled-CA-list clients (Rust/rustls being the concrete case already hit)
+need an explicit native-TLS opt-in.** Ollama needed no such flag — it isn't Rust/rustls-based, so the
+question the task set out to answer resolves cleanly: no workaround required.
+
+### 4. GPU exercised — confirmed, not assumed
+
+`ollama run qwen2.5:0.5b "reply OK"` → replied `OK`, exit 0 (too fast on a 0.5B model to catch a
+utilization spike from a single sample — expected, not a red flag).
+
+Repeated with a longer prompt (500-word essay ask) while sampling `nvidia-smi` every 300 ms in parallel:
+
+```
+0 %, 4917 MiB
+0 %, 4917 MiB
+71 %, 4917 MiB
+71 %, 4917 MiB
+69 %, 4917 MiB
+58 %, 4917 MiB
+0 %, 4917 MiB
+...
+```
+
+GPU utilization spiked to **71% / 69% / 58%** during active generation, and VRAM rose from the idle
+baseline (3659 MiB) to **~4917–4953 MiB** — consistent with the model + KV cache resident in VRAM.
+`ollama ps` during the run confirms it definitively without needing to infer from utilization sampling
+alone:
+
+```
+NAME            ID              SIZE      PROCESSOR    CONTEXT    UNTIL
+qwen2.5:0.5b    a8b0c5157701    932 MB    100% GPU     32768      4 minutes from now
+```
+
+`PROCESSOR: 100% GPU` — zero CPU offload, the whole model resident on the RTX 3090. Nothing large was
+pulled: total download was 397 MB (`qwen2.5:0.5b`), no other model was fetched.
+
+### 5. graphify-local wiring — the exact config for a future task
+
+Confirmed still accurate against the installed Ollama (service verified live at the default address, so
+no `OLLAMA_HOST`/`OLLAMA_BASE_URL` override is needed — the defaults graphify already assumes match this
+machine's actual install):
+
+```bash
+export OLLAMA_BASE_URL=http://localhost:11434/v1
+export OLLAMA_API_KEY=ollama          # any non-empty value — Ollama itself ignores it
+export OLLAMA_MODEL=qwen2.5-coder:7b  # or qwen2.5-coder:14b / 32b once pulled — see model table above
+graphify extract . --backend ollama --mode deep --token-budget 16384
+```
+
+`--token-budget` is passed explicitly (not left at the 60k default) per §1a's VRAM-pressure warning — this
+matters more as the model scales up to 14B/32B-class than it does for the 0.5B model used in this test.
+`qwen2.5:0.5b` itself is **too small for real extraction quality** (it was chosen purely to prove the pull/
+GPU pipe cheaply and fast, per the task's "small + fast" instruction) — before running a real `--mode
+deep` extraction against this backend, pull `qwen2.5-coder:7b` (graphify's own coded-in default for the
+backend) or step up to `qwen2.5-coder:14b`/`32b` per the sizing table in §2 above.
+
+### Verdict
+
+**`ollama pull` behind this proxy: YES, works out of the box — no workaround needed.** GPU inference
+confirmed via `ollama ps` (`100% GPU`) and live `nvidia-smi` utilization sampling (71% peak) during
+generation. The gate is clear: nothing blocks proceeding to plan #1/#3 (pulling a real extraction-quality
+model and wiring `graphify extract --backend ollama` into the dev loop) whenever that becomes the active
+task.
