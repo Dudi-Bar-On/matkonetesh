@@ -25,7 +25,15 @@ export default defineConfig({
   // Prior note (2026-07-21, 308→324 tests): 8 workers began an occasional short run (a burst of
   // client-side page.goto timeouts under contention, ~2.5min instead of 1.8), so it was lowered to 6.
   // (16 = the CPU/2 default is much faster but was clearly non-deterministic at that time.)
-  workers: 10,
+  //
+  // CI CAVEAT (2026-07-23): the ceiling above was measured on THIS multi-core machine. GitHub's
+  // ubuntu-latest runner is 4-vCPU, where 10 over-subscribes ~2.5× and starves interaction handlers —
+  // equipment-walkthrough's #eqAddNew click timed out under that contention on CI run 29983060583
+  // (a genuine flake: the same test also fails on Node 20, and the test itself uses proper condition
+  // waits). §11a and the sequencing analysis both predicted the local ceiling would be wrong for the
+  // runner. So CI uses a conservative 2 (Playwright's 50%-of-cores default for 4 vCPU) — reliability
+  // over speed, since retries is 0. Local stays at the measured 10.
+  workers: process.env.CI ? 2 : 10,
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
