@@ -16,20 +16,17 @@ export default defineConfig({
   // Test-level timeout is the hard ceiling over EVERYTHING a test does, navigation included (Playwright default
   // 30s, made explicit here). navigationTimeout (use.navigationTimeout below) is deliberately kept UNDER this.
   timeout: 30_000,
-  // Worker count = fit the 8 PERFORMANCE cores. This machine is an i9-14900: 8 P-cores + 16 E-cores (24C/32T).
-  // Every test parses+executes the heavy ~2.2MB inlined app on navigation — P-core-bound work. Above ~8 the
-  // P-cores oversubscribe and the heaviest-init tests (active-hub / adaptive-home inject the MOST localStorage
-  // state → most app-init) get CPU-STARVED, so their `domcontentloaded` blows the 30s test timeout — a
-  // DETERMINISTIC 10-test failure (always the same specs). Root-caused 2026-07-23 via systematic-debugging.
-  // Measured that evening (WITH the domcontentloaded fixture in tests/_fixtures.ts + the de-clustered serve.js):
-  //   10 workers -> 10 FAILED (P-core oversubscription)
-  //    8 workers -> 433 passed, 2.5m, CLEAN   <- chosen (one per P-core: reliable AND fastest reliable count)
-  //    6 workers -> 433 passed, 3.1m, CLEAN
-  //   the same 10 failing specs pass 23/23 in ISOLATION (proof it is contention, not a bug).
-  // An earlier "10 = 3/3 clean" note here was WRONG — contaminated by orphaned zombie servers from
-  // kill-restart cycles + a broken /usr/bin/time measurement, and lucky low-load windows. Reliability over
-  // speed (retries:0). Re-measure ONLY on a clean/idle machine, single runs to completion, NEVER killing
-  // mid-run (§11a setup⟺teardown). CI stays 2 (GitHub ubuntu-latest is 4-vCPU; 10 over-subscribed ~2.5x there).
+  // Worker count: 8 — an INTERIM, last-known-clean setting, NOT a derived ceiling.
+  // HISTORY + CORRECTION (2026-07-23): an earlier comment here asserted a measured mechanism — ">8
+  // oversubscribes the 8 P-cores; 10 workers → the same 10 heavy-init specs fail deterministically".
+  // That evidence came from a CONTAMINATED session (the debugging loop's own respawning zombie servers
+  // + a broken /usr/bin/time probe — discipline L18/L20) and did NOT reproduce on a verified-idle
+  // machine: the instrumented M1 rerun (--workers=10 under the per-LP CPU sampler) was CLEAN, with
+  // P-cores far from saturated (P-utility mean ≈69%, median ≈55%) and the E-cores the hotter class
+  // (≈84%). See development-discipline.md §11 L21 (rewritten, numbers inlined) and the M0/M1/M1b
+  // artifacts under docs/research/measurements/ (gitignored raw data). 8 therefore stays ONLY until the
+  // CPU-max programme's phase B/C re-derives the ceiling from the M-series curve on clean evidence —
+  // that change is the owner's call, made there, not here. CI stays 2 (GitHub ubuntu-latest is 4-vCPU).
   workers: process.env.CI ? 2 : 8,
   reporter: [['list']],
   use: {

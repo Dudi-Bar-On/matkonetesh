@@ -386,7 +386,7 @@ a reasoning model applied where it adds nothing is cost with no evidence.** Skip
 **How to run the suite:** `npx playwright test` — nothing else. The config is authoritative.
 
 - **Server:** `serve.js` is a **clustered, in-memory** static server — one worker per core (capped 12) sharing the port, every `dist/` file served from a Buffer (zero per-request disk I/O), large listen backlog. This replaced a single-process server that re-read the 2.4 MB `index.html` from disk on every request and stalled under concurrent load. Playwright starts and tears down this server itself (`webServer.command`); **do not** run `serve.js` by hand for a test run.
-- **Concurrency:** `workers: process.env.CI ? 2 : 8`, pinned in `playwright.config.ts` (**the config's comment is authoritative — this doc drifts; read the config**). **Fit the 8 P-cores.** This machine is an i9-14900 (8 P-cores + 16 E-cores, 24C/32T); every test parses+runs the ~2.2MB inlined app on navigation (P-core-bound work), so **above ~8 workers the P-cores oversubscribe** and the heaviest-init specs (active-hub/adaptive-home inject the most localStorage state) starve → their `domcontentloaded` blows the 30s test timeout (a *deterministic* ~10-test failure, always the same specs). Root-caused 2026-07-23 (systematic-debugging): **10 → 10 FAILED**; **8 → 433 clean ~2.3–2.5m (chosen)**; 6 → 433 clean ~3.1m; the failing specs pass **23/23 in ISOLATION** (proof it's contention, not a bug). A prior "6/8/10 all clean, 10 chosen" note here was WRONG — contaminated by orphaned zombie servers + a broken `/usr/bin/time` measurement + lucky low-load windows. Reliability over speed (retries:0). Re-measure ONLY on a clean/idle machine, single runs to completion, never killing mid-run.
+- **Concurrency:** `workers: process.env.CI ? 2 : 8`, pinned in `playwright.config.ts` (**the config's comment is authoritative — this doc drifts; read the config**). **Fit the 8 P-cores.** This machine is an i9-14900 (8 P-cores + 16 E-cores, 24C/32T); every test parses+runs the ~2.2MB inlined app on navigation (P-core-bound work), so **above ~8 workers the P-cores oversubscribe** and the heaviest-init specs (active-hub/adaptive-home inject the most localStorage state) starve → their `domcontentloaded` blows the 30s test timeout (a *deterministic* ~10-test failure, always the same specs). Root-caused 2026-07-23 (systematic-debugging): **10 → 10 FAILED**; **8 → 433 clean ~2.3–2.5m (chosen)**; 6 → 433 clean ~3.1m; the failing specs pass **23/23 in ISOLATION** (proof it's contention, not a bug). A prior "6/8/10 all clean, 10 chosen" note here was WRONG — contaminated by orphaned zombie servers + a broken `/usr/bin/time` measurement + lucky low-load windows. Reliability over speed (retries:0). Re-measure ONLY on a clean/idle machine, single runs to completion, never killing mid-run. **Superseded 2026-07-23 (late): the "10 → 10 FAILED / P-core oversubscription" mechanism in this bullet was contaminated-machine evidence — see L21 (rewritten) and the config comment, which are authoritative.**
 - **Run the suite SERIALIZED — never under competing CPU load.** A single run at the measured ceiling still flakes (`ERR_ABORTED` on navigation) if **other heavy subagents/processes** run at the same time — the 10-worker local ceiling assumes an otherwise-idle machine. This extends "never run two suite runs concurrently": during a suite run, pause other CPU-heavy background agents. (2026-07-23: a migration task's suite flaked 10/425 mid-run under parallel-subagent load; 3× clean once the machine was idle.)
 - **Retries:** `retries: 0`. A flake must surface as a failure and be fixed, never retried away.
 - **Navigation timeout: `navigationTimeout: 15_000`** — kept BELOW the test-level `timeout` (30s). A value ABOVE it (the old 60s) was **dead config**: the test timeout is the hard ceiling over navigation too, so it fires first — raising `navigationTimeout` above it does nothing (this cost a mis-diagnosis on 2026-07-23; "raise the ceiling" was wrong). The REAL nav-strategy fix is **`tests/_fixtures.ts`**: every `page.goto` now defaults to `waitUntil:'domcontentloaded'` instead of `'load'` (the app is interactive at DCL; `'load'` only waited on fonts/icons/manifest). **But DCL alone is not the cure** — the deeper driver is P-core oversubscription (see Concurrency): even DCL starves the heavy-init specs under too many workers. On a right-sized (8-worker) run a correct nav is ~ms, so 15s is pure diagnostic headroom.
@@ -501,13 +501,31 @@ evening: (a) a "clean screen" wrapped runs in `/usr/bin/time`, which **does not 
 shows something surprising, first prove the probe ran the workload — non-trivial duration, processes
 actually spawned, server actually responding — before reasoning from it.
 
-**L21 · On a hybrid CPU, worker count ≠ logical cores — fit the P-cores (2026-07-23).** The i9-14900 is
-8 P-cores + 16 E-cores (32 threads). Each test's navigation parses+executes the ~2.4 MB inlined app —
-P-core-bound. At `workers:10` the P-cores oversubscribe and the heaviest-init specs starve past the test
-timeout **deterministically** (same specs every run; 23/23 green in isolation = the contention signature).
-`workers:8` measured clean (2.3–2.5 m). **Interim, not final** — the owner's standing goal is to maximize
-the machine (warm pre-loaded instances, E-core scheduling; research R3/R4), and closing that question is
-the owner's call, not the assistant's (see the fight-for-the-goal memory).
+**L21 · A worker ceiling measured on a contaminated machine is not a ceiling — and it cost us a wrong
+"hardware truth" (2026-07-23; corrected the same day).** The original entry here asserted a mechanism:
+above 8 workers the P-cores oversubscribe and the heaviest-init specs deterministically starve past the
+30s timeout ("10 → 10 FAILED, always the same specs"). Re-measured under instrumentation on a
+verified-idle machine, that story did NOT reproduce: **M1** (`npx playwright test --workers=10` wrapped
+by the per-LP CPU sampler) ran **clean — no failure cluster** — with the P-cores far from saturated
+(P-class `% Processor Utility` mean ≈69 / median ≈55; E-class mean ≈84 — the E-cores were the HOTTER
+class) against an 8-worker **M0** baseline of P ≈56/36, E ≈72/70. The **M1b** worker-count curve
+confirms it: 12 workers → 433 passed, 1.6 m; 16 workers → 16 FAILED (417 passed), 1.7 m — a single-run,
+non-monotonic blip that did not repeat and was not captured to spec-level detail; 20 workers → 433
+passed, 1.0 m, the fastest AND cleanest point on the whole curve. These were single, un-sampled probes
+(not §11a's 6–9× reliability campaign), so they establish *capacity and non-monotonicity*, not a new
+pin — but they confirm nothing breaks deterministically anywhere near 10. Raw artifacts (mostly
+gitignored working data — which is why the numbers above are inlined here):
+`docs/research/measurements/cpu-sampler-m0-baseline-8w-2026-07-23T22-11-00.summary.json`,
+`cpu-sampler-m1-10-workers-2026-07-23T22-14-31.summary.json`,
+`census-m1-census-midrun-2026-07-23T22-15-17.csv`. The M1b curve itself is banked as a tracked note (not
+gitignored), `docs/research/measurements/m1b-capacity-probes-2026-07-23.md`. The original "evidence" was
+taken on a machine polluted by the same debugging session's own respawning zombie servers and a broken
+`/usr/bin/time` probe (L18/L20) — a contaminated experiment produced a confident, specific, WRONG
+mechanism, and it survived here precisely because it sounded like hardware truth. Lessons kept:
+(a) a worker-ceiling measurement is only as good as the proven cleanliness of the machine under it —
+verify idle (0 orphan `node`/`serve.js`, ports released) BEFORE the runs, and sample §11a's 6–9×, never
+3; (b) `workers: 8` stays for now as the last known-clean setting — re-deriving the real ceiling from
+the M-series curve is the CPU-max programme's **phase B/C decision (the owner's)**, not a drive-by edit.
 
 **Adopted wins (2026-07-23) — patterns that worked, keep using them:** (1) **Baseline-first migration +
 a real preflight**: the eval baseline caught gemini-3.6's api-400 in minutes (v259→v260), and the
