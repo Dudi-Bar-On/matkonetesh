@@ -165,3 +165,67 @@ test-instances across 4 failing runs. This rerun — 2/7 clean (Runs 2, 3), 87 f
 reading 12.1% total CPU against a 20% threshold), no gate ever required the 2-minute wait, and the single
 anomaly recorded (Run 6 teardown, 16.29%) was transient desktop-app activity, not test infrastructure, and
 had cleared by the next gate. No recommendation is made here — the worker-count decision is the owner's.
+
+---
+
+## Certification campaign — 8 workers, config default (2026-07-24)
+
+**What:** 5 serialized full-suite runs at the config's OWN default worker count — plain `npx playwright
+test` (env `MK_TEST_PORT=8123`, **no `--workers` override** — every prior probe in this document,
+including both Phase C campaigns, pinned a count on the command line; this campaign instead exercises
+`playwright.config.ts`'s own `workers: process.env.CI ? 2 : 8` line unmodified, at commit `bc421fa`).
+Identical protocol to the Phase C RERUN campaign above: a disturbance gate (5 s CPU-delta sample, port
+8123/8124 LISTEN check, node.exe serve.js/playwright-test orphan check, new-process check vs baseline)
+immediately before every run, and a per-run proof that `tests/warm-fixture.spec.ts`'s 5 contract tests
+ran green. Each run executed in the foreground to completion; none killed, none backgrounded, none
+re-run-to-green (failures banked as data per §11a/DoD-12).
+
+**Baseline census** (once, before Run 1, 5 s CPU-delta sample): total CPU **8.55%**. No listener on 8123
+or 8124. Two node.exe processes matched the orphan-check regex on "playwright" — both the **`@playwright/mcp`
+CLI** (PIDs 33248, 39600), the same PIDs seen in the Phase C RERUN campaign a few minutes earlier in the
+same session, confirmed expected residents (this session's own Playwright-MCP tool server, not a suite
+leftover); both persisted unchanged through every gate/teardown check for the whole campaign.
+tsserver/MCP-tooling `node`/`node20` children were present among the unlabeled 0.00%-CPU entries, also
+expected residents per the brief. No `chrome-headless-shell.exe`, no stray `python`/`serve.js`, at baseline.
+
+**Disturbance gate, all 5 runs:** every pre-run gate passed on the first check — none came close to the
+20% threshold. Total CPU immediately before each run: 7.91%, 8.88%, 8.02%, 7.5%, 8.89% (Runs 1–5
+respectively). No LISTEN on 8123/8124 at any gate; no orphan beyond the 2 known MCP PIDs at any gate; no
+new node/chrome/python process appeared vs. baseline at any gate. **No disturbance was observed at any
+point in this campaign** — every gate and every teardown read in the same 7.5%–13.1% ambient band as the
+baseline.
+
+**Per-run table:**
+
+| Run | Start–End (UTC) | Raw result | Failing spec(s) | Warm-proof | Gate (pre) | Teardown |
+|---|---|---|---|---|---|---|
+| 1 | 23:37:13.604–23:39:24.563 | `430 passed (2.2m)` — **8 failed**, exit 1 | active-hub.spec.ts (8) | 5/5 green | PASS (7.91%) | OK — refuses, 0 orphans (8.15%) |
+| 2 | 23:40:57.939–23:42:23.091 | `438 passed (1.4m)`, exit 0 | — | 5/5 green | PASS (8.88%) | OK — refuses, 0 orphans (9.73%) |
+| 3 | 23:43:10.494–23:46:02.023 | `422 passed (2.8m)` — **16 failed**, exit 1 | active-hub.spec.ts (8), cure-scale-guard.spec.ts (2), data-integrity.spec.ts (4), equip-chooser.spec.ts (2) | 5/5 green | PASS (8.02%) | OK — refuses, 0 orphans (8.26%) |
+| 4 | 23:46:41.710–23:48:06.790 | `438 passed (1.4m)`, exit 0 | — | 5/5 green | PASS (7.5%) | OK — refuses, 0 orphans (11.9%) |
+| 5 | 23:48:42.228–23:50:50.031 | `430 passed (2.1m)` — **8 failed**, exit 1 | active-hub.spec.ts (8) | 5/5 green | PASS (8.89%) | OK — refuses, 0 orphans (8.92%) |
+
+**Failing specs, all runs combined:** 32 failed test-instances across 3 of 5 runs — by spec file:
+`active-hub.spec.ts` 24 (8+8+8), `data-integrity.spec.ts` 4, `cure-scale-guard.spec.ts` 2,
+`equip-chooser.spec.ts` 2. All three failing runs' first 8 failures are the identical `active-hub.spec.ts`
+test set (lines 12/30/40/51/68/85/99/117, minus line 12 in Run 5 which substituted line 130 — see raw
+logs); Run 3 additionally failed 8 more tests across `cure-scale-guard.spec.ts`, `data-integrity.spec.ts`,
+and `equip-chooser.spec.ts`.
+
+**Root error signature (all 32 failures, same family as both Phase C campaigns above):**
+`TimeoutError: page.reload: Timeout 15000ms exceeded` at `tests/_fixtures.ts:165` (`seedApp`'s
+`page.reload({waitUntil:'domcontentloaded'})` — the standard per-test reset nearly every spec calls).
+
+**Warm-preload activation proof, per run:** all 5 runs confirmed **5/5 green**
+(`__mkWarmServed` reuse counter ≥2, the `addInitScript` trap throws, storage isolation holds between A and
+B, the default `page` IS the warm page) — including all 3 failing runs (1, 3, 5): the contract spec itself
+was never among the failing tests this campaign (contrast Phase C RERUN's Run 7, where it was).
+
+**Tally:** 2/5 clean this campaign (Runs 2, 4). 3/5 failed (Runs 1, 3, 5) — 32 failed test-instances
+total. Wall time (stopwatch, start-to-end): min 85.1s (Run 4), median 127.8s (Run 5), max 171.5s (Run 3).
+Playwright-reported wall time ranged 1.4m (Runs 2, 4) to 2.8m (Run 3).
+
+**§11a combined line:** 8 workers (warm arch): 4/7 clean total (this campaign + the 2 prior clean
+readings: flip run f145a8d 1.5m, Task-8 parity 1.5m).
+
+No recommendation is made here — the worker-count/final-config decision is the owner's.
