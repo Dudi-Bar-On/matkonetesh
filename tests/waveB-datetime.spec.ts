@@ -12,27 +12,27 @@ const init = async (page: any) => {
   await page.goto('/index.html');
 };
 
-test('serveDateTime: a serve time already passed today rolls to tomorrow (ad-hoc)', async ({ page }) => {
+test('serveDateTime: a serve time already passed today rolls to tomorrow (ad-hoc)', async ({ isolatedPage: page }) => {
   await init(page);
   await page.evaluate(`(function(){ setMenuCtx('cook'); store.set('mk-tlservedate-cook',null); store.set('mk-tlserve','00:01'); })()`);
   const r = await page.evaluate(`(function(){ return [isoDate(serveDateTime()), isoDate(new Date())]; })()`) as string[];
   expect(r[0]).not.toBe(r[1]);   // 00:01 already passed → rolls forward
 });
 
-test('serveDateTime: a serve time still ahead today stays today', async ({ page }) => {
+test('serveDateTime: a serve time still ahead today stays today', async ({ isolatedPage: page }) => {
   await init(page);
   await page.evaluate(`(function(){ setMenuCtx('cook'); store.set('mk-tlservedate-cook',null); store.set('mk-tlserve','23:59'); })()`);
   const r = await page.evaluate(`(function(){ return [isoDate(serveDateTime()), isoDate(new Date())]; })()`) as string[];
   expect(r[0]).toBe(r[1]);
 });
 
-test('serveDateTime: an explicit future date pins the serve day (no roll)', async ({ page }) => {
+test('serveDateTime: an explicit future date pins the serve day (no roll)', async ({ isolatedPage: page }) => {
   await init(page);
   await page.evaluate(`(function(){ setMenuCtx('cook'); store.set('mk-tlserve','19:00'); store.set('mk-tlservedate-cook','2026-12-25'); })()`);
   expect(await page.evaluate(`isoDate(serveDateTime())`)).toBe('2026-12-25');
 });
 
-test('serveDateTime: a stale past ad-hoc date is dropped (not pinned behind forever)', async ({ page }) => {
+test('serveDateTime: a stale past ad-hoc date is dropped (not pinned behind forever)', async ({ isolatedPage: page }) => {
   await init(page);
   await page.evaluate(`(function(){ setMenuCtx('cook'); store.set('mk-tlserve','19:00'); store.set('mk-tlservedate-cook','2020-01-01'); })()`);
   // Compare entirely page-side: the page clock is pinned (init), so a Node-side `new Date()` here would
@@ -41,13 +41,13 @@ test('serveDateTime: a stale past ad-hoc date is dropped (not pinned behind fore
   expect(ok).toBeTruthy();   // stale 2020 date dropped → fell back to today/tomorrow, not 2020
 });
 
-test('parseServeTime: an event schedules against its own calendar date', async ({ page }) => {
+test('parseServeTime: an event schedules against its own calendar date', async ({ isolatedPage: page }) => {
   await init(page);
   const iso = await page.evaluate(`isoDate(parseServeTime('19:00', {date:'2026-08-01'}))`);
   expect(iso).toBe('2026-08-01');
 });
 
-test('serveDayLabel / fmtServe: today is terse, tomorrow is tagged', async ({ page }) => {
+test('serveDayLabel / fmtServe: today is terse, tomorrow is tagged', async ({ isolatedPage: page }) => {
   await init(page);
   const today = await page.evaluate(`(function(){ var d=new Date(); d.setHours(19,0,0,0); return [serveDayLabel(d), fmtServe(d)]; })()`) as string[];
   expect(today[0]).toBe('היום');
@@ -57,7 +57,7 @@ test('serveDayLabel / fmtServe: today is terse, tomorrow is tagged', async ({ pa
   expect(tmr[1]).toContain('מחר');
 });
 
-test('serve bar shows the serve day for a next-day cook', async ({ page }) => {
+test('serve bar shows the serve day for a next-day cook', async ({ isolatedPage: page }) => {
   await init(page);
   await page.evaluate(`(function(){ setMenuCtx('cook'); store.set('mk-tlserve','19:00'); store.set('mk-tlservedate-cook', isoDate(new Date(Date.now()+86400000)));
     saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-1'],sides:[],drinks:[],desserts:[],gpm:0}); })()`);

@@ -9,13 +9,13 @@ import { test, expect } from './_fixtures';
 // context" ship). This spec never calls navigator.serviceWorker.register() itself — every assertion
 // below observes the APP'S OWN registration path (app.js:9544-9564) actually firing under test.
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ isolatedPage: page }) => {
   await page.addInitScript(() => {
     try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {}
   });
 });
 
-test('the app registers a service worker on http://localhost via its own gate, and it activates', async ({ page }) => {
+test('the app registers a service worker on http://localhost via its own gate, and it activates', async ({ isolatedPage: page }) => {
   await page.goto('/index.html');
 
   // mkSWReg (app.js:2360) is the app's own registration handle, assigned synchronously inside its OWN
@@ -45,7 +45,7 @@ test('the app registers a service worker on http://localhost via its own gate, a
   expect(cacheKeys.some((k) => /^mk-[0-9a-f]{8}$/.test(k))).toBe(true);
 });
 
-test('reg.update() (the v256 "reached the server but not the device" fix) fires on load and again when the tab becomes visible', async ({ page }) => {
+test('reg.update() (the v256 "reached the server but not the device" fix) fires on load and again when the tab becomes visible', async ({ isolatedPage: page }) => {
   // Spy on the real ServiceWorkerRegistration.prototype.update so the count reflects the app's own two
   // call sites (app.js:9557-9561) invoking the browser's real update mechanism — not a mock replacing it.
   await page.addInitScript(() => {

@@ -43,7 +43,7 @@ const RICH = [
 // ══════════════════════════════════════════════════════════════════════
 // EMPTY view — options (1) quick-chips, (2) add manually, (3) set-it-up-for-me
 // ══════════════════════════════════════════════════════════════════════
-test('EMPTY view: quick-add chips open the category form; no describe-in-words box (EN)', async ({ page }) => {
+test('EMPTY view: quick-add chips open the category form; no describe-in-words box (EN)', async ({ isolatedPage: page }) => {
   await boot(page, { lang: 'en' });
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel [data-eqpick="smoker"]');
@@ -65,7 +65,7 @@ test('EMPTY view: quick-add chips open the category form; no describe-in-words b
 // LIST view — options (4) header Add, (5) caps banner, (6) concierge,
 // (7) add-another, (8) edit, (9) remove, (10) device cards
 // ══════════════════════════════════════════════════════════════════════
-test('LIST view: header-add, caps banner, concierge, add-another, edit, remove, cards (EN)', async ({ page }) => {
+test('LIST view: header-add, caps banner, concierge, add-another, edit, remove, cards (EN)', async ({ isolatedPage: page }) => {
   await boot(page, { lang: 'en', gear: RICH });
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel .eq-dev');
@@ -134,7 +134,7 @@ test('LIST view: header-add, caps banner, concierge, add-another, edit, remove, 
 // FORM (manual, no key) — (11) category switch matrix, (12) manual add,
 // (13) custom sub-type, (17) Cancel, (18) Back
 // ══════════════════════════════════════════════════════════════════════
-test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (EN)', async ({ page }) => {
+test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (EN)', async ({ isolatedPage: page }) => {
   await boot(page, { lang: 'en' });
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel [data-eqpick="smoker"]');
@@ -210,7 +210,7 @@ test('FORM manual: category matrix, manual add, custom sub-type, cancel, back (E
 // ══════════════════════════════════════════════════════════════════════
 // FORM (AI, mock) — (14) lookup flow, (15) browse models, (16) Redo
 // ══════════════════════════════════════════════════════════════════════
-test('FORM AI (mock): lookup verify+save, browse catalogue, redo (EN)', async ({ page }) => {
+test('FORM AI (mock): lookup verify+save, browse catalogue, redo (EN)', async ({ isolatedPage: page }) => {
   await boot(page, { lang: 'en', key: 'k' });
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel [data-eqpick="smoker"]');
@@ -277,7 +277,7 @@ test('FORM AI (mock): lookup verify+save, browse catalogue, redo (EN)', async ({
 // ══════════════════════════════════════════════════════════════════════
 // (19) edit round-trip — change a field, Save, persisted and NOT duplicated
 // ══════════════════════════════════════════════════════════════════════
-test('EDIT round-trip: change persists, no duplicate (EN)', async ({ page }) => {
+test('EDIT round-trip: change persists, no duplicate (EN)', async ({ isolatedPage: page }) => {
   await boot(page, { lang: 'en', gear: [{ id: 'eqx', cat: 'smoker', type: 'פלטים', name: 'Old Name', fuel: 'pellet', cap: { racks: 1 }, specSource: 'manual', notes: '' }] });
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel [data-eqedit="eqx"]');
@@ -295,7 +295,7 @@ test('EDIT round-trip: change persists, no duplicate (EN)', async ({ page }) => 
 // ══════════════════════════════════════════════════════════════════════
 // (20) HEBREW / RTL — empty, list, form + verify card + catalogue
 // ══════════════════════════════════════════════════════════════════════
-test('HEBREW RTL: empty/list/form + verify + catalogue mirror (HE)', async ({ page }) => {
+test('HEBREW RTL: empty/list/form + verify + catalogue mirror (HE)', async ({ isolatedPage: page }) => {
   await boot(page, { lang: 'he', gear: RICH, key: 'k' });
   expect(await page.evaluate(`document.documentElement.dir`)).toBe('rtl');
 
@@ -340,7 +340,7 @@ test('HEBREW RTL: empty/list/form + verify + catalogue mirror (HE)', async ({ pa
 // ══════════════════════════════════════════════════════════════════════
 // THE CHALLENGE — "הנפח אביה 150" cabinet charcoal smoker, two ways
 // ══════════════════════════════════════════════════════════════════════
-test('אביה 150 (a) MANUAL: cabinet smoker, 5 racks, charcoal (HE)', async ({ page }) => {
+test('אביה 150 (a) MANUAL: cabinet smoker, 5 racks, charcoal (HE)', async ({ isolatedPage: page }) => {
   await boot(page, { lang: 'he' });
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel [data-eqpick="smoker"]');
@@ -369,7 +369,7 @@ test('אביה 150 (a) MANUAL: cabinet smoker, 5 racks, charcoal (HE)', async ({
   await card.screenshot({ path: SHOT + 'aviya150-card.png' });
 });
 
-test('אביה 150 (b) LOOKUP FLOW (mock): verify card fills, saved as ai (HE)', async ({ page }) => {
+test('אביה 150 (b) LOOKUP FLOW (mock): verify card fills, saved as ai (HE)', async ({ isolatedPage: page }) => {
   await boot(page, { lang: 'he', key: 'k' });
   await page.evaluate(`window.__aiMock={ subtype:'ארון / קבינט', fuel:'charcoal', racks:5, areaCm2:9000, note:'3mm walls · separate firebox · ~60kg / 5 removable shelves' };`);
   await page.evaluate(`openEquipment()`);
