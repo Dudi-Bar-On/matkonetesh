@@ -1,12 +1,11 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Behavioral seam tests for the AI model-selection registry (design:
 // docs/analysis/program/model-selection-architecture-design.md). Asserts the emitted
 // request URL/body and reader outputs, exactly like tests/wave3-ai-hardening.spec.ts — never internals.
 
 export const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.waitForFunction(`typeof gemId==='function'`);
 };
 

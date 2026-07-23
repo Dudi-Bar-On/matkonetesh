@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 5 — i18n core: per-language dictionaries, t(hebrew), dir/lang switch, non-destructive
 // translation (Hebrew restored on switch-back), host-locale seam, and a second language (French).
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('t(): Hebrew source by default, translation when a language is set', async ({ page }) => {

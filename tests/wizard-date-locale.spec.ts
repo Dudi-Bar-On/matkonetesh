@@ -1,4 +1,4 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // The event wizard's date field used type="date", whose dd/mm/yyyy hint is painted by the BROWSER's locale.
 // On an English-locale browser that put Latin text inside the otherwise-Hebrew wizard, and no page-level
@@ -6,12 +6,7 @@ import { test, expect } from './_fixtures';
 // date control only while picking (or when a date is already set).
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') });
   await page.waitForFunction(`typeof cStartNewEvent==='function' && typeof cwMenu==='function'`);
   await page.evaluate(`cStartNewEvent()`);
   await page.waitForSelector('#cwEvDate');

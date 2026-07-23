@@ -1,10 +1,9 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave E6 (data-safety): switching events must never lose unsaved work, and must be explicit.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('E6: switching to an event from an unsaved draft snapshots it with a restore-undo', async ({ page }) => {

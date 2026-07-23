@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 5 — item descriptions are pre-translated (lang/en.data.json) so they render in English
 // OFFLINE (no AI key), via hydrateMT's dict-first path; MT is only the fallback.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('a pre-translated description renders in English with no AI key', async ({ page }) => {

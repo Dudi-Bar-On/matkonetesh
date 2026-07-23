@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 5 — the dictionary translator (tnode): exact, emoji-prefixed, and interpolated chrome; plus
 // itemName() swapping to the item's English name in English mode.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 const tn = (page: any, text: string) => page.evaluate(`(function(){ const d=document.createElement('div'); d.textContent=${JSON.stringify(text)}; tnode(d); return d.textContent; })()`);

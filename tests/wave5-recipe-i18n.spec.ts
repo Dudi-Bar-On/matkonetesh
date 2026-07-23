@@ -1,12 +1,11 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 5 — the recipe engine renders cooking steps in native English OFFLINE (no AI key),
 // via generation-time i18n (L()), and a language switch regenerates the open panel. Numbers
 // in the steps must survive the translation unchanged.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
   await page.waitForFunction(`typeof openCut==='function' && typeof setLang==='function'`);
 };
 

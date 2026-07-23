@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 5 — data-MT hydration: [data-mt] recipe prose is async-translated into the active language
 // behind the numeric guard (via showPanel's hook). No-op in Hebrew; safe fallback without an AI key.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('data-MT: hydrateMT translates [data-mt] prose in English mode (behind the guard)', async ({ page }) => {

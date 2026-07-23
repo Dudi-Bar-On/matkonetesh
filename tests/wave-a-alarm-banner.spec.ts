@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // In-app alarm banner — a ringing (fired) timer is visible and stoppable from any screen, not only
 // from its own timer's panel.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('a fired timer surfaces an in-app alarm banner with a Stop button', async ({ page }) => {
@@ -34,8 +33,10 @@ test('the banner names the owning event and lists multiple ringing timers with S
 });
 
 test('reopening the app while a timer is ringing shows the banner on boot', async ({ page }) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); localStorage.setItem('mk-timers', JSON.stringify({'st-cook-cut-1-smoke':{end:Date.now()-1000, name:'סו-ויד צלעות', fired:1}})); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-timers': JSON.stringify({ 'st-cook-cut-1-smoke': { end: Date.now() - 1000, name: 'סו-ויד צלעות', fired: 1 } }),
+  });
   await page.waitForSelector('#mkAlarm');
   expect(await page.evaluate(`document.querySelector('#mkAlarm .mka-name').textContent`)).toContain('סו-ויד צלעות');
 });

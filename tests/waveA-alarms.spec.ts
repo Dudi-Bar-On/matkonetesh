@@ -1,14 +1,13 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave A — background-resilient alarms: wake-lock keeps the page alive, alarms route through the
 // SW registration (so they show on mobile), and a fired timer vibrates + re-pulses until acknowledged.
 
 const init = async (page: any, stubVibrate = false) => {
-  await page.addInitScript((stub: boolean) => {
-    if (stub) { try { Object.defineProperty(navigator, 'vibrate', { value: (p: any) => { (window as any).__vib = ((window as any).__vib || []).concat([p]); return true; }, configurable: true }); } catch {} }
-    try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {}
-  }, stubVibrate);
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  if (stubVibrate) await page.evaluate(() => {
+    try { Object.defineProperty(navigator, 'vibrate', { value: (p: any) => { (window as any).__vib = ((window as any).__vib || []).concat([p]); return true; }, configurable: true }); } catch {}
+  });
 };
 
 test('anyTimerActive / anyTimerRinging reflect timer state', async ({ page }) => {

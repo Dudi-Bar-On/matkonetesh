@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 5 — T1 numeric-invariant guard: machine translation of recipe prose is accepted only if it
 // preserves every number; a number-mangling translation is rejected to the safe Hebrew source.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('T1 guard: mtSafe requires an exact number multiset match', async ({ page }) => {

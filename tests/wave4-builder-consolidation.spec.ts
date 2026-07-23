@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 4 UX #3 — one builder: the guided wizard. The legacy openMenu panel is retired as an entry
 // point, its preset quick-starts moved into the wizard picker, and the in-wizard jump button removed.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('UX #3: openBuilder routes the "build menu" entry into the wizard picker step', async ({ page }) => {

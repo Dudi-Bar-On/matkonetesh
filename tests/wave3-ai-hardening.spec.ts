@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 3 (original roadmap) — AI hardening: centralized transport (key-in-header, timeout, retry,
 // endpoint seam) + a numeric-invariant safety guard over AI prose.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('transport: gemFetch sends the API key in a header, never in the URL', async ({ page }) => {

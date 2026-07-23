@@ -1,16 +1,11 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // aiValidateKeys / aiValidateItems / aiValidateSeasonings are the allow-list filters that stop a
 // model inventing a recipe or a seasoning. Before 2026-07-22 no spec referenced any of them.
 // They are pure functions over a valid set, so they are tested directly via page.evaluate.
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('he'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') });
   await page.waitForFunction(
     `typeof aiValidateKeys==='function' && typeof aiValidateItems==='function' && typeof aiValidateSeasonings==='function'`
   );

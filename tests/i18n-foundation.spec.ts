@@ -1,8 +1,7 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 const boot = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-lang', JSON.stringify('en')); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-lang': JSON.stringify('en') });
   await page.waitForFunction(`typeof L==='function' && typeof aiJSON==='function' && typeof setLang==='function' && typeof I18N_DICTS==='object'`);
 };
 

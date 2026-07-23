@@ -1,11 +1,10 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave E (pro multi-event): per-event cart scope, event-named alarms, combined view reads each
 // event's real method, and single-smoker equipment-contention flags.
 
 const init = async (page: any) => {
-  await page.addInitScript(() => { try { localStorage.clear(); localStorage.setItem('mk-uilevel-asked', JSON.stringify(true)); } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
 };
 
 test('E1: the cart "bought" ticks + menu quantities are scoped per event (no cross-event leak)', async ({ page }) => {

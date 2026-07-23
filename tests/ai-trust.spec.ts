@@ -1,16 +1,14 @@
-import { test, expect } from './_fixtures';
+import { test, expect, seedApp } from './_fixtures';
 
 // Wave 1 — AI trust & infra foundation.
 // gemFetch is intercepted to capture the outgoing prompt (no real network / key needed).
 // Boots once; language is switched via the store (askGemini/aiJSON read getLang() at call time).
 const bootAI = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-gemkey', JSON.stringify('test-key'));
-  } catch {} });
-  await page.goto('/index.html');
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-gemkey': JSON.stringify('test-key'),
+  });
   await page.waitForFunction(`typeof aiJSON==='function' && typeof askGemini==='function'`);
   await page.evaluate(`window.__cap=[]; window.gemFetch=async(model,body,opts)=>{ window.__cap.push({model,body}); return { ok:true, status:200, json:async()=>({candidates:[{content:{parts:[{text:'{"x":1}'}]}}]}) }; };`);
 };
@@ -212,15 +210,13 @@ test('W1-P7: a fabricated safety number is always escalated; a vetted one is not
 // gemKey() (the BYOK-only personal key) — so managed users were bounced to "connect a personal key" and
 // could not use the AI at all. These lock the mode-aware gate everywhere.
 const bootManaged = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('en'));
-    localStorage.setItem('mk-central-url', JSON.stringify('https://example.workers.dev'));
-    localStorage.setItem('mk-central-code', JSON.stringify('TESTCODE123'));
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
+    'mk-central-url': JSON.stringify('https://example.workers.dev'),
+    'mk-central-code': JSON.stringify('TESTCODE123'),
     // NO mk-gemkey — pure managed mode (central access code, no personal key)
-  } catch {} });
-  await page.goto('/index.html');
+  });
   await page.waitForFunction(`typeof aiJSON==='function' && typeof askGemini==='function'`);
   await page.evaluate(`window.__cap=[]; window.gemFetch=async(model,body,opts)=>{ window.__cap.push({model,body,opts}); return { ok:true, status:200, json:async()=>({candidates:[{content:{parts:[{text:'{"x":1}'}]}}]}) }; };`);
 };
@@ -269,13 +265,11 @@ test('v243: Ask → Smart AI opens the assistant (not the connect-a-key wizard) 
 // carrying the Worker-URL/code fields was unreachable (chicken-and-egg). The user reported "there was
 // no form and fields to enter this info".
 const bootNoAI = async (page: any) => {
-  await page.addInitScript(() => { try {
-    localStorage.clear();
-    localStorage.setItem('mk-uilevel-asked', JSON.stringify(true));
-    localStorage.setItem('mk-lang', JSON.stringify('en'));
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('en'),
     // NO mk-gemkey, NO mk-central-url/code — a fresh user with nothing configured
-  } catch {} });
-  await page.goto('/index.html');
+  });
   await page.waitForFunction(`typeof openKeyManager==='function' && typeof askConnect==='function'`);
 };
 
