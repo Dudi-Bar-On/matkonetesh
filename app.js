@@ -4203,6 +4203,21 @@ function askRefuseCardHTML(ref){
 // ── centralized Gemini transport (AI #2 timeout · #3 retry/backoff · #9 key-in-header) + the
 //    AI #8 endpoint-indirection seam: one place to point at a managed proxy later (monetization seam).
 const GEM_HOST='https://generativelanguage.googleapis.com/v1beta/models/';
+// ── AI model registry: the single source of truth for model id + payload rule + response-reader kind.
+// role → { id, kind, tier, think, caps }. A migration or a new model is a DATA edit here, not code
+// (decision 1: build-time config-as-data, no runtime Worker override; decision 2: no `textStrong` row until a feature needs it).
+const GEM_MODELS = {
+  // 'text' still points at gemini-2.5-flash (NUMERIC thinking knob) until the migration flips it (Task 7).
+  text: { id:'gemini-2.5-flash', kind:'text', tier:'fast',
+          think:{ knob:'budget' },                 // 2.5/3.5 numeric budget; values from THINK_BUDGET (added by the thinking layer, Task 2)
+          caps:{ search:true, jsonMode:true, jsonModeExcludesSearch:true } },
+  tts:  { id:'gemini-2.5-flash-preview-tts', kind:'audio', tier:'tts', voiceDefault:'Kore',
+          think:{ knob:'none' },                   // audio model — no thinking field is ever emitted
+          caps:{ audio:true } },
+  // textLegacy rollback pin (a commented row) is added by Task 6, once the migration is imminent.
+};
+function gemModel(role){ return GEM_MODELS[role] || GEM_MODELS.text; }
+function gemId(role){ return gemModel(role).id; }
 const GEM_MODEL='gemini-2.5-flash';   // 3.6-flash REVERTED 2026-07-23: returned api-400 on EVERY call via the Gemini Developer API (generativelanguage). 'gemini-3.6-flash' is not a valid id on this endpoint (likely Vertex-only). Migration still owed before the 2.5 shutdown (2026-10-16) — needs ListModels to find the correct developer-API id first.
 function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
 async function gemFetch(model, body, opts){
