@@ -127,3 +127,39 @@ test('seam: gemReadAudio decodes PCM inlineData to a buffer and throws no-audio 
   expect(r.isBuf).toBe(true);
   expect(r.textErr).toBe('no-audio');   // a text response has no inlineData → guarded
 });
+
+test('wiring: text sites emit role text + their AI_THINK level; TTS emits audio + no thinking', async ({ page }) => {
+  await init(page);
+  await page.evaluate(`typeof aiAvail`);   // ensure app globals are present
+  const r = await page.evaluate(`(async function(){
+    store.set('mk-gemkey','K');
+    const cap={};
+    window.gemFetch = async (model, body, opts)=>{
+      (cap[model]=cap[model]||[]).push(body);
+      if(model==='tts') return { ok:false, status:503, json:async()=>({}) };   // capture the request, skip WebAudio playback
+      return { ok:true, status:200, json:async()=>({ candidates:[{ content:{ parts:[
+        { text:'{"diagnosis":"x","causes":[],"fixes":[],"related":[],"guests":2,"appetite":"reg","kosher":false,"keys":[],"sides":[],"drinks":[],"desserts":[],"rationale":"r","recommend":[]}' }
+      ]}}]}) };
+    };
+    await askGemini('כמה זמן לעשן חזה?', []);          // #1 ask → low
+    try{ await gemSpeak('שלום', 'he'); }catch(e){}       // #5 tts → api-503 after capture, no playback
+    await aiDiagnose('הבשר יבש');                         // #3a diagnose → high
+    await aiPlanEvent('ארוחה ל-8 אנשים');                // #3b eventPlan → medium
+    await aiJSON({task:'t', schemaHint:'{}'});           // #3 default → minimal
+    return {
+      roles: Object.keys(cap).sort(),
+      textThinking: (cap['text']||[]).map(b=> b.generationConfig.thinkingConfig),
+      ttsGen: cap['tts'] ? cap['tts'][0].generationConfig : null,
+    };
+  })()`) as any;
+  expect(r.roles).toEqual(['text','tts']);                       // every caller went out as a ROLE, not a literal id
+  // order: askGemini, aiDiagnose, aiPlanEvent, aiJSON — on 2.5-flash the knob is the NUMERIC budget
+  expect(r.textThinking).toEqual([
+    { thinkingBudget: 512 },    // ask = low
+    { thinkingBudget: 8192 },   // diagnose = high
+    { thinkingBudget: 2048 },   // eventPlan = medium
+    { thinkingBudget: 0 },      // aiJSON default = minimal
+  ]);
+  expect(r.ttsGen.responseModalities).toEqual(['AUDIO']);        // audio modality
+  expect(r.ttsGen.thinkingConfig).toBeUndefined();               // TTS carries no thinking field
+});

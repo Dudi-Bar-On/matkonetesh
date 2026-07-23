@@ -4290,7 +4290,7 @@ function gemReadAudio(json){
   const rate = parseInt((part.inlineData.mimeType.match(/rate=(\d+)/)||[])[1] || '24000');
   return { buf: pcmToBuffer(b64ToPcm16(part.inlineData.data), rate), rate };
 }
-const GEM_MODEL='gemini-2.5-flash';   // 3.6-flash REVERTED 2026-07-23: returned api-400 on EVERY call via the Gemini Developer API (generativelanguage). 'gemini-3.6-flash' is not a valid id on this endpoint (likely Vertex-only). Migration still owed before the 2.5 shutdown (2026-10-16) — needs ListModels to find the correct developer-API id first.
+const GEM_MODEL = gemId('text');   // back-compat alias only — GEM_MODELS.text (above) is the source of truth; every call site now passes a ROLE, not this constant.
 function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
 async function gemFetch(model, body, opts){
   opts=opts||{};
@@ -4335,18 +4335,16 @@ async function askGemini(qRaw, history){
     system_instruction:{parts:[{text:sys}]},
     contents:turns,
     tools:[{google_search:{}}],
-    generationConfig:{temperature:0.8,maxOutputTokens:1600,thinkingConfig:{thinkingBudget:0}}
+    generationConfig: gemGen('text', {temperature:0.8, maxOutputTokens:1600}, {think: thinkFor('ask')})
   };
-  const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
+  const r=await gemFetch('text', body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json();
-  const cand=j.candidates&&j.candidates[0];
-  const txt=cand&&cand.content&&(cand.content.parts||[]).map(p=>p.text||'').join('').trim();
-  if(!txt){ const fr=(cand&&cand.finishReason)||(j.promptFeedback&&j.promptFeedback.blockReason)||'ריק'; throw new Error('empty-'+fr); }
+  const txt=gemReadText(j);
   return {txt,chips:ents,ctx};   // W1-P3: return the grounding so the render can verify the answer's safety numbers against it
 }
 async function askValidateKey(key){
-  try{ await gemFetch(GEM_MODEL, {contents:[{parts:[{text:'שלום'}]}],generationConfig:{maxOutputTokens:20,thinkingConfig:{thinkingBudget:0}}}, {key, retries:0, timeout:12000}); return true; }catch(e){ return false; }
+  try{ await gemFetch('text', {contents:[{parts:[{text:'שלום'}]}], generationConfig: gemGen('text', {maxOutputTokens:20}, {think: thinkFor('keyProbe')})}, {key, retries:0, timeout:12000}); return true; }catch(e){ return false; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -4446,7 +4444,7 @@ async function aiJSON(opts){
     };
   };
   const callOnce=async(body)=>{
-    const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
+    const r=await gemFetch('text', body, {timeout:30000});
     if(!r.ok) throw new Error('api-'+r.status);
     const j=await r.json();
     return gemReadText(j);
@@ -4636,7 +4634,7 @@ function openKeyManager(){
     store.set('mk-central-url', (($("#akmCUrl")||{}).value||'').trim()); store.set('mk-central-code', (($("#akmCCode")||{}).value||'').trim());
     if(!centralUrl()||!centralCode()){ cmsg.className='akc-msg'; cmsg.textContent=L('מלא כתובת וקוד.','Enter a URL and a code.'); return; }
     cmsg.className='akc-msg'; cmsg.textContent=L('בודק גישה…','Testing access…');
-    try{ await gemFetch(GEM_MODEL, {contents:[{parts:[{text:'שלום'}]}], generationConfig:{maxOutputTokens:5, thinkingConfig:{thinkingBudget:0}}}, {retries:0, timeout:15000}); cmsg.className='akc-msg ok'; cmsg.textContent=L('✓ הגישה המרכזית פעילה.','✓ Central access is live.'); openKeyManager(); }
+    try{ await gemFetch('text', {contents:[{parts:[{text:'שלום'}]}], generationConfig: gemGen('text', {maxOutputTokens:5}, {think: thinkFor('centralTest')})}, {retries:0, timeout:15000}); cmsg.className='akc-msg ok'; cmsg.textContent=L('✓ הגישה המרכזית פעילה.','✓ Central access is live.'); openKeyManager(); }
     catch(e){ const m=String(e&&e.message||e); cmsg.className='akc-msg err'; cmsg.textContent=/api-40[123]/.test(m)?L('✗ הקוד נדחה או נגמרה המכסה.','✗ Code rejected or quota reached.'):L('✗ בדיקה נכשלה — בדוק כתובת/קוד/רשת.','✗ Test failed — check URL / code / network.'); } });
   const ccl=$("#akmCClear"); if(ccl) ccl.addEventListener('click',()=>{ store.set('mk-central-url',''); store.set('mk-central-code',''); toast(L('גישה מרכזית נותקה','Central access disconnected')); openKeyManager(); });
   $("#akmBack").addEventListener('click',openAsk);
@@ -5112,7 +5110,7 @@ async function gemSpeak(text, lang){
   const clean=speechText(text, lang||vcAnsLang());
   let buf=gemCache.get(clean+gemVoice());
   if(!buf){
-    const r=await gemFetch('gemini-2.5-flash-preview-tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000});
+    const r=await gemFetch('tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000});
     if(!r.ok){ let reason=''; try{const eb=await r.json(); reason=(eb.error&&eb.error.message)||'';}catch(_){}
       console.warn('Gemini TTS error',r.status,reason); throw new Error('api-'+r.status+(reason?': '+reason:'')); }
     const j=await r.json();
@@ -5274,8 +5272,8 @@ async function vcTranslateToEn(text){
   if(!aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
   const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking-instruction text to natural spoken English. Reply with ONLY the English translation, no quotes, no notes.'}]},
     contents:[{role:'user',parts:[{text:src}]}],
-    generationConfig:{temperature:0.2,maxOutputTokens:300,thinkingConfig:{thinkingBudget:0}} };
-  const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
+    generationConfig: gemGen('text', {temperature:0.2, maxOutputTokens:300}, {think: thinkFor('translate')}) };
+  const r=await gemFetch('text', body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json(); const cand=j.candidates&&j.candidates[0];
   const out=(cand&&cand.content&&(cand.content.parts||[]).map(p=>p.text||'').join('').trim())||src;
@@ -5358,8 +5356,8 @@ async function vcAskAI(question){
   const body={ system_instruction:{parts:[{text:sys}]},
     contents:[{role:'user',parts:[{text:userText}]}],
     tools:[{google_search:{}}],
-    generationConfig:{temperature:0.6,maxOutputTokens:400,thinkingConfig:{thinkingBudget:0}} };
-  const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
+    generationConfig: gemGen('text', {temperature:0.6, maxOutputTokens:400}, {think: thinkFor('vcAsk')}) };
+  const r=await gemFetch('text', body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json(); const cand=j.candidates&&j.candidates[0];
   const txt=cand&&cand.content&&(cand.content.parts||[]).map(p=>p.text||'').join('').trim();
@@ -7053,8 +7051,8 @@ async function mtTranslate(src, lang){
     } else if(typeof gemFetch==='function' && aiAvail()){
       const LN=LANGNAME[lang]||lang;
       const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking text to '+LN+'. Keep ALL numbers, temperatures, times and units EXACTLY as written — never change, add, or drop a number. Reply with ONLY the translation, no notes.'}]},
-        contents:[{role:'user',parts:[{text:src}]}], generationConfig:{temperature:0.2,maxOutputTokens:600,thinkingConfig:{thinkingBudget:0}} };
-      const r=await gemFetch(GEM_MODEL, body, {timeout:20000}); const j=await r.json();
+        contents:[{role:'user',parts:[{text:src}]}], generationConfig: gemGen('text', {temperature:0.2, maxOutputTokens:600}, {think: thinkFor('dataMT')}) };
+      const r=await gemFetch('text', body, {timeout:20000}); const j=await r.json();
       const cand=j.candidates&&j.candidates[0]; out=cand&&cand.content&&(cand.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();
     }
   }catch(e){ return src; }   // network/quota failure → safe Hebrew fallback
@@ -8397,7 +8395,7 @@ async function aiPlanEvent(prompt){
   const grounding=eventPlanGrounding();
   const schema='{"guests":<מספר>,"appetite":"light|reg|heavy","kosher":<true|false>,"keys":["<key>"],"sides":["<שם>"],"drinks":["<שם>"],"desserts":["<שם>"],"rationale":"<נימוק קצר לבחירות>"}';
   const task='בנה תפריט אירוע מאוזן לפי הבקשה: "'+prompt+'". בחר מנות עיקריות (keys מהקטלוג בלבד), תוספות, משקאות וקינוחים מהרשימות. אזן בין סוגי בשר/צומח. אם התבקשה כשרות או "בלי חזיר" — אל תכלול פריטים לא-כשרים/חזיר. החזר מספר סועדים ותיאבון סביר.';
-  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:1500});
+  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:1500, think: thinkFor('eventPlan')});
   const wantKosher = !!(raw&&raw.kosher) || /כשר|בלי חזיר|ללא חזיר/.test(prompt);
   let keys=aiValidateKeys(raw&&raw.keys).kept;
   if(wantKosher && typeof isKosherOk==='function') keys=keys.filter(k=>isKosherOk(k));   // drop pork/shellfish/blood
@@ -8558,7 +8556,7 @@ async function aiDiagnose(problem){
   const grounding=diagnoseGrounding(problem);
   const schema='{"diagnosis":"<אבחון קצר>","causes":["<סיבה>"],"fixes":["<פעולה מעשית>"],"related":["<id מרשימת הפתרונות>"]}';
   const task='אבחן את התקלה על סמך התיאור וההקשר האישי. תן אבחון קצר, סיבות אפשריות, ופעולות מתקנות מעשיות. הפנה ב-related ל-id של הפתרונות הרלוונטיים מהרשימה. אל תמציא מספרי טמפ׳/בטיחות — הסתמך על הפתרונות הקיימים.';
-  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.4,maxTokens:1100});
+  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.4,maxTokens:1100, think: thinkFor('diagnose')});
   const idx=troubleIndex(); const validIds=new Set(idx.map(s=>s.id));
   const related=[...new Set((Array.isArray(raw&&raw.related)?raw.related:[]).filter(id=>validIds.has(id)))].map(id=>idx.find(s=>s.id===id));
   const arr=x=>Array.isArray(x)?x.filter(s=>typeof s==='string').slice(0,6):[];
@@ -9378,8 +9376,8 @@ const CCAT_TILES=[
 async function gemVision(dataUrl, prompt){
   if(typeof aiAvail!=='function' || !aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
   const m=String(dataUrl||'').match(/^data:([^;]+);base64,(.+)$/); if(!m) throw new Error('bad-image');
-  const body={ contents:[{parts:[{inlineData:{mimeType:m[1], data:m[2]}}, {text:prompt}]}], generationConfig:{temperature:0.4, maxOutputTokens:800, thinkingConfig:{thinkingBudget:0}} };
-  const r=await gemFetch(GEM_MODEL, body, {timeout:40000}); if(!r.ok) throw new Error('api-'+r.status);
+  const body={ contents:[{parts:[{inlineData:{mimeType:m[1], data:m[2]}}, {text:prompt}]}], generationConfig: gemGen('text', {temperature:0.4, maxOutputTokens:800}, {think: thinkFor('vision')}) };
+  const r=await gemFetch('text', body, {timeout:40000}); if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json(); const cand=j.candidates&&j.candidates[0];
   const txt=cand&&cand.content&&(cand.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();
   if(!txt) throw new Error('empty'); return txt;

@@ -56,12 +56,13 @@ test('transport: gemFetch aborts to a timeout error', async ({ page }) => {
   expect(msg).toBe('timeout');
 });
 
-test('seam: GEM_URL centralizes the endpoint and defaults the model (no key in URL)', async ({ page }) => {
+test('seam: GEM_URL centralizes the endpoint and resolves registry roles (no key in URL)', async ({ page }) => {
   await init(page);
-  const d = await page.evaluate(`GEM_URL()`) as string;
-  const t = await page.evaluate(`GEM_URL('gemini-2.5-flash-preview-tts')`) as string;
-  expect(d).toContain('gemini-2.5-flash:generateContent');   // 3.6-flash reverted (api-400 on the developer API); still on 2.5 pending the correct 3.x id
-  expect(t).toContain('preview-tts:generateContent');
+  const ids = await page.evaluate(`({ text: gemId('text'), tts: gemId('tts') })`) as any;
+  const d = await page.evaluate(`GEM_URL(gemId('text'))`) as string;
+  const t = await page.evaluate(`GEM_URL(gemId('tts'))`) as string;
+  expect(d).toContain(ids.text + ':generateContent');   // tracks the registry across the migration
+  expect(t).toContain(ids.tts + ':generateContent');
   expect(d).not.toContain('key=');
 });
 
