@@ -4203,7 +4203,7 @@ function askRefuseCardHTML(ref){
 // ── centralized Gemini transport (AI #2 timeout · #3 retry/backoff · #9 key-in-header) + the
 //    AI #8 endpoint-indirection seam: one place to point at a managed proxy later (monetization seam).
 const GEM_HOST='https://generativelanguage.googleapis.com/v1beta/models/';
-const GEM_MODEL='gemini-2.5-flash';
+const GEM_MODEL='gemini-3.6-flash';   // migrated from gemini-2.5-flash 2026-07-23 (2.5 retires 2026-10-16). The TTS model at :5030 is a SEPARATE model with no announced shutdown — deliberately NOT migrated here.
 function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
 async function gemFetch(model, body, opts){
   opts=opts||{};
