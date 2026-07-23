@@ -33,3 +33,10 @@ test('isolatedPage: fresh classic context — storage not shared, addInitScript 
   expect(await isolatedPage.evaluate(`localStorage.getItem('mk-warm-proof-x')`)).toBeNull();   // separate storage
   expect(await isolatedPage.evaluate(`localStorage.getItem('mk-iso-proof')`)).toBe('"I"');     // classic seeding path intact
 });
+
+test('after the flip: the DEFAULT page IS the warm page', async ({ page }) => {
+  expect((page as any).__mkWarmServed).toBeGreaterThanOrEqual(1);            // served by the warm wrapper
+  expect(() => (page as any).addInitScript(() => {})).toThrow(/seedApp/);    // trapped ⇒ warm, not classic
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  expect(await page.evaluate(`typeof DATA !== 'undefined'`)).toBe(true);     // app fully booted post-reset
+});

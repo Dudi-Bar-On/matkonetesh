@@ -17,8 +17,9 @@
 //   seedApp(page, kv)    — THE per-test reset: clear storage → set kv → reload (DCL). Self-contained on
 //                          classic pages too (navigates first if off-origin) so migration can proceed
 //                          file-by-file with main green; the warm default lands in the flip (Task 6).
-//   page (default)       — STILL the classic per-test page with the DCL-goto default (absorbed from the
-//                          previous version of this file). Task 6 replaces this body with the warm page.
+//   page (default)       — THE FLIP (Task 6, 2026-07-23): now an alias for `warm` — every migrated spec's
+//                          default `page` boots via the worker-warm reload. `isolatedPage` is still the
+//                          classic per-test-context escape hatch (DCL-goto default, addInitScript allowed).
 //
 // Isolation guarantees relied on (all official): a failing test shuts its worker down ("Workers are
 // always shutdown after a test failure" — test-parallel docs) so a corrupted warm page can never leak
@@ -131,10 +132,13 @@ export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
     await page.close();   // §11a: the setup owns its teardown
   },
 
-  // DEFAULT PAGE — unchanged behavior until Task 6 (the flip): classic per-test page + DCL goto default.
-  page: async ({ page }, use) => {
-    dclGoto(page);
-    await use(page);
+  // THE FLIP (2026-07-23): the default page IS the worker-warm page. Per-test reset = seedApp(page, kv).
+  // Mid-test page.goto('/index.html') / page.reload() still work — normal full navigations on the warm
+  // page (fresh document + JS heap, same V8 isolate → still isolate-cache-fast, W0); localStorage
+  // persists across them within a test exactly as before; the NEXT test's seedApp is the reset.
+  // Per-test isolation lives in the isolatedPage fixture (clock / SW project / test.use specs).
+  page: async ({ warm }, use) => {
+    await use(warm);
   },
 });
 
