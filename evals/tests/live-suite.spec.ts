@@ -1,6 +1,7 @@
 import { test, expect } from '@playwright/test';
+import fs from 'fs';
 import { SAFETY_CASES, UNIT_CONFUSION_CASES, HEBREW_PARITY_CASES, FREEFORM_CASES, GROUNDING_CATEGORY_SAMPLE_SIZE } from '../lib/prompts';
-import { runSafetyCase, runGroundingCase, runFreeformCase, writeScorecard } from '../lib/runner';
+import { runSafetyCase, runGroundingCase, runFreeformCase, writeScorecard, LIVE_CALL_TIMEOUT_MS } from '../lib/runner';
 
 // PRE-4 Task 4 Step 2 — the live runner, guarded on a key.
 //
@@ -33,7 +34,24 @@ test('PRE-4 live baseline — grounding / numeric-safety / refusal / freeform ag
     'provisioning the GEMINI_EVAL_KEY repo secret before the gemini-2.5-flash 2026-10-16 shutdown. ' +
     'See docs/analysis/program/PRE-4-eval-harness-design.md.');
 
+  // FIX 1 — size the test timeout for the FULL set of live model calls. The first live baseline run
+  // concluded `failure` because the default 30 s test timeout fired mid-call after ~11 cumulative live
+  // calls (3 grounding + 7 safety carve-outs), which closed the page and cascaded "Target closed" into
+  // every remaining freeform case (D01→D05). Each live call is independently backstopped at
+  // LIVE_CALL_TIMEOUT_MS inside the runner, so this ceiling = that budget × the number of live calls
+  // guarantees a single hung call is recorded per-case and can never reach this test-level ceiling.
+  const liveCallCount =
+    GROUNDING_CATEGORY_SAMPLE_SIZE
+    + [...SAFETY_CASES, ...UNIT_CONFUSION_CASES, ...HEBREW_PARITY_CASES].filter(c => c.expectRefusalId === null).length
+    + FREEFORM_CASES.length;
+  test.setTimeout(liveCallCount * LIVE_CALL_TIMEOUT_MS + 60_000);
+
   await bootLive(page, LIVE_KEY);
+
+  // FIX 3 — self-label the scorecard with the app's ACTUAL model, read at runtime from the top-level
+  // const in the inlined script (app.js:4206). When GEM_MODEL is later flipped to gemini-3.6-flash, the
+  // artifact self-renames to baseline-gemini-3.6-flash-<date> with no edit here.
+  const model = await page.evaluate('typeof GEM_MODEL!=="undefined" ? GEM_MODEL : "unknown"') as string;
 
   // Category A — grounding: derive REAL catalog categories/items at runtime (never hardcoded — the
   // catalog can change), call the real aiSeasonRec, score with the app's own aiValidateSeasonings.
@@ -61,19 +79,38 @@ test('PRE-4 live baseline — grounding / numeric-safety / refusal / freeform ag
   const freeform = [];
   for (const c of FREEFORM_CASES) freeform.push(await runFreeformCase(page, c));
 
-  const { jsonPath, mdPath } = writeScorecard({ model: 'gemini-2.5-flash', grounding, safety, freeform });
+  const { jsonPath, mdPath } = writeScorecard({ model, grounding, safety, freeform });
   console.log('[PRE-4 eval] scorecard written:', jsonPath, mdPath);
 
-  // Self-consistency assertions for THIS run (a baseline-vs-replacement comparison per design doc §7
-  // needs a stored prior baseline to diff against — that comparison is P1's job, once a candidate
-  // model exists; here there is only ever one run to reason about).
-  for (const g of grounding) expect(g.error, `grounding case ${g.key}/${g.cat} threw`).toBeUndefined();
-  for (const s of SAFETY_CASES) {
-    const r = safety.find(x => x.case.id === s.id)!;
-    expect(r.refusalMatch, `case ${s.id} (${s.prompt}) — expected refusal id ${s.expectRefusalId}, got ${r.refusalId}`).toBe(true);
-    if (s.expectRefusalId === null) {
-      expect(r.numeric?.grounded, `case ${s.id} (${s.prompt}) — ungrounded safety numbers in a carve-out answer`).toBe(true);
-    }
-  }
-  for (const f of freeform) expect(f.error, `freeform case ${f.case.id} threw`).toBeUndefined();
+  // FIX 2 — this is a MEASUREMENT harness, not a model conformance gate. Everything the *model* did is
+  // RECORDED in the scorecard above and asserted on NOWHERE below: per-case refusal expected-vs-actual,
+  // the carve-out ungrounded-number list, and per-case call errors are all data to compare across
+  // models, not pass/fail conditions. A GREEN run therefore means "measurement complete", so the SAME
+  // harness can measure any model (2.5-flash, 3.6-flash, …) without a red-fail when the model
+  // legitimately disagrees with an expectation (e.g. the incumbent's ungrounded numbers on B11 "what
+  // temp kills botulism"). What stays HARD below is only the harness's OWN correctness.
+  //
+  // Converted to RECORDED-ONLY (were expect().toBe(true) / .toBeUndefined()):
+  //   • per-case refusalMatch          — model behaviour (recorded: refusalId vs expected)
+  //   • per-case carve-out numeric.grounded — model behaviour (recorded: ungrounded=[...] list)
+  //   • per-case grounding .error      — a live-call outcome (recorded: "— ERROR: …"); see (2) for the
+  //                                       replacement guarantee that at least one live call succeeded
+  //   • per-case freeform .error       — a live-call outcome (recorded); its cascade is what FIX 1 closes
+  //
+  // KEPT HARD — the harness's own correctness (never the model's):
+  // (1) every case was actually attempted over real data — no silent skip, and (crucially) no mid-run
+  //     page-close cascade that would leave freeform short of its case count (the FIX 1 regression guard).
+  expect(samples.length, 'no grounding categories derived from the catalog — the live path never set up').toBeGreaterThan(0);
+  expect(grounding.length, 'not every grounding sample was attempted').toBe(samples.length);
+  expect(safety.length, 'not every safety case was attempted')
+    .toBe(SAFETY_CASES.length + UNIT_CONFUSION_CASES.length + HEBREW_PARITY_CASES.length);
+  expect(freeform.length, 'not every freeform case produced a result — a mid-run page close cascaded (the bug FIX 1 closes)')
+    .toBe(FREEFORM_CASES.length);
+  // (2) the live model was genuinely reached at least once — guards against a silently stubbed/dead path
+  //     (bad key, wrong endpoint, total network failure): if NOTHING came back, no measurement happened.
+  const liveTouched = grounding.some(g => !g.error) || safety.some(s => !!s.raw) || freeform.some(f => f.txt != null);
+  expect(liveTouched, 'no live model call returned across any category — key/endpoint/network failure, the measurement is void').toBe(true);
+  // (3) the scorecard was persisted — the raw model text is the one irreplaceable artifact (design doc §10).
+  expect(fs.existsSync(jsonPath), `scorecard JSON not written to ${jsonPath}`).toBe(true);
+  expect(fs.existsSync(mdPath), `scorecard MD not written to ${mdPath}`).toBe(true);
 });

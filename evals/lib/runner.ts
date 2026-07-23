@@ -9,6 +9,32 @@ import type { RefusalCase, FreeformCase } from './prompts';
 // window.gemFetch stub (design doc §4.2). NEVER called unless a key is present — see
 // evals/tests/live-suite.spec.ts's test.skip() guard, which runs before any of this executes.
 
+/** Per-case BACKSTOP for a single live model call. The app's own askGemini transport (app.js:4237)
+ * already bounds each call at 30 s with one retry (~60 s worst case); this is the outer guard above
+ * that. If a single page.evaluate model call ever hangs past it (e.g. the in-page AbortController
+ * fails to fire), the case is recorded as a timeout error and the loop moves on — the call can
+ * neither consume the whole test-level budget nor hang until Playwright's test timeout closes the
+ * page and cascades "Target closed" into every remaining case. That cascade (D01 timed out → the page
+ * closed → D02–D05 all failed) is exactly what concluded the first live baseline run as `failure`.
+ * The live-suite spec sizes test.setTimeout() as this budget × the number of live calls, so the
+ * backstop always fires per-case before the test-level ceiling can. */
+export const LIVE_CALL_TIMEOUT_MS = 70_000;
+
+/** Races a live page.evaluate call against the backstop above. The losing side of the race keeps a
+ * no-op catch so a late rejection (e.g. the page.evaluate settling after the guard already won) can
+ * never surface as an unhandledRejection. */
+function withCallTimeout(p: Promise<unknown>, label: string): Promise<unknown> {
+  p.catch(() => { /* swallow a late rejection from the losing side of the race */ });
+  let timer: ReturnType<typeof setTimeout>;
+  const guard = new Promise<never>((_, reject) => {
+    timer = setTimeout(
+      () => reject(new Error(`live call exceeded ${LIVE_CALL_TIMEOUT_MS}ms backstop (${label})`)),
+      LIVE_CALL_TIMEOUT_MS,
+    );
+  });
+  return Promise.race([p, guard]).finally(() => clearTimeout(timer));
+}
+
 export interface SafetyCaseResult {
   case: RefusalCase;
   refusalId: string | null;
@@ -27,9 +53,9 @@ export async function runSafetyCase(page: Page, c: RefusalCase): Promise<SafetyC
   const refusalMatch = refusalId === c.expectRefusalId;
   if (refusalId) return { case: c, refusalId, refusalMatch };   // refused locally — no live call for this case
   try {
-    const raw = await page.evaluate(
+    const raw = await withCallTimeout(page.evaluate(
       `(async()=>{ const r = await askGemini(${JSON.stringify(c.prompt)}); return { txt: r.txt, ctx: r.ctx }; })()`
-    ) as { txt: string; ctx: string };
+    ), `safety ${c.id}`) as { txt: string; ctx: string };
     const numeric = await scoreNumericSafety(page, raw.txt, raw.ctx);
     return { case: c, refusalId, refusalMatch, raw, numeric };
   } catch (e: any) {
@@ -43,9 +69,9 @@ export interface FreeformResult { case: FreeformCase; txt?: string; error?: stri
  * to read from the scorecard, never gated. */
 export async function runFreeformCase(page: Page, c: FreeformCase): Promise<FreeformResult> {
   try {
-    const txt = await page.evaluate(
+    const txt = await withCallTimeout(page.evaluate(
       `(async()=>{ const r = await askGemini(${JSON.stringify(c.prompt)}); return r.txt; })()`
-    ) as string;
+    ), `freeform ${c.id}`) as string;
     return { case: c, txt };
   } catch (e: any) {
     return { case: c, error: String((e && e.message) || e) };
