@@ -4210,7 +4210,7 @@ const GEM_MODELS = {
   text: { id:'gemini-3.6-flash', kind:'text', tier:'fast',
           think:{ knob:'level', levels:['minimal','low','medium','high'] },   // Gemini 3.x enum; 'minimal' = 0 thinking tokens
           caps:{ search:true, jsonMode:true, jsonModeExcludesSearch:true } },
-  tts:  { id:'gemini-2.5-flash-preview-tts', kind:'audio', tier:'tts', voiceDefault:'Kore',
+  tts:  { id:'gemini-3.1-flash-tts-preview', kind:'audio', tier:'tts', voiceDefault:'Kore',
           think:{ knob:'none' },                   // audio model — no thinking field is ever emitted
           caps:{ audio:true } },
   // ROLLBACK PIN (decision 3): the outgoing text model, kept as a one-line flip-back. To roll the text

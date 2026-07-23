@@ -20,10 +20,18 @@ test('registry: gemId/gemModel resolve roles to concrete ids and default unknown
     unknownId: gemId('nope'),
   })`) as any;
   expect(r.textId).toBe('gemini-3.6-flash');
-  expect(r.ttsId).toBe('gemini-2.5-flash-preview-tts');
+  expect(r.ttsId).toBe('gemini-3.1-flash-tts-preview');
   expect(r.textKind).toBe('text');
   expect(r.ttsKind).toBe('audio');
   expect(r.unknownId).toBe('gemini-3.6-flash');   // unknown role falls back to the text row
+});
+
+test('migration(tts): tts resolves to gemini-3.1-flash-tts-preview and still carries no thinking knob', async ({ page }) => {
+  await init(page);
+  const r = await page.evaluate(`({ id: gemId('tts'), think: gemThink('tts','high') ?? 'UNDEF', kind: gemModel('tts').kind })`) as any;
+  expect(r.id).toBe('gemini-3.1-flash-tts-preview');
+  expect(r.think).toBe('UNDEF');   // audio model — knob:'none' unchanged
+  expect(r.kind).toBe('audio');
 });
 
 test('migration(text): text resolves to gemini-3.6-flash and emits the thinkingLevel enum (never thinkingBudget)', async ({ page }) => {
