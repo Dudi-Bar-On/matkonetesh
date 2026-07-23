@@ -291,6 +291,14 @@ test('adaptive home Phase 6: More sheet has a most-used row, learns, and trims a
   await page.click('#panel [data-mfn="openWoods"]');
   await page.waitForFunction(`(store.get('mk-recent-tools')||[])[0]==='openWoods'`);
   expect(await page.evaluate(`(store.get('mk-recent-tools')||[])[0]`)).toBe('openWoods');
+  // The click handler (app.js:9441-9447) closes this panel synchronously, then 60ms LATER opens
+  // Woods via its own setTimeout. Wait for that panel to actually land (its .coallist marker, from
+  // openWoods() at app.js:3767) before reopening More — otherwise, under CPU contention (parallel
+  // workers), the pending setTimeout can fire mid-reopen and blow away the freshly-rendered #panel,
+  // making the next line's querySelector return null. Found intermittently in a full-suite run
+  // during PRE-6 Part 2 Task 1 (2026-07-23); root cause is this test racing its own scheduled
+  // callback, unrelated to the service-worker work that run was verifying.
+  await page.waitForSelector('#panel .coallist');
   await page.evaluate(`closePanel(); openMoreSheet();`);
   await page.waitForSelector('#panel .cmore-quick .cmore-qchip');
   expect(await page.evaluate(`document.querySelector('#panel .cmore-quick .cmore-qchip').dataset.mfn`)).toBe('openWoods');

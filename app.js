@@ -9543,7 +9543,7 @@ try{ document.addEventListener('pointerdown', function(){ if(typeof timerAudioPr
 try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel(); }, 400); }catch(e){}
 /* T4: register the service worker in production (https only — the http test server skips it).
    Prompts a refresh when a new build has been fetched and is waiting. */
-if('serviceWorker' in navigator && location.protocol==='https:'){
+if('serviceWorker' in navigator && self.isSecureContext){   // was location.protocol==='https:' — isSecureContext is browser-computed, agrees with https on every real user session, and additionally covers trusted localhost so the update-delivery channel is testable (2026-07-23, owner §4 sign-off)
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('sw.js').then(function(reg){
       mkSWReg=reg; try{ navigator.serviceWorker.ready.then(function(r){ mkSWReg=r||reg; }); }catch(e){}   // Wave A: alarms show via the SW registration (fixes the mobile new Notification() no-op)

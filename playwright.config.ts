@@ -44,9 +44,24 @@ export default defineConfig({
     // specs set a mobile viewport at all (and only 2 of those at exactly 390x844), so a screenshot
     // taken inside a test was usually the wrong size.
     // Individual tests may still override with page.setViewportSize for a specific check.
+    //
+    // PRE-6 Part 2 Task 1 (2026-07-23): app.js:9546's SW gate now checks self.isSecureContext,
+    // which localhost satisfies — so the app registers a real service worker on every page load
+    // under test, and sw.js's install handler caches the ~2.4MB index.html each time. None of these
+    // ~419 tests exercise the SW; that's what the dedicated 'service-worker' project below is for.
+    // serviceWorkers:'block' rejects registration at the browser level (app.js already .catch()es
+    // it), so this project behaves exactly as it did before the gate change — no SW, no caching cost.
     {
       name: 'chromium',
-      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 } },
+      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, serviceWorkers: 'block' },
+      testIgnore: '**/service-worker.spec.ts',
+    },
+    // Dedicated project so the 2 service-worker tests run with the SW actually enabled
+    // (serviceWorkers:'allow' is Playwright's own default; stated explicitly here for clarity).
+    {
+      name: 'service-worker',
+      use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, serviceWorkers: 'allow' },
+      testMatch: '**/service-worker.spec.ts',
     },
   ],
   webServer: {
