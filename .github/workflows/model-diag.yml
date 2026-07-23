@@ -1,0 +1,21 @@
+name: model-diag
+
+# One-off diagnostic for the gemini-3.x migration: runs scripts/model-diag.mjs with GEMINI_EVAL_KEY to
+# capture Google's exact error bodies for (model x payload) combos. workflow_dispatch only — never on push.
+# Lives on the migration branch; delete before merging to main.
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Probe the models
+        run: node scripts/model-diag.mjs
+        env:
+          GEMINI_EVAL_KEY: ${{ secrets.GEMINI_EVAL_KEY }}
