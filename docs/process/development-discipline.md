@@ -478,6 +478,47 @@ compare `git status --short` before and after, and warn on any modified tracked 
 family as the earlier `tail -1` bug in this same script, which printed "Everything up-to-date" while the
 branch was one commit ahead.
 
+**L18 · Never kill a suite mid-flight — the respawning zombie server (2026-07-23).** Repeated
+kill-and-restart of suite runs during a worker measurement left `serve.js`'s cluster primary alive
+(`cluster.on('exit', () => fork())`, no `exitedAfterDisconnect` guard — Node's own documented
+anti-pattern): a port-based `taskkill` killed workers, the primary respawned them, and the result was a
+**zombie server that listened and accepted connections but never responded**, wedging 8123 for every later
+run and turning one measurement into hours of thrash. The debugging methodology *created* the failure being
+debugged. Fix: serve.js de-clustered (single in-memory process + SIGINT/SIGTERM); rule: §11a
+setup⟺teardown — let runs complete; a kill without a verified release (port refuses, 0 orphans) is a defect.
+
+**L19 · A "fix" whose mechanism never fires is a placebo (2026-07-23).** `navigationTimeout: 60_000` was
+committed as the nav-flake fix and "verified" by 9 clean runs — but the test-level timeout (30s) is the
+hard ceiling over navigation, so a nav timeout ABOVE it is **dead config**; the clean runs were lucky
+low-load windows (and a 3-run sample hides a 1-in-6 flake — §11a now says 6–9×). Gate: a fix must be shown
+to actually FIRE — after the change, reproduce the failure and confirm the *error signature changed* (here:
+"Test timeout 30000ms" should have become a nav-specific 60s error; it didn't — that was the tell).
+
+**L20 · Verify the measurement before trusting the measurement (2026-07-23).** Two probes lied in one
+evening: (a) a "clean screen" wrapped runs in `/usr/bin/time`, which **does not exist in Windows git-bash**
+— all five "runs" executed nothing, and the idle CPU was misread as "not CPU-bound"; (b) sampling
+`chrome.exe` missed that Playwright's browser can run as `headless_shell.exe`. Gate: when a measurement
+shows something surprising, first prove the probe ran the workload — non-trivial duration, processes
+actually spawned, server actually responding — before reasoning from it.
+
+**L21 · On a hybrid CPU, worker count ≠ logical cores — fit the P-cores (2026-07-23).** The i9-14900 is
+8 P-cores + 16 E-cores (32 threads). Each test's navigation parses+executes the ~2.4 MB inlined app —
+P-core-bound. At `workers:10` the P-cores oversubscribe and the heaviest-init specs starve past the test
+timeout **deterministically** (same specs every run; 23/23 green in isolation = the contention signature).
+`workers:8` measured clean (2.3–2.5 m). **Interim, not final** — the owner's standing goal is to maximize
+the machine (warm pre-loaded instances, E-core scheduling; research R3/R4), and closing that question is
+the owner's call, not the assistant's (see the fight-for-the-goal memory).
+
+**Adopted wins (2026-07-23) — patterns that worked, keep using them:** (1) **Baseline-first migration +
+a real preflight**: the eval baseline caught gemini-3.6's api-400 in minutes (v259→v260), and the
+ListModels+one-real-call-per-role preflight (through the app's own payload builders) is what proved the
+retry safe before deploy. (2) **Config-as-data registry**: both model migrations landed as one-row flips
+with a commented rollback pin. (3) **CI-on-a-temp-branch** as a no-deploy verification gate (Pages builds
+only from main; the GitHub secret stays server-side). (4) **§10.14 deep research cracked what guessing
+couldn't** — two focused doc-reading missions found the dead-config and the de-cluster answer in under an
+hour after a day of fix-churn. (5) **§10.11 usefulness-gate deposits**: Gemini + Cloudflare docs deposited
+once, now answer queries that previously returned noise.
+
 ### 10.11 Query graphify GLOBAL before the internet — for ANY docs/help — then feed useful finds back
 > **Owner instruction, 2026-07-22; generalized to all documentation/help 2026-07-23.** When you need
 > documentation or any external help/reference — a tool, a framework, a methodology, an API's capabilities,
@@ -587,6 +628,21 @@ next session inherits it.
 > different runtime) against the incumbent, and switch when the alternative is genuinely better. The
 > correct fix is sometimes a better ingredient, not another workaround. Pair this with §10.14: the
 > alternatives are found by research, then judged on evidence.
+
+### 10.16 Conclude every significant session/arc with its lessons — and bank its knowledge
+> **Owner instruction, 2026-07-23.** A session or work-arc is not finished when the code lands. Before
+> closing: (1) write its **lessons** into the Lessons log (§11) — both the mistakes we must not repeat AND
+> the **successful ideas that worked**, so they are adopted, not just survived; (2) apply the §10.11
+> usefulness gate to every relevant doc or info source the session found, and **deposit the keepers into
+> the graphify global knowledgebase** so the next session — on any project sharing the global — starts
+> ahead. Untracked lessons get relearned at full price; undeposited finds get re-searched at full price.
+
+The mechanics already exist — this rule makes them a *closing checklist*, not a when-remembered habit:
+lessons → §11 log (numbered `L`-entries for failures, an "adopted wins" note for successes; owner-behavior
+feedback also goes to the assistant's persistent memory); docs → `graphify add <url>` →
+`graphify global add <graph.json> --as <name>-docs` → verify with `graphify global list`. Research
+subagents are told to *list* deposit candidates; the controller owns running the deposit pass before the
+arc closes.
 
 ### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
 > **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or

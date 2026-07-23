@@ -25,7 +25,7 @@ the discipline document, which is authoritative wherever the two differ.**
 | 9 | Settled decisions — full suite per task; **work on `main`, no worktrees**; brainstorm only when unclear |
 | 10.1–10.12 | The owner's standing instructions — **re-read before every task** |
 | 11a | Testing infrastructure — worker ceiling, the port-8123 collision, server restart after build |
-| 11 | **Lessons log L1–L16** — read it before repeating a mistake someone already paid for |
+| 11 | **Lessons log L1–L21 + adopted wins** — read it before repeating a mistake someone already paid for |
 | 12 | **Thinking models** (15, three clusters) + gate-prompt shapes + **when NOT to think** |
 
 ---
@@ -132,6 +132,9 @@ involved (§10.11: graphify global first, then the web, deposit useful finds). T
 systematic-debugging's 3-fix STOP hands off. **§10.15** Be skeptical: when a component *repeatedly* causes
 trouble, evaluate a **better alternative** (a different server/runner/pattern) instead of stacking band-aids —
 the correct fix is sometimes a better ingredient. Both: find by research, judge on evidence, write the answer down.
+**§10.16** Conclude every significant session/arc with its **lessons** (failures → the §11 log, successes →
+"adopted wins") **and deposit** the session's useful doc finds into the graphify global (§10.11 gate) — the
+controller runs the deposit pass before the arc closes; untracked lessons and undeposited finds are paid for twice.
 
 ## The product
 
