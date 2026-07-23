@@ -75,3 +75,55 @@ test('thinking: AI_THINK policy maps each usage to its approved level (§2.2.4)'
     translate:'minimal', vision:'low', keyProbe:'minimal', centralTest:'minimal', wcim:'minimal', unknown:'minimal',
   });
 });
+
+test('seam: gemGen applies the role thinking knob (default minimal) and never adds audio fields', async ({ page }) => {
+  await init(page);
+  const r = await page.evaluate(`(function(){
+    GEM_MODELS.__b = { kind:'text', think:{ knob:'budget' } };   // migration-stable numeric role
+    return {
+      low: gemGen('__b', {temperature:0.8, maxOutputTokens:1600}, {think:'low'}),
+      def: gemGen('__b', {maxOutputTokens:20}),                    // no opts → default think 'minimal'
+      tts: gemGen('tts', {temperature:0.4}, {think:'high'}),
+    };
+  })()`) as any;
+  expect(r.low).toEqual({ temperature:0.8, maxOutputTokens:1600, thinkingConfig:{ thinkingBudget:512 } });
+  expect(r.def).toEqual({ maxOutputTokens:20, thinkingConfig:{ thinkingBudget:0 } });
+  expect(r.tts.thinkingConfig).toBeUndefined();       // audio role → no thinking field
+  expect(r.tts.responseModalities).toBeUndefined();   // gemGen does not add audio fields (that is gemTtsGen)
+});
+
+test('seam: gemTtsGen builds the audio generationConfig with the given voice or the tts default', async ({ page }) => {
+  await init(page);
+  const r = await page.evaluate(`({ withVoice: gemTtsGen('Puck'), fallback: gemTtsGen() })`) as any;
+  expect(r.withVoice).toEqual({ responseModalities:['AUDIO'], speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName:'Puck' } } } });
+  expect(r.fallback.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe('Kore');   // gemModel('tts').voiceDefault
+});
+
+test('seam: gemReadText joins text parts, throws with the finishReason when empty, guards its kind', async ({ page }) => {
+  await init(page);
+  const r = await page.evaluate(`(function(){
+    const ok = gemReadText({candidates:[{content:{parts:[{text:'hello '},{text:'world'}]}}]});
+    let emptyErr='none'; try{ gemReadText({candidates:[{content:{parts:[{text:''}]},finishReason:'SAFETY'}]}); }catch(e){ emptyErr=String(e.message); }
+    let audioErr='none'; try{ gemReadText({candidates:[{content:{parts:[{inlineData:{mimeType:'audio/L16;rate=24000',data:''}}]}}]}); }catch(e){ audioErr=String(e.message); }
+    return { ok, emptyErr, audioErr };
+  })()`) as any;
+  expect(r.ok).toBe('hello world');
+  expect(r.emptyErr).toBe('empty-SAFETY');
+  expect(r.audioErr).toContain('empty');   // an audio-only response has no text → guarded, not returned as ''
+});
+
+test('seam: gemReadAudio decodes PCM inlineData to a buffer and throws no-audio on a text-only response', async ({ page }) => {
+  await init(page);
+  const r = await page.evaluate(`(function(){
+    const pcm=new Int16Array([0, 16384, -16384]);
+    const bytes=new Uint8Array(pcm.buffer); let s=''; for(let i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]);
+    const b64=btoa(s);
+    const out=gemReadAudio({candidates:[{content:{parts:[{inlineData:{mimeType:'audio/L16;rate=24000', data:b64}}]}}]});
+    let textErr='none'; try{ gemReadAudio({candidates:[{content:{parts:[{text:'hi'}]}}]}); }catch(e){ textErr=String(e.message); }
+    return { rate: out.rate, len: out.buf.length, isBuf: (typeof AudioBuffer!=='undefined' && out.buf instanceof AudioBuffer), textErr };
+  })()`) as any;
+  expect(r.rate).toBe(24000);
+  expect(r.len).toBe(3);
+  expect(r.isBuf).toBe(true);
+  expect(r.textErr).toBe('no-audio');   // a text response has no inlineData → guarded
+});

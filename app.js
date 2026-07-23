@@ -4262,6 +4262,34 @@ const AI_THINK = {
   centralTest:{ level:'minimal'                 },
 };
 function thinkFor(usage){ return (AI_THINK[usage]||{level:'minimal'}).level; }   // developer-only (decision 8): no userPref knob
+// ── REQUEST/RESPONSE seam. text and audio share the registry + transport but never a builder or a reader.
+// REQUEST — text roles: normalize a base generationConfig, applying the model's thinking knob exactly once.
+function gemGen(role, gen, opts){
+  const out = Object.assign({}, gen||{});
+  const tc = gemThink(role, (opts && opts.think) || 'minimal');
+  if(tc) out.thinkingConfig = tc; else delete out.thinkingConfig;   // one knob or none → the mutual-exclusivity 400 is impossible
+  return out;
+}
+// REQUEST — audio role: the TTS-shaped generationConfig, in ONE builder.
+function gemTtsGen(voice){
+  return { responseModalities:['AUDIO'],
+           speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName: voice || gemModel('tts').voiceDefault } } } };
+}
+// RESPONSE — kind:'text' reader (dedups the hand-rolled extractors; guards its kind).
+function gemReadText(json){
+  const c = json && json.candidates && json.candidates[0];
+  const t = c && c.content && (c.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();
+  if(!t){ const fr=(c&&c.finishReason)||(json&&json.promptFeedback&&json.promptFeedback.blockReason)||'ריק'; throw new Error('empty-'+fr); }
+  return t;
+}
+// RESPONSE — kind:'audio' reader (the app.js:5033-5037 decode, in ONE place; guards its kind).
+function gemReadAudio(json){
+  const c = json && json.candidates && json.candidates[0];
+  const part = c && c.content && c.content.parts.find(function(p){return p.inlineData;});
+  if(!part) throw new Error('no-audio');
+  const rate = parseInt((part.inlineData.mimeType.match(/rate=(\d+)/)||[])[1] || '24000');
+  return { buf: pcmToBuffer(b64ToPcm16(part.inlineData.data), rate), rate };
+}
 const GEM_MODEL='gemini-2.5-flash';   // 3.6-flash REVERTED 2026-07-23: returned api-400 on EVERY call via the Gemini Developer API (generativelanguage). 'gemini-3.6-flash' is not a valid id on this endpoint (likely Vertex-only). Migration still owed before the 2.5 shutdown (2026-10-16) — needs ListModels to find the correct developer-API id first.
 function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
 async function gemFetch(model, body, opts){
@@ -4395,7 +4423,7 @@ function aiMockActive(){ return typeof window!=='undefined' && window.__aiMock!=
 
 // A1 · generic grounded JSON call
 async function aiJSON(opts){
-  const {task, schemaHint, grounding='', temperature=0.4, maxTokens=1200, search=false}=opts||{};
+  const {task, schemaHint, grounding='', temperature=0.4, maxTokens=1200, search=false, think='minimal'}=opts||{};
   if(aiMockActive()){ const m=window.__aiMock; return typeof m==='function' ? m(opts) : m; }
   if(!aiAvail()) throw new Error('no-key');   // available via a personal key OR managed central access; gemFetch routes the transport
   // W1-P1: output-language plumbing — human-readable string values follow the UI language (keys/ids stay as given). Fixes AI JSON coming back Hebrew in the English UI.
@@ -4407,7 +4435,7 @@ async function aiJSON(opts){
     // Gemini rejects responseMimeType:'application/json' together with the google_search tool (HTTP 400).
     // When grounding, omit JSON-mode and recover the JSON from the grounded text via aiStripFences
     // (AI_JSON_SYS already mandates "return ONLY valid JSON"). Non-search calls keep strict JSON mode.
-    const gen={temperature,maxOutputTokens:maxTokens,thinkingConfig:{thinkingBudget:0}};
+    const gen=gemGen('text', {temperature,maxOutputTokens:maxTokens}, {think});   // 'text' still resolves to 2.5-flash; minimal→thinkingBudget:0 (identical)
     if(!search) gen.responseMimeType='application/json';
     return {
       system_instruction:{parts:[{text:AI_JSON_SYS}]},
@@ -4420,10 +4448,7 @@ async function aiJSON(opts){
     const r=await gemFetch(GEM_MODEL, body, {timeout:30000});
     if(!r.ok) throw new Error('api-'+r.status);
     const j=await r.json();
-    const cand=j.candidates&&j.candidates[0];
-    const txt=cand&&cand.content&&(cand.content.parts||[]).map(p=>p.text||'').join('').trim();
-    if(!txt){ const fr=(cand&&cand.finishReason)||(j.promptFeedback&&j.promptFeedback.blockReason)||'ריק'; throw new Error('empty-'+fr); }
-    return txt;
+    return gemReadText(j);
   };
   let raw;
   try{ raw=await callOnce(mkBody()); }
@@ -5086,14 +5111,11 @@ async function gemSpeak(text, lang){
   const clean=speechText(text, lang||vcAnsLang());
   let buf=gemCache.get(clean+gemVoice());
   if(!buf){
-    const r=await gemFetch('gemini-2.5-flash-preview-tts', {contents:[{parts:[{text:clean}]}], generationConfig:{responseModalities:['AUDIO'],speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:gemVoice()}}}}}, {timeout:20000});
+    const r=await gemFetch('gemini-2.5-flash-preview-tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000});
     if(!r.ok){ let reason=''; try{const eb=await r.json(); reason=(eb.error&&eb.error.message)||'';}catch(_){}
       console.warn('Gemini TTS error',r.status,reason); throw new Error('api-'+r.status+(reason?': '+reason:'')); }
     const j=await r.json();
-    const part=j.candidates&&j.candidates[0]&&j.candidates[0].content.parts.find(p=>p.inlineData);
-    if(!part) throw new Error('no-audio');
-    const rate=parseInt((part.inlineData.mimeType.match(/rate=(\d+)/)||[])[1]||'24000');
-    buf=pcmToBuffer(b64ToPcm16(part.inlineData.data), rate);
+    buf=gemReadAudio(j).buf;
     if(gemCache.size>40) gemCache.clear();
     gemCache.set(clean+gemVoice(), buf);
   }
