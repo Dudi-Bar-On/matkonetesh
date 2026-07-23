@@ -1,0 +1,18 @@
+# graphify — exclude non-semantic image assets from the documentation knowledge graph.
+#
+# Why: the doc corpus under docs/ contains 260+ screenshots (docs/analysis/shots/**)
+# and program mockups. graphify has no vision pass configured here, so these images
+# carry no extractable text — yet every incremental run re-stats them and, because
+# most were added after the last manifest was written, flags ~200 of them as
+# "changed". That manifest churn (a) makes `detect_incremental` report hundreds of
+# phantom doc changes and (b) would make a `--mode deep` run try to LLM-process every
+# screenshot. Excluding images makes the doc graph markdown-focused and keeps the
+# incremental gate honest — it then reports only real .md changes.
+#
+# gitignore semantics (unanchored patterns match at any depth under docs/).
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.webp
+*.svg
