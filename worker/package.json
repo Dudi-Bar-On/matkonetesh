@@ -7,9 +7,12 @@
     "login": "wrangler login",
     "deploy": "wrangler deploy",
     "dev": "wrangler dev",
-    "whoami": "wrangler whoami"
+    "whoami": "wrangler whoami",
+    "test": "vitest run"
   },
   "devDependencies": {
-    "wrangler": ">=3.90.0"
+    "wrangler": ">=3.90.0",
+    "vitest": "^4.1.0",
+    "@cloudflare/vitest-pool-workers": "^0.18.7"
   }
 }
