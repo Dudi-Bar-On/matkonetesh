@@ -5279,7 +5279,7 @@ function pcmToBuffer(pcm, rate){
   return buf;
 }
 async function gemSpeak(text, lang){
-  const key=gemKey(); if(!key) throw new Error('no-key');
+  if(!aiAvail()) throw new Error('no-key');   // P0-app item 4: managed OR BYOK — gemFetch routes it (4325)
   const clean=speechText(text, lang||vcAnsLang());
   let buf=gemCache.get(clean+gemVoice());
   if(!buf){
@@ -5311,7 +5311,7 @@ function sysSpeak(text, lang){
 function vcSpeak(text, lang){
   const L=lang||vcAnsLang();
   gemStop(); try{speechSynthesis.cancel();}catch(e){}
-  if(gemKey()){
+  if(aiAvail()){   // P0-app item 4: a managed-only user must reach Gemini TTS, not the weaker system voice
     gemSpeak(text, L).catch(err=>{
       const s=String(err.message||err);
       let m='';
