@@ -40,6 +40,8 @@
 // the framework's.
 import { test as base, expect } from '@playwright/test';
 import type { Page, BrowserContext } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // Every goto defaults to 'domcontentloaded' — the app is a single synchronous inline script, fully
 // interactive at DCL; 'load' only waited on fonts/icons and blew timeouts under contention
@@ -49,6 +51,20 @@ function dclGoto(page: Page): void {
   (page as Page & { goto: Page['goto'] }).goto = ((url: string, opts?: Parameters<Page['goto']>[1]) =>
     orig(url, { waitUntil: 'domcontentloaded', ...(opts || {}) })) as Page['goto'];
 }
+
+// ROOT-CAUSE FIX (2026-07-24) — serve the app document from an in-memory Buffer instead of a per-test
+// loopback HTTP navigation. Under N concurrent workers, each seedApp `page.reload()` opens a loopback
+// navigation whose request is SERIALIZED at a shared Windows/chromium connection layer: the request sits
+// ~20 s inside chromium before it even reaches serve.js (which answers in <5 ms), stalling navigations to
+// the nav timeout in BURSTS with the machine ~85 % idle — the "one shared gate releasing". Proven by a
+// reload-storm harness (docs/research/flake-refactor-rootcause.md): removing the real socket for the doc
+// navigation takes 12-way lockstep from ~286 s/mostly-timeout to ~12 s/0-fail. The bytes are byte-identical
+// to what serve.js serves (the same freshly-built dist/index.html), so the app cannot tell; subresources
+// (manifest/icons) and the service-worker project keep the real server. Read lazily+cached per worker; dist/
+// is already built by webServer.command before any worker starts.
+let __appDoc: Buffer | null = null;
+function appDoc(): Buffer { return (__appDoc ??= readFileSync(resolve(process.cwd(), 'dist/index.html'))); }
+const APP_DOC_RE = /\/index\.html($|\?)/;
 
 type WarmWorkerFixtures = { warmContext: BrowserContext; warmPage: Page };
 type WarmTestFixtures = { warm: Page; isolatedPage: Page };
@@ -66,6 +82,14 @@ export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
       isMobile: u.isMobile, hasTouch: u.hasTouch, serviceWorkers: u.serviceWorkers, baseURL: u.baseURL,
     });
     if (u.navigationTimeout) context.setDefaultNavigationTimeout(u.navigationTimeout);
+    // Fulfill the app-doc navigation from memory (see APP_DOC note above). Chromium project only — the
+    // service-worker project must serve the real 200/SW-cacheable response, and it uses its own isolated
+    // context anyway. Subresources fall through to serve.js untouched.
+    if (workerInfo.project.name === 'chromium') {
+      const body = appDoc();
+      await context.route(APP_DOC_RE, route =>
+        route.fulfill({ status: 200, headers: { 'content-type': 'text/html; charset=utf-8' }, body }));
+    }
     // DELIBERATELY no context.tracing.start() here (deviation from the plan's D2 sketch, root-caused
     // against the installed playwright 1.61.1 source, not guessed): with `trace` configured in
     // playwright.config.ts, @playwright/test's OWN automatic artifact recorder (the `_setupArtifacts`
