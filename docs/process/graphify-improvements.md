@@ -425,3 +425,123 @@ All four graphs + their `raw/*.md` sources are persisted at
 `~/.graphify/vendor-sources/{playwright-official-docs,nodejs-v8-docs,ollama-docs,semantic-search-mcp-docs}/`.
 Re-add or refresh any of them with `graphify global add
 ~/.graphify/vendor-sources/<tag>/graph.json --as <tag>` (idempotent by content hash), same pattern as §6.
+
+---
+
+## Deposit pass #2 (2026-07-24) — arc close-out, §10.16
+
+**Scope:** §10.16 close-out deposit for the loopback-fix / worker-certification arc. Two candidate sources
+per the closing brief: (a) `docs/research/hybrid-cpu-scheduling-research.md`'s own "§10.11 usefulness gate
+— deposit-worthy" list (§9 of that document); (b) any loopback-relevant official pages cited in
+`docs/research/flake-refactor-rootcause.md`. Procedure followed exactly as established in §3/§6 above:
+`curl --ssl-no-revoke` + the stdlib `html.parser` converter (NOT `graphify add`'s fetcher, per the §6 method
+hazard — verified this time by checking every fetched file was well past the ~8.3 KB truncation cap, see
+sizes below), `graphify extract . --mode deep --backend claude-cli` in a session-temp dir, `graphify global
+add`, node-count-UP verification, then re-pointed at a persisted `~/.graphify/vendor-sources/` copy (§6's
+own pattern) so a future refresh does not depend on a session-temp path. **`graphify extract` was run only
+against this temp corpus, never against this repo** (§5 hazard still stands, untouched).
+
+### (b) first — flake-refactor-rootcause.md: nothing to deposit, and here is why
+
+`docs/research/flake-refactor-rootcause.md` cites **zero external URLs** — grepped for `https?://` with no
+hits. It is a pure empirical/instrumentation debugging log (measured arms, harness timestamps, a proven
+cure), not a documentation-research document; the loopback root cause was found by building and running an
+instrumented probe, not by reading official docs about it. Its sibling review doc
+(`docs/research/flake-refactor-review.md`) also has zero URL citations. As due diligence the wider
+`flake-panel-*.md` lineage (the earlier, superseded investigation phase — see development-discipline.md's
+new L22) was also grepped: `flake-panel-research.md` does cite official pages (V8 `compilation-cache.cc`,
+`v8.dev/blog/code-caching-for-devs`, `nodejs.org/api/http.html`, Microsoft Defender scan-best-practices,
+Playwright `class-tracing`/`class-browsercontext`), but the task named `flake-refactor-rootcause.md`
+specifically, not this predecessor, and per the usefulness gate these citations mostly supported the
+V8-heap/compile-cache hypothesis that `flake-refactor-rootcause.md`'s own arms 4–5 explicitly **refuted** as
+the concurrency-hang driver — depositing them under a loopback-investigation banner would risk sending a
+future search toward the dead end this exact investigation ruled out, which is the opposite of useful.
+(The Playwright tracing/browsercontext pages are already generically covered by the existing
+`playwright-official-docs`/`vendor-docs` tags; nodejs `http.html` is generic Node API reference, not
+loopback-specific.) One item — Microsoft's Defender scan-best-practices page — documents a *lead the
+investigation left explicitly open* (`flake-refactor-rootcause.md`: "the exact Windows sub-mechanism
+[...] was not pinned [...] a Defender-exclusion A/B [...] is not required for the fix"), so it is flagged
+here for the owner rather than deposited unilaterally: it wasn't in the named document's citation list, and
+depositing a source for an unconfirmed lead under the "loopback, solved" banner would overstate what was
+actually proven. **Skipped, with reasons given, per the brief's own instruction.**
+
+### (a) — the hybrid-CPU research's 8-URL deposit list, tag `windows-scheduling-docs`
+
+| # | Page | Fetched size (HTML → text) |
+|---|---|---|
+| 1 | [Quality of Service](https://learn.microsoft.com/en-us/windows/win32/procthread/quality-of-service) | 54.5 KB → 6.6 KB |
+| 2 | [SetProcessInformation](https://learn.microsoft.com/en-us/windows/win32/api/processthreadsapi/nf-processthreadsapi-setprocessinformation) | 61.8 KB → 10.4 KB |
+| 3 | [CPU Sets](https://learn.microsoft.com/en-us/windows/win32/procthread/cpu-sets) | 51.4 KB → 3.9 KB |
+| 4 | [Scheduling Priorities](https://learn.microsoft.com/en-us/windows/win32/procthread/scheduling-priorities) | 57.2 KB → 8.1 KB |
+| 5 | [SetProcessAffinityMask](https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setprocessaffinitymask) | 54.5 KB → 4.7 KB |
+| 6 | [SchedulingPolicy power setting](https://learn.microsoft.com/en-us/windows-hardware/customize/power-settings/configuration-for-hetero-power-scheduling-schedulingpolicy) | 38.9 KB → 2.2 KB |
+| 7 | [Playwright class-testproject](https://playwright.dev/docs/api/class-testproject) | 176.9 KB → 20.8 KB |
+| 8 | [Playwright release notes](https://playwright.dev/docs/release-notes) | 886.0 KB → 120.5 KB |
+
+All 8 files landed well clear of the §6 ~8.3 KB truncation cap (smallest converted output 2.2 KB from a
+38.9 KB fetch — a genuinely short source page, not a truncated one; tail-checked). `graphify extract`'s
+raw-CLI chunking is **token-budget-based** (`--token-budget`, default 60,000), not the local-graph skill's
+file-count chunking (§10.12's `ceil(files/22)` describes the skill wrapper, not this command) — the whole
+8-file/~170 KB corpus (≈137.5K input tokens including the deep-mode prompt) extracted in **one chunk**,
+confirmed by the tool's own `chunk 1/1 done` line, no truncation warning. Result: **45 nodes, 55 edges, 9
+communities**, real per-page granularity (`SYSTEM_CPU_SET_INFORMATION structure`, `PROCESS_POWER_THROTTLING_EXECUTION_SPEED
+flag`, `testProject.workers property`, `SetThreadAffinityMask function`, …), spot-checked node-by-node
+against source file — every one of the 8 sources produced genuine content nodes, none degenerate. Cost
+$0.0000 (`claude-cli` backend, matching §3).
+
+### Before → after `graphify global list`
+
+```
+BEFORE                                        AFTER
+  vendor-docs               2435                vendor-docs               2435
+  methodology               4335                methodology               4335
+  gemini-api-docs             71                gemini-api-docs             71
+  cloudflare-workers-docs     56                cloudflare-workers-docs     56
+  nodejs-v8-docs              48                nodejs-v8-docs              48
+  ollama-docs                 27                ollama-docs                 27
+  semantic-search-mcp-docs    24                semantic-search-mcp-docs    24
+  playwright-official-docs    27                playwright-official-docs    27
+                                                 windows-scheduling-docs     45   ← new
+  total 7023 nodes                              total 7068 nodes  (+45, node-count-UP)
+```
+
+`graphify global add` reported `+45 nodes, -0 pruned` on the real add.
+
+### Verification — vocabulary-expanded `graphify query` probes (post-deposit, and re-confirmed after the
+persistence re-point below)
+
+1. **`"CPU sets affinity mask scheduling priority QoS EcoQoS heterogeneous"`** → top hits: `Heterogeneous
+   Processor Scheduling`, `EcoQoS Level`, `CPU Sets`, `SetProcessAffinityMask function`, `QoS Levels
+   (High/Medium/Low/Utility/Eco/Media/Deadline)`, `Scheduling Priorities`, `testProject.workers property` —
+   47 nodes found. **Before this deposit this exact vocabulary returned zero relevant hits** — verified by
+   `hybrid-cpu-scheduling-research.md`'s own §0 method note ("No node exists for Windows scheduling, Thread
+   Director, QoS/EcoQoS, CPU affinity, hybrid CPUs, or Playwright worker internals").
+2. **`"testProject workers per-project parallel timeout"`** → top hits: `testProject.workers property`,
+   `testProject.teardown property`, `testProject.dependencies property`, `Playwright TestProject`,
+   `Playwright TestConfig` — 98 nodes found, the per-project-workers fact (the one this repo's own config
+   comments and two prior research docs believed impossible until §5.1 of the source research doc) now at
+   the top of its own query.
+3. Re-run after the persistence re-point (below): **`"SetProcessAffinityMask CPU sets EcoQoS scheduling
+   priority testProject workers"`** → identical top-ranked hits, 74 nodes found — confirms the remove+re-add
+   did not change queryability.
+
+**Usefulness gate: passes.** The exact vocabulary that returned noise or nothing in the source research
+doc's own §0 method note now returns the real target documentation as the top-ranked result.
+
+### Reproducibility (this pass)
+
+Corpus + graph persisted at `~/.graphify/vendor-sources/windows-scheduling-docs/` (`raw/*.md` + `graph.json`).
+The extraction was first run and added from a session-temp directory (so the deposit landed and was verified
+early); it was then **removed and re-added from the persistent path**
+(`graphify global remove windows-scheduling-docs` → `graphify global add
+~/.graphify/vendor-sources/windows-scheduling-docs/graph.json --as windows-scheduling-docs`) so the
+manifest's `source_path` points at a durable location rather than the session scratchpad, matching the §6
+pattern — `global_add`'s hash-skip path (`graphify/global_graph.py:102-104`) returns early WITHOUT updating
+`source_path` when content is byte-identical, so simply copying the file to a new location and re-adding
+would silently have kept the stale temp-path pointer; remove-then-readd was required to actually re-point it.
+Net node count was unchanged by this step (45 nodes both times). Re-add or refresh with `graphify global add
+~/.graphify/vendor-sources/windows-scheduling-docs/graph.json --as windows-scheduling-docs`.
+
+**Repo untouched:** `graphify-out/` was never created inside `matconetesh` by this pass — `git status`
+confirmed no graphify-related changes in the repo working tree. §10.12's separate LOCAL-graph refresh is
+**not** part of this deposit pass; see the arc close-out report for its own status.
