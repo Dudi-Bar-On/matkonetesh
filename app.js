@@ -4422,20 +4422,35 @@ function aiSafetyCaveat(txt){
 // regex then diverged from it and produced a CORRUPTED verified value ("1,063°C" -> "1,63°C" marked
 // verified), because the two patterns disagreed about where the number ended. Never write a second one.
 const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';
-// Phase A gate FIX C — the old single "deg(?:rees?)?\.?\s*(?:C\b|F\b|celsius|fahrenheit)?" fragment had
-// three defects, all confirmed by execution (scratch/verify-phase-a-gate-v6.js): (1) no \b after "deg",
-// so it matched inside "degradation"/"deg of freedom"; (2) the unconditional \s* swallowed its trailing
-// space even when no unit letter followed ("45 degree angle" -> placeholder glued to "angle"); (3) \.?
-// let \s* reach across a sentence boundary ("63 degrees. F is...") and bind the NEXT sentence's "F",
-// corrupting 63 into 17. Fixed by splitting into two alternatives: the FULL word "degrees"/"degree" may
-// stand alone (the app's own English TTS says "74 degrees" meaning its native Celsius) with \b then an
-// OPTIONAL unit-letter suffix whose own [ \t]* is nested INSIDE that optional group (so a non-matching
-// tail never consumes the space); the SHORT form "deg" requires an explicit unit letter to follow (\b
-// alone does not distinguish "3 deg" from "3 deg of freedom" — verified empirically, see v6 harness case
-// C1) — this is a narrower fix than the literal regex suggested elsewhere, kept because it is the only
-// formulation that satisfies BOTH required non-match tests. "slice at a 45 degree angle" still matches
-// and redacts (explicitly accepted, not a defect — see the test that documents it).
-const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|degrees?\\b(?:[ \\t]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b))?|deg\\b[ \\t]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|celsius|fahrenheit)';
+// REGRESSION FIX (2026-07-24, closes 0ab7baa) — the FIX C split above traded one hole for another: its
+// mandatory-unit-letter "deg\b[ \t]*(?:C\b|...)" alternative (1) required \b right after "deg", which
+// cannot match inside "degC"/"degF" (g→C is word-char to word-char, no boundary) — so the compact spoken
+// forms "74degC"/"74degF" were never tokenized; and (2) made the unit letter MANDATORY, so bare "74 deg"
+// and "74 deg." were never tokenized either. Confirmed on the real built app (measurement in the task
+// brief): "pull it at 74 deg and it is safe" reached vcSpeak completely unguarded, no marker.
+// Fixed by ONE fragment covering both defects: deg(?:rees?)?(?:[ \t]*(?:C\b|F\b|celsius\b|fahrenheit\b)|\.?(?![A-Za-z]))
+//   - deg(?:rees?)? matches deg/degree/degrees, same as before.
+//   - branch 1 (unit-letter): [ \t]* + C\b|F\b|celsius\b|fahrenheit\b — NO \b requirement between "deg"
+//     and the letter, so "degC"/"degF" match (this is the actual regression fix).
+//   - branch 2 (bare form): \.? then (?![A-Za-z]) — the unit letter is now OPTIONAL: "deg"/"deg."/
+//     "degrees"/"degrees." all match on their own, as long as no letter immediately follows (so
+//     "degradation"/"deg of freedom" still fail: "r" and " o" are not `\.` and the space in "deg of" is
+//     not a letter, but "of" starts mid-word right after "deg " — see below).
+// DEVIATION FROM THE TASK'S LITERAL REGEX, verified by execution (scratch/verify-fix-c2-v7.js, RED) then
+// fixed (scratch/verify-fix-c2-v7b.js, GREEN) — do not "simplify" this back: the task text placed \.?
+// BEFORE the branch group, unconditionally: "deg(?:rees?)?\.?(?:[ \t]*(?:C\b|...)|(?![A-Za-z]))". That
+// version REOPENS FIX C's own defect 3 ("63 degrees. F is what the probe shows" -> [17], not [63]):
+// with \.? outside the branch, "degrees" + "." + " F" all get consumed by the unit-letter branch (period
+// then space then a real "F\b" downstream), corrupting 63 into a fake Fahrenheit reading. Moving \.? INTO
+// branch 2 only (this file's version) makes the period consumable ONLY when no unit letter follows it,
+// which is exactly what "deg."/"degrees." (abbreviation, end of clause) means and "degrees. F" (a NEW
+// sentence) does not.
+// ACCEPTED REVERSAL (owner ruling, 2026-07-24): "3 deg of freedom" now matches -> [3], the opposite of
+// FIX C's own explicit non-match test. Consistent with every other ruling on this function (over-redact,
+// never leak): "45 degree angle" is already accepted as an over-match; refusing bare "deg" to protect an
+// engineering idiom, at the price of leaking real unguarded temperatures ("74 deg"), was the inconsistent
+// choice. A false positive costs an annoying redaction; a false negative costs an unguarded safety number.
+const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|deg(?:rees?)?(?:[ \\t]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|\\.?(?![A-Za-z]))|celsius|fahrenheit)';
 const SAFETY_TOKEN_SRC=
     '('+SAFETY_NUM+')\\s*[-–]\\s*('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
   + '|('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'                               // 4 number  · 5 its unit

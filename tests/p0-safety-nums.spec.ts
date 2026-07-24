@@ -89,16 +89,48 @@ test('FIX 2 — a comma-grouped thousands number extracts as its FULL value, not
 });
 
 // Phase A gate close — FIX C, defect 1: the old SAFETY_UNIT "deg" fragment had no word boundary after
-// "deg", so it matched as a PREFIX inside unrelated words/phrases. Confirmed by execution before the fix
-// (scratch/verify-phase-a-gate-v6.js): aiSafetyNums('5 degradation events') -> [5],
-// aiSafetyNums('3 deg of freedom') -> [3]. The fix adds \b after deg(?:rees?)? AND — because \b alone does
-// not stop "deg" followed by an unrelated word starting with whitespace ("deg of freedom") — requires the
-// SHORT form "deg" to be followed by an actual unit letter (C/F/celsius/fahrenheit); only the FULL word
-// "degrees"/"degree" may stand alone (matching the app's own English TTS, "74 degrees").
-test('FIX C — "degradation"/"deg of freedom" are not mistaken for a temperature unit', async ({ page }) => {
+// "deg", so it matched as a PREFIX inside unrelated words. Confirmed by execution before that fix
+// (scratch/verify-phase-a-gate-v6.js): aiSafetyNums('5 degradation events') -> [5]. Still a non-match today
+// under the REGRESSION FIX (2026-07-24): "degradation"/"degradition" never match (?:rees?)? (the letters
+// after "deg" are "rad", not "ree"), and the letter immediately following "deg" ('r') is not a `.` and IS
+// an [A-Za-z] letter, so neither branch of the new fragment can complete.
+test('FIX C — "degradation" is not mistaken for a temperature unit', async ({ page }) => {
   await boot(page);
   expect(await page.evaluate(`aiSafetyNums('5 degradation events')`)).toEqual([]);
-  expect(await page.evaluate(`aiSafetyNums('3 deg of freedom')`)).toEqual([]);
+  expect(await page.evaluate(`aiSafetyNums('74degradation')`)).toEqual([]);
+});
+
+// REGRESSION FIX (2026-07-24, closes 0ab7baa) — the FIX C mandatory-unit-letter design (deg\b[ \t]*(?:C\b|
+// ...)) stopped matching bare "deg" entirely, which ALSO stopped matching real unguarded temperatures:
+// measured on the real built app, "pull it at 74 deg and it is safe" reached vcSpeak completely unguarded.
+// The fix makes the unit letter OPTIONAL again (deg(?:rees?)?\.?(?![A-Za-z]) branch), so "74 deg"/"74 deg."/
+// "74 DEG" are recognised, AND makes the letter-boundary check `\b`-free so the compact spoken/typed forms
+// "74degC"/"74degF" (no space at all — g immediately followed by the unit letter, where \b cannot match)
+// are recognised too.
+test('REGRESSION — bare "deg" (with/without a period, any case) is recognised as a temperature unit', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(`aiSafetyNums('74 deg')`)).toEqual([74]);
+  expect(await page.evaluate(`aiSafetyNums('74 deg.')`)).toEqual([74]);
+  expect(await page.evaluate(`aiSafetyNums('74 DEG')`)).toEqual([74]);
+});
+test('REGRESSION — compact "74degC"/"74degF" (no space, no \\b between "deg" and the unit letter) are recognised', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(`aiSafetyNums('74degC')`)).toEqual([74]);
+  expect(await page.evaluate(`aiSafetyNums('74degF')`)).toEqual([23]);   // (74-32)*5/9 = 23.33 -> rounds to 23
+  expect(await page.evaluate(`aiSafetyNums('2 degC')`)).toEqual([2]);
+});
+// ACCEPTED REVERSAL (owner ruling, 2026-07-24) — "3 deg of freedom" now MATCHES -> [3], the opposite of
+// FIX C's own explicit non-match test (which asserted []). This is deliberate, not a re-introduced defect:
+// making bare "deg" a valid unit again (the regression fix above) is what "74 deg" being recognised
+// REQUIRES, and there is no way to keep "deg" unit-less-valid for a real temperature while refusing it for
+// "deg of freedom" — the token "deg" is identical in both. Consistent with every other ruling on this
+// function (fail toward OVER-redaction, never toward a leak): "slice at a 45 degree angle" is already
+// accepted as an over-match below; refusing bare "deg" to protect an engineering idiom, at the price of
+// leaking a real unguarded "74 deg" temperature, was the inconsistent choice. Do NOT "fix" this back to []
+// — that reopens the regression this whole change closes.
+test('ACCEPTED — "3 deg of freedom" is over-matched -> [3] (documents the deliberate reversal, do not revert)', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(`aiSafetyNums('3 deg of freedom')`)).toEqual([3]);
 });
 
 // Phase A gate close — FIX C, defect 3 (the worst class: a VALUE CORRUPTION, not an over-flag): the old

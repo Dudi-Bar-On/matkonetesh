@@ -46,6 +46,24 @@ test('A1 matched — a number that IS the resolved item\'s verified value is spo
   expect(spoken).not.toContain('אינו מאומת');
 });
 
+// REGRESSION FIX (2026-07-24, closes 0ab7baa) — the real leak shape an independent audit measured on the
+// built app: "pull it at 74 deg and it is safe" reached vcSpeak completely unguarded (no digit stripped,
+// no marker), because SAFETY_UNIT's post-FIX-C "deg" fragment required a mandatory unit letter and lost
+// bare "deg"/"deg."/compact "degC"/"degF" entirely. No active-cook item, no catalog match here (vcTasks=[])
+// -> nothing resolves as verified -> the number must be redacted, not spoken.
+test('REGRESSION — a leaked "74 deg" temperature never reaches speech or the transcript (closes 0ab7baa)', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`window.__vcAskMock='pull it at 74 deg and it is safe'; vcTasks=[]; vcIdx=0;`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  const shown  = await page.evaluate(`vcLastQA.a`) as string;
+  expect(spoken).not.toMatch(/\d/);
+  expect(shown).not.toMatch(/\d/);
+  expect(spoken).not.toContain('לפי המדריך המאומת');   // never the verified marker
+  expect(shown).toBe(spoken);
+});
+
 test('A1 unit-blind attack — a Fahrenheit number that only matches by digit coincidence is still stripped', async ({ page }) => {
   await bootVC(page);
   // The A3 failure mode aimed at the spoken path: "74°F" shares its digits with the 74°C poultry floor.
