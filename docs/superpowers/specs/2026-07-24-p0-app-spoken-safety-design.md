@@ -1,7 +1,22 @@
 # P0-app — spoken safety guard, unit-aware numeric guard, search conditionality, TTS routing, `addDays` DST fix, cross-event warning — Spec
 
-**Date:** 2026-07-24 · **Status:** DRAFT — awaiting owner approval (per `development-discipline.md` §2, no
-`writing-plans` work starts before this is approved).
+**Date:** 2026-07-24 · **Status:** **APPROVED by the owner, 2026-07-24** (per `development-discipline.md` §2,
+`writing-plans` may now start).
+
+**Owner's review decision, 2026-07-24 — all five §7 flags confirmed as drafted, none overridden:**
+1. §7 ambiguity 4a — **item 2's scope expansion** to the B10 range-phrase gap: **CONFIRMED** (accepted as an
+   addition to item 2's contract, not a waiver of anything).
+2. §7 ambiguity 4b — **item 7, the `usageMetadata` capture rider** (§4.4): **CONFIRMED** in scope for Phase B.
+3. §7 ambiguity 2 — **item 3's `AI_SEARCH:'auto'` trigger** ("attach `google_search` only when the app's own
+   vetted context is empty"): **CONFIRMED** as the policy semantics.
+4. §7 ambiguity 3 — **item 6's literal reading of "neutralise"** (unconfigured branch asserts no `contention`
+   at all; the bath-aware alternative stays out of scope for P0): **CONFIRMED**.
+5. §7 contradictions — **item 1's `vcTranslateToEn` specialization** (`mtNumSig`/`mtSafe` comparison against
+   `src` instead of a fresh catalog resolution): **CONFIRMED** as the same verified-value-or-nothing contract.
+
+§7 ambiguity 1 — **the proposed Hebrew/English guard copy** — remains **proposed, not final**, exactly as
+drafted: it takes its DoD-9 native-speaker pass at implementation time. Approval of this spec does not freeze
+that wording.
 **Author's brief:** the owner's design decisions below are **fixed** — this document turns them into a
 precise, implementable, traced spec. Beyond what implementation requires to be unambiguous, this draft also
 folds in two mid-session additions directed by the coordinating agent after fresh evidence (the 3.6-flash
