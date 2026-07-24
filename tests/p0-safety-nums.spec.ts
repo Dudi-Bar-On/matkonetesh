@@ -71,3 +71,19 @@ test('FIX 1 — word-form units extract like their symbol-form equivalents', asy
   expect(await page.evaluate(`aiSafetyNums('165 degrees Fahrenheit')`)).toEqual([74]);
   expect(await page.evaluate(`aiSafetyNums('74 deg C')`)).toEqual([74]);
 });
+
+// Phase A completion gate, FIX 2 — a comma-grouped thousands number ("1,063°C") defeated the ON-SCREEN
+// escalation: aiSafetyNums('sear at 1,063°C') matched only the tail "63" (the comma is not part of the
+// plain \d+(?:\.\d+)? number pattern), so a hallucinated "1,063°C" read as GROUNDED whenever the vetted
+// context happened to contain "63" in any other figure. (The spoken path was already safe by accident —
+// its digit counter, built on the same SAFETY_NUM, saw two digit runs from the split and took the
+// fail-closed "redact everything" branch — this fix is the on-screen surface only.)
+test('FIX 2 — a comma-grouped thousands number extracts as its FULL value, not just the tail', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(`aiSafetyNums('sear at 1,063°C')`)).toEqual([1063]);
+  expect(await page.evaluate(`aiUngroundedSafety('sear at 1,063°C','בטיחות 63°C')`)).toEqual([1063]);
+  // Hebrew decimal notation ("63,5" meaning 63.5) is NOT thousands grouping (needs exactly 3 digits after
+  // the comma) — unchanged from today (verified against the pre-fix baseline by execution): it still
+  // splits into two runs and only the tail "5°C" is a recognised token.
+  expect(await page.evaluate(`aiSafetyNums('63,5°C')`)).toEqual([5]);
+});

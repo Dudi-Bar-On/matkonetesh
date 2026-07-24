@@ -4414,7 +4414,7 @@ function aiSafetyCaveat(txt){
 // unified the extractor and the guard behind SAFETY_TOKEN_SRC; a separately-written digit-counting
 // regex then diverged from it and produced a CORRUPTED verified value ("1,063°C" -> "1,63°C" marked
 // verified), because the two patterns disagreed about where the number ended. Never write a second one.
-const SAFETY_NUM='\\d+(?:\\.\\d+)?';
+const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';;
 const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|deg(?:rees?)?\\.?\\s*(?:C\\b|F\\b|celsius|fahrenheit)?|celsius|fahrenheit)';;
 const SAFETY_TOKEN_SRC=
     '('+SAFETY_NUM+')\\s*[-–]\\s*('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
@@ -4425,6 +4425,11 @@ const SAFETY_TOKEN_SRC=
 function safetyTokenRe(){ return new RegExp(SAFETY_TOKEN_SRC, 'gi'); }
 // Fresh instance per call — /g regexes carry lastIndex.
 function safetyNumRe(){ return new RegExp(SAFETY_NUM, 'g'); }
+// Phase A gate FIX 2: the ONE conversion from a SAFETY_NUM/SAFETY_TOKEN_SRC match to a number. A
+// grouped-thousands match carries a comma ("1,063") that parseFloat/Number would stop at or reject —
+// every consumer of such a match (aiSafetyNums, vcMapSafetyNums, vcNumPairs) MUST go through this,
+// never call parseFloat/Number on a raw match directly (that is exactly how "1,063°C" -> 63 happened).
+function safetyNumVal(s){ return parseFloat(String(s).replace(/,/g,'')); }
 // P0-app item 2 · defect A — normalize a detected safety number to the app's Celsius-native scale.
 // Fahrenheit is converted through the app's ONE existing conversion (UNIT_CONV['F->C'], app.js:131) and
 // rounded to an integer, matching the data layer's integer °C safety floors (63/71/74). Everything else —
@@ -4449,14 +4454,14 @@ function aiSafetyNums(s){
   while((m=re.exec(str))!==null){
     if(m[1]!=null){
       const u=m[3]||'';
-      const first=aiSafetyToC(parseFloat(m[1]), u), second=aiSafetyToC(parseFloat(m[2]), u);
+      const first=aiSafetyToC(safetyNumVal(m[1]), u), second=aiSafetyToC(safetyNumVal(m[2]), u);
       if(!isNaN(first))  out.push(first);
       if(!isNaN(second)) out.push(second);
     } else if(m[4]!=null){
-      const n=aiSafetyToC(parseFloat(m[4]), m[5]||'');
+      const n=aiSafetyToC(safetyNumVal(m[4]), m[5]||'');
       if(!isNaN(n)) out.push(n);
     } else if(m[6]!=null){
-      const n=parseFloat(m[6]);
+      const n=safetyNumVal(m[6]);
       if(!isNaN(n)) out.push(n);
     }
   }
@@ -5460,9 +5465,9 @@ function vcVerifiedNums(meta){
 function vcMapSafetyNums(s, fn){
   return String(s||'').replace(safetyTokenRe(),
     function(_m, r1, r2, ru, n1, u1, ph){
-      if(r1!=null) return fn([parseFloat(r1), parseFloat(r2)], ru||'', 'range');
-      if(n1!=null) return fn([parseFloat(n1)], u1||'', 'single');
-      return fn([parseFloat(ph)], 'pH', 'ph');
+      if(r1!=null) return fn([safetyNumVal(r1), safetyNumVal(r2)], ru||'', 'range');
+      if(n1!=null) return fn([safetyNumVal(n1)], u1||'', 'single');
+      return fn([safetyNumVal(ph)], 'pH', 'ph');
     });
 }
 // Redaction marker for an unverified number. Visually distinct from the sentence's own em-dash
@@ -7229,7 +7234,7 @@ function vcNumPairs(text){
     const rest=s.slice(re.lastIndex).replace(/^[\s\-–]+/,'');
     let cls='?';
     for(let i=0;i<VC_UNIT_CLASS.length;i++){ if(VC_UNIT_CLASS[i].re.test(rest)){ cls=VC_UNIT_CLASS[i].cls; break; } }
-    out.push(Number(m[0])+':'+cls);
+    out.push(safetyNumVal(m[0])+':'+cls);
   }
   return out;
 }
