@@ -229,3 +229,86 @@ Playwright-reported wall time ranged 1.4m (Runs 2, 4) to 2.8m (Run 3).
 readings: flip run f145a8d 1.5m, Task-8 parity 1.5m).
 
 No recommendation is made here — the worker-count/final-config decision is the owner's.
+
+---
+
+## POST-FIX certification — F1+F2 stampede fix, 8 workers (2026-07-24)
+
+**What:** 7 serialized full-suite runs at the config's own default worker count — plain `npx playwright
+test` (env `MK_TEST_PORT=8123`, no `--workers` override), at commit `0127f95` ("fix(test): stampede fix —
+stagger per-worker cold parses (F1) + cold-goto-only 28s headroom (F2)"), certifying the fix against the
+failure family recorded in the "Certification campaign — 8 workers" section above (pre-fix: 2/5 clean that
+campaign, 4/7 combined with 2 prior clean readings). Identical protocol to both prior campaigns in this
+document: a disturbance gate (5 s CPU-delta sample, port 8123/8124 LISTEN check, node.exe
+serve.js/playwright-test orphan check, new-process check vs baseline) immediately before every run, and a
+per-run proof that `tests/warm-fixture.spec.ts`'s 5 contract tests ran green. Each run executed in the
+foreground to completion; none killed, none backgrounded, none re-run-to-green (failures banked as data
+per §11a/DoD-12).
+
+**Baseline census** (once, before Run 1, 5 s CPU-delta sample): total CPU **8.46%**. No listener on 8123
+or 8124. The node.exe/python.exe command-line audit found only expected residents: the **`@playwright/mcp`
+CLI** (PID 63992 npx wrapper + PID 51464 `cli.js` — this session's own Playwright-MCP tool server, not a
+suite leftover), Serena's 2 `python.exe` MCP processes plus a multiprocessing spawn child, and Serena's
+bundled language servers under `.serena\language_servers\static\`: TypeScript (LSP wrapper + 2× `tsserver`
++ `typingsInstaller`), `bash-language-server`, `yaml-language-server`, `vscode-html`/`json`-language-
+servers; a standalone `pyright-langserver.js`; and the other project MCP servers (`context7-mcp`,
+`chrome-devtools-mcp` + its watchdog, `firebase-tools mcp`, `desktop-commander`, `claude-mem`
+`mcp-server.cjs`) — no `serve.js`, no `chrome-headless-shell.exe`. Desktop-app processes >1% CPU:
+`NavigraphSimlink` (~2.8–2.9%) and `ElgatoAudioControlServer` (~2.9%), both unrelated ambient apps.
+
+**Disturbance gate, all 7 runs:** every pre-run gate passed — CPU immediately before each run: 8.97%,
+13.18%, 7.82%, 8.5%, 8.32%, 8.25%, 7.55% (Runs 1–7 respectively), all well under the 20% threshold; port
+8123/8124 never showed a LISTEN state at any gate; 0 `serve.js`/`playwright-test` orphans at any gate.
+**One transient disturbance was observed**, at the Run 1 pre-gate only: a Claude Code security hook
+(`ensure_agent_sdk.py`) had spawned a background `pip install claude-agent-sdk` (3 short-lived
+`python`/`python3.10` processes, none reading >1% CPU) plus the user's own desktop Chrome opening a new
+tab (PID 68784, real `chrome.exe`, never `chrome-headless-shell.exe`) — neither is test infrastructure,
+both were gone by the Run 2 gate, and the reading stayed at 8.97%, nowhere near the 20% halt-line. A new
+desktop `chrome.exe` PID (the user's real browser) appeared at most later gates/teardowns — ambient, not
+actionable, consistent with both prior campaigns in this document.
+
+**Per-run table:**
+
+| Run | Start–End (UTC) | Raw result | Failing spec(s) | Warm-proof | Gate (pre) | Teardown |
+|---|---|---|---|---|---|---|
+| 1 | 01:44:31.434–01:46:44.114 | `430 passed (2.2m)` — **8 failed**, exit 1 | scheduler-placement.spec.ts (1), scheduler-planschedule.spec.ts (2), setpoint-fence.spec.ts (3), smoke.spec.ts (2) | 5/5 green | PASS (8.97%) | OK — refuses, 0 orphans (9.69%)\* |
+| 2 | 01:48:19.865–01:49:46.919 | `438 passed (1.4m)`, exit 0 | — | 5/5 green | PASS (13.18%) | OK — refuses, 0 orphans (9.11%) |
+| 3 | 01:50:14.605–01:51:42.431 | `438 passed (1.4m)`, exit 0 | — | 5/5 green | PASS (7.82%) | OK — refuses, 0 orphans (7.88%) |
+| 4 | 01:52:09.647–01:53:37.533 | `438 passed (1.4m)`, exit 0 | — | 5/5 green | PASS (8.5%) | OK — refuses, 0 orphans (8.13%) |
+| 5 | 01:54:06.196–01:55:33.360 | `438 passed (1.4m)`, exit 0 | — | 5/5 green | PASS (8.32%) | OK — refuses, 0 orphans (9.46%) |
+| 6 | 01:56:00.984–01:57:29.026 | `438 passed (1.5m)`, exit 0 | — | 5/5 green | PASS (8.25%) | OK — refuses, 0 orphans (9.08%) |
+| 7 | 01:57:55.987–01:59:56.609 | `430 passed (2.0m)` — **8 failed**, exit 1 | active-hub.spec.ts (3), adaptive-home.spec.ts (5) | 5/5 green | PASS (7.55%) | OK — refuses, 0 orphans (8.94%) |
+
+\* Run 1's first teardown pass flagged a false-positive "orphan": PID 63992's command line is
+`npx @playwright/mcp@latest`, and the orphan regex's naive `test` substring match fired on "la**test**".
+Corrected to a `\btest\b` word-boundary match and re-verified within the same minute: identical PID (the
+known Playwright-MCP resident, unchanged since baseline), 0 real orphans, PASS (9.69%, the value in the
+table above). All later teardown checks in this campaign used the corrected regex.
+
+**Failing specs, all runs combined:** 16 failed test-instances across 2 of 7 runs — by spec file:
+`adaptive-home.spec.ts` 5, `setpoint-fence.spec.ts` 3, `active-hub.spec.ts` 3,
+`scheduler-planschedule.spec.ts` 2, `smoke.spec.ts` 2, `scheduler-placement.spec.ts` 1.
+
+**Root error signature:** same family as both pre-fix campaigns in this document. 14 of the 16 failures
+are `TimeoutError: page.reload: Timeout 15000ms exceeded` at `tests/_fixtures.ts:182` (`seedApp`'s
+`page.reload({waitUntil:'domcontentloaded'})` — the line shifted from :165 pre-fix to :182 post-fix,
+consistent with F1+F2 adding a net 17 lines to `_fixtures.ts`, per the commit's own diffstat). The
+remaining 2 (Run 7, `active-hub.spec.ts:99` and `:117`) are the cascade signature named in the fix's own
+commit message: `Fixture "warmPage" timeout of 30000ms exceeded during setup` / `Error: page.orig: Target
+page, context or browser has been closed` at `_fixtures.ts:56`/`:50` — the same worker's next two
+scheduled tests failing warm-fixture setup after that worker's page was torn down by test 1's reload
+timeout.
+
+**Warm-preload activation proof, per run:** all 7 runs confirmed **5/5 green**
+(`__mkWarmServed` reuse counter ≥2, the `addInitScript` trap throws, storage isolation holds between A and
+B, the default `page` IS the warm page) — including both failing runs (1, 7): the contract spec itself was
+never among the failing tests in this campaign.
+
+**Tally:** 5/7 clean this campaign (Runs 2, 3, 4, 5, 6). 2/7 failed (Runs 1, 7) — 16 failed test-instances
+total, same warm-reload-timeout/cascade family as pre-fix. Wall time (stopwatch, start-to-end): min 87.1s
+(Run 2), median 87.9s (Run 4), max 132.7s (Run 1). Playwright-reported wall time ranged 1.4m (Runs 2–5) to
+2.2m (Run 1); Run 6 was 1.5m, Run 7 was 2.0m.
+
+**8 workers post-F1F2: 5/7 clean (pre-fix: 4/7).**
+
+No recommendation is made here — the worker-count/final-config decision is the owner's.
