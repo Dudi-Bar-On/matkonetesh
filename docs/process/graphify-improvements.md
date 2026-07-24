@@ -545,3 +545,230 @@ Net node count was unchanged by this step (45 nodes both times). Re-add or refre
 **Repo untouched:** `graphify-out/` was never created inside `matconetesh` by this pass — `git status`
 confirmed no graphify-related changes in the repo working tree. §10.12's separate LOCAL-graph refresh is
 **not** part of this deposit pass; see the arc close-out report for its own status.
+
+---
+
+## Scope-fix + refresh (2026-07-24)
+
+**Task:** the deferred §10.12 local-graph scope-fix. Root scan noise (`mockups/*.png`, vendored
+`.claude/skills/**`, scratch files, etc.) was polluting `detect_incremental` — reported ~358+ "changed"
+files, almost all noise. Goal: scope the root-rooted scan to real content via a root `.graphifyignore`,
+then run the incremental `--update`-style flow (never headless `graphify extract`, per the §5 hazard
+above) to land the day's ~44 new/changed session docs and the changed code files, while proving app.js's
+800+ code nodes survive.
+
+### The ignore files
+
+**`.graphifyignore`** (new, repo root) excludes: `mockups/`, `scratch/`, `.playwright-mcp/`, `.serena/`,
+`.claude/`, `test-results/`, `node_modules/`, `dist/`, image extensions repo-wide, raw measurement data
+under `docs/research/measurements/`, plus three items discovered mid-fix (see below): `/index.html`,
+`/_app_check.js`, `/site/` (generated build artifacts — the repo's own `.gitignore` independently labels
+the first two "Generated build artifacts"), `.superpowers/` (another vendored plugin's local state), and
+`scratch_literal.txt` (a throwaway browser-console snippet at repo root).
+
+**`docs/.graphifyignore`** (existing, extended) gained a block excluding raw data under
+`docs/research/measurements/` — `*.json`/`*.csv`/`*.log` at any depth, and the whole
+`research/measurements/evidence/` subtree, which turned out to be a nested Playwright test-results dump
+(`trace.zip`, `error-context.md`, `.last-run.json`, failure screenshots) that was masquerading as 8 of the
+docs-scope's "51 changed documents."
+
+### Bug found and fixed mid-task: a root-file `docs/` exclusion silently blanks the docs-rooted scan
+
+First attempt added a `docs/` line to the root `.graphifyignore`, reasoning that the ROOT-rooted scan
+should not touch the docs corpus (it has its own, separately-rooted manifest). This is **wrong** —
+verified the hard way, not assumed: `graphify.detect._load_graphifyignore` cascades ignore files by
+**filesystem ancestry**, from the nearest VCS root down to whichever scan root is passed in. Repo root is
+an ancestor of *both* scan roots this project uses (`.` and `docs`), so a rule written in the root
+`.graphifyignore` is loaded for a `docs`-rooted scan too — there is no way to make a `.graphifyignore` rule
+"only apply to this one `detect_incremental()` call." Consequence, observed directly:
+`detect_incremental(root='docs')`'s real 51-changed-document baseline collapsed to **0** the moment the
+`docs/` line existed (every doc under `docs/` matched and was excluded, not just the intended root-scope
+noise). Reverted before the file was ever used for an actual extract/merge.
+
+The real hazard the `docs/` line was trying to prevent is still real, and still avoided — just fixed at the
+call-site instead of the ignore-file. `graphify.detect.load_manifest(path, root=<given root>)` re-anchors
+every stored relative manifest key (e.g. `"ANALYSIS-v149.md"`, stored relative to `docs/`) against
+*whatever* `root` the caller passes. With `root='.'` that resolves to `<repo-root>/ANALYSIS-v149.md`, which
+does not exist — so every one of the ~163 already-tracked docs falsely reports as **both** "changed" **and**
+"deleted." Verified empirically, before any ignore file existed: `detect_incremental(".")` reported
+`new_files[document]=224` and `deleted_files=163` — **0 of those 163 were real deletions.** Feeding that
+list into `build_merge(prune_sources=...)` would have pruned ~163 real document nodes from the graph.
+
+**Fix, encoded in the procedure (documented in `.graphifyignore`'s own header) rather than an ignore
+pattern:** the refresh only ever reads the `'code'` category out of a root-rooted `detect_incremental()`
+result, and never its `'document'`/`'image'` categories or its `deleted_files` list. Those come exclusively
+from the separate, correctly-rooted `detect_incremental(root='docs')` call.
+
+### Verification — changed-set before → after, both scopes
+
+```
+ROOT scope, detect_incremental(root='.')   BEFORE any ignore file:
+  code=152  document=224  image=33  new_total=409  deleted=163 (all real at that point)
+
+ROOT scope, AFTER the root .graphifyignore:
+  code=128  document=140* image=0   new_total=268  deleted=163 (100% phantom — see above; never acted on)
+  * 'document'/'image'/deleted_files from this call are BY DESIGN unused (see bug section above);
+    'code'=128 is the only category this refresh consumes from a root-rooted scan, and it is clean —
+    every file is real project content (app.js, the Python data layer, tests/, worker/, scripts/, evals/,
+    lang/*.json, package.json, tsconfig.json, playwright.config.ts, .mcp.json; zero noise).
+
+DOCS scope, detect_incremental(root='docs') BEFORE docs/.graphifyignore's measurements/evidence addition:
+  code=2  document=51  image=0  new_total=53  deleted=0
+  (8 of the 51 were docs/research/measurements/evidence/*/error-context.md — Playwright test evidence,
+  not documentation)
+
+DOCS scope, AFTER:
+  code=1  document=44  image=0  new_total=45  deleted=0
+  — collapsed to real items only: 44 real session docs (research reports, program analysis, specs/plans,
+  process docs) + 1 real code-classified file (an eval baseline JSON, left unprocessed by this pass,
+  see "skipped" below).
+```
+
+### ⚠️ HAZARD found and fixed: Windows multiprocessing needs `if __name__ == "__main__":`
+
+The first extraction attempt (a standalone driver script, not `python -c`) crashed every AST worker with
+`RuntimeError: An attempt has been made to start a new process before the current process has finished its
+bootstrapping phase`. Root cause, confirmed from the traceback (not guessed): the script's driver logic sat
+at module level with no `if __name__ == "__main__":` guard. On Windows, `multiprocessing`'s `spawn` start
+method re-imports the entry-point script in every worker process to bootstrap it — without the guard, each
+spawned AST worker re-executed the *entire* script from the top, including the `extract()` call that spawns
+workers, cascading into a runaway spawn storm. Fix: wrap the driver in `if __name__ == "__main__":` in every
+standalone script that calls `graphify.extract.extract()` (or anything else that pools workers) outside the
+skill's own `python -c` one-liners. `graph.json` was never touched by the failed attempts — the crash
+happened before `build_merge`/`to_json` ran.
+
+### ⚠️ HAZARD found and fixed: `build_merge`'s replace-on-re-extract matches by `source_file` only, not `file_type`
+
+Second discovery, also evidence-based. An AST-only re-extraction of the 128 changed code files (the
+standard, documented "code_only" fast path — no LLM needed) tripped the `#479` shrink-guard: the merged
+graph came out to 2995 nodes against an existing 4547 (net -1349), and `to_json` correctly refused to write
+it. Root cause: **this repo's original graph was not built with a plain AST-only pass over code.** A
+specific set of 12 files — `app.js`, the "Python data layer" (`build.py`, `data.py`, `equipment_map.py`,
+`gen_sources.py`, `sausages_new.py`, `seasonings.py`, `seasonings_ext.py`, `sources.py`), two
+`package.json`s, and one test spec — were *also* run through a rich semantic/LLM extraction pass
+(`graphify-out/.graphify_chunk_passc_*.json`, confirmed by reading one: labels like `"PACK_EFF = 0.85
+packing-efficiency constant"` mixed with `file_type: "rationale"` nodes in the same file's chunk — not
+mechanical AST output). `build_merge()`'s "re-extracted files replace their prior contribution" logic
+matches purely on `source_file` string equality, with no `file_type` awareness: dropping app.js's old nodes
+before merging in a *pure-AST* re-extraction is a strict, large downgrade for exactly these 12 files (their
+`concept`/`rationale`/`document` nodes have no AST equivalent to be replaced by, and their `code` nodes
+shrank from rich semantic labels to bare AST identifiers) — not something the standard skill flow's
+`code_only` fast path anticipates, because it assumes code was *always* AST-only.
+
+**Fix:** computed the enriched-file set directly from the graph (any file among the 128 changed that has at
+least one non-`'code'`-typed node) — exactly these 12 — and, for those files only, **preserved their
+existing nodes/edges (any `file_type`) wholesale** instead of letting the fresh AST output replace them; the
+thinner fresh-AST duplicate for those 12 files was discarded. The other ~116 changed files (test specs,
+`worker/`, `scripts/`, `evals/`, config) only ever had `file_type='code'` nodes, so a fresh AST re-extraction
+is a safe, correct refresh for them and was used as-is.
+
+**Known, explicitly-flagged trade-off:** app.js's preserved semantic-layer content describes its state as of
+the last semantic pass (2026-07-22), not today's edit (app.js's mtime is 2026-07-23 16:46). A full semantic
+re-extraction of the 12 enriched files, matching the original custom methodology, is comparable in scope to
+the entire docs pass below and was judged out of scope for this deferred scope-fix task — **flagged here as
+a follow-up, not attempted.**
+
+### PASS 1 (code, root='.') — before → after
+
+```
+BEFORE (baseline, unchanged since 2026-07-22/23 build):
+  total nodes: 4547   total edges: 14268
+  file_type: document=217 rationale=319 concept=1241 code=2664 paper=1 image=105
+  app.js nodes: 821
+
+AFTER PASS 1:
+  total nodes: 4661   total edges: 14649        (+114 nodes, +381 edges — node-count-UP)
+  file_type: document=217 rationale=320 concept=1250 code=2768 paper=1 image=105
+  app.js nodes: 821                              (fully preserved — well above the required ≥800 floor)
+```
+
+Health check (`graphify.diagnostics.diagnose_extraction`) after PASS 1: **0** dangling-endpoint edges,
+**0** missing-endpoint edges, **0** self-loops, **0** collapsed/duplicate edges — clean.
+
+Deliberately **not** persisted this pass: `manifest.json`'s code-side tracking. Verified that calling
+`save_manifest(root='.')` at all, regardless of what `files`/`scan_corpus` are passed, would silently DROP
+every existing docs-relative manifest row: `load_manifest(path, root='.')` re-anchors `"ANALYSIS-v149.md"`
+to a nonexistent path, and `save_manifest`'s own "does this row's file still exist on disk?" prune step
+(independent of `scan_corpus`) then deletes that row. **Consequence, honestly flagged:** a future
+root-scoped `detect_incremental('.')` will again report all currently-graphed code files as "new" rather
+than "unchanged" until the graph is made single-rooted (the larger, separate fix flagged in §5 above) — this
+does not affect graph *content* (already refreshed by this pass), only how much redundant, free/fast AST
+re-work a future run does.
+
+### PASS 2 (docs, root='docs') — semantic extraction via `--backend claude-cli`
+
+Direct library calls (`graphify.cache.check_semantic_cache` → `graphify.llm.extract_corpus_parallel(backend='claude-cli', model=GRAPHIFY_CLAUDE_CLI_MODEL=fable, deep_mode=True)` → `graphify.build.build_merge`), matching the skill's own Part B mechanics without dispatching Agent-tool subagents (none available to this task agent) — the same no-key, $0.00 pattern verified in §3 above. 45 changed documents, chunked to 7 claude-cli calls (forced serial — claude-cli backend caps `max_concurrency=1`), ~50 minutes wall-clock total. Fresh extraction: 438 unique nodes / 733 edges (489 raw, 51 collapsed by exact-ID dedup within the run; 15 more nodes were dropped mid-run by graphify's own cross-file-misattribution guard — `#1895`, the model occasionally attributed a node to a file outside the dispatched chunk and the safety guard correctly discarded it rather than pollute that file's cache entry).
+
+**Second discovery, same evidence-based method as PASS 1's hazard:** a naive `build_merge` of this fresh extraction also tripped the `#479` shrink-guard (2946 vs the post-PASS-1 4661, net -1715). Root cause, verified by reading the actual file before concluding anything: `docs/analysis/program/SEQ-analysis.md` is 715 real lines of dense content, and the original graph had 38 nodes for it; the fresh chunked pass (multiple files packed per claude-cli call, `fable` fast-tier model) produced only **3**. This is under-extraction, not the file having shrunk — confirmed by reading the file's actual current content, not assumed from the numbers alone. 18 of the 45 changed files were pre-existing (already graphed, just edited) and showed the same pattern to varying degrees — some grew (`process/development-discipline.md` 18→29, a genuine improvement), most shrank (`SPEC-reconciliation.md` 25→1, `ARCH-analysis.md` 38→20, `gap-closing-program-charter.md` 41→26, …).
+
+**Fix:** for every file with both prior and fresh content — 46 files total (18 pre-existing docs plus, unexpectedly useful, files the semantic pass cross-attributed content to, including `app.js` itself: docs that discuss e.g. `svBaths()` or `gemFetch()` produced nodes keyed to `app.js`, overlapping with PASS 1's preserved set) — **union** old + fresh nodes/edges rather than choose one side. `build()`'s own ID + Jaro-Winkler dedup then collapsed the genuine duplicates cleanly: 11 nodes deduplicated (7 exact-ID, 4 fuzzy), each logged with which label survived (e.g. `app.js` (kept) vs `app.js (single-file PWA application code)` (dropped) — same real-world entity extracted twice under different labels, correctly recognized as the same node).
+
+```
+AFTER PASS 2 (final state):
+  total nodes: 5009   total edges: 15351        (+348 nodes, +702 edges vs post-PASS-1 — node-count-UP)
+  file_type: document=267 rationale=350 concept=1477 code=2809 paper=1 image=105
+  app.js nodes: 846                              (up from 821 — net new app.js-attributed content
+                                                   surfaced by the docs pass, after dedup removed overlaps)
+```
+
+Health check after PASS 2: **0** dangling-endpoint edges, **0** missing-endpoint edges, **0** self-loops,
+**0** collapsed/duplicate edges — clean.
+
+`manifest.json` saved with `root='docs'` (the correct, established root for this manifest — safe, unlike
+the `root='.'` case documented under PASS 1).
+
+### GRAND TOTAL — before → after this whole scope-fix + refresh
+
+```
+                    nodes   edges    app.js nodes
+BASELINE (start)    4547    14268    821
+AFTER PASS 1        4661    14649    821    (+114 nodes — code refresh + enrichment preservation)
+AFTER PASS 2        5009    15351    846    (+348 nodes — docs refresh + old/fresh union)
+──────────────────────────────────────────
+NET CHANGE          +462    +1083    +25    (node-count-UP throughout; app.js well above the ≥800 floor
+                                              at every step, never at risk after the preservation fixes)
+```
+
+### Verification — 3 `graphify query` probes proving the new docs are queryable
+
+All three ran against the final `graphify-out/graph.json` via the CLI (`graphify query "<question>"`), no
+special setup:
+
+1. **`"loopback serialization root cause"`** → 126 nodes found. Top hits: `Loopback Connection
+   Serialization Root Cause` (`research/flake-refactor-rootcause.md`), `Flake Refactor Root-Cause Report`,
+   `L22: loopback serialization root cause via boundary instrumentation`
+   (`process/development-discipline.md`), `route.fulfill In-Memory Document Fix (warmContext)`, `seedApp
+   Seed-then-Reload Per-Test Reset` (`research/warm-page-architecture-research.md`) — the exact target
+   content, ranked first.
+2. **`"warm page fixture seedApp"`** → 860 nodes found. Top hits: `seedApp()` (`tests/_fixtures.ts:206`),
+   `warmPage Worker-Scoped Fixture (one cold goto)`, `warm-fixture.spec.ts`, `_fixtures.ts`,
+   `w0-warm-page-measure.mjs`, `Warm-Page Architecture Research` — the exact target content, ranked first.
+3. **`"model registry thinkingLevel"`** → 222 nodes found. Top hits: `thinkingLevel enum
+   (minimal/low/medium/high, Gemini 3.x)`, `thinkingLevel and thinkingBudget are mutually exclusive (400 if
+   both)`, `Model-Selection Architecture Design (8 Locked Decisions)`, `ai-model-registry.spec.ts`,
+   `GEM_MODELS role registry — single source of truth (id + kind + caps + think)` — all from
+   `analysis/program/gemini-3.6-thinking-research.md` / `analysis/program/model-selection-architecture-design.md`
+   — the exact target content, ranked first.
+
+**Usefulness gate: passes cleanly.** All three probes surface the new session docs (and, for query 2/3, the
+PASS-1-preserved code content they cross-reference) as the top-ranked results, not buried in noise.
+
+### Skipped / unresolved, honestly flagged
+
+- `docs/analysis/program/eval/baseline-gemini-2.5-flash-2026-07-23.json` — the one file the docs-scope
+  incremental call classifies as `'code'` (a raw eval-baseline JSON). Not processed by either pass (PASS 1
+  is scoped to the root-rooted `'code'` category, which does not include this docs-nested file since docs/
+  is out of PASS 1's ignore-scoped surface for code purposes; PASS 2 is scoped to the `'document'`
+  category). Low-value, single small data file — left for a future pass if ever needed.
+- A full semantic re-extraction of the 12 code files with prior rich enrichment (see hazard above) — their
+  existing content was preserved as-is, not refreshed to match today's code. Flagged as a follow-up.
+- `manifest.json` code-side tracking (see PASS 1 note above) — not established this round; a future
+  root-scoped incremental run will re-treat all code files as "new," which is safe (idempotent, free/fast)
+  but not maximally efficient. The durable fix is the single-rooted graph restructure already flagged in §5,
+  not attempted here (large, separate, owner-level change).
+- PASS 2's ~50-minute wall-clock runtime meant new session docs appeared (owner actively working in
+  parallel) after extraction had already started — e.g. `process/HANDOVER-2026-07-24.md`,
+  `analysis/program/MASTER-ONBOARDING.md`, `analysis/program/P0-kickoff-brief.md`,
+  `superpowers/specs/2026-07-24-p0-app-spoken-safety-design.md`, two new eval-baseline docs. These were not
+  in the dispatched extraction and are not yet in the graph — harmless (the next `--update` picks them up
+  normally; nothing was lost or corrupted), but flagged rather than silently left out of this report.
