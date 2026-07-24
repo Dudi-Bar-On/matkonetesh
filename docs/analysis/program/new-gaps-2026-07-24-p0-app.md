@@ -72,3 +72,55 @@ closed in any burn-down until then.
 - Ollama's `/v1/chat/completions` silently ignoring `max_completion_tokens` and discarding
   `extra_body.options`, which made graphify's output cap, `num_ctx` derivation and keep-alive all inert —
   `docs/research/2026-07-24-local-gpu-model-for-graphify.md`.
+
+---
+
+## G-T1 · 🔴 The translation guard is blind to ALLERGEN SUBSTITUTION — it only compares numbers
+
+**Found:** 2026-07-24, during the local-model opportunity study, on **real Hebrew strings from this repo**.
+**Severity:** 🔴 — an allergen erased from translated recipe content is a health risk, not a quality issue.
+**Scope:** this is **not** a local-model defect. It is structural, and it applies to **every** translation
+backend including the Gemini path that ships today.
+
+A model translating this project's own recipe strings produced:
+
+| Hebrew source | Translation produced | What was lost |
+|---|---|---|
+| anchovy fillets (`פילה אנשובי`) | *dill leaves* | **fish allergen erased** |
+| oyster sauce (`רוטב צדפות`) | *soy sauce* | **shellfish allergen erased**, replaced by a different allergen |
+| sauerkraut (`כרוב כבוש`) | *cucumber* | fermented product silently becomes a raw one |
+
+**`mtSafe` passed all ten cases.** Confirmed by execution against the shipped functions, not inferred:
+
+```
+mtSafe("פילה אנשובי", "dill leaves")            → true
+mtSafe("רוטב צדפות", "soy sauce")               → true
+mtSafe("כרוב כבוש", "cucumber")                 → true
+mtSafe("2 כפות רוטב צדפות", "2 tbsp soy sauce") → true    ← number preserved, shellfish gone
+```
+
+**Root cause, structural:** `mtNumSig` builds a multiset of the **numbers** in a text and `mtSafe` compares
+those multisets. An ingredient substitution changes no number, so the guard **cannot** see it — by
+construction, for any model, forever. The guard is correctly named (`mtNumSig` — a *numeric* signature);
+what is wrong is the confidence placed in it. The charter names this mechanism as "the correct pattern",
+and it **is** correct for the risk it was built for (a dropped or altered dose/temperature) — it was simply
+never a content-fidelity guard, and has been relied on as though it were.
+
+**Both translation paths are exposed:**
+- `mtTranslate` — the DATA path that produces `fr`/`de`/`es` recipe content.
+- `vcTransSafe` — the Voice Cook path added today. It compares `(value, unit-class)` pairs, so it is
+  strictly stronger on *numbers* but has the **identical blindness** to ingredient names.
+
+**Why this matters more than it looks:** the ULTIMATE doc records `fr`/`de`/`es` at ~2.1% coverage with no
+gate. Any bulk-translation push — local model or Gemini — would generate thousands of strings whose only
+automated check is a guard that cannot see the single most dangerous failure mode. **An i18n acceptance
+bar built on `mtSafe` pass-rate is measuring the wrong thing.**
+
+**Candidate directions (not chosen — owner's call):** content-word/ingredient recall scored against the
+existing English ground truth; an allergen-term lexicon checked bidirectionally; refusing to auto-publish
+any translation of a string containing a known allergen without human review. The study proposed a
+measurable bar — ingredient-fidelity ≥0.90 mean and ≥0.70 worst-case content-word recall — and noted that
+`gemma3:27b` **fails** it at 0.86/0.67.
+
+**Cross-reference:** `docs/research/2026-07-24-local-model-opportunities.md` (commit `d57521a`) carries the
+full ten-string evidence set and the measured fidelity scores.
