@@ -553,3 +553,34 @@ test('P0-app item 3 (spec §3.3) required test — resolveItem(key).obj is byte-
   expect(after).toBe(before);
 });
 
+// 🔴 SAFETY LEAK (commit 1b248a1) — a model-originated FAHRENHEIT number, spaced with any whitespace class
+// isFahrenheitUnit failed to recognise (NBSP, LF, thin space, narrow NBSP, …), was left UNCONVERTED by
+// aiSafetyToC. When those raw Fahrenheit digits coincidentally match the resolved item's own verified
+// Celsius figure (the shape an independent audit measured on the built app: the model says "74°F" — the
+// true value is 23°C — while the app's own verified figure for the active item is also "74"), the old
+// `ok[c]` check in vcGuardSpoken passed and the RAW unconverted number was spoken back carrying the
+// "per the app's verified guide" marker — a wrong, unsafe reading presented to the cook as app-verified.
+// Every separator is built with String.fromCharCode, never pasted literally, so there is no risk of a
+// look-alike ASCII space silently substituting for the intended code point.
+const leakSeps: [string, number][] = [
+  ['NBSP', 0x00a0],
+  ['LF', 0x0a],
+  ['thin space', 0x2009],
+  ['narrow NBSP', 0x202f],
+];
+for (const [label, code] of leakSeps) {
+  test(`the leak, end to end — a Fahrenheit number spaced with ${label} between ° and F is never spoken as verified Celsius (closes 1b248a1)`, async ({ page }) => {
+    await bootVC(page);
+    const sep = String.fromCharCode(code);
+    const degSym = String.fromCharCode(0x00b0);   // °
+    const safe = await page.evaluate(`(function(){var m=resolveItem('cut-1'); return Math.round(m.obj.safe!=null?m.obj.safe:m.obj.tgt);})()`) as number;
+    const mock = `pull it at ${safe}${degSym}${sep}F and it is safe`;
+    await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
+    await page.evaluate(`vcAskFlow('ask: what temp')`);
+    await page.waitForFunction(`window.__spoke.length>1`);
+    const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+    expect(spoken).not.toContain(`${safe}°C`);
+    expect(spoken).not.toContain('לפי המדריך המאומת');
+  });
+}
+

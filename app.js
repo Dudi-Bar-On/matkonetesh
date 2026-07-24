@@ -4450,7 +4450,25 @@ const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';
 // never leak): "45 degree angle" is already accepted as an over-match; refusing bare "deg" to protect an
 // engineering idiom, at the price of leaking real unguarded temperatures ("74 deg"), was the inconsistent
 // choice. A false positive costs an annoying redaction; a false negative costs an unguarded safety number.
-const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|deg(?:rees?)?(?:[ \\t]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|\\.?(?![A-Za-z]))|celsius|fahrenheit)';
+// SAFETY LEAK FIX (2026-07-24, closes 1b248a1) — THREE different whitespace classes lived inside this one
+// token definition: the °-branch used `\s*` (every Unicode space + \n\r\f\v), the deg-branch's unit-letter
+// separator used `[ \t]*` (space/tab ONLY), and the sibling predicate isFahrenheitUnit (below, near
+// aiSafetyToC) ALSO used `[ \t]*`. A unit the °-branch tokenized with any non-[ \t] separator (NBSP, thin
+// space, a literal newline, …) was then unclassifiable by isFahrenheitUnit — a Fahrenheit number left
+// UNCONVERTED, which can coincidentally match a genuine verified Celsius figure and get voiced as
+// "app-verified" (see tests/p0-spoken-safety.spec.ts "the leak, end to end"). Two independent fixes, not
+// one narrowing: (1) isFahrenheitUnit now strips ALL whitespace before classifying (see its own comment) —
+// this WIDENS the classifier and cannot regress a true/false verdict. (2) the deg-branch's separator below
+// is widened from `[ \t]*` to `[^\S\r\n]*` (horizontal whitespace + NBSP/thin/narrow-NBSP/ideographic —
+// deliberately NOT `\s*`, which would let a separator cross a literal `\r`/`\n` and reintroduce exactly
+// the cross-sentence corruption FIX C closed — see `\.?(?![A-Za-z])` below and `29851c0`).
+// DO NOT "fix" the °-branch's `\s*` to match its siblings by narrowing it to `[^\S\r\n]*` — verified by
+// execution (scratch/verify-1b248a1-leak-v1.js) that doing so does NOT close the leak, it relocates it:
+// `"74°\nF"` would then match only `°` (the `[CF]?` after it goes empty because `\n` sits between), so the
+// unit becomes bare `°`, the `F` is left loose in the prose, isFahrenheitUnit("°")===false, and the number
+// is STILL spoken unconverted — same leak, different mechanism. The °-branch's wider `\s*` is deliberate;
+// widening the classifier (isFahrenheitUnit) is the correct fix, narrowing the matcher (°-branch) is not.
+const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|deg(?:rees?)?(?:[^\\S\\r\\n]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|\\.?(?![A-Za-z]))|celsius|fahrenheit)';
 const SAFETY_TOKEN_SRC=
     '('+SAFETY_NUM+')\\s*[-–]\\s*('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
   + '|('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'                               // 4 number  · 5 its unit
@@ -4475,7 +4493,20 @@ function isTempUnit(u){ return new RegExp('^(?:'+SAFETY_UNIT+')$','i').test(Stri
 // is semantic, not structural (nothing in SAFETY_UNIT's shape marks "F" as the temperature-scale letter
 // versus any other), so it cannot be derived the way isTempUnit is — it is made explicit and enumerated
 // instead, anchored to only the genuine Fahrenheit spellings SAFETY_UNIT can actually produce.
-function isFahrenheitUnit(u){ return /^(?:°[ \t]*F|F|deg(?:rees?)?[ \t]*F|deg(?:rees?)?[ \t]*fahrenheit|fahrenheit)$/i.test(String(u||'').trim()); }
+function isFahrenheitUnit(u){
+  // SAFETY LEAK FIX (closes 1b248a1) — the predicate used to require [ \t]* (space/tab ONLY) between the
+  // degree symbol / "deg" and the unit letter, but SAFETY_UNIT's own °-branch (`°\s*[CF]?`) accepts EVERY
+  // \s separator — NBSP, thin space, LINE SEPARATOR, narrow NBSP, ideographic space, \n, \r, \f, \v — so
+  // the tokenizer could capture a unit this predicate then failed to classify as Fahrenheit. A raw,
+  // unconverted Fahrenheit number that coincidentally matches a verified Celsius figure was then spoken as
+  // "app-verified" (a WRONG number stamped correct — worse than a miss). Fix: strip ALL whitespace first,
+  // so classification is whitespace-agnostic by construction instead of enumerating separator classes.
+  // This can only WIDEN which strings classify as Fahrenheit-true over what SAFETY_UNIT already emits —
+  // it cannot introduce a false positive on a Celsius/generic unit (verified: tests/p0-safety-nums.spec.ts
+  // "isFahrenheitUnit classifies every emittable unit correctly" + the whitespace-class test both pass).
+  const s=String(u||'').replace(/\s+/g,'');
+  return /^(?:°?F|deg(?:rees?)?(?:F|fahrenheit)|fahrenheit)$/i.test(s);
+}
 // Fresh instance per call — /g regexes carry lastIndex.
 function safetyNumRe(){ return new RegExp(SAFETY_NUM, 'g'); }
 // Phase A gate FIX 2: the ONE conversion from a SAFETY_NUM/SAFETY_TOKEN_SRC match to a number. A

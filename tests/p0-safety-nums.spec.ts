@@ -163,3 +163,81 @@ test('isFahrenheitUnit classifies every emittable unit correctly — no Celsius/
     expect(await page.evaluate(`isFahrenheitUnit(${JSON.stringify(u)})`), `isFahrenheitUnit(${JSON.stringify(u)}) must be true`).toBe(true);
   }
 });
+
+// SAFETY LEAK (commit 1b248a1) — SAFETY_UNIT's degree-symbol branch admits ANY \s separator (space, tab,
+// LF, CR, FF, VT, NBSP, thin space, LINE SEPARATOR, narrow NBSP, ideographic space) between the degree
+// symbol and the unit letter, but isFahrenheitUnit's own class was `[ \t]*`-only (space/tab). A
+// model-originated Fahrenheit number spaced with any of the other nine classes tokenized correctly
+// (SAFETY_UNIT captured the whole "<deg><sep>F" as the unit) but isFahrenheitUnit then failed to
+// recognise it as Fahrenheit, so aiSafetyToC left the RAW Fahrenheit digits unconverted — worse than a
+// miss, because raw Fahrenheit digits can coincidentally equal a genuine Celsius-native verified figure
+// and get voiced as "verified" (see p0-spoken-safety.spec.ts's "the leak, end to end" tests). Fix:
+// isFahrenheitUnit strips ALL whitespace before classifying, so every \s class collapses the same way.
+// Every non-ASCII / control separator below is built with String.fromCharCode, never pasted literally —
+// so there is no risk of a look-alike ASCII space silently substituting for the intended code point.
+test('isFahrenheitUnit classifies every emittable whitespace class as Fahrenheit-true, not only space/tab (closes the 1b248a1 leak)', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(`typeof isFahrenheitUnit==='function'`);
+  const degSym = String.fromCharCode(0x00b0);   // °
+  const seps: [string, string][] = [
+    ['space', String.fromCharCode(0x20)],
+    ['tab', String.fromCharCode(0x09)],
+    ['LF', String.fromCharCode(0x0a)],
+    ['CR', String.fromCharCode(0x0d)],
+    ['FF', String.fromCharCode(0x0c)],
+    ['VT', String.fromCharCode(0x0b)],
+    ['NBSP', String.fromCharCode(0x00a0)],
+    ['thin space', String.fromCharCode(0x2009)],
+    ['LINE SEPARATOR', String.fromCharCode(0x2028)],
+    ['narrow NBSP', String.fromCharCode(0x202f)],
+    ['ideographic space', String.fromCharCode(0x3000)],
+  ];
+  for (const [label, sep] of seps) {
+    for (const u of [`${degSym}${sep}F`, `deg${sep}F`, `deg${sep}fahrenheit`, `degrees${sep}F`]) {
+      expect(await page.evaluate(`isFahrenheitUnit(${JSON.stringify(u)})`), `[${label}] isFahrenheitUnit(${JSON.stringify(u)}) must be true`).toBe(true);
+    }
+    // the same separator must NOT turn a Celsius/generic unit into a false positive
+    for (const u of [`${degSym}${sep}C`, `deg${sep}C`, `deg${sep}celsius`]) {
+      expect(await page.evaluate(`isFahrenheitUnit(${JSON.stringify(u)})`), `[${label}] isFahrenheitUnit(${JSON.stringify(u)}) must be false`).toBe(false);
+    }
+  }
+});
+
+test('extraction — 74°F spaced with an exotic whitespace character still converts to 23°C, not left as raw 74 (closes the 1b248a1 leak)', async ({ page }) => {
+  await boot(page);
+  const degSym = String.fromCharCode(0x00b0);   // °
+  const seps: [string, string][] = [
+    ['NBSP', String.fromCharCode(0x00a0)],
+    ['LF', String.fromCharCode(0x0a)],
+    ['thin space', String.fromCharCode(0x2009)],
+    ['narrow NBSP', String.fromCharCode(0x202f)],
+  ];
+  for (const [label, sep] of seps) {
+    const s = `74${degSym}${sep}F`;
+    expect(await page.evaluate(`aiSafetyNums(${JSON.stringify(s)})`), label).toEqual([23]);
+  }
+});
+
+test('extraction — the "deg" route converts across NBSP but a real newline never binds "deg" to a unit letter on the next line', async ({ page }) => {
+  await boot(page);
+  // NBSP is horizontal whitespace — the deg branch's separator is widened to admit it (closes the leak's
+  // second route). A LITERAL newline stays refused, so "deg" alone matches the bare-unit sub-branch and
+  // the dangling "F" on the next line is never bound to it — no corrupted Fahrenheit conversion.
+  const nbsp = String.fromCharCode(0x00a0);
+  const lf = String.fromCharCode(0x0a);
+  expect(await page.evaluate(`aiSafetyNums(${JSON.stringify('74 deg' + nbsp + 'F')})`)).toEqual([23]);
+  const acrossNewline = await page.evaluate(`aiSafetyNums(${JSON.stringify('74 deg' + lf + 'F')})`);
+  expect(acrossNewline).toEqual([74]);   // "deg" alone (Celsius-native, unconverted) — never [23]
+});
+
+test('no under-match introduced by the whitespace-class widening — every previously-fixed form still tokenizes', async ({ page }) => {
+  await boot(page);
+  const cases: [string, number[]][] = [
+    ['74 deg', [74]], ['74 deg.', [74]], ['74 DEG', [74]], ['74deg', [74]],
+    ['74degC', [74]], ['74degF', [23]], ['2 degC', [2]],
+    ['74 degrees', [74]], ['74 degrees Celsius', [74]], ['165 degrees Fahrenheit', [74]],
+  ];
+  for (const [s, expected] of cases) {
+    expect(await page.evaluate(`aiSafetyNums(${JSON.stringify(s)})`), s).toEqual(expected);
+  }
+});
