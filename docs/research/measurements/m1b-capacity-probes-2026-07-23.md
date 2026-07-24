@@ -312,3 +312,96 @@ total, same warm-reload-timeout/cascade family as pre-fix. Wall time (stopwatch,
 **8 workers post-F1F2: 5/7 clean (pre-fix: 4/7).**
 
 No recommendation is made here — the worker-count/final-config decision is the owner's.
+
+---
+
+## POST-LOOPBACK-FIX session — curve probe + winner certification (2026-07-24)
+
+**What:** the loopback-connection nav-stall root cause is now fixed — `route.fulfill` serves the warm
+app-doc from memory instead of a real HTTP loopback round-trip (commits `7d5402d` + `f74f1b8`, the L19
+firing-guard test), independently reviewed and approved (`ba1da6a`). A pre-fix canary ran 3/3 clean at 12
+workers/1.1m. This session re-derives the worker-count curve on the fixed fixture (Phase 1) and certifies
+the winning count (Phase 2), on a machine the owner confirmed free and quiesced. Protocol identical to
+every prior campaign in this document: a pre-run gate (port 8123/8124 LISTEN check, node.exe/python.exe
+orphan check on a word-boundary `\btest\b`-or-`serve.js` regex, 5s CPU-delta sample) immediately before
+every run, and a post-run teardown verification after every run; every run plain foreground `npx
+playwright test --workers=N` (env `MK_TEST_PORT=8123`), to completion, none killed, none re-run-to-green.
+**Total suite size is now 439 tests** (438 + the L19 firing-guard's new 6th contract test in
+`tests/warm-fixture.spec.ts`, added since the last campaign in this document) — "clean" in this session
+therefore reads as **439 passed, 0 failed**, not the historical "438"; warm-proof is out of **6**, not 5.
+
+**Baseline census** (once, before Phase 1 Run 1, 5s CPU-delta sample): total CPU **11.61%**. Both ports
+8123/8124 refuse (no LISTEN). 0 orphans on the `serve.js`-or-`\btest\b` regex — the node.exe/python.exe
+audit found only expected residents matching the pattern already logged in this document's prior
+campaigns: the `@playwright/mcp` CLI (PID 63992 npx wrapper + PID 51464 `cli.js`), Serena's 2 `python.exe`
+MCP processes + 1 multiprocessing spawn child and its bundled language servers (TypeScript LSP + 2×
+`tsserver` + `typingsInstaller`, `bash-language-server`, `yaml-language-server`, `vscode-html`/`json`-
+language-servers, standalone `pyright-langserver.js`), and the other project MCP servers (`context7-mcp`,
+`chrome-devtools-mcp` + watchdog, `firebase-tools mcp`, `desktop-commander`, `claude-mem mcp-server.cjs`).
+Two transient `pip install claude-agent-sdk` processes were also present (the same Claude Code security
+hook, `ensure_agent_sdk.py`, noted as a harmless transient in the prior POST-FIX campaign's baseline);
+neither read meaningful CPU. No `serve.js`, no `chrome-headless-shell.exe` at baseline.
+
+**Pre-run gate and post-run teardown, all 11 runs (4 Phase 1 + 7 Phase 2):** every one of the 11 pre-run
+gates and 11 teardown checks PASSED on the first check — 0 orphans and both ports refusing at every single
+check, no run ever needed a wait or a halt. CPU readings across all 22 checks ranged **7.72%–15.25%**
+(baseline 11.61%), never approaching the 20% threshold. Ambient desktop `chrome.exe` PIDs (the owner's real
+browser, never `chrome-headless-shell.exe`) churned across gates throughout — the same non-actionable
+pattern noted in every prior campaign in this document. No disturbance required a wait or aborted a gate.
+
+### Phase 1 — curve probe (single run each: 12, 16, 20, 24 workers)
+
+| Workers | Raw result | Wall time (Playwright) | Wall time (stopwatch) | Exit | Warm-proof | Start–End (UTC) |
+|---|---|---|---|---|---|---|
+| 12 | `439 passed (1.1m)` | 1.1m | 68.4s | 0 | 6/6 | 08:20:23.764–08:21:32.195 |
+| 16 | `439 passed (56.1s)` | 56.1s | 57.1s | 0 | 6/6 | 08:22:12.883–08:23:09.980 |
+| 20 | `439 passed (54.0s)` | 54.0s | 55.0s | 0 | 6/6 | 08:23:41.705–08:24:36.717 |
+| 24 | `439 passed (54.1s)` | 54.1s | 55.1s | 0 | 6/6 | 08:25:05.342–08:26:00.455 |
+
+**All 4 probe points ran CLEAN — 0 failed test-instances anywhere on the curve.** This is the first curve
+probe in this document's history where every point from 12 to 24 workers passed clean in the same sweep;
+the historical collapses at these same counts (this document's own 16-worker "16 FAILED" blip; both Phase
+C campaigns' failures concentrated in `active-hub.spec.ts`/`adaptive-home.spec.ts`; the 8-worker
+certification campaign's failures in the same two files) did not reproduce. Wall time falls from 12→16→20
+workers (68.4s → 57.1s → 55.0s stopwatch) and then flattens 20→24 (55.0s → 55.1s, a sub-1s difference).
+
+**Winner: workers=20** — the fastest CLEAN count (54.0s Playwright-reported / 55.0s stopwatch), marginally
+ahead of 24 (54.1s / 55.1s — within run-to-run noise, but 20 reads strictly faster on both the
+Playwright-reported and stopwatch figures, so it is the winner per the stated rule). 12 was beaten cleanly
+by every higher count tried, so the "fall back to 12" clause does not apply.
+
+### Phase 2 — winner certification (7 serialized runs, workers=20)
+
+| Run | Start–End (UTC) | Raw result | Wall time (Playwright) | Wall time (stopwatch) | Exit | Warm-proof |
+|---|---|---|---|---|---|---|
+| 1 | 08:26:56.122–08:27:51.598 | `439 passed (54.5s)` | 54.5s | 55.5s | 0 | 6/6 |
+| 2 | 08:28:19.620–08:29:13.937 | `439 passed (53.3s)` | 53.3s | 54.3s | 0 | 6/6 |
+| 3 | 08:29:43.318–08:31:07.630 | `439 passed (1.4m)` | 1.4m | 84.3s | 0 | 6/6 |
+| 4 | 08:31:39.742–08:33:02.925 | `439 passed (1.4m)` | 1.4m | 83.2s | 0 | 6/6 |
+| 5 | 08:33:30.978–08:34:52.281 | `439 passed (1.3m)` | 1.3m | 81.3s | 0 | 6/6 |
+| 6 | 08:35:23.365–08:36:18.304 | `439 passed (53.9s)` | 53.9s | 54.9s | 0 | 6/6 |
+| 7 | 08:36:46.767–08:37:42.675 | `439 passed (54.9s)` | 54.9s | 55.9s | 0 | 6/6 |
+
+**Zero failed test-instances across all 7 runs — no failing specs to report.** Fail-fast never triggered
+(bar is ≥6/7; 0 of 7 runs failed, so the 2-failure kill-switch was never approached and the fallback
+12-worker campaign was not needed). Warm-preload activation proof: **6/6 green every run**
+(`__mkWarmServed` reuse counter ≥2, the `addInitScript` trap throws, storage isolation holds between A and
+B, the default `page` IS the warm page, and the L19 firing-guard's marker-header proof) — including the
+new 6th contract test added since the last campaign in this document.
+
+**Wall-time pattern (reported as observed, no theory offered — no config edits, no recommendation per the
+brief):** runs 1, 2, 6, 7 clustered fast (53.3–54.9s Playwright-reported); runs 3, 4, 5 clustered a
+contiguous ~30s slower (1.3–1.4m / 81.3–84.3s stopwatch). Every pre-run gate immediately before runs 3, 4,
+5 read 11.29%–12.13% CPU, indistinguishable from the fast runs' gates (7.72%–12.28%) — the slowdown is not
+explained by this protocol's CPU-delta sample, and no orphan/port/new-process signature appeared at any of
+those gates. All three still passed 439/439 clean.
+
+**Tally: 7/7 clean.** Combined with Phase 1's clean 20-worker probe, this is **8/8 clean readings at
+workers=20** across this session.
+
+### Verdict
+
+**workers=20 post-loopback-fix: 7/7 clean.**
+
+No config edits made, no push, no recommendation offered — the numbers above are the full deliverable; the
+worker-count/config decision remains the owner's.
