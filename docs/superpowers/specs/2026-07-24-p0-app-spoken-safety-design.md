@@ -17,6 +17,69 @@
 §7 ambiguity 1 — **the proposed Hebrew/English guard copy** — remains **proposed, not final**, exactly as
 drafted: it takes its DoD-9 native-speaker pass at implementation time. Approval of this spec does not freeze
 that wording.
+
+---
+
+## AMENDMENTS — owner rulings during implementation, 2026-07-24
+
+**Why this section exists.** Three of the owner's rulings during implementation changed what §3.1 requires.
+The code was updated; this document was not, so for a period the approved artifact described behaviour the
+shipped code deliberately did not implement. The **Phase A completion gate caught that** and called it what
+it is: not a smuggled waiver, but an unreconciled one. §4's principle applies in both directions — a spec
+that no longer describes the code is as dangerous as code that quietly departs from its spec. **Where an
+amendment below conflicts with §3.1's original text, the amendment governs.**
+
+### A-1 · A range is NEVER spoken as verified (supersedes part of §3.1's "Matched" clause)
+
+§3.1 as approved said a detected safety number matching a resolved item's field is spoken back with the
+verified marker. Implementation showed that two *individually* real figures can be spliced into a **range**
+the app never asserts — `svt` and `smt` off one cut, or one figure from each tier — and that range then
+carried the marker `לפי המדריך המאומת`. No digit was model-invented, but the **claim was fabricated by
+combination.**
+
+**Ruling:** a range is always redacted. The app's data holds **discrete** figures only, so any range is a
+model-composed claim it cannot vouch for. This makes ranges consistent with `ppm`/`%`/`pH`, which the
+original design already always redacts for exactly the same reason.
+
+### A-2 · Eligibility is syntax-independent: exactly ONE number in the whole answer
+
+§3.1 as approved implied per-number evaluation. Four successive fixes keyed on *how* a range was written
+were each defeated by a different phrasing — `63°C-74°C`, `between 63 and 74`, `בין 63°C ל-74°C`, and a
+unit-less bound in `63 to 74°C` that was never tokenized at all and so was voiced with no inspection.
+
+**Ruling:** the verified-substitution path applies **only when the answer carries exactly one number in
+total**. Two or more redacts every number, including bare ones the tokenizer does not recognise. The rule
+never asks how the numbers were phrased, which is why rephrasing cannot defeat it.
+
+**Accepted cost, stated explicitly:** an answer like *"cook to 63°C for 2 hours"* loses both numbers even
+though the temperature is verified. This narrows the approved "Matched → speak the verified value" contract
+in the fail-safe direction.
+
+### A-3 · `vcTranslateToEn` uses `vcTransSafe`, not `mtSafe` (supersedes owner decision #5's named mechanism)
+
+Decision #5 confirmed the specialization **as** the `mtNumSig`/`mtSafe` numeric-multiset comparison. That
+mechanism proved **blind to position**: `mtSafe('משוך ב-74 מעלות למשך 165 דקות', 'pull at 165 degrees for 74
+minutes')` returns **true**, so a translation transposing a temperature and a time passed and was spoken.
+
+**Ruling:** a sibling, `vcTransSafe`, compares **(value, unit-class) pairs, unordered**. A transposition
+changes the pairs so it is caught; a faithful clause reorder — routine in Hebrew→English — does not, so it
+is accepted. A unit the class map does not recognise leaves the number unclassified and forces a strict
+positional comparison, so an incomplete lexicon **fails closed**.
+
+`mtNumSig`/`mtSafe` are deliberately **left untouched** — they also guard `mtTranslate` (the DATA
+translation path, `tests/wave5-mt-safety.spec.ts`), which is outside this spec's scope.
+
+**Verified stronger, not weaker:** an equal (value, class) multiset implies an equal value multiset, so
+`vcTransSafe` is at least as strict as the mechanism decision #5 named.
+
+### A-4 · Addition, not a waiver — the translation prompt now carries the constraint
+
+`vcTranslateToEn`'s system instruction previously said only *"Translate … to natural spoken English"*, while
+the sibling `mtTranslate` path this guard was borrowed from has always instructed the model to keep every
+number exactly as written. **We had copied the guard but not the constraint that makes it sufficient.** The
+instruction is now present, including "do not convert 24-hour times to AM/PM" and "do not convert between
+units" — a correct `°C`→`°F` conversion would be a *faithful* translation that the numeric guard must still
+reject, so it is better not to provoke one.
 **Author's brief:** the owner's design decisions below are **fixed** — this document turns them into a
 precise, implementable, traced spec. Beyond what implementation requires to be unambiguous, this draft also
 folds in two mid-session additions directed by the coordinating agent after fresh evidence (the 3.6-flash
