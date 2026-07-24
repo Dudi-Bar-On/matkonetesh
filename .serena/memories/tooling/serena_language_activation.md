@@ -77,6 +77,25 @@ fixed in order:
 Once both files exist at their exact expected paths, `_setup_runtime_dependency` finds everything
 present and starts PSES with ZERO runtime network calls.
 
+## Upgrading Serena itself (1.6.0 → 1.6.1, done 2026-07-24)
+Two separate local installs exist on this machine — only ONE is actually live:
+- `~/.local/venvs/serena` (plain `python -m venv`, referenced by `~/.local/bin/serena.exe`, which is
+  what's on PATH and what `.mcp.json`'s `"command": "serena"` resolves to) — THE live one.
+- `~/AppData/Roaming/uv/tools/serena-agent` (uv-tool-tracked, unused, sitting at whatever version an
+  earlier unrelated `uv tool install` left it at) — `uv tool list`'s "malformed" warning refers to the
+  FIRST one, meaning only "uv doesn't recognize this as one of its own tools", not "this install is
+  broken" — it works fine, uv just isn't the thing managing it.
+`uv tool upgrade serena-agent` therefore does NOT reach the live install (errors "not installed",
+touches nothing — confirmed safe to try). The correct upgrade for a plain-venv install: `uv pip install
+--upgrade serena-agent --python <path to that venv's python.exe>` with `UV_SYSTEM_CERTS=1` set
+(`UV_NATIVE_TLS` is DEPRECATED in uv 0.11.31 — this env var name changed; `UV_SYSTEM_CERTS` is what
+actually works now). Before upgrading anything real: checked the target version was only a low-risk
+patch bump via an ISOLATED scratch venv (`uv venv <scratch dir>` + `uv pip install "serena-agent==
+999.999.999" --python <scratch>` — the unsatisfiable-version error is a safe way to probe without
+installing; a plain `--dry-run` install into the scratch venv gave the real resolved version). After
+upgrading the real venv: restarted (see below) and re-ran a sample of the same real queries used
+throughout this memory — all identical results, all 8 languages still active, zero new log errors.
+
 ## The restart mechanics that made testing all of this possible without breaking typescript
 See `mem:tooling/serena_usage` point 2 (fail-fast/all-or-nothing on a full restart) — the working
 sequence used twice this session: fix N languages' underlying binaries/config → put ONLY the

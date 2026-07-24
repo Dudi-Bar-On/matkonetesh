@@ -465,3 +465,28 @@ and `build.py`, per the brief. `.serena/project.yml`, `~/.serena/serena_config.y
 report.
 
 ### Nothing left unresolved from the owner directive's four points — except the one flagged decision above (onboarding mode).
+
+### Addendum — Serena upgraded 1.6.0 → 1.6.1, same session
+
+Discovered two separate local Serena installations: the one actually on PATH/used by `.mcp.json`
+(`~/.local/venvs/serena`, a plain `python -m venv` install, NOT tracked by `uv tool`) and a second,
+unused one at `~/AppData/Roaming/uv/tools/serena-agent` (uv-tracked, already sitting at 1.6.1 from some
+earlier, unadopted attempt — `uv tool list` calling the *first* one "malformed" refers to uv simply not
+recognizing that first install as one of its own, not to any actual defect in it). `uv tool upgrade
+serena-agent` therefore cannot reach the live installation at all (confirmed: it errors "not
+installed", touching nothing). The correct action for a plain-venv install is an in-place upgrade of
+that exact venv: `uv pip install --upgrade serena-agent --python
+C:/Users/dudib/.local/venvs/serena/Scripts/python.exe` (with `UV_SYSTEM_CERTS=1` — note
+`UV_NATIVE_TLS`, named in the original brief, is deprecated in the installed uv 0.11.31; `UV_SYSTEM_CERTS`
+is its replacement, and it IS what makes uv's own PyPI access work in this sandbox, unlike Serena's own
+un-overridable internal `uvx` calls for pyright). Confirmed a low-risk patch bump before touching
+anything (`999.999.999` version-pin trick against an isolated scratch venv, zero effect on the real
+install). Applied, then re-verified with the same restart procedure as every other change in this
+document: all 8 languages still active post-upgrade, zero new errors in the fresh startup logs, and a
+handful of the exact same real queries used throughout this document re-run for confirmation
+(`build.py`, `wrangler.toml` symbols byte-identical to pre-upgrade; `find_referencing_symbols` on
+`seedApp`, kind-filtered to Function/call-sites, reports **exactly 83 references** — the authoritative,
+tool-reported figure, matching this document's earlier kind-bucketed count and superseding this
+section's own earlier hand-counted "~81" estimate, which undercounted by eye). Playwright/build.py
+safety rails re-checked once more after this too (see table above) — unaffected, as expected: the
+upgrade never touched anything inside the matconetesh repo itself.

@@ -11,6 +11,10 @@
   inside Serena itself; that is specifically what graphify's DOCS path (`--mode deep`) adds.
 - **Grep** = fallback for literal/non-code text.
 
+## Version: 1.6.1 (upgraded from 1.6.0 same session — see `mem:tooling/serena_language_activation`'s
+last section for the exact upgrade mechanism; TWO separate local installs exist, only
+`~/.local/venvs/serena` — a plain `python -m venv`, not `uv tool`-tracked — is actually used/on PATH).
+
 ## STATUS as of 2026-07-24 (owner directive "Full configuration + indexing"): fully live, all 8 languages
 `get_config_overview` → `"languages": ["typescript","python","bash","powershell","toml","yaml","json","html"]`.
 Every one verified with a REAL query, not just "listed active" (see `mem:tooling/serena_language_activation`
