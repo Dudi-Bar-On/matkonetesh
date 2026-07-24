@@ -124,3 +124,51 @@ measurable bar — ingredient-fidelity ≥0.90 mean and ≥0.70 worst-case conte
 
 **Cross-reference:** `docs/research/2026-07-24-local-model-opportunities.md` (commit `d57521a`) carries the
 full ten-string evidence set and the measured fidelity scores.
+
+---
+
+## G-A1 addendum · non-canonical Unicode, and two spoken-as-verified boundaries
+
+**Added 2026-07-24 at the Phase A gate's request (round 8), measured on the real built app.** These are
+**not** unmet spec lines — the gate passed with them open — but they are real, and registering them is the
+condition on which it passed.
+
+### Pass through unguarded (G-A1's registered class, new triggers)
+
+`aiSafetyNums` returns `[]`, so `vcGuardSpoken` early-returns and the number is voiced raw:
+
+`74ºC` (U+00BA masculine ordinal — **renders identically to °**) · `74℃` (U+2103) · `74℉` (U+2109) ·
+`74˚C` (U+02DA) · `74ᵒC` · `７４°C` (full-width digits) · `74‏°F` (RLM between number and unit).
+
+### Read as Celsius and spoken as **verified** — the dangerous direction
+
+- `"pull it at 74°Ｆ"` (full-width `Ｆ`) → *"74°CＦ … per the app's verified guide."*
+- `"משוך ב-74 מעלות פרנהייט"` → *"74°C פרנהייט … per the app's verified guide."*
+
+**Neither violates the spec**, which states a bare `°` and a bare `מעלות` are *"treated as already-Celsius,
+not converted"* — the tokenizer never claimed to know full-width `Ｆ` or Hebrew `פרנהייט`. The gate's own
+standard: a defect is a captured unit classified **wrongly**; a boundary is a vocabulary the app never
+claimed.
+
+**The Hebrew one is the one to action first.** English *"degrees fahrenheit"* is handled; Hebrew
+*"מעלות פרנהייט"* is not — in a Hebrew-first product. That asymmetry is a product defect even though it is
+not a spec breach.
+
+**Partial cure worth knowing:** `.normalize('NFKC')` folds `℃`→`°C`, `℉`→`°F`, `Ｆ`→`F`, `７`→`7` — one line
+closes four of these. It does **not** fold `º`→`o` or `˚`, so it is not a general fix, and `º` is the most
+dangerous of the set precisely because it is visually indistinguishable from `°`.
+
+### The `deg` + line-break trade-off — measured, two-sided, deliberate
+
+The gate reported this against **its own** round-7 prescription. The `deg` branch uses `[^\S\r\n]*`:
+
+| fixture | shipped `[^\S\r\n]*` | widened `\s*` |
+|---|---|---|
+| `hold at 63 degrees\nF is what the probe shows.` | `[63]` ✓ | `[17]` ✗ |
+| `pull it at 74 deg\nF` | `[74]` ✗ | `[23]` ✓ |
+
+Neither class is free. The shipped residual points the **dangerous** way (Fahrenheit read as Celsius, digits
+preserved, can match a verified figure); the widened residual points the **safe** way (`63`→`17` matches
+nothing and is redacted). Both require a line break falling exactly between an abbreviation and a stray
+scale letter, so both are remote. **Recorded so the next person weighs a measured trade-off rather than
+rediscovering it.**
