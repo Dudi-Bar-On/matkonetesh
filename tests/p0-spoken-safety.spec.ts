@@ -134,11 +134,15 @@ test('spec §3.1: a number verified by the CATALOG survives even when the active
   expect(spoken).not.toContain('[…]');
 });
 
-test('matched RANGE — two verified bounds from the resolved item survive together, joined by an en dash (L13 bidi risk)', async ({ page }) => {
+test('a within-item range is redacted — a RANGE is never "verified", even when both bounds are real (owner ruling 2026-07-24)', async ({ page }) => {
   await bootVC(page);
+  // INVERTS the old "matched RANGE ... survive together" test, which encoded the defect a code review
+  // found: two individually-verified figures off the SAME resolved item (e.g. svt+smt spliced together)
+  // could be spoken as a range under the "לפי המדריך המאומת" marker even though the app asserts no such
+  // range — the app's data holds discrete figures only (safe/tgt/svt/smt/sot), never a range, so a range
+  // is always a model-composed claim the app cannot vouch for. Same treatment ppm/%/pH already get.
   // Read two DISTINCT verified fields off a real cut at runtime (never hardcoded) so this genuinely
-  // exercises vcGuardSpoken's `cs.every(ok) ? cs.map(...).join('–') : ...` matched-RANGE branch, which
-  // shipped with Task 2 but had no test and appeared in no screenshot.
+  // exercises vcGuardSpoken's range path.
   const setup = await page.evaluate(`(function(){
     for (var i=0;i<DATA.cuts.length;i++){
       var c=DATA.cuts[i];
@@ -156,21 +160,41 @@ test('matched RANGE — two verified bounds from the resolved item survive toget
   await page.evaluate(`vcAskFlow('שאלה: מה הטווח הבטוח')`);
   await page.waitForFunction(`window.__spoke.length>1`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
-  expect(spoken).toContain(`${lo}°C–${hi}°C`);
-  expect(spoken).toContain('לפי המדריך המאומת');
-  expect(spoken).not.toContain('[…]');
-  // DoD-8 visual evidence: also render the on-screen transcript (vc-qa) and capture it — L13 exists
-  // because a bidi run can flip which glyph reads as "greater"; the on-screen (not just spoken) figure
-  // must show lo before hi with the en dash sitting correctly between them. Per the prior wave's finding
-  // (task-2-report.md): the panel slides in via CSS transition and the transcript sits below the panel's
-  // own internal scroll container, so wait on the panel's RESOLVED position (not just text presence) and
-  // scrollIntoView() the transcript before capturing — both condition-based, no waitForTimeout (DoD-11).
-  await page.waitForFunction(`document.querySelector('.vc-qa-a') && document.querySelector('.vc-qa-a').textContent.includes('°C')`);
+  expect(spoken).not.toContain(`${lo}°C–${hi}°C`);
+  expect(spoken).toContain('[…]');
+  expect(spoken).toContain('מספר זה אינו מאומת');   // one range → ONE redacted token → SINGULAR redirect line
+  expect(spoken).not.toContain('לפי המדריך המאומת');
+  // DoD-8 visual evidence: also render the on-screen transcript (vc-qa) and capture it — the on-screen
+  // (not just spoken) figure must show the redaction placeholder, not a spliced range. Per the prior
+  // wave's finding (task-2-report.md): the panel slides in via CSS transition and the transcript sits
+  // below the panel's own internal scroll container, so wait on the panel's RESOLVED position (not just
+  // text presence) and scrollIntoView() the transcript before capturing — both condition-based, no
+  // waitForTimeout (DoD-11).
+  await page.waitForFunction(`document.querySelector('.vc-qa-a') && document.querySelector('.vc-qa-a').textContent.includes('[…]')`);
   await page.waitForFunction(`document.querySelector('#panel').getBoundingClientRect().left===0`);
   await page.evaluate(`document.querySelector('.vc-qa').scrollIntoView({block:'center'})`);
   await page.waitForFunction(`(function(){ const r=document.querySelector('.vc-qa').getBoundingClientRect();
     return r.top>=0 && r.bottom<=window.innerHeight; })()`);
-  await page.screenshot({ path: '.superpowers/sdd/task-2-matched-range-390x844.png' });
+  await page.screenshot({ path: '.superpowers/sdd/task-2-range-redacted-390x844.png' });
+});
+
+test('a cross-tier range is redacted — two real figures from DIFFERENT items are not a verified range', async ({ page }) => {
+  await bootVC(page);
+  // Tier 1 supplies one figure, Tier 2 (the catalog item named in the question) supplies the other.
+  // Both digits are genuinely from the app's data; the RANGE they form is not, so it must be redacted.
+  const f = await page.evaluate(`(function(){
+    var cuts=DATA.cuts.filter(function(c){ return c.safe!=null; });
+    var a=cuts[0], b=cuts.find(function(c){ return Math.round(c.safe)!==Math.round(cuts[0].safe); });
+    return {ikey:'cut-'+a.n, aSafe:Math.round(a.safe), bHeb:b.heb, bSafe:Math.round(b.safe)};
+  })()`) as {ikey:string; aSafe:number; bHeb:string; bSafe:number};
+  const lo = Math.min(f.aSafe, f.bSafe), hi = Math.max(f.aSafe, f.bSafe);
+  await page.evaluate(`vcTasks=[{ikey:'${f.ikey}',label:'x',t:new Date()}]; vcIdx=0;
+    window.__vcAskMock='הטווח הוא ${lo}-${hi}°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ ל${f.bHeb}')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).toContain('[…]');
+  expect(spoken).not.toContain('לפי המדריך המאומת');
 });
 
 test('A2 — a translation that drops or invents a number is never spoken; the Hebrew source is read instead', async ({ page }) => {
@@ -194,4 +218,25 @@ test('A2 negative case — a faithful translation still speaks in English (DoD-6
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as { t: string; l: string };
   expect(spoken.t).toBe('pull the chicken at 74 degrees');
   expect(spoken.l).toBe('en');
+});
+
+test('vcResolveEntity smoke test — Tier 1 (active-cook item) wins when it resolves; the catalog (Tier 2) is a genuine fallback', async ({ page }) => {
+  await bootVC(page);
+  // vcResolveEntity has zero production callers today — it is staged for Task 4's search gate, named in
+  // that plan in advance, so the staging is legitimate. But untested staged code rots silently; this
+  // proves the single-winner contract (`t.t1 || t.t2`) it promises actually holds.
+  await page.waitForFunction(`typeof vcResolveEntity==='function'`);
+  const t1 = await page.evaluate(`(function(){
+    vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0;
+    var r=vcResolveEntity('שאלה: מה הטמפ הבטוחה');
+    return r && r.obj ? r.obj.n : null;
+  })()`) as number | null;
+  expect(t1).toBe(1);   // resolveItem('cut-1').obj.n === 1 — the active-cook item, not a catalog guess
+  const t2 = await page.evaluate(`(function(){
+    var c=DATA.cuts.find(function(c){ return c.safe!=null; });
+    vcTasks=[]; vcIdx=0;                                        // no active-cook item — Tier 1 cannot resolve
+    var r=vcResolveEntity('שאלה: מה הטמפ הבטוחה ל'+c.heb);
+    return {got: r && r.obj ? r.obj.n : null, expected: c.n};
+  })()`) as {got:number|null; expected:number};
+  expect(t2.got).toBe(t2.expected);   // falls back to the catalog item named in the question
 });

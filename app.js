@@ -5456,19 +5456,22 @@ function vcGuardSpoken(text, tiers, lang){
   if(!aiSafetyNums(src).length) return src;
   // Spec §3.1: a number is verified if it matches Tier 1's fields, OR — when Tier 1 has no resolvable
   // item or no matching field — Tier 2's. A union is exactly that test, since a match is equality.
-  const tt=(tiers && (tiers.t1!==undefined || tiers.t2!==undefined)) ? tiers : {t1:tiers||null, t2:null};
   const ok={};
-  vcVerifiedNums(tt.t1).forEach(function(n){ ok[n]=true; });
-  vcVerifiedNums(tt.t2).forEach(function(n){ ok[n]=true; });
+  vcVerifiedNums(tiers && tiers.t1).forEach(function(n){ ok[n]=true; });
+  vcVerifiedNums(tiers && tiers.t2).forEach(function(n){ ok[n]=true; });
   let redacted=0;                       // counts TOKENS, not numbers — a redacted range is ONE token
   const out=vcMapSafetyNums(src, function(vals, unit, kind){
-    if(kind!=='ph' && /°|C\b|F\b|מעלות/i.test(String(unit||''))){
-      const cs=vals.map(function(v){ return Math.round(aiSafetyToC(v, unit)); });
-      // A range survives ONLY if BOTH bounds are verified; a half-verified range is redacted whole,
-      // because "74°C–[…]" would be worse than saying nothing.
-      if(cs.every(function(c){ return ok[c]; })) return cs.map(function(c){ return c+'°C'; }).join('–');
+    // A RANGE is NEVER "verified". The app's data holds DISCRETE figures (safe/tgt/svt/smt/sot) and never
+    // a range, so any range is a model-composed claim the app cannot vouch for — speaking it under
+    // "לפי המדריך המאומת" would be a false provenance claim. Two individually-real figures spliced into a
+    // range (svt+smt off one cut, or one figure from each tier) is fabricated BY COMBINATION even though
+    // no digit was invented. Same treatment ppm/%/pH already get, for the same reason: nothing to verify
+    // the claim against. Owner ruling, 2026-07-24.
+    if(kind==='single' && /°|C\b|F\b|מעלות/i.test(String(unit||''))){
+      const c=Math.round(aiSafetyToC(vals[0], unit));
+      if(ok[c]) return c+'°C';
     }
-    redacted++;                         // ppm/%/pH can never match: vcVerifiedNums holds temperatures only
+    redacted++;
     return VC_REDACT;
   }).replace(/\s{2,}/g,' ').trim();
   return out+' '+(redacted
