@@ -108,4 +108,60 @@ fixture-only; the 84 specs unchanged; keeps the reload-boot semantics), vs (b) r
 per-test navigation. Checking whether a production-parity-preserving variant (connection reuse) also
 suffices before choosing.
 
-_Log continues per iteration._
+---
+
+## Iteration 2 — the refactor, and the canary verdict (2026-07-24)
+
+**Chosen fix (single refactor attempt, `tests/_fixtures.ts` `warmContext`, commit `7d5402d`):** the warm
+(chromium-project) context installs `context.route(/\/index\.html($|\?)/, …fulfill)` that serves the app
+document from an **in-memory Buffer of the freshly-built `dist/index.html`** — byte-identical to what
+serve.js serves, so the app boots identically, but with **no per-test loopback navigation connection**.
+Subresources (manifest/icons) fall through to serve.js; the **service-worker project keeps the real server**
+(gated on `workerInfo.project.name === 'chromium'`; it needs a real 200 for SW caching). Read lazily and
+cached per worker; `dist/` is already built by `webServer.command` before any worker starts.
+
+**Why it kills the mechanism:** the flake is the loopback connection layer serializing N concurrent
+navigations (proven, iteration 1). Fulfilling the ~2.7 MB doc navigation from memory removes that connection
+for the one operation every test performs (`seedApp` reload), so there is no shared connection gate to
+stall on. It does NOT depend on identifying the exact Windows sub-mechanism (WFP/Defender/port-churn) —
+it removes the dependency entirely.
+
+**De-risk before touching the fixture (probe arm 11b):** "fulfill `/index.html` + `route.continue()` the
+rest" (the real-fixture shape, not the probe's abort) → 12-way lockstep **72/72 clean, 12.2 s** (the natural
+~150–2200 ms V8 alternation present, zero hangs). Subresources continuing to the real server do NOT
+reintroduce the stall.
+
+**CANARY acceptance — `--workers=12`, nav 20 s / test 30 s (the high-signal stress; historical 12-w baseline
+was ~1/3 clean):**
+
+| Run | Result | Exit |
+|---|---|---|
+| Canary 1 | **438 passed (1.1m)** | 0 |
+| Canary 2 (confidence) | **438 passed (1.1m)** | 0 |
+| Canary 3 (confidence) | **438 passed (1.1m)** | 0 |
+
+**3/3 clean** (P(luck) ≈ 0.33³ ≈ 3.6 %, and the mechanism is independently proven by the probe's ~100×
+red→green). The **service-worker project (2 tests) passed** — real serving preserved. The **warm-fixture
+contract spec is 5/5** in every run (the architecture's own proof held). Machine verified clean after
+(8123 free, 0 headless, 0 serve orphans — Playwright tears down its own webServer).
+
+### Outcome
+Root cause eliminated in **one** refactor attempt (well inside the 3-fix budget). Per §10.18 this is the
+targeted verification of the fix; the reviewer + owner gate any certification campaign.
+
+### For the reviewer / owner
+- **Production geometry + worker count are the owner's call.** The config still carries the CANARY geometry
+  (nav 20 s / test 30 s) and `workers: 8`; with the connection stall gone, 12 workers is now clean, so the
+  final shipped geometry/worker-count is a deliberate owner decision (§4/§10.8) — not changed here.
+- **Coverage note:** the suite no longer exercises serve.js's HTTP *delivery* of `index.html` for the main
+  project (it does for subresources and for the SW project). The delivery path is verified separately on the
+  LIVE site per §10.10; the app under test is byte-identical. Reviewer should confirm this trade is acceptable.
+- **`process.cwd()`/`dist/index.html`** read assumes the runner's cwd is the repo root (true for
+  `npx playwright test`); reviewer should confirm no alt-invocation breaks it.
+- The exact Windows sub-mechanism (WFP/Defender per-connection inspection vs ephemeral-port/keep-alive
+  churn) was **not** pinned — the fix is mechanism-agnostic. A follow-up could pin it (a Defender-exclusion
+  A/B, or `serve.js` connection logging), but it is not required for the fix.
+- **Repro harness kept** (untracked `scratch/reload-storm.mjs`, `storm-worker.mjs`, `storm-multi.mjs`,
+  `server-storm.mjs`, `serve-log.mjs`) — the ~100× red/green re-verifies this in ~15 s if ever needed.
+
+_End of loop._
