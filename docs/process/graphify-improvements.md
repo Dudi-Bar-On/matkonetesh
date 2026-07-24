@@ -870,3 +870,30 @@ Prior ownership was restored; the final per-file audit shows 0 files lost nodes.
   enriched code files need a semantic re-extraction" follow-up is now more urgent, not less.
 - `manifest.json` still has no code-side tracking (PASS 1's flagged limitation) — a future root-scoped
   incremental will re-treat code files as new. Wasteful, not unsafe.
+
+### ⚠️ CORRECTION to PASS 3 finding (c), same day — the prompt fix is NOT the general cure
+
+PASS 3 above reports that appending graphify's own `source_file` rule to the library prompt took a chunk
+from **3 → 61** correctly-attributed nodes and to 100% correct attribution across all 10 chunks. That
+measurement stands **for that corpus and that backend**. The framing around it does not, and is corrected
+here rather than quietly amended.
+
+Independent evidence from `docs/research/2026-07-24-local-gpu-model-for-graphify.md` (commit `49f8616`),
+measured on a **repo** corpus rather than a documentation corpus:
+
+1. **The mis-attribution defect is backend-independent — `claude-cli` has it too, and worse.** Measured
+   **87 of 165 nodes (53%) mis-attributed on `claude-cli`**, versus 63 of 137 (46%) on the local model.
+   PASS 3 presented this as a defect of the *library* backend's prompt; it is not. It was invisible on the
+   vendor-docs corpus where it structurally cannot manifest.
+2. **The prompt fix is not reliably beneficial.** Applied to the repo corpus it **collapsed extraction from
+   137 nodes to 7**. That attempt was reverted, and the investigation stopped at the **3-fix rule** rather
+   than iterating further.
+
+**What this means in practice:** treat `source_file` attribution as an **open, unsolved graphify defect**
+on code-bearing corpora, on every backend. Do not rely on the PASS 3 patch as a general cure, and do not
+re-derive confidence from PASS 3's 3→61 figure without re-measuring on the corpus actually in hand.
+
+**Why this correction exists at all:** PASS 3's own conclusion was drawn from one corpus where the defect
+could not appear, and was written up as a solved bug with a single caveat about `graphify install`
+reverting it. That is the same shape as the 42 refutations in the 2026-07-22 sweep — *one artifact trusted
+without tracing what the program actually does on other inputs.* Recorded here rather than edited away.
