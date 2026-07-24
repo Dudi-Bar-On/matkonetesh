@@ -29,7 +29,7 @@ test('A1 unmatched — a leaked safety number never reaches speech or the transc
     expect(spoken).not.toContain(n);
     expect(shown).not.toContain(n);   // the sighted user must read exactly what the hands-busy user hears
   }
-  expect(spoken).toContain('אינו מאומת');
+  expect(spoken).toContain('המספרים האלה אינם מאומתים');
   expect(shown).toBe(spoken);
 });
 
@@ -75,4 +75,26 @@ test('DoD-10 safety invariance — a full guarded round-trip never mutates the c
   await page.waitForFunction(`window.__spoke.length>1`);
   const after = await page.evaluate(`JSON.stringify(resolveItem('cut-1').obj)`) as string;
   expect(after).toBe(before);
+});
+
+test('a redacted range collapses to ONE placeholder, not two joined by a dash', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock='הנבגים נהרסים ב-100-121°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).not.toContain('—–—');                              // the dash pile the screenshot showed
+  expect((spoken.match(/\[…\]/g) || []).length).toBe(1);            // one range → exactly one placeholder
+  expect(spoken).toContain('מספר זה אינו מאומת');                    // one redacted token → SINGULAR
+});
+
+test('the redirect line is count-aware: two redacted tokens read as plural', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock='רעלן הבוטוליזם מנוטרל סביב 85°C, והנבגים נהרסים ב-100-121°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect((spoken.match(/\[…\]/g) || []).length).toBe(2);            // one single + one range = two tokens
+  expect(spoken).toContain('המספרים האלה אינם מאומתים');
+  expect(spoken).not.toContain('מספר זה אינו מאומת');
 });

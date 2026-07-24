@@ -5408,33 +5408,48 @@ function vcVerifiedNums(meta){
 }
 // One tokenizer shared by every rewrite path, matching the SAME token classes aiSafetyNums extracts —
 // so a number the extractor can see is never a number the guard fails to rewrite.
+// One tokenizer shared by every rewrite path, matching the SAME token classes aiSafetyNums extracts —
+// so a number the extractor can see is never a number the guard fails to rewrite. The callback receives
+// the whole token (a range is ONE token, not two numbers) and returns its complete replacement.
 function vcMapSafetyNums(s, fn){
   return String(s||'').replace(
     /(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)|(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)|\bpH\s*(\d+(?:\.\d+)?)/gi,
     function(_m, r1, r2, ru, n1, u1, ph){
-      if(r1!=null) return fn(parseFloat(r1), ru)+'–'+fn(parseFloat(r2), ru);
-      if(n1!=null) return fn(parseFloat(n1), u1);
-      return 'pH '+fn(parseFloat(ph), 'pH');
+      if(r1!=null) return fn([parseFloat(r1), parseFloat(r2)], ru||'', 'range');
+      if(n1!=null) return fn([parseFloat(n1)], u1||'', 'single');
+      return fn([parseFloat(ph)], 'pH', 'ph');
     });
 }
 // Matched → speak the APP's verified figure (in °C — so a "correct" 165°F is still voiced as the app's
 // own 74°C, never the model's phrasing). Unmatched → strip the digits, keep the qualitative advice,
 // append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
+// Visually distinct from the sentence's own em-dash punctuation, so a reader can tell a redacted number
+// from ordinary prose (DoD-9 / L13 — found by looking at the 390×844 render, not by a test).
+const VC_REDACT='[…]';
+// Matched → speak the APP's verified figure (in °C — so a "correct" 165°F is still voiced as the app's
+// own 74°C, never the model's phrasing). Unmatched → redact the token, keep the qualitative advice,
+// append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
+
 function vcGuardSpoken(text, meta, lang){
   const he=(lang||vcAnsLang())!=='en';
   const src=String(text||'');
   if(!aiSafetyNums(src).length) return src;
   const ok={}; vcVerifiedNums(meta).forEach(function(n){ ok[n]=true; });
-  let anyBad=false;
-  const out=vcMapSafetyNums(src, function(val, unit){
-    if(/°|C\b|F\b|מעלות/i.test(String(unit||''))){
-      const c=Math.round(aiSafetyToC(val, unit));
-      if(ok[c]) return c+'°C';
+  let redacted=0;                       // counts TOKENS, not numbers — a redacted range is ONE token
+  const out=vcMapSafetyNums(src, function(vals, unit, kind){
+    if(kind!=='ph' && /°|C\b|F\b|מעלות/i.test(String(unit||''))){
+      const cs=vals.map(function(v){ return Math.round(aiSafetyToC(v, unit)); });
+      // A range survives ONLY if BOTH bounds are verified; a half-verified range is redacted whole,
+      // because "74°C–[…]" would be worse than saying nothing.
+      if(cs.every(function(c){ return ok[c]; })) return cs.map(function(c){ return c+'°C'; }).join('–');
     }
-    anyBad=true; return '—';            // ppm/%/pH can never match: vcVerifiedNums holds temperatures only
+    redacted++;                         // ppm/%/pH can never match: vcVerifiedNums holds temperatures only
+    return VC_REDACT;
   }).replace(/\s{2,}/g,' ').trim();
-  return out+' '+(anyBad
-    ? (he?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':'This number isn\'t verified — check the item card.')
+  return out+' '+(redacted
+    ? (redacted===1
+        ? (he?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':'This number isn\'t verified — check the item card.')
+        : (he?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':'These numbers aren\'t verified — check the item card.'))
     : (he?'לפי המדריך המאומת.':'per the app\'s verified guide.'));
 }
 
