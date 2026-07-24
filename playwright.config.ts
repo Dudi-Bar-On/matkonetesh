@@ -13,34 +13,36 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,   // surface flakes as failures — never retry them away (a flake is a bug to fix)
-  // Test-level timeout is the hard ceiling over EVERYTHING a test does, navigation included. CANARY geometry
-  // (2026-07-24, owner) — a DEBUGGING instrument for the flake-refactor loop, NOT a shipped fix. 30s test /
-  // 20s nav (below), with every per-iteration acceptance/repro run at --workers=12 (CLI override; config
-  // workers stays 8, the last-known-stable interim). Deliberately MIDDLE values: tight enough that a surviving
-  // root-cause stall STILL FIRES (the 28s/40s SPLITTER masked the defect — its campaign was cancelled),
-  // loose enough to trim pure worker-restart-cascade noise so the ledger shows the true residual. retries
-  // stays 0. Revert to a chosen production geometry once the root cause is eliminated.
+  // Test-level timeout is the hard ceiling over EVERYTHING a test does, navigation included. 30s test /
+  // 20s nav (below) — ADOPTED PRODUCTION GEOMETRY (2026-07-24, owner-approved). Originated as a CANARY/
+  // debugging geometry for the flake-refactor loop (deliberately MIDDLE values: tight enough a surviving
+  // root-cause stall still FIRES — the 28s/40s SPLITTER had masked the defect — loose enough to trim pure
+  // worker-restart-cascade noise). The root cause is now fixed (loopback-connection nav stall; route.fulfill
+  // serves the warm doc in-memory, commits 7d5402d+f74f1b8) and certification kept these same values rather
+  // than loosening them (see the workers comment below), so they are promoted here from instrument to
+  // shipped config. retries stays 0.
   timeout: 30_000,
-  // Worker count: 8 — an INTERIM, last-known-clean setting, NOT a derived ceiling.
-  // HISTORY + CORRECTION (2026-07-23): an earlier comment here asserted a measured mechanism — ">8
-  // oversubscribes the 8 P-cores; 10 workers → the same 10 heavy-init specs fail deterministically".
-  // That evidence came from a CONTAMINATED session (the debugging loop's own respawning zombie servers
-  // + a broken /usr/bin/time probe — discipline L18/L20) and did NOT reproduce on a verified-idle
-  // machine: the instrumented M1 rerun (--workers=10 under the per-LP CPU sampler) was CLEAN, with
-  // P-cores far from saturated (P-utility mean ≈69%, median ≈55%) and the E-cores the hotter class
-  // (≈84%). See development-discipline.md §11 L21 (rewritten, numbers inlined) and the M0/M1/M1b
-  // artifacts under docs/research/measurements/ (gitignored raw data). 8 therefore stays ONLY until the
-  // CPU-max programme's phase B/C re-derives the ceiling from the M-series curve on clean evidence —
-  // that change is the owner's call, made there, not here. CI stays 2 (GitHub ubuntu-latest is 4-vCPU).
-  workers: process.env.CI ? 2 : 8,
+  // Worker count: 20 — CERTIFIED (2026-07-24) on the post-loopback-fix architecture. The nav-stall root
+  // cause — concurrent page.reload navigations serializing on the loopback connection layer, not a P-core
+  // or worker-count limit (proof: docs/research/flake-refactor-rootcause.md) — is fixed by route.fulfill
+  // in-memory doc serving (commits 7d5402d+f74f1b8, reviewed ba1da6a). With the fix in place a fresh
+  // 12/16/20/24-worker curve probe ran CLEAN at every point (439 passed each); 20 was the fastest clean
+  // count (~54s) and was then certified over 7 serialized full-suite runs — 7/7 clean (plus the curve
+  // probe's own clean reading = 8/8 clean at workers=20). Full numbers: the POST-LOOPBACK-FIX session in
+  // docs/research/measurements/m1b-capacity-probes-2026-07-23.md. This SUPERSEDES every earlier worker-count
+  // story in this repo's history — including the contaminated "10 workers oversubscribes the 8 P-cores"
+  // claim (development-discipline.md §11 L21) and this document's own prior 16-worker "16 FAILED" blip —
+  // all of which were the loopback wall, now refuted by the cure. CI stays 2 (GitHub ubuntu-latest is 4-vCPU).
+  workers: process.env.CI ? 2 : 20,
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    // Navigation timeout — CANARY geometry (2026-07-24, owner): 20s, below the 30s test ceiling. Debugging
-    // instrument for the flake-refactor loop, not a fix: seedApp's warm reload is ~1s steady-state, so 20s
-    // still lets a genuine root-cause stall surface as a nav-specific failure while trimming pure-cascade
-    // noise. Applies to seedApp's reload via the context default; the worker cold goto keeps its own explicit
-    // 28s (F2 — outside the per-test budget, addresses worker-restart re-entry).
+    // Navigation timeout — 20s, below the 30s test ceiling — ADOPTED PRODUCTION GEOMETRY (2026-07-24,
+    // owner-approved via certification; see the workers comment above). seedApp's warm reload is ~1s
+    // steady-state now that route.fulfill removes the per-test loopback connection (the former nav-stall
+    // root cause), so 20s is ample headroom rather than a tight canary bound. Applies to seedApp's reload
+    // via the context default; the worker cold goto keeps its own explicit 28s (F2 — outside the per-test
+    // budget, addresses worker-restart re-entry) — unchanged.
     navigationTimeout: 20_000,
     // retries is 0 (see above), so 'on-first-retry' never fires — a zero-retry suite never gets a
     // second attempt to trace. 'retain-on-failure' captures a trace on the first (only) failure, which
