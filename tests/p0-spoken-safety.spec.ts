@@ -249,24 +249,47 @@ test('vcResolveEntity smoke test — Tier 1 (active-cook item) wins when it reso
 // exactly ONE number in total for that number to be eligible to be spoken as verified. Two or more means
 // the model is asserting a composite claim (a range, a comparison, a progression) the app — which stores
 // only DISCRETE figures — cannot vouch for. Reproduction: scratch/verify-range-bypass.js.
-for (const [label, mock] of [
-  ['unit on each bound',      '63°C-74°C'],
-  ['English "between…and"',   'between 63°C and 74°C'],
-  ['Hebrew "בין…ל-"',          'בין 63°C ל-74°C'],
-  ['English "to", bare lower', '63 to 74°C'],
-  ['Hebrew "בין…ל-", bare lower','בין 63 ל-74°C'],
-] as [string, string][]) {
+//
+// DoD-2 fixture repair: this loop originally used `vcTasks=[]` with a question that matched no catalog
+// item, so the verified set (`ok`) was ALWAYS empty — three of the five rows then passed on first run
+// against the UNFIXED (pre-5b43511) code, but for the wrong reason: with `ok` empty, the old code redacted
+// every token regardless of phrasing, so the range-detection defect was never exercised (void per DoD-2).
+// The real bypass only manifests when BOTH bounds are genuinely verified figures of the active-cook item —
+// that is exactly the dangerous case, because the old per-token check (`ok[c]`) then passes EACH bound
+// individually and speaks the whole range back under the "verified" marker. Each row below resolves a
+// real cut with two DISTINCT verified numeric fields (safe/tgt/svt/smt/sot) at runtime and builds its
+// phrasing from those two genuine figures, with that cut set as the active-cook item.
+const rangePhrasings: [string, (lo: number, hi: number) => string][] = [
+  ['unit on each bound',        (lo, hi) => `${lo}°C-${hi}°C`],
+  ['English "between…and"',     (lo, hi) => `between ${lo}°C and ${hi}°C`],
+  ['Hebrew "בין…ל-"',            (lo, hi) => `בין ${lo}°C ל-${hi}°C`],
+  ['English "to", bare lower',  (lo, hi) => `${lo} to ${hi}°C`],
+  ['Hebrew "בין…ל-", bare lower',(lo, hi) => `בין ${lo} ל-${hi}°C`],
+];
+for (const [label, phrase] of rangePhrasings) {
   test(`a range phrased as "${label}" is redacted, not spoken as verified`, async ({ page }) => {
     await bootVC(page);
-    const safe = await page.evaluate(`(function(){var c=DATA.cuts.find(function(x){return x.safe!=null;}); return Math.round(c.safe);})()`) as number;
-    await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
+    // Same resolution used by "a within-item range is redacted" above — a cut whose safe/tgt/svt/smt/sot
+    // fields carry two DISTINCT verified figures, found at runtime rather than hardcoded.
+    const setup = await page.evaluate(`(function(){
+      for (var i=0;i<DATA.cuts.length;i++){
+        var c=DATA.cuts[i];
+        var vals=vcVerifiedNums({obj:c});
+        var uniq=vals.filter(function(v,idx){ return vals.indexOf(v)===idx; });
+        if (uniq.length>=2) return {ikey:'cut-'+c.n, lo:Math.min(uniq[0],uniq[1]), hi:Math.max(uniq[0],uniq[1])};
+      }
+      return null;
+    })()`) as {ikey:string; lo:number; hi:number} | null;
+    expect(setup).not.toBeNull();
+    const { ikey, lo, hi } = setup!;
+    const mock = phrase(lo, hi);
+    await page.evaluate(`vcTasks=[{ikey:'${ikey}',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
     await page.evaluate(`vcAskFlow('שאלה: מה הטווח')`);
     await page.waitForFunction(`window.__spoke.length>1`);
     const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
     expect(spoken).not.toContain('לפי המדריך המאומת');   // never the verified marker
     expect(spoken).toContain('[…]');
     expect(spoken).not.toMatch(/\d/);                    // NO digit survives, tokenized or not
-    void safe;
   });
 }
 
