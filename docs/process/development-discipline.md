@@ -764,6 +764,19 @@ leave it silently stale, which is worse than having no graph: a stale map is tru
 /graphify docs --update --mode deep      # incremental, LLM semantic re-extraction, aggressive INFERRED edges
 ```
 
+**⚠️ Two silent-corruption hazards proven on 2026-07-24 — read before any refresh**
+(full evidence in `docs/process/graphify-improvements.md`, "PASS 3"):
+1. **Run the `claude-cli` extraction backend from a NEUTRAL cwd, with absolute paths.** The backend
+   inherits the parent's working directory, so a nested `claude -p` started inside this repo **loads
+   `CLAUDE.md` and stops being an extractor**: measured, 3 of 3 dispatched documents produced **0 nodes**
+   while **60 nodes were invented for unrelated repo files** (`CLAUDE.md`, `build.py`, `app.js`, the SDD
+   ledger). It fails by producing confident, plausible, wrong output — never by erroring.
+2. **A document edited WHILE a refresh runs is hidden from every future incremental, permanently.** The
+   manifest stamps the hash at *save* time, not *extraction* time, so the edit is recorded as already
+   extracted. §10.17a went missing this way and was found only by noticing the node did not exist. After
+   any long refresh, diff `git log --since=<run start> --name-only -- docs/` against the manifest and
+   force re-extract anything that overlapped the run.
+
 **Do NOT use the bare CLI for documents.** `graphify update <path>` is the CODE path — its own help says
 "no LLM needed", so on a documentation corpus it re-extracts nothing semantic while appearing to succeed.
 Documents require the skill-driven flow above, which checks `code_only` and routes non-code changes through

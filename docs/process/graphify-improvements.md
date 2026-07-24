@@ -772,3 +772,101 @@ PASS-1-preserved code content they cross-reference) as the top-ranked results, n
   `superpowers/specs/2026-07-24-p0-app-spoken-safety-design.md`, two new eval-baseline docs. These were not
   in the dispatched extraction and are not yet in the graph — harmless (the next `--update` picks them up
   normally; nothing was lost or corrupted), but flagged rather than silently left out of this report.
+
+---
+
+## PASS 3 — incremental refresh (2026-07-24, after the P0 spec landed)
+
+`--update --mode deep`, docs root, `--backend claude-cli`, chunked by word budget (10 chunks,
+`token_budget=8000` ≈ 6k words — deliberately **tighter** than §10.12's ~12k ceiling, because PASS 2's
+under-extraction came from over-packed chunks).
+
+| | before | after | delta |
+|---|---|---|---|
+| nodes | 5,009 | **5,387** | +378 |
+| edges | 15,351 | **15,986** | +635 |
+| `app.js` code nodes | 846 | **846** | 0 — preserved |
+| files with nodes | 353 | 357 | +4 |
+| communities | 118 | 182 | +64 |
+
+Health: **OK** — 0 dangling / 0 missing / 0 collapsed / 0 self-loop / 0 duplicate edges. **0 files lost
+nodes.** Six documents were genuinely missing and are now in: the P0 spec (0→46), development-discipline
+(41→188), this file (22→108), HANDOVER (0→50), and both 3.6-flash eval reports (0→25, 0→24).
+
+**Correction to this document's own earlier claim:** §"PASS 2" said MASTER-ONBOARDING.md and
+P0-kickoff-brief.md "are not yet in the graph." They **were** already in — stamped 12:56/13:03, before
+PASS 2 dispatched. Recorded rather than quietly amended.
+
+### ⚠️ HAZARD (a) — the manifest stamps mtime/hash at SAVE time, not at EXTRACTION time
+
+A document edited **while a long extraction is running** is hidden from every future incremental run,
+permanently and silently. Extraction reads the pre-edit text; `save_manifest` then stamps the *post*-edit
+hash, so `detect_incremental` sees "unchanged" forever after.
+
+**Proven, not theorised:** `development-discipline.md` was edited at 13:55:25 (commit `769d7d8`, adding
+§10.17a) *during* PASS 2's ~50-minute run. The graph ended up with `§10.17` and `§10.18` nodes but **no
+§10.17a node and no "ONE shared Serena server" content anywhere** — and the manifest reported the file
+clean. Fixed by clearing that row's `semantic_hash` and force-re-extracting.
+
+**This is a silent-staleness class bug, not a one-off** — it applies to any document touched during any
+long run, which on this corpus is a ~50–80 minute window. **Mitigation until upstream fixes it:** after a
+long refresh, diff `git log --since=<run start> --name-only -- docs/` against the manifest and force
+re-extract anything that overlapped the run.
+
+### ⚠️ HAZARD (b) — the `claude-cli` backend inherits the parent's cwd, so the nested `claude -p` loads this project's `CLAUDE.md` and stops being an extractor
+
+This is the most damaging of the four and it explains a previously-unexplained result.
+
+Run with cwd = repo root, **3 of 3 dispatched documents produced 0 nodes**, while **60 nodes were invented
+for entirely different repo files** — `CLAUDE.md`, `build.py`, `app.js`, `.superpowers/sdd/progress.md`,
+`graphify-out/graph.json`. The nested session read the project instructions and went off doing project
+work instead of the extraction task piped to it.
+
+**Fix: run the extraction driver from a neutral cwd, with absolute paths.**
+
+**It retro-explains PASS 2.** That pass's documented "under-extraction" (a 715-line analysis file yielding
+3 nodes) has exactly this signature. PASS 2's output should be treated as suspect, not authoritative.
+
+### 🐞 BUG (c) — the library backend's prompt omits the `source_file` rule the skill's own spec mandates
+
+`references/extraction-spec.md` states verbatim: *"set source_file to the path of the originating file
+EXACTLY as it appears in FILE_LIST."* `graphify.llm._EXTRACTION_SYSTEM` never says it. Consequence on the
+P0 spec: **47 of 50 nodes claimed `source_file: "app.js"`** — the file the spec is *about* rather than the
+file it *is*. graphify's own `_out_of_scope` guard could not catch it, because `app.js` lies outside
+`root='docs'`; **the guard only rejects mis-attributions resolvable under the scan root.**
+
+Appending graphify's own documented rule to the library prompt took the identical chunk from **3 → 61
+correctly-attributed nodes**, and to 100% correct attribution across all 10 chunks.
+
+**Caveat the owner must know:** that prompt fix is a **local modification to the installed graphify
+package**, not to this repo. `graphify install` (currently offered: skill 0.9.22 → package 0.9.25) will
+**silently revert it**. Re-apply after any upgrade, or push it upstream.
+
+### 🐞 BUG (d) — `extract_corpus_parallel()` cannot be called with its own `FileSlice` units
+
+It unconditionally re-runs `expand_oversized_files()` → `is_splittable_text()` → `path.suffix` →
+`AttributeError: 'FileSlice' object has no attribute 'suffix'`. Blocks any one-chunk-at-a-time driver.
+Worked around with a pass-through patch.
+
+### Known bug #2 re-tripped, plus a new ID-collision cousin
+
+`build_merge`'s match-by-`source_file` hazard fired again and was handled by the established union-carry
+method (63 prior nodes / 125 prior edges preserved). A **new, related** collision then surfaced: graphify
+mints ids as `{path_stem}_{entity}`, so the P0 spec *documenting* `itemStages`/`cookerFor`/`aiSafetyNote`
+minted the **same ids** as existing nodes, and dedup reassigned 3 nodes away from their rightful files.
+Prior ownership was restored; the final per-file audit shows 0 files lost nodes.
+
+### Stated deviations and limits
+
+- Model was `sonnet`, not PASS 2's `fable` (which is the documented cause of that pass's under-extraction).
+  Results are therefore **not byte-reproducible** against PASS 2.
+- Two extraction attempts were **discarded** before the good run (cwd contamination, then attribution).
+  Nothing from either was merged; `graph.json` was untouched until the final verified merge.
+- Not every fresh node survives as its own node **by design** — e.g. the P0 spec's 103 fresh ids → 99
+  present (46 under the spec, 44 absorbed into existing `app.js` symbol nodes it documents, 9 elsewhere),
+  4 collapsed by dedup. Audited per-file; this is normal fuzzy dedup, not loss.
+- **`app.js`'s graph content is now staler than it was**: four `app.js` commits landed during this run
+  (`052ea19`, `341e635`, `860ea87`, `809a197` — the P0 safety-guard work). The previously-flagged "12
+  enriched code files need a semantic re-extraction" follow-up is now more urgent, not less.
+- `manifest.json` still has no code-side tracking (PASS 1's flagged limitation) — a future root-scoped
+  incremental will re-treat code files as new. Wasteful, not unsafe.
