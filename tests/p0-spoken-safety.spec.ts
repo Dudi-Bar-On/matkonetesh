@@ -376,3 +376,54 @@ test('A2 — a TRANSPOSED translation is still rejected (the reorder tolerance m
   expect(s.t).toContain('מספר לא מאומת בתרגום');
 });
 
+// P0-app item 3 (spec §3.3) — google_search was unconditional at askGemini (app.js:4340) and vcAskAI
+// (5361-ish). When the app already holds vetted data for the question, search adds COGS and an indirect-
+// injection surface without adding value. aiJSON's own `search?` gate was already conditional; this closes
+// the last two unconditional call sites.
+const capBody = async (page: any, jsCall: string) => {
+  const n = await page.evaluate(`window.__cap.length`) as number;
+  await page.evaluate(`(async()=>{ try{ await (${jsCall}); }catch(e){} })()`);
+  await page.waitForFunction(`window.__cap.length > ${n}`);
+  return page.evaluate(`window.__cap[window.__cap.length-1].body`);
+};
+const bootCap = async (page: any) => {
+  await bootVC(page);
+  await page.evaluate(`window.__cap=[]; window.gemFetch=async(model,body,opts)=>{ window.__cap.push({model,body}); return { ok:true, status:200, json:async()=>({candidates:[{content:{parts:[{text:'ok'}]}}]}) }; };`);
+};
+
+test('E2 askGemini — a catalog-matching question carries NO google_search tool', async ({ page }) => {
+  await bootCap(page);
+  // Build the question from a REAL cut's own Hebrew name at runtime (never hardcoded) so askFindEntity's
+  // direct-match path is guaranteed to fire — and assert that BELOW, before trusting the negative `tools`
+  // assertion. Three tests earlier today were fooled by a fixture that matched nothing (DoD-6/L-shape).
+  const heb = await page.evaluate(`DATA.cuts[0].heb`) as string;
+  const q = `כמה זמן לעשן ${heb}`;
+  const ctx = await page.evaluate(`askContextFor(${JSON.stringify(q)}).ctx`) as string;
+  expect(ctx).not.toBe('');   // grounding really was found for this question
+  const body = await capBody(page, `askGemini(${JSON.stringify(q)})`);
+  expect(body.tools).toBeFalsy();
+});
+
+test('E2 askGemini — an open question with no local grounding KEEPS google_search', async ({ page }) => {
+  await bootCap(page);
+  const q = 'איפה קונים פחם איכותי בשרון';
+  const ctx = await page.evaluate(`askContextFor(${JSON.stringify(q)}).ctx`) as string;
+  expect(ctx).toBe('');   // confirm this really IS the ungrounded case before trusting the positive assertion
+  const body = await capBody(page, `askGemini(${JSON.stringify(q)})`);
+  expect(body.tools).toEqual([{ google_search: {} }]);
+});
+
+test('E2 vcAskAI — search follows whether an entity resolved', async ({ page }) => {
+  await bootCap(page);
+  await page.evaluate(`delete window.__vcAskMock; vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0;`);
+  const ent1 = await page.evaluate(`(function(){ var r=vcResolveEntity('מה הטמפ'); return !!(r && r.obj); })()`);
+  expect(ent1).toBe(true);   // Tier 1 (active-cook item) really resolved before trusting the negative assertion
+  const grounded = await capBody(page, `vcAskAI('מה הטמפ', vcResolveEntity('מה הטמפ'))`);
+  expect(grounded.tools).toBeFalsy();
+  await page.evaluate(`vcTasks=[]; vcIdx=0;`);
+  const ent2 = await page.evaluate(`(function(){ var r=vcResolveEntity('איפה קונים פחם'); return !!(r && r.obj); })()`);
+  expect(ent2).toBe(false);   // confirm nothing resolved before trusting the positive assertion
+  const open = await capBody(page, `vcAskAI('איפה קונים פחם', vcResolveEntity('איפה קונים פחם'))`);
+  expect(open.tools).toEqual([{ google_search: {} }]);
+});
+

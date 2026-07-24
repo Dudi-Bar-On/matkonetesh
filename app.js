@@ -4265,6 +4265,24 @@ const AI_THINK = {
   centralTest:{ level:'minimal'                 },
 };
 function thinkFor(usage){ return (AI_THINK[usage]||{level:'minimal'}).level; }   // developer-only (decision 8): no userPref knob
+
+// ── P0-app item 3 · per-usage SEARCH policy — the sibling of AI_THINK, same shape, same discipline.
+// 'auto' = attach google_search ONLY when the app's own vetted context for this question is empty.
+// Rationale (not an arbitrary toggle): when a catalog entity matched, or askSafetyIntent injected
+// SAFETY_FACTS(), the model already HAS the correct numbers — search then buys nothing and costs COGS
+// plus an indirect-injection surface. When nothing local matched (the open "where do I buy charcoal"
+// shape askGemini's own system prompt anticipates), search is the only way to answer at all.
+// 'always'/'never' exist so a future usage needs no new mechanism.
+const AI_SEARCH = {
+  ask:   'auto',   // askGemini — Ask-the-Fire
+  vcAsk: 'auto',   // vcAskAI  — Voice Cook hands-free Q&A
+};
+function searchFor(usage, hasLocalGrounding){
+  const p=AI_SEARCH[usage]||'always';
+  if(p==='never')  return false;
+  if(p==='always') return true;
+  return !hasLocalGrounding;                       // 'auto'
+}
 // ── REQUEST/RESPONSE seam. text and audio share the registry + transport but never a builder or a reader.
 // REQUEST — text roles: normalize a base generationConfig, applying the model's thinking knob exactly once.
 function gemGen(role, gen, opts){
@@ -4337,7 +4355,7 @@ async function askGemini(qRaw, history){
   const body={
     system_instruction:{parts:[{text:sys}]},
     contents:turns,
-    tools:[{google_search:{}}],
+    tools: searchFor('ask', !!ctx) ? [{google_search:{}}] : undefined,   // P0-app item 3: search only when local grounding is empty
     generationConfig: gemGen('text', {temperature:0.8, maxOutputTokens:1600}, {think: thinkFor('ask')})
   };
   const r=await gemFetch('text', body, {timeout:30000});
@@ -5501,16 +5519,17 @@ function vcGuardSpoken(text, tiers, lang){
     : (he?'לפי המדריך המאומת.':'per the app\'s verified guide.'));
 }
 
-async function vcAskAI(question){
+async function vcAskAI(question, ent){
   if(typeof window!=='undefined' && window.__vcAskMock!==undefined && window.__vcAskMock!==null){
     const m=window.__vcAskMock; return typeof m==='function'?m(question):m;
   }
   if(!aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
+  if(ent===undefined) ent=vcResolveEntity(question);   // standalone callers keep working; vcAskFlow already resolves once and passes it in
   const ans=vcAnsLang();
   const {sys, userText}=vcBuildAskPrompt(question, ans, vcCookContext());
   const body={ system_instruction:{parts:[{text:sys}]},
     contents:[{role:'user',parts:[{text:userText}]}],
-    tools:[{google_search:{}}],
+    tools: searchFor('vcAsk', !!ent) ? [{google_search:{}}] : undefined,   // P0-app item 3: search only when nothing local resolved
     generationConfig: gemGen('text', {temperature:0.6, maxOutputTokens:400}, {think: thinkFor('vcAsk')}) };
   const r=await gemFetch('text', body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
