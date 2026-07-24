@@ -5335,7 +5335,15 @@ async function vcSpeakContent(text){
     if(typeof toast==='function') toast(L('תרגום לאנגלית דורש מפתח AI — מקריא בעברית','English translation needs an AI key — reading in Hebrew'));
     vcSpeak(text, 'he'); return;
   }
-  try{ const en=await vcTranslateToEn(text); vcSpeak(en, 'en'); }
+  try{
+    const en=await vcTranslateToEn(text);
+    // P0-app item 1b (A2): a translation's ground truth IS its source. mtSafe = every number in `text`
+    // survives into `en` and none is invented — the same guard mtTranslate already applies to recipe
+    // prose. Fail → never speak the mistranslation; read the correct Hebrew, with a spoken cue. ONE
+    // vcSpeak call: a second would cancel the first (vcSpeak calls gemStop + speechSynthesis.cancel).
+    if(typeof mtSafe!=='function' || mtSafe(text, en)){ vcSpeak(en, 'en'); }
+    else{ vcSpeak('מספר לא מאומת בתרגום — מקריא בעברית. '+text, 'he'); }
+  }
   catch(e){ vcSpeak(text, 'he'); }
 }
 // W2-P5: the live-session state as grounding for the voice Ask (so "how much longer?" uses the real ETA).

@@ -172,3 +172,26 @@ test('matched RANGE — two verified bounds from the resolved item survive toget
     return r.top>=0 && r.bottom<=window.innerHeight; })()`);
   await page.screenshot({ path: '.superpowers/sdd/task-2-matched-range-390x844.png' });
 });
+
+test('A2 — a translation that drops or invents a number is never spoken; the Hebrew source is read instead', async ({ page }) => {
+  await bootVC(page);
+  // The translation silently changes 74 → 165: mtNumSig differs, so mtSafe is false.
+  await page.evaluate(`window.__vcTransMock='pull the chicken at 165 degrees'; store.set('mk-vclang','en');`);
+  await page.evaluate(`vcSpeakContent('משוך את העוף ב-74 מעלות')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as { t: string; l: string };
+  expect(spoken.t).not.toContain('165');
+  expect(spoken.t).toContain('74');                    // the correct Hebrew source is what gets read
+  expect(spoken.t).toContain('מספר לא מאומת בתרגום');
+  expect(spoken.l).toBe('he');
+});
+
+test('A2 negative case — a faithful translation still speaks in English (DoD-6)', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`window.__vcTransMock='pull the chicken at 74 degrees'; store.set('mk-vclang','en');`);
+  await page.evaluate(`vcSpeakContent('משוך את העוף ב-74 מעלות')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as { t: string; l: string };
+  expect(spoken.t).toBe('pull the chicken at 74 degrees');
+  expect(spoken.l).toBe('en');
+});
