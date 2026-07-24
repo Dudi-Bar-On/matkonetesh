@@ -61,4 +61,51 @@ wait, not a global freeze.
    `waitUntil:'commit'`; reduce concurrent in-flight navigations; a chromium launch flag; NOT recycle — arm 4
    refutes heap as the driver).
 
+---
+
+## Iteration 1 — the stall is located, and the root cause is PROVEN by cure (2026-07-24)
+
+**Multi-process faithfulness (arm 6):** `storm-multi.mjs` forks **12 independent node+browser processes**
+(the suite's exact model, IPC lockstep). It hangs HARDER than the single-driver — rounds 0–6 all-12 at 20 s
+(90/96 fails), CPU 20–36 % idle. **Not a harness artifact.** The suite hits this same wall.
+
+**Stall phase (arm 7 — worker-0 lifecycle):** on a hung reload, `reload-start → req` (request issued, +2 ms)
+→ **then nothing**; no `response` event ever fires before the 20 s timeout. The navigation hangs waiting for
+its HTTP response.
+
+**Server-side correlation (arm 8 — `serve-log.mjs`, per-worker `?wN` tag) — DECISIVE:** worker 0 issued its
+`req` at 21:30.570; **serve.js did not RECEIVE it until 21:50.619 — 20 s later — then answered in 2 ms.**
+Setup requests arrive at the server in a **staircase (~2–3 per 10–20 s)**; every `SENT` is 1–6 ms; 0 slow
+sends. So the request is stuck **inside chromium, before the socket**, released in a throttled staircase,
+while the server is idle-fast and the machine is ~85 % idle. This is the evidence analyst's unexplained
+**"one shared gate releasing"** — the shared gate is the **loopback connection layer**.
+
+**Hypotheses tested against it:**
+- **IPv6 `localhost` (arm 9):** forcing IPv4 `127.0.0.1` sped up SETUP (3.3 s vs 63 s) but reloads still
+  hung. Partial, not the driver.
+- **Proxy/WPAD auto-detect (arm 10, `--no-proxy-server`):** 34/60 still failed. **Refuted.**
+- **`route.fulfill` — serve the doc from an in-memory Buffer, NO real socket (arm 11): CURES IT.**
+  12-way lockstep, 6 rounds: **72/72 reloads clean, 180–238 ms each, whole run 2.9 s** (vs 200–286 s and
+  mostly-timeout against the real server). A **~100× swing on a single variable** = the loopback TCP
+  connection is the bottleneck, conclusively.
+
+### ROOT CAUSE (proven)
+Under **N≳4 concurrent chromium browser processes** each doing a full-navigation `page.reload`, the
+per-navigation **loopback HTTP connection to the local server is serialized at a shared Windows/chromium
+layer** (not the server — node serves 12×2.7 MB in <150 ms; not the app — a 145-byte page hangs the same;
+not CPU — idle throughout; not V8/heap — fresh-heap round 0 hangs). Requests dribble to the server in a
+~1-per-several-seconds staircase, so navigations wait 20 s+ for a response and are killed at the timeout,
+in **bursts** (the "shared gate"). The warm-page architecture's per-test `seedApp` reload issues one such
+navigation per test (~433/run), so at 12 workers the collisions fire in most runs. The exact Windows
+sub-mechanism (WFP/Defender per-connection inspection vs connection-pool/ephemeral-port churn) is still
+being pinned, but the fix does not depend on it: **removing the real per-test loopback navigation removes
+the flake.**
+
+### Fix direction (proven in probe; suite refactor next)
+Serve the warm page's document without a per-test real loopback connection. Two levers, being decided on
+evidence: (a) **`context.route` fulfillment** of the app doc from an in-memory Buffer (proven, arm 11;
+fixture-only; the 84 specs unchanged; keeps the reload-boot semantics), vs (b) reducing/eliminating the
+per-test navigation. Checking whether a production-parity-preserving variant (connection reuse) also
+suffices before choosing.
+
 _Log continues per iteration._
