@@ -13,9 +13,13 @@ export default defineConfig({
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: 0,   // surface flakes as failures — never retry them away (a flake is a bug to fix)
-  // Test-level timeout is the hard ceiling over EVERYTHING a test does, navigation included (Playwright default
-  // 30s, made explicit here). navigationTimeout (use.navigationTimeout below) is deliberately kept UNDER this.
-  timeout: 30_000,
+  // Test-level timeout is the hard ceiling over EVERYTHING a test does, navigation included. Raised 30->40s
+  // as half of the panel's SPLITTER geometry (with nav 28s below): a slow-but-alive warm reload (16-28s under
+  // collision) now completes instead of being killed into a worker-restart cascade, while a genuinely hung
+  // nav still errors at 28s with 12s of headroom for the test's own asserts. retries stays 0 — nothing is
+  // masked; a true hang is still a red suite. (flake-panel-SYNTHESIS.md; post-F1F2 cert was 5/7 with 14/16
+  // failures = seedApp reload killed at 15s.)
+  timeout: 40_000,
   // Worker count: 8 — an INTERIM, last-known-clean setting, NOT a derived ceiling.
   // HISTORY + CORRECTION (2026-07-23): an earlier comment here asserted a measured mechanism — ">8
   // oversubscribes the 8 P-cores; 10 workers → the same 10 heavy-init specs fail deterministically".
@@ -31,13 +35,13 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: `http://localhost:${PORT}`,
-    // Navigation timeout — kept BELOW the test-level timeout (30s) on purpose. The test timeout is the hard
-    // ceiling over EVERYTHING including navigation, so a value above it (the old 60s) was dead config — the
-    // 30s test timeout always fired first. Below it, a nav that genuinely hangs gets a nav-specific error.
-    // The REAL nav-flake fix is tests/_fixtures.ts (every page.goto now defaults to waitUntil:'domcontentloaded':
-    // the app is interactive at DCL; 'load' only waited on fonts/icons and blew the 30s wall under contention —
-    // docs/research/playwright-reliability-research.md). A correct nav is now ~ms, so 15s is pure headroom.
-    navigationTimeout: 15_000,
+    // Navigation timeout — the other half of the SPLITTER geometry: 28s, deliberately BELOW the 40s test
+    // ceiling (a nav that genuinely hangs errors nav-specifically at 28s; the old 15s was killing
+    // slow-but-alive warm reloads under collision and igniting worker-restart cascades — 14/16 of the
+    // post-F1F2 certification failures were seedApp reloads killed at exactly 15s, incl. MID-run windows).
+    // Steady-state warm reloads are ~1s; this is tail headroom, not a wait. Applies to seedApp's reload via
+    // the context default; the worker cold goto keeps its own explicit 28s (F2).
+    navigationTimeout: 28_000,
     // retries is 0 (see above), so 'on-first-retry' never fires — a zero-retry suite never gets a
     // second attempt to trace. 'retain-on-failure' captures a trace on the first (only) failure, which
     // is what the CI workflow's "Upload traces on failure" step actually needs to have something to upload.
