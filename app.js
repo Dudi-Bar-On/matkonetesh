@@ -5383,6 +5383,61 @@ function vcBuildAskPrompt(question, ansLang, ctx){
   const userText = ansLang==='en' ? (question+'\n\n(Reply in English only.)') : (question+'\n\n(ענה בעברית בלבד.)');
   return {sys, userText};
 }
+/* ── P0-app item 1 · the spoken safety guard (ULTIMATE A1/A2) ─────────────────────────────────────
+   THE INVARIANT: no model-originated safety number is ever voiced. Voice Cook is the only surface
+   where a wrong number reaches a cook with busy hands and no visible caveat — aiSafetyNote's on-screen
+   escalation cannot help someone who is not looking at the phone. Resolution is active-cook FIRST
+   (the step the cook is standing at), catalog second, per the owner's decision. */
+// The resolved item behind this question, or null. ONE resolution per request — the spoken guard and
+// item 3's search gate both call this rather than resolving twice.
+function vcResolveEntity(question){
+  const t=vcTasks[vcIdx];
+  if(t && t.ikey){ const m=(typeof resolveItem==='function')?resolveItem(t.ikey):null; if(m && m.obj) return m; }
+  const hits=(typeof askFindEntity==='function')?askFindEntity(String(question||'').toLowerCase()):[];
+  const best=hits && hits[0];
+  return (best && best.obj) ? best : null;
+}
+// The verified figures a resolved item actually carries. Same accessor set askContextFor (4136) and
+// itemStages (3262) already read — not a new one. Celsius-native; rounded to match the integer °C
+// convention of the data layer (63/71/74).
+function vcVerifiedNums(meta){
+  const o=meta&&meta.obj; if(!o) return [];
+  return ['safe','tgt','svt','smt','sot'].map(function(k){ return o[k]; })
+    .filter(function(v){ return v!=null && !isNaN(Number(v)); })
+    .map(function(v){ return Math.round(Number(v)); });
+}
+// One tokenizer shared by every rewrite path, matching the SAME token classes aiSafetyNums extracts —
+// so a number the extractor can see is never a number the guard fails to rewrite.
+function vcMapSafetyNums(s, fn){
+  return String(s||'').replace(
+    /(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)|(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)|\bpH\s*(\d+(?:\.\d+)?)/gi,
+    function(_m, r1, r2, ru, n1, u1, ph){
+      if(r1!=null) return fn(parseFloat(r1), ru)+'–'+fn(parseFloat(r2), ru);
+      if(n1!=null) return fn(parseFloat(n1), u1);
+      return 'pH '+fn(parseFloat(ph), 'pH');
+    });
+}
+// Matched → speak the APP's verified figure (in °C — so a "correct" 165°F is still voiced as the app's
+// own 74°C, never the model's phrasing). Unmatched → strip the digits, keep the qualitative advice,
+// append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
+function vcGuardSpoken(text, meta, lang){
+  const he=(lang||vcAnsLang())!=='en';
+  const src=String(text||'');
+  if(!aiSafetyNums(src).length) return src;
+  const ok={}; vcVerifiedNums(meta).forEach(function(n){ ok[n]=true; });
+  let anyBad=false;
+  const out=vcMapSafetyNums(src, function(val, unit){
+    if(/°|C\b|F\b|מעלות/i.test(String(unit||''))){
+      const c=Math.round(aiSafetyToC(val, unit));
+      if(ok[c]) return c+'°C';
+    }
+    anyBad=true; return '—';            // ppm/%/pH can never match: vcVerifiedNums holds temperatures only
+  }).replace(/\s{2,}/g,' ').trim();
+  return out+' '+(anyBad
+    ? (he?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':'This number isn\'t verified — check the item card.')
+    : (he?'לפי המדריך המאומת.':'per the app\'s verified guide.'));
+}
+
 async function vcAskAI(question){
   if(typeof window!=='undefined' && window.__vcAskMock!==undefined && window.__vcAskMock!==null){
     const m=window.__vcAskMock; return typeof m==='function'?m(question):m;
@@ -5408,9 +5463,13 @@ async function vcAskFlow(rawSaid){
   vcSpeak(ansL==='en'?'One moment, checking.':'רגע, בודק.', ansL);
   vcLastQA={q:question, a:(ansL==='en'?'…thinking':'…חושב')}; vcRender();
   try{
-    const answer=await vcAskAI(question);
-    vcLastQA={q:question, a:answer}; vcRender();
-    vcSpeak(answer, ansL);
+    const ent=vcResolveEntity(question);          // resolved ONCE — item 3's search gate reuses it
+    const answer=await vcAskAI(question, ent);
+    // P0-app item 1: nothing reaches speech OR the transcript un-guarded. One guarded string, both
+    // surfaces — a sighted user must never read something different from what a hands-busy user hears.
+    const guarded=vcGuardSpoken(answer, ent, ansL);
+    vcLastQA={q:question, a:guarded}; vcRender();
+    vcSpeak(guarded, ansL);
   }catch(e){
     const msg=ansL==='en'?'Sorry, AI is not available right now.':'מצטער, ה-AI לא זמין כרגע.';
     vcLastQA={q:question, a:msg}; vcRender(); vcSpeak(msg, ansL);
