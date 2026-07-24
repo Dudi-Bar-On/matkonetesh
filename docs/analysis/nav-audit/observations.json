@@ -1,0 +1,155 @@
+[
+  {
+    "id": "S1",
+    "entry": "☰ More sheet → מחשבון מלח/כמויות → ✕",
+    "detail": "at ☰ More: screen=home wiz=0 stack=0 panel=\"עוד\" back=n hist=2 url=/  ||  at Calculator: screen=home wiz=0 stack=0 panel=\"מחשבונים\" back=n hist=2 url=/",
+    "landed": "screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "back on the ☰ More sheet — that is where I came from",
+    "mismatch": true,
+    "shot": "s1-calc-open-no-backbtn.png"
+  },
+  {
+    "id": "S2",
+    "entry": "Calculator panel open → BROWSER / ANDROID hardware BACK",
+    "detail": "before: screen=home wiz=0 stack=0 panel=\"מחשבונים\" back=n hist=2 url=/",
+    "landed": "screen=? wiz=null stack=null panel=CLOSED back=n hist=2 url=blank",
+    "expected": "the panel closes and I stay in the app",
+    "mismatch": true,
+    "shot": "s2-after-browser-back-from-panel.png"
+  },
+  {
+    "id": "S3",
+    "entry": "bottom nav → קטלוג (catalog screen) → BROWSER / ANDROID BACK",
+    "detail": "before: screen=catalog wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "landed": "screen=? wiz=null stack=null panel=CLOSED back=n hist=2 url=blank",
+    "expected": "return to the בית (home) screen I came from",
+    "mismatch": true,
+    "shot": "s3-after-browser-back-from-catalog.png"
+  },
+  {
+    "id": "S4",
+    "entry": "catalog screen → RELOAD (= relaunching the installed PWA)",
+    "detail": "before: screen=catalog wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "landed": "screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "still on the catalog screen",
+    "mismatch": true,
+    "shot": null
+  },
+  {
+    "id": "S5",
+    "entry": "Calculator panel open → RELOAD",
+    "detail": "before: screen=home wiz=0 stack=0 panel=\"מחשבונים\" back=n hist=2 url=/",
+    "landed": "screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "the calculator panel is still open",
+    "mismatch": true,
+    "shot": null
+  },
+  {
+    "id": "S6",
+    "entry": "event wizard advanced to step 3 → RELOAD",
+    "detail": "before: screen=wizard wiz=3 stack=0 panel=CLOSED back=n hist=2 url=/  (before-shot s6-wizard-step3-before-reload.png)",
+    "landed": "screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "still in the wizard at step 3",
+    "mismatch": true,
+    "shot": "s6-wizard-after-reload.png"
+  },
+  {
+    "id": "S7",
+    "entry": "event wizard at step 3 → BROWSER / ANDROID BACK",
+    "detail": "before: screen=wizard wiz=3 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "landed": "screen=? wiz=null stack=null panel=CLOSED back=n hist=2 url=blank",
+    "expected": "step back to wizard step 2",
+    "mismatch": true,
+    "shot": "s7-wizard-after-browser-back.png"
+  },
+  {
+    "id": "S8",
+    "entry": "events screen → wizard (step 2) → exit the wizard",
+    "detail": "at events: screen=events wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/  ||  in wizard: screen=wizard wiz=2 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "landed": "screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "return to the אירועים (events) screen I entered from",
+    "mismatch": true,
+    "shot": "s8-wizard-exit-from-events.png"
+  },
+  {
+    "id": "S9",
+    "entry": "Meal builder → Shopping cart (nested, stack=1) → ✕",
+    "detail": "at meal builder: screen=home wiz=0 stack=0 panel=\"בונה תפריט לאירוח\" back=n hist=2 url=/  ||  at cart: screen=home wiz=0 stack=1 panel=\"רשימת קניות\" back=Y hist=2 url=/",
+    "landed": "screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "pop ONE level → back on the Meal builder panel",
+    "mismatch": true,
+    "shot": "s9-nested-cart-has-backbtn.png"
+  },
+  {
+    "id": "S10",
+    "entry": "Meal builder → cart (nested) → in-panel \"→ חזרה לחלון הקודם\" button",
+    "detail": "at cart: screen=home wiz=0 stack=1 panel=\"רשימת קניות\" back=Y hist=2 url=/  backbtn_present=1",
+    "landed": "screen=home wiz=0 stack=0 panel=\"בונה תפריט לאירוח\" back=n hist=2 url=/",
+    "expected": "return to the Meal builder panel",
+    "mismatch": false,
+    "shot": null
+  },
+  {
+    "id": "S11",
+    "entry": "Meal builder → cart (nested) → ESC key",
+    "detail": "at cart: screen=home wiz=0 stack=1 panel=\"רשימת קניות\" back=Y hist=2 url=/",
+    "landed": "screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "pop one level → back on the Meal builder",
+    "mismatch": true,
+    "shot": null
+  },
+  {
+    "id": "S12",
+    "entry": "Meal builder → cart (nested) → tap the scrim / backdrop",
+    "detail": "at cart: screen=home wiz=0 stack=1 panel=\"רשימת קניות\" back=Y hist=2 url=/",
+    "landed": "screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "pop one level → back on the Meal builder",
+    "mismatch": true,
+    "shot": null
+  },
+  {
+    "id": "S13",
+    "entry": "home → ☰ More → 🧫 פרויקטים ומזווה (Projects & pantry)",
+    "detail": "at home: screen=home wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/  ||  at ☰ More: screen=home wiz=0 stack=0 panel=\"עוד\" back=n hist=2 url=/",
+    "landed": "screen=projects wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "a pantry PANEL opens over home; ✕ returns me to home",
+    "mismatch": true,
+    "shot": "s13-pantry-teleported-screen.png"
+  },
+  {
+    "id": "S14",
+    "entry": "home → ☰ More → 📖 מילון (Glossary)",
+    "detail": "entered from the home screen",
+    "landed": "screen=catalog wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "a glossary panel over home; closing it returns me to home",
+    "mismatch": true,
+    "shot": "s14-glossary-teleported-to-catalog.png"
+  },
+  {
+    "id": "S15",
+    "entry": "POSITIVE CONTROL — catalog → open a recipe/cut panel → ✕",
+    "detail": "at catalog: screen=catalog wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/  ||  in panel: screen=catalog wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/  (clickable card found=0)",
+    "landed": "screen=catalog wiz=0 stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "return to the catalog screen underneath",
+    "mismatch": false,
+    "shot": null
+  },
+  {
+    "id": "S16",
+    "entry": "תזכורות (Reminders) form → type text → ✕ without saving",
+    "detail": "text_inputs=1 typed=\"בדיקת ניווט 123\" warned=false value_after_reopen=\"\"",
+    "landed": "screen=home wiz=0 stack=0 panel=\"תזכורות\" back=n hist=2 url=/",
+    "expected": "an \"unsaved changes\" warning, or the draft is preserved",
+    "mismatch": true,
+    "shot": null
+  },
+  {
+    "id": "S17",
+    "entry": "history.length across: boot → ☰ → panel → screen switch → wizard step",
+    "detail": "boot=2  ☰open=2  panelOpen=2  screenSwitch=2  wizardStep=2",
+    "landed": "history.length NEVER changes (2→2→2→2→2). The app creates ZERO history entries; every state above lives only in JS variables.",
+    "expected": "each navigable state pushes an entry so Back can unwind it",
+    "mismatch": true,
+    "shot": null
+  }
+]

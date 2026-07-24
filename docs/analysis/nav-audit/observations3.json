@@ -1,0 +1,40 @@
+[
+  {
+    "id": "S18",
+    "entry": "POSITIVE CONTROL — catalog → בשר אדום → item recipe panel → ✕",
+    "detail": "in category: screen=catalog catGroup=\"בשר אדום\" stack=0 panel=CLOSED back=n hist=2 url=/  ||  in item panel: screen=catalog catGroup=\"בשר אדום\" stack=0 panel=\"בריסקט\" back=n hist=2 url=/",
+    "landed": "screen=catalog catGroup=\"בשר אדום\" stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "panel closes, back on the catalog category view I came from",
+    "mismatch": false,
+    "shot": "s18-item-panel-over-catalog.png"
+  },
+  {
+    "id": "S21",
+    "entry": "recipe/item panel open over catalog → BROWSER / ANDROID BACK",
+    "detail": "in item panel: screen=catalog catGroup=\"בשר אדום\" stack=0 panel=\"בריסקט\" back=n hist=2 url=/",
+    "landed": "screen=? catGroup=\"?\" stack=null panel=CLOSED back=n hist=2 url=blank",
+    "expected": "the panel closes and I stay on the catalog",
+    "mismatch": true,
+    "shot": "s21-item-panel-after-browser-back.png"
+  },
+  {
+    "id": "S23",
+    "entry": "(scenario S23 could not complete)",
+    "detail": "no [data-seas] link in this item panel",
+    "landed": "COULD NOT COMPLETE — not counted",
+    "expected": "—",
+    "mismatch": false,
+    "error": true,
+    "shot": null
+  },
+  {
+    "id": "S24",
+    "entry": "(scenario S24 could not complete)",
+    "detail": "no [data-seas] link in this item panel",
+    "landed": "COULD NOT COMPLETE — not counted",
+    "expected": "—",
+    "mismatch": false,
+    "error": true,
+    "shot": null
+  }
+]

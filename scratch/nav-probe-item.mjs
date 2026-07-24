@@ -1,0 +1,14 @@
+import { chromium } from '@playwright/test';
+const b = await chromium.launch({ headless: true });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'he-IL' });
+await ctx.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', 'true'); } catch (e) {} });
+const p = await ctx.newPage();
+await p.goto('http://127.0.0.1:8129', { waitUntil: 'networkidle' }); await p.waitForTimeout(500);
+await p.click('.cnav button[data-cnav="catalog"]'); await p.waitForTimeout(600);
+await p.click('#scr-catalog .cattile:has-text("בשר אדום")'); await p.waitForTimeout(900);
+await p.screenshot({ path: 'C:/Users/dudib/source/repos/matconetesh/.superpowers/sdd/nav-audit/probe-category-view.png' });
+console.log('=== unique tag.class inside #scr-catalog main ===');
+console.log(await p.evaluate(`[...document.querySelectorAll('#scr-catalog main *')].map(e=>e.tagName+'.'+(e.className||'').toString().split(' ').slice(0,2).join('.')).filter((v,i,a)=>a.indexOf(v)===i).slice(0,50).join('\\n')`));
+console.log('\n=== VISIBLE clickable-looking elements in main (first 20) ===');
+console.log(await p.evaluate(`[...document.querySelectorAll('#scr-catalog main button, #scr-catalog main [data-k], #scr-catalog main [data-key], #scr-catalog main article, #scr-catalog main li')].filter(e=>e.offsetParent).slice(0,20).map(e=>e.tagName+' cls='+(e.className||'').toString().slice(0,32)+' attrs='+[...e.attributes].map(a=>a.name).join('|')+' txt='+(e.textContent||'').trim().replace(/\\s+/g,' ').slice(0,28)).join('\\n')`));
+await b.close();

@@ -1,0 +1,59 @@
+[
+  {
+    "id": "S18",
+    "entry": "(scenario S18 could not complete)",
+    "detail": "locator.click: Timeout 30000ms exceeded.",
+    "landed": "COULD NOT COMPLETE — not counted",
+    "expected": "—",
+    "mismatch": false,
+    "error": true,
+    "shot": null
+  },
+  {
+    "id": "S19",
+    "entry": "catalog → בשר אדום category → in-header \"→\" back button",
+    "detail": "in category: screen=catalog catGroup=\"בשר אדום\" stack=0 panel=CLOSED back=n hist=2 url=/",
+    "landed": "screen=catalog catGroup=null stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "return to the catalog tile landing (one level up)",
+    "mismatch": false,
+    "shot": null
+  },
+  {
+    "id": "S20",
+    "entry": "catalog → בשר אדום category (drilled in) → BROWSER / ANDROID BACK",
+    "detail": "in category: screen=catalog catGroup=\"בשר אדום\" stack=0 panel=CLOSED back=n hist=2 url=/",
+    "landed": "screen=? catGroup=\"?\" stack=null panel=CLOSED back=n hist=2 url=blank",
+    "expected": "the \"→\" button behaviour: back up to the catalog tile landing",
+    "mismatch": true,
+    "shot": "s20-category-after-browser-back.png"
+  },
+  {
+    "id": "S21",
+    "entry": "(scenario S21 could not complete)",
+    "detail": "locator.click: Timeout 30000ms exceeded.",
+    "landed": "COULD NOT COMPLETE — not counted",
+    "expected": "—",
+    "mismatch": false,
+    "error": true,
+    "shot": null
+  },
+  {
+    "id": "S22",
+    "entry": "catalog drilled into בשר אדום → RELOAD (PWA relaunch)",
+    "detail": "in category: screen=catalog catGroup=\"בשר אדום\" stack=0 panel=CLOSED back=n hist=2 url=/",
+    "landed": "screen=home catGroup=null stack=0 panel=CLOSED back=n hist=2 url=/",
+    "expected": "still in the בשר אדום category",
+    "mismatch": true,
+    "shot": null
+  },
+  {
+    "id": "S23",
+    "entry": "(scenario S23 could not complete)",
+    "detail": "locator.click: Timeout 30000ms exceeded.",
+    "landed": "COULD NOT COMPLETE — not counted",
+    "expected": "—",
+    "mismatch": false,
+    "error": true,
+    "shot": null
+  }
+]

@@ -1,0 +1,17 @@
+import { chromium } from '@playwright/test';
+const BASE = 'http://127.0.0.1:8129';
+const b = await chromium.launch({ headless: true });
+const ctx = await b.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true, locale: 'he-IL' });
+await ctx.addInitScript(() => { try { localStorage.setItem('mk-uilevel-asked', 'true'); } catch (e) {} });
+const p = await ctx.newPage();
+await p.goto(BASE, { waitUntil: 'networkidle' });
+await p.waitForTimeout(500);
+await p.click('.cnav button[data-cnav="catalog"]');
+await p.waitForTimeout(800);
+console.log('=== catalog screen: direct children classes ===');
+console.log(await p.evaluate(`[...document.querySelectorAll('#scr-catalog *')].slice(0,60).map(e=>e.tagName+'.'+(e.className||'').toString().split(' ')[0]).filter((v,i,a)=>a.indexOf(v)===i).join('\\n')`));
+console.log('\n=== elements with data-* attrs in catalog (first 25) ===');
+console.log(await p.evaluate(`[...document.querySelectorAll('#scr-catalog [data-cut],#scr-catalog [data-key],#scr-catalog [data-tile],#scr-catalog [data-cat],#scr-catalog .card,#scr-catalog .tile')].slice(0,25).map(e=>e.tagName+' cls='+(e.className||'').toString().slice(0,30)+' attrs='+[...e.attributes].map(a=>a.name).join(',')+' txt='+(e.textContent||'').trim().replace(/\\s+/g,' ').slice(0,25)).join('\\n')`));
+console.log('\n=== all visible buttons in catalog (first 25) ===');
+console.log(await p.evaluate(`[...document.querySelectorAll('#scr-catalog button')].filter(e=>e.offsetParent).slice(0,25).map(e=>'cls='+(e.className||'').toString().slice(0,34)+' txt='+(e.textContent||'').trim().replace(/\\s+/g,' ').slice(0,26)).join('\\n')`));
+await b.close();
