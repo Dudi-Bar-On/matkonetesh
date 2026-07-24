@@ -240,3 +240,44 @@ test('vcResolveEntity smoke test — Tier 1 (active-cook item) wins when it reso
   })()`) as {got:number|null; expected:number};
   expect(t2.got).toBe(t2.expected);   // falls back to the catalog item named in the question
 });
+
+// P0-app item 1, fix wave 4 (owner ruling 2026-07-24) — SYNTAX-INDEPENDENT ELIGIBILITY. Three previous
+// fixes keyed on how a range was WRITTEN and each was defeated by a different phrasing: "63°C-74°C"
+// (each bound carries its own unit), "between 63°C and 74°C" / Hebrew "בין...ל-" (no dash token at all),
+// and "63 to 74°C" / "בין 63 ל-74°C" (the bare lower bound was never even tokenized, so it was voiced
+// with NO inspection at all). The rule no longer asks HOW numbers were phrased: the answer must carry
+// exactly ONE number in total for that number to be eligible to be spoken as verified. Two or more means
+// the model is asserting a composite claim (a range, a comparison, a progression) the app — which stores
+// only DISCRETE figures — cannot vouch for. Reproduction: scratch/verify-range-bypass.js.
+for (const [label, mock] of [
+  ['unit on each bound',      '63°C-74°C'],
+  ['English "between…and"',   'between 63°C and 74°C'],
+  ['Hebrew "בין…ל-"',          'בין 63°C ל-74°C'],
+  ['English "to", bare lower', '63 to 74°C'],
+  ['Hebrew "בין…ל-", bare lower','בין 63 ל-74°C'],
+] as [string, string][]) {
+  test(`a range phrased as "${label}" is redacted, not spoken as verified`, async ({ page }) => {
+    await bootVC(page);
+    const safe = await page.evaluate(`(function(){var c=DATA.cuts.find(function(x){return x.safe!=null;}); return Math.round(c.safe);})()`) as number;
+    await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
+    await page.evaluate(`vcAskFlow('שאלה: מה הטווח')`);
+    await page.waitForFunction(`window.__spoke.length>1`);
+    const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+    expect(spoken).not.toContain('לפי המדריך המאומת');   // never the verified marker
+    expect(spoken).toContain('[…]');
+    expect(spoken).not.toMatch(/\d/);                    // NO digit survives, tokenized or not
+    void safe;
+  });
+}
+
+test('regression: a lone verified number IS still spoken with the marker (the rule must narrow, not disable)', async ({ page }) => {
+  await bootVC(page);
+  const f = await page.evaluate(`(function(){var c=DATA.cuts.find(function(x){return x.safe!=null;}); return {ikey:'cut-'+c.n, safe:Math.round(c.safe)};})()`) as {ikey:string; safe:number};
+  await page.evaluate(`vcTasks=[{ikey:'${f.ikey}',label:'x',t:new Date()}]; vcIdx=0;
+    window.__vcAskMock='הטמפ׳ הבטוחה היא ${f.safe}°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ הבטוחה')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).toContain(String(f.safe));
+  expect(spoken).toContain('לפי המדריך המאומת');
+});

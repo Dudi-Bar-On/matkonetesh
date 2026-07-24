@@ -5453,27 +5453,36 @@ const VC_REDACT='[…]';
 function vcGuardSpoken(text, tiers, lang){
   const he=(lang||vcAnsLang())!=='en';
   const src=String(text||'');
-  if(!aiSafetyNums(src).length) return src;
-  // Spec §3.1: a number is verified if it matches Tier 1's fields, OR — when Tier 1 has no resolvable
-  // item or no matching field — Tier 2's. A union is exactly that test, since a match is equality.
+  if(!aiSafetyNums(src).length) return src;          // no safety numbers at all → untouched
   const ok={};
   vcVerifiedNums(tiers && tiers.t1).forEach(function(n){ ok[n]=true; });
   vcVerifiedNums(tiers && tiers.t2).forEach(function(n){ ok[n]=true; });
-  let redacted=0;                       // counts TOKENS, not numbers — a redacted range is ONE token
-  const out=vcMapSafetyNums(src, function(vals, unit, kind){
-    // A RANGE is NEVER "verified". The app's data holds DISCRETE figures (safe/tgt/svt/smt/sot) and never
-    // a range, so any range is a model-composed claim the app cannot vouch for — speaking it under
-    // "לפי המדריך המאומת" would be a false provenance claim. Two individually-real figures spliced into a
-    // range (svt+smt off one cut, or one figure from each tier) is fabricated BY COMBINATION even though
-    // no digit was invented. Same treatment ppm/%/pH already get, for the same reason: nothing to verify
-    // the claim against. Owner ruling, 2026-07-24.
-    if(kind==='single' && /°|C\b|F\b|מעלות/i.test(String(unit||''))){
-      const c=Math.round(aiSafetyToC(vals[0], unit));
-      if(ok[c]) return c+'°C';
-    }
-    redacted++;
-    return VC_REDACT;
-  }).replace(/\s{2,}/g,' ').trim();
+  // SYNTAX-INDEPENDENT ELIGIBILITY (owner ruling 2026-07-24). Three previous fixes keyed on how a range
+  // was *written* and each was defeated by a different phrasing — "63°C-74°C", "between 63 and 74",
+  // "בין 63 ל-74°C" all slipped through, and the unit-less bound in "63 to 74°C" was never even
+  // tokenized, so it was voiced with no inspection at all. The rule no longer asks HOW numbers were
+  // phrased: the answer must carry exactly ONE number in total for that number to be eligible to be
+  // spoken as verified. Two or more means the model is asserting a composite claim (a range, a
+  // comparison, a progression) that the app — which stores only DISCRETE figures — cannot vouch for.
+  const DIGITS=/\d+(?:[.,]\d+)?/g;
+  const digitRuns=(src.match(DIGITS)||[]).length;
+  let redacted=0, out;
+  if(digitRuns===1){
+    out=vcMapSafetyNums(src, function(vals, unit, kind){
+      if(kind==='single' && /°|C\b|F\b|מעלות/i.test(String(unit||''))){
+        const c=Math.round(aiSafetyToC(vals[0], unit));
+        if(ok[c]) return c+'°C';                     // the app's OWN figure, in its own unit
+      }
+      redacted++; return VC_REDACT;
+    });
+  }else{
+    // Two or more numbers → nothing is spoken as verified. Redact the recognised safety tokens FIRST
+    // (that also removes their unit), then sweep any remaining bare digits — because a number the
+    // extractor cannot see is exactly the one that would otherwise be voiced unguarded.
+    out=vcMapSafetyNums(src, function(){ redacted++; return VC_REDACT; })
+          .replace(DIGITS, function(){ redacted++; return VC_REDACT; });
+  }
+  out=out.replace(/\s{2,}/g,' ').trim();
   return out+' '+(redacted
     ? (redacted===1
         ? (he?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':'This number isn\'t verified — check the item card.')
