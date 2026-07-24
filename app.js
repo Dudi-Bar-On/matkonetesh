@@ -4436,8 +4436,8 @@ const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';
 //     "degrees"/"degrees." all match on their own, as long as no letter immediately follows (so
 //     "degradation"/"deg of freedom" still fail: "r" and " o" are not `\.` and the space in "deg of" is
 //     not a letter, but "of" starts mid-word right after "deg " — see below).
-// DEVIATION FROM THE TASK'S LITERAL REGEX, verified by execution (scratch/verify-fix-c2-v7.js, RED) then
-// fixed (scratch/verify-fix-c2-v7b.js, GREEN) — do not "simplify" this back: the task text placed \.?
+// DEVIATION FROM THE TASK'S LITERAL REGEX, verified by execution (scratch/verify-fix-c2-v7.mjs, RED) then
+// fixed (scratch/verify-fix-c2-v7b.mjs, GREEN) — do not "simplify" this back: the task text placed \.?
 // BEFORE the branch group, unconditionally: "deg(?:rees?)?\.?(?:[ \t]*(?:C\b|...)|(?![A-Za-z]))". That
 // version REOPENS FIX C's own defect 3 ("63 degrees. F is what the probe shows" -> [17], not [63]):
 // with \.? outside the branch, "degrees" + "." + " F" all get consumed by the unit-letter branch (period
@@ -4463,7 +4463,7 @@ const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';
 // deliberately NOT `\s*`, which would let a separator cross a literal `\r`/`\n` and reintroduce exactly
 // the cross-sentence corruption FIX C closed — see `\.?(?![A-Za-z])` below and `29851c0`).
 // DO NOT "fix" the °-branch's `\s*` to match its siblings by narrowing it to `[^\S\r\n]*` — verified by
-// execution (scratch/verify-1b248a1-leak-v1.js) that doing so does NOT close the leak, it relocates it:
+// execution (scratch/verify-1b248a1-leak-v1.mjs) that doing so does NOT close the leak, it relocates it:
 // `"74°\nF"` would then match only `°` (the `[CF]?` after it goes empty because `\n` sits between), so the
 // unit becomes bare `°`, the `F` is left loose in the prose, isFahrenheitUnit("°")===false, and the number
 // is STILL spoken unconverted — same leak, different mechanism. The °-branch's wider `\s*` is deliberate;
@@ -4484,7 +4484,7 @@ function safetyTokenRe(){ return new RegExp(SAFETY_TOKEN_SRC, 'gi'); }
 function isTempUnit(u){ return new RegExp('^(?:'+SAFETY_UNIT+')$','i').test(String(u||'').trim()) && !/^(?:ppm|%)$/i.test(String(u||'').trim()); }
 // REGRESSION FIX (2026-07-24) — the last hand-written predicate over SAFETY_UNIT's output. aiSafetyToC
 // used to decide Fahrenheit with a bare /F/i test on the unit string: correct today only because an audit
-// enumerated every unit SAFETY_UNIT can emit (40 forms — see scratch/verify-isFahrenheitUnit-v1.js; the
+// enumerated every unit SAFETY_UNIT can emit (40 forms — see scratch/verify-isFahrenheitUnit-v1.mjs; the
 // pre-fix audit's "27" no longer applies now the deg fragment above changed what's emittable) and found
 // none wrongly classed. But it is a private, undocumented assumption of exactly the shape that already
 // bit this file once (vcGuardSpoken's stale /°|C\b|F\b|מעלות/i, replaced by isTempUnit above) — it would
