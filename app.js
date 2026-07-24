@@ -2787,7 +2787,17 @@ $("#q").addEventListener("input",debounce(()=>catView(),120));
    ===================================================================== */
 function uid(){return Math.random().toString(36).slice(2,9);}
 function today(){return new Date().toISOString().slice(0,10);}
-function addDays(d,n){const x=new Date(d);x.setDate(x.getDate()+(+n||0));return x.toISOString().slice(0,10);}
+// P0-app item 5 · ULTIMATE A9 — the whole calculation stays in UTC. Date.UTC() parses explicitly in UTC
+// (identical to today's implicit UTC parse of an ISO date-only string) and setUTCDate() mutates in UTC,
+// so the arithmetic never crosses a local DST boundary. Zero local-time reads. The old version parsed in
+// UTC, mutated in LOCAL, and read back in UTC — losing a day whenever a transition fell inside the span,
+// which fires a cure/dry reminder EARLY and shortens the cure.
+function addDays(d,n){
+  const p=String(d).split('-').map(Number);
+  const x=new Date(Date.UTC(p[0], p[1]-1, p[2]));
+  x.setUTCDate(x.getUTCDate()+(+n||0));
+  return x.toISOString().slice(0,10);
+}
 function daysBetween(a,b){return Math.round((new Date(b)-new Date(a))/864e5);}
 function fmtDate(d){try{return new Date(d).toLocaleDateString('he-IL');}catch(e){return d;}}
 
