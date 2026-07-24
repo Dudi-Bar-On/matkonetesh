@@ -458,6 +458,17 @@ for (const [label, phrase] of fixAPhrasings) {
   });
 }
 
+// Phase A gate close — FIX C: the old "deg(?:rees?)?\.?\s*(?:C\b|F\b|celsius|fahrenheit)?" SAFETY_UNIT
+// fragment let its unconditional \s* reach across the number-and-unit boundary AND across a sentence
+// boundary. This test documents the accepted over-match (an angle is still redacted — the app cannot
+// distinguish it from a temperature without semantics, and over-redacting is the safe failure direction)
+// while proving the SPACING defect is fixed: the placeholder must not glue itself to the next word.
+test('FIX C — a redacted "degree" token keeps its own trailing space (documents the accepted angle over-match)', async ({ page }) => {
+  await bootVC(page);
+  const out = await page.evaluate(`vcMapSafetyNums('slice at a 45 degree angle', function(){ return '[…]'; })`) as string;
+  expect(out).toBe('slice at a […] angle');   // NOT "slice at a […]angle"
+});
+
 // P0-app item 3 (spec §3.3) — google_search was unconditional at askGemini (app.js:4340) and vcAskAI
 // (5361-ish). When the app already holds vetted data for the question, search adds COGS and an indirect-
 // injection surface without adding value. aiJSON's own `search?` gate was already conditional; this closes

@@ -4421,8 +4421,21 @@ function aiSafetyCaveat(txt){
 // unified the extractor and the guard behind SAFETY_TOKEN_SRC; a separately-written digit-counting
 // regex then diverged from it and produced a CORRUPTED verified value ("1,063°C" -> "1,63°C" marked
 // verified), because the two patterns disagreed about where the number ended. Never write a second one.
-const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';;
-const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|deg(?:rees?)?\\.?\\s*(?:C\\b|F\\b|celsius|fahrenheit)?|celsius|fahrenheit)';;
+const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';
+// Phase A gate FIX C — the old single "deg(?:rees?)?\.?\s*(?:C\b|F\b|celsius|fahrenheit)?" fragment had
+// three defects, all confirmed by execution (scratch/verify-phase-a-gate-v6.js): (1) no \b after "deg",
+// so it matched inside "degradation"/"deg of freedom"; (2) the unconditional \s* swallowed its trailing
+// space even when no unit letter followed ("45 degree angle" -> placeholder glued to "angle"); (3) \.?
+// let \s* reach across a sentence boundary ("63 degrees. F is...") and bind the NEXT sentence's "F",
+// corrupting 63 into 17. Fixed by splitting into two alternatives: the FULL word "degrees"/"degree" may
+// stand alone (the app's own English TTS says "74 degrees" meaning its native Celsius) with \b then an
+// OPTIONAL unit-letter suffix whose own [ \t]* is nested INSIDE that optional group (so a non-matching
+// tail never consumes the space); the SHORT form "deg" requires an explicit unit letter to follow (\b
+// alone does not distinguish "3 deg" from "3 deg of freedom" — verified empirically, see v6 harness case
+// C1) — this is a narrower fix than the literal regex suggested elsewhere, kept because it is the only
+// formulation that satisfies BOTH required non-match tests. "slice at a 45 degree angle" still matches
+// and redacts (explicitly accepted, not a defect — see the test that documents it).
+const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|degrees?\\b(?:[ \\t]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b))?|deg\\b[ \\t]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|celsius|fahrenheit)';
 const SAFETY_TOKEN_SRC=
     '('+SAFETY_NUM+')\\s*[-–]\\s*('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
   + '|('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'                               // 4 number  · 5 its unit

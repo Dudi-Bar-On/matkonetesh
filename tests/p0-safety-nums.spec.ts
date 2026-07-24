@@ -87,3 +87,26 @@ test('FIX 2 — a comma-grouped thousands number extracts as its FULL value, not
   // splits into two runs and only the tail "5°C" is a recognised token.
   expect(await page.evaluate(`aiSafetyNums('63,5°C')`)).toEqual([5]);
 });
+
+// Phase A gate close — FIX C, defect 1: the old SAFETY_UNIT "deg" fragment had no word boundary after
+// "deg", so it matched as a PREFIX inside unrelated words/phrases. Confirmed by execution before the fix
+// (scratch/verify-phase-a-gate-v6.js): aiSafetyNums('5 degradation events') -> [5],
+// aiSafetyNums('3 deg of freedom') -> [3]. The fix adds \b after deg(?:rees?)? AND — because \b alone does
+// not stop "deg" followed by an unrelated word starting with whitespace ("deg of freedom") — requires the
+// SHORT form "deg" to be followed by an actual unit letter (C/F/celsius/fahrenheit); only the FULL word
+// "degrees"/"degree" may stand alone (matching the app's own English TTS, "74 degrees").
+test('FIX C — "degradation"/"deg of freedom" are not mistaken for a temperature unit', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(`aiSafetyNums('5 degradation events')`)).toEqual([]);
+  expect(await page.evaluate(`aiSafetyNums('3 deg of freedom')`)).toEqual([]);
+});
+
+// Phase A gate close — FIX C, defect 3 (the worst class: a VALUE CORRUPTION, not an over-flag): the old
+// fragment's trailing "\.?" let the unconditional "\s*" reach across a sentence-ending period and bind the
+// NEXT sentence's stray "F" as if it were this number's unit. Confirmed by execution before the fix:
+// aiSafetyNums('hold at 63 degrees. F is what the probe shows.') -> [17] (63 misread as Fahrenheit and
+// converted). Dropping \.? stops the cross-sentence bind; the number now extracts as 63, untouched.
+test('FIX C — a sentence-ending period never binds the next sentence\'s unit letter (value-corruption fix)', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(`aiSafetyNums('hold at 63 degrees. F is what the probe shows.')`)).toEqual([63]);
+});
