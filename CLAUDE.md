@@ -120,9 +120,11 @@ After `python build.py`, **restart any manual `serve.js`** before a UI check —
 at startup, so you will otherwise verify a stale build. Stop the manual server on 8123 before running the
 suite, or Playwright's managed server collides with it.
 **Every SETUP owns a matching TEARDOWN** (§11a) — let a run COMPLETE (Playwright tears down its own server);
-**never kill a suite mid-flight.** `serve.js` is a cluster that RESPAWNS killed workers, so a port-based
-`taskkill` leaves a respawning zombie server that accepts connections but never responds and wedges 8123 for
-every later run. If you must kill, kill the whole tree from the primary, then verify the port refuses + 0 orphans.
+**never kill a suite mid-flight.** `serve.js` is now a **single in-memory process** (de-clustered, L18) with
+SIGINT/SIGTERM handlers for a clean shutdown — the old cluster's respawn-on-kill zombie-server failure mode
+is gone. The rule still stands regardless: a forceful/port-based `taskkill` can still bypass the handlers and
+leave an orphan holding the port. If you must kill, kill the whole tree from the primary, then verify the port
+refuses + 0 orphans.
 
 ## When stuck, RESEARCH (not fix #4)
 

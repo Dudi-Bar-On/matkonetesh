@@ -87,7 +87,11 @@ while the server is idle-fast and the machine is ~85 % idle. This is the evidenc
 - **`route.fulfill` — serve the doc from an in-memory Buffer, NO real socket (arm 11): CURES IT.**
   12-way lockstep, 6 rounds: **72/72 reloads clean, 180–238 ms each, whole run 2.9 s** (vs 200–286 s and
   mostly-timeout against the real server). A **~100× swing on a single variable** = the loopback TCP
-  connection is the bottleneck, conclusively.
+  connection is the bottleneck, conclusively. **Reviewer precision note (flake-refactor-review.md §1.3):**
+  this arm ABORTS subresources — it is not the shipped shape. The shipped fixture instead `continue()`s
+  subresources to the real server (arm 11b, below) and measures **12.2 s, i.e. ~20–24×** vs the ~286 s
+  baseline. Both cure the hang and the mechanism proof is unaffected, but **~100× is the abort-probe
+  number, not the shipped configuration's.**
 
 ### ROOT CAUSE (proven)
 Under **N≳4 concurrent chromium browser processes** each doing a full-navigation `page.reload`, the
@@ -140,8 +144,9 @@ was ~1/3 clean):**
 | Canary 2 (confidence) | **438 passed (1.1m)** | 0 |
 | Canary 3 (confidence) | **438 passed (1.1m)** | 0 |
 
-**3/3 clean** (P(luck) ≈ 0.33³ ≈ 3.6 %, and the mechanism is independently proven by the probe's ~100×
-red→green). The **service-worker project (2 tests) passed** — real serving preserved. The **warm-fixture
+**3/3 clean** (P(luck) ≈ 0.33³ ≈ 3.6 %, and the mechanism is independently proven by the probe's red→green
+— **~20–24× for the shipped continue-shape** (arm 11b), ~100× for the abort-probe variant (arm 11); see the
+reviewer's precision note above). The **service-worker project (2 tests) passed** — real serving preserved. The **warm-fixture
 contract spec is 5/5** in every run (the architecture's own proof held). Machine verified clean after
 (8123 free, 0 headless, 0 serve orphans — Playwright tears down its own webServer).
 
@@ -162,6 +167,8 @@ targeted verification of the fix; the reviewer + owner gate any certification ca
   churn) was **not** pinned — the fix is mechanism-agnostic. A follow-up could pin it (a Defender-exclusion
   A/B, or `serve.js` connection logging), but it is not required for the fix.
 - **Repro harness kept** (untracked `scratch/reload-storm.mjs`, `storm-worker.mjs`, `storm-multi.mjs`,
-  `server-storm.mjs`, `serve-log.mjs`) — the ~100× red/green re-verifies this in ~15 s if ever needed.
+  `server-storm.mjs`, `serve-log.mjs`) — the red/green re-verifies this in ~15 s if ever needed (~20–24×
+  for the shipped continue-shape, arm 11b; the ~100× figure is the abort-probe variant, arm 11 — see the
+  reviewer's precision note, Iteration 1).
 
 _End of loop._
