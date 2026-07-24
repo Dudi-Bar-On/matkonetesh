@@ -4395,7 +4395,14 @@ function aiStripFences(t){
 // point back to the app's cited data + calculator. (We flag rather than redact so cited numbers survive.)
 // W1-P2: bilingual, and the detector also catches bare Fahrenheit, salt %, pH, and water-activity (aw).
 function aiSafetyHasNumbers(txt){
-  return /\d{2,3}\s*°|\d+\s*מעלות|\d+\s*°?[FC]\b|\d+\s*ppm|ניטריט|nitrite|Cure\s*#?[12]|קיור|ריפוי|\d+(\.\d+)?\s*%|\bpH\b|water[-\s]*activity|\baw\b|\d+\s*ימי[םי]?\s*ייבוש|פסטור|pasteur/i.test(String(txt||''));
+  // Phase A gate FIX B — derived from safetyTokenRe()/SAFETY_TOKEN_SRC (the ONE numeric-token definition)
+  // instead of a private numeric regex, so a word-form number ("121 degrees Celsius") is recognised here
+  // exactly as it is by the extractor and the spoken guard. The non-numeric-context triggers (nitrite,
+  // cure, kiur/ripui, pasteurization, water-activity, drying-days) are preserved verbatim — they flag on
+  // the presence of the WORD, not on SAFETY_TOKEN_SRC's number+unit shape.
+  const s=String(txt||'');
+  return safetyTokenRe().test(s)
+    || /ניטריט|nitrite|Cure\s*#?[12]|קיור|ריפוי|\bpH\b|water[-\s]*activity|\baw\b|\d+\s*ימי[םי]?\s*ייבוש|פסטור|pasteur/i.test(s);
 }
 function aiSafetyCaveat(txt){
   if(!aiSafetyHasNumbers(txt)) return '';

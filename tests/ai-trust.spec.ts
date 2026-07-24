@@ -57,6 +57,30 @@ test('W1-P2: safety detector catches extended patterns and the caveat is bilingu
   expect(await page.evaluate(`aiSafetyCaveat('ריפוי 156 ppm')`)).toContain('אינם מאומתים');
 });
 
+// Phase A gate close — FIX B: aiSafetyHasNumbers was a PRIVATE numeric regex that never gained the
+// word-form units SAFETY_UNIT was extended with — a 4th stale-pattern copy the earlier word-form fix
+// wave never touched, so aiSafetyNote gated on it silently stopped rendering ANY caveat for a hallucinated
+// word-form temperature on Ask-the-Fire (~app.js:4613), the copilot pacenote (~5736), and the photo read
+// (~9630). Confirmed by execution before the fix: aiSafetyHasNumbers('121 degrees Celsius') === false.
+// Now derived from safetyTokenRe() (the ONE numeric-token definition), OR'd with the pre-existing
+// non-numeric-context triggers (nitrite, cure, kiur/ripui, pasteurization, water-activity, drying-days),
+// which are preserved verbatim.
+test('Phase A gate FIX B: aiSafetyHasNumbers recognises word-form numbers; aiSafetyNote now caveats them', async ({ page }) => {
+  await bootAI(page);
+  expect(await page.evaluate(`aiSafetyHasNumbers('121 degrees Celsius')`)).toBe(true);   // was false pre-fix
+  expect(await page.evaluate(`aiSafetyHasNumbers('hold at 74 degrees')`)).toBe(true);
+  // an ungrounded word-form number now escalates to the STRONG caveat + calculator link (was '' pre-fix)
+  const strong = await page.evaluate(`aiSafetyNote('the safe temperature is 300 degrees Celsius', 'vetted: 156 ppm')`) as string;
+  expect(strong).toContain('ai-caveat-strong');
+  expect(strong).toContain('data-aicalc');
+  // every preserved non-numeric trigger still fires, unaffected by the derivation
+  for (const t of ['ניטריט', 'nitrite', 'Cure #1', 'קיור', 'ריפוי', 'pasteur', 'water activity', 'aw 0.89', '3 ימי ייבוש']) {
+    expect(await page.evaluate(`aiSafetyHasNumbers(${JSON.stringify(t)})`), t).toBe(true);
+  }
+  // negative case unchanged
+  expect(await page.evaluate(`aiSafetyHasNumbers('rest for a while then slice thin')`)).toBe(false);
+});
+
 test('W1-P2: Diagnose & Journal render the safety caveat only when the AI output has safety numbers', async ({ page }) => {
   await bootAI(page);
   // Diagnose WITH a safety number → caveat present
