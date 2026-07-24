@@ -1,9 +1,11 @@
 # Serena adoption — semantic code navigation for this project
 
-> Status: **configured, not yet live.** A well-formed project MCP config is committed and Claude Code
-> already recognises it (`claude mcp get serena` → *pending approval*). It stays inert until the owner
-> installs `uv` + `serena-agent` and reloads/approves. The exact remaining steps are in
-> [§4](#4-owner-action-steps-remaining-required-to-go-live).
+> Status: **live and in daily use** (verified 2026-07-24 — see `serena-first-use.md`). Serena 1.6.1 /
+> server 1.28.1 is installed, all 8 languages activated, 39 tools exposed.
+> **Since 2026-07-24 the transport is a single shared HTTP server, not per-agent stdio** — see
+> [§6](#6-1017a--one-shared-server-streamable-http-not-per-agent-stdio), which supersedes the stdio
+> `.mcp.json` shown in [§3](#3-setup-done-in-this-task-config-only--cannot-run-serena-without-uv).
+> §3/§4 below are kept as the historical record of the original setup.
 
 ## 1. What Serena is
 
@@ -184,9 +186,158 @@ graphify (it's a *snapshot*, and it loses to grep for locate-exact):
 > §10.11's usefulness gate): the Serena docs already live in the global graph as `serena-docs`; no action
 > needed. This project's private `.serena/` memories must **never** be deposited into any shared/global graph.
 
+## 6. §10.17a — ONE shared server (streamable-HTTP), not per-agent stdio
+
+> Wired 2026-07-24 per `development-discipline.md` **§10.17a** (owner instruction). This section is the
+> authority on how Serena is connected; the stdio block in §3 is history.
+
+### The problem it fixes
+
+With the stdio form (`command` + `args`) **every Claude Code subagent starts its own
+`serena start-mcp-server`**: the client owns the server lifecycle and each client is a separate process.
+Observed 2026-07-24: 4 concurrent Serena processes, dashboards flapping 24282 → 24283 (a bookmarked
+dashboard points at a dead instance), 8 language servers duplicated per instance. Measured on the live
+stdio instance during this task: one instance = `serena.exe` → `python.exe` → `python.exe` (+ a
+multiprocessing child) plus 8 language-server processes.
+
+### What the docs actually say (read before implementing — §10.17/§10.11)
+
+From Serena's own docs (`serena-docs-06.md`, "Running the MCP Server", mirrored in the graphify global
+graph as `serena-docs-01..26`; confirmed against `serena start-mcp-server --help`, Serena 1.6.1):
+
+- **Streamable HTTP is the current self-hosted transport:** *"When using Streamable HTTP mode, you control
+  the server lifecycle yourself, i.e. you start the server and provide the client with the URL to connect
+  to it. … `serena start-mcp-server --transport streamable-http --port <port>` … and then configure your
+  client to connect to `http://localhost:9121/mcp`."*
+- **SSE is legacy:** *"The legacy SSE transport is also supported (via `--transport sse` with corresponding
+  /sse endpoint), its use is discouraged."* → §10.17a's sketch said "SSE / streamable-HTTP"; the docs
+  settle it — **streamable-http**, endpoint `/mcp`, not `/sse`.
+- **The one-project caveat that makes sharing legal here:** *"Serena is a stateful MCP server, and only one
+  coding project can be active at a time. Therefore, starting a single Serena instance and connecting it to
+  multiple clients is only appropriate if all clients will be working on the same project."* Our main
+  session and all its subagents work on this repo → correct. **A second repo must not point at this
+  server** — give it its own port/instance.
+- `--host` defaults to `127.0.0.1`; remote connections require opening it deliberately (we do not).
+- The **dashboard port is not a CLI flag** — Serena's global config comments say base **24282**, and *"actual
+  port may be higher if you have multiple instances running; try ports 24283, 24284"*. One server ⇒ one
+  dashboard port. Only `--enable-web-dashboard` / `--open-web-dashboard` are CLI-settable.
+
+From Claude Code's MCP docs (`claude-code-docs-53.md`, "Transport types"): *"For the streamable HTTP
+transport, use `\"type\": \"http\"` … In `.mcp.json` and other JSON config files, `\"streamable-http\"` is
+accepted as an alias for `\"http\"`."*
+
+### The wiring
+
+**Server** — `scripts/serena-server.ps1` (committed; `-Action start|stop|status|restart`):
+
+```powershell
+pwsh scripts/serena-server.ps1 -Action start    # idempotent: no-op if port 9121 already listens
+pwsh scripts/serena-server.ps1 -Action status   # processes + ports + dashboard + live MCP probe
+pwsh scripts/serena-server.ps1 -Action stop     # verified teardown, no orphans
+```
+
+It launches exactly:
+
+```
+serena start-mcp-server --transport streamable-http --host 127.0.0.1 --port 9121 \
+  --context claude-code --project "<repo root>" --enable-web-dashboard true --open-web-dashboard false
+```
+
+- **Detachment:** the launch goes through **WMI `Win32_Process.Create`**, so the server's parent is
+  `WmiPrvSE.exe` — it is in no shell's process tree and no Claude Code job object, and therefore survives
+  the agent, the shell and the whole session. (Verified: parent PID resolved to `WmiPrvSE.exe`.)
+- **Logs:** `%USERPROFILE%\.serena\shared-server\server.log`; PID record `…\server.pid.json`.
+- **Teardown safety (§11a):** `stop` only kills processes whose command line matches **all three** of
+  `start-mcp-server` + `streamable-http` + `--port <port>`, so it can never kill a stdio Serena instance
+  belonging to a live Claude session. It then verifies zero matching processes remain **and** the port is
+  free, and exits non-zero if not.
+
+**Client** — repo-root `.mcp.json` (tracked in git) is now the URL form:
+
+```json
+{
+  "mcpServers": {
+    "serena": {
+      "type": "http",
+      "url": "http://127.0.0.1:9121/mcp"
+    }
+  }
+}
+```
+
+**One-edit revert** to the pre-2026-07-24 per-agent stdio behaviour (kept here because `.mcp.json` must
+stay strict JSON — Claude Code's loader validates it, so no comment/extra key is put in the file):
+
+```json
+{
+  "mcpServers": {
+    "serena": {
+      "command": "serena",
+      "args": ["start-mcp-server", "--context", "claude-code", "--project-from-cwd"]
+    }
+  }
+}
+```
+
+### The trade the URL form makes — read this before blaming Serena
+
+With stdio, Claude Code **started** Serena for you. With a URL, it does **not**: if the shared server is
+not running, `serena` simply shows as failed/disconnected and no tools appear. So:
+
+1. `pwsh scripts/serena-server.ps1 -Action start` **before** (or right at) the start of a session — it is
+   idempotent and cheap when already up.
+2. Changing `.mcp.json` **resets project-scope approval** — `claude mcp get serena` reports
+   *"⏸ Pending approval"* after the edit. Approve once at the next session start (`/mcp`, or the trust
+   prompt) or the server stays inert.
+3. Optional convenience: register `-Action start` as a logon task (Task Scheduler) so it is always up.
+
+### Verification performed (2026-07-24)
+
+| Check | Result |
+|---|---|
+| Server process tree | `cmd.exe 12152 → serena.exe 49532 → python 40952 → python 63328` — **one** instance |
+| Listening on 9121 | `127.0.0.1:9121` owned by PID 63328 (exactly one listener) |
+| Dashboard | `127.0.0.1:24283` owned by the same PID — one dashboard for this server |
+| MCP handshake | `POST /mcp initialize` → **HTTP 200**, `serverInfo {"name":"Serena","version":"1.28.1"}` |
+| Tool resolution | `tools/list` → **39 tools** over the URL |
+| Real tool call | `tools/call get_symbols_overview(build.py)` → HTTP 200, real symbol list (LSP alive) |
+| Project activated | log: `Activating matconetesh at C:\Users\dudib\source\repos\matconetesh` |
+| Claude Code parses it | `claude mcp get serena` → `Scope: Project · Type: http · URL: http://127.0.0.1:9121/mcp` |
+| Detached | launcher's parent is `WmiPrvSE.exe`, not a shell |
+
+**Not provable until the next session start** (the session that wired this was already attached to a stdio
+Serena; that instance was deliberately left alone so as not to break the live session — it is the one
+holding dashboard port 24282):
+
+- that Claude Code's **main session** connects over the URL,
+- that **subagents share it** (the whole point: no new `serena start-mcp-server` per agent),
+- that only **one dashboard port** is listening machine-wide.
+
+Prove them at the next session start, after approving the server:
+
+```powershell
+# 1. server up, and Claude Code sees the URL form
+pwsh scripts/serena-server.ps1 -Action status
+claude mcp list                       # serena … ✔ Connected  (http)
+
+# 2. exactly ONE serena instance, ZERO stdio spawns — run this WHILE 2+ subagents use Serena tools
+Get-CimInstance Win32_Process |
+  Where-Object { $_.CommandLine -like '*start-mcp-server*' } |
+  Select-Object ProcessId, ParentProcessId, Name, CommandLine | Format-List
+#   expect: only the streamable-http tree; NO '--project-from-cwd' stdio entries
+
+# 3. exactly ONE dashboard port
+Get-NetTCPConnection -State Listen |
+  Where-Object { $_.LocalPort -ge 24282 -and $_.LocalPort -le 24292 }
+#   expect: a single row (24282 once the old stdio instance is gone)
+```
+
 ## References
 
 - Serena — repo & README: https://github.com/oraios/serena
 - Serena — docs (install, clients, contexts, language support): https://oraios.github.io/serena/
 - Serena docs mirrored in the graphify global graph: `serena-docs-01..26` (`~/.graphify/global-graph.json`)
+- Serena — running the MCP server / Streamable HTTP mode (§6's quotes): https://oraios.github.io/serena/02-usage/020_start_mcp_server.html
+- Serena — dashboard (port 24282 base, config options): https://oraios.github.io/serena/02-usage/060_dashboard.html
 - Claude Code MCP (scopes, project `.mcp.json` schema, approval): https://code.claude.com/docs/en/mcp
+- Claude Code — MCP transport types (`"type": "http"` for streamable HTTP): mirrored in the global graph as `claude-code-docs-53`
