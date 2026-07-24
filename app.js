@@ -5530,10 +5530,13 @@ function vcGuardSpoken(text, tiers, lang){
   // phrased: the answer must carry exactly ONE number in total for that number to be eligible to be
   // spoken as verified. Two or more means the model is asserting a composite claim (a range, a
   // comparison, a progression) that the app — which stores only DISCRETE figures — cannot vouch for.
-  // digitRuns is counted with safetyNumRe() — the SAME "a number" definition the tokenizer uses (no
-  // comma). A separately-written comma-aware counter here once let "1,063°C" count as ONE run, take the
-  // eligible branch, and have the tokenizer match only its tail "063°C" — corrupting a value the model
-  // never said into a fake "verified" one. Never write a second number pattern (see SAFETY_NUM above).
+  // digitRuns is counted with safetyNumRe() — the SAME "a number" definition the tokenizer uses, and it IS
+  // comma-aware (SAFETY_NUM groups "1,063" as ONE run, matching the tokenizer) precisely because it is
+  // built from the shared SAFETY_NUM rather than a private pattern. A separately-written comma-aware
+  // counter here once diverged from the tokenizer's own (then comma-blind) pattern and let "1,063°C" count
+  // as ONE run, take the eligible branch, and have the tokenizer match only its tail "063°C" — corrupting a
+  // value the model never said into a fake "verified" one. Never write a second number pattern (see
+  // SAFETY_NUM above).
   const digitRuns=(src.match(safetyNumRe())||[]).length;
   let redacted=0, out;
   if(digitRuns===1){
