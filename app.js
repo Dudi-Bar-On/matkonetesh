@@ -4392,14 +4392,21 @@ function aiSafetyCaveat(txt){
 // guard (vcMapSafetyNums). Shared STRUCTURALLY on purpose: when these were two identical-by-convention
 // copies, any future edit to one would silently reopen a hole in the "no model-originated safety number
 // is ever voiced" invariant, and no test would have caught the divergence.
+// ONE definition of "a number", shared by every pattern that counts or matches one. A previous round
+// unified the extractor and the guard behind SAFETY_TOKEN_SRC; a separately-written digit-counting
+// regex then diverged from it and produced a CORRUPTED verified value ("1,063°C" -> "1,63°C" marked
+// verified), because the two patterns disagreed about where the number ended. Never write a second one.
+const SAFETY_NUM='\\d+(?:\\.\\d+)?';
 const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות)';
 const SAFETY_TOKEN_SRC=
-    '(\\d+(?:\\.\\d+)?)\\s*[-–]\\s*(\\d+(?:\\.\\d+)?)\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
-  + '|(\\d+(?:\\.\\d+)?)\\s*('+SAFETY_UNIT+')'                                 // 4 number  · 5 its unit
-  + '|\\bpH\\s*(\\d+(?:\\.\\d+)?)';                                            // 6 pH value
+    '('+SAFETY_NUM+')\\s*[-–]\\s*('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
+  + '|('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'                               // 4 number  · 5 its unit
+  + '|\\bpH\\s*('+SAFETY_NUM+')';                                          // 6 pH value
 // A FRESH RegExp per call, never a shared instance: /g regexes carry lastIndex state, so a shared object
 // would leak position between unrelated calls and silently skip tokens.
 function safetyTokenRe(){ return new RegExp(SAFETY_TOKEN_SRC, 'gi'); }
+// Fresh instance per call — /g regexes carry lastIndex.
+function safetyNumRe(){ return new RegExp(SAFETY_NUM, 'g'); }
 // P0-app item 2 · defect A — normalize a detected safety number to the app's Celsius-native scale.
 // Fahrenheit is converted through the app's ONE existing conversion (UNIT_CONV['F->C'], app.js:131) and
 // rounded to an integer, matching the data layer's integer °C safety floors (63/71/74). Everything else —
@@ -5465,8 +5472,11 @@ function vcGuardSpoken(text, tiers, lang){
   // phrased: the answer must carry exactly ONE number in total for that number to be eligible to be
   // spoken as verified. Two or more means the model is asserting a composite claim (a range, a
   // comparison, a progression) that the app — which stores only DISCRETE figures — cannot vouch for.
-  const DIGITS=/\d+(?:[.,]\d+)?/g;
-  const digitRuns=(src.match(DIGITS)||[]).length;
+  // digitRuns is counted with safetyNumRe() — the SAME "a number" definition the tokenizer uses (no
+  // comma). A separately-written comma-aware counter here once let "1,063°C" count as ONE run, take the
+  // eligible branch, and have the tokenizer match only its tail "063°C" — corrupting a value the model
+  // never said into a fake "verified" one. Never write a second number pattern (see SAFETY_NUM above).
+  const digitRuns=(src.match(safetyNumRe())||[]).length;
   let redacted=0, out;
   if(digitRuns===1){
     out=vcMapSafetyNums(src, function(vals, unit, kind){
@@ -5481,7 +5491,7 @@ function vcGuardSpoken(text, tiers, lang){
     // (that also removes their unit), then sweep any remaining bare digits — because a number the
     // extractor cannot see is exactly the one that would otherwise be voiced unguarded.
     out=vcMapSafetyNums(src, function(){ redacted++; return VC_REDACT; })
-          .replace(DIGITS, function(){ redacted++; return VC_REDACT; });
+          .replace(safetyNumRe(), function(){ redacted++; return VC_REDACT; });
   }
   out=out.replace(/\s{2,}/g,' ').trim();
   return out+' '+(redacted

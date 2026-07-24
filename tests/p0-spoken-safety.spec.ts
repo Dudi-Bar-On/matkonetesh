@@ -333,3 +333,23 @@ test('regression: a lone verified number IS still spoken with the marker (the ru
   expect(spoken).toContain(String(f.safe));
   expect(spoken).toContain('לפי המדריך המאומת');
 });
+
+// Fix wave (reviewer finding, 2026-07-24) — PART A: vcGuardSpoken's local DIGITS regex (\d+(?:[.,]\d+)?)
+// treats a comma as part of ONE number, but SAFETY_TOKEN_SRC's number sub-pattern (\d+(?:\.\d+)?) has no
+// comma support. "1,063°C" therefore counted as ONE digit run (eligible branch), while the tokenizer could
+// only match the tail "063°C" -> 63, found 63 verified, and substituted it back as "1,63°C" — a value the
+// model never said, spoken under the "verified" marker. This is fail-WRONG, worse than fail-closed.
+test('a comma-grouped number is never rewritten into a corrupted "verified" value', async ({ page }) => {
+  await bootVC(page);
+  const f = await page.evaluate(`(function(){var c=DATA.cuts.find(function(x){return x.safe!=null;}); return {ikey:'cut-'+c.n, safe:Math.round(c.safe)};})()`) as {ikey:string; safe:number};
+  // "1,0<safe>°C" — the tokenizer used to drop the "1," prefix, match the tail against a real verified
+  // figure, and substitute it back, producing a number the model never said, marked verified.
+  await page.evaluate(`vcTasks=[{ikey:'${f.ikey}',label:'x',t:new Date()}]; vcIdx=0;
+    window.__vcAskMock='הטמפ׳ היא 1,0${f.safe}°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).not.toContain('לפי המדריך המאומת');
+  expect(spoken).not.toMatch(/\d/);
+});
+
