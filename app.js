@@ -7193,16 +7193,38 @@ function mtNumSig(text){
   return nums.map(Number).sort(function(a,b){return a-b;}).join('|');
 }
 function mtSafe(src, translated){ return mtNumSig(src)===mtNumSig(translated); }   // every source number must survive, and none may be invented
-// P0-app A2 — ORDERED numeric signature. mtNumSig SORTS, so it cannot see a TRANSPOSITION: verified,
-// mtSafe('משוך ב-74 מעלות למשך 165 דקות','pull at 165 degrees for 74 minutes') is TRUE — a swapped
-// temperature and time passes the guard and is spoken with full confidence. Preserving order of
-// appearance catches that. Deliberately a SIBLING, not a change to mtNumSig/mtSafe: those also guard
-// mtTranslate (the DATA path, tests/wave5-mt-safety.spec.ts), which is outside this spec's scope.
-function vcNumSeq(text){
-  return (String(text||'').match(/\d+(?:[.,]\d+)?/g)||[])
-    .map(function(n){ return Number(n.replace(',', '.')); }).join('|');
+// P0-app A2 — compare (value, unit-CLASS) pairs, UNORDERED (owner ruling 2026-07-24). Ordered comparison
+// caught transposition but refused faithful translations that front a clause ("After 165 minutes, pull at
+// 74 degrees"), which is routine Hebrew→English. Pairing each number with the KIND of quantity it carries
+// keeps the transposition catch (74°C/165min vs 165°C/74min changes the pairs) while tolerating reordering
+// (the SET is unchanged). Any number whose unit is unrecognised falls back to strict POSITIONAL comparison,
+// so an incomplete lexicon fails CLOSED. Siblings of mtNumSig/mtSafe by design: those also guard
+// mtTranslate (the DATA path, tests/wave5-mt-safety.spec.ts), outside this spec's scope.
+const VC_UNIT_CLASS=[
+  { re:/^(?:°\s*[CF]?|C\b|F\b|מעלות|degrees?|celsius|fahrenheit)/i, cls:'temp' },
+  { re:/^(?:דק(?:ות|׳|')?|minutes?|mins?\b|שעות|שע׳|hours?|hrs?\b|ימים|יום|days?)/i, cls:'time' },
+  { re:/^(?:%|אחוז|percent)/i, cls:'pct' },
+  { re:/^(?:ppm)/i, cls:'ppm' },
+  { re:/^(?:ק["׳']?ג|kg\b|kilos?|גרם|grams?|g\b|lbs?\b|pounds?)/i, cls:'mass' },
+];
+function vcNumPairs(text){
+  const s=String(text||''); const out=[]; const re=new RegExp(SAFETY_NUM,'g'); let m;
+  while((m=re.exec(s))!==null){
+    const rest=s.slice(re.lastIndex).replace(/^[\s\-–]+/,'');
+    let cls='?';
+    for(let i=0;i<VC_UNIT_CLASS.length;i++){ if(VC_UNIT_CLASS[i].re.test(rest)){ cls=VC_UNIT_CLASS[i].cls; break; } }
+    out.push(Number(m[0])+':'+cls);
+  }
+  return out;
 }
-function vcTransSafe(src, translated){ return vcNumSeq(src)===vcNumSeq(translated); }
+function vcTransSafe(src, translated){
+  const a=vcNumPairs(src), b=vcNumPairs(translated);
+  if(a.length!==b.length) return false;
+  const unknown=function(p){ return p.charAt(p.length-1)==='?'; };
+  // any unclassified number on either side → strict positional compare (fails closed)
+  if(a.some(unknown) || b.some(unknown)) return a.join('|')===b.join('|');
+  return a.slice().sort().join('|')===b.slice().sort().join('|');
+}
 // return the translation if it passed the numeric guard, else the safe original (with a flag)
 function mtGuard(src, translated){ return mtSafe(src, translated) ? {text:translated, ok:true} : {text:src, ok:false}; }
 function mtHash(s){ let h=0; s=String(s); for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h.toString(36); }

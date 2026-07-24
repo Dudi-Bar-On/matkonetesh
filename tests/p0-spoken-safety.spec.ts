@@ -353,3 +353,26 @@ test('a comma-grouped number is never rewritten into a corrupted "verified" valu
   expect(spoken).not.toMatch(/\d/);
 });
 
+// Fix wave (owner ruling, 2026-07-24) — PART B: vcTransSafe compared numbers in ORDER, which caught
+// transposition but refused faithful translations that front a clause (routine Hebrew→English). Owner
+// ruling: compare (value, unit-CLASS) pairs, UNORDERED — a transposition still changes the pairs, but a
+// clause reorder does not. An unrecognised unit leaves a number unclassified and forces strict positional
+// comparison, so an incomplete lexicon fails CLOSED, never open.
+test('A2 — a faithful translation that fronts a clause is now accepted', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`window.__vcTransMock='After about 165 minutes, pull the chicken once it reaches 74 degrees'; store.set('mk-vclang','en');`);
+  await page.evaluate(`vcSpeakContent('משוך את העוף כאשר הטמפ מגיעה ל-74 מעלות, אחרי כ-165 דקות')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  expect(await page.evaluate(`window.__spoke[window.__spoke.length-1].l`)).toBe('en');
+});
+
+test('A2 — a TRANSPOSED translation is still rejected (the reorder tolerance must not reopen the swap)', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`window.__vcTransMock='pull at 165 degrees for 74 minutes'; store.set('mk-vclang','en');`);
+  await page.evaluate(`vcSpeakContent('משוך ב-74 מעלות למשך 165 דקות')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const s = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as {t:string;l:string};
+  expect(s.l).toBe('he');
+  expect(s.t).toContain('מספר לא מאומת בתרגום');
+});
+
