@@ -249,22 +249,24 @@ test('A2 real input shape — the clock prefix every production caller sends is 
   expect(bad.l).toBe('he');
 });
 
-test('vcResolveEntity smoke test — Tier 1 (active-cook item) wins when it resolves; the catalog (Tier 2) is a genuine fallback', async ({ page }) => {
+test('vcResolveTiers smoke test — Tier 1 (active-cook item) wins when it resolves; the catalog (Tier 2) is a genuine fallback', async ({ page }) => {
   await bootVC(page);
-  // vcResolveEntity has zero production callers today — it is staged for Task 4's search gate, named in
-  // that plan in advance, so the staging is legitimate. But untested staged code rots silently; this
-  // proves the single-winner contract (`t.t1 || t.t2`) it promises actually holds.
-  await page.waitForFunction(`typeof vcResolveEntity==='function'`);
+  // vcResolveTiers IS on the real path — vcAskFlow always resolves the tiers itself and passes the winner
+  // into vcAskAI explicitly (vcAskAI's own ent===undefined fallback now inlines the same t.t1||t.t2 logic
+  // for standalone callers). This proves the tier-priority contract vcAskFlow relies on actually holds.
+  await page.waitForFunction(`typeof vcResolveTiers==='function'`);
   const t1 = await page.evaluate(`(function(){
     vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0;
-    var r=vcResolveEntity('שאלה: מה הטמפ הבטוחה');
+    var t=vcResolveTiers('שאלה: מה הטמפ הבטוחה');
+    var r=t.t1||t.t2;
     return r && r.obj ? r.obj.n : null;
   })()`) as number | null;
   expect(t1).toBe(1);   // resolveItem('cut-1').obj.n === 1 — the active-cook item, not a catalog guess
   const t2 = await page.evaluate(`(function(){
     var c=DATA.cuts.find(function(c){ return c.safe!=null; });
     vcTasks=[]; vcIdx=0;                                        // no active-cook item — Tier 1 cannot resolve
-    var r=vcResolveEntity('שאלה: מה הטמפ הבטוחה ל'+c.heb);
+    var t=vcResolveTiers('שאלה: מה הטמפ הבטוחה ל'+c.heb);
+    var r=t.t1||t.t2;
     return {got: r && r.obj ? r.obj.n : null, expected: c.n};
   })()`) as {got:number|null; expected:number};
   expect(t2.got).toBe(t2.expected);   // falls back to the catalog item named in the question
@@ -416,14 +418,14 @@ test('E2 askGemini — an open question with no local grounding KEEPS google_sea
 test('E2 vcAskAI — search follows whether an entity resolved', async ({ page }) => {
   await bootCap(page);
   await page.evaluate(`delete window.__vcAskMock; vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0;`);
-  const ent1 = await page.evaluate(`(function(){ var r=vcResolveEntity('מה הטמפ'); return !!(r && r.obj); })()`);
+  const ent1 = await page.evaluate(`(function(){ var t=vcResolveTiers('מה הטמפ'); var r=t.t1||t.t2; return !!(r && r.obj); })()`);
   expect(ent1).toBe(true);   // Tier 1 (active-cook item) really resolved before trusting the negative assertion
-  const grounded = await capBody(page, `vcAskAI('מה הטמפ', vcResolveEntity('מה הטמפ'))`);
+  const grounded = await capBody(page, `vcAskAI('מה הטמפ', (function(){ var t=vcResolveTiers('מה הטמפ'); return t.t1||t.t2; })())`);
   expect(grounded.tools).toBeFalsy();
   await page.evaluate(`vcTasks=[]; vcIdx=0;`);
-  const ent2 = await page.evaluate(`(function(){ var r=vcResolveEntity('איפה קונים פחם'); return !!(r && r.obj); })()`);
+  const ent2 = await page.evaluate(`(function(){ var t=vcResolveTiers('איפה קונים פחם'); var r=t.t1||t.t2; return !!(r && r.obj); })()`);
   expect(ent2).toBe(false);   // confirm nothing resolved before trusting the positive assertion
-  const open = await capBody(page, `vcAskAI('איפה קונים פחם', vcResolveEntity('איפה קונים פחם'))`);
+  const open = await capBody(page, `vcAskAI('איפה קונים פחם', (function(){ var t=vcResolveTiers('איפה קונים פחם'); return t.t1||t.t2; })())`);
   expect(open.tools).toEqual([{ google_search: {} }]);
 });
 

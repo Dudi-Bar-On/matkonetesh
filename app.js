@@ -5362,10 +5362,13 @@ async function vcSpeakContent(text){
   }
   try{
     const en=await vcTranslateToEn(text);
-    // P0-app item 1b (A2): a translation's ground truth IS its source. vcTransSafe = every number in
-    // `text` survives into `en`, IN ORDER, and none is invented. Ordered on purpose — mtSafe/mtNumSig
-    // sort, so a transposed temperature and time ({74,165}==={165,74}) would pass; vcTransSafe cannot be
-    // fooled that way. Fail → never speak the mistranslation; read the correct Hebrew, with a spoken cue.
+    // P0-app item 1b (A2): a translation's ground truth IS its source. vcTransSafe pairs each number in
+    // `text`/`en` with its unit-class (vcNumPairs) and compares the pairs as an UNORDERED set — a faithful
+    // clause-fronted translation reorders the sentence but not the (value, class) pairs, so it still passes.
+    // A transposed temperature and time changes which value carries which class, so the pair set itself
+    // changes and the swap is still caught. Any number with an unrecognised unit is left unclassified,
+    // which forces a strict positional compare instead — an incomplete lexicon fails closed, not open.
+    // Fail → never speak the mistranslation; read the correct Hebrew, with a spoken cue.
     // ONE vcSpeak call: a second would cancel the first (vcSpeak calls gemStop + speechSynthesis.cancel).
     if(typeof vcTransSafe!=='function' || vcTransSafe(text, en)){ vcSpeak(en, 'en'); }
     else{ vcSpeak('מספר לא מאומת בתרגום — מקריא בעברית. '+text, 'he'); }
@@ -5440,12 +5443,6 @@ function vcResolveTiers(question){
   const hits=(typeof askFindEntity==='function')?askFindEntity(String(question||'').toLowerCase()):[];
   const h=hits && hits[0];
   return { t1:(r1 && r1.obj)?r1:null, t2:(h && h.obj)?h:null };
-}
-// Single best entity — active-cook first, catalog fallback. Item 3's search gate consumes THIS
-// ("did any local grounding resolve"), not the two-tier form.
-function vcResolveEntity(question){
-  const t=vcResolveTiers(question);
-  return t.t1 || t.t2;
 }
 // The verified figures a resolved item actually carries. Same accessor set askContextFor (4136) and
 // itemStages (3262) already read — not a new one. Celsius-native; rounded to match the integer °C
@@ -5524,7 +5521,7 @@ async function vcAskAI(question, ent){
     const m=window.__vcAskMock; return typeof m==='function'?m(question):m;
   }
   if(!aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
-  if(ent===undefined) ent=vcResolveEntity(question);   // standalone callers keep working; vcAskFlow already resolves once and passes it in
+  if(ent===undefined){ const t=vcResolveTiers(question); ent=t.t1||t.t2; }   // standalone callers keep working; vcAskFlow already resolves once and passes it in
   const ans=vcAnsLang();
   const {sys, userText}=vcBuildAskPrompt(question, ans, vcCookContext());
   const body={ system_instruction:{parts:[{text:sys}]},
@@ -7227,7 +7224,7 @@ const VC_UNIT_CLASS=[
   { re:/^(?:ק["׳']?ג|kg\b|kilos?|גרם|grams?|g\b|lbs?\b|pounds?)/i, cls:'mass' },
 ];
 function vcNumPairs(text){
-  const s=String(text||''); const out=[]; const re=new RegExp(SAFETY_NUM,'g'); let m;
+  const s=String(text||''); const out=[]; const re=safetyNumRe(); let m;
   while((m=re.exec(s))!==null){
     const rest=s.slice(re.lastIndex).replace(/^[\s\-–]+/,'');
     let cls='?';
