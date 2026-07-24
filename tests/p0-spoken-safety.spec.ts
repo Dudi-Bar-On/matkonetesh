@@ -480,3 +480,18 @@ test('E2 vcAskAI — search follows whether an entity resolved', async ({ page }
   expect(open.tools).toEqual([{ google_search: {} }]);
 });
 
+// Phase A completion gate, FIX 4 — spec §3.3's own named DoD line: "Required test: same before/after
+// snapshot of resolveItem(key).obj pattern as items 1 and 2." The spec calls this "trivially passes" (the
+// conditional-google_search change is request-shaping only; askGemini never touches DATA/store) — written
+// anyway because it is a named DoD line, not an optional one. The mechanism itself was verified by
+// execution: a scratch variant of this exact test with a deliberate DATA mutation injected into the
+// gemFetch mock (never into app.js) was run and observed FAILING for exactly this reason before being
+// reverted, matching items 1/2's own snapshot pattern (see "DoD-10 safety invariance" above).
+test('P0-app item 3 (spec §3.3) required test — resolveItem(key).obj is byte-identical before/after an askGemini call', async ({ page }) => {
+  await bootCap(page);
+  const before = await page.evaluate(`JSON.stringify(resolveItem('cut-1').obj)`) as string;
+  await capBody(page, `askGemini('שאלה: מה הטמפ הבטוחה לחזה בקר')`);
+  const after = await page.evaluate(`JSON.stringify(resolveItem('cut-1').obj)`) as string;
+  expect(after).toBe(before);
+});
+
