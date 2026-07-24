@@ -4423,6 +4423,12 @@ const SAFETY_TOKEN_SRC=
 // A FRESH RegExp per call, never a shared instance: /g regexes carry lastIndex state, so a shared object
 // would leak position between unrelated calls and silently skip tokens.
 function safetyTokenRe(){ return new RegExp(SAFETY_TOKEN_SRC, 'gi'); }
+
+// Phase A gate FIX A (spec §3.1 Matched clause, A-2) — the ONE test for "is this unit a temperature".
+// Derived from SAFETY_UNIT so it can never drift from what the tokenizer recognises — a private copy of
+// this test (vcGuardSpoken used to carry /°|C\b|F\b|מעלות/i, hand-written and never updated when
+// SAFETY_UNIT gained word forms) is exactly how word-form units reached the tokenizer but not the guard.
+function isTempUnit(u){ return new RegExp('^(?:'+SAFETY_UNIT+')$','i').test(String(u||'').trim()) && !/^(?:ppm|%)$/i.test(String(u||'').trim()); }
 // Fresh instance per call — /g regexes carry lastIndex.
 function safetyNumRe(){ return new RegExp(SAFETY_NUM, 'g'); }
 // Phase A gate FIX 2: the ONE conversion from a SAFETY_NUM/SAFETY_TOKEN_SRC match to a number. A
@@ -5512,7 +5518,7 @@ function vcGuardSpoken(text, tiers, lang){
   let redacted=0, out;
   if(digitRuns===1){
     out=vcMapSafetyNums(src, function(vals, unit, kind){
-      if(kind==='single' && /°|C\b|F\b|מעלות/i.test(String(unit||''))){
+      if(kind==='single' && isTempUnit(unit)){
         const c=Math.round(aiSafetyToC(vals[0], unit));
         if(ok[c]) return c+'°C';                     // the app's OWN figure, in its own unit
       }

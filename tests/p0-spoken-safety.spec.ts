@@ -429,6 +429,35 @@ test('A2 — a TRANSPOSED translation is still rejected (the reorder tolerance m
   expect(s.t).toContain('מספר לא מאומת בתרגום');
 });
 
+// Phase A gate close — FIX A: vcGuardSpoken's eligibility test was a PRIVATE, stale unit pattern
+// (/°|C\b|F\b|מעלות/i, ~app.js:5515) that was never updated when SAFETY_UNIT gained word forms — so the
+// guard refused to speak the app's OWN verified value in every word-form phrasing except the one that
+// happened to end in a bare "C". Replaced with isTempUnit(unit), derived from SAFETY_UNIT (app.js
+// ~4447-4451) so it can never drift from what the tokenizer itself recognises. Confirmed by execution
+// before the fix (scratch/verify-phase-a-gate-v6.js / the audit table): all three phrasings below were
+// redacted with "This number isn't verified"; only the bare-"C" form worked.
+const fixAPhrasings: [string, (safe: number) => string][] = [
+  ['bare word "degrees", trailing period', (safe) => `the safe temperature is ${safe} degrees.`],
+  ['"degrees celsius"',                    (safe) => `${safe} degrees celsius`],
+  ['"degrees C" (already worked pre-fix — regression check)', (safe) => `${safe} degrees C`],
+];
+for (const [label, phrase] of fixAPhrasings) {
+  test(`FIX A — "${label}" speaks the app's verified figure with the marker, never a redaction`, async ({ page }) => {
+    await bootVC(page);
+    await page.evaluate(`store.set('mk-vclang','en')`);
+    const safe = await page.evaluate(`(function(){var m=resolveItem('cut-1'); return Math.round(m.obj.safe!=null?m.obj.safe:m.obj.tgt);})()`) as number;
+    const mock = phrase(safe);
+    await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
+    await page.evaluate(`vcAskFlow('ask: what is the safe temperature')`);
+    await page.waitForFunction(`window.__spoke.length>1`);
+    const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+    expect(spoken).toContain(`${safe}°C`);
+    expect(spoken).toContain('per the app\'s verified guide');
+    expect(spoken).not.toContain('isn\'t verified');
+    expect(spoken).not.toContain('[…]');
+  });
+}
+
 // P0-app item 3 (spec §3.3) — google_search was unconditional at askGemini (app.js:4340) and vcAskAI
 // (5361-ish). When the app already holds vetted data for the question, search adds COGS and an indirect-
 // injection surface without adding value. aiJSON's own `search?` gate was already conditional; this closes
