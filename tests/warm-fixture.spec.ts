@@ -40,3 +40,11 @@ test('after the flip: the DEFAULT page IS the warm page', async ({ page }) => {
   await seedApp(page, { 'mk-uilevel-asked': 'true' });
   expect(await page.evaluate(`typeof DATA !== 'undefined'`)).toBe(true);     // app fully booted post-reset
 });
+
+test('L19 firing-guard: warm navigation is served by the fulfill route; isolatedPage is not', async ({ warm, isolatedPage }) => {
+  const warmResp = await warm.reload({ waitUntil: 'domcontentloaded' });
+  expect(warmResp?.headers()['x-mk-warm-fulfill']).toBe('1');                 // route.fulfill actually fired on the warm page
+
+  const isoResp = await isolatedPage.goto('/index.html');
+  expect(isoResp?.headers()['x-mk-warm-fulfill']).toBeUndefined();            // isolatedPage's own context never installs the route — no leak
+});

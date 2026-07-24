@@ -87,8 +87,17 @@ export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
     // context anyway. Subresources fall through to serve.js untouched.
     if (workerInfo.project.name === 'chromium') {
       const body = appDoc();
+      // L19 firing-guard (flake-refactor-review.md §2 Important): a marker header proves this route
+      // actually intercepted the navigation — the app ignores unknown headers (serviceWorkers:'block' on
+      // this project, so no header-driven cache path exists to notice it either), so this is inert for the
+      // app and byte-identity of the BODY is unchanged. tests/warm-fixture.spec.ts's 6th contract test
+      // asserts it is present on the warm page and absent on isolatedPage (which never installs this route).
       await context.route(APP_DOC_RE, route =>
-        route.fulfill({ status: 200, headers: { 'content-type': 'text/html; charset=utf-8' }, body }));
+        route.fulfill({
+          status: 200,
+          headers: { 'content-type': 'text/html; charset=utf-8', 'x-mk-warm-fulfill': '1' },
+          body,
+        }));
     }
     // DELIBERATELY no context.tracing.start() here (deviation from the plan's D2 sketch, root-caused
     // against the installed playwright 1.61.1 source, not guessed): with `trace` configured in
