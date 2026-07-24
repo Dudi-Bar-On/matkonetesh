@@ -85,10 +85,27 @@ export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
     await context.close();
   }, { scope: 'worker' }],
 
-  warmPage: [async ({ warmContext }, use) => {
+  warmPage: [async ({ warmContext }, use, workerInfo) => {
     const page = await warmContext.newPage();
     dclGoto(page);
-    await page.goto('/index.html');   // THE one cold parse for this worker (W0-c: every later boot is a ~1028ms warm reload)
+    // F1 — stagger the run-start cold-parse stampede (docs/research/flake-panel-SYNTHESIS.md verdict):
+    // at run start every worker fires its ONE cold parse of the 2.7 MB inlined app simultaneously (p50
+    // 2.15s, max 4.9s on an idle machine — W0); N simultaneous cold parses collide on the 8 P-cores.
+    // The first-scheduled spec absorbs the collision (active-hub.spec.ts, alphabetically first) and
+    // Cert-Run-5's 8 failures clustered in a 342ms window at t+4.7s. A nav-timeout kill makes it WORSE —
+    // the replacement worker re-enters with ANOTHER full cold parse, re-feeding the stampede (the
+    // restart cascade). Staggering each worker's start by parallelIndex*700ms (0-based: worker 0 starts
+    // instantly) spreads the parses out so they stop colliding; capped at 7 slots so this adds at most
+    // ~4.9s to run START ONLY. Steady-state (every later warm reload via seedApp) is untouched — this
+    // line runs exactly once per worker, before the cold goto below.
+    await new Promise(r => setTimeout(r, Math.min(workerInfo.parallelIndex, 7) * 700));
+    // F2 — cold-goto headroom (same synthesis): give THE one cold parse for this worker (W0-c: every
+    // later boot is a ~1028ms warm reload) its own generous timeout — 28s, still under the 30s
+    // test-level ceiling so a genuinely hung first nav still errors before the suite's hard wall, but
+    // wide enough to absorb residual stampede coincidence and break the kill-then-cold-parse restart
+    // cascade described above. Every later warm reload/seedApp keeps the context default of 15s
+    // (playwright.config.ts navigationTimeout) — ONLY this once-per-worker cold parse gets headroom.
+    await page.goto('/index.html', { timeout: 28_000 });
     // HARD TRAP. Init scripts accumulate for the life of the page, run in DOCUMENTED-UNDEFINED order
     // across scripts, and cannot be removed (class-page docs) — on a shared page that is a coin flip,
     // so warm mode forbids them loudly instead of by convention.
