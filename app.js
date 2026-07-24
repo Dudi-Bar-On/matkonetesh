@@ -4388,10 +4388,43 @@ function aiSafetyCaveat(txt){
 }
 // W1-P3: numeric-invariant guard. Extract the safety-relevant numbers (temps °/°C/°F/bare C-F, ppm, %, pH) from AI prose,
 // and flag any that are NOT present in the vetted grounding context as ungrounded (likely fabricated) → escalate + deep-link the calculator.
+// P0-app item 2 · defect A — normalize a detected safety number to the app's Celsius-native scale.
+// Fahrenheit is converted through the app's ONE existing conversion (UNIT_CONV['F->C'], app.js:131) and
+// rounded to an integer, matching the data layer's integer °C safety floors (63/71/74). Everything else —
+// a bare °, Hebrew מעלות, ppm, %, pH — is already Celsius-native or unitless and passes through untouched.
+function aiSafetyToC(n, unit){
+  if(isNaN(n)) return NaN;
+  return /F/i.test(String(unit||'')) ? Math.round(UNIT_CONV['F->C'](n)) : n;
+}
+
 function aiSafetyNums(s){
   const out=[]; const str=String(s||''); let m;
-  const re=/(\d+(?:\.\d+)?)\s*(?:°\s*[CF]?|[CF]\b|ppm|%)|\bpH\s*(\d+(?:\.\d+)?)/gi;
-  while((m=re.exec(str))!==null){ const n=parseFloat(m[1]||m[2]); if(!isNaN(n)) out.push(n); if(m.index===re.lastIndex) re.lastIndex++; }
+  // P0-app item 2 · defect B — a range sharing ONE trailing unit ("ירידה 30-40%", "100-121°C") must
+  // contribute BOTH bounds. Tried FIRST: the single-number pattern below would otherwise consume the
+  // second bound on its own and the first would be lost, which is exactly the B10 defect.
+  // Documented simplification: this does not disambiguate a genuine negative ("-5°C") from a range —
+  // the app's safety-number domain (cure/cook/dry temps and percentages) has no legitimate negatives.
+  const spans=[];
+  const reRange=/(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)/gi;
+  while((m=reRange.exec(str))!==null){
+    const unit=m[3]||'';
+    const lo=aiSafetyToC(parseFloat(m[1]), unit), hi=aiSafetyToC(parseFloat(m[2]), unit);
+    if(!isNaN(lo)) out.push(lo);
+    if(!isNaN(hi)) out.push(hi);
+    spans.push([m.index, reRange.lastIndex]);
+    if(m.index===reRange.lastIndex) reRange.lastIndex++;
+  }
+  // P0-app item 2 · defect A — the unit token is now CAPTURED (it was non-capturing) so Fahrenheit can be
+  // normalized instead of silently discarded. `מעלות` joins the token classes per the owner's decision.
+  const re=/(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)|\bpH\s*(\d+(?:\.\d+)?)/gi;
+  while((m=re.exec(str))!==null){
+    const covered=spans.some(function(sp){ return m.index>=sp[0] && m.index<sp[1]; });
+    if(!covered){
+      const n=(m[3]!=null) ? parseFloat(m[3]) : aiSafetyToC(parseFloat(m[1]), m[2]||'');
+      if(!isNaN(n)) out.push(n);
+    }
+    if(m.index===re.lastIndex) re.lastIndex++;
+  }
   return out;
 }
 function aiUngroundedSafety(answer, context){
