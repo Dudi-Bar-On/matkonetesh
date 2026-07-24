@@ -476,6 +476,24 @@ for (const [label, phrase] of fixAPhrasings) {
   });
 }
 
+// COSMETIC (spec brief, "ALSO" section) — when the matched unit token ends in a period ("63 deg.",
+// "63 degrees."), the verified substitution used to swallow that period along with the rest of the
+// matched token (vcMapSafetyNums replaces the ENTIRE "63 deg." match with "63°C", not just "63 deg."
+// minus its trailing dot), producing "...is 63°C per the app's verified guide." with the sentence's own
+// full stop simply gone. Not a safety leak (no number/unit changes), but a readability defect.
+test('cosmetic — the verified substitution preserves the unit token\'s own trailing period (not swallowed)', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`store.set('mk-vclang','en')`);
+  const safe = await page.evaluate(`(function(){var m=resolveItem('cut-1'); return Math.round(m.obj.safe!=null?m.obj.safe:m.obj.tgt);})()`) as number;
+  const mock = `the safe temperature is ${safe} deg.`;
+  await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
+  await page.evaluate(`vcAskFlow('ask: what is the safe temperature')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).toContain(`${safe}°C.`);   // the sentence's own period must survive the substitution
+  expect(spoken).toContain('per the app\'s verified guide');
+});
+
 // Phase A gate close — FIX C: the old "deg(?:rees?)?\.?\s*(?:C\b|F\b|celsius|fahrenheit)?" SAFETY_UNIT
 // fragment let its unconditional \s* reach across the number-and-unit boundary AND across a sentence
 // boundary. This test documents the accepted over-match (an angle is still redacted — the app cannot

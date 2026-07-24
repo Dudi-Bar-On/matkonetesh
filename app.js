@@ -5604,7 +5604,10 @@ function vcGuardSpoken(text, tiers, lang){
     out=vcMapSafetyNums(src, function(vals, unit, kind){
       if(kind==='single' && isTempUnit(unit)){
         const c=Math.round(aiSafetyToC(vals[0], unit));
-        if(ok[c]) return c+'°C';                     // the app's OWN figure, in its own unit
+        // COSMETIC (2026-07-24): the matched unit token can itself carry a trailing period ("deg.",
+        // "degrees.") — replacing the WHOLE token with c+'°C' silently ate that period. Re-append it when
+        // present so the sentence's own full stop survives the substitution.
+        if(ok[c]) return c+'°C'+(/\.$/.test(String(unit).trim())?'.':'');   // the app's OWN figure, in its own unit
       }
       redacted++; return VC_REDACT;
     });
