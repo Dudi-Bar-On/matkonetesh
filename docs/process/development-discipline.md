@@ -725,6 +725,20 @@ symbol-shaped. Learning it is not optional polish: query `serena-docs` in the gl
 vocabulary rules apply) and the `initial_instructions` manual before leaning on conventions from memory —
 tools evolve, and a mis-used symbol edit on a monolith is worse than a careful text one.
 
+**§10.17a · ONE Serena server — every subagent shares the single instance (owner instruction, 2026-07-24).**
+The default stdio config makes **each subagent spawn its own `serena start-mcp-server`**, each with its own
+dashboard on the next free port (observed 2026-07-24: dashboards flapping, port 24282→24283, 4 concurrent
+Serena processes, 8 language servers duplicated per instance). That is waste and confusion: a bookmarked
+dashboard points at a dead instance, and memory/CPU multiply with agent count.
+**The rule: run ONE long-lived Serena server for the machine; the project and every subagent connect to it.**
+Implementation path (verify exact flags against Serena's own `--help`/docs first — §10.17's read-the-docs
+rule applies to this too): start a single server on a fixed port with the **SSE / streamable-HTTP transport**
+(`serena start-mcp-server --transport sse --port <PORT> --context claude-code …`), then point
+`.mcp.json` at it as a **URL-based** server (`{"serena": {"type": "sse", "url": "http://127.0.0.1:<PORT>/sse"}}`)
+instead of the `command`/`args` stdio form. Verify after wiring: one `serena` process, ONE dashboard port,
+tools still resolve from a subagent, and the project stays activated across agents. Until it is wired and
+verified, prefer enabling Serena only for agents doing genuinely symbol-shaped work.
+
 ### 10.18 Debug-then-measure — a failure STOPS the measurement train
 > **Owner instruction, 2026-07-24.** While a system is unstable — any unexplained failure on the table —
 > the next step is **STOP and systematic-debug that failure to root cause**, not "continue to the next

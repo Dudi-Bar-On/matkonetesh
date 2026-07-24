@@ -142,6 +142,11 @@ overview/surgical symbol edits beat grep + text edits on the ~9.5k-line app.js. 
 the `serena-docs` corpus in the graphify global + Serena's own `initial_instructions` manual. Division of
 labor: Serena = live locate/edit-exact · graphify = cross-doc provenance + vendor docs · grep = fallback
 (docs/process/serena-adoption.md). Point code-editing subagents at Serena when their task is symbol-shaped.
+**§10.17a — ONE Serena server, shared by ALL subagents** (owner, 2026-07-24). The stdio config makes every
+subagent spawn its own server+dashboard (observed: 4 concurrent instances, ports 24282→24283 flapping). Run a
+single long-lived server (SSE/streamable-HTTP transport on a fixed port) and point `.mcp.json` at it as a
+URL-based server; verify one process + one dashboard + tools resolving from a subagent. Until wired, enable
+Serena only for genuinely symbol-shaped agent work.
 
 ## The product
 
