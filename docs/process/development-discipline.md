@@ -385,24 +385,27 @@ a reasoning model applied where it adds nothing is cost with no evidence.** Skip
 
 **How to run the suite:** `npx playwright test` — nothing else. The config is authoritative.
 
-- **Server:** `serve.js` is a **clustered, in-memory** static server — one worker per core (capped 12) sharing the port, every `dist/` file served from a Buffer (zero per-request disk I/O), large listen backlog. This replaced a single-process server that re-read the 2.4 MB `index.html` from disk on every request and stalled under concurrent load. Playwright starts and tears down this server itself (`webServer.command`); **do not** run `serve.js` by hand for a test run.
-- **Concurrency:** `workers: process.env.CI ? 2 : 8`, pinned in `playwright.config.ts` (**the config's comment is authoritative — this doc drifts; read the config**). **Fit the 8 P-cores.** This machine is an i9-14900 (8 P-cores + 16 E-cores, 24C/32T); every test parses+runs the ~2.2MB inlined app on navigation (P-core-bound work), so **above ~8 workers the P-cores oversubscribe** and the heaviest-init specs (active-hub/adaptive-home inject the most localStorage state) starve → their `domcontentloaded` blows the 30s test timeout (a *deterministic* ~10-test failure, always the same specs). Root-caused 2026-07-23 (systematic-debugging): **10 → 10 FAILED**; **8 → 433 clean ~2.3–2.5m (chosen)**; 6 → 433 clean ~3.1m; the failing specs pass **23/23 in ISOLATION** (proof it's contention, not a bug). A prior "6/8/10 all clean, 10 chosen" note here was WRONG — contaminated by orphaned zombie servers + a broken `/usr/bin/time` measurement + lucky low-load windows. Reliability over speed (retries:0). Re-measure ONLY on a clean/idle machine, single runs to completion, never killing mid-run. **Superseded 2026-07-23 (late): the "10 → 10 FAILED / P-core oversubscription" mechanism in this bullet was contaminated-machine evidence — see L21 (rewritten) and the config comment, which are authoritative.**
+- **Server:** `serve.js` is a **single in-memory process** — de-clustered 2026-07-23 (L18: the earlier clustered design's `cluster.on('exit', () => fork())` turned a killed worker into an unkillable respawning zombie) — with SIGINT/SIGTERM handlers for a clean shutdown; every `dist/` file is served from a Buffer (zero per-request disk I/O). Since the loopback fix (2026-07-24, see the Concurrency bullet below), the main `chromium` project's per-test navigation no longer opens a real HTTP connection to serve.js at all — `tests/_fixtures.ts` fulfills `/index.html` from an in-memory Buffer via `context.route`; serve.js still serves subresources and the dedicated `service-worker` project's real HTTP delivery (needed for genuine SW caching). Playwright starts and tears down this server itself (`webServer.command`); **do not** run `serve.js` by hand for a test run.
+- **Concurrency:** `workers: process.env.CI ? 2 : 20`, pinned in `playwright.config.ts` (**the config's comment is authoritative — this doc drifts; read the config**). **20 is CERTIFIED** (2026-07-24) on the post-loopback-fix architecture. Every mid-worker-count collapse recorded through this document's history (10 workers here; the 12-worker Phase C campaigns) was never a P-core-oversubscription limit — L21 already rewrote that story once, and the real cause turned out to be one layer deeper: the loopback-connection nav-stall proven and fixed in `docs/research/flake-refactor-rootcause.md` (`route.fulfill` in-memory doc serving, commits `7d5402d`+`f74f1b8`, independently reviewed `ba1da6a`). With the fix in place a fresh 12/16/20/24-worker curve probe ran clean at every point (439/439 each); 20 was fastest (~54s) and was then certified 7/7 clean over 7 serialized runs (8/8 combined with the curve probe's own clean reading) — full numbers in the POST-LOOPBACK-FIX session, `docs/research/measurements/m1b-capacity-probes-2026-07-23.md`, and **L22** below. CI stays 2 (GitHub ubuntu-latest is 4-vCPU).
 - **Run the suite SERIALIZED — never under competing CPU load.** A single run at the measured ceiling still flakes (`ERR_ABORTED` on navigation) if **other heavy subagents/processes** run at the same time — the 10-worker local ceiling assumes an otherwise-idle machine. This extends "never run two suite runs concurrently": during a suite run, pause other CPU-heavy background agents. (2026-07-23: a migration task's suite flaked 10/425 mid-run under parallel-subagent load; 3× clean once the machine was idle.)
 - **Retries:** `retries: 0`. A flake must surface as a failure and be fixed, never retried away.
-- **Navigation timeout: `navigationTimeout: 15_000`** — kept BELOW the test-level `timeout` (30s). A value ABOVE it (the old 60s) was **dead config**: the test timeout is the hard ceiling over navigation too, so it fires first — raising `navigationTimeout` above it does nothing (this cost a mis-diagnosis on 2026-07-23; "raise the ceiling" was wrong). The REAL nav-strategy fix is **`tests/_fixtures.ts`**: every `page.goto` now defaults to `waitUntil:'domcontentloaded'` instead of `'load'` (the app is interactive at DCL; `'load'` only waited on fonts/icons/manifest). **But DCL alone was not the whole story** — the residual starvation driver blamed here was later corrected: the "P-core oversubscription" mechanism did NOT reproduce on a clean machine (see the rewritten L21 and the Concurrency bullet's supersede note; contaminated-evidence lesson L18/L20). On today's warm-page architecture a correct nav is ~1s, so 15s is pure diagnostic headroom.
+- **Navigation timeout: `navigationTimeout: 15_000`** — kept BELOW the test-level `timeout` (30s). A value ABOVE it (the old 60s) was **dead config**: the test timeout is the hard ceiling over navigation too, so it fires first — raising `navigationTimeout` above it does nothing (this cost a mis-diagnosis on 2026-07-23; "raise the ceiling" was wrong). The REAL nav-strategy fix is **`tests/_fixtures.ts`**: every `page.goto` now defaults to `waitUntil:'domcontentloaded'` instead of `'load'` (the app is interactive at DCL; `'load'` only waited on fonts/icons/manifest). **But DCL alone was not the whole story** — the residual starvation driver blamed here was later corrected: the "P-core oversubscription" mechanism did NOT reproduce on a clean machine (see the rewritten L21 and the Concurrency bullet above, which now also carries the loopback-fix resolution and L22; contaminated-evidence lesson L18/L20). On today's warm-page architecture a correct nav is ~1s, so 15s is pure diagnostic headroom. **Note (2026-07-24): the config's actual `navigationTimeout` is now 20s, not the 15s this bullet's header still names** — see the config comment and the Concurrency bullet above, which is authoritative; this bullet's DCL-vs-load narrative is otherwise unaffected.
 - **Measure reliability over ENOUGH runs.** A ~1-in-6 flake hides completely in a 3-run check — a 3/3-clean sample on 2026-07-23 led to a wrong "it was just competing load" conclusion; the real intermittent nav-timeout only surfaced on a later single run. When establishing a worker ceiling or a flake fix, run the full suite **~6–9×**, not 3.
-- **After every `python build.py`, RESTART the manual `serve.js` before a UI check.** The clustered server caches `dist/` in memory at startup, so a rebuild does not reach a still-running manual server — you will verify a stale build. (Playwright is unaffected: its `webServer.command` rebuilds+restarts per run.) Also clear the PWA service worker if a stale page persists.
+- **After every `python build.py`, RESTART the manual `serve.js` before a UI check.** It caches `dist/` in memory at startup (single in-memory process, de-clustered 2026-07-23 — see the Server bullet above), so a rebuild does not reach a still-running manual server — you will verify a stale build. (Playwright is unaffected: its `webServer.command` rebuilds+restarts per run.) Also clear the PWA service worker if a stale page persists.
 - **Interactive debugging** (MCP browser / chrome-devtools) needs its own manual `serve.js` on 8123 — **stop it before running the suite**, or Playwright's own managed server collides with it (`reuseExistingServer: false`). Every "port 8123 already in use" error traces to a leftover manual server.
 - **Never** run with `--workers=1` or `--retries=N` — those were the old anti-pattern (13 min + masked flakiness).
 - **Every SETUP owns a matching TEARDOWN — like a test's setup/teardown (owner instruction, 2026-07-23).**
   Whenever you start a server, spawn a process, bind a port, or acquire a resource, you own its clean
   shutdown. **Prefer letting a run COMPLETE** (Playwright tears its own `webServer` down) — never kill a
-  suite mid-flight. If you must kill: `serve.js` runs a cluster with `cluster.on('exit', () => cluster.fork())`,
-  so killing a port-worker makes the **primary respawn it** — a port-based `taskkill` leaves a *respawning
-  zombie server* that listens and accepts connections but never responds, wedging 8123 for every later run
-  (this is exactly what turned a worker measurement into hours of thrash on 2026-07-23). Kill the **whole
-  tree from the primary**, then **verify the resource is released** (port refuses connections, 0 orphan
-  `node`/`serve.js`). A kill without a verified teardown is a defect, not a cleanup.
+  suite mid-flight. `serve.js` is now a **single in-memory process** (de-clustered 2026-07-23, L18) with
+  SIGINT/SIGTERM handlers for a clean shutdown — the old cluster's `cluster.on('exit', () => cluster.fork())`
+  respawn-on-kill behavior, which turned a port-based `taskkill` into a *respawning zombie server* that
+  listened and accepted connections but never responded (wedging 8123 for every later run — exactly what
+  turned a worker measurement into hours of thrash on 2026-07-23), **is gone.** The rule still stands
+  regardless: a forceful/port-based `taskkill` can still bypass the handlers and leave an orphan holding the
+  port. If you must kill, kill the **whole tree from the primary**, then **verify the resource is released**
+  (port refuses connections, 0 orphan `node`/`serve.js`). A kill without a verified teardown is a defect, not
+  a cleanup.
 
 ---
 
@@ -527,6 +530,37 @@ verify idle (0 orphan `node`/`serve.js`, ports released) BEFORE the runs, and sa
 3; (b) `workers: 8` stays for now as the last known-clean setting — re-deriving the real ceiling from
 the M-series curve is the CPU-max programme's **phase B/C decision (the owner's)**, not a drive-by edit.
 
+**L22 · The loopback saga: five campaigns tallied a defect that one boundary-instrumented probe found in an
+afternoon (2026-07-24).** Four full-suite certification campaigns before this one — Phase C, Phase C RERUN,
+the 8-worker certification, POST-FIX F1+F2 — spent dozens of serialized runs measuring a suite that still
+failed 2/7–5/7 at every worker count tried, while a chain of plausible mechanisms was chased and fixed in
+turn: `waitUntil:'load'` vs `'domcontentloaded'`, then P-core oversubscription (L21 — itself later rewritten
+once already), then a run-start cold-parse "stampede" fixed by staggering worker starts (F1+F2). Each fix
+was real and each helped, and none was the actual cause. The real defect: on an ~85%-idle machine, concurrent
+`page.reload` navigations were hanging **inside chromium, before the socket even opened** — the
+Windows/chromium loopback connection layer was **serializing** concurrent local HTTP connections, releasing
+requests to `serve.js` in a **staircase** (~1 every several seconds) while CPU sat at 7–20%. It was found,
+not theorized, by **boundary instrumentation**: tagging every request with a worker id and timestamping it on
+BOTH sides of the loopback connection — the reload-storm harness (chromium/client, send-time) and
+`serve-log.mjs` (server, receive-time) — on **one machine, one clock**, so a 20-second gap between "client
+sent" and "server received" could not be explained away as cross-process clock skew. It was then **proven**,
+not just observed, by a cure: `route.fulfill` serving the warm page from an in-memory Buffer (no real
+loopback connection at all) took the identical 12-way concurrent-reload harness from 200–286 s (mostly
+timeouts) to **2.9–12.2 s clean — a ~20–24× swing on the shipped shape**
+(`docs/research/flake-refactor-rootcause.md`). **Gate:** when a wait hangs while the machine is provably
+idle, the next move is to **instrument the boundary BETWEEN layers** (client send-time vs server
+receive-time; app vs OS; process vs process) before theorizing further **within** a layer that is already
+instrumented and already showing nothing — every prior mis-diagnosis in this chain (load-event, P-cores,
+stampede/heap) was a within-layer theory, and none of them needed to touch the one boundary that actually
+held the answer. Two methodology lessons the owner drew from watching this play out, worth keeping as
+general practice: (1) **canary middle-values** — deliberately choosing a MIDDLE timeout (not the tightest,
+not the loosest) and a MIDDLE/high-stress worker count while debugging keeps an intermittent defect
+reproducible without either hiding it (too loose — L19's dead 60s-timeout config) or drowning it in unrelated
+noise (too extreme); (2) **§10.18 stop-and-debug beats campaign-tallying** — this saga is its own proof: four
+campaigns running the suite 5–7× each to tally a pass rate produced numbers, not a cause; one
+systematic-debugging session with a purpose-built repro harness (the reload-storm arms) found root cause in
+hours. Measurement campaigns certify a stable system; they do not diagnose an unstable one.
+
 **Adopted wins (2026-07-23) — patterns that worked, keep using them:** (1) **Baseline-first migration +
 a real preflight**: the eval baseline caught gemini-3.6's api-400 in minutes (v259→v260), and the
 ListModels+one-real-call-per-role preflight (through the app's own payload builders) is what proved the
@@ -535,7 +569,17 @@ with a commented rollback pin. (3) **CI-on-a-temp-branch** as a no-deploy verifi
 only from main; the GitHub secret stays server-side). (4) **§10.14 deep research cracked what guessing
 couldn't** — two focused doc-reading missions found the dead-config and the de-cluster answer in under an
 hour after a day of fix-churn. (5) **§10.11 usefulness-gate deposits**: Gemini + Cloudflare docs deposited
-once, now answer queries that previously returned noise.
+once, now answer queries that previously returned noise. **Extended 2026-07-24**, from the loopback saga
+(L22): (6) **Probe-first debugging** — a purpose-built repro harness (the reload-storm scripts) turned each
+debugging iteration into a ~seconds-long experiment instead of a minutes-long full-suite run, which is what
+made an 11-arm root-cause hunt tractable in one session. (7) **The L19 firing-guard pattern** — ship a fix
+together with a tripwire test that proves the fix's *mechanism* actually fires, not just that symptoms
+improved (exemplified by `tests/warm-fixture.spec.ts`'s new 6th contract test, added alongside the
+route.fulfill fix itself, commit `f74f1b8`). (8) **`route.fulfill` for hermetic doc serving** — fulfilling a
+test's own document from an in-memory Buffer, byte-identical to what ships, removes an entire class of
+local-infrastructure flake (loopback, disk I/O, port contention) without weakening what is actually under
+test. (9) **Serena-first symbol edits** (§10.17) — precise LSP-backed edits on the ~9.5k-line `app.js` and
+the fixture/spec files beat fragile text-matching for this kind of surgical fix work.
 
 ### 10.11 Query graphify GLOBAL before the internet — for ANY docs/help — then feed useful finds back
 > **Owner instruction, 2026-07-22; generalized to all documentation/help 2026-07-23.** When you need
