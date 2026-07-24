@@ -5316,7 +5316,7 @@ async function vcTranslateToEn(text){
     const m=window.__vcTransMock; const out=(typeof m==='function'?m(src):m); vcTransCache.set(src,out); return out;
   }
   if(!aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
-  const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking-instruction text to natural spoken English. Reply with ONLY the English translation, no quotes, no notes.'}]},
+  const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking-instruction text to natural spoken English. Reply with ONLY the English translation, no quotes, no notes. Keep ALL numbers, temperatures, times and units EXACTLY as written — never change, add, drop or reorder a number. Do NOT convert 24-hour times to AM/PM, and do NOT convert between units (no °C→°F, no metric→imperial).'}]},
     contents:[{role:'user',parts:[{text:src}]}],
     generationConfig: gemGen('text', {temperature:0.2, maxOutputTokens:300}, {think: thinkFor('translate')}) };
   const r=await gemFetch('text', body, {timeout:30000});
@@ -5337,11 +5337,12 @@ async function vcSpeakContent(text){
   }
   try{
     const en=await vcTranslateToEn(text);
-    // P0-app item 1b (A2): a translation's ground truth IS its source. mtSafe = every number in `text`
-    // survives into `en` and none is invented — the same guard mtTranslate already applies to recipe
-    // prose. Fail → never speak the mistranslation; read the correct Hebrew, with a spoken cue. ONE
-    // vcSpeak call: a second would cancel the first (vcSpeak calls gemStop + speechSynthesis.cancel).
-    if(typeof mtSafe!=='function' || mtSafe(text, en)){ vcSpeak(en, 'en'); }
+    // P0-app item 1b (A2): a translation's ground truth IS its source. vcTransSafe = every number in
+    // `text` survives into `en`, IN ORDER, and none is invented. Ordered on purpose — mtSafe/mtNumSig
+    // sort, so a transposed temperature and time ({74,165}==={165,74}) would pass; vcTransSafe cannot be
+    // fooled that way. Fail → never speak the mistranslation; read the correct Hebrew, with a spoken cue.
+    // ONE vcSpeak call: a second would cancel the first (vcSpeak calls gemStop + speechSynthesis.cancel).
+    if(typeof vcTransSafe!=='function' || vcTransSafe(text, en)){ vcSpeak(en, 'en'); }
     else{ vcSpeak('מספר לא מאומת בתרגום — מקריא בעברית. '+text, 'he'); }
   }
   catch(e){ vcSpeak(text, 'he'); }
@@ -7182,6 +7183,16 @@ function mtNumSig(text){
   return nums.map(Number).sort(function(a,b){return a-b;}).join('|');
 }
 function mtSafe(src, translated){ return mtNumSig(src)===mtNumSig(translated); }   // every source number must survive, and none may be invented
+// P0-app A2 — ORDERED numeric signature. mtNumSig SORTS, so it cannot see a TRANSPOSITION: verified,
+// mtSafe('משוך ב-74 מעלות למשך 165 דקות','pull at 165 degrees for 74 minutes') is TRUE — a swapped
+// temperature and time passes the guard and is spoken with full confidence. Preserving order of
+// appearance catches that. Deliberately a SIBLING, not a change to mtNumSig/mtSafe: those also guard
+// mtTranslate (the DATA path, tests/wave5-mt-safety.spec.ts), which is outside this spec's scope.
+function vcNumSeq(text){
+  return (String(text||'').match(/\d+(?:[.,]\d+)?/g)||[])
+    .map(function(n){ return Number(n.replace(',', '.')); }).join('|');
+}
+function vcTransSafe(src, translated){ return vcNumSeq(src)===vcNumSeq(translated); }
 // return the translation if it passed the numeric guard, else the safe original (with a flag)
 function mtGuard(src, translated){ return mtSafe(src, translated) ? {text:translated, ok:true} : {text:src, ok:false}; }
 function mtHash(s){ let h=0; s=String(s); for(let i=0;i<s.length;i++){ h=(h*31+s.charCodeAt(i))|0; } return h.toString(36); }

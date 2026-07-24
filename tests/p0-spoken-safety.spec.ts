@@ -220,6 +220,35 @@ test('A2 negative case — a faithful translation still speaks in English (DoD-6
   expect(spoken.l).toBe('en');
 });
 
+test('A2 transposition — a translation that SWAPS a temperature and a time is never spoken', async ({ page }) => {
+  await bootVC(page);
+  // mtSafe's sorted multiset cannot see this: {74,165} === {165,74}. Ordered comparison can.
+  await page.evaluate(`window.__vcTransMock='pull at 165 degrees for 74 minutes'; store.set('mk-vclang','en');`);
+  await page.evaluate(`vcSpeakContent('משוך ב-74 מעלות למשך 165 דקות')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as {t:string;l:string};
+  expect(spoken.l).toBe('he');                       // fell back to the Hebrew source
+  expect(spoken.t).toContain('מספר לא מאומת בתרגום');
+  expect(spoken.t).not.toContain('165 degrees');
+});
+
+test('A2 real input shape — the clock prefix every production caller sends is handled (L8)', async ({ page }) => {
+  await bootVC(page);
+  // Every real caller passes vcCurrentText, which ALWAYS prepends a 24h he-IL clock. The shipped tests
+  // used hand-crafted strings with no clock, so this shape was never exercised.
+  await page.evaluate(`window.__vcTransMock='14:30. Put it in the oven at 74 degrees.'; store.set('mk-vclang','en');`);
+  await page.evaluate(`vcSpeakContent('14:30. הכנס לתנור ל-74 מעלות.')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const ok = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as {t:string;l:string};
+  expect(ok.l).toBe('en');                           // numbers preserved → English spoken
+  // and the AM/PM conversion the hardened prompt now forbids must still fail CLOSED if it happens
+  await page.evaluate(`window.__spoke=[]; vcTransCache.clear(); window.__vcTransMock='2:30 PM. Put it in the oven at 74 degrees.';`);
+  await page.evaluate(`vcSpeakContent('14:30. הכנס לתנור ל-74 מעלות.')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const bad = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as {t:string;l:string};
+  expect(bad.l).toBe('he');
+});
+
 test('vcResolveEntity smoke test — Tier 1 (active-cook item) wins when it resolves; the catalog (Tier 2) is a genuine fallback', async ({ page }) => {
   await bootVC(page);
   // vcResolveEntity has zero production callers today — it is staged for Task 4's search gate, named in
