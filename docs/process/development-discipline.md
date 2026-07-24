@@ -681,6 +681,17 @@ symbol-shaped. Learning it is not optional polish: query `serena-docs` in the gl
 vocabulary rules apply) and the `initial_instructions` manual before leaning on conventions from memory —
 tools evolve, and a mis-used symbol edit on a monolith is worse than a careful text one.
 
+### 10.18 Debug-then-measure — a failure STOPS the measurement train
+> **Owner instruction, 2026-07-24.** While a system is unstable — any unexplained failure on the table —
+> the next step is **STOP and systematic-debug that failure to root cause**, not "continue to the next
+> measurement." Exploration/debugging mode and measurement mode are different regimes: **continuous
+> measurement (multi-run campaigns) is for STABLE systems** — it *certifies*, it does not *diagnose*.
+> Running campaign after campaign against a known-unstable system burns hours converting one unknown into
+> N tallies. The loop is: failure → systematic-debugging (evidence, root cause) → refactor the cause →
+> targeted verification of THAT fix → only then a certification campaign. (An already-in-flight
+> instrumented experiment completes — §11a L18 forbids mid-run kills — and its data feeds the debugging;
+> but no NEW measurement starts while the root cause is open.)
+
 ### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
 > **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
 > changed. Update it as part of committing and pushing — and sooner than that where practical.
