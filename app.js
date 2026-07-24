@@ -4399,31 +4399,32 @@ function aiSafetyToC(n, unit){
 
 function aiSafetyNums(s){
   const out=[]; const str=String(s||''); let m;
-  // P0-app item 2 · defect B — a range sharing ONE trailing unit ("ירידה 30-40%", "100-121°C") must
-  // contribute BOTH bounds. Tried FIRST: the single-number pattern below would otherwise consume the
-  // second bound on its own and the first would be lost, which is exactly the B10 defect.
-  // Documented simplification: this does not disambiguate a genuine negative ("-5°C") from a range —
-  // the app's safety-number domain (cure/cook/dry temps and percentages) has no legitimate negatives.
-  const spans=[];
-  const reRange=/(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)/gi;
-  while((m=reRange.exec(str))!==null){
-    const unit=m[3]||'';
-    const lo=aiSafetyToC(parseFloat(m[1]), unit), hi=aiSafetyToC(parseFloat(m[2]), unit);
-    if(!isNaN(lo)) out.push(lo);
-    if(!isNaN(hi)) out.push(hi);
-    spans.push([m.index, reRange.lastIndex]);
-    if(m.index===reRange.lastIndex) reRange.lastIndex++;
-  }
-  // P0-app item 2 · defect A — the unit token is now CAPTURED (it was non-capturing) so Fahrenheit can be
-  // normalized instead of silently discarded. `מעלות` joins the token classes per the owner's decision.
-  const re=/(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)|\bpH\s*(\d+(?:\.\d+)?)/gi;
+  // P0-app item 2 — ONE left-to-right scan. The RANGE alternative is listed first inside the pattern so
+  // a shared-unit range ("ירידה 30-40%", "100-121°C") is claimed whole and contributes BOTH bounds;
+  // otherwise the single-number alternative would consume only the second bound and the first would be
+  // lost, which is exactly the B10 defect. A single scan also keeps the output in TEXTUAL order, so the
+  // array reads the way the sentence does (the two-pass version emitted every range before every single
+  // number regardless of position).
+  // Documented simplification: no attempt to disambiguate a genuine negative ("-5°C") from a range — the
+  // app's safety-number domain (cure/cook/dry temperatures and percentages) has no legitimate negatives.
+  const UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות)';
+  const re=new RegExp(
+      '(\\d+(?:\\.\\d+)?)\\s*[-–]\\s*(\\d+(?:\\.\\d+)?)\\s*('+UNIT+')'   // 1,2 = bounds · 3 = shared unit
+    + '|(\\d+(?:\\.\\d+)?)\\s*('+UNIT+')'                                 // 4 = number  · 5 = its unit
+    + '|\\bpH\\s*(\\d+(?:\\.\\d+)?)', 'gi');                              // 6 = pH value
   while((m=re.exec(str))!==null){
-    const covered=spans.some(function(sp){ return m.index>=sp[0] && m.index<sp[1]; });
-    if(!covered){
-      const n=(m[3]!=null) ? parseFloat(m[3]) : aiSafetyToC(parseFloat(m[1]), m[2]||'');
+    if(m[1]!=null){
+      const u=m[3]||'';
+      const first=aiSafetyToC(parseFloat(m[1]), u), second=aiSafetyToC(parseFloat(m[2]), u);
+      if(!isNaN(first))  out.push(first);
+      if(!isNaN(second)) out.push(second);
+    } else if(m[4]!=null){
+      const n=aiSafetyToC(parseFloat(m[4]), m[5]||'');
+      if(!isNaN(n)) out.push(n);
+    } else if(m[6]!=null){
+      const n=parseFloat(m[6]);
       if(!isNaN(n)) out.push(n);
     }
-    if(m.index===re.lastIndex) re.lastIndex++;
   }
   return out;
 }

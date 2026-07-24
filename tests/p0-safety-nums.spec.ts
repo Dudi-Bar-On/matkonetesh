@@ -47,3 +47,12 @@ test('DoD-6 negative case — the already-correct majority is byte-identical (ad
   expect(await page.evaluate(`aiSafetyNums('use 2.5% salt')`)).toEqual([2.5]);
   expect(await page.evaluate(`aiSafetyNums('rest it a while, then slice thin')`)).toEqual([]);
 });
+
+test('output preserves TEXTUAL order across mixed range and single-number input', async ({ page }) => {
+  await boot(page);
+  // Reviewer Important-1: the two-pass version emitted every range before every standalone number
+  // regardless of where each appeared in the text. Order is not safety-critical for today's only
+  // consumer (aiUngroundedSafety does a Set-membership check), but the contract is now explicit
+  // and locked, because Task 2's spoken guard is built on this function's output.
+  expect(await page.evaluate(`aiSafetyNums('cure 156 ppm, then dry until 30-40% weight loss')`)).toEqual([156, 30, 40]);
+});
