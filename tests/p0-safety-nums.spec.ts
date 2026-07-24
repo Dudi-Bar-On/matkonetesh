@@ -142,3 +142,24 @@ test('FIX C — a sentence-ending period never binds the next sentence\'s unit l
   await boot(page);
   expect(await page.evaluate(`aiSafetyNums('hold at 63 degrees. F is what the probe shows.')`)).toEqual([63]);
 });
+
+// REGRESSION FIX (2026-07-24) — isFahrenheitUnit replaces aiSafetyToC's bare /F/i test with an explicit,
+// enumerated predicate (see its comment beside isTempUnit in app.js). Classify the FULL set of unit strings
+// SAFETY_UNIT can actually emit (40 forms, recounted from the pattern itself — see
+// scratch/verify-isFahrenheitUnit-v1.js) and assert the true-set is EXACTLY the genuine Fahrenheit spellings.
+test('isFahrenheitUnit classifies every emittable unit correctly — no Celsius/generic form is ever misread as Fahrenheit', async ({ page }) => {
+  await boot(page);
+  await page.waitForFunction(`typeof isFahrenheitUnit==='function'`);
+  // must be FALSE — Celsius, generic, and non-temperature units
+  for (const u of ['celsius','degrees celsius','degree celsius','deg celsius','degcelsius','degreecelsius','degreescelsius',
+                    'deg','deg.','degree','degree.','degrees','degrees.','degC','degreeC','degreesC','deg C','degree C','degrees C',
+                    '°','°C','C','ppm','%','מעלות']) {
+    expect(await page.evaluate(`isFahrenheitUnit(${JSON.stringify(u)})`), `isFahrenheitUnit(${JSON.stringify(u)}) must be false`).toBe(false);
+  }
+  // must be TRUE — every genuine Fahrenheit spelling
+  for (const u of ['F','°F','deg F','degF','degree F','degreeF','degrees F','degreesF',
+                    'deg fahrenheit','degfahrenheit','degree fahrenheit','degreefahrenheit',
+                    'degrees fahrenheit','degreesfahrenheit','fahrenheit']) {
+    expect(await page.evaluate(`isFahrenheitUnit(${JSON.stringify(u)})`), `isFahrenheitUnit(${JSON.stringify(u)}) must be true`).toBe(true);
+  }
+});

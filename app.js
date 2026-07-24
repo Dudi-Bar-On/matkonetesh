@@ -4464,6 +4464,18 @@ function safetyTokenRe(){ return new RegExp(SAFETY_TOKEN_SRC, 'gi'); }
 // this test (vcGuardSpoken used to carry /°|C\b|F\b|מעלות/i, hand-written and never updated when
 // SAFETY_UNIT gained word forms) is exactly how word-form units reached the tokenizer but not the guard.
 function isTempUnit(u){ return new RegExp('^(?:'+SAFETY_UNIT+')$','i').test(String(u||'').trim()) && !/^(?:ppm|%)$/i.test(String(u||'').trim()); }
+// REGRESSION FIX (2026-07-24) — the last hand-written predicate over SAFETY_UNIT's output. aiSafetyToC
+// used to decide Fahrenheit with a bare /F/i test on the unit string: correct today only because an audit
+// enumerated every unit SAFETY_UNIT can emit (40 forms — see scratch/verify-isFahrenheitUnit-v1.js; the
+// pre-fix audit's "27" no longer applies now the deg fragment above changed what's emittable) and found
+// none wrongly classed. But it is a private, undocumented assumption of exactly the shape that already
+// bit this file once (vcGuardSpoken's stale /°|C\b|F\b|מעלות/i, replaced by isTempUnit above) — it would
+// silently MISCONVERT the day SAFETY_UNIT gains a non-Fahrenheit unit whose spelling happens to contain an
+// "f". A misconversion turns a correct number into a WRONG one — worse than a redaction. Fahrenheit-ness
+// is semantic, not structural (nothing in SAFETY_UNIT's shape marks "F" as the temperature-scale letter
+// versus any other), so it cannot be derived the way isTempUnit is — it is made explicit and enumerated
+// instead, anchored to only the genuine Fahrenheit spellings SAFETY_UNIT can actually produce.
+function isFahrenheitUnit(u){ return /^(?:°[ \t]*F|F|deg(?:rees?)?[ \t]*F|deg(?:rees?)?[ \t]*fahrenheit|fahrenheit)$/i.test(String(u||'').trim()); }
 // Fresh instance per call — /g regexes carry lastIndex.
 function safetyNumRe(){ return new RegExp(SAFETY_NUM, 'g'); }
 // Phase A gate FIX 2: the ONE conversion from a SAFETY_NUM/SAFETY_TOKEN_SRC match to a number. A
@@ -4475,9 +4487,12 @@ function safetyNumVal(s){ return parseFloat(String(s).replace(/,/g,'')); }
 // Fahrenheit is converted through the app's ONE existing conversion (UNIT_CONV['F->C'], app.js:131) and
 // rounded to an integer, matching the data layer's integer °C safety floors (63/71/74). Everything else —
 // a bare °, Hebrew מעלות, ppm, %, pH — is already Celsius-native or unitless and passes through untouched.
+// REGRESSION FIX (2026-07-24): was a bare /F/i test on the unit string — replaced with the explicit,
+// enumerated isFahrenheitUnit (see its own comment above isTempUnit) so a future non-Fahrenheit unit whose
+// spelling happens to contain "f" can never be silently misconverted.
 function aiSafetyToC(n, unit){
   if(isNaN(n)) return NaN;
-  return /F/i.test(String(unit||'')) ? Math.round(UNIT_CONV['F->C'](n)) : n;
+  return isFahrenheitUnit(unit) ? Math.round(UNIT_CONV['F->C'](n)) : n;
 }
 
 function aiSafetyNums(s){
