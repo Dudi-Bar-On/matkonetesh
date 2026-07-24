@@ -4388,6 +4388,18 @@ function aiSafetyCaveat(txt){
 }
 // W1-P3: numeric-invariant guard. Extract the safety-relevant numbers (temps °/°C/°F/bare C-F, ppm, %, pH) from AI prose,
 // and flag any that are NOT present in the vetted grounding context as ungrounded (likely fabricated) → escalate + deep-link the calculator.
+// The ONE definition of a safety-number token, shared by the extractor (aiSafetyNums) and the spoken
+// guard (vcMapSafetyNums). Shared STRUCTURALLY on purpose: when these were two identical-by-convention
+// copies, any future edit to one would silently reopen a hole in the "no model-originated safety number
+// is ever voiced" invariant, and no test would have caught the divergence.
+const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות)';
+const SAFETY_TOKEN_SRC=
+    '(\\d+(?:\\.\\d+)?)\\s*[-–]\\s*(\\d+(?:\\.\\d+)?)\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
+  + '|(\\d+(?:\\.\\d+)?)\\s*('+SAFETY_UNIT+')'                                 // 4 number  · 5 its unit
+  + '|\\bpH\\s*(\\d+(?:\\.\\d+)?)';                                            // 6 pH value
+// A FRESH RegExp per call, never a shared instance: /g regexes carry lastIndex state, so a shared object
+// would leak position between unrelated calls and silently skip tokens.
+function safetyTokenRe(){ return new RegExp(SAFETY_TOKEN_SRC, 'gi'); }
 // P0-app item 2 · defect A — normalize a detected safety number to the app's Celsius-native scale.
 // Fahrenheit is converted through the app's ONE existing conversion (UNIT_CONV['F->C'], app.js:131) and
 // rounded to an integer, matching the data layer's integer °C safety floors (63/71/74). Everything else —
@@ -4407,11 +4419,8 @@ function aiSafetyNums(s){
   // number regardless of position).
   // Documented simplification: no attempt to disambiguate a genuine negative ("-5°C") from a range — the
   // app's safety-number domain (cure/cook/dry temperatures and percentages) has no legitimate negatives.
-  const UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות)';
-  const re=new RegExp(
-      '(\\d+(?:\\.\\d+)?)\\s*[-–]\\s*(\\d+(?:\\.\\d+)?)\\s*('+UNIT+')'   // 1,2 = bounds · 3 = shared unit
-    + '|(\\d+(?:\\.\\d+)?)\\s*('+UNIT+')'                                 // 4 = number  · 5 = its unit
-    + '|\\bpH\\s*(\\d+(?:\\.\\d+)?)', 'gi');                              // 6 = pH value
+  // Pattern: safetyTokenRe() — the ONE definition shared with vcMapSafetyNums (see above aiSafetyToC).
+  const re=safetyTokenRe();
   while((m=re.exec(str))!==null){
     if(m[1]!=null){
       const u=m[3]||'';
@@ -5388,14 +5397,21 @@ function vcBuildAskPrompt(question, ansLang, ctx){
    where a wrong number reaches a cook with busy hands and no visible caveat — aiSafetyNote's on-screen
    escalation cannot help someone who is not looking at the phone. Resolution is active-cook FIRST
    (the step the cook is standing at), catalog second, per the owner's decision. */
-// The resolved item behind this question, or null. ONE resolution per request — the spoken guard and
-// item 3's search gate both call this rather than resolving twice.
-function vcResolveEntity(question){
+// Tier 1 = the active-cook step's item; Tier 2 = the catalog match for the question text. Resolved ONCE
+// per request. Spec §3.1 checks a number against Tier 1's fields and falls through to Tier 2's when
+// Tier 1 has no resolvable item OR no field matches — so the guard needs BOTH tiers, not one winner.
+function vcResolveTiers(question){
   const t=vcTasks[vcIdx];
-  if(t && t.ikey){ const m=(typeof resolveItem==='function')?resolveItem(t.ikey):null; if(m && m.obj) return m; }
+  const r1=(t && t.ikey && typeof resolveItem==='function') ? resolveItem(t.ikey) : null;
   const hits=(typeof askFindEntity==='function')?askFindEntity(String(question||'').toLowerCase()):[];
-  const best=hits && hits[0];
-  return (best && best.obj) ? best : null;
+  const h=hits && hits[0];
+  return { t1:(r1 && r1.obj)?r1:null, t2:(h && h.obj)?h:null };
+}
+// Single best entity — active-cook first, catalog fallback. Item 3's search gate consumes THIS
+// ("did any local grounding resolve"), not the two-tier form.
+function vcResolveEntity(question){
+  const t=vcResolveTiers(question);
+  return t.t1 || t.t2;
 }
 // The verified figures a resolved item actually carries. Same accessor set askContextFor (4136) and
 // itemStages (3262) already read — not a new one. Celsius-native; rounded to match the integer °C
@@ -5406,35 +5422,36 @@ function vcVerifiedNums(meta){
     .filter(function(v){ return v!=null && !isNaN(Number(v)); })
     .map(function(v){ return Math.round(Number(v)); });
 }
-// One tokenizer shared by every rewrite path, matching the SAME token classes aiSafetyNums extracts —
-// so a number the extractor can see is never a number the guard fails to rewrite.
-// One tokenizer shared by every rewrite path, matching the SAME token classes aiSafetyNums extracts —
-// so a number the extractor can see is never a number the guard fails to rewrite. The callback receives
-// the whole token (a range is ONE token, not two numbers) and returns its complete replacement.
+// The ONE tokenizer shared by every rewrite path AND by aiSafetyNums (via SAFETY_TOKEN_SRC / safetyTokenRe,
+// defined above aiSafetyToC) — so a number the extractor can see is never a number the guard fails to
+// rewrite. The callback receives the whole token (a range is ONE token, not two numbers) and returns its
+// complete replacement.
 function vcMapSafetyNums(s, fn){
-  return String(s||'').replace(
-    /(\d+(?:\.\d+)?)\s*[-–]\s*(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)|(\d+(?:\.\d+)?)\s*(°\s*[CF]?|[CF]\b|ppm|%|מעלות)|\bpH\s*(\d+(?:\.\d+)?)/gi,
+  return String(s||'').replace(safetyTokenRe(),
     function(_m, r1, r2, ru, n1, u1, ph){
       if(r1!=null) return fn([parseFloat(r1), parseFloat(r2)], ru||'', 'range');
       if(n1!=null) return fn([parseFloat(n1)], u1||'', 'single');
       return fn([parseFloat(ph)], 'pH', 'ph');
     });
 }
-// Matched → speak the APP's verified figure (in °C — so a "correct" 165°F is still voiced as the app's
-// own 74°C, never the model's phrasing). Unmatched → strip the digits, keep the qualitative advice,
-// append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
-// Visually distinct from the sentence's own em-dash punctuation, so a reader can tell a redacted number
-// from ordinary prose (DoD-9 / L13 — found by looking at the 390×844 render, not by a test).
+// Redaction marker for an unverified number. Visually distinct from the sentence's own em-dash
+// punctuation, so a reader can tell a redacted number from ordinary prose (DoD-9 / L13 — found by
+// looking at the 390×844 render, not by a test).
 const VC_REDACT='[…]';
 // Matched → speak the APP's verified figure (in °C — so a "correct" 165°F is still voiced as the app's
-// own 74°C, never the model's phrasing). Unmatched → redact the token, keep the qualitative advice,
-// append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
+// own 74°C, never the model's phrasing). Unmatched → redact the token (VC_REDACT), keep the qualitative
+// advice, append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
 
-function vcGuardSpoken(text, meta, lang){
+function vcGuardSpoken(text, tiers, lang){
   const he=(lang||vcAnsLang())!=='en';
   const src=String(text||'');
   if(!aiSafetyNums(src).length) return src;
-  const ok={}; vcVerifiedNums(meta).forEach(function(n){ ok[n]=true; });
+  // Spec §3.1: a number is verified if it matches Tier 1's fields, OR — when Tier 1 has no resolvable
+  // item or no matching field — Tier 2's. A union is exactly that test, since a match is equality.
+  const tt=(tiers && (tiers.t1!==undefined || tiers.t2!==undefined)) ? tiers : {t1:tiers||null, t2:null};
+  const ok={};
+  vcVerifiedNums(tt.t1).forEach(function(n){ ok[n]=true; });
+  vcVerifiedNums(tt.t2).forEach(function(n){ ok[n]=true; });
   let redacted=0;                       // counts TOKENS, not numbers — a redacted range is ONE token
   const out=vcMapSafetyNums(src, function(vals, unit, kind){
     if(kind!=='ph' && /°|C\b|F\b|מעלות/i.test(String(unit||''))){
@@ -5478,11 +5495,11 @@ async function vcAskFlow(rawSaid){
   vcSpeak(ansL==='en'?'One moment, checking.':'רגע, בודק.', ansL);
   vcLastQA={q:question, a:(ansL==='en'?'…thinking':'…חושב')}; vcRender();
   try{
-    const ent=vcResolveEntity(question);          // resolved ONCE — item 3's search gate reuses it
-    const answer=await vcAskAI(question, ent);
+    const tiers=vcResolveTiers(question);                  // resolved ONCE — both tiers
+    const answer=await vcAskAI(question, tiers.t1||tiers.t2);
     // P0-app item 1: nothing reaches speech OR the transcript un-guarded. One guarded string, both
     // surfaces — a sighted user must never read something different from what a hands-busy user hears.
-    const guarded=vcGuardSpoken(answer, ent, ansL);
+    const guarded=vcGuardSpoken(answer, tiers, ansL);
     vcLastQA={q:question, a:guarded}; vcRender();
     vcSpeak(guarded, ansL);
   }catch(e){
