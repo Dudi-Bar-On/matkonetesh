@@ -324,6 +324,21 @@ for (const [label, phrase] of rangePhrasings) {
   });
 }
 
+// Phase A completion gate, FIX 1 — the demonstrated leak on the real built app: an English Voice Cook
+// answer using WORD-FORM units ("121 degrees Celsius", "85 degrees") bypassed the guard entirely, because
+// aiSafetyNums (built on SAFETY_UNIT, which had no word-form alternatives) returned [] and
+// vcGuardSpoken's early return ("no safety numbers at all -> untouched") let it through verbatim.
+test('word-form units are guarded — the English leak the Phase A audit found', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`vcTasks=[]; vcIdx=0; store.set('mk-vclang','en');
+    window.__vcAskMock='Botulism spores are destroyed at 121 degrees Celsius; the toxin breaks down near 85 degrees.';`);
+  await page.evaluate(`vcAskFlow('ask: what temp kills botulism')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).not.toMatch(/\d/);
+  expect(spoken).not.toContain('per the app\'s verified guide');
+});
+
 test('regression: a lone verified number IS still spoken with the marker (the rule must narrow, not disable)', async ({ page }) => {
   await bootVC(page);
   const f = await page.evaluate(`(function(){var c=DATA.cuts.find(function(x){return x.safe!=null;}); return {ikey:'cut-'+c.n, safe:Math.round(c.safe)};})()`) as {ikey:string; safe:number};

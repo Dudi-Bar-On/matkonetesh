@@ -4415,7 +4415,7 @@ function aiSafetyCaveat(txt){
 // regex then diverged from it and produced a CORRUPTED verified value ("1,063°C" -> "1,63°C" marked
 // verified), because the two patterns disagreed about where the number ended. Never write a second one.
 const SAFETY_NUM='\\d+(?:\\.\\d+)?';
-const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות)';
+const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|deg(?:rees?)?\\.?\\s*(?:C\\b|F\\b|celsius|fahrenheit)?|celsius|fahrenheit)';;
 const SAFETY_TOKEN_SRC=
     '('+SAFETY_NUM+')\\s*[-–]\\s*('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
   + '|('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'                               // 4 number  · 5 its unit

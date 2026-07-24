@@ -56,3 +56,18 @@ test('output preserves TEXTUAL order across mixed range and single-number input'
   // and locked, because Task 2's spoken guard is built on this function's output.
   expect(await page.evaluate(`aiSafetyNums('cure 156 ppm, then dry until 30-40% weight loss')`)).toEqual([156, 30, 40]);
 });
+
+// Phase A completion gate, FIX 1 — SAFETY_UNIT had NO word-form units ("degrees", "deg C", "celsius",
+// "fahrenheit"), only the symbol/abbreviation forms (°C, °F, C, F). aiSafetyNums returned [] for every
+// word-form input, which made vcGuardSpoken's early-return ("no safety numbers at all -> untouched")
+// let the raw model text through UNGUARDED. The app's OWN English TTS readout speaks "${m[1]} degrees"
+// (app.js ~5310) and the English system prompt is biased toward prose, not °C — so this is not a
+// theoretical gap, it is the shape the app's own English surface produces.
+test('FIX 1 — word-form units extract like their symbol-form equivalents', async ({ page }) => {
+  await boot(page);
+  expect(await page.evaluate(`aiSafetyNums('hold at 74 degrees')`)).toEqual([74]);
+  expect(await page.evaluate(`aiSafetyNums('74 degrees Celsius')`)).toEqual([74]);
+  // 165F -> (165-32)*5/9 = 73.888... -> rounds to 74, same convention as the existing °F test above.
+  expect(await page.evaluate(`aiSafetyNums('165 degrees Fahrenheit')`)).toEqual([74]);
+  expect(await page.evaluate(`aiSafetyNums('74 deg C')`)).toEqual([74]);
+});
