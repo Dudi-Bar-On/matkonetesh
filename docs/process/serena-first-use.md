@@ -1,12 +1,24 @@
 # Serena — first real, verified use (2026-07-24)
 
-> Status: **live and verified for JS/TS on this repo; Python not yet active; cross-file TS reference
-> search has a known gap.** This operationalizes §10.17 — Serena's tools were loaded, its manual was
-> read, onboarding was run, its tools were exercised against the real codebase (not a toy example),
-> honest failures were root-caused (not assumed), and project memories were written for future
-> Serena-using agents. This session was **read-only on all source/docs** except `.serena/memories/`
-> (via `write_memory`), one authorized `.serena/project.yml` edit (owner instruction mid-task, see
-> §5), and this report file.
+> Status (updated 2026-07-24, see "Issues resolved" and "Full configuration + indexing" below):
+> **live and verified across ALL 8 configured languages** (typescript/python/bash/powershell/toml/
+> yaml/json/html), **cross-file TS reference search fixed** via a root `tsconfig.json`, project
+> **indexed** (207 files), and Serena's tool/mode set **expanded**. The two sections below describe
+> two separate, owner-authorized follow-on sessions that closed every gap the original session (body
+> below, preserved as-is) found. This file is no longer read-only-session-scoped — later sections
+> touched `.serena/project.yml`, `~/.serena/serena_config.yml`, and the repo root (`tsconfig.json`),
+> all logged with evidence in their own sections.
+
+---
+
+**Original 2026-07-24 session (below, unedited)** — first real, verified use of Serena on this repo.
+Its own status line at the time: *live and verified for JS/TS on this repo; Python not yet active;
+cross-file TS reference search has a known gap.* This operationalized §10.17 — Serena's tools were
+loaded, its manual was read, onboarding was run, its tools were exercised against the real codebase
+(not a toy example), honest failures were root-caused (not assumed), and project memories were written
+for future Serena-using agents. That original session was **read-only on all source/docs** except
+`.serena/memories/` (via `write_memory`), one authorized `.serena/project.yml` edit (owner instruction
+mid-task, see §5 below), and this report file.
 
 ## 1. What the manual and docs said that matters
 
@@ -199,3 +211,257 @@ Paste into a subagent brief whenever the task is symbol-shaped code work on this
   supplementing the existing `serena-docs` tag) would let future sessions get this from the graph
   instead of a live web fetch. Recommended, not performed here — outside this session's authorized
   write scope (memories + this one report file only).
+
+---
+
+## Issues resolved (2026-07-24)
+
+Owner-authorized follow-on session, scoped explicitly to the two gaps §7 above flagged as needing
+sign-off. Both closed. Repo: `C:\Users\dudib\source\repos\matconetesh`.
+
+### Issue 1 — no `tsconfig.json` → `find_referencing_symbols` returns 0 cross-file references
+
+**Fix**: added a minimal root `tsconfig.json`:
+```json
+{
+  "compilerOptions": {
+    "allowJs": true, "checkJs": false, "noEmit": true, "skipLibCheck": true,
+    "target": "ES2020", "lib": ["ES2020", "DOM", "DOM.Iterable"]
+  },
+  "include": ["app.js", "serve.js", "worker/*.js", "tests/**/*.ts"],
+  "exclude": ["**/node_modules/**", "dist/**"]
+}
+```
+`target`/`lib` are not in the task's literal minimal field list but were added deliberately: verified
+via Playwright's own docs (`https://playwright.dev/docs/test-typescript`, fetched live — "Playwright
+only supports the following tsconfig options: `allowJs`, `baseUrl`, `paths` and `references`") that
+`target`/`lib` are invisible to Playwright's own test execution, so they cost nothing there — but
+without them, TS's *default* target (ES5) drops `Promise`/`Map`/etc. from tsserver's known-globals set
+once these files move from its permissive "inferred project" default into this explicit "configured
+project", which would have been a real regression for `get_diagnostics_for_file` on `app.js`/
+`worker/index.js`. `baseUrl`/`paths` were deliberately left unset (no path aliases in this repo, and
+they're the one Playwright-supported knob — leaving them unset keeps that no-op provably true).
+
+**Safety verification (§ "CRITICAL SAFETY" in the brief) — all three checked before AND after, not
+assumed:**
+
+| Check | Before | After |
+|---|---|---|
+| `npx playwright test --list` | 438 tests in 86 files | 438 tests in 86 files (unchanged) |
+| `python build.py` output | `index.html` 2,707,255 B; `dist/index.html` 2,707,255 B | identical, both files, byte-for-byte |
+| `get_diagnostics_for_file` on `worker/index.js` (regression check) | 6 Hints, all implicit-any, same messages | identical — 6 Hints, same messages/line ranges |
+
+(No suite RUN was performed at any point — `--list` is compilation-only, per the brief's explicit
+instruction; another agent owned the test server.)
+
+**`find_referencing_symbols` on `seedApp` (`tests/_fixtures.ts`) — the actual fix, verified working:**
+- Before: `{}` — zero references (reconfirmed fresh this session before touching anything).
+- After: real semantic references across the test suite. Two ways of counting the same result, both
+  far beyond "it found something":
+  - **Unfiltered** (every symbol-kind Serena attributes a reference to): **234 references across 83
+    files** — 151 grouped under the enclosing FILE/module scope (import lines, or calls inside
+    top-level `const foo = async (page) => {...}` arrow functions that aren't literally inside a named
+    function Serena tags separately) + 83 grouped under a named enclosing Function.
+  - **Filtered to strict LSP kind=12 (Function) only** — i.e. call sites specifically, closest to what
+    a `grep 'seedApp('` would count: ~81 references across 26 files (files that only ever *import*
+    `seedApp` via a re-export chain, with no local call, correctly drop out of this filtered view).
+  - The original §3 table's grep-derived "155 call sites across 84 files" is a third, independently
+    produced number from a different counting method (a literal-string grep pattern whose exact
+    command wasn't preserved) — it was not force-reconciled against Serena's own count digit-for-digit;
+    what matters and IS proven is the qualitative fact both agree on: real, multi-file, semantically
+    correct references, not the previous `{}`.
+  - Reconfirmed identical after a second, unrelated Serena restart (see next section) — not a fluke of
+    one particular server instance.
+
+### Issue 2 — TLS-blocked language servers: pyright + ShellCheck
+
+Both root-caused by reading the ACTUAL installed Serena/solidlsp source
+(`C:\Users\dudib\.local\venvs\serena\Lib\site-packages\`), not the MCP-surfaced error string alone.
+
+**pyright**: `PyrightServer` unconditionally shells out to `uvx -p 3.13 --from pyright==1.1.403
+pyright-langserver --stdio`. uv's own bundled CA store doesn't trust this sandbox's TLS-inspecting
+proxy (`invalid peer certificate: UnknownIssuer` fetching `https://pypi.org/simple/pyright/`) — no
+`--system-certs`/`UV_NATIVE_TLS` equivalent is exposed through Serena's own config surface. Fix:
+`npm install -g pyright` (npm's own fetch trusts the system cert store here) gives a complete, real
+`pyright-langserver.js` (pyright's actual implementation is Node-based; the PyPI package is a thin
+wrapper) — pointed Serena at it directly via `.serena/project.yml`
+`ls_specific_settings.python.ls_base_cmd: [<absolute path to node.exe>, <absolute path to
+pyright-langserver.js>]`, bypassing uv/PyPI entirely. (`ls_base_cmd`, not the simpler `ls_path`: the
+npm-installed executable on Windows is a `.cmd` shim, which can't be `CreateProcess`'d directly without
+a shell — `ls_base_cmd` names `node.exe` itself as the spawned process, `--stdio` appended
+automatically by the Uvx dependency provider.)
+
+**ShellCheck**: `bash-language-server` itself already installed fine via plain `npm install`
+(confirmed working in the very first serena-first-use.md session). Only its ShellCheck v0.10.0
+sub-dependency — fetched as a raw GitHub-releases zip via Python's own downloader — failed:
+`SSLCertVerificationError: unable to get local issuer certificate`. Fix: `winget install
+koalaman.shellcheck` (got 0.11.0 — version doesn't matter, Serena's own check is only
+`os.path.exists(binary_path)`, no version comparison) → copied the resulting `shellcheck.exe` to the
+EXACT path `bash_language_server.py` expects
+(`~/.serena/language_servers/static/BashLanguageServer/bash-lsp/shellcheck/shellcheck.exe`), so the
+download step is skipped entirely on the next attempt.
+
+**A precondition that would have silently defeated both fixes, found and fixed before it could**:
+`ls_specific_settings` (where the `ls_base_cmd` override lives) is only honored if
+`is_trusted_project_path()` returns true — read directly from `serena_config.py`:
+```python
+if self.project_config.ls_specific_settings:
+    if self.is_trusted():
+        ls_specific_settings.update(self.project_config.ls_specific_settings)
+    else:
+        log.warning(f"Project path {self.project_root} is not trusted, ignoring LS-specific settings ...")
+```
+`~/.serena/serena_config.yml`'s `trusted_project_path_patterns` was `[]` — empty means untrusted
+(confirmed by reading `is_trusted_project_path`'s loop-then-`return False` directly, not inferred from
+the sibling `web_dashboard_trusted_hosts` setting, whose *empty-means-trust-all* semantics are the
+opposite and would have been the wrong assumption to carry over). Fixed by adding
+`C:\Users\dudib\source\repos\matconetesh` to that list (see "Full configuration" below for the broader
+version and its explicit security note). Without this, both fixes would have applied to
+`project.yml` correctly, looked correct on inspection, and been **silently ignored** at runtime —
+exactly the kind of gap `systematic-debugging`/L20 exist to catch before it costs a debugging session.
+
+**Verification — both legs live, proven with a real query, not just "listed active":**
+- Python: `get_symbols_overview` on `build.py` → real functions/vars/constants (`_snorm`,
+  `_has_internal_temp`, `SEASONINGS`, `DATA_JSON`, ...). Previously:
+  `ValueError: Cannot extract symbols from file build.py. Active languages: ['typescript']`.
+- Bash: `get_symbols_overview` on `scripts/sync-docs.sh` → real shell variables (`MSG`, `PUSH`,
+  `DOCS_CHANGED`, ...).
+- Fresh server logs for the restart that activated both (zero errors):
+  `Language server startup (language=python) completed in 0.613 seconds`,
+  `Language server startup (language=bash) completed in 3.479 seconds` (typescript: 0.323s, unaffected).
+
+**Restart mechanics** (both `ls_specific_settings` and any `languages:` addition require a genuine
+process restart — there is no live "soft reload"; see "Full configuration" below for the full
+evidence). Performed twice this session: tree-killed the `serena.exe` process from its root PID
+(`taskkill /PID <pid> /T /F`), verified port 24282 freed and zero orphan PIDs remained, then made any
+Serena MCP tool call — Claude Code auto-respawned it transparently, picking up every config change
+fresh. `powershell`/`toml`/`yaml`/`json`/`html` were deliberately left OUT of `languages:` for this
+narrower restart (Serena's own project-activation path is fail-fast/all-or-nothing — see next section
+— and those five were completely untested at this point); see "Full configuration" for how they were
+subsequently added too.
+
+**Nothing left unresolved from this section's original two-issue scope.**
+
+---
+
+## Full configuration + indexing (2026-07-24)
+
+Owner directive, issued mid-session, extending the brief above: activate every language listed in
+`.serena/project.yml` (not only python/bash), confirm the trust fix, run full project indexing, and
+verify with real queries. All of it done in the same session as "Issues resolved" above, immediately
+following it — one more restart, described here.
+
+### Per-language activation — final status (all 8 verified with a real query)
+
+| Language | Server | Fix needed | Verified via | Result |
+|---|---|---|---|---|
+| typescript | typescript-language-server | none (already working) | `find_symbol` GEM_MODELS in app.js; `find_referencing_symbols` seedApp | exact hit; 234 cross-file refs |
+| python | pyright | `ls_base_cmd` → npm-installed pyright (see "Issues resolved") | `get_symbols_overview` build.py | real Python symbols |
+| bash | bash-language-server | pre-provisioned ShellCheck.exe (see "Issues resolved") | `get_symbols_overview` scripts/sync-docs.sh | real shell variables |
+| toml | Taplo | `winget install tamasfe.taplo` + `ls_path` | `get_symbols_overview` wrangler.toml | real TOML keys — **caveat**: Taplo's own runtime schema-catalog fetch (`schemastore.org`) fails the same TLS way, logged as ERROR, but is non-fatal — core symbol/reference function unaffected |
+| yaml | yaml-language-server | none — plain `npm install` already works | `get_symbols_overview` .github/workflows/test.yml | real YAML structure, no caveats |
+| json | vscode-json-languageserver | none — plain `npm install` already works | `get_symbols_overview` package.json | real JSON structure, no caveats |
+| html | vscode-html-language-server | none — plain `npm install` already works | `get_symbols_overview` docs/matkonetesh-modes-demo.html | real elements + embedded CSS/JS, no caveats |
+| powershell | PowerShell Editor Services | pwsh already present; PSES + PSScriptAnalyzer pre-provisioned manually (downloaded via `Invoke-WebRequest`/`Save-Module` — PowerShell's own TLS stack trusts this sandbox's proxy, confirmed empirically) | `get_symbols_overview` scripts/m-cpu-sampler.ps1 | real functions/vars, no caveats |
+
+Full per-language recipe with exact paths, commands, and reasoning: `mem:tooling/serena_language_activation`.
+
+**Serena genuinely doesn't support anything relevant that was skipped** — every language actually used
+in this repo (per `.serena/project.yml`'s own comments: TS/JS, Python, bash scripts, PowerShell
+scripts, TOML configs, YAML workflows, JSON configs, HTML mockups) has a real Serena/solidlsp language
+server, and all eight now run. `markdown` was deliberately NOT added — not a support gap, a division-
+of-labor choice (CLAUDE.md §10.17: docs relationships are graphify's job, not Serena's; see
+`tech_stack` memory).
+
+### The trust fix
+
+`~/.serena/serena_config.yml` `trusted_project_path_patterns` was `[]` (empty = untrusted — confirmed
+by reading `is_trusted_project_path()` directly, not assumed from a sibling setting's opposite
+semantics). Fixed with three patterns:
+```yaml
+trusted_project_path_patterns:
+- C:\Users\dudib\source\repos\matconetesh
+- C:\Users\dudib\source\repos\matconetesh\**
+- C:\Users\dudib\source\repos\**
+```
+The first is the one that is actually guaranteed to match: read `serena/util/text_utils.py`'s
+`glob_match` directly — its "`**`" handling only special-cases a MIDDLE "`/**/`" occurrence (and that
+branch checks for a literal `\**\` that can never match post-normalization — a latent bug in that
+function, not exploited or relied upon here) or a LEADING "`**/`"; a TRAILING "`/**`" with nothing
+after it does not match a bare parent path under plain `fnmatch.translate`. The bare-path entry is the
+one that actually satisfies `is_trusted_project_path()`'s check (which compares against the literal
+project-root string, no subpath); the `\**` variant is kept alongside as a harmless, not load-bearing,
+second entry. The third (repos-root) pattern was added per the owner's explicit "if sensible" — this
+machine is a personal dev box, not multi-tenant, and `matkonet` is already a second registered Serena
+project here that benefits the same way.
+
+**Security note, stated plainly (not silently done)**: "trusted" here specifically means Serena will
+honor a project's own `.serena/project.yml` `ls_specific_settings` (`ls_path`/`ls_base_cmd`/`ls_args`),
+which names an arbitrary command to execute when that project's language servers start. Trusting the
+repos root grants arbitrary-command-execution-on-activation to anything under that path tree, not just
+this one project — scoped deliberately to the repos root, not a blanket `**` trusting the whole
+machine.
+
+### Indexing
+
+`serena project index "C:\Users\dudib\source\repos\matconetesh" --log-level INFO` (the CLI command,
+confirmed via `serena project --help`: *"Index a project by saving symbols to the LSP cache"*) — a
+separate, self-contained, short-lived process: starts its own 8 language servers, indexes, saves a
+cache, shuts everything down cleanly. Did not disturb the separately-running MCP server process (no
+port/resource conflicts observed; both were run — deliberately sequentially, not concurrently with any
+other heavy operation, per the general §11a discipline this project already applies to Playwright).
+
+```
+Indexing: 100%|##########| 207/207
+Indexed files per language: json=31, typescript=105, python=11, toml=2, yaml=47, html=8, powershell=2, bash=1
+```
+207 files total, zero errors, cache written to `.serena/cache/<language>/{raw_document_symbols,
+document_symbols}.pkl` for all 8 languages. Ran in ~5 seconds end-to-end.
+
+Note on "semantic generation": Serena's own indexing is purely LSP/symbol-structural — there is no LLM
+step anywhere in `serena project index`'s pipeline (confirmed by reading the command's source path).
+If genuinely LLM-derived semantic relationships over the codebase are wanted (not just symbol
+locations/references), that is graphify's job per this project's own established division of labor
+(CLAUDE.md §10.17/`docs/process/serena-adoption.md`) — a related but distinctly separate, larger
+undertaking (graphify's own docs corpus currently covers documentation, not this codebase's source;
+running it over ~9.6k-line `app.js` + the full Python data layer would be a substantial new task in its
+own right) — not performed here, flagged rather than silently assumed out of scope.
+
+### Tools and modes
+
+`included_optional_tools` (`.serena/project.yml`) now lists every tool the `claude-code` context
+leaves inactive by default, EXCLUDING the `jet_brains_*` family (this project uses the LSP backend, not
+the JetBrains plugin bridge — those tools would only ever error here). Verified post-restart via
+`get_config_overview`'s `active_tools`: **39 active tools**, including `activate_project`/
+`remove_project` — worth flagging precisely because `claude-code.yml`'s own docstring says
+`single_project: true` "always" disables `activate_project`; checked, not assumed, and the check
+showed it IS active here (an explicit `included_optional_tools` entry apparently wins over the
+context's own auto-exclusion on this Serena version, 1.6.0) — the earlier prediction to the contrary
+in a first draft of the `tooling/serena_usage` memory was corrected once this was verified.
+
+`added_modes` has only `query-projects` — the one Serena mode that is purely additive (adds
+`list_queryable_projects` + `query_project`, excludes nothing). Every other mode's own YAML
+(`resources/config/modes/*.yml`) was read before deciding: `benchmark`/`no-memories` exclude every
+memory tool; `planning`/`onboarding` exclude every edit tool (`create_text_file`,
+`replace_symbol_body`, `execute_shell_command`, ...); `no-onboarding` excludes the `onboarding` tool
+that `onboarding` mode IS built around; `one-shot`/`benchmark` are per-session autonomy prompts, not
+project defaults. Modes are mutually-exclusionary behavioral toggles, not independent feature flags —
+"enable all modes" as a permanent project default is not a coherent state (it would strip tools other
+modes/the project need), so only the one genuinely conflict-free mode was added. **Still open, pending
+owner confirmation**: whether to add `onboarding` mode anyway despite the edit-tool tradeoff — asked
+in-conversation, not yet answered as of this write-up; `editing`/`interactive` (both already active by
+default) and `query-projects` remain the permanent set until/unless that's confirmed.
+
+### Safety rails — re-verified after every config change, not just once
+
+| Check | Result |
+|---|---|
+| `npx playwright test --list` | 438 tests in 86 files — confirmed unchanged after the tsconfig.json addition AND again after the full 8-language + tools/modes restart |
+| `python build.py` | `index.html` / `dist/index.html` both 2,707,255 bytes — confirmed unchanged at the same two checkpoints |
+
+No suite run was performed at any point in either follow-on session — only `--list` (compilation-only)
+and `build.py`, per the brief. `.serena/project.yml`, `~/.serena/serena_config.yml`, and root
+`tsconfig.json` are the only files this pair of sessions wrote outside `.serena/memories/` and this
+report.
+
+### Nothing left unresolved from the owner directive's four points — except the one flagged decision above (onboarding mode).

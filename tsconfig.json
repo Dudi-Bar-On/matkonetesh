@@ -1,0 +1,40 @@
+{
+  // Minimal root TS project so tsserver (Serena's LSP backend) can build ONE unified cross-file
+  // program spanning app.js / serve.js / worker/*.js / tests/**/*.ts. Added 2026-07-24 to fix
+  // Serena's find_referencing_symbols returning 0 cross-file references for symbols defined in
+  // tests/_fixtures.ts (e.g. seedApp — 155 real call sites, all invisible without this file).
+  // See docs/process/serena-first-use.md "Issues resolved (2026-07-24)".
+  //
+  // SAFETY (verified, not assumed): Playwright Test only reads allowJs/baseUrl/paths/references
+  // from a tsconfig — everything else here (checkJs/noEmit/skipLibCheck/target/lib/include/exclude)
+  // is inert for `npx playwright test`, which keeps using its own esbuild-based transform exactly
+  // as before. baseUrl/paths are deliberately NOT set, so even that one supported knob stays a no-op.
+  // `npx playwright test --list` was 438 tests in 86 files before this file existed and is verified
+  // unchanged after. `python build.py` does not invoke tsc/tsserver at all (pure Python), and its
+  // output byte count is verified unchanged (index.html and dist/index.html both 2,707,255 bytes,
+  // before and after).
+  "compilerOptions": {
+    "allowJs": true,       // let app.js / serve.js / worker/*.js join the same program as the .ts tests
+    "checkJs": false,      // do NOT type-check the untyped .js files — would flood app.js with noise
+    "noEmit": true,        // Serena/tsserver only ever reads; nothing should ever be compiled to disk
+    "skipLibCheck": true,  // don't spend time re-checking node_modules' own .d.ts internals
+    // target/lib: without these, TS's own default (target ES5 => lib DOM,ES5,ScriptHost) would drop
+    // Promise/Map/Set/etc. from the known-globals set once these files move from tsserver's permissive
+    // per-file "inferred project" mode into this explicit "configured project" — a real regression
+    // risk for a modern browser app. ES2020+DOM keeps it at least as permissive as today's baseline
+    // (empirically verified: get_diagnostics_for_file on worker/index.js returns the same 6 Hints,
+    // same messages, before and after this file was added).
+    "target": "ES2020",
+    "lib": ["ES2020", "DOM", "DOM.Iterable"]
+  },
+  "include": [
+    "app.js",
+    "serve.js",
+    "worker/*.js",
+    "tests/**/*.ts"
+  ],
+  "exclude": [
+    "**/node_modules/**",
+    "dist/**"
+  ]
+}
