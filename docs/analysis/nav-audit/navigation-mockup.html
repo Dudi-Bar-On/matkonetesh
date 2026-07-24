@@ -1,0 +1,640 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>מודל הניווט — היום מול המוצע · מוקאפ אינטראקטיבי</title>
+<style>
+  :root{
+    --bg:#f2e9dc; --card:#fdf6ec; --ink:#2e2119; --mut:#7b6754; --line:#e0d0ba;
+    --ember:#c0562f; --good:#2f7d4f; --bad:#b3271e; --fresh:#1a7a63; --deep:#7a5cc2;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font-family:"Segoe UI",system-ui,-apple-system,"Noto Sans Hebrew",Arial,sans-serif;
+    font-size:15px;line-height:1.5;padding:18px}
+  h1{font-size:20px;margin:0 0 4px}
+  .lede{color:var(--mut);font-size:13px;margin:0 0 16px;max-width:1100px}
+  .wrap{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+
+  /* ---------- phone ---------- */
+  .phone{width:390px;height:844px;flex:0 0 390px;background:var(--card);
+    border:10px solid #251b14;border-radius:34px;overflow:hidden;position:relative;
+    box-shadow:0 14px 40px rgba(0,0,0,.28);display:flex;flex-direction:column}
+  .urlbar{flex:0 0 auto;background:#251b14;color:#cbb9a4;font-size:10.5px;padding:5px 10px;
+    direction:ltr;text-align:left;font-family:ui-monospace,Consolas,monospace;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .stage{position:relative;flex:1 1 auto;overflow:hidden}
+
+  .screen{position:absolute;inset:0;padding:14px;overflow:auto;display:none}
+  .screen.on{display:block}
+  .scrtitle{font-size:19px;font-weight:700;margin:2px 0 10px}
+  .scrsub{color:var(--mut);font-size:12.5px;margin:-6px 0 12px}
+
+  .tile{background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;
+    margin-bottom:9px;cursor:pointer;display:flex;gap:10px;align-items:center}
+  .tile:hover{border-color:var(--ember)}
+  .tile .ic{font-size:20px}
+  .tile b{display:block;font-size:14px}
+  .tile small{color:var(--mut);font-size:11.5px}
+  .tile .go{margin-inline-start:auto;color:var(--mut)}
+  .dock{background:#fff8ee;border:1px dashed var(--line);border-radius:14px;padding:10px;margin-bottom:10px}
+  .dock h4{margin:0 0 8px;font-size:12px;color:var(--mut);font-weight:700}
+  .dockgrid{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .dockbtn{background:#fff;border:1px solid var(--line);border-radius:11px;padding:9px 8px;
+    font:inherit;font-size:12px;cursor:pointer;text-align:center}
+  .dockbtn:hover{border-color:var(--ember)}
+
+  /* bottom nav */
+  .cnav{flex:0 0 auto;display:flex;border-top:1px solid var(--line);background:#fff}
+  .cnav button{flex:1;background:none;border:0;padding:8px 2px 10px;font:inherit;font-size:10.5px;
+    color:var(--mut);cursor:pointer}
+  .cnav button .ni{display:block;font-size:17px}
+  .cnav button.on{color:var(--ember);font-weight:700}
+
+  /* panel + scrim */
+  .scrim{position:absolute;inset:0;background:rgba(30,20,12,.45);display:none;z-index:5}
+  .scrim.open{display:block}
+  .panel{position:absolute;inset:22px 0 0 0;background:var(--card);z-index:6;
+    border-radius:20px 20px 0 0;transform:translateY(102%);transition:transform .22s ease;
+    display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
+  .panel.open{transform:translateY(0)}
+  .panel-top{position:relative;padding:14px 16px 12px;padding-inline-end:56px;
+    border-bottom:1px solid var(--line);
+    background:linear-gradient(180deg,var(--pc,#c0562f)14%,transparent 100%);flex:0 0 auto}
+  .panel-top .cat{font-size:11px;font-weight:700;color:#fff;opacity:.95}
+  .panel-top h2{margin:2px 0 1px;font-size:17px}
+  .panel-top .sub{color:var(--mut);font-size:11.5px}
+  /* the real app puts the ✕ at the visual LEFT in RTL (audit s9-nested-cart-has-backbtn.png) */
+  .exitbtn{position:absolute;top:12px;inset-inline-end:12px;width:36px;height:36px;border-radius:50%;
+    border:1px solid var(--line);background:#fff;font-size:17px;cursor:pointer;line-height:1;
+    box-shadow:0 1px 4px rgba(0,0,0,.12)}
+  .exitbtn:hover{border-color:var(--ember)}
+  .backbtn{display:inline-block;background:none;border:0;color:#5a4636;font:inherit;font-size:12.5px;
+    cursor:pointer;text-decoration:underline;padding:7px 0 0;margin:0}
+  .panel-body{padding:14px 16px 20px;overflow:auto;flex:1 1 auto}
+  .panel-body input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:10px;
+    font:inherit;font-size:14px;background:#fff}
+  .lbl{font-size:12px;color:var(--mut);margin:10px 0 4px}
+  .note{background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px;font-size:12.5px;color:var(--mut)}
+
+  /* wizard */
+  .cwbar{display:flex;gap:5px;margin-bottom:10px}
+  .cwdot{flex:1;height:5px;border-radius:3px;background:var(--line)}
+  .cwdot.on{background:var(--ember)}
+  .cwlbl{font-size:12px;color:var(--mut);margin-bottom:8px}
+  .ltr{direction:ltr;unicode-bidi:isolate;display:inline-block}
+
+  /* dialog */
+  .dlg{position:absolute;inset:0;z-index:9;display:none;align-items:center;justify-content:center;padding:22px}
+  .dlg.open{display:flex}
+  .dlg-scrim{position:absolute;inset:0;background:rgba(30,20,12,.5)}
+  .dlg-card{position:relative;background:var(--card);border-radius:16px;padding:16px;width:100%;
+    box-shadow:0 10px 30px rgba(0,0,0,.35)}
+  .dlg-msg{font-size:14px;margin-bottom:12px}
+  .dlg-btns{display:flex;gap:8px;flex-wrap:wrap}
+  .dlg-btn{flex:1;min-width:96px;padding:9px;border-radius:11px;border:1px solid var(--line);
+    background:#fff;font:inherit;font-size:13px;cursor:pointer}
+  .dlg-btn.pri{background:var(--ember);color:#fff;border-color:var(--ember)}
+
+  .gone{position:absolute;inset:0;z-index:20;background:#fff;display:none;
+    flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;padding:26px}
+  .gone.on{display:flex}
+  .gone .big{font-size:44px}
+  .gone b{font-size:16px;color:var(--bad)}
+  .gone small{color:var(--mut);font-size:12.5px}
+
+  .toast{position:absolute;bottom:14px;inset-inline:16px;z-index:8;background:#251b14;color:#fdf6ec;
+    border-radius:12px;padding:10px 12px;font-size:12.5px;opacity:0;transition:opacity .2s;pointer-events:none}
+  .toast.on{opacity:1}
+
+  /* ---------- controls / rails ---------- */
+  .side{flex:1 1 340px;min-width:330px;max-width:560px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:13px;margin-bottom:12px}
+  .card h3{margin:0 0 9px;font-size:14px}
+  .modes{display:flex;gap:8px;margin-bottom:10px}
+  .modebtn{flex:1;padding:11px 8px;border-radius:12px;border:2px solid var(--line);background:#fff;
+    font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+  .modebtn.on[data-m="today"]{border-color:var(--bad);background:#fdecea;color:var(--bad)}
+  .modebtn.on[data-m="new"]{border-color:var(--good);background:#eaf5ee;color:var(--good)}
+  .modehint{font-size:12px;color:var(--mut);margin:0 0 4px}
+
+  .btnrow{display:flex;gap:7px;flex-wrap:wrap}
+  .act{padding:9px 11px;border-radius:11px;border:1px solid var(--line);background:#fff;
+    font:inherit;font-size:13px;cursor:pointer}
+  .act:hover{border-color:var(--ember)}
+  .act.hw{border-color:#251b14;background:#251b14;color:#fdf6ec}
+  .act.jr{background:#fff8ee}
+
+  .rail{display:flex;gap:5px;flex-wrap:wrap;margin-top:7px}
+  .chip{font-size:11.5px;padding:4px 9px;border-radius:20px;background:#fff;border:1px solid var(--line)}
+  .chip.top{border-color:var(--ember);font-weight:700}
+  .chip.empty{color:var(--mut);font-style:italic}
+  .kpi{font-size:12px;color:var(--mut)}
+  .kpi b{color:var(--ink);font-size:14px}
+
+  .log{max-height:270px;overflow:auto;font-size:12.5px}
+  .log div{padding:5px 7px;border-inline-start:3px solid var(--line);margin-bottom:5px;background:#fff;border-radius:0 8px 8px 0}
+  .log .ok{border-inline-start-color:var(--good)}
+  .log .no{border-inline-start-color:var(--bad);background:#fdf1ef}
+  .log .info{border-inline-start-color:var(--mut);color:var(--mut)}
+  .log em{font-style:normal;color:var(--mut)}
+  .tally{display:flex;gap:14px;margin-bottom:8px}
+  .tally span{font-size:12px;color:var(--mut)}
+  .tally b{font-size:17px}
+  .okc b{color:var(--good)} .noc b{color:var(--bad)}
+  footer{margin-top:16px;font-size:11.5px;color:var(--mut);max-width:1100px}
+  code{background:#fff;border:1px solid var(--line);border-radius:5px;padding:0 4px;font-size:11.5px;direction:ltr;display:inline-block}
+</style>
+</head>
+<body>
+
+<h1>מודל הניווט — היום מול המוצע</h1>
+<p class="lede">
+  מוקאפ התנהגות (לא עיצוב) לאישור לפי <b>§10.9</b>. הטלפון הוא 390 × 844.
+  בחר מסלול, בחר מצב — <b>היום</b> או <b>המוצע</b> — ואז לחץ על אמצעי יציאה: ✕ · Esc · רקע · ⬅ חזור (חומרה) · ⟳ רענון.
+  הפסים בצד מראים את <b>ערימת הפאנלים</b> ואת <b>היסטוריית הדפדפן</b> — שני הדברים שהביקורת מצאה שבורים.
+  הספירה למטה סופרת נחיתות צפויות מול לא־צפויות, בדיוק כמו ה־18 מתוך 21 בביקורת.
+</p>
+
+<div class="wrap">
+
+  <!-- ================= PHONE ================= -->
+  <div class="phone">
+    <div class="urlbar" id="urlbar">matkonetesh.pages.dev/index.html</div>
+    <div class="stage" id="stage">
+
+      <!-- HOME -->
+      <div class="screen on" id="scr-home">
+        <div class="scrtitle">מדריך האש</div>
+        <div class="scrsub">בית · מה מתבשל היום</div>
+        <div class="dock">
+          <h4>🛠️ כלי הפיטמאסטר <span style="color:#b3271e">· משגר #2 (11 כלים) — לא נבדק בביקורת</span></h4>
+          <div class="dockgrid">
+            <button class="dockbtn" data-open="calc">🧮 מלח / ריפוי</button>
+            <button class="dockbtn" data-open="reminders">⏰ תזכורות</button>
+          </div>
+        </div>
+        <div class="tile" data-open="more"><span class="ic">☰</span><span><b>עוד — כל הכלים</b><small>משגר #1 · 27 כניסות</small></span><span class="go">←</span></div>
+        <div class="tile" data-open="menu"><span class="ic">🍽️</span><span><b>בונה תפריט לאירוח</b><small>מנות, כמויות וזמנים</small></span><span class="go">←</span></div>
+        <div class="tile" data-nav="catalog"><span class="ic">📚</span><span><b>קטלוג</b><small>279 מתכונים</small></span><span class="go">←</span></div>
+      </div>
+
+      <!-- CATALOG -->
+      <div class="screen" id="scr-catalog">
+        <div class="scrtitle" id="catTitle">קטלוג</div>
+        <div id="catLanding">
+          <div class="scrsub">בחר קטגוריה</div>
+          <div class="tile" data-cat="בשר אדום"><span class="ic">🥩</span><span><b>בשר אדום</b><small>בריסקט, אנטריקוט, שוק</small></span><span class="go">←</span></div>
+          <div class="tile" data-cat="עוף"><span class="ic">🍗</span><span><b>עוף</b><small>שלם, כנפיים, פרגית</small></span><span class="go">←</span></div>
+        </div>
+        <div id="catCat" style="display:none">
+          <div class="scrsub" id="catSub">בשר אדום · 12 נתחים</div>
+          <div class="tile" data-open="item"><span class="ic">🥩</span><span><b>בריסקט</b><small>עישון · 12-14 שעות</small></span><span class="go">←</span></div>
+          <div class="tile"><span class="ic">🥩</span><span><b>אנטריקוט</b><small>גריל · 20 דקות</small></span><span class="go">←</span></div>
+        </div>
+      </div>
+
+      <!-- WIZARD -->
+      <div class="screen" id="scr-wizard">
+        <div class="scrtitle">אשף האירוע</div>
+        <div class="cwbar" id="cwbar"></div>
+        <div class="cwlbl" id="cwLbl">שלב <span class="ltr">1/6</span></div>
+        <div id="cwBody"></div>
+        <div class="btnrow" style="margin-top:12px">
+          <button class="act" id="cwPrev">→ שלב קודם</button>
+          <button class="act" id="cwNext">שלב הבא ←</button>
+          <button class="act" id="cwExit">✕ יציאה מהאשף</button>
+        </div>
+      </div>
+
+      <!-- EVENTS -->
+      <div class="screen" id="scr-events">
+        <div class="scrtitle">אירועים</div>
+        <div class="scrsub">האירועים השמורים שלך</div>
+        <div class="tile" data-nav="wizard"><span class="ic">🎉</span><span><b>שישי במשפחה</b><small>הקש כדי לערוך באשף</small></span><span class="go">←</span></div>
+      </div>
+
+      <div class="scrim" id="scrim"></div>
+      <aside class="panel" id="panel"></aside>
+
+      <div class="dlg" id="dlg">
+        <div class="dlg-scrim" data-dlg="dismiss"></div>
+        <div class="dlg-card">
+          <div class="dlg-msg" id="dlgMsg"></div>
+          <div class="dlg-btns" id="dlgBtns"></div>
+        </div>
+      </div>
+
+      <div class="toast" id="toast"></div>
+
+      <div class="gone" id="gone">
+        <div class="big">🚪</div>
+        <b>יצאת מהאפליקציה</b>
+        <small id="goneWhy"></small>
+        <button class="act" id="relaunch">↩ הפעל מחדש</button>
+      </div>
+    </div>
+
+    <nav class="cnav" id="cnav">
+      <button data-nav="home" class="on"><span class="ni">🏠</span>בית</button>
+      <button data-nav="catalog"><span class="ni">📚</span>קטלוג</button>
+      <button data-nav="wizard"><span class="ni">🎉</span>אשף</button>
+      <button data-nav="events"><span class="ni">📋</span>אירועים</button>
+    </nav>
+  </div>
+
+  <!-- ================= CONTROLS ================= -->
+  <div class="side">
+
+    <div class="card">
+      <h3>מצב</h3>
+      <div class="modes">
+        <button class="modebtn" data-m="today">היום (מהדורה 262)</button>
+        <button class="modebtn on" data-m="new">המוצע</button>
+      </div>
+      <p class="modehint" id="modehint"></p>
+    </div>
+
+    <div class="card">
+      <h3>מסלולים — לחץ כדי לקפוץ למקום המעניין</h3>
+      <div class="btnrow">
+        <button class="act jr" data-jr="ai">☰ ← כלי AI ← ניתוח תמונה <em>(אובדן דו־שלבי)</em></button>
+        <button class="act jr" data-jr="cart">בונה תפריט ← רשימת קניות <em>(מקונן)</em></button>
+        <button class="act jr" data-jr="wiz">אירועים ← אשף, שלב 3 <em>(יציאה באמצע)</em></button>
+        <button class="act jr" data-jr="item">קטלוג ← בשר אדום ← בריסקט</button>
+        <button class="act jr" data-jr="form">⏰ תזכורות + טקסט שהוקלד</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>יציאה — כל האמצעים</h3>
+      <div class="btnrow">
+        <button class="act" data-ex="x">✕ כפתור הסגירה</button>
+        <button class="act" data-ex="esc">⎋ Escape</button>
+        <button class="act" data-ex="scrim">רקע (הקשה מחוץ)</button>
+        <button class="act hw" data-ex="back">⬅ חזור (חומרה)</button>
+        <button class="act" data-ex="reload">⟳ רענון / פתיחה מחדש של ה־PWA</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>המצב הפנימי</h3>
+      <div class="kpi">ערימת פאנלים · <b id="stackN">0</b></div>
+      <div class="rail" id="stackRail"></div>
+      <div class="kpi" style="margin-top:10px">היסטוריית דפדפן · <b id="histN">1</b> רשומות</div>
+      <div class="rail" id="histRail"></div>
+    </div>
+
+    <div class="card">
+      <h3>מה קרה</h3>
+      <div class="tally">
+        <span class="okc">נחיתות צפויות <b id="okN">0</b></span>
+        <span class="noc">לא צפויות <b id="noN">0</b></span>
+        <button class="act" id="clearLog" style="margin-inline-start:auto;padding:4px 9px;font-size:12px">נקה</button>
+      </div>
+      <div class="log" id="log"></div>
+    </div>
+
+  </div>
+</div>
+
+<footer>
+  <b>מה המוקאפ לא מתיימר להראות:</b> את העיצוב האמיתי של האפליקציה. הוא מדגים <em>התנהגות</em> בלבד.
+  <b>מה כן:</b> ✕ שהופך ל־<span class="ltr">→</span> כשיש ערימה (החלטה <code>D6-A</code>) · Back של חומרה שמוציא צעד אחד במקום את האפליקציה
+  (<code>G-N1</code>) · שחזור אחרי רענון מתוך ה־URL (<code>G-N6</code>) · פאנל AI שלא ניתן לשחזור ונוחת על ההורה שלו (מגבלת התכן, §8 במפרט) ·
+  שדה שהוקלד שנשמר במקום להימחק בשקט (<code>G-N7</code>) · ויציאה באמצע האשף שחוזרת למסך שממנו נכנסת (<code>G-N5</code>).
+  <br>המפרט המלא: <code>docs/superpowers/specs/2026-07-24-navigation-model-design.md</code> · הביקורת: <code>docs/analysis/2026-07-24-navigation-model-audit.md</code>
+</footer>
+
+<script>
+/* ============================ registry ============================ */
+const PANELS = {
+  more:      {t:'עוד', s:'כל הכלים והתכונות', e:'☰', c:'#e07a52', kind:'launcher',
+              items:[['🤖','כלי AI','aihub'],['🍽️','בונה תפריט','menu'],['🧮','מחשבון מלח','calc'],['⏰','תזכורות','reminders']]},
+  aihub:     {t:'כלי AI', s:'כל היכולות החכמות במקום אחד', e:'🤖', c:'#7a5cc2', kind:'launcher',
+              items:[['📸','ניתוח תמונה','photo'],['🔥','שאל את האש','ask'],['✨','מחולל מתכונים','recgen']]},
+  photo:     {t:'ניתוח תמונה', s:'✨ נוצר ע״י AI · לא ניתן לשחזור', e:'📸', c:'#7a5cc2', restore:'parent', parent:'aihub',
+              body:'<div class="note">תוצאה של מודל: «הקרום נראה יבש מדי — הוסף לחות בשעתיים האחרונות.»<br><br>'+
+                   '<b>זו המגבלה האמיתית של התכן:</b> תשובת AI אינה נתון שאפשר לבנות מחדש מ־URL. ברענון נחזור לכלי־ה־AI — ולא נריץ את הבקשה שוב.</div>'},
+  ask:       {t:'שאל את האש', s:'עוזר בישול', e:'🔥', c:'#e85c1c', body:'<div class="lbl">השאלה שלך</div><input data-keep="ask" placeholder="כמה זמן בריסקט של 5 ק״ג?">'},
+  recgen:    {t:'מחולל מתכונים', s:'תאר מתכון — ואכתוב אותו', e:'✨', c:'#9e4a3d', restore:'parent', parent:'aihub', body:'<div class="note">טופס AI.</div>'},
+  menu:      {t:'בונה תפריט לאירוח', s:'מנות, תוספות, כמויות וזמנים', e:'🍽️', c:'#cf6a4a',
+              body:'<div class="note">3 מנות · 8 סועדים</div>', items:[['🛒','רשימת קניות','cart']]},
+  cart:      {t:'רשימת קניות', s:'לפי מה שבחרת', e:'🛒', c:'#4f8a5c', body:'<div class="note">בריסקט 5 ק״ג · פחם 3 ק״ג · עץ אלון</div>'},
+  calc:      {t:'מחשבון מלח / כמויות', s:'ריפוי יבש ובריינים', e:'🧮', c:'#b5603a',
+              body:'<div class="lbl">משקל הנתח (גרם)</div><input data-keep="calcW" placeholder="1000">'+
+                   '<div class="lbl">מספר סועדים</div><input data-keep="calcD" placeholder="4">'},
+  reminders: {t:'תזכורות', s:'אבני־דרך לתהליכים רב־יומיים', e:'⏰', c:'#b5603a',
+              body:'<div class="lbl">תזכורת חדשה</div><input data-keep="rem" placeholder="להפוך את הבשר ביום 3">'},
+  item:      {t:'בריסקט', s:'Brisket · עישון 12-14 שעות', e:'🥩', c:'#a23b2c',
+              body:'<div class="note">טמפרטורת יעד פנימית 96°C · עישון על אלון.</div>'}
+};
+const SCREEN_NAME={home:'בית',catalog:'קטלוג',wizard:'אשף',events:'אירועים'};
+
+/* ============================ state ============================ */
+let mode='new';
+let S={s:'home',v:{},st:[]};
+let hist=[JSON.parse(JSON.stringify(S))];   // proposed mode: real entries. today: always length 1
+let keep={};                                // persisted scratch input (proposed mode)
+let live={};                                // what is currently typed
+let ok=0,no=0, gone=false;
+
+const $=q=>document.querySelector(q);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const topId=()=>S.st.length?S.st[S.st.length-1]:null;
+
+/* ============================ log ============================ */
+function log(kind,txt,expected){
+  const d=document.createElement('div');
+  d.className=kind;
+  d.innerHTML=txt;
+  $('#log').prepend(d);
+  if(kind==='ok'){ok++;} if(kind==='no'){no++;}
+  $('#okN').textContent=ok; $('#noN').textContent=no;
+}
+function land(where,expect){
+  if(where===expect) log('ok','✓ נחתת ב־<b>'+where+'</b> — כמצופה.');
+  else log('no','✗ נחתת ב־<b>'+where+'</b>, ציפית ל־<b>'+expect+'</b>.');
+}
+$('#clearLog').onclick=()=>{$('#log').innerHTML='';ok=no=0;$('#okN').textContent=0;$('#noN').textContent=0;};
+
+/* ============================ url ============================ */
+function urlFor(st){
+  const bare='matkonetesh.pages.dev/index.html';
+  if(mode==='today') return bare;                              // today: the URL never changes
+  if(st.s==='home' && !st.st.length) return bare;
+  const nav={s:st.s}; if(Object.keys(st.v).length) nav.v=st.v; if(st.st.length) nav.st=st.st.map(id=>({id}));
+  return bare+'?nav='+encodeURIComponent(JSON.stringify(nav)).slice(0,120);
+}
+
+/* ============================ render ============================ */
+function render(){
+  document.querySelectorAll('.screen').forEach(x=>x.classList.toggle('on',x.id==='scr-'+S.s));
+  document.querySelectorAll('#cnav button').forEach(b=>b.classList.toggle('on',b.dataset.nav===S.s));
+  // catalog view state
+  $('#catLanding').style.display = (S.v.m==='cat')?'none':'';
+  $('#catCat').style.display     = (S.v.m==='cat')?'':'none';
+  $('#catTitle').textContent     = (S.v.m==='cat')?(S.v.g||'קטלוג'):'קטלוג';
+  // wizard
+  if(S.s==='wizard') paintWizard(S.v.w||0);
+  // panel
+  const p=$('#panel'), id=topId();
+  if(id){
+    const P=PANELS[id];
+    const depth=S.st.length;
+    const showBack = (mode==='new') ? depth>=2 : depth>=2;      // today only renders it when openFrom was used
+    const glyph = (mode==='new' && depth>=2) ? '→' : '✕';
+    const alabel= (mode==='new' && depth>=2) ? 'חזרה' : 'סגור';
+    p.style.setProperty('--pc',P.c);
+    p.innerHTML =
+      '<div class="panel-top">'+
+        '<button class="exitbtn" data-ex="x" aria-label="'+alabel+'" title="'+alabel+'">'+glyph+'</button>'+
+        '<div class="cat">'+P.e+' '+(P.kind==='launcher'?'משגר':'כלי')+'</div>'+
+        '<h2>'+P.t+'</h2><div class="sub">'+P.s+'</div>'+
+        (mode==='today' && showBack ? '<button class="backbtn" data-ex="popone">→ חזרה לחלון הקודם</button>' : '')+
+      '</div>'+
+      '<div class="panel-body">'+(P.body||'')+
+        (P.items? P.items.map(i=>'<div class="tile" data-open="'+i[2]+'"><span class="ic">'+i[0]+'</span><span><b>'+i[1]+'</b></span><span class="go">←</span></div>').join(''):'')+
+      '</div>';
+    p.classList.add('open'); $('#scrim').classList.add('open');
+    // restore kept field values (proposed mode only)
+    p.querySelectorAll('[data-keep]').forEach(inp=>{
+      const k=inp.dataset.keep;
+      inp.value = (mode==='new' ? (keep[k]||'') : (live[k]||''));
+      inp.addEventListener('input',()=>{ live[k]=inp.value; if(mode==='new') keep[k]=inp.value; });
+    });
+  } else { p.classList.remove('open'); $('#scrim').classList.remove('open'); p.innerHTML=''; }
+
+  // rails
+  $('#stackN').textContent=S.st.length;
+  $('#stackRail').innerHTML = S.st.length
+    ? S.st.map((x,i)=>'<span class="chip'+(i===S.st.length-1?' top':'')+'">'+PANELS[x].e+' '+PANELS[x].t+'</span>').join('')
+    : '<span class="chip empty">ריקה</span>';
+  const H = mode==='today' ? 1 : hist.length;
+  $('#histN').textContent=H;
+  $('#histRail').innerHTML = mode==='today'
+    ? '<span class="chip">רשומה יחידה — Back יוצא מהאפליקציה</span>'
+    : hist.map((h,i)=>'<span class="chip'+(i===hist.length-1?' top':'')+'">'+label(h)+'</span>').join('');
+  $('#urlbar').textContent=urlFor(S);
+}
+function label(st){
+  if(st.st && st.st.length) return PANELS[st.st[st.st.length-1]].e+' '+PANELS[st.st[st.st.length-1]].t;
+  if(st.s==='wizard') return '🎉 שלב '+((st.v.w||0)+1);
+  if(st.s==='catalog'&&st.v.m==='cat') return '📚 '+st.v.g;
+  return (st.s==='home'?'🏠 ':'📋 ')+SCREEN_NAME[st.s];
+}
+function paintWizard(n){
+  $('#cwbar').innerHTML=[0,1,2,3,4,5].map(i=>'<div class="cwdot'+(i<=n?' on':'')+'"></div>').join('');
+  $('#cwLbl').innerHTML='שלב <span class="ltr">'+(n+1)+'/6</span>';
+  const T=['פרטי האירוע','בחירת מנות','שיטות בישול','תיבול','תוספות ושתייה','סקירה ותוכנית'];
+  $('#cwBody').innerHTML='<div class="note"><b>'+T[n]+'</b><br>טיוטה נשמרת אוטומטית — אבל <b>המיקום באשף</b> הוא זה שאובד היום.</div>';
+}
+function place(st){
+  if(st.st && st.st.length) return PANELS[st.st[st.st.length-1]].t;
+  if(st.s==='wizard') return 'אשף · שלב '+((st.v.w||0)+1);
+  if(st.s==='catalog'&&st.v.m==='cat') return 'קטלוג · '+st.v.g;
+  return 'מסך '+SCREEN_NAME[st.s];
+}
+function whereAmI(){ return place(S); }
+
+/* ---- `hist` is maintained in BOTH modes. In the proposed model it IS the browser history.
+   In today's model the browser holds one entry and ignores it — we keep it anyway, because it is
+   "where the user believes they came from", and that is what an exit must be judged against.
+   Judging today's ✕ against today's already-destroyed stack would score the bug as correct. ---- */
+function expectedPlace(){ return hist.length>=2 ? place(hist[hist.length-2]) : null; }
+function resync(matched){ if(mode==='today'){ if(matched && hist.length>1) hist.pop(); else hist=[clone(S)]; } }
+function judge(){
+  const exp=expectedPlace(), act=whereAmI();
+  if(exp===null){ log('info','<em>אתה בשורש — אין לאן לחזור בתוך האפליקציה.</em>'); resync(true); return; }
+  const matched=(act===exp);
+  land(act,exp); resync(matched);
+}
+
+/* ============================ navigation primitives ============================ */
+function push(next){ S=next; hist.push(clone(S)); render(); }
+function replace(next){ S=next; hist[hist.length-1]=clone(S); render(); }
+
+function openPanel(id){
+  if(mode==='today'){
+    // Today: EVERY live launcher does closePanel() then opens → the real stack is wiped...
+    const wasLauncher = S.st.length && PANELS[topId()].kind==='launcher';
+    if(wasLauncher) log('info','<em>המשגר ביצע <code>closePanel()</code> ואז פתח — הערימה נמחקה.</em>');
+    // ...except the one legacy nesting path that DOES use openFrom: menu → cart
+    const kept = (S.st.length && topId()==='menu' && id==='cart') ? [...S.st,id] : [id];
+    S={...S,st:kept};
+    hist.push(clone({...S,st:[...(hist[hist.length-1].st||[]),id]}));  // the ideal trail keeps the parent
+    render();
+  } else {
+    push({...S,st:[...S.st,id]});
+  }
+}
+function navScreen(s,v){ push({s:s,v:v||{},st:[]}); }
+
+/* ============================ exits ============================ */
+function exit(kind){
+  if(gone) return;
+  const depth=S.st.length;
+
+  // --- dialog layer first (both modes) — proposed scopes Escape to it, today does not
+  if($('#dlg').classList.contains('open')){
+    if(kind==='esc'){
+      if(mode==='new'){ closeDlg(); log('ok','✓ Escape סגר את הדיאלוג בלבד — הפאנל שמאחוריו נשאר פתוח.'); }
+      else { closeDlg(); S={...S,st:[]}; render(); log('no','✗ Escape סגר את <b>הפאנל שמאחורי הדיאלוג</b> — המאזין הגלובלי לא מוגבל לשכבה העליונה.'); }
+      return;
+    }
+  }
+
+  if(kind==='reload'){ doReload(); return; }
+
+  // --- unsaved guard, on the affordances we control. Hardware Back can never be cancelled (§6.3).
+  if(kind!=='back' && kind!=='popone' && S.s==='wizard' && !depth){
+    if(needsWarn()) askWizardExit(kind); else finishWizardExit(false);
+    return;
+  }
+
+  if(mode==='today'){
+    if(kind==='back'){ leave('האפליקציה מחזיקה רשומת היסטוריה אחת בלבד, מכל מצב.'); return; }
+    if(kind==='popone'){ S={...S,st:S.st.slice(0,-1)}; render();
+      log('ok','✓ כפתור הטקסט «חזרה לחלון הקודם» — האמצעי היחיד שמתנהג נכון היום, והכי פחות בולט.'); resync(true); return; }
+    // ✕ / Esc / scrim → closePanel(): panelStack=[] — the whole stack is destroyed
+    if(depth){
+      S={...S,st:[]}; render(); judge();
+      if(depth>=2) log('info','<em><code>closePanel()</code> הריץ <code>panelStack=[]</code> — '+depth+' רמות נמחקו בבת אחת.</em>');
+    } else if(S.s==='catalog'&&S.v.m==='cat'){
+      S={...S,v:{}}; render(); judge();
+      log('info','<em>כפתור ה־→ הייעודי של הקטלוג — מימוש נפרד לחלוטין, לא מחובר לערימה ולא להיסטוריה.</em>');
+    } else if(S.s!=='home'){ log('info','<em>למסך אין ✕ — רק הניווט התחתון, ואין לו «אחורה».</em>');
+    } else { log('info','<em>אין מה לסגור.</em>'); }
+    return;
+  }
+
+  /* ---- proposed: every affordance is one and the same call: history.back() ---- */
+  back();
+}
+
+function back(){
+  if(mode==='today'){ leave('האפליקציה מחזיקה רשומת היסטוריה אחת בלבד, מכל מצב.'); return; }
+  if(hist.length<=1){ leave('הגעת לשורש (בית, בלי פאנל). כאן Back יוצא — כמו בכל אפליקציית אנדרואיד.'); return; }
+  const before=whereAmI(), exp=expectedPlace();
+  hist.pop(); S=clone(hist[hist.length-1]); render();
+  land(whereAmI(),exp);
+  log('info','<em>יצאת מ־<b>'+before+'</b> — רמה אחת בדיוק, דרך <code>history.back()</code>.</em>');
+}
+
+function leave(why){
+  gone=true; $('#goneWhy').textContent=why; $('#gone').classList.add('on');
+  log('no','✗ <b>יצאת מהאפליקציה.</b> '+why);
+}
+$('#relaunch').onclick=()=>{ gone=false; $('#gone').classList.remove('on'); doReload(true); };
+
+/* ---- reload / PWA relaunch ---- */
+function doReload(silent){
+  const was=whereAmI();
+  if(mode==='today'){
+    S={s:'home',v:{},st:[]}; live={}; hist=[clone(S)]; render();
+    if(!silent) land('מסך בית',was);
+    log('info','<em>האתחול מריץ <code>cRefreshHome(); cNavGo(\'home\')</code> — שום תצוגה לא נשמרת.</em>');
+    return;
+  }
+  // proposed: restore from the URL, honouring the restore class
+  const target=clone(S);
+  const blocked=target.st.findIndex(id=>PANELS[id].restore==='parent');
+  if(blocked>=0){
+    const bad=target.st[blocked], par=PANELS[bad].parent;
+    target.st=target.st.slice(0,blocked); if(par && target.st[target.st.length-1]!==par) target.st.push(par);
+    S=target; hist=[clone(S)]; render();
+    toast('החזרנו אותך למקום הקרוב ביותר');
+    log('ok','✓ «'+PANELS[bad].t+'» היא תוצאת AI — <b>לא</b> ניתנת לשחזור מנתונים. נחתת על ההורה: <b>'+whereAmI()+'</b>, בלי להריץ את הבקשה שוב.');
+    return;
+  }
+  S=target; hist=[clone(S)]; render();
+  land(whereAmI(),was);
+  log('info','<em>שוחזר מתוך <code>?nav=</code> — אותו URL הוא גם קישור עמוק.</em>');
+}
+function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('on'); setTimeout(()=>el.classList.remove('on'),2200); }
+
+/* ---- unsaved / wizard guard ---- */
+function needsWarn(){ return S.s==='wizard' && !S.st.length && (S.v.w||0)>0; }
+function askWizardExit(kind){
+  openDlg('לצאת מאשף האירוע? יש טיוטה שלא נשמרה.',[
+    ['💾 שמור וצא','pri',()=>{ closeDlg(); finishWizardExit(true); }],
+    ['🗑️ מחק וצא','',()=>{ closeDlg(); finishWizardExit(false); }],
+    ['הישאר','',()=>{ closeDlg(); log('ok','✓ נשארת באשף — הטיוטה שלמה.'); }]
+  ]);
+}
+function finishWizardExit(saved){
+  const entry = S.v.from || 'home';
+  if(mode==='today'){
+    S={s:'home',v:{},st:[]}; render();
+    land('מסך בית', 'מסך '+SCREEN_NAME[entry]); hist=[clone(S)];
+    log('info','<em><code>cwExitWizard()</code> מסתיים ב־<code>cwGo(0); cNavGo(\'home\')</code> — בלי <code>returnTo</code>, מכל נקודת כניסה.</em>');
+  } else {
+    // commit: replaceState back to the entry screen — Back must not re-enter a wizard you just left
+    S={s:entry,v:{},st:[]}; hist=[clone(S)]; render();
+    land('מסך '+SCREEN_NAME[entry],'מסך '+SCREEN_NAME[entry]);
+    log('info','<em>יציאה מאשף היא <code>NAV.commit()</code> — החלפת רשומה, לא הוספה. Back לא יחזיר אותך פנימה.</em>');
+  }
+}
+function openDlg(msg,btns){
+  $('#dlgMsg').textContent=msg;
+  $('#dlgBtns').innerHTML='';
+  btns.forEach(([label,cls,fn])=>{ const b=document.createElement('button'); b.className='dlg-btn '+cls; b.textContent=label; b.onclick=fn; $('#dlgBtns').appendChild(b); });
+  $('#dlg').classList.add('open');
+}
+function closeDlg(){ $('#dlg').classList.remove('open'); }
+$('#dlg').querySelector('[data-dlg="dismiss"]').onclick=()=>{ closeDlg(); log('info','<em>הדיאלוג נדחה — נשארת במקום.</em>'); };
+
+/* ============================ wiring ============================ */
+document.addEventListener('click',e=>{
+  const o=e.target.closest('[data-open]'); if(o){ openPanel(o.dataset.open); return; }
+  const n=e.target.closest('[data-nav]'); if(n){
+    const s=n.dataset.nav;
+    navScreen(s, s==='wizard'?{w:0,from:S.s}:{});
+    return;
+  }
+  const c=e.target.closest('[data-cat]'); if(c){ push({...S,v:{m:'cat',g:c.dataset.cat}}); return; }
+  const x=e.target.closest('[data-ex]'); if(x){ exit(x.dataset.ex); return; }
+  const j=e.target.closest('[data-jr]'); if(j){ journey(j.dataset.jr); return; }
+  const m=e.target.closest('[data-m]'); if(m){ setMode(m.dataset.m); return; }
+});
+$('#scrim').onclick=()=>exit('scrim');
+document.addEventListener('keydown',e=>{ if(e.key==='Escape') exit('esc'); });
+$('#cwNext').onclick=()=>{ const w=Math.min(5,(S.v.w||0)+1); push({...S,v:{...S.v,w}}); };
+$('#cwPrev').onclick=()=>{ const w=Math.max(0,(S.v.w||0)-1); push({...S,v:{...S.v,w}}); };
+$('#cwExit').onclick=()=>exit('x');
+
+function setMode(m){
+  mode=m;
+  document.querySelectorAll('.modebtn').forEach(b=>b.classList.toggle('on',b.dataset.m===m));
+  $('#modehint').innerHTML = m==='today'
+    ? 'שלוש שכבות של מחלקות CSS במשתנים רגילים · <b>אפס</b> אינטגרציה עם היסטוריית הדפדפן · <code>closePanel()</code> מריץ <code>panelStack=[]</code>, כלומר ✕ ו־Escape ורקע <b>מוחקים את כל הערימה</b>.'
+    : 'מצב אחד סריאליזבילי (<code>{s,v,st}</code>) · רשומת היסטוריה אחת לכל מצב · <b>כל</b> אמצעי יציאה קורא ל־<code>history.back()</code> · ✕ הופך ל־<span class="ltr">→</span> כשיש ערימה · רענון משחזר מתוך <code>?nav=</code>.';
+  hist=[clone(S)];
+  log('info','<em>מצב: <b>'+(m==='today'?'היום':'המוצע')+'</b>. אותה מסע, מנגנון אחר.</em>');
+  render();
+}
+
+/* ---- journeys ---- */
+function journey(k){
+  gone=false; $('#gone').classList.remove('on'); closeDlg();
+  S={s:'home',v:{},st:[]}; hist=[clone(S)];
+  if(k==='ai'){        openPanel('more'); openPanel('aihub'); openPanel('photo');
+                       log('info','<em>מסלול: ☰ ← כלי AI ← ניתוח תמונה. היום <b>שני</b> משגרים מחקו את הערימה בדרך.</em>'); }
+  if(k==='cart'){      openPanel('menu'); openPanel('cart');
+                       log('info','<em>מסלול: בונה תפריט ← רשימת קניות — נתיב הקינון האמיתי היחיד באפליקציה (<code>openFrom</code>).</em>'); }
+  if(k==='wiz'){       navScreen('events'); navScreen('wizard',{w:0,from:'events'});
+                       for(let i=0;i<3;i++) $('#cwNext').click();
+                       log('info','<em>מסלול: אירועים ← אשף, שלב 4. נסה יציאה, ואז Back של חומרה.</em>'); }
+  if(k==='item'){      navScreen('catalog'); (mode==='today'?(S={...S,v:{m:'cat',g:'בשר אדום'}},render()):push({...S,v:{m:'cat',g:'בשר אדום'}})); openPanel('item');
+                       log('info','<em>מסלול: קטלוג ← בשר אדום ← בריסקט. נסה ⟳ רענון.</em>'); }
+  if(k==='form'){      openPanel('reminders');
+                       const inp=document.querySelector('#panel [data-keep]'); if(inp){ inp.value='להפוך את הבשר ביום 3'; inp.dispatchEvent(new Event('input')); inp.focus(); }
+                       log('info','<em>מסלול: תזכורות עם טקסט שהוקלד. סגור וחזור — מה קרה לטקסט?</em>'); }
+}
+
+setMode('new');
+log('info','<em>התחל: בחר מסלול, ואז לחץ על אמצעי יציאה. החלף בין «היום» ל«המוצע» באותו מסלול.</em>');
+</script>
+</body>
+</html>
