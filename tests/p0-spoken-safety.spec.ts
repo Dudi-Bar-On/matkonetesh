@@ -339,6 +339,42 @@ test('word-form units are guarded — the English leak the Phase A audit found',
   expect(spoken).not.toContain('per the app\'s verified guide');
 });
 
+// Phase A completion gate, FIX 3 — spec §2.1 / L13: a number rendered beside a Hebrew label needs a
+// dir="ltr" island, or bidi reordering can visually flip the pair (a "≥" once rendered as "≤"). vcRender
+// rendered esc(vcLastQA.a) with no such island at all. vcLtrNums wraps only the matched number/unit
+// TOKEN (never the whole mixed-language sentence — see app.js:6239's L13 note on why not), reusing the
+// shared safetyTokenRe() so it recognises exactly the same tokens the guard itself does.
+test('FIX 3 — vcLtrNums wraps a matched number/unit token and leaves the redaction placeholder untouched', async ({ page }) => {
+  await bootVC(page);
+  await page.waitForFunction(`typeof vcLtrNums==='function'`);
+  expect(await page.evaluate(`vcLtrNums('הטמפ׳ הבטוחה היא 74°C.')`)).toContain('<span dir="ltr">74°C</span>');
+  // the VC_REDACT placeholder ("[…]") carries no digits — safetyTokenRe() must not match it, so it must
+  // pass through with no island inserted around it.
+  expect(await page.evaluate(`vcLtrNums('מספר זה אינו מאומת — […] בכרטיס.')`)).not.toContain('<span dir="ltr">');
+});
+
+test('FIX 3 — the on-screen transcript wraps a matched verified number in a dir="ltr" island (DoD-8 evidence below)', async ({ page }) => {
+  await bootVC(page);
+  const f = await page.evaluate(`(function(){var c=DATA.cuts.find(function(x){return x.safe!=null;}); return {ikey:'cut-'+c.n, safe:Math.round(c.safe)};})()`) as {ikey:string; safe:number};
+  // #vcBody only exists once the Voice Cook panel is open — bootVC alone (used by the spoken-path tests
+  // above) never opens it, so it must be opened explicitly here to exercise the real vcRender DOM path.
+  await page.evaluate(`(function(){ closePanel(); openVoiceCook([{ikey:'${f.ikey}',label:'x',t:new Date()}]); })()`);
+  await page.waitForSelector('#vcBody');
+  await page.evaluate(`window.__vcAskMock='הטמפ׳ הבטוחה היא ${f.safe}°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ הבטוחה')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`(function(){ var a=document.querySelector('.vc-qa-a'); return a && a.textContent.indexOf('${f.safe}')>=0; })()`);
+  await page.waitForFunction(`document.querySelector('#panel').getBoundingClientRect().left===0`);
+  const html = await page.evaluate(`document.querySelector('.vc-qa-a').innerHTML`) as string;
+  expect(html).toContain(`<span dir="ltr">${f.safe}°C</span>`);
+  // DoD-8 visual evidence: matched single verified number rendered in the Hebrew transcript, at 390x844
+  // (the suite's default viewport).
+  await page.evaluate(`document.querySelector('.vc-qa').scrollIntoView({block:'center'})`);
+  await page.waitForFunction(`(function(){ const r=document.querySelector('.vc-qa').getBoundingClientRect();
+    return r.top>=0 && r.bottom<=window.innerHeight; })()`);
+  await page.screenshot({ path: '.superpowers/sdd/task-2-ltr-island-390x844.png' });
+});
+
 test('regression: a lone verified number IS still spoken with the marker (the rule must narrow, not disable)', async ({ page }) => {
   await bootVC(page);
   const f = await page.evaluate(`(function(){var c=DATA.cuts.find(function(x){return x.safe!=null;}); return {ikey:'cut-'+c.n, safe:Math.round(c.safe)};})()`) as {ikey:string; safe:number};

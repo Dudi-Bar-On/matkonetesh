@@ -5281,7 +5281,7 @@ function vcRender(){
     <p class="vc-hint">${vcLang()==='en'?'🇬🇧 Voice commands: next · back · read · details · temperature · when.':'פקודות עבריות: הבא · הקודם · הקרא · פרטים · טמפרטורה · מתי.'} ${L('דיבור באנגלית מזוהה לרוב מדויק יותר.','English speech is usually recognized more accurately.')}</p>
     ${aiAvail()?`<p class="vc-hint">✨ ${L('אפשר לשאול שאלות חופשיות בקול (למשל "כמה עוד זמן לחזה?") — אפשר לשאול באנגלית ולקבל תשובה בעברית.','You can ask free questions by voice (e.g. "how much longer for the brisket?") — you can ask in English and get an answer in Hebrew.')}</p>
     <div class="vc-askrow"><input id="vcAskInput" placeholder="${vcAnsLang()==='en'?'Type a question…':'הקלד שאלה…'}"><button class="vc-askbtn" data-vc="asktext">${vcAnsLang()==='en'?'Ask ✨':'שאל ✨'}</button></div>
-    ${vcLastQA?`<div class="vc-qa"><div class="vc-qa-q">❓ ${esc(vcLastQA.q)}</div><div class="vc-qa-a">${esc(vcLastQA.a)}</div></div>`:''}`:''}
+    ${vcLastQA?`<div class="vc-qa"><div class="vc-qa-q">❓ ${esc(vcLastQA.q)}</div><div class="vc-qa-a">${vcLtrNums(esc(vcLastQA.a))}</div></div>`:''}`:''}
     ${gemKey()?`<div class="vc-voicerow">✨ ${L('Gemini TTS פעיל','Gemini TTS active')} · <label>${L('קול:','Voice:')}</label><select id="gemVoiceSel">${GEM_VOICES.map(v=>`<option ${v===gemVoice()?'selected':''}>${v}</option>`).join('')}</select> <button class="vc-keybtn" data-vc="gemoff">${L('נתק','Disconnect')}</button></div>`
       :`<details class="vc-gem"><summary>✨ ${L('שדרוג איכות קול — Gemini TTS (מפתח אישי · דורש Billing)','Upgrade voice quality — Gemini TTS (personal key · requires Billing)')}</summary>
         <p>${L('קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת יישאר קול המערכת.','Neural voices with natural speech. Create a key at <b>aistudio.google.com</b> → Get API Key, and paste it here. Stored only in your browser, requires network. ⚠ Gemini read-aloud is a paid model — it requires enabling <b>Billing</b> on the project (a generous free quota even then); otherwise the system voice stays.')}</p>
@@ -5474,6 +5474,18 @@ function vcMapSafetyNums(s, fn){
 // punctuation, so a reader can tell a redacted number from ordinary prose (DoD-9 / L13 — found by
 // looking at the 390×844 render, not by a test).
 const VC_REDACT='[…]';
+
+// Phase A completion gate, FIX 3 / spec §2.1 / L13: a number rendered beside a Hebrew label needs a
+// dir="ltr" island, or bidi reordering can visually flip the pair (a ">=" once rendered as "<=" — L13).
+// Built from the SAME shared token pattern the guard itself uses (safetyTokenRe(), never a new regex),
+// so a number vcGuardSpoken can see is exactly a number this wraps, no more and no less.
+// Applied AFTER esc() so the inserted <span> markup is not itself escaped. Wraps only the matched
+// number+unit TOKEN, never the whole mixed-language sentence (see app.js ~6239's L13 note on why not —
+// forcing the whole line LTR reorders Hebrew segments around it). The VC_REDACT placeholder ("[…]")
+// carries no digits, so safetyTokenRe() does not match it and it passes through untouched.
+function vcLtrNums(escaped){
+  return String(escaped||'').replace(safetyTokenRe(), function(m){ return '<span dir="ltr">'+m+'</span>'; });
+}
 // Matched → speak the APP's verified figure (in °C — so a "correct" 165°F is still voiced as the app's
 // own 74°C, never the model's phrasing). Unmatched → redact the token (VC_REDACT), keep the qualitative
 // advice, append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
