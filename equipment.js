@@ -118,12 +118,16 @@ function eqmOwnershipRow(row){
 // only flipped to 'released' (release-vs-delete keeps the audit trail; a sweep is a later concern).
 // D5 note (owner 2026-07-25): capacityDemand carries the STATIC footprint/min_bath_l — guest-scaling
 // is a named future gap; the field's shape already accepts a scaled amount when that lands.
+// Store convention (corrected 2026-07-25 after Task 1 review): `store.get`/`store.set` (app.js
+// ~1442-1444) already JSON.parse/stringify internally — every call site passes/reads RAW values
+// (equipList, savePantry, ...). Do NOT wrap with JSON.stringify/parse here; that double-encodes and
+// silently swallows the ledger the moment any future code writes this key the normal way.
 const EQM_LEDGER_KEY = 'mk-eqm-ledger';
 function eqmLedger(){
-  try{ const v = JSON.parse(store.get(EQM_LEDGER_KEY) || '[]'); return Array.isArray(v) ? v : []; }
-  catch(e){ return []; }
+  const v = store.get(EQM_LEDGER_KEY);          // store.get already catches internally, never throws — fail closed to [] on anything but a real array
+  return Array.isArray(v) ? v : [];
 }
-function eqmLedgerWrite(list){ store.set(EQM_LEDGER_KEY, JSON.stringify(list||[])); }
+function eqmLedgerWrite(list){ store.set(EQM_LEDGER_KEY, list || []); }
 function eqmLedgerAdd(entry){
   const list = eqmLedger();
   const id = 'h' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);

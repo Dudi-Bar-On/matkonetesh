@@ -99,17 +99,23 @@ test('KIND_TO_STAGE maps oven → cook (E1-gate registered item closed)', async 
 - [ ] **Step 2: RED** — run `npx playwright test tests/e2-ledger.spec.ts`. Expected: 4 failed — tests 1-3 at `eqmLedgerAdd is not defined`; test 4 expecting `'cook'`, receiving `undefined`. Paste per-assertion output.
 - [ ] **Step 3: implement** in `equipment.js`. Extend the map at line ~21: `const KIND_TO_STAGE = { smoker:'smoke', grill:'cook', bath:'sv', oven:'cook' };` and update the comment above `eqmOwnershipRow` (the "oven unmappable" M2 sentence is now stale — rewrite it to say declared/process kinds remain E6). Then above the EQM literal:
 
+*(corrected 2026-07-25 after Task 1 review — store handles JSON internally; the original block double-encoded)*
+
 ```js
 // ── the reservation ledger (spec §4.3, Q3) — the ONE net-new store. Entries are never deleted in E2,
 // only flipped to 'released' (release-vs-delete keeps the audit trail; a sweep is a later concern).
 // D5 note (owner 2026-07-25): capacityDemand carries the STATIC footprint/min_bath_l — guest-scaling
 // is a named future gap; the field's shape already accepts a scaled amount when that lands.
+// Store convention: `store.get`/`store.set` (app.js ~1442-1444) already JSON.parse/stringify
+// internally — every call site passes/reads RAW values (equipList, savePantry, ...). Do NOT wrap
+// with JSON.stringify/parse here; that double-encodes and silently swallows the ledger the moment
+// any future code writes this key the normal way.
 const EQM_LEDGER_KEY = 'mk-eqm-ledger';
 function eqmLedger(){
-  try{ const v = JSON.parse(store.get(EQM_LEDGER_KEY) || '[]'); return Array.isArray(v) ? v : []; }
-  catch(e){ return []; }
+  const v = store.get(EQM_LEDGER_KEY);          // store.get already catches internally, never throws — fail closed to [] on anything but a real array
+  return Array.isArray(v) ? v : [];
 }
-function eqmLedgerWrite(list){ store.set(EQM_LEDGER_KEY, JSON.stringify(list||[])); }
+function eqmLedgerWrite(list){ store.set(EQM_LEDGER_KEY, list || []); }
 function eqmLedgerAdd(entry){
   const list = eqmLedger();
   const id = 'h' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);

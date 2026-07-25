@@ -50,3 +50,23 @@ test('KIND_TO_STAGE maps oven → cook (E1-gate registered item closed)', async 
   await boot(page);
   expect(await page.evaluate(`KIND_TO_STAGE['oven']`)).toBe('cook');
 });
+
+// Review finding (Important, inherited from the plan's Task 1 Step 3 code block): store.set/store.get
+// already JSON.stringify/parse internally (app.js ~1442-1444) — every other call site (equipList,
+// savePantry, ...) passes/reads RAW values. The ledger helpers double-encoded (store.set(key,
+// JSON.stringify(list)) / JSON.parse(store.get(key)||'[]')), which self-cancels only because both sides
+// of the pair double-wrap — it silently swallows data the moment anything writes the key the normal way.
+test('ledger key follows the store convention (raw array, interoperable with store.set)', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(function(){
+    store.set('mk-eqm-ledger', [{ id:'h1', deviceId:'d1', window:{startMs:1000, endMs:2000},
+      capacityDemand:{metric:'area_cm2', amount:1320}, holder:{type:'event', id:'ev1'}, state:'held' }]);
+    const all = eqmLedger();
+    return { n: all.length, e: all[0] };
+  })()`) as any;
+  expect(r.n).toBe(1);
+  expect(r.e.deviceId).toBe('d1');
+  expect(r.e.capacityDemand).toEqual({metric:'area_cm2', amount:1320});
+  expect(r.e.holder).toEqual({type:'event', id:'ev1'});
+  expect(r.e.state).toBe('held');
+});
