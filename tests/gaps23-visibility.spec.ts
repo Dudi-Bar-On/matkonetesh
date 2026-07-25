@@ -228,4 +228,175 @@ test('gaps23 (e): English mode — suggestion, bool default option, and derived-
   expect(chipsText).toContain('estimated');
   expect(chipsText).toContain('cm');
   expect(chipsText).not.toMatch(/[֐-׿]/);
+
+  // MINOR (review bundle, 2026-07-25): the assertion above (`toContain('cm')`) is satisfied by EITHER chip
+  // — the derived-area chip's own unit is "cm²", and 'cm' is a substring of 'cm²' — so it never actually
+  // proved the DIMS chip's own translated unit rendered. Scope to that chip specifically and pin its exact
+  // unit text (no trailing ²) so a regression in the dims chip's own translation would be caught here.
+  const dimsChipText = (await page.locator('#panel .eq-dev-chips .eq-chip:has-text("150×60×43")').textContent()) || '';
+  expect(dimsChipText).toContain('cm');
+  expect(dimsChipText).not.toContain('cm²');
+});
+
+// ── Fix wave 2 (review Important, 2026-07-25): accepted estimates keep their provenance ────────────────
+// Bug: the derived-area suggestion labels an outer-dims-derived value "משוער" (estimated), but clicking
+// Accept wrote it into cap.areaCm2 as a PLAIN explicit value — deviceCapacity's `measured = area>0 &&
+// !eqDeviceSuspect(dev)` then granted it TIGHT FIT_SLOT_TOL confidence, silently discarding the safety
+// margin the label promised. Fixture (DoD #6 minimality): racks:2, outer dims 60×50 -> derived area
+// 6000cm² (estimated, no shelf dims so shelf-dims-derived/measured never mixes in), NOT suspect
+// (6000/2=3000 >= 800) so eqDeviceSuspect cannot explain the loose tolerance — isolates the areaEst
+// mechanism from the pre-existing suspect-demotion mechanism (Fix 3(c), a separate code path).
+// usableCm2=round(6000*.85)=5100; perSlotCm2=round(5100/2)=2550; tight cutoff=2550*1.10=2805; loose
+// cutoff=2550*1.6=4080. A 3500cm² demand sits BETWEEN the two cutoffs, so the two tolerances give
+// DIFFERENT verdicts — 'over' under the (bug) tight/measured path, 'tight' under the (fixed) loose path.
+test('gaps23 review: accept-estimated keeps LOOSE tolerance provenance — chip shows משוער', async ({ page }) => {
+  await seedApp(page, { 'mk-lang': JSON.stringify('he'), 'mk-uilevel-asked': 'true' });
+  await page.waitForFunction(`typeof openEquipment==='function' && typeof deviceOccupancy==='function'`);
+  await page.evaluate(`openEquipment()`);
+  await page.waitForSelector('#panel [data-eqpick="smoker"]');
+  await page.click('#panel [data-eqpick="smoker"]');
+  await page.waitForSelector('#panel #eqCapKey');                 // manual entry (no AI key seeded) — no #eqLookup here
+  await page.fill('#panel #eqCapKey', '2');                       // racks
+  await page.click('#panel details.eq-adv summary');              // outer dims live in the collapsed Advanced section
+  await page.fill('#panel #eqProp-dimW_cm', '60');
+  await page.fill('#panel #eqProp-dimD_cm', '50');
+  await page.waitForSelector('#panel .eq-area-suggest');
+  const suggestText = (await page.locator('#panel .eq-area-suggest').textContent()) || '';
+  expect(suggestText).toContain('6,000');
+  expect(suggestText).toContain('משוער');                          // outer dims only -> estimated, not measured
+
+  await page.click('#panel .eq-area-accept');
+  await expect(page.locator('#panel #eqProp-areaCm2')).toHaveValue('6000');
+  await page.click('#panel #eqSave');
+  await page.waitForSelector('#panel .eq-dev');
+
+  // the accepted ESTIMATE keeps its provenance visible on the card — same dashed derived-chip styling +
+  // משוער suffix the pre-save suggestion used (review Important, item 4).
+  const chipText = (await page.locator('#panel .eq-dev-chips').textContent()) || '';
+  expect(chipText).toContain('6000');
+  expect(chipText).toContain('משוער');
+  expect(await page.evaluate(`!!document.querySelector('#panel .eq-dev-chips .eq-chip-derived')`)).toBe(true);
+
+  await settled(page);
+  await page.screenshot({ path: 'mockups/gaps23-areaest-chip.png' });
+
+  // the occupancy math: the accepted estimate must still resolve to LOOSE tolerance (areaMeasured:false),
+  // and the crafted 3500cm² demand must land on 'tight' (loose-soft), never 'over' (tight-hard) — the RED
+  // this test closes was verdict:'over' with measured:true (Accept silently promoted the estimate).
+  const r = await page.evaluate(`(function(){
+    var t0=Date.parse('2026-07-24T06:00:00');
+    var d=equipList()[0];
+    var meta={ key:'test-item', heb:'פריט בדיקה', equip:{spec:{footprint_cm2:3500}} };
+    var computed=[{ m:meta, devId:d.id, stages:[{kind:'smoke', start:new Date(t0), end:new Date(t0+8*3600e3), temp:110}] }];
+    var o=deviceOccupancy(d.id, t0+2*3600e3, computed, null);
+    return { areaEst: !!(d.cap && d.cap.areaEst), measured:o.fit.measured, perSlot:o.cap.perSlotCm2, verdict:o.fit.verdict };
+  })()`) as any;
+  expect(r.areaEst).toBe(true);
+  expect(r.perSlot).toBe(2550);
+  expect(r.measured).toBe(false);   // review Important: accepted ESTIMATE keeps LOOSE tolerance, never measured
+  expect(r.verdict).toBe('tight');  // 3500 is over the tight 2805 cutoff but under the loose 4080 cutoff
+});
+
+// Bug (cont'd): the flag must also CLEAR the moment the user manually edits the area to a DIFFERENT number
+// and saves — typing is human confirmation of that new number, full stop. Fixture starts already-accepted
+// (cap.areaEst:true, area 6000cm²) so this test isolates the CLEARING behaviour from the accepting one
+// above (DoD #6). BEFORE: perSlot=round(round(6000*.85)/2)=2550, a 2400cm² demand is <= perSlot -> 'ok'
+// regardless of tolerance (the bad-item gate is cm2>perSlotCm2, independent of measured/estimated) — the
+// SAME item must still be checked after, so any verdict change is attributable to the tolerance/area edit,
+// not a different demand. AFTER manually editing area to 5300cm² (still smoker/racks:2, still not suspect:
+// 5300/2=2650>=800): perSlot=round(round(5300*.85)/2)=2253, the same 2400cm² demand is now > perSlot (bad)
+// but <= perSlot*1.10=2478.3 (tight cutoff) -> 'tight'. 'ok' -> 'tight' is the flip this test proves.
+test('gaps23 review: manual edit after accept clears areaEst — verdict flips to tight, chip loses the marker', async ({ page }) => {
+  await seedApp(page, {
+    'mk-lang': JSON.stringify('he'), 'mk-uilevel-asked': 'true',
+    'mk-equipment': JSON.stringify([{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'משוער-קודם',
+      cap: { racks: 2, areaCm2: 6000, areaEst: true }, specSource: 'manual' }]),
+    'mk-equip-set': 'true',
+  });
+  await page.waitForFunction(`typeof openEquipment==='function' && typeof deviceOccupancy==='function'`);
+
+  const occCheck = `(function(){
+    var t0=Date.parse('2026-07-24T06:00:00');
+    var meta={ key:'test-item', heb:'פריט בדיקה', equip:{spec:{footprint_cm2:2400}} };
+    var computed=[{ m:meta, devId:'d1', stages:[{kind:'smoke', start:new Date(t0), end:new Date(t0+8*3600e3), temp:110}] }];
+    var o=deviceOccupancy('d1', t0+2*3600e3, computed, null);
+    return { measured:o.fit.measured, perSlot:o.cap.perSlotCm2, verdict:o.fit.verdict };
+  })()`;
+  const before = await page.evaluate(occCheck) as any;
+  expect(before.measured).toBe(false);
+  expect(before.perSlot).toBe(2550);
+  expect(before.verdict).toBe('ok');
+
+  await page.evaluate(`openEquipment()`);
+  await page.click('#panel [data-eqedit="d1"]');
+  await page.waitForSelector('#panel #eqProp-areaCm2');
+  expect(await page.locator('#panel #eqProp-areaCm2').inputValue()).toBe('6000');
+  await page.fill('#panel #eqProp-areaCm2', '5300');   // human-typed edit to a DIFFERENT number = confirmation
+  await page.click('#panel #eqSave');
+  await page.waitForSelector('#panel .eq-dev');
+
+  const cap = await page.evaluate(`equipList()[0].cap`) as any;
+  expect(cap.areaCm2).toBe(5300);
+  expect('areaEst' in cap).toBe(false);   // manual edit to a new value clears the provenance flag
+
+  const chipText = (await page.locator('#panel .eq-dev-chips').textContent()) || '';
+  expect(chipText).toContain('5300');
+  expect(chipText).not.toContain('משוער');
+  expect(await page.evaluate(`!!document.querySelector('#panel .eq-dev-chips .eq-chip-derived')`)).toBe(false);
+
+  await settled(page);
+  await page.screenshot({ path: 'mockups/gaps23-areaest-cleared-he.png' });
+
+  const after = await page.evaluate(occCheck) as any;
+  expect(after.measured).toBe(true);
+  expect(after.perSlot).toBe(2253);
+  expect(after.verdict).toBe('tight');   // the flip this test exists to prove: 'ok' (loose) -> 'tight' (measured)
+});
+
+// ── IMPORTANT-2 (untested branch, 2026-07-25): the repair hint's DERIVABLE variant had zero test/screenshot
+// coverage — "אם יישאר ריק: יחושב מהמידות (X ס״מ²)" (app.js doSave's sibling, drawForm's repair-focus block,
+// the `derivedNow` branch). Fixture: the owner's real repro (suspect explicit 2580/5 racks<800) but WITH
+// dims already stored (dimW_cm/dimD_cm — the "AI lookup already got the dims, only the total was wrong"
+// case), so eqDeriveAreaCm2 has something to offer and the hint must name IT, not the class default.
+test('gap3 review (derivable-hint): repair hint on a suspect device WITH stored dims names the DERIVED value, and clearing+saving applies it as an estimate', async ({ page }) => {
+  await seedApp(page, {
+    'mk-lang': JSON.stringify('he'), 'mk-uilevel-asked': 'true',
+    'mk-equipment': JSON.stringify([{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'הנפח אביה 150',
+      cap: { racks: 5, areaCm2: 2580, dimW_cm: 60, dimD_cm: 43 }, specSource: 'ai' }]),
+    'mk-equip-set': 'true',
+  });
+  await page.waitForFunction(`typeof openEquipment==='function' && typeof eqDeviceSuspect==='function'`);
+  await page.evaluate(`openEquipment()`);
+  await page.waitForSelector('#panel .eq-dev-suspect');
+  await page.click('#panel [data-eqrepair="d1"]');
+  await page.waitForSelector('#panel #eqProp-areaCm2.eq-repair-focus');
+
+  // IMPORTANT-2: the hint names the DERIVED value (dims are already stored) — not the class default (7,900)
+  const hint = (await page.locator('#panel .eq-repair-hint').textContent()) || '';
+  expect(hint).toContain('יחושב מהמידות');
+  expect(hint).toContain('12,900');
+  expect(hint).not.toContain('ברירת-מחדל');
+  expect(hint).not.toContain('7,900');
+
+  await settled(page);
+  await page.screenshot({ path: 'mockups/gaps23-repair-hint-derivable-he.png' });
+
+  // clear + save -> no explicit area stored; the derived (ESTIMATED) number actually applies at read time
+  await page.fill('#panel #eqProp-areaCm2', '');
+  await page.click('#panel #eqSave');
+  await page.waitForSelector('#panel .eq-dev');
+
+  expect(await page.evaluate(`!!document.querySelector('#panel .eq-dev-suspect')`)).toBe(false);
+  const chipText = (await page.locator('#panel .eq-dev-chips').textContent()) || '';
+  expect(chipText).toContain('12,900');
+  expect(chipText).toContain('משוער');
+
+  const r = await page.evaluate(`(function(){
+    var d=equipList()[0];
+    var cap=deviceCapacity(d);
+    return { hasExplicit: (d.cap.areaCm2!=null && d.cap.areaCm2!==''), areaCm2:cap.areaCm2, areaMeasured:cap.areaMeasured };
+  })()`) as any;
+  expect(r.hasExplicit).toBe(false);
+  expect(r.areaCm2).toBe(12900);
+  expect(r.areaMeasured).toBe(false);   // derived from outer dims only -> estimated, never "measured"
 });

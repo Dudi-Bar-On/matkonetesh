@@ -393,7 +393,12 @@ function deviceCapacity(dev){
   // tolerance an estimate gets. It returns to measured the moment the user confirms/edits it to a
   // plausible number (eqDeviceSuspect re-evaluates from cap every call; there is no separate "was once
   // suspect" flag to clear). A genuine behavior change, ruled by the owner: suspect == loose.
-  if(hasExplicit){ area=Number(explicitRaw)||0; measured=area>0 && !eqDeviceSuspect(dev); }
+  // review Important (owner-verification gaps 2+3, 2026-07-25): same demotion for `dev.cap.areaEst` — set
+  // ONLY when the user Accepted an outer-dims-derived (estimated) suggestion (doSave, above), never for a
+  // shelf-dims-derived (measured-class) accept or a hand-typed number. Without this, an explicit value born
+  // from an ESTIMATE enjoyed the same TIGHT FIT_SLOT_TOL confidence as a real measurement — exactly the
+  // provenance the "משוער" label on the suggestion promised the user it would keep.
+  if(hasExplicit){ area=Number(explicitRaw)||0; measured=area>0 && !eqDeviceSuspect(dev) && !(dev.cap && dev.cap.areaEst); }
   else {
     const derived=eqDeriveAreaCm2(dev);
     if(derived){ area=derived.areaCm2; measured=!derived.estimated; }
@@ -7062,6 +7067,15 @@ function openEquipment(){
       const raw=d.cap?d.cap[p.key]:undefined; if(raw===undefined||raw===''||raw===null) return;
       if(p.kind==='bool'){ if(raw===true||raw==='true') s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(L(p.he,p.en))}</span>`; return; }
       if(p.kind==='choice'){ const o=(p.opts||[]).find(function(x){return x.v===raw;}); s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(o?L(o.he,o.en):String(raw))}</span>`; return; }
+      // review Important (owner-verification gaps 2+3, 2026-07-25): an accepted derived-ESTIMATE
+      // (d.cap.areaEst, set by doSave — see deviceCapacity's own comment for why this affects fit
+      // tolerance) keeps its provenance VISIBLE on the card, not just in the fit math — same dashed
+      // .eq-chip-derived styling + משוער/estimated suffix the pre-save suggestion used, reused verbatim
+      // rather than a new visual language for the same meaning.
+      if(p.key==='areaCm2' && d.cap && d.cap.areaEst){
+        s+=`<span class="eq-chip spec eq-chip-derived"><span class="em">${p.em}</span> ${esc(String(raw)+(p.unit?' '+p.unit:''))} · ${esc(L('משוער','estimated'))}</span>`;
+        return;
+      }
       if(hasAllDims && ['dimH_cm','dimW_cm','dimD_cm'].indexOf(p.key)>=0) return;   // already rendered combined above
       if(hasShelfDims && ['shelfW_cm','shelfD_cm'].indexOf(p.key)>=0) return;       // already rendered combined above
       const abbr=DIM_ABBR[p.key]; const pfx=abbr?esc(L(abbr[0],abbr[1]))+' ':'';
@@ -7229,6 +7243,11 @@ function openEquipment(){
       if(cc.multiCap){ const mi=$("#eqMultiIn"); if(mi&&mi.value){ const pv=parseFloat((mi.value||'').replace(/[^\d.]/g,'')); if(!isNaN(pv)&&pv>0&&pv<100000&&multiVals.indexOf(pv)<0) multiVals.push(pv); }   // flush a typed-but-not-yet-added size
         if(multiVals.length){ multiVals.sort(function(a,b){return a-b;}); d.cap[cc.multiCap.key]=multiVals.slice(); } else delete d.cap[cc.multiCap.key]; if(cc.multiCap.key==='baths') delete d.cap.bathL; }   // sousvide bath sizes / stuffer output-tube sizes
       const fEl=$("#eqvFuel"); if(fEl) d.fuel=fEl.value||''; else if(['smoker','grill','oven'].indexOf(nc)<0) d.fuel='';
+      // review Important (owner-verification gaps 2+3, 2026-07-25): snapshot the area value AS STORED
+      // before this save touches it — the props loop below overwrites d.cap.areaCm2 in place, so this is
+      // the only chance to tell "this save CHANGED the number" from "unchanged / a fresh device" after the
+      // fact. See the areaEst provenance-flag block right after the props loop.
+      const prevAreaCm2=(d.cap && d.cap.areaCm2!=null && d.cap.areaCm2!=='')?Number(d.cap.areaCm2):undefined;
       // Equipment properties: empty -> delete the key so the class default applies (never store 0/''). Numeric
       // fields route through propParse so a typed unit suffix ('500F') converts, and a mismatched unit
       // ('300mm' into a temperature field) is REJECTED rather than silently stored as a bogus value.
@@ -7240,6 +7259,28 @@ function openEquipment(){
         if(p.kind==='choice'){ d.cap[p.key]=raw; return; }
         const r=propParse(p, raw); if(r) d.cap[p.key]=r.v; else delete d.cap[p.key];
       });
+      // review Important: cap.areaEst provenance — an accepted derived-ESTIMATE (Fix 2's "Accept" button,
+      // see refreshAreaSuggest above) must keep LOOSE tolerance in deviceCapacity, not silently graduate to
+      // MEASURED just because a number now sits in cap.areaCm2. Decided once, here, against the CURRENT
+      // saved value (d.cap.areaCm2, just written by the props loop above):
+      //   • no explicit area now (field left empty) -> nothing to flag as an estimate; drop the marker.
+      //   • the field still shows EXACTLY what the last Accept-of-an-ESTIMATE wrote (areaFe.dataset.
+      //     eqAcceptedEst, cleared by real typing — see wireAreaSuggestTriggers) -> set the flag.
+      //   • otherwise, the number CHANGED from what was stored before this save -> a real edit (typed, or a
+      //     fresh Accept of a MEASURED/shelf-dims suggestion) is human confirmation of a NEW number; clear it.
+      //   • the number is UNCHANGED from before (an untouched re-save) -> leave any existing flag as-is.
+      const areaFe=$("#eqProp-areaCm2");
+      if(areaFe){
+        if(d.cap.areaCm2==null || d.cap.areaCm2===''){ delete d.cap.areaEst; }
+        else {
+          const nowVal=Number(d.cap.areaCm2);
+          const justAcceptedEst = areaFe.dataset.eqAcceptedEst!=null && areaFe.dataset.eqAcceptedEst!=='' && Number(areaFe.dataset.eqAcceptedEst)===nowVal;
+          if(justAcceptedEst){ d.cap.areaEst=true; }
+          else if(prevAreaCm2===undefined || nowVal!==prevAreaCm2){ delete d.cap.areaEst; }
+          // else: unchanged from before this save -> leave d.cap.areaEst exactly as it already was
+        }
+        delete areaFe.dataset.eqAcceptedEst;   // one-shot: a marker never survives past the save it was for
+      }
       // BUG-2 (Wave B) rider: derive+store total VOLUME (litres) from the outer dims, whenever all three are
       // present — kept in sync with the dims fields it comes from (recomputed every save; removed the moment
       // any dim is cleared, never left stale). display-only; not read by any fit/occupancy math.
@@ -7307,13 +7348,32 @@ function openEquipment(){
         +`<button type="button" class="eq-area-accept">${esc(L('קבל','Accept'))}</button>`;
       wrap.appendChild(div);
       const btn=div.querySelector('.eq-area-accept');
-      btn.addEventListener('click', function(){ fe.value=String(Math.round(derived.areaCm2)); fe.classList.add('eq-aifilled'); div.remove(); });
+      btn.addEventListener('click', function(){
+        fe.value=String(Math.round(derived.areaCm2)); fe.classList.add('eq-aifilled');
+        // review Important (owner-verification gaps 2+3, 2026-07-25): the suggestion LABELS an outer-dims-
+        // derived value "משוער"/estimated (derived.estimated===true) but writes a plain number into the
+        // field — Accept must not silently discard that provenance. Record the exact value + whether THIS
+        // accept was of an ESTIMATE on the field itself (a shelf-dims-derived/measured accept records ''
+        // — never flags provenance, per the review's ruling that only the ESTIMATED class needs the loose
+        // tolerance). doSave (below) reads this dataset attribute once, at save time, to decide whether to
+        // set cap.areaEst; a real user keystroke into this same field (wireAreaSuggestTriggers' 'input'
+        // listener, since Accept's own `.value=` write never fires 'input') clears it first — typing is
+        // human confirmation of a NEW number, not a re-affirmation of the suggestion.
+        fe.dataset.eqAcceptedEst = derived.estimated ? String(Math.round(derived.areaCm2)) : '';
+        div.remove();
+      });
     };
     const wireAreaSuggestTriggers=function(){
       refreshAreaSuggest();
       ['eqCapKey','eqProp-dimW_cm','eqProp-dimD_cm','eqProp-shelfW_cm','eqProp-shelfD_cm','eqProp-areaCm2'].forEach(function(id){
         const el=document.getElementById(id); if(el) el.addEventListener('input', refreshAreaSuggest);
       });
+      // review Important: real typing into the area field itself is a human edit, distinct from the
+      // Accept button's programmatic `.value=` write (which never fires 'input') — clear any pending
+      // "just-accepted-estimate" marker the moment the user touches this field by hand. See the Accept
+      // handler above (fe.dataset.eqAcceptedEst) and doSave below (the sole reader of this marker).
+      const areaFe=document.getElementById('eqProp-areaCm2');
+      if(areaFe) areaFe.addEventListener('input', function(){ areaFe.dataset.eqAcceptedEst=''; });
     };
     const paintVerify=function(data){
       const nc=($("#eqCat")||{}).value||curCat; const cc=capC(nc);
