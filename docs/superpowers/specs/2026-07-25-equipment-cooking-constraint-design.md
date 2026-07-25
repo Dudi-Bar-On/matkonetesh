@@ -424,6 +424,31 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 > **(d)** Delivery rides the phase that owns each surface: E4 (order side), E5 (replacement side).
 > If voiced later under the voice track, `vcGuardSpoken` applies as everywhere.
 
+> **AMENDMENT O-3 — owner ruling in conversation, 2026-07-25 (timeline impact + the infeasibility
+> dialogue).** An order change or a device substitution may move stage windows and therefore the
+> **timeline of the plan or of ongoing event(s)**. Three binding requirements:
+> **(1) Show the impact.** Before the user confirms such a change, the affected timeline is shown —
+> which stages move, what the new serve-readiness looks like, which other items/events are touched
+> (the ledger re-sequencing of §6 made visible, not silent).
+> **(2) The orchestrator re-synchronizes.** The scheduler/orchestrator owns making everything on time
+> and synchronized after the change — re-sequencing, re-allocating devices via the ledger, and
+> optimizing across the affected event(s), not merely recomputing one item.
+> **(3) The infeasibility dialogue.** When the orchestrator concludes the current schedule CANNOT
+> deliver on time, it must not silently accept or silently refuse — it opens a dialogue with the user
+> offering the honest options: **delay the supply/serving time**, apply **another fixing operation**
+> (different device assignment, a different cited order, splitting across devices where the data
+> allows), or **cancel the request** as undeliverable in the current schedule. The user decides.
+> **Safety rail (non-negotiable):** feasibility fixes operate on the SCHEDULE side only — shift
+> times, reassign devices, choose among the item's cited orders. **Never** compress a cited cook/cure
+> duration or raise a temperature to make a timeline fit (the setpoint-fence principle generalized:
+> the schedule serves the recipe, never the reverse).
+> **Delivery:** the feasibility computation is E2's availability/ledger + the existing scheduler; the
+> impact preview and the dialogue ride the surfaces that trigger them (E4 order side, E5 replacement
+> side; E3's retroactive-invalidation flow shows the same impact view when equipment changes strike
+> existing plans). Exact task placement is decided at those phases' planning, carrying this amendment
+> as binding text. O-2's consult button may EXPLAIN the options; the options themselves are
+> deterministic scheduler output, never AI-generated.
+
 ---
 
 ## 7. Replacements (owner design §6) + Retroactive invalidation (owner design §7)
