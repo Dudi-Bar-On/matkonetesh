@@ -47,7 +47,17 @@ test('E2: evRunningCount matches on exact scope prefix, not a loose substring', 
   expect(n).toBe(2);   // only the two real ev-A timers, not ev-A2
 });
 
-test('E3+E4: combined view uses each event method and flags overlapping smoker windows', async ({ page }) => {
+// E3+E4 originally asserted that the unconfigured branch flagged overlapping smoker windows across
+// events (the single-smoker-presumption heuristic introduced in b8a9fd1, the same commit that wrote
+// this test). Owner decision (2026-07-24), resolving the §4 Waiver Gate conflict raised in
+// .superpowers/sdd/task-7-report.md: "The older test is invalid — things have changed and it should be
+// deleted or updated." R5 (spec §4.3, item 6) removes that presumption — with no equipment configured,
+// combinedEventsRows() now asserts NO contention at all (see tests/p0-cross-event-warning.spec.ts). The
+// `count` assertion and the per-event `mk-tlstate-ev-A` method-pinning below still prove E3 (the combined
+// view reads each event's own real method) and remain valid; only the final clash assertion encoded the
+// now-removed behaviour, so only it changes — flipped from `true` to `false`. Retitled: this no longer
+// proves a flag fires, it proves the flag does NOT fire.
+test('E3: combined view uses each event method; no cross-event clash is flagged without equipment (R5)', async ({ page }) => {
   await init(page);
   const info = await page.evaluate(`(function(){
     var day = isoDate(new Date(Date.now()+2*86400000));
@@ -63,5 +73,5 @@ test('E3+E4: combined view uses each event method and flags overlapping smoker w
     return { count: rows.length, anyClash: rows.some(function(r){return r.contention;}) };
   })()`) as any;
   expect(info.count).toBe(2);
-  expect(info.anyClash).toBe(true);   // overlapping smoker windows across events are flagged
+  expect(info.anyClash).toBe(false);   // R5: no equipment configured -> assert nothing, not a guessed clash
 });

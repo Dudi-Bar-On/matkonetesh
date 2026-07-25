@@ -8268,15 +8268,13 @@ function combinedEventsRows(){
     });
   });
   rows.sort(function(a,b){return a.start-b.start;});
-  // No-equipment gate: until the user configures a kit we know no capacity, so the occupancy model has
-  // nothing to reason about — and unlike the single-event plan, this view never resolved a device in the
-  // first place. It presumed ONE smoker and warned on overlapping smoke windows, which is still the most
-  // useful thing we can say with no data. Keep that behaviour byte-identical rather than going silent.
-  if(!equipConfigured()){
-    for(var a=0;a<rows.length;a++){ for(var b=a+1;b<rows.length;b++){ const A=rows[a],B=rows[b];
-      if(A.ev.id!==B.ev.id && A.smoke && B.smoke && A.smoke.start<B.smoke.end && B.smoke.start<A.smoke.end){ A.contention=true; B.contention=true; } } }
-    return rows;
-  }
+  // P0-app item 6 · R5 interim. Until a kit is configured we know no capacity and never resolved a
+  // device, so a time-overlap is NOT evidence of a conflict. The old heuristic presumed ONE smoker: it
+  // false-flagged two events that may well run on two different smokers, and — because it only ever
+  // inspected `.smoke` — stayed silent on two overlapping sous-vide baths. Asserting nothing is honest
+  // in BOTH directions; a confident wrong answer in one direction and silence in the other was not.
+  // Building the bath-aware, device-aware version is P7/P9's job, not P0's.
+  if(!equipConfigured()) return rows;
   // Configured: contention = a real physical conflict on a shared device (over usable capacity, or
   // temperatures that cannot be reconciled) — never mere time-overlap. Mirrors cookerContention, spanning
   // multiple events' scopes via each computed entry's own pre-resolved devId (deviceOccupancy honours it).
