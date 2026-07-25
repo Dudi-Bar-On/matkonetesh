@@ -444,6 +444,11 @@ function packDevice(devId, computed, scope){
 }
 // The single source of truth for "what is on this device right now". The occupancy view renders this
 // object and the clash advisories derive from it — so a diagram and a warning can never disagree.
+// O-6 (E2 Task 4): out.pct/out.over DELEGATE to equipment.js's eqmFitVerdict (byte-identical to the
+// pre-E2 arithmetic — the pre-existing occupancy suite is the identity witness, run with ZERO edits).
+// pctFloor/unknownCm2Count stay local — display-only concerns, not fit arithmetic. out.fit (the
+// hard/soft slot-diagram verdict) is a SEPARATE, pre-existing, app.js-only computation this delegation
+// does not touch.
 function deviceOccupancy(devId, tMs, computed, scope){
   const dev=equipList().find(function(d){return d && d.id===devId;})||null;
   const cap=deviceCapacity(dev);
@@ -493,20 +498,34 @@ function deviceOccupancy(devId, tMs, computed, scope){
       // summing it produced a false "over" for items that share one bath. The binding requirement is the
       // largest single item's need; with 2+ items the true fill is higher (displacement we don't have), so
       // the % is a floor, and "over" means an item literally needs a bigger bath than you own.
+      // O-6 (E2 Task 4): pct/over now DELEGATE to eqmFitVerdict's usedPct/!sumFits — same rule as before,
+      // byte-identical to the pre-E2 arithmetic, one arithmetic shared with EQM.availability instead of
+      // re-derived here (equipment.js:eqmFitVerdict, inlined before app.js — safe to call, see its own
+      // top-of-function comment for why the FIT_SLOT_TOL/FIT_HARD_FACTOR reference is safe by construction).
       const reqs=out.items.map(function(i){return i.litres;}).filter(function(v){return v>0;});
       const maxReq=reqs.length?Math.max.apply(null,reqs):0;
       out.usedLitres=maxReq;
-      out.pct=Math.round(maxReq/cap.litres*100);
-      out.over=maxReq>cap.litres;
+      const demands=reqs.map(function(v){return {metric:'litres', amount:v};});
+      const verdict=eqmFitVerdict(cap, demands);
+      out.pct=verdict.usedPct;
+      out.over=!verdict.sumFits;
       out.pctFloor=reqs.length>=2;
     } else {
-      out.pct=Math.round(out.usedCm2/cap.usableCm2*100);
-      out.over=out.usedCm2>cap.usableCm2;
+      // O-6 (E2 Task 4): pct/over DELEGATE to eqmFitVerdict — SUM of known-area demands vs usableCm2,
+      // byte-identical to the pre-E2 arithmetic (sumFits IS what "over" has always meant here — negated).
+      // unknownCm2Count/pctFloor stay LOCAL: display-only concerns, not fit arithmetic, so they are not
+      // part of the eqmFitVerdict delegation surface (fits/floorFits are availability-only and unread here).
+      const demands=out.items.filter(function(it){return it.cm2!=null;}).map(function(it){return {metric:'area_cm2', amount:it.cm2};});
+      const verdict=eqmFitVerdict(cap, demands);
+      out.pct=verdict.usedPct;
+      out.over=!verdict.sumFits;
       out.pctFloor=out.unknownCm2Count>0;   // known-area sum excludes unmeasured items → the % is a floor
     }
   }
   // Fit verdict (Phase 2 honesty ladder) — a MODEL value so the diagram, the sentence and the a11y list agree.
-  // Only area devices; volume devices fold into the H2 over-rule below.
+  // Only area devices; volume devices fold into the H2 over-rule below. SEPARATE, pre-existing, app.js-only
+  // computation — O-6's eqmFitVerdict delegation above does NOT touch this: it already has its own
+  // measured/estimated split (FIT_SLOT_TOL/FIT_HARD_FACTOR) and is not part of the delegation surface.
   out.fit = {verdict:'ok', measured:!!cap.areaMeasured, hardItems:[], softItems:[]};
   if(cap.mode==='area' && cap.perSlotCm2!=null){
     const bad=[];                                   // measured items that overflow a single slot, or fit nowhere
@@ -660,8 +679,18 @@ function _occBayHtml(o){
   }).join('');
   return `<div class="occ2-bay${o.hooksOver?' occ2-bay-over':''}"><span class="occ2-n" dir="ltr">${used}/${total}</span><div class="occ2-hooks">${hooks}</div><div class="occ2-hungrow">${tags}</div></div>`;
 }
-// Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items.
+// Fit line — a MODEL value (o.fit). Green ok / orange tight / red over, naming the items — plus a
+// neutral no-data line (D11, O-6 wave-2 re-scope) that replaces the old unconditional ✓ fall-through
+// when the device has no known capacity AND no items (guard at the top of the function).
 function _occFitHtml(o){
+  // D11 display-side guard (O-6 wave-2 re-scope): an unknown-capacity device with nothing on it must
+  // NOT fall through to "✓ everything fits" below — that reads as a capacity guarantee the app never
+  // made. The data-side cure (EQM.availability answering busy for this case) is Task 2; this is the
+  // view-side cure. Deliberately narrow: only "no capacity known AND no items" — a device WITH items on
+  // it still goes through the normal ladder below, unchanged.
+  if((!o.cap || !o.cap.known) && (!o.items || !o.items.length)){
+    return `<div class="occ2-fit-none">${L('אין נתוני קיבולת','no capacity data')}</div>`;
+  }
   const f=o.fit||{verdict:'ok'};
   const overMsgs=[];
   if(f.verdict==='over'){

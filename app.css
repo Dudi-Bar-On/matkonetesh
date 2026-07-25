@@ -1703,6 +1703,9 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .occ2-fit-ok{margin-top:9px;font-size:calc(11.5px * var(--fscale));color:var(--fresh);font-weight:700}
 .occ2-fit-tight{margin-top:9px;font-size:calc(12px * var(--fscale));font-weight:700;color:var(--ember);display:flex;align-items:center;gap:5px}
 .occ2-fit-over{margin-top:9px;font-size:calc(12px * var(--fscale));font-weight:700;color:var(--over);display:flex;align-items:center;gap:5px}
+/* D11 (O-6, E2 Task 4): the neutral no-capacity-no-items line — muted, like .occ2-ul, deliberately NOT
+   colored fresh/ember/over (it asserts nothing about fit, only that there is nothing to assert). */
+.occ2-fit-none{margin-top:9px;font-size:calc(11.5px * var(--fscale));color:var(--smoke)}
 .occ2-list{list-style:none;margin:9px 0 0;padding:9px 2px 0;border-top:1px solid var(--line);font-size:calc(11.5px * var(--fscale));color:var(--ash)}
 .occ2-list li{display:flex;gap:6px;padding:2px 0;font-variant-numeric:tabular-nums}
 .occ2-list .occ2-s{color:var(--smoke)}
