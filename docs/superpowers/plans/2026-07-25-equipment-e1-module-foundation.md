@@ -329,7 +329,7 @@ test('a sous-vide stage derives a bath row carrying a litres demand and a bathMi
 
 test('a sv+smoke combo derives BOTH a bath and a smoker row (sv covered day one, unlike equipPlan)', async ({ page }) => {
   await boot(page);
-  const kinds = await page.evaluate(`deriveRequires(resolveItem('cut-1'), 'c:sv_smoke').map(r=>r.kind).sort()`) as string[];
+  const kinds = await page.evaluate(`deriveRequires(resolveItem('cut-1'), 'c:smoke_sv').map(r=>r.kind).sort()`) as string[];
   expect(kinds).toContain('bath');
   expect(kinds).toContain('smoker');
 });
@@ -348,9 +348,9 @@ test('DoD-10 safety invariance — deriving never mutates the item object or its
   await boot(page);
   const snap = await page.evaluate(`(function(){
     var m=resolveItem('cut-1');
-    var before={ obj:JSON.stringify(m.obj), stages:JSON.stringify(itemStages(m,'c:sv_smoke',true)) };
-    deriveRequires(m,'c:sv_smoke'); deriveRequires(m,'c:smoke'); deriveRequires(m,'c:sv');
-    var after={ obj:JSON.stringify(m.obj), stages:JSON.stringify(itemStages(m,'c:sv_smoke',true)) };
+    var before={ obj:JSON.stringify(m.obj), stages:JSON.stringify(itemStages(m,'c:smoke_sv',true)) };
+    deriveRequires(m,'c:smoke_sv'); deriveRequires(m,'c:smoke'); deriveRequires(m,'c:sv');
+    var after={ obj:JSON.stringify(m.obj), stages:JSON.stringify(itemStages(m,'c:smoke_sv',true)) };
     return { objEq: before.obj===after.obj, stagesEq: before.stages===after.stages };
   })()`) as any;
   expect(snap.objEq).toBe(true);
@@ -358,7 +358,7 @@ test('DoD-10 safety invariance — deriving never mutates the item object or its
 });
 ```
 
-*Method keys (`c:smoke`, `c:sv`, `c:sv_smoke`) follow `itemProfile`'s combo key shape (`app.js:2939`, `'c:'+combo.sort().join('_')`). If a given cut does not offer a combo, the test's `deriveRequires` still returns a valid list for whatever method resolves — verify the actual method keys for `cut-1` with `page.evaluate("itemProfile(resolveItem('cut-1')).methods.map(m=>m.key)")` and use real ones; do not invent a key.*
+*Method keys (`c:smoke`, `c:sv`, `c:smoke_sv`) follow `itemProfile`'s combo key shape (`app.js:2939`, `'c:'+combo.sort().join('_')`). If a given cut does not offer a combo, the test's `deriveRequires` still returns a valid list for whatever method resolves — verify the actual method keys for `cut-1` with `page.evaluate("itemProfile(resolveItem('cut-1')).methods.map(m=>m.key)")` and use real ones; do not invent a key.*
 
 - [ ] **Step 2: Run the test and WITNESS it fail for the intended reason**
 
@@ -504,7 +504,7 @@ test('ok — the bath IS big enough answers ok (the positive twin of the previou
 test('end-to-end — ownership of a real item derived list is consistent with the seeded kit', async ({ page }) => {
   await boot(page, SMOKER_BIG.concat(BATH));
   const r = await page.evaluate(`(function(){
-    var reqs=deriveRequires(resolveItem('cut-1'),'c:sv_smoke');
+    var reqs=deriveRequires(resolveItem('cut-1'),'c:smoke_sv');
     return EQM.ownership(reqs);
   })()`) as any;
   expect(typeof r.ok).toBe('boolean');
@@ -515,9 +515,9 @@ test('DoD-10 safety invariance — an ownership round-trip never mutates the ite
   await boot(page, SMOKER_BIG.concat(BATH));
   const snap = await page.evaluate(`(function(){
     var m=resolveItem('cut-1');
-    var b={ obj:JSON.stringify(m.obj), st:JSON.stringify(itemStages(m,'c:sv_smoke',true)) };
-    EQM.ownership(deriveRequires(m,'c:sv_smoke'));
-    var a={ obj:JSON.stringify(m.obj), st:JSON.stringify(itemStages(m,'c:sv_smoke',true)) };
+    var b={ obj:JSON.stringify(m.obj), st:JSON.stringify(itemStages(m,'c:smoke_sv',true)) };
+    EQM.ownership(deriveRequires(m,'c:smoke_sv'));
+    var a={ obj:JSON.stringify(m.obj), st:JSON.stringify(itemStages(m,'c:smoke_sv',true)) };
     return { objEq:b.obj===a.obj, stEq:b.st===a.st };
   })()`) as any;
   expect(snap.objEq).toBe(true);

@@ -54,8 +54,10 @@ test('ok — the bath IS big enough answers ok (the positive twin of the previou
 
 test('end-to-end — ownership of a real item derived list is consistent with the seeded kit', async ({ page }) => {
   await boot(page, SMOKER_BIG.concat(BATH));
+  // combo-key sort is lexicographic ('c:'+combo.slice().sort().join('_'), app.js:2929), so the real sv+smoke
+  // key is 'c:smoke_sv' — same correction as e1-derive-requires.spec.ts.
   const r = await page.evaluate(`(function(){
-    var reqs=deriveRequires(resolveItem('cut-1'),'c:sv_smoke');
+    var reqs=deriveRequires(resolveItem('cut-1'),'c:smoke_sv');
     return EQM.ownership(reqs);
   })()`) as any;
   expect(typeof r.ok).toBe('boolean');
@@ -66,9 +68,9 @@ test('DoD-10 safety invariance — an ownership round-trip never mutates the ite
   await boot(page, SMOKER_BIG.concat(BATH));
   const snap = await page.evaluate(`(function(){
     var m=resolveItem('cut-1');
-    var b={ obj:JSON.stringify(m.obj), st:JSON.stringify(itemStages(m,'c:sv_smoke',true)) };
-    EQM.ownership(deriveRequires(m,'c:sv_smoke'));
-    var a={ obj:JSON.stringify(m.obj), st:JSON.stringify(itemStages(m,'c:sv_smoke',true)) };
+    var b={ obj:JSON.stringify(m.obj), st:JSON.stringify(itemStages(m,'c:smoke_sv',true)) };
+    EQM.ownership(deriveRequires(m,'c:smoke_sv'));
+    var a={ obj:JSON.stringify(m.obj), st:JSON.stringify(itemStages(m,'c:smoke_sv',true)) };
     return { objEq:b.obj===a.obj, stEq:b.st===a.st };
   })()`) as any;
   expect(snap.objEq).toBe(true);
