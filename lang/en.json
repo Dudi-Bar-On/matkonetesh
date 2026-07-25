@@ -328,5 +328,7 @@
  "סיום!": "Done!",
  "הטיימר הסתיים!": "Timer finished!",
  "טיימר הסתיים": "Timer finished",
- "אין נתוני קיבולת": "no capacity data"
+ "אין נתוני קיבולת": "no capacity data",
+ "עישון קצר — הפסטור המלא בסו-ויד": "short smoke — full pasteurization in the sous-vide",
+ "גימור לאחר סו-ויד — מקור מצוטט": "post-sous-vide finish — cited source"
 }

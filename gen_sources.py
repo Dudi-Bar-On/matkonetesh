@@ -78,6 +78,23 @@ for path in sorted(glob.glob('scratch/research/*.json')):
             for pk, dk in fields:
                 if o.get(pk) is not None and str(cur.get(dk)) != str(o[pk]):
                     diffs.append(f"{dk}: {cur.get(dk)!r} -> {o[pk]!r}")
+        # BUG-3 drift guard (owner ruling 2026-07-25): order_svsmoke.smoke / order_smokesv.smoke are CITED
+        # per-order finishing schedules that itemStages() now actually READS at runtime (order_svsmoke.smoke
+        # wired into the live default sv->smoke order; order_smokesv.smoke already wired into the reverse
+        # smoke->sv order since v147). If a future research pass edits smt/smh without re-checking these
+        # citations, the two silently drift apart — the exact failure mode this wave fixed (order_svsmoke.smoke
+        # sat orphaned for 18 items). Print-time-only, non-fatal: visibility for the next research pass,
+        # never a build gate — gen_sources.py does not decide data correctness, a human/citation does.
+        for ordfield, oname in (('order_svsmoke', 'order_svsmoke.smoke'), ('order_smokesv', 'order_smokesv.smoke')):
+            oo = (it.get(ordfield) or {}).get('smoke')
+            if not oo or cur.get('smt') is None:
+                continue
+            cur_t, cur_h = cur.get('smt'), cur.get('smh')
+            cited_t, cited_h = oo.get('t'), oo.get('h')
+            if cited_t is not None and str(cur_t) != str(cited_t):
+                diffs.append(f"{oname}.t vs smt: {cur_t!r} vs {cited_t!r}")
+            if cited_h is not None and str(cur_h) != str(cited_h):
+                diffs.append(f"{oname}.h vs smh: {cur_h!r} vs {cited_h!r}")
         if diffs: report.append(('SPEC' if kind == 'spec' else 'CUT', n, it.get('eng',''), diffs))
 
 with open('sources.py', 'w', encoding='utf-8') as f:

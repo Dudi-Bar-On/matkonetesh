@@ -2211,6 +2211,15 @@ function srcRow(label, o){
   const note=o.note?`<div style="font-size:.82em;opacity:.7;margin-top:2px" data-mt>${o.note}</div>`:'';
   return `<tr><td>${label}</td><td>${o.ref||'—'}${link}${note}</td></tr>`;
 }
+// BUG-3 addendum: order_svsmoke/order_smokesv note rendering for the order-impact boxes — same visual
+// pattern as srcRow's note div (font-size/opacity/margin), + the ref link where a url exists. Deliberately
+// NO data-mt: these citation notes are authored in English (the citations layer, same context where
+// English refs already appear above) and must render AS STORED, never machine-translated.
+function orderNoteHTML(o){
+  if(!o||!o.note) return '';
+  const link=o.url?` <a href="${o.url}" target="_blank" rel="noopener" style="color:var(--ember2);text-decoration:none">↗</a>`:'';
+  return `<div style="font-size:.82em;opacity:.7;margin-top:2px">${o.note}${link}</div>`;
+}
 function sourcesBlock(c){
   const hd=`<h4 style="font-family:'Heebo';font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember2);margin:0 0 8px">📚 ${L('מקורות ואימות','Sources & verification')}</h4>`;
   const s=c.src;
@@ -2225,8 +2234,8 @@ function sourcesBlock(c){
     const vt=`style="font-family:'Heebo';font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ember2);margin:2px 0"`;
     const hh=L('ש','h');
     order=`<div style="margin-top:10px"><div ${vt}>🔀 ${L('השפעת סדר','Order impact')}</div>`;
-    if(oa) order+=`<div style="font-size:13px;line-height:1.5">${L('סו-ויד→עישון','Sous-vide→smoke')}: ${L('סו-ויד','sous-vide')} ${oa.sv.t}°/${oa.sv.h}${hh}${oa.dry?` → ${L('ייבוש','dry')} ${oa.dry.h}${hh}`:''} → ${L('עישון','smoke')} ${oa.smoke.t}°/${oa.smoke.h}${hh} <span style="opacity:.65">(${L('גימור חם','hot finish')})</span></div>`;
-    if(ob) order+=`<div style="font-size:13px;line-height:1.5">${L('עישון→סו-ויד','Smoke→sous-vide')}: ${L('עישון','smoke')} ${ob.smoke.t}°/${ob.smoke.h}${hh}${ob.smoke.cold?` <span style="opacity:.65">(${L('עישון קר','cold smoke')})</span>`:''} → ${L('סו-ויד','sous-vide')} ${ob.sv.t}°/${ob.sv.h}${hh} <span style="opacity:.65">(${L('פסטור מלא','full pasteurization')})</span></div>`;
+    if(oa) order+=`<div style="font-size:13px;line-height:1.5">${L('סו-ויד→עישון','Sous-vide→smoke')}: ${L('סו-ויד','sous-vide')} ${oa.sv.t}°/${oa.sv.h}${hh}${oa.dry?` → ${L('ייבוש','dry')} ${oa.dry.h}${hh}`:''} → ${L('עישון','smoke')} ${oa.smoke.t}°/${oa.smoke.h}${hh} <span style="opacity:.65">(${L('גימור חם','hot finish')})</span>${orderNoteHTML(oa)}</div>`;
+    if(ob) order+=`<div style="font-size:13px;line-height:1.5">${L('עישון→סו-ויד','Smoke→sous-vide')}: ${L('עישון','smoke')} ${ob.smoke.t}°/${ob.smoke.h}${hh}${ob.smoke.cold?` <span style="opacity:.65">(${L('עישון קר','cold smoke')})</span>`:''} → ${L('סו-ויד','sous-vide')} ${ob.sv.t}°/${ob.sv.h}${hh} <span style="opacity:.65">(${L('פסטור מלא','full pasteurization')})</span>${orderNoteHTML(ob)}</div>`;
     order+=`</div>`;
   }
   return `<div class="raw">${hd}<table>${rows}${ver}</table>${order}</div>`;
@@ -3414,7 +3423,11 @@ function itemStages(meta,methodKey,ready,order){
       // absent, or the coldSmokeTemp() formula fallback (no cited data at all) → plain "Smoke". Mirrors
       // the already-correct pattern in sourcesBlock() (app.js ~2152), which branches on ob.smoke.cold.
       const smokeLbl=(osm.cold===true)?L('עישון קר','Cold smoke'):L('עישון','Smoke');
-      stages.push({label:`${smokeLbl} ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:L('על בשר גולמי — טבעת עשן מרבית','on raw meat — maximal smoke ring')+(cited?' · '+L('מקור מצוטט','cited source'):'')});
+      // BUG-3 addendum: a muted timeline sub-line explaining WHY the smoke stage is short — the full
+      // pasteurization happens afterward, in the sous-vide stage. Applies to every reverse-order smoke
+      // stage (cited or formula-fallback) — the explanation is inherent to the order, not the citation.
+      const smokeSub=L('עישון קצר — הפסטור המלא בסו-ויד','short smoke — full pasteurization in the sous-vide');
+      stages.push({label:`${smokeLbl} ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:L('על בשר גולמי — טבעת עשן מרבית','on raw meat — maximal smoke ring')+(cited?' · '+L('מקור מצוטט','cited source'):''),sub:smokeSub});
       stages.push({label:L('איטום ומעבר לסו-ויד','Seal and move to sous-vide'),hours:0,kind:'note'});
       stages.push({label:`${L('סו-ויד','Sous-vide')} ${svT}° (${L('כולל פסטור','incl. pasteurization')})`,hours:svH,kind:'sv',temp:svT,safety:'pasteur'});
     } else {
@@ -3427,7 +3440,24 @@ function itemStages(meta,methodKey,ready,order){
           stages.push({label:dryLbl,hours:dryH,kind:'dry',note:dryNote});
         }
       }
-      if(hasSmoke) stages.push({label:`${L('עישון','Smoke')} ${m.smTemp}°`,hours:m.smHours,kind:'smoke',temp:m.smTemp,note:m.note});
+      if(hasSmoke){
+        // BUG-3 fix (owner ruling, 2026-07-25 bug round): the default sv→smoke order's finishing smoke
+        // stage used the catalog's smt/smh unconditionally, orphaning order_svsmoke.smoke — a CITED
+        // post-sous-vide finish schedule (18 items: 10 beef 120°/1.5h-class; 8 seafood ~100°/9min gentle
+        // finishes) that itemStages() never read (SV'd shrimp was scheduled for a 230° reblast while the
+        // cited 100° finish sat orphaned). hours may be a range string ("1.5-2") — REUSE upperHours(),
+        // the same parser the smoke-sv branch above uses for osm.h. Only applies when hasSV: a
+        // smoke-only combo (no sv) has no "post-sv finish" to cite and stays on smt/smh untouched.
+        const osv=(hasSV && meta.obj && meta.obj.order_svsmoke && meta.obj.order_svsmoke.smoke)||null;
+        const finT=(osv && osv.t!=null)?osv.t:m.smTemp;
+        const finH=(osv && osv.h!=null)?upperHours(osv.h):m.smHours;
+        // label honors the citation's own cold flag (Wave A/BUG-1 pattern) — order_svsmoke.smoke never
+        // carries cold:true in the data today, but branch on it rather than assume, same as the reverse
+        // (smoke→sv) branch above.
+        const finLbl=(osv && osv.cold===true)?L('עישון קר','Cold smoke'):L('עישון','Smoke');
+        const finSub=osv?L('גימור לאחר סו-ויד — מקור מצוטט','post-sous-vide finish — cited source'):'';
+        stages.push({label:`${finLbl} ${finT}°`,hours:finH,kind:'smoke',temp:finT,note:m.note,sub:finSub});
+      }
     }
     if(m.combo.includes('grill')) stages.push({label:m.combo.length===1?L('גריל / אש ישירה','Grill / direct heat'):L('גימור גריל (צריבה)','Grill finish (sear)'),hours:0.3,kind:'cook',note:m.combo.length===1?m.note:''});
   } else {
@@ -6572,7 +6602,11 @@ function renderTimelinePanel(){
       if(s.hours===0) return `<div class="tl-stage tl-stage-note">↳ ${s.label}</div>`;
       const reload=s.kind==='smoke'&&s.hours>2.5?` · ↻ ${L('הוסף עץ כל','add wood every')} ~90 ${L('דק׳','min')} (${L('כ-','~')}${Math.max(1,Math.round(s.hours*60/90)-1)} ${L('פעמים','times')})`:'';
       const hLabel=s.hours<1?Math.round(s.hours*60)+' '+L('דק׳','min'):s.hours.toFixed(1)+L('ש','h');
-      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span>${timerHTML(Math.round(s.hours*3600), s.tid||('wpi-'+m.key+'-'+si), s.label+' · '+itemName(m))}</div>`;
+      // BUG-3 addendum: a muted explanatory sub-line, distinct from the inline note, for order-related
+      // smoke stages (reverse smoke→sv AND the newly-wired default sv→smoke finish) — set on the stage
+      // by itemStages() (s.sub), so a user seeing an unfamiliar temp sees WHY.
+      const sub=s.sub?`<div class="tl-stage-sub">↳ ${s.sub}</div>`:'';
+      return `<div class="tl-stage"><span class="tl-stage-t">${fmtClockRel(s.start, serve)}</span><span class="tl-stage-l">${s.label}${s.note?` · ${s.note}`:''}${reload}</span><span class="tl-stage-h">${hLabel}</span>${timerHTML(Math.round(s.hours*3600), s.tid||('wpi-'+m.key+'-'+si), s.label+' · '+itemName(m))}</div>${sub}`;
     }).join('');
     const cut=m.kind==='cut'?m.obj:null;
     const doneRef=(cut&&cut.doneness)?`<div class="tl-doneref"><b>${L('מידות עשייה לגימור (מד-חום פנים)','Finishing doneness levels (internal thermometer)')}</b> — ${L('להתאמה אישית לכל סועד:','to customize per guest:')}<div class="tl-donelist">${['rare','mr','med','mw','well'].filter(k=>cut.doneness.levels[k]).map(k=>`<span class="${k===currentDoneness(cut)?'on':''}">${doneLabel(cut,k)} <b>${cut.doneness.levels[k].c}°</b></span>`).join('')}</div></div>`:'';
