@@ -4332,11 +4332,20 @@ function askFindEntity(q){
   hits=all.map(m=>[m,score(m)]).filter(x=>x[1]>=4).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
   return hits;
 }
-function askCutTimes(c){
+// CP1 Task 4 (spec 2026-07-25 §4 "AI copilot/ask/menu grounding"): the sv+smoke finish leg reuses
+// svSmokeFinish(meta) — the SAME accessor Task 2/3 wired into the card/grid/work-plan — instead of the
+// catalog's raw smt/smh literal, so this "instant answers" text (askFire, real UI) can no longer
+// contradict the plan (105° vs 120°-class bug). svt/svh/sot/soh stay untouched (spec §5: svt is
+// safety-invariant; only the sv+smoke finish was ever mis-sourced — the same line every other CP1
+// task drew). Takes `meta` (not the raw cut object) so svSmokeFinish has what it needs.
+function askCutTimes(meta){
+  const c=meta.obj;
   const parts=[];
   if(c.sot) parts.push(`עישון בלבד: ~${c.soh}ש ב-${c.sot}°C`);
   if(c.svt) parts.push(`סו-ויד: ${c.svh}ש ב-${c.svt}°C`);
-  if(c.smt) parts.push(`ואז עישון: ~${c.smh}ש ב-${c.smt}°C`);
+  const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(meta):null;
+  const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
+  if(smtV) parts.push(`ואז עישון: ~${smhV}ש ב-${smtV}°C`);
   return parts;
 }
 function askFire(qRaw){
@@ -4371,10 +4380,14 @@ function askFire(qRaw){
   if(e && e.kind==='cut'){
     const c=e.obj;
     if(has('כמה זמן','זמן','משך','שעות','לעשן כמה','כמה לעשן','כמה שעות')){
-      const t=askCutTimes(c); return {t:`<b>${c.heb}</b> — זמנים: ${t.join(' · ')}. יעד פנימי ${donenessTarget(c)}°C. הזמן תלוי-עובי ולא רק משקל — עבוד לפי טמפ׳ פנימית.`,chips:[link(e)]};
+      const t=askCutTimes(e); return {t:`<b>${c.heb}</b> — זמנים: ${t.join(' · ')}. יעד פנימי ${donenessTarget(c)}°C. הזמן תלוי-עובי ולא רק משקל — עבוד לפי טמפ׳ פנימית.`,chips:[link(e)]};
     }
     if(has('טמפ','חום','מעלות','°','degrees')){
-      return {t:`<b>${c.heb}</b>: יעד פנימי ${donenessTarget(c)}°C${c.safe?` · בטיחות ${c.safe}°C`:''}. ${c.svt?`סו-ויד ${c.svt}°C · `:''}${c.smt?`עישון ${c.smt}°C · `:''}${c.sot?`עישון-בלבד ${c.sot}°C`:''}.`,chips:[link(e)]};
+      // CP1 Task 4: the עישון figure reuses svSmokeFinish(e) — never the raw catalog c.smt literal
+      // (105° vs 120°-class bug). svt/sot untouched (spec §5).
+      const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(e):null;
+      const smtV=smokeFin?smokeFin.t:c.smt;
+      return {t:`<b>${c.heb}</b>: יעד פנימי ${donenessTarget(c)}°C${c.safe?` · בטיחות ${c.safe}°C`:''}. ${c.svt?`סו-ויד ${c.svt}°C · `:''}${smtV?`עישון ${smtV}°C · `:''}${c.sot?`עישון-בלבד ${c.sot}°C`:''}.`,chips:[link(e)]};
     }
     if(has('מידת','נא','מדיום','עשוי','rare','medium','done')){
       if(c.doneness){ const lv=c.doneness.levels; const list=Object.keys(lv).map(k=>`${lv[k].heb||k} ${lv[k].c}°C`).join(' · '); return {t:`<b>${c.heb}</b> — מידות עשייה: ${list}. בחר מידה במתכון והטמפ׳ מתעדכנת.`,chips:[link(e)]}; }
@@ -4391,10 +4404,10 @@ function askFire(qRaw){
       return {t:`<b>${c.heb}</b>: טמפ׳ בטיחות ${c.safe||63}°C. זכור — בטיחות היא זמן×טמפ׳ במרכז הנתח, לא רק המספר. סו-ויד מנצל זאת (טמפ׳ נמוכה יותר לאורך זמן).${/דג|סלמון|טונה|פורל/.test(c.heb)?' לדג נא/חלקי — הקפאה מוקדמת נגד טפילים.':''}`,chips:[link(e)]};
     }
     if(has('איך','שיטה','סו-ויד','עישון','גריל','method')){
-      const t=askCutTimes(c); return {t:`<b>${c.heb}</b> — שיטות: ${t.join(' · ')}. יעד ${donenessTarget(c)}°C. פתח את המתכון לצ׳קליסט וטיימרים.`,chips:[link(e)]};
+      const t=askCutTimes(e); return {t:`<b>${c.heb}</b> — שיטות: ${t.join(' · ')}. יעד ${donenessTarget(c)}°C. פתח את המתכון לצ׳קליסט וטיימרים.`,chips:[link(e)]};
     }
     // default: recipe summary
-    const t=askCutTimes(c); return {t:`<b>${c.heb}</b> (${c.cat}): ${t.join(' · ')}. יעד ${donenessTarget(c)}°C${c.safe?` · בטיחות ${c.safe}°C`:''} · עץ ${c.wood||'—'}.`,chips:[link(e)]};
+    const t=askCutTimes(e); return {t:`<b>${c.heb}</b> (${c.cat}): ${t.join(' · ')}. יעד ${donenessTarget(c)}°C${c.safe?` · בטיחות ${c.safe}°C`:''} · עץ ${c.wood||'—'}.`,chips:[link(e)]};
   }
   if(e && e.kind==='spec'){
     const s=e.obj;
@@ -4435,7 +4448,21 @@ function askContextFor(q){
   const ents=askFindEntity((q||'').toLowerCase()).slice(0,3);
   let ctx='';
   if(ents.length){ ctx='נתונים רלוונטיים מהקטלוג של האפליקציה:\n'+ents.map(e=>{const o=e.obj;
-    if(e.kind==='cut') return `• ${e.heb} (${e.cat}): סו-ויד ${o.svt}°C/${o.svh}ש · עישון ${o.smt}°C/${o.smh}ש · עישון-בלבד ${o.sot}°C/${o.soh}ש · יעד ${donenessTarget(o)}°C · בטיחות ${o.safe||63}°C · עץ ${o.wood||'-'} · ראב ${o.rub||'-'}${o.doneness?' · מידות: '+Object.entries(o.doneness.levels).map(([k,v])=>(v.heb||k)+' '+v.c+'°C').join('/'):''}`;
+    // CP1 Task 4 (spec 2026-07-25 §4 "AI copilot/ask/menu grounding"): the עישון figure this feeds into
+    // the model's own prompt reuses svSmokeFinish(e) — the SAME accessor the card/grid/work-plan already
+    // reuse — instead of the catalog's raw smt/smh literal, so the assistant can no longer contradict the
+    // plan (today it read catalog smt/smh and would answer 105° while the timeline says 120°). svt/svh/
+    // sot/soh stay untouched (spec §5: svt is safety-invariant; only the sv+smoke finish leg was ever
+    // mis-sourced). Falls back to the catalog value byte-identically when no citation exists (negative case).
+    if(e.kind==='cut'){
+      const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(e):null;
+      const smtV=smokeFin?smokeFin.t:o.smt, smhV=smokeFin?smokeFin.h:o.smh;
+      return `• ${e.heb} (${e.cat}): סו-ויד ${o.svt}°C/${o.svh}ש · עישון ${smtV}°C/${smhV}ש · עישון-בלבד ${o.sot}°C/${o.soh}ש · יעד ${donenessTarget(o)}°C · בטיחות ${o.safe||63}°C · עץ ${o.wood||'-'} · ראב ${o.rub||'-'}${o.doneness?' · מידות: '+Object.entries(o.doneness.levels).map(([k,v])=>(v.heb||k)+' '+v.c+'°C').join('/'):''}`;
+    }
+    // spec items never carry an sv+smoke combo (itemProfile for meta.kind==='spec' always produces a
+    // single smoke-only method, no .combo — app.js ~3158) — svSmokeFinish would ALWAYS return null here,
+    // so calling it would be an inert no-op (no-inert-shipment doctrine, same disclosure as cutCard's
+    // specCard sibling in Task 3). Left on the catalog literal, deliberately not wired.
     if(e.kind==='spec') return `• ${e.heb} (${e.cat}): ריפוי ${o.cure||'-'} · עישון ${o.smt||'-'}°C/${o.smh||'-'}ש · יישון ${o.age||'-'} · עץ ${o.wood||'-'}${o.note?' · '+o.note:''}`;
     return `• ${e.heb} (${e.cat}): מתכון בנייה-מאפס.`;
   }).join('\n'); }
