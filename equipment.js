@@ -136,8 +136,33 @@ function eqmOwnershipRow(row){
 // ONE temperature, so demands that CITE a tempC must all AGREE to share; a demand carrying no tempC
 // (legacy/area-shaped, or simply uncited) is temp-agnostic and never blocks. Unknown capacity NEVER
 // fits: a device whose size we don't know must not absorb bookings silently (D11's spirit).
+//
+// FIX WAVE 2 (2026-07-25, re-review "Important d"): the per-slot floor now branches on cap.areaMeasured,
+// mirroring deviceOccupancy's OWN measured/estimated precedent for exactly this floor (app.js ~505-520,
+// out.fit's hard/soft split): `const hard = it.cm2 > cap.perSlotCm2 * (cap.areaMeasured ? FIT_SLOT_TOL :
+// FIT_HARD_FACTOR);`. A MEASURED slot earns only the small FIT_SLOT_TOL (1.10) physical-overhang margin;
+// an ESTIMATED (class-default) slot earns the much looser FIT_HARD_FACTOR (1.6) — app.js's own comment
+// at the constant's definition (~line 295) says a class-default estimate "can plausibly run ~30-50%
+// larger", so a modest overflow on a GUESS must not hard-block at the same 10% margin a real measurement
+// earns. Wave 1 used FIT_SLOT_TOL unconditionally, which was stricter than the app's own design for
+// estimated areas — closed here.
+//
+// Return shape also SPLITS into `sumFits`/`floorFits` so callers can read only what they need without
+// the two owner-added E2 gates changing meaning for existing readers:
+//   - `sumFits` = the whole-device sum check ALONE — this is exactly what deviceOccupancy's `out.over`
+//     has always meant (area: `usedCm2>usableCm2`, app.js:504; volume: `maxReq>cap.litres`, app.js:500).
+//     Task 4's `deviceOccupancy` delegation reads ONLY this field (`over → !sumFits`), so that
+//     delegation stays byte-identical to the pre-E2 arithmetic — no behavior change for the occupancy
+//     view from this split.
+//   - `floorFits` = the per-slot floor ALONE (area) / the bath-temp-exclusivity gate ALONE (volume) —
+//     both are NEW gates this module adds on top of deviceOccupancy's historical arithmetic and have no
+//     deviceOccupancy precedent to stay byte-identical to; they are availability-only, owner-ruled
+//     behavior (fix wave 1 + wave 2).
+//   - `fits` = `sumFits && floorFits` — the combined verdict `EQM.availability` consumes (unchanged
+//     external behavior for availability: still one boolean, same combination the pre-split code computed
+//     inline).
 function eqmFitVerdict(cap, demands){
-  if(!cap || !cap.known) return { fits:false, usedPct:null, room:null };
+  if(!cap || !cap.known) return { fits:false, sumFits:false, floorFits:false, usedPct:null, room:null };
   const amts = (demands||[]).map(function(d){ return (d && Number(d.amount)) || 0; });
   if(cap.mode==='volume'){
     // Bath-temp exclusivity: only demands that CITE a tempC must agree with one another; an untempC'd
@@ -148,25 +173,31 @@ function eqmFitVerdict(cap, demands){
                                       .map(function(d){ return d.tempC; });
     const tempsDisagree = tempedTemps.length>1 && tempedTemps.some(function(tc){ return tc!==tempedTemps[0]; });
     const maxReq = amts.length ? Math.max.apply(null, amts) : 0;
-    return { fits: !tempsDisagree && maxReq <= cap.litres,
+    const sumFits = maxReq <= cap.litres;      // deviceOccupancy's out.over precedent (app.js:500), negated
+    const floorFits = !tempsDisagree;          // NEW gate (fix wave 1 FIX 2) — no deviceOccupancy precedent
+    return { fits: sumFits && floorFits, sumFits: sumFits, floorFits: floorFits,
              usedPct: cap.litres>0 ? Math.round(maxReq/cap.litres*100) : null,
              room: Math.max(0, cap.litres - maxReq) };
   }
   const sum = amts.reduce(function(a,b){ return a+b; }, 0);
-  // per-slot FLOOR: perSlotEst estimates ONE slot's share of the device's usable area; FIT_SLOT_TOL
-  // (app.js ~line 303, `const FIT_SLOT_TOL = 1.10`, a TOP-LEVEL const) is referenced here BY NAME at
+  // per-slot FLOOR: perSlotEst estimates ONE slot's share of the device's usable area. The tolerance
+  // (`tol`) branches on cap.areaMeasured — see the FIX WAVE 2 block above the function for the full
+  // reasoning; the two constants (app.js ~line 298/303, TOP-LEVEL consts) are referenced here BY NAME at
   // CALL time, not at eval time. equipment.js inlines BEFORE app.js into the combined <script> (ruling
   // F5/H2), so at the moment equipment.js's own top-level statements run, app.js's top-level consts do
   // not exist yet (consts do not hoist across the inline boundary). But this reference lives inside a
   // FUNCTION BODY: eqmFitVerdict only EXECUTES when something calls it, and nothing calls it — no user
   // interaction, no test — until the whole inlined <script> (both files) has finished evaluating. So the
   // reference is safe by construction. Verified live this session via the tests below (a real
-  // page.evaluate call into EQM.availability, which reaches this line): if FIT_SLOT_TOL were unresolved
-  // at call time the per-slot-floor tests in tests/e2-availability.spec.ts would fail with a
-  // ReferenceError instead of the expected 'busy' verdict — they instead pass GREEN, which is the probe.
+  // page.evaluate call into EQM.availability, which reaches this line): if either constant were
+  // unresolved at call time the per-slot-floor tests in tests/e2-availability.spec.ts would fail with a
+  // ReferenceError instead of the expected verdict — they instead pass GREEN, which is the probe.
   const perSlotEst = cap.usableCm2 / Math.max(1, cap.racks);
-  const oversizedSingle = amts.some(function(a){ return a > perSlotEst * FIT_SLOT_TOL; });
-  return { fits: (sum <= cap.usableCm2) && !oversizedSingle,
+  const tol = cap.areaMeasured ? FIT_SLOT_TOL : FIT_HARD_FACTOR;
+  const oversizedSingle = amts.some(function(a){ return a > perSlotEst * tol; });
+  const sumFits = sum <= cap.usableCm2;      // deviceOccupancy's out.over precedent (app.js:504), negated — Task 4 delegates over→!sumFits, byte-identical
+  const floorFits = !oversizedSingle;        // NEW gate (fix wave 1 C4 + wave 2 measured/estimated split) — no deviceOccupancy precedent
+  return { fits: sumFits && floorFits, sumFits: sumFits, floorFits: floorFits,
            usedPct: cap.usableCm2>0 ? Math.round(sum/cap.usableCm2*100) : null,
            room: Math.max(0, cap.usableCm2 - sum) };
 }

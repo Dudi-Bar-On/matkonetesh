@@ -146,7 +146,7 @@ function eqmLedgerHeld(deviceId, window){
 
 **Interfaces:**
 - Consumes: Task 1's `eqmLedgerHeld`; app.js hoisted `cookerCandidates`, `deviceCapacity`, `equipList` (call-time only).
-- Produces: `eqmFitVerdict(cap, demands) → { fits:boolean, usedPct:number|null, room:number|null }` where `cap` is a `deviceCapacity()` result and `demands` is an array of `capacityDemand` objects — **area: SUM of amounts vs `cap.usableCm2`; litres: MAX of amounts vs `cap.litres`** (the deviceOccupancy app.js:497 rule, verbatim semantics); unknown capacity (`!cap.known`) → `fits:false, usedPct:null` (an unknown must never masquerade as room — D11's spirit). `EQM.availability(requires, window) → { state:'free'|'partial'|'busy', room, perRow:[{kind, state, deviceId|null}] }`.
+- Produces: `eqmFitVerdict(cap, demands) → { fits:boolean, sumFits:boolean, floorFits:boolean, usedPct:number|null, room:number|null }` *(fix wave 2, 2026-07-25: return shape split — see the Step 3 erratum below)* where `cap` is a `deviceCapacity()` result and `demands` is an array of `capacityDemand` objects — **area: SUM of amounts vs `cap.usableCm2`; litres: MAX of amounts vs `cap.litres`** (the deviceOccupancy app.js:497 rule, verbatim semantics); unknown capacity (`!cap.known`) → `fits:false, sumFits:false, floorFits:false, usedPct:null` (an unknown must never masquerade as room — D11's spirit). `EQM.availability(requires, window) → { state:'free'|'partial'|'busy', room, perRow:[{kind, state, deviceId|null}] }`.
 
 - [ ] **Step 1: failing tests** — `tests/e2-availability.spec.ts` (fixture: seed `mk-equipment` with ONE smoker `{id:'sm1', cat:'smoker', type:'ארון / קבינט', cap:{racks:2, areaCm2:4800}}` — usableCm2 = 4800×PACK_EFF; and for bath cases ONE sousvide `{id:'sv1', cat:'sousvide', cap:{baths:[12,24]}}`; copy the exact seeding shape from tests/e1-ownership.spec.ts):
 
@@ -231,6 +231,24 @@ test('DoD-10: availability round-trip leaves itemStages byte-identical', async (
 > BEFORE this erratum block. The code below is the CORRECTED version — replace the plan's original
 > literally-as-written block with this one; the corrected block is also what shipped
 > (`.superpowers/sdd/e2-task-2-report.md`, "Fix wave 1").
+>
+> **FIX WAVE 2 erratum (2026-07-25, re-review "Important d" — same pattern as the erratum above).** The
+> re-review found two problems with Fix wave 1's code as shipped: (1) the per-slot floor used
+> `FIT_SLOT_TOL` (1.10) UNCONDITIONALLY, which is stricter than deviceOccupancy's OWN measured/estimated
+> precedent for this exact floor (app.js ~505-520: a MEASURED slot gets `FIT_SLOT_TOL`, an ESTIMATED
+> class-default slot gets the looser `FIT_HARD_FACTOR`, 1.6) — an estimate 30-50% off must not hard-block
+> at the same 10% margin a real measurement earns; (2) the single `fits` boolean silently coupled the
+> whole-device SUM check (which Task 4's delegation needs, byte-identical to deviceOccupancy's `out.over`)
+> to the per-slot FLOOR (a NEW, availability-only gate with no deviceOccupancy precedent) — Task 4 could
+> not read one without the other. Both closed below: (a) the floor branches on `cap.areaMeasured`, using
+> `FIT_SLOT_TOL` when measured and `FIT_HARD_FACTOR` when not; (b) `eqmFitVerdict` returns
+> `{ fits, sumFits, floorFits, usedPct, room }` — `sumFits` = the whole-device sum check ALONE (area:
+> `sum<=usableCm2`; volume: `maxReq<=litres` — exactly `!out.over`, byte-identical to the pre-E2
+> arithmetic), `floorFits` = the per-slot floor ALONE (area) / the bath-temp-exclusivity gate ALONE
+> (volume) — both NEW, availability-only, owner-ruled gates, `fits = sumFits && floorFits` (unchanged
+> combined meaning; `EQM.availability` still reads only `v.fits`/`v.room`/`v.usedPct`, so its own external
+> behavior is unaffected by the split). The code below is the fix-wave-2 CORRECTED version; it is also
+> what shipped (`.superpowers/sdd/e2-task-2-report.md`, "Fix wave 2").
 
 ```js
 // ── the ONE fit arithmetic (O-6). deviceOccupancy (app.js) delegates here in E2 Task 4, and
@@ -246,8 +264,13 @@ test('DoD-10: availability round-trip leaves itemStages byte-identical', async (
 // one circulator runs ONE bath at ONE temperature, so demands that CITE a tempC must all AGREE to share;
 // a demand carrying no tempC (legacy/area-shaped, or simply uncited) is temp-agnostic and never blocks.
 // Unknown capacity NEVER fits: a device whose size we don't know must not absorb bookings silently.
+//
+// FIX WAVE 2 (2026-07-25): the floor tolerance branches on cap.areaMeasured (see erratum above); the
+// return shape splits into sumFits (deviceOccupancy's out.over precedent, byte-identical — Task 4 reads
+// ONLY this) / floorFits (the NEW per-slot/temp gate, availability-only) / fits = sumFits && floorFits
+// (what EQM.availability reads, unchanged).
 function eqmFitVerdict(cap, demands){
-  if(!cap || !cap.known) return { fits:false, usedPct:null, room:null };
+  if(!cap || !cap.known) return { fits:false, sumFits:false, floorFits:false, usedPct:null, room:null };
   const amts = (demands||[]).map(function(d){ return (d && Number(d.amount)) || 0; });
   if(cap.mode==='volume'){
     // Bath-temp exclusivity: only demands that CITE a tempC must agree; an untempC'd demand never
@@ -256,19 +279,28 @@ function eqmFitVerdict(cap, demands){
                                       .map(function(d){ return d.tempC; });
     const tempsDisagree = tempedTemps.length>1 && tempedTemps.some(function(tc){ return tc!==tempedTemps[0]; });
     const maxReq = amts.length ? Math.max.apply(null, amts) : 0;
-    return { fits: !tempsDisagree && maxReq <= cap.litres,
+    const sumFits = maxReq <= cap.litres;      // deviceOccupancy's out.over precedent, negated
+    const floorFits = !tempsDisagree;          // NEW gate — no deviceOccupancy precedent
+    return { fits: sumFits && floorFits, sumFits: sumFits, floorFits: floorFits,
              usedPct: cap.litres>0 ? Math.round(maxReq/cap.litres*100) : null,
              room: Math.max(0, cap.litres - maxReq) };
   }
   const sum = amts.reduce(function(a,b){ return a+b; }, 0);
-  // per-slot FLOOR: FIT_SLOT_TOL (app.js ~line 303, top-level const ~1.10) is referenced here at CALL
-  // time, not eval time — equipment.js inlines BEFORE app.js so app.js's top-level consts don't exist
-  // when equipment.js's own top-level statements run, but this reference lives inside a FUNCTION BODY
-  // that only executes once something calls it, always after both scripts have fully evaluated. Safe by
-  // construction; verified live via the per-slot-floor tests in tests/e2-availability.spec.ts.
+  // per-slot FLOOR: FIT_SLOT_TOL/FIT_HARD_FACTOR (app.js ~line 298/303, top-level consts) are referenced
+  // here at CALL time, not eval time — equipment.js inlines BEFORE app.js so app.js's top-level consts
+  // don't exist when equipment.js's own top-level statements run, but this reference lives inside a
+  // FUNCTION BODY that only executes once something calls it, always after both scripts have fully
+  // evaluated. Safe by construction; verified live via the per-slot-floor tests in
+  // tests/e2-availability.spec.ts. Tolerance branches on cap.areaMeasured (fix wave 2, mirroring
+  // deviceOccupancy's own measured/estimated split, app.js ~505-520): measured gets the tight
+  // FIT_SLOT_TOL (1.10, physical-overhang margin); estimated gets the loose FIT_HARD_FACTOR (1.6, a
+  // class-default guess can plausibly run 30-50% larger).
   const perSlotEst = cap.usableCm2 / Math.max(1, cap.racks);
-  const oversizedSingle = amts.some(function(a){ return a > perSlotEst * FIT_SLOT_TOL; });
-  return { fits: (sum <= cap.usableCm2) && !oversizedSingle,
+  const tol = cap.areaMeasured ? FIT_SLOT_TOL : FIT_HARD_FACTOR;
+  const oversizedSingle = amts.some(function(a){ return a > perSlotEst * tol; });
+  const sumFits = sum <= cap.usableCm2;      // deviceOccupancy's out.over precedent, negated — Task 4 delegates over→!sumFits, byte-identical
+  const floorFits = !oversizedSingle;        // NEW gate — no deviceOccupancy precedent
+  return { fits: sumFits && floorFits, sumFits: sumFits, floorFits: floorFits,
            usedPct: cap.usableCm2>0 ? Math.round(sum/cap.usableCm2*100) : null,
            room: Math.max(0, cap.usableCm2 - sum) };
 }
@@ -439,12 +471,26 @@ test('DoD-10 phase-gate line: full allocate-then-release cycle leaves itemStages
 **Interfaces:**
 - Consumes: `eqmFitVerdict` (Task 2).
 - Produces: NO new surface — this is the O-6 rewiring. `deviceOccupancy`'s pct/over math routes through `eqmFitVerdict` with IDENTICAL results (the pre-existing occupancy suite is the witness); the view with an unknown-capacity device and no items shows a neutral `אין נתוני קיבולת` / `no capacity data` line instead of the unconditional `✓ הכל נכנס` fall-through.
+  **Re-scoped (fix wave 2, 2026-07-25, per the plan-reconciliation instruction that accompanied Fix wave 2):**
+  the delegation this task performs is narrower than "route through `eqmFitVerdict` with identical
+  results" reads at face value — `eqmFitVerdict` now returns FOUR meaningful fields
+  (`fits`/`sumFits`/`floorFits`/`usedPct`/`room`), and only TWO of them have a deviceOccupancy precedent
+  to stay byte-identical to: `deviceOccupancy`'s `out.pct` ← `eqmFitVerdict`'s `usedPct`, and
+  `out.over` ← `!eqmFitVerdict(...).sumFits` (both byte-identical to the pre-E2 arithmetic — `sumFits` IS
+  what `out.over` has always meant, area and volume alike). `fits` and `floorFits` are availability-only,
+  owner-ruled NEW behavior (the per-slot floor, C4; the bath-temp exclusivity, §4.3) that has **no**
+  deviceOccupancy precedent and is explicitly **out of scope** for this task's identity gate — Task 4 does
+  not read `fits`/`floorFits` at all, and must not be held to "byte-identical" on fields that were never
+  part of deviceOccupancy's arithmetic in the first place. `out.fit` (the hard/soft slot-diagram verdict,
+  app.js ~508-524) is a SEPARATE, pre-existing, app.js-only computation this task does not touch or
+  delegate — it already has its own measured/estimated split (`FIT_SLOT_TOL`/`FIT_HARD_FACTOR`) and is not
+  part of the `eqmFitVerdict` delegation surface.
 
-**Implementer notes (locate by symbol via Serena — line numbers drift):** the volume branch (`maxReq` → `out.pct`/`out.over`) and the area branch become calls into `eqmFitVerdict(cap, demands)` where `demands` maps `out.items` to `{metric, amount}` shapes; keep `pctFloor`/`unknownCm2Count` handling in app.js (display concerns, not fit arithmetic). In `_occFitHtml`, the final `✓` return gains a guard for the no-capacity-no-items state (D11's display-side cure; the data-side cure is Task 2's availability). After body edits RE-READ the comment blocks above both symbols and update them (stale-comment gate). DoD-8: 390×844 screenshots, populated AND empty states, both looked at.
+**Implementer notes (locate by symbol via Serena — line numbers drift):** the volume branch (`maxReq` → `out.pct`/`out.over`) and the area branch become calls into `eqmFitVerdict(cap, demands)` where `demands` maps `out.items` to `{metric, amount}` shapes, reading ONLY `usedPct` (→ `out.pct`) and `!sumFits` (→ `out.over`) from the result — do not wire `fits`/`floorFits` into `deviceOccupancy` (see the re-scoped Produces paragraph above); keep `pctFloor`/`unknownCm2Count` handling in app.js (display concerns, not fit arithmetic). In `_occFitHtml`, the final `✓` return gains a guard for the no-capacity-no-items state (D11's display-side cure; the data-side cure is Task 2's availability). After body edits RE-READ the comment blocks above both symbols and update them (stale-comment gate). DoD-8: 390×844 screenshots, populated AND empty states, both looked at.
 
-- [ ] **Step 1: failing tests** — (a) unknown-capacity device, zero items → the view must NOT render `הכל נכנס` (assert the neutral string); (b) a populated device's rendered pct equals `eqmFitVerdict`'s number for the same inputs (compute both via page.evaluate, compare). RED with per-assertion attribution: (a) fails on the current fall-through, (b) fails while the wiring is absent.
+- [ ] **Step 1: failing tests** — (a) unknown-capacity device, zero items → the view must NOT render `הכל נכנס` (assert the neutral string); (b) a populated device's rendered pct equals `eqmFitVerdict`'s `usedPct` for the same inputs (compute both via page.evaluate, compare). RED with per-assertion attribution: (a) fails on the current fall-through, (b) fails while the wiring is absent.
 - [ ] **Step 2: implement the delegation + the view guard.**
-- [ ] **Step 3: identity witness** — run the pre-existing occupancy suite (`npx playwright test tests/occupancy-hanging.spec.ts tests/equipment-visibility.spec.ts` + any `occ`-matching spec) — ALL green with ZERO edits to those files. A pre-existing occupancy test needing any change means the delegation changed behavior → STOP; that is a defect, not a test problem.
+- [ ] **Step 3: identity witness** — run the pre-existing occupancy suite (`npx playwright test tests/occupancy-hanging.spec.ts tests/equipment-visibility.spec.ts` + any `occ`-matching spec) — ALL green with ZERO edits to those files. This identity gate covers exactly the two byte-identical fields named above (`out.pct`↔`usedPct`, `out.over`↔`!sumFits`) — it does NOT constrain `fits`/`floorFits`, which are new availability-only behavior with nothing in the pre-existing occupancy suite to be identical to. A pre-existing occupancy test needing any change (on the two identity fields) means the delegation changed behavior → STOP; that is a defect, not a test problem.
 - [ ] **Step 4: build + screenshots + full suite verbatim.**
 - [ ] **Step 5: commit** — `git add app.js tests/e2-occupancy-eqm.spec.ts` · `feat(equip): E2 Task 4 - deviceOccupancy delegates to eqmFitVerdict; empty-device fall-through removed (O-6, D11)`.
 

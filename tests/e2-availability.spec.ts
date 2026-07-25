@@ -114,3 +114,52 @@ test('FIX 2 — bath temp exclusivity: a legacy demand carrying NO tempC is temp
   const r = await page.evaluate(`EQM.availability([${JSON.stringify(BATH_ROW_NOTEMP)}], ${JSON.stringify(W)})`) as any;
   expect(r.state).not.toBe('busy');
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// Fix wave 2 — re-review "Important d", 2026-07-25: wave 1's per-slot floor used FIT_SLOT_TOL (1.10)
+// UNCONDITIONALLY, which is stricter than the app's own design for ESTIMATED areas — deviceOccupancy's
+// own hard/soft split (app.js ~505-520) gives an estimate the much looser FIT_HARD_FACTOR (1.6). The
+// floor now branches on cap.areaMeasured, mirroring that precedent exactly. Also verifies eqmFitVerdict's
+// return shape split (sumFits/floorFits) documented for Task 4's delegation.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+// sm2: NO stored cap.areaCm2 — deviceCapacity falls through to the class default for
+// 'אופסט / סטיק-ברנר' (app.js EQUIP_CATS smoker props, def:5000), so known:true but areaMeasured:false.
+// usableCm2 = round(5000*PACK_EFF) = round(5000*0.85) = 4250; racks=2 (stored, no class default exists
+// for racks) → perSlotEst = 4250/2 = 2125. Measured floor threshold = 2125*FIT_SLOT_TOL(1.10) = 2337.5;
+// estimated floor threshold = 2125*FIT_HARD_FACTOR(1.6) = 3400. A demand of 2800 sits strictly BETWEEN
+// the two thresholds: blocked under the (wrong, wave-1) unconditional 1.10 floor, allowed under the
+// correct estimated-area 1.6 floor — and the whole-device sum (2800 ≤ 4250) fits easily either way, so a
+// 'busy' verdict here is attributable ONLY to which floor tolerance was applied.
+const SM2 = { id:'sm2', cat:'smoker', type:'אופסט / סטיק-ברנר', name:'SEst', cap:{racks:2} };
+const ESTIMATED_ROW = { role:'cook', kind:'smoker', source:'derived', demand:{metric:'area_cm2', amount:2800} };
+
+test('FIX (wave 2) — estimated-area leniency: a demand between the measured and estimated floor thresholds is NOT blocked on a device with no stored areaCm2 (class-default estimate)', async ({ page }) => {
+  await boot(page, [ SM2 ]);   // fixture minimality (DoD-6): only the one estimated-area device the scenario needs
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(ESTIMATED_ROW)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('free');   // 2800/4250 ≈ 66% used, well under the 90% "tight" line — plainly free once the floor is not hit
+});
+
+test('FIX (wave 2) regression guard: the pre-existing MEASURED-device floor test stays exactly the FIT_SLOT_TOL(1.10) behaviour (unchanged by the areaMeasured branch)', async ({ page }) => {
+  await boot(page);
+  // Identical scenario to "FIX 1 — per-slot floor" above (sm1, cap.areaCm2:4800 → areaMeasured:true) —
+  // re-asserted here under its own name so this fix wave's diff carries an explicit witness that the
+  // measured branch (FIT_SLOT_TOL) is untouched, not just that the file-wide suite happens to stay green.
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(BIG_SINGLE_ROW)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('busy');
+});
+
+test('unit probe: eqmFitVerdict returns sumFits/floorFits with the documented meanings (over-demand -> sumFits false; floor-only violation -> sumFits true + floorFits false)', async ({ page }) => {
+  await boot(page);   // sm1: cap.areaCm2:4800 (measured) → usableCm2=4080, racks=2, perSlotEst=2040
+  const r = await page.evaluate(`(function(){
+    const dev = equipList().find(function(d){ return d.id==='sm1'; });
+    const cap = deviceCapacity(dev);
+    const overDemand = eqmFitVerdict(cap, [{metric:'area_cm2', amount:4500}]);      // 4500 > usableCm2(4080) -> whole-device sum alone fails
+    const floorOnly  = eqmFitVerdict(cap, [{metric:'area_cm2', amount:2300}]);      // sum 2300<=4080 fits; single demand 2300 > perSlot(2040)*FIT_SLOT_TOL(1.10)=2244 -> floor alone fails
+    return { overDemand: overDemand, floorOnly: floorOnly };
+  })()`) as any;
+  expect(r.overDemand.sumFits).toBe(false);
+  expect(r.floorOnly.sumFits).toBe(true);
+  expect(r.floorOnly.floorFits).toBe(false);
+  expect(r.floorOnly.fits).toBe(false);   // fits = sumFits && floorFits — the combined verdict availability() still consumes
+});
