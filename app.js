@@ -4010,7 +4010,7 @@ function openAbout(){
      <h3 class="ab-h" data-mt>מהמדריך אל מתכונת המלאה</h3>
      <div class="ab-road">
        <div class="ab-step now" data-mt><span class="ab-ph">עכשיו</span><b>מדריך האש + שכבת AI</b> — ${nTotal} פריטים, ${nMakes} בנייות-מאפס, מידות-עשייה מבוססות-מחקר, 7 יכולות AI וממשק קולי דו-לשוני.</div>
-       <div class="ab-step" data-mt><span class="ab-ph">הבא</span><b>אופליין מלא</b> — עבודה גם בלי רשת, פונטים מקומיים, ותזכורות-רקע.</div>
+       <div class="ab-step" data-mt><span class="ab-ph">הבא</span><b>תזמור הבישול</b> — ניהול ציוד מרכזי, זמינות מכשירים בזמן-אמת, ותכנון אירועים שמסתנכרן סביב מה שיש לך באמת.</div>
        <div class="ab-step" data-mt><span class="ab-ph">החזון</span><b>מתכונת בענן</b> — חשבונות, סנכרון בין מכשירים, והרחבת שכבת ה-AI.</div>
      </div>
 
