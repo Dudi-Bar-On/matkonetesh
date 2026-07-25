@@ -163,6 +163,30 @@ tokens verbatim; unit localization is an app function, full stop. This ruling ma
 well-defined: the D1 scorer's unit-literal test fails any translation whose unit token differs from
 the source's.
 
+---
+
+## G-T3 · 🔴 Chemical-term swap in curing chemistry — "nitrate"→"nitrite" survives every guard
+
+**Found:** 2026-07-25, adversarial verification pass (50-string audit), on string s28 (Cure #2).
+**Severity:** 🔴 — Cure #1 (nitrite) vs Cure #2 (nitrite+nitrate) is a real curing-chemistry
+distinction with food-safety semantics; **BOTH finalists** (translategemma:27b AND aya-expanse:32b)
+independently rendered "nitrate" as "nitrite". No number changes, no unit changes, high content-word
+overlap — invisible to mtSafe, recall, unit-literal, and leak checks alike. Found only by manual read.
+**Class:** sibling of G-T1 (ingredient identity) — a **safety-term lexicon** (nitrate/nitrite,
+Cure #1/#2, botulism-relevant vocabulary) checked bidirectionally is the plausible automated cure;
+belongs to the D1 gate before any bulk run, alongside the unit-literal check.
+
+## Production finding · shipped `mtSafe` has a ½-vs-1/2 blind spot (fails closed — benign but costly)
+
+**Found:** same pass, by executing the SHIPPED dist functions. `mtNumSig` silently drops the Unicode
+fraction `½` but parses ASCII `1/2` as two numbers — so a translation that faithfully renders `½` as
+`1/2` (numerically identical) is falsely flagged unsafe and falls back to Hebrew. Fails CLOSED (safe
+direction), but it caused 100% of one finalist's automated mtSafe failures and will cost benign
+rejections in any bulk run. Fix direction: NFKC-fold/normalize unicode fractions inside `mtNumSig`
+before signature comparison. Small, testable, registered for the translation track.
+
+---
+
 **Root-cause detail found while registering:** the DATA-path prompt (`mtTranslate`, app.js:7466)
 says only *"Keep ALL numbers, temperatures, times and units EXACTLY as written"* — it LACKS the
 explicit *"do NOT convert between units (no °C→°F, no metric→imperial)"* clause the VOICE path's
