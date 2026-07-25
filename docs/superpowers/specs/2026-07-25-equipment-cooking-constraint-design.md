@@ -506,6 +506,15 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 > emphasized why-and-fix treatment is **E3's** bold-invalid surface (same verdict, escalated), with
 > E5 supplying the replacement-fix path when it lands. E3's plan carries this amendment as binding.
 
+> **AMENDMENT O-6 — owner ruling in conversation, 2026-07-25 (the device-usage display reads EQM).**
+> The existing graphic display of device usage (the occupancy view) **is part of the Equipment
+> Management domain and sources its data from the module** — it becomes a READER of `EQM`
+> (availability/ledger) with **no parallel data path**. The spec already absorbs `deviceOccupancy`'s
+> fit math into the ledger (§4.3/Q3, E2); this ruling binds the VISUALIZATION to the same source in
+> the SAME phase: when E2 rewires the math, the display rewires with it — no transition period in
+> which the view computes usage numbers the module doesn't own. Any future usage/occupancy surface
+> (including P7's C11 ordering work) reads EQM only.
+
 ---
 
 ## 7. Replacements (owner design §6) + Retroactive invalidation (owner design §7)
