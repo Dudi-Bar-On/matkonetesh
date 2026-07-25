@@ -349,6 +349,18 @@ def _js_str(s):
 import os as _os, glob as _glob
 with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.css"), encoding="utf-8") as _f: _css = _f.read()
 with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.js"), encoding="utf-8") as _f: _js = _f.read()
+# ── Equipment module (spec §3, ruling F5). equipment.js is inlined BEFORE app.js in __JS__ below: EQM is
+# a `const` and does NOT hoist, so it must be evaluated ahead of any app.js top-level path that reads it.
+with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "equipment.js"), encoding="utf-8") as _f: _eqm = _f.read()
+# F5 single-definition guard (S1's "build.py has zero assertions" lesson — the anti-silent-drop check).
+# EQM is defined EXACTLY once, in equipment.js, with all five public methods; app.js defines it NOWHERE
+# (app.js only ever CALLS EQM.*). A broken inline now aborts the build loudly instead of shipping silently.
+import re as _re
+_eqm_defs = _re.findall(r'(?m)^\s*(?:const|let|var)\s+EQM\b', _eqm)
+assert len(_eqm_defs) == 1, "F5: equipment.js must define EQM exactly once, found %d" % len(_eqm_defs)
+for _meth in ("ownership", "availability", "allocate", "release", "alternatives"):
+    assert _re.search(r'\b' + _meth + r'\s*:', _eqm), "F5: EQM.%s missing from equipment.js" % _meth
+assert not _re.search(r'(?m)^\s*(?:const|let|var)\s+EQM\b', _js), "F5: app.js must not define EQM (it may only call EQM.*)"
 # i18n: one JSON dictionary file per language under lang/ → const I18N_DICTS = {en:{…}, fr:{…}, …}
 _i18n = {}
 _i18n_data = {}   # <code>.data.json = bulk prose (item descriptions) merged into <code>
@@ -375,7 +387,7 @@ if _en_keys:
         _pct = round(100 * _cov / len(_en_keys))
         print("[i18n] %s: %d/%d keys vs en (%d%%)%s" % (_code, _cov, len(_en_keys), _pct, (" · %d orphaned" % len(_orph)) if _orph else ""))
 I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
-html = HTML.replace("__CSS__", _css).replace("__JS__", _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")")
+html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")")
 import os as _os, shutil as _shutil
 _root = _os.path.dirname(_os.path.abspath(__file__))
 # 1) index.html at repo root — used by the dev server, tests, and manual upload
