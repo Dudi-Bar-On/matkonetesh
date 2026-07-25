@@ -3489,6 +3489,34 @@ function itemStages(meta,methodKey,ready,order){
     if(typeof sc==='number' && sc>0) stages.push({label:`${L('בדיקת טמפ׳ פנים — יעד','Internal temp check — target')} ${sc}°`, hours:0, kind:'bcheck', temp:sc, note:L('מד-חום בליבה לפני הגשה','thermometer in the core before serving')}); }
   return stages;
 }
+
+// ── Cooking Paths (spec 2026-07-25, CP1). A path = a cited (methodKey, order) pair. itemPaths
+// ENUMERATES what the item's citations support — one entry per profile method, plus a reverse-order
+// entry where comboHasSvSmoke says the citation exists. NO formula paths: an entry exists iff its
+// schedule is cited (CP3 adds research-cited single-device paths as DATA, zero new JS here).
+function itemPaths(meta){
+  const p = (typeof itemProfile==='function') ? itemProfile(meta) : null;
+  if(!p || !p.methods) return [];
+  const out = [];
+  p.methods.forEach(function(m, i){
+    out.push({ id:m.key, methodKey:m.key, order:null, label:m.label||m.key, cited:true, isDefault:i===0 });
+    if(m.combo && m.combo.indexOf('sv')>=0 && m.combo.indexOf('smoke')>=0 &&
+       typeof comboHasSvSmoke==='function' && comboHasSvSmoke(meta, m.key)){
+      out.push({ id:m.key+':rev', methodKey:m.key, order:'smoke-sv',
+                 label:(typeof svOrderName==='function'?svOrderName('smoke-sv'):'smoke→sv'),
+                 cited:true, isDefault:false });
+    }
+  });
+  return out;
+}
+// THE one way any surface obtains cooking stages (spec §3.1). sel={methodKey?,order?}; absent → the
+// item's default path. Returns itemStages' own output untransformed — labels/sub-lines are already
+// cited-aware there (v264 Waves A/C), so every consumer inherits them identically.
+function effectiveSchedule(meta, sel){
+  const mk = sel && sel.methodKey ? sel.methodKey : undefined;
+  const ord = sel && sel.order ? sel.order : undefined;
+  return { stages: itemStages(meta, mk, true, ord) || [], path: { methodKey: mk||null, order: ord||null } };
+}
 function comboHasSvSmoke(meta,methodKey){
   const p=itemProfile(meta); if(!p) return false;
   const m=p.methods.find(x=>x.key===methodKey)||p.methods[0];
