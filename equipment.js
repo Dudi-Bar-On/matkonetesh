@@ -75,16 +75,51 @@ function deriveRequires(meta, methodKey, order){
   return rows;
 }
 
-// ── eqmOwnershipRow — Task 3 fills this body (per-row ok/missing/partial via cookerCandidates + caps).
+// eqmOwnershipRow — Task 3 (spec §5.1). One derived cook row → 'ok' | 'partial' | 'missing'.
+// cookerCandidates(stageKind) already returns the OWNED devices that can serve this stage (the ONE
+// substitution policy), so ownership is "do I own a candidate, and does at least one meet the capability".
+// Declared (process) kinds — grinder/stuffer/sealer/curing — have no KIND_TO_STAGE entry; E6 extends this
+// with their category resolution. E1 derives none, so the guard below returns 'missing' for an unmapped
+// kind rather than crashing.
 function eqmOwnershipRow(row){
-  throw new Error('eqmOwnershipRow: implemented in E1 Task 3');
+  const stageKind = KIND_TO_STAGE[row && row.kind];
+  const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind) : [];
+  if(!owned.length) return 'missing';                       // no device of the kind at all
+  const cap = (row && row.capability) || {};
+  const demand = (row && row.demand) || null;
+  const meets = owned.some(function(dev){
+    // cap.hang is a recipe PREFERENCE (spec.hang), never AND-gated with the row's area demand: the schema
+    // allows a single row to carry BOTH cap.hang and demand.area_cm2 (see the deriveRequires comment above)
+    // even though current real data never combines them (cut_equip sets footprint only, make_equip sets
+    // hang only, special_equip neither). A device satisfies a hang-preference row via EITHER hanging
+    // capacity (deviceCanHang) OR area fit (deviceCapacity), never requiring both — when no area demand
+    // rides along the row, hang is the only satisfier, which is today's real shape.
+    if(cap.hang){
+      const hangs = deviceCanHang(dev);
+      const areaFits = (demand && demand.metric==='area_cm2') ? (deviceCapacity(dev).usableCm2 >= demand.amount) : false;
+      if(!hangs && !areaFits) return false;
+    }
+    if(cap.bathMinL){ const b=chooseBath(dev, cap.bathMinL); if(!b || !b.ok) return false; }
+    if(cap.maxTempC){ const mx=Number(propOf(dev,'maxC')); if(mx>0 && mx<cap.maxTempC) return false; }
+    return true;
+  });
+  return meets ? 'ok' : 'partial';                          // owns the kind but no unit clears the capability
 }
 
 // ── the ONE narrow global (ruling F3/F5: exactly five methods). E1 makes only `ownership` functional.
 const EQM = {
-  // physical, catalog-level, window-independent (spec §5.1). Task 3 replaces this stub.
+  // physical, catalog-level, window-independent (spec §5.1). The SINGLE verdict all three E3 gates read
+  // (§5.2) — B-i.1's "three capacity rules for one device" closed to one, structurally. Answers from the
+  // SAME requires list EQM.availability (E2) will use (§4.2). E1's only production reader is the catalog
+  // requires chip (Task 4); E3 adds the plan-add and event-add gates.
   ownership: function(requires){
-    throw new Error('EQM.ownership: implemented in E1 Task 3');
+    const missing=[], partial=[];
+    (requires||[]).forEach(function(row){
+      const v = eqmOwnershipRow(row);
+      if(v==='missing') missing.push(row);
+      else if(v==='partial') partial.push(row);
+    });
+    return { ok: missing.length===0 && partial.length===0, missing:missing, partial:partial };
   },
   // ledger + capacity fit (spec §5.1) — Phase E2.
   availability: function(requires, window){
