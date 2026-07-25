@@ -4323,6 +4323,27 @@ function gemReadAudio(json){
 }
 const GEM_MODEL = gemId('text');   // back-compat alias only — GEM_MODELS.text (above) is the source of truth; every call site now passes a ROLE, not this constant.
 function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; }
+// ── P0-app item 7 · cost instrumentation (read-only rider, spec §4.4). Gemini returns usageMetadata on
+// every generateContent response and nothing in this app has ever read it, so no token or dollar figure
+// exists for any model — which is why item 3's COGS claim is currently unverifiable after the fact.
+// Captured here, at the ONE chokepoint every text/JSON call passes through. No UI, no persistence, no
+// stored value: this reads a field of the API envelope and writes nothing the app relies on.
+const GEM_USAGE=[];                       // in-memory ring buffer, dev surface only
+function gemNoteUsage(role, r){
+  // MUST clone: gemFetch's contract is to return the raw Response for its caller to .json(). Reading the
+  // body here would consume it and break every AI call in the app.
+  try{
+    r.clone().json().then(function(j){
+      const u=j&&j.usageMetadata; if(!u) return;
+      GEM_USAGE.push({ role:String(role||''), at:Date.now(),
+        prompt:u.promptTokenCount|0, out:u.candidatesTokenCount|0,
+        think:u.thoughtsTokenCount|0, total:u.totalTokenCount|0 });
+      if(GEM_USAGE.length>50) GEM_USAGE.shift();
+      try{ console.debug('[AI usage]', role, u); }catch(e){}
+    }).catch(function(){});
+  }catch(e){}
+}
+
 async function gemFetch(model, body, opts){
   opts=opts||{};
   const mdl = GEM_MODELS[model] ? GEM_MODELS[model].id : (model||GEM_MODEL);   // role → concrete id; a literal id passes through
@@ -4341,7 +4362,7 @@ async function gemFetch(model, body, opts){
     try{
       const r=await fetch(url, {method:'POST', headers, body:JSON.stringify(body), signal:ctl?ctl.signal:undefined});
       if(to) clearTimeout(to);
-      if(r.ok) return r;
+      if(r.ok){ gemNoteUsage(model, r); return r; }   // P0-app item 7 — read-only, never alters the Response
       if(mode==='managed' && [401,402,403].indexOf(r.status)>=0 && gemKey()){ return gemFetch(model, body, Object.assign({}, opts, {key:gemKey()})); }   // central code invalid/over-cap → use the user's own key
       if(i<tries-1 && [429,500,502,503,504].indexOf(r.status)>=0){ lastErr=new Error('api-'+r.status); continue; }   // retry only transient statuses
       throw new Error('api-'+r.status);
