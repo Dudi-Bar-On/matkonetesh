@@ -68,6 +68,12 @@ function deriveRequires(meta, methodKey, order){
       if(litres>0){
         cap.bathMinL = litres;                                                   // bath must be this big
         row.demand = { metric:'litres', amount:litres };
+        // owner ruling 2026-07-25: capacityDemand.tempC (spec §4.3 amendment, added post Task-2 review).
+        // The cited bath temperature rides the demand so eqmFitVerdict's volume branch (below) can
+        // enforce ONE-circulator/ONE-temperature exclusivity — the cross-event twin of the single-event
+        // bath-temp detector (app.js:3210). A demand with no tempC (legacy/area rows, or a caller who
+        // never cited one) stays temp-agnostic and never blocks sharing (see eqmFitVerdict).
+        if(typeof s.temp==='number' && s.temp>0) row.demand.tempC = s.temp;
       }
     } else {
       if(spec.hang) cap.hang = spec.hang;                                       // recipe PREFERENCE — resolved per-device at ownership time
@@ -116,20 +122,52 @@ function eqmOwnershipRow(row){
 
 // ── the ONE fit arithmetic (O-6). deviceOccupancy (app.js) delegates here in E2 Task 4, and
 // availability applies the same function to ledger entries — one arithmetic, two callers, zero drift.
-// Area: SUM of known demands vs usableCm2 (PACK_EFF already inside). Litres: MAX of demands vs bath
-// litres — min_bath_l is a per-item CONSTRAINT, not additive displacement (deviceOccupancy's rule,
-// app.js:497 — items SHARE a bath, so litres never summed across occupants). Unknown capacity NEVER
+// Area: SUM of known demands vs usableCm2 (PACK_EFF already inside), PLUS a per-slot FLOOR (owner
+// ruling 2026-07-25, spec C4 re-wording, post Task-2 review): no SINGLE demand may exceed one slot's
+// ESTIMATED capacity — the whole-device sum alone can hide an oversized single demand inside a
+// comfortable total (e.g. one huge brisket reads as "60% used" even though it can never physically sit
+// on one rack). This is the CHEAP floor the owner asked for now ("cheap floor now, full per-slot at
+// E3"); full per-slot bin-packing (which rack, which combination of demands actually sits where) is
+// E3's job, not this function's — see spec C4: "E2's EQM.availability uses the whole-device sum plus a
+// per-slot FLOOR … full per-slot packing over ledger entries lands at E3". Litres: MAX of demands vs
+// bath litres — min_bath_l is a per-item CONSTRAINT, not additive displacement (deviceOccupancy's rule,
+// app.js:497 — items SHARE a bath, so litres never summed across occupants), PLUS temp exclusivity
+// (owner ruling 2026-07-25, spec §4.3 capacityDemand.tempC amendment): one circulator runs ONE bath at
+// ONE temperature, so demands that CITE a tempC must all AGREE to share; a demand carrying no tempC
+// (legacy/area-shaped, or simply uncited) is temp-agnostic and never blocks. Unknown capacity NEVER
 // fits: a device whose size we don't know must not absorb bookings silently (D11's spirit).
 function eqmFitVerdict(cap, demands){
   if(!cap || !cap.known) return { fits:false, usedPct:null, room:null };
   const amts = (demands||[]).map(function(d){ return (d && Number(d.amount)) || 0; });
   if(cap.mode==='volume'){
+    // Bath-temp exclusivity: only demands that CITE a tempC must agree with one another; an untempC'd
+    // demand never blocks (temp-agnostic). Cited bath temperatures are exact integers/halves — never a
+    // fuzzy accumulated float — so strict !== is the correct equality test here; no epsilon is needed
+    // or wanted (an epsilon would risk quietly merging two genuinely different cited temperatures).
+    const tempedTemps = (demands||[]).filter(function(d){ return d && typeof d.tempC==='number'; })
+                                      .map(function(d){ return d.tempC; });
+    const tempsDisagree = tempedTemps.length>1 && tempedTemps.some(function(tc){ return tc!==tempedTemps[0]; });
     const maxReq = amts.length ? Math.max.apply(null, amts) : 0;
-    return { fits: maxReq <= cap.litres, usedPct: cap.litres>0 ? Math.round(maxReq/cap.litres*100) : null,
+    return { fits: !tempsDisagree && maxReq <= cap.litres,
+             usedPct: cap.litres>0 ? Math.round(maxReq/cap.litres*100) : null,
              room: Math.max(0, cap.litres - maxReq) };
   }
   const sum = amts.reduce(function(a,b){ return a+b; }, 0);
-  return { fits: sum <= cap.usableCm2, usedPct: cap.usableCm2>0 ? Math.round(sum/cap.usableCm2*100) : null,
+  // per-slot FLOOR: perSlotEst estimates ONE slot's share of the device's usable area; FIT_SLOT_TOL
+  // (app.js ~line 303, `const FIT_SLOT_TOL = 1.10`, a TOP-LEVEL const) is referenced here BY NAME at
+  // CALL time, not at eval time. equipment.js inlines BEFORE app.js into the combined <script> (ruling
+  // F5/H2), so at the moment equipment.js's own top-level statements run, app.js's top-level consts do
+  // not exist yet (consts do not hoist across the inline boundary). But this reference lives inside a
+  // FUNCTION BODY: eqmFitVerdict only EXECUTES when something calls it, and nothing calls it — no user
+  // interaction, no test — until the whole inlined <script> (both files) has finished evaluating. So the
+  // reference is safe by construction. Verified live this session via the tests below (a real
+  // page.evaluate call into EQM.availability, which reaches this line): if FIT_SLOT_TOL were unresolved
+  // at call time the per-slot-floor tests in tests/e2-availability.spec.ts would fail with a
+  // ReferenceError instead of the expected 'busy' verdict — they instead pass GREEN, which is the probe.
+  const perSlotEst = cap.usableCm2 / Math.max(1, cap.racks);
+  const oversizedSingle = amts.some(function(a){ return a > perSlotEst * FIT_SLOT_TOL; });
+  return { fits: (sum <= cap.usableCm2) && !oversizedSingle,
+           usedPct: cap.usableCm2>0 ? Math.round(sum/cap.usableCm2*100) : null,
            room: Math.max(0, cap.usableCm2 - sum) };
 }
 
@@ -208,7 +246,12 @@ const EQM = {
     });
     return { state: worst, room: minRoom, perRow: perRow };
   },
-  // holder-tracked reservation (spec §5.1) — Phase E2.
+  // holder-tracked reservation (spec §5.1) — Phase E2 Task 3. NOTE for Task 3's implementer (owner
+  // ruling 2026-07-25, capacityDemand.tempC amendment, spec §4.3): when this stub becomes real, the
+  // ledger entry it writes must copy metric+amount+tempC from row.demand — not just metric+amount. A sv
+  // row's cited tempC has to ride into the REAL held ledger entry, or eqmFitVerdict's bath-temp
+  // exclusivity check (volume branch, fixed 2026-07-25) has nothing real to compare against once actual
+  // events start allocating baths.
   allocate: function(requires, window, holder){
     throw new Error('EQM.allocate: not implemented until E2 (reservation ledger)');
   },

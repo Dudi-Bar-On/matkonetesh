@@ -65,3 +65,52 @@ test('DoD-10: availability round-trip leaves itemStages byte-identical', async (
   })()`) as any;
   expect(r.same).toBe(true);
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// Fix wave 1 — owner rulings 2026-07-25 (post Task-2 review). Two spec-level gaps the reviewer surfaced,
+// both ruled on in conversation and committed as amendments to
+// docs/superpowers/specs/2026-07-25-equipment-cooking-constraint-design.md:
+//   FIX 1 — per-slot FLOOR (C4 re-wording): "cheap floor now, full per-slot at E3".
+//   FIX 2 — capacityDemand.tempC bath exclusivity (§4.3 amendment): one circulator, one temperature.
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+
+// sm1 (KIT[0]): cap.areaCm2=4800, cap.racks=2 → usableCm2 = round(4800*PACK_EFF) = round(4800*0.85) = 4080;
+// perSlotEst = usableCm2 / racks = 2040; floor threshold = perSlotEst * FIT_SLOT_TOL(1.10) = 2244.
+// 2300 is BIGGER than the per-slot floor (2244) but SMALLER than the whole-device usable total (4080) —
+// the exact case the sum-only check cannot see: a single demand that can never physically sit on one
+// rack, hiding inside a comfortable 2300/4080≈56% whole-device total.
+const BIG_SINGLE_ROW = { role:'cook', kind:'smoker', source:'derived', demand:{metric:'area_cm2', amount:2300} };
+
+test('FIX 1 — per-slot floor (C4 re-wording): a single demand bigger than one slot but smaller than the whole-device total answers busy', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(BIG_SINGLE_ROW)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('busy');
+});
+
+// Bath-temp exclusivity rows: same litres (10L, well under sv1's 24L bath) so any 'busy' verdict below is
+// attributable ONLY to the temp check, never to litre overflow — the isolation the mutation witness relies on.
+const BATH_ROW_T63    = { role:'cook', kind:'bath', source:'derived', demand:{metric:'litres', amount:10, tempC:63} };
+const BATH_ROW_T85    = { role:'cook', kind:'bath', source:'derived', demand:{metric:'litres', amount:10, tempC:85} };
+const BATH_ROW_NOTEMP = { role:'cook', kind:'bath', source:'derived', demand:{metric:'litres', amount:10} };
+const heldBathAt63 = (page: any) => page.evaluate(`eqmLedgerAdd({deviceId:'sv1', window:{startMs:900, endMs:1500}, capacityDemand:{metric:'litres', amount:10, tempC:63}, holder:{type:'event', id:'e1'}, state:'held'})`);
+
+test('FIX 2 — bath temp exclusivity: a differing cited tempC on an overlapping hold answers busy (one circulator, one temperature)', async ({ page }) => {
+  await boot(page);
+  await heldBathAt63(page);
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(BATH_ROW_T85)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('busy');
+});
+
+test('FIX 2 — bath temp exclusivity: the SAME cited tempC on an overlapping hold shares the bath, not busy', async ({ page }) => {
+  await boot(page);
+  await heldBathAt63(page);
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(BATH_ROW_T63)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).not.toBe('busy');
+});
+
+test('FIX 2 — bath temp exclusivity: a legacy demand carrying NO tempC is temp-agnostic and is never blocked by a held tempC demand', async ({ page }) => {
+  await boot(page);
+  await heldBathAt63(page);
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(BATH_ROW_NOTEMP)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).not.toBe('busy');
+});

@@ -217,22 +217,59 @@ test('DoD-10: availability round-trip leaves itemStages byte-identical', async (
 - [ ] **Step 2: RED** — all fail at the `availability` stub's throw (`not implemented until E2`). Paste per-assertion.
 - [ ] **Step 3: implement** in `equipment.js`:
 
+> **ERRATUM (owner ruling 2026-07-25, post Task-2 review — same pattern as Task 1's store-convention
+> erratum).** The Task-2 reviewer surfaced two spec-level gaps in the block below as first drafted: (1)
+> the whole-device SUM check alone can hide an oversized single demand inside a comfortable total — no
+> per-slot floor existed; (2) bath (volume) demands carried no temperature, so two overlapping demands at
+> genuinely different cited bath temperatures could be told they "share" by the MAX-litres rule alone,
+> which is physically wrong (one circulator holds one temperature). The owner ruled on both in
+> conversation, 2026-07-25: **FIX 1** — a cheap per-slot floor now (`perSlotEst = cap.usableCm2 /
+> Math.max(1, cap.racks)`; a single demand `> perSlotEst * FIT_SLOT_TOL` fails), full per-slot
+> bin-packing deferred to E3 (spec §8.2 row **C4**, re-worded to say exactly this). **FIX 2** —
+> `capacityDemand.tempC` (spec §4.3 amendment): demands that cite a `tempC` must all agree to share;
+> demands with no `tempC` are temp-agnostic and never block. Both rulings are committed to the spec file
+> BEFORE this erratum block. The code below is the CORRECTED version — replace the plan's original
+> literally-as-written block with this one; the corrected block is also what shipped
+> (`.superpowers/sdd/e2-task-2-report.md`, "Fix wave 1").
+
 ```js
 // ── the ONE fit arithmetic (O-6). deviceOccupancy (app.js) delegates here in E2 Task 4, and
 // availability applies the same function to ledger entries — one arithmetic, two callers, zero drift.
-// Area: SUM of known demands vs usableCm2 (PACK_EFF already inside). Litres: MAX of demands vs bath
-// litres — min_bath_l is a per-item CONSTRAINT, not additive displacement (deviceOccupancy's rule).
+// Area: SUM of known demands vs usableCm2 (PACK_EFF already inside), PLUS a per-slot FLOOR (owner
+// ruling 2026-07-25, spec C4 re-wording, post Task-2 review): no SINGLE demand may exceed one slot's
+// ESTIMATED capacity — the whole-device sum alone can hide an oversized single demand inside a
+// comfortable total. Cheap floor now ("cheap floor now, full per-slot at E3"); full per-slot
+// bin-packing (which rack, which combination of demands actually sits where) is E3's job, not this
+// function's. Litres: MAX of demands vs bath litres — min_bath_l is a per-item CONSTRAINT, not additive
+// displacement (deviceOccupancy's rule, app.js:497 — items SHARE a bath, so litres never summed across
+// occupants), PLUS temp exclusivity (owner ruling 2026-07-25, spec §4.3 capacityDemand.tempC amendment):
+// one circulator runs ONE bath at ONE temperature, so demands that CITE a tempC must all AGREE to share;
+// a demand carrying no tempC (legacy/area-shaped, or simply uncited) is temp-agnostic and never blocks.
 // Unknown capacity NEVER fits: a device whose size we don't know must not absorb bookings silently.
 function eqmFitVerdict(cap, demands){
   if(!cap || !cap.known) return { fits:false, usedPct:null, room:null };
   const amts = (demands||[]).map(function(d){ return (d && Number(d.amount)) || 0; });
   if(cap.mode==='volume'){
+    // Bath-temp exclusivity: only demands that CITE a tempC must agree; an untempC'd demand never
+    // blocks. Cited bath temperatures are exact integers/halves — strict !== is correct, no epsilon.
+    const tempedTemps = (demands||[]).filter(function(d){ return d && typeof d.tempC==='number'; })
+                                      .map(function(d){ return d.tempC; });
+    const tempsDisagree = tempedTemps.length>1 && tempedTemps.some(function(tc){ return tc!==tempedTemps[0]; });
     const maxReq = amts.length ? Math.max.apply(null, amts) : 0;
-    return { fits: maxReq <= cap.litres, usedPct: cap.litres>0 ? Math.round(maxReq/cap.litres*100) : null,
+    return { fits: !tempsDisagree && maxReq <= cap.litres,
+             usedPct: cap.litres>0 ? Math.round(maxReq/cap.litres*100) : null,
              room: Math.max(0, cap.litres - maxReq) };
   }
   const sum = amts.reduce(function(a,b){ return a+b; }, 0);
-  return { fits: sum <= cap.usableCm2, usedPct: cap.usableCm2>0 ? Math.round(sum/cap.usableCm2*100) : null,
+  // per-slot FLOOR: FIT_SLOT_TOL (app.js ~line 303, top-level const ~1.10) is referenced here at CALL
+  // time, not eval time — equipment.js inlines BEFORE app.js so app.js's top-level consts don't exist
+  // when equipment.js's own top-level statements run, but this reference lives inside a FUNCTION BODY
+  // that only executes once something calls it, always after both scripts have fully evaluated. Safe by
+  // construction; verified live via the per-slot-floor tests in tests/e2-availability.spec.ts.
+  const perSlotEst = cap.usableCm2 / Math.max(1, cap.racks);
+  const oversizedSingle = amts.some(function(a){ return a > perSlotEst * FIT_SLOT_TOL; });
+  return { fits: (sum <= cap.usableCm2) && !oversizedSingle,
+           usedPct: cap.usableCm2>0 ? Math.round(sum/cap.usableCm2*100) : null,
            room: Math.max(0, cap.usableCm2 - sum) };
 }
 ```
