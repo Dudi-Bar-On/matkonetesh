@@ -288,8 +288,9 @@ charcoal/kettle/gas grill, `cook`→grill|oven, `sv`→bath — *erratum correct
 whole-branch review: this line previously mis-stated the pre-existing policy as "cook→smoker|oven"; the
 code was always as now described*) and attaches `capability.maxTempC` from the cited temps and `demand`
 from the footprint (*E1 note: a `minTempC`/hold-low capability — the cold-smoke constraint — has no
-derivable source in E1 and is an OPEN owner question recorded at the phase boundary, not silently
-dropped*). **Because it is derived from the same inputs the plan reads, it cannot disagree with the
+derivable source in E1; **owner ruling 2026-07-25: deferred to E4 and registered** — the cold-smoke
+hold-low capability check is a named E4 requirement, landing with the order work that creates
+cold-smoke stages*). **Because it is derived from the same inputs the plan reads, it cannot disagree with the
 plan** — this is the anti-drift property the owner named, and it closes D4's "no device requirement is declared
 in data" for the **cook** role structurally (the narrow `equipPlan` fuel/refuel enrichment breadth is a
 separate, out-of-scope concern, §10). `sv` is covered here from day one (unlike `equipPlan`, which never
@@ -509,6 +510,19 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 > **(4) Delivery.** Task 4's informational chip is the seed (per-kind ok/partial/missing); the full
 > emphasized why-and-fix treatment is **E3's** bold-invalid surface (same verdict, escalated), with
 > E5 supplying the replacement-fix path when it lands. E3's plan carries this amendment as binding.
+
+> **AMENDMENT O-7 — owner ruling in conversation, 2026-07-25 (temperature-probe availability is a
+> required capability).** Given with the chip-copy approval: *"temperature probe availability is
+> required, especially for smokers and ovens."* A cooking stage **gated by internal temperature**
+> (probe target, `bcheck`) is executable only with a temperature probe — so probe availability is a
+> real device capability the requires/ownership model must carry: satisfied by a device-integral
+> probe (a device property, especially on smokers and ovens) or an owned standalone probe
+> thermometer in the registry. This is the physical counterpart of O-4(b) (internal-temp-gated
+> stages are never time-adjustable — the probe is what makes that gate executable). **Delivery:**
+> schema property + derivation (internal-temp-gated stage ⇒ `capability.probe`) + ownership check
+> land with **E2/E3 planning** (placement decided there, carrying this amendment as binding);
+> authoring adds the probe property to the device catalog the same way other cited properties enter.
+> Not an E1 scope row — registered before the E1 gate, binding from E2 onward.
 
 > **AMENDMENT O-6 — owner ruling in conversation, 2026-07-25 (the device-usage display reads EQM).**
 > The existing graphic display of device usage (the occupancy view) **is part of the Equipment
