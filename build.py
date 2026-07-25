@@ -358,9 +358,21 @@ with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "equipment
 import re as _re
 _eqm_defs = _re.findall(r'(?m)^\s*(?:const|let|var)\s+EQM\b', _eqm)
 assert len(_eqm_defs) == 1, "F5: equipment.js must define EQM exactly once, found %d" % len(_eqm_defs)
+# Scope the five-method check to the EQM object literal itself (not the whole file) — an unscoped
+# `\bownership\s*:` also matches inside the stub's own throw-message string ('EQM.ownership: implemented
+# in E1 Task 3') and any future comment, so a renamed/deleted real property could still pass. Slice the
+# literal out first, then require each method as a real property key inside that slice.
+_eqm_lit_m = _re.search(r'(?ms)^const EQM = \{.*?^\};', _eqm)
+assert _eqm_lit_m, "F5: could not locate the `const EQM = { ... };` object literal in equipment.js"
+_eqm_lit = _eqm_lit_m.group(0)
 for _meth in ("ownership", "availability", "allocate", "release", "alternatives"):
-    assert _re.search(r'\b' + _meth + r'\s*:', _eqm), "F5: EQM.%s missing from equipment.js" % _meth
+    assert _re.search(r'(?m)^\s*' + _meth + r'\s*:\s*function\b', _eqm_lit), "F5: EQM.%s missing from equipment.js" % _meth
 assert not _re.search(r'(?m)^\s*(?:const|let|var)\s+EQM\b', _js), "F5: app.js must not define EQM (it may only call EQM.*)"
+# Assignment-form guard: a bare implicit-global `EQM = {}` or `window.EQM =`/`globalThis.EQM =`/`self.EQM =`
+# would slip past the declaration-only check above. Reject any assignment to EQM while keeping legitimate
+# CALLS (`EQM.ownership(...)`, preceded by `.`) and comparisons (`EQM ==`/`EQM ===`) legal.
+assert not _re.search(r'(?m)(?:(?<![.\w])EQM|(?:window|globalThis|self)\.EQM)\s*=(?!=)', _js), \
+    "F5: app.js must not assign to EQM (bare, window., globalThis., or self. — it may only call EQM.*)"
 # i18n: one JSON dictionary file per language under lang/ → const I18N_DICTS = {en:{…}, fr:{…}, …}
 _i18n = {}
 _i18n_data = {}   # <code>.data.json = bulk prose (item descriptions) merged into <code>
