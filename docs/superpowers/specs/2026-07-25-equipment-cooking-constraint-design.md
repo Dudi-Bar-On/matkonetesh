@@ -472,6 +472,18 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 > source), not prose, for the orchestrator to use them — rides the same registered authoring item as
 > the order vocabulary (`registered-2026-07-25-order-vocabulary.md`), and "maybe there are more" free
 > parameters enter the same way: cited, structured, one at a time.
+> **(e) Range acquisition — owner addendum, 2026-07-25.** Ranges obey O-1's bottom-layer law: they
+> live on the **catalog item recipe** as cited data. Where an item lacks a range, **AI may be used to
+> acquire one by querying the source-of-truth data sources** (the app's named primary-source canon —
+> USDA/FSIS, Baldwin, 9 CFR — via the O-2 search-grounded stack), returning the value WITH its
+> citation. An AI-acquired range is a **sourcing channel, not a runtime value**: before the
+> orchestrator may use it, the user explicitly approves it (shown with its citation) and it is
+> written into the item's cited data — it never floats as an ephemeral model output, and acquisition
+> is **never covered by auto mode** (it changes the source-of-truth layer; auto mode only applies
+> adjustments within ranges the item already carries). An acquired range can never relax an existing
+> cited safety minimum, and untraceable AI output (no primary-source citation) is rejected, not
+> stored — "every safe value must trace to a cited primary source, never guess" applies to ranges
+> exactly as to single values.
 
 ---
 
