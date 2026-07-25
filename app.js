@@ -999,7 +999,7 @@ function validCombo(c, combo){
   return combo.every(m=>r.allowed.includes(m));
 }
 // Compose steps from the active combo. Order: prep → sv → smoke → grill-finish → rest.
-function composedSteps(c, combo){
+function composedSteps(c, combo, smokeFin){
   const has=m=>combo.includes(m);
   const produce=isProduce(c), offal=isOffal(c);
   // single-method fast paths reuse existing generators (already battle-tested)
@@ -1009,7 +1009,7 @@ function composedSteps(c, combo){
     if(has('sv')&&!has('smoke')&&!has('grill')) return produceSVSteps(c);
   } else {
     if(has('grill')&&combo.length===1) return meatGrillSteps(c);
-    if(has('sv')&&has('smoke')&&!has('grill')) return svSteps(c);
+    if(has('sv')&&has('smoke')&&!has('grill')) return svSteps(c,true,smokeFin);
     if(has('smoke')&&combo.length===1) return soSteps(c);
   }
   // combinatorial compose
@@ -1023,7 +1023,10 @@ function composedSteps(c, combo){
     steps.push([L("ייבוש מעבר","Pat dry"),L(`הוצא מהשקית ויבש היטב במגבת — משטח רטוב לא נצרב ולא מעשן טוב.`,`Remove from the bag and pat thoroughly dry — a wet surface won't sear or smoke well.`),0]);
   }
   if(has('smoke')){
-    const smkT=has('sv')?c.smt:(c.sot||c.smt), hrs=has('sv')?c.smh:(c.soh||c.smh);
+    // CP1 Task 2: the sv+smoke leg reads the wired finish (order_svsmoke.smoke via svSmokeFinish);
+    // smoke-WITHOUT-sv (e.g. smoke+grill) never carries that citation (itemStages' hasSV guard) and
+    // stays on catalog sot/soh, exactly as before.
+    const smkT=has('sv')?(smokeFin?smokeFin.t:c.smt):(c.sot||c.smt), hrs=has('sv')?(smokeFin?smokeFin.h:c.smh):(c.soh||c.smh);
     const woodHe=c.wood&&c.wood!=='ללא'?c.wood:'עצי פרי', woodEn=c.wood&&c.wood!=='ללא'?t(c.wood):'fruit woods';
     const midHe=(!has('sv')&&c.somid&&c.somid!=='אין')?c.somid+'.':'', midEn=(!has('sv')&&c.somid&&c.somid!=='אין')?t(c.somid)+'.':'';
     steps.push([L("עישון","Smoke"),L(`מעשנת ${smkT}°C עם ${woodHe} למשך ${hrs} שעות${has('sv')?' — לעשן וקרום בלבד, הבישול כבר נעשה':''}. ${midHe}`,`Smoker at ${smkT}°C with ${woodEn} for ${hrs} hours${has('sv')?" — for smoke and bark only, it's already cooked":''}. ${midEn}`),upperHours(hrs)*3600]);
@@ -1494,7 +1497,7 @@ function produceSmokeSteps(c){
   if(c.rest) steps.push([L("הגשה","Serve"),L(`תבל לסיום והגש חם או בטמפ׳ החדר.`,`Season to finish and serve warm or at room temperature.`),0]);
   return steps;
 }
-function svSteps(c,hintSear=true){
+function svSteps(c,hintSear=true,smokeFin){
   const steps=[];
   let prep=L("נקה, גזום עודפי שומן ויבש היטב את הבשר.","Clean, trim excess fat and pat the meat thoroughly dry.");
   if(c.eng.includes("Ribs")) prep=L("הסר את הקרום (membrane) מגב הצלעות ויבש היטב.","Remove the membrane from the back of the ribs and pat thoroughly dry.");
@@ -1505,8 +1508,11 @@ function svSteps(c,hintSear=true){
   let dry=L("ייבש את פני הבשר היטב לפני העישון — משטח יבש סופג עשן טוב יותר.","Pat the surface thoroughly dry before smoking — a dry surface takes smoke better.");
   if(c.cat==="דג") dry=L("ייבש ליצירת pellicle (קרום דביק שסופג עשן) לפני העישון. ⚠ בטמפ׳ נמוכה — השתמש בדג סושי-גרייד או שהוקפא (-20°C, 7 ימים) לבטיחות מטפילים.","Dry to form a pellicle (a tacky skin that takes smoke) before smoking. ⚠ At low temp — use sushi-grade fish or fish frozen (-20°C, 7 days) for parasite safety.");
   steps.push([L("ייבוש לפני עישון","Dry before smoking"),dry,0]);
-  steps.push([L("הדלקת מעשנת","Fire up the smoker"),L(`ייצב מעשנת על ${c.smt}°C עם צ'אנקים ${c.wood} ופחם ${c.coal}.`,`Stabilize the smoker at ${c.smt}°C with ${t(c.wood)} chunks and ${t(c.coal)} charcoal.`),0]);
-  steps.push([L("עישון","Smoke"),L(`עשן ב-${c.smt}°C למשך ${c.smh} שעות. אין צורך בעטיפה — הבישול הושלם בסו-ויד.`,`Smoke at ${c.smt}°C for ${c.smh} hours. No wrap needed — cooking was completed in the sous-vide.`),upperHours(c.smh)*3600]);
+  // CP1 Task 2: the finish leg reads the wired citation (order_svsmoke.smoke via svSmokeFinish) when
+  // one exists; falls back to catalog smt/smh (byte-identical to pre-CP1) when it doesn't.
+  const smT=smokeFin?smokeFin.t:c.smt, smH=smokeFin?smokeFin.h:c.smh;
+  steps.push([L("הדלקת מעשנת","Fire up the smoker"),L(`ייצב מעשנת על ${smT}°C עם צ'אנקים ${c.wood} ופחם ${c.coal}.`,`Stabilize the smoker at ${smT}°C with ${t(c.wood)} chunks and ${t(c.coal)} charcoal.`),0]);
+  steps.push([L("עישון","Smoke"),L(`עשן ב-${smT}°C למשך ${smH} שעות. אין צורך בעטיפה — הבישול הושלם בסו-ויד.`,`Smoke at ${smT}°C for ${smH} hours. No wrap needed — cooking was completed in the sous-vide.`),upperHours(smH)*3600]);
   if(FINISH_TREAT.includes(c.mid)) steps.push([L(`טיפול: ${c.mid}`,`Treatment: ${t(c.mid)}`),treatText(c.mid),0]);
   if(c.sear==="גלייז") steps.push([L("גלייז סיום","Finishing glaze"),L(`מרח שכבת גלייז דביקה בסוף לברק וטעם.`,`Brush on a sticky glaze at the end for shine and flavor.`),0]);
   else if(c.sear==="כן" && hintSear) steps.push([L("רוצה קרום צרוב?","Want a seared crust?"),L(`💡 הנתח הזה נהנה מצריבה — הדלק את מתג 🔥 גריל והתוכנית תוסיף שלב צריבה מסודר.`,`💡 This cut benefits from a sear — flip the 🔥 grill switch and the plan will add a proper sear step.`),0]);
@@ -2254,6 +2260,13 @@ function openCut(c){
   curProject=pendingProject; pendingProject=null;
   const altR=ALT_RUB[c.cat]||ALT_RUB["_default"];
   const key=`cut-${c.n}`;
+  const meta=metaCut(c);
+  // CP1 Task 2 (spec 2026-07-25 §3.2): the card's SV+Smoke statline/raw-table row and the plan's smoke
+  // step read the wired finish (order_svsmoke.smoke) through the ONE accessor when this item's sv+smoke
+  // combo carries a citation; smokeFin is null for items with no sv+smoke combo at all, in which case
+  // every consumer below falls back to catalog smt/smh — byte-identical to pre-CP1 (the negative case).
+  const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(meta):null;
+  const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
   const build=DATA.builds["cut-"+c.n];
   const col=catColor(c.cat);
   const html=`
@@ -2270,11 +2283,11 @@ function openCut(c){
        ${isProduce(c)?`
        <div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.sot}°<small> / ${Math.round(upperHours(c.soh)*60)}${L("ד'",'m')}</small></div></div>
        <div class="stat"><div class="l">${L('סו-ויד','Sous-vide')}</div><div class="v">${c.svt}°<small> / ${c.svh}${L('ש','h')}</small></div></div>
-       <div class="stat"><div class="l">${L('גימור','Finish')}</div><div class="v">${c.smt}°</div></div>
+       <div class="stat"><div class="l">${L('גימור','Finish')}</div><div class="v">${smtV}°</div></div>
        <div class="stat"><div class="l">${L('קושי','Difficulty')}</div><div class="v">${dots(c.diff)}</div></div>
        `:`
        <div class="stat"><div class="l">${L('סו-ויד','Sous-vide')}</div><div class="v">${c.svt}°<small> / ${c.svh}${L('ש','h')}</small></div></div>
-       <div class="stat"><div class="l">${L('עישון','Smoke')}</div><div class="v">${c.smt}°<small> / ${c.smh}${L('ש','h')}</small></div></div>
+       <div class="stat"><div class="l">${L('עישון','Smoke')}</div><div class="v">${smtV}°<small> / ${smhV}${L('ש','h')}</small></div></div>
        ${(c.grt!=null||c.grillable===false)?`<div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.grillable===false?'—':`${c.grt}°<small> / ${c.grh}${L('ש','h')}</small>`}</div></div>`:''}
        <div class="stat"><div class="l">${L('יעד מרקם','Texture target')}</div><div class="v" id="tgtStat">${c.tgt}°</div></div>
        ${c.safe?`<div class="stat"><div class="l">${L('בטיחות','Safety')}</div><div class="v">${c.safe}°</div></div>`:''}
@@ -2304,14 +2317,14 @@ function openCut(c){
        ${isProduce(c)?`<table>
         <tr><td>${L('גריל / אש ישירה','Grill / direct heat')}</td><td>${c.sot}°C · ~${Math.round(upperHours(c.soh)*60)} ${L("דק'",'min')}</td></tr>
         <tr><td>${L('סו-ויד (ריכוך)','Sous-vide (soften)')}</td><td>${c.svt}°C · ${c.svh} ${L('שעות','hours')}</td></tr>
-        <tr><td>${L('גימור לאחר סו-ויד','Finish after sous-vide')}</td><td>${c.smt}°C · ~${Math.round(upperHours(c.smh)*60)} ${L("דק'",'min')}</td></tr>
+        <tr><td>${L('גימור לאחר סו-ויד','Finish after sous-vide')}</td><td>${smtV}°C · ~${Math.round(upperHours(smhV)*60)} ${L("דק'",'min')}</td></tr>
         <tr><td>${L('ראב הבית (תבנית)','House rub (template)')}</td><td>${c.rub}</td></tr>
         <tr><td>${L('טיפ הכנה','Prep tip')}</td><td>${c.somid||'—'}</td></tr>
         <tr><td>${L('עץ לעשן (אופציונלי)','Wood for smoke (optional)')}</td><td>${c.wood}</td></tr>
         <tr><td>${L('רמת קושי','Difficulty')}</td><td>${c.diff} / 5</td></tr>
        </table>`:`<table>
         <tr><td>${L("טמפ' / זמן סו-ויד",'Sous-vide temp / time')}</td><td>${c.svt}°C · ${c.svh} ${L('שעות','hours')}</td></tr>
-        <tr><td>${L("טמפ' / זמן עישון (סו-ויד+עישון)",'Smoke temp / time (sous-vide+smoke)')}</td><td>${c.smt}°C · ${c.smh} ${L('שעות','hours')}</td></tr>
+        <tr><td>${L("טמפ' / זמן עישון (סו-ויד+עישון)",'Smoke temp / time (sous-vide+smoke)')}</td><td>${smtV}°C · ${smhV} ${L('שעות','hours')}</td></tr>
         <tr><td>${L("טמפ' / זמן עישון בלבד",'Smoke-only temp / time')}</td><td>${c.sot}°C · ${c.soh} ${L('שעות','hours')}</td></tr>
         ${grillLine(c)?`<tr><td>${L("גריל (טמפ' / זמן / אזור)",'Grill (temp / time / zone)')}</td><td>${grillLine(c)}</td></tr>`:''}
         <tr><td>${L("טמפ' יעד (מרקם) / בטיחות",'Target temp (texture) / safety')}</td><td>${c.tgt}°C${c.safe?` / ${c.safe}°C`:''}</td></tr>
@@ -2347,7 +2360,7 @@ function openCut(c){
   }
   function paintMethod(){
     const combo=ctxMethods(c,key);
-    const steps=injectSeasoningSteps(composedSteps(c,combo), key, !curProject);   // catalog card = template steps
+    const steps=injectSeasoningSteps(composedSteps(c,combo,smokeFin), key, !curProject);   // catalog card = template steps
     const mkey='m-'+combo.slice().sort().join('_');
     $("#methodArea").innerHTML=`<div class="method-note">${comboNote(combo)}</div><div class="steps">`+
       steps.map((s,i)=>stepHTML(key,mkey,i,s)).join("")+`</div>`;
@@ -3516,6 +3529,24 @@ function effectiveSchedule(meta, sel){
   const mk = sel && sel.methodKey ? sel.methodKey : undefined;
   const ord = sel && sel.order ? sel.order : undefined;
   return { stages: itemStages(meta, mk, true, ord) || [], path: { methodKey: mk||null, order: ord||null } };
+}
+
+// CP1 Task 2 (spec 2026-07-25 §3.2, plan Task 2). The card's SV+Smoke statline/raw-table row and the
+// plan's smoke step all describe ONE fixed slot — "this item's sv+smoke combo's finish schedule" —
+// independent of whichever combo the method toggles currently have active (the statline has always
+// shown this slot unconditionally, regardless of toggle state). svSmokeFinish resolves it through
+// effectiveSchedule so a cited order_svsmoke.smoke finish (the 105°/3ש vs 120°/1.5ש contradiction)
+// wins over the catalog value automatically; returns null when the item offers no sv+smoke combo at
+// all (nothing to wire — every caller below falls back to catalog smt/smh, byte-identical to pre-CP1
+// output — the negative case). NEVER touches svt/svh (spec §5: svt is safety-invariant, untouched) —
+// only the smoke leg, the one BUG-3 wired.
+function svSmokeFinish(meta){
+  const p=(typeof itemProfile==='function')?itemProfile(meta):null;
+  const m=p&&p.methods&&p.methods.find(function(x){ return x.combo && x.combo.indexOf('sv')>=0 && x.combo.indexOf('smoke')>=0; });
+  if(!m) return null;
+  const stages=(typeof effectiveSchedule==='function')?effectiveSchedule(meta,{methodKey:m.key}).stages:[];
+  const s=stages.find(function(x){ return x.kind==='smoke'; });
+  return (s && s.temp!=null) ? {t:s.temp, h:s.hours} : null;
 }
 function comboHasSvSmoke(meta,methodKey){
   const p=itemProfile(meta); if(!p) return false;
