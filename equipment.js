@@ -7,7 +7,7 @@
   answer from the SAME requires list, so the caller composes EQM.ownership(deriveRequires(meta))).
 
   ORDERING (H2): equipment.js runs before app.js, so it contains NO top-level statement that CALLS an
-  app.js function — only declarations and the EQM literal of function references. app.js's top-level
+  app.js function — only declarations and the EQM literal of inline function expressions. app.js's top-level
   `function` declarations hoist across the combined script, so EQM's method BODIES may reference them
   freely at call time (after app.js has evaluated); app.js's top-level `const`s are off-limits at eval
   time (they don't hoist) but fine at call time.
@@ -18,6 +18,9 @@ const REQ_KIND = { smoke: 'smoker', sv: 'bath', cook: 'grill' };
 // device-kind → stage-kind, so EQM.ownership can REUSE cookerCandidates (the one substitution policy:
 // smoke→smoker|grill, cook→grill|oven, sv→bath) instead of copying it. E6 extends this with the
 // declared process kinds (grinder/stuffer/sealer/curing) and their own category resolution.
+// Review finding M2: 'oven' — the schema's 4th cook device-kind (see EQM_KIND_HE in app.js) — has NO
+// entry here today, so a future row with kind:'oven' answers 'missing' below (eqmOwnershipRow) even for
+// a user who owns an oven; E2/E3 must extend this map before any producer emits an oven requires row.
 const KIND_TO_STAGE = { smoker: 'smoke', grill: 'cook', bath: 'sv' };
 
 // ── requires derivation (Q4 source 1: AUTO-DERIVED). Reads the SAME stage data the plan computes, so it
@@ -79,8 +82,10 @@ function deriveRequires(meta, methodKey, order){
 // cookerCandidates(stageKind) already returns the OWNED devices that can serve this stage (the ONE
 // substitution policy), so ownership is "do I own a candidate, and does at least one meet the capability".
 // Declared (process) kinds — grinder/stuffer/sealer/curing — have no KIND_TO_STAGE entry; E6 extends this
-// with their category resolution. E1 derives none, so the guard below returns 'missing' for an unmapped
-// kind rather than crashing.
+// with their category resolution. 'oven' (the schema's 4th cook kind) is unmapped the same way today (see
+// the KIND_TO_STAGE comment above) — it is not yet a producer of derived rows, but a future one would also
+// answer 'missing' below regardless of ownership. E1 derives none, so the guard below returns 'missing' for
+// an unmapped kind rather than crashing.
 function eqmOwnershipRow(row){
   const stageKind = KIND_TO_STAGE[row && row.kind];
   const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind) : [];
@@ -100,6 +105,8 @@ function eqmOwnershipRow(row){
       if(!hangs && !areaFits) return false;
     }
     if(cap.bathMinL){ const b=chooseBath(dev, cap.bathMinL); if(!b || !b.ok) return false; }
+    // cap.maxTempC = the cited stage temp; a FLOOR the device's own maxC must reach — never an upper
+    // bound on cooking temp (review finding M4 — the name reads like a ceiling but it is a minimum).
     if(cap.maxTempC){ const mx=Number(propOf(dev,'maxC')); if(mx>0 && mx<cap.maxTempC) return false; }
     return true;
   });

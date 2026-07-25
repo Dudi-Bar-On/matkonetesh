@@ -1709,14 +1709,17 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 /* M2: an equipment field whose typed value failed validation on save — flag it, don't silently drop it */
 .eq-invalid{border-color:#c2553f !important;background:rgba(194,85,63,.06)}
 
-/* E1 · required-equipment chip on catalog cards (informational, non-blocking). */
+/* E1 · required-equipment chip on catalog cards (informational, non-blocking). Colors come from the
+   THEMES inline-var mechanism (setTheme → applyAppearance sets --line/--char2/--ash/--fresh/--ember/--over
+   as custom properties on <html> — see `const THEMES` in app.js), the SAME pattern the occ2 occupancy
+   component uses (.occ2-fit-ok/-tight/-over → --fresh/--ember/--over). This app themes at runtime via JS,
+   NOT prefers-color-scheme, so no media query belongs here (review finding I1 — the prior dark-mode
+   media-query block was unreachable dead code and has been removed). Neutral pill matches the existing
+   `.chip` convention (border:var(--line), background:var(--char2)) for a consistent look across themes. */
 .eqm-reqs{ display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
 .eqm-req{ font-size:11px; line-height:1.4; padding:1px 7px; border-radius:999px;
-          border:1px solid rgba(0,0,0,.12); background:rgba(0,0,0,.04); white-space:nowrap; }
+          border:1px solid var(--line); background:var(--char2); color:var(--ash); white-space:nowrap; }
 .eqm-req .eqm-num{ font-variant-numeric:tabular-nums; }
-.eqm-req-ok{ }                                                   /* owned + capable: neutral */
-.eqm-req-partial{ border-color:rgba(224,150,40,.55); background:rgba(224,150,40,.12); }
-.eqm-req-missing{ border-color:rgba(200,60,50,.55);  background:rgba(200,60,50,.12); }
-@media (prefers-color-scheme: dark){
-  .eqm-req{ border-color:rgba(255,255,255,.16); background:rgba(255,255,255,.06); }
-}
+/* -ok: owned + capable — deliberately neutral (base .eqm-req style above), no state tint needed */
+.eqm-req-partial{ border-color:var(--ember); background:color-mix(in srgb, var(--ember) 14%, transparent); }
+.eqm-req-missing{ border-color:var(--over); background:var(--over-l); }

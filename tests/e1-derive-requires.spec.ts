@@ -58,7 +58,7 @@ test('DoD-6 negative case — an item whose stages carry NO smoke/sv/cook device
   await boot(page);
   // Review finding (Spec gap): the old version of this test ran on cut-1's normal combo, which is NEVER
   // empty, so `rows.length===0` was never actually exercised. Verified LIVE against the full built catalog
-  // (all 130 cuts + 47 specials + 52 makes, every one of their real method keys — 279 items) that NO real
+  // (all 130 cuts + 47 specials + 102 makes, every one of their real method keys — 279 items) that NO real
   // item+method combination produces a stage list with zero smoke/sv/cook stages: this app's whole premise
   // is live-fire cooking, so every real recipe ends in at least one device stage (confirmed via a throwaway
   // enumeration script against dist/index.html; 0/279 items had an empty case — a produce/spec item was NOT

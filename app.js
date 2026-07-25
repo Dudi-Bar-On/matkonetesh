@@ -1580,7 +1580,7 @@ function eqmRequiresMethodKey(meta){
 
 function eqmRequiresChip(key){
   if(typeof EQM==='undefined' || typeof deriveRequires!=='function') return '';   // module absent → never crash a card
-  if(typeof equipConfigured==='function' && !equipConfigured()) return '';         // gated: no kit → silent, zero cost
+  if(typeof equipConfigured!=='function' || !equipConfigured()) return '';         // gated: no kit → silent, zero cost (fail-CLOSED: an absent symbol also renders nothing, never crashes a card)
   const meta = (typeof resolveItem==='function') ? resolveItem(key) : null; if(!meta) return '';
   let requires; try{ requires = deriveRequires(meta, eqmRequiresMethodKey(meta)); }catch(e){ return ''; }
   if(!requires || !requires.length) return '';
