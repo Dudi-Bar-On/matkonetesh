@@ -392,6 +392,21 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 — `itemStages` already owns that, and `comboHasSvSmoke` (`app.js:3274`) still gates the reverse order on cited
 `order_smokesv` data, never a heuristic (map §1.7). E4 must not touch that gate.
 
+> **AMENDMENT O-1 — owner ruling in conversation, 2026-07-25 (catalog-first order selection).**
+> The **catalog item is the FIRST place where order is selected**: the recipe card exposes the item's
+> order (its per-recipe default), and that selection *is* the default every downstream surface inherits.
+> The event plan and the single-item cook flow may **override** it, per occurrence. The **source of
+> truth for what an order MEANS — times, temperatures, effects, and consequences — is always the lowest
+> layer: the item recipe in the catalog** (the cited `order_smokesv`-class data in `sources.py`);
+> no upper layer may restate or recompute those semantics, an override only picks among the item's
+> cited orders. Consequences for E4 planning: (a) the §7 charter note "E4 adds **one** affordance"
+> widens to **two** — the catalog-card default selector and the per-occurrence override — C8 stays
+> PARTIAL either way and the safety analysis is unchanged (order selection never touches temps or
+> durations, which remain cited data); (b) the eligibility gate (`comboHasSvSmoke`) applies identically
+> at both layers — an order the item's data does not cite is not offered anywhere, so the catalog can
+> never promise what the cook screen would refuse. Registered companion (authoring track):
+> `docs/analysis/program/registered-2026-07-25-order-vocabulary.md`.
+
 ---
 
 ## 7. Replacements (owner design §6) + Retroactive invalidation (owner design §7)
@@ -467,7 +482,7 @@ its real home). **Nothing is silently dropped** — that is the Waiver Gate appl
 | **C2** | No AI proposer exists | **COVERED** (replacement axis only) | E5 AI-suggested **replacements** through the guarded layer (§7.1). AI **move**-proposal is OUT (P8) |
 | **C3** | Cross-event resource allocation does not exist | **COVERED** (substrate) | The ledger + `EQM.availability` answer cross-event free/partial/busy; holds are holder-tracked across events (§4.3/§5). **Automated cross-event re-allocation stays P9** (§10, flag F1) |
 | **C4** | Placer searches with the wrong fit test (whole-device) | **PARTIAL** | `EQM.availability` uses the **per-slot** honest verdict (§4.3); the *placer's candidate-set search* improvement is P5a/P8 |
-| C8 | User cannot influence durations/shelf/preheat/method | **PARTIAL** | E4 adds **one** affordance (the per-event cooking-order override, §6). The rest (shelf/preheat/duration overrides) is P7 |
+| C8 | User cannot influence durations/shelf/preheat/method | **PARTIAL** | E4 adds **two** affordances (AMENDMENT O-1: the catalog-card default order selector + the per-occurrence override, §6) — order selection only, never durations/temps. The rest (shelf/preheat/duration overrides) is P7 |
 | C5 | Non-uniform slack set silently discarded (`uniq.length!==1`) | **NOT-HERE** | Plan-pipeline scheduling advisory (P5a/P8); the ledger does not touch intra-item slack |
 | C6 | Advisory recommends non-existent "cook in batches" | **NOT-HERE** | Advisory copy (P7); capacity-share (§4.3) addresses the underlying share concept but not the copy |
 | C7 | `SCHED_PULL_MAX_MS` has no UI | **NOT-HERE** | P7 |
