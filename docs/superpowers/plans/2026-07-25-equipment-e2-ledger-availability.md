@@ -407,7 +407,8 @@ test('DoD-10 phase-gate line: full allocate-then-release cycle leaves itemStages
       if(!row || !row.demand) return;                       // capability-only rows reserve nothing
       const devId = avail.perRow[i] && avail.perRow[i].deviceId; if(!devId) return;
       ids.push(eqmLedgerAdd({ deviceId: devId, window: { startMs: window.startMs, endMs: window.endMs },
-        capacityDemand: { metric: row.demand.metric, amount: row.demand.amount },
+        capacityDemand: Object.assign({ metric: row.demand.metric, amount: row.demand.amount },
+          (typeof row.demand.tempC==='number') ? { tempC: row.demand.tempC } : {}),   // owner ruling 2026-07-25: bath-temp exclusivity — a hold without its tempC would blind the fit check
         holder: { type: holder.type, id: holder.id }, state: 'held' }));
     });
     return { ok: true, holdIds: ids };
