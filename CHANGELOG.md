@@ -1,5 +1,20 @@
 # מתכונת · מדריך האש — changelog
 
+## מהדורה 264 · 25.7.26
+
+**Owner bug round — three production fixes, all owner-reported from live v263 testing:**
+- **Smoke-stage labels now honor the citation's cold flag** — 10 beef items no longer claim "cold
+  smoking" for their cited 70–75° warm-smoke stages; "עישון קר" appears only where the source says
+  cold. Danger-zone warning copy is temperature-agnostic; cheese build steps corrected.
+- **Shelf math from manufacturer data** — device shelf area now derives from structured dimensions
+  (shelf W×D × racks, then outer dims, then a re-sourced class default of 7,900 cm²); cabinet volume
+  is captured and shown; devices with implausibly small stored areas get a warning chip with a
+  one-tap re-check. A whole brisket fits the הנפח אביה 150 again.
+- **Cited post-sous-vide finishes are live** — 21 items' finishing smoke now uses the researched
+  `order_svsmoke` schedule (brisket: 120°/1.5ש hot-bark finish; shrimp: gentle 100° instead of a
+  230° reblast), with explanatory sub-lines wherever order-specific temperatures appear, and a
+  generation-time drift guard so catalog and order schedules can't silently diverge again.
+
 Summary changelog per release (owner request, 2026-07-25). Detailed coverage starts at **v262**;
 earlier versions are summarized coarsely. Maintained as part of the release protocol: every version
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is

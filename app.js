@@ -8368,6 +8368,9 @@ function timerItemKey(key){
   }
   return '';
 }
+// ⚠ 'hot'/'cold' entries are DEAD today — no stage is ever assigned kind:'hot'|'cold' (grep-verified,
+// bug-round review 2026-07-25). If ever wired, the label must honor the citation's cold flag exactly
+// like itemStages does (the hard-coded-קר class of bug fixed in Wave A) — never label by kind alone.
 const STAGE_KIND={sv:['סו-ויד','Sous-vide'],smoke:['עישון','Smoke'],grill:['גריל','Grill'],sear:['צריבה','Sear'],rest:['מנוחה','Rest'],prep:['הכנה','Prep'],hot:['עישון חם','Hot smoke'],cold:['עישון קר','Cold smoke'],serve:['הגשה','Serve'],dry:['ייבוש','Dry'],cure:['ריפוי','Cure']};
 function timerKindLabel(key){
   const s=String(key); let kind='';

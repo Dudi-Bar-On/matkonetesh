@@ -6,14 +6,18 @@ import { test, expect, seedApp } from './_fixtures';
 
 const SHOT = 'mockups/';
 
-test('Hebrew: .foot-news exists, starts with "מה חדש:", mentions "ציוד נדרש", and sits directly after .foot-stamp', async ({ page }) => {
+test('Hebrew: .foot-news exists, starts with "מה חדש:", carries real content, and sits directly after .foot-stamp', async ({ page }) => {
   await seedApp(page);
 
   expect(await page.evaluate(`!!document.querySelector('.foot-news')`)).toBe(true);
 
   const text = await page.evaluate(`(document.querySelector('.foot-news')||{}).textContent||''`) as string;
   expect(text.trim().startsWith('מה חדש:')).toBe(true);
-  expect(text).toContain('ציוד נדרש');
+  // copy-agnostic by design (v264 retune): the WHATS_NEW copy changes EVERY release per the
+  // protocol, so the test pins the MECHANISM — prefix + non-trivial content — not this release's
+  // words. The English test's no-Hebrew-leak assertion is what enforces that the current copy's
+  // en.json pair exists (a missing pair leaks Hebrew there and fails it).
+  expect(text.trim().length).toBeGreaterThan('מה חדש: '.length + 10);
 
   // positional assertion: .foot-news is the element immediately following .foot-stamp
   // (real sibling-order check, not just presence-in-DOM) — a <br> line break between them
