@@ -18,10 +18,12 @@ const REQ_KIND = { smoke: 'smoker', sv: 'bath', cook: 'grill' };
 // device-kind → stage-kind, so EQM.ownership can REUSE cookerCandidates (the one substitution policy:
 // smoke→smoker|grill, cook→grill|oven, sv→bath) instead of copying it. E6 extends this with the
 // declared process kinds (grinder/stuffer/sealer/curing) and their own category resolution.
-// Review finding M2: 'oven' — the schema's 4th cook device-kind (see EQM_KIND_HE in app.js) — has NO
-// entry here today, so a future row with kind:'oven' answers 'missing' below (eqmOwnershipRow) even for
-// a user who owns an oven; E2/E3 must extend this map before any producer emits an oven requires row.
-const KIND_TO_STAGE = { smoker: 'smoke', grill: 'cook', bath: 'sv' };
+// E2 Task 1 closes the review-M2 gap: 'oven' — the schema's 4th cook device-kind (see EQM_KIND_HE in
+// app.js) — now maps to 'cook', the same stage 'grill' answers (cookerCandidates('cook') already returns
+// grill|oven, spec §4.2 substitution policy), so an oven-owner no longer answers 'missing' for a cook row
+// an oven satisfies. Only the DECLARED process kinds (grinder/stuffer/sealer/curing) remain unmapped —
+// they have no requires-row producer until E6 gives them their own category resolution.
+const KIND_TO_STAGE = { smoker: 'smoke', grill: 'cook', bath: 'sv', oven: 'cook' };
 
 // ── requires derivation (Q4 source 1: AUTO-DERIVED). Reads the SAME stage data the plan computes, so it
 // cannot disagree with the plan (the anti-drift property, spec §4.2). ONE row per cook-device stage
@@ -81,11 +83,10 @@ function deriveRequires(meta, methodKey, order){
 // eqmOwnershipRow — Task 3 (spec §5.1). One derived cook row → 'ok' | 'partial' | 'missing'.
 // cookerCandidates(stageKind) already returns the OWNED devices that can serve this stage (the ONE
 // substitution policy), so ownership is "do I own a candidate, and does at least one meet the capability".
-// Declared (process) kinds — grinder/stuffer/sealer/curing — have no KIND_TO_STAGE entry; E6 extends this
-// with their category resolution. 'oven' (the schema's 4th cook kind) is unmapped the same way today (see
-// the KIND_TO_STAGE comment above) — it is not yet a producer of derived rows, but a future one would also
-// answer 'missing' below regardless of ownership. E1 derives none, so the guard below returns 'missing' for
-// an unmapped kind rather than crashing.
+// Only the DECLARED process kinds — grinder/stuffer/sealer/curing — have no KIND_TO_STAGE entry; E6
+// extends this with their category resolution. The guard below returns 'missing' for an unmapped kind
+// rather than crashing (deriveRequires emits none of these process kinds today, so this is dormant until
+// E6 adds their producers).
 function eqmOwnershipRow(row){
   const stageKind = KIND_TO_STAGE[row && row.kind];
   const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind) : [];
@@ -111,6 +112,32 @@ function eqmOwnershipRow(row){
     return true;
   });
   return meets ? 'ok' : 'partial';                          // owns the kind but no unit clears the capability
+}
+
+// ── the reservation ledger (spec §4.3, Q3) — the ONE net-new store. Entries are never deleted in E2,
+// only flipped to 'released' (release-vs-delete keeps the audit trail; a sweep is a later concern).
+// D5 note (owner 2026-07-25): capacityDemand carries the STATIC footprint/min_bath_l — guest-scaling
+// is a named future gap; the field's shape already accepts a scaled amount when that lands.
+const EQM_LEDGER_KEY = 'mk-eqm-ledger';
+function eqmLedger(){
+  try{ const v = JSON.parse(store.get(EQM_LEDGER_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+function eqmLedgerWrite(list){ store.set(EQM_LEDGER_KEY, JSON.stringify(list||[])); }
+function eqmLedgerAdd(entry){
+  const list = eqmLedger();
+  const id = 'h' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+  list.push(Object.assign({ id: id }, entry));
+  eqmLedgerWrite(list);
+  return id;
+}
+// Held entries on ONE device overlapping a window. Half-open [startMs, endMs): touching edges are a
+// clean handoff, not a conflict — the same convention the scheduler's stage windows already use.
+function eqmLedgerHeld(deviceId, window){
+  return eqmLedger().filter(function(e){
+    return e && e.state==='held' && e.deviceId===deviceId && e.window &&
+           e.window.startMs < window.endMs && e.window.endMs > window.startMs;
+  });
 }
 
 // ── the ONE narrow global (ruling F3/F5: exactly five methods). E1 makes only `ownership` functional.
