@@ -23,8 +23,20 @@ const KIND_TO_STAGE = { smoker: 'smoke', grill: 'cook', bath: 'sv' };
 // ── requires derivation (Q4 source 1: AUTO-DERIVED). Reads the SAME stage data the plan computes, so it
 // cannot disagree with the plan (the anti-drift property, spec §4.2). ONE row per cook-device stage
 // (kind smoke/sv/cook → device-kind via REQ_KIND); prep/note/dry/rest/bcheck are not device stages and
-// are skipped. This function reads ONLY recipe data (itemStages/itemOccupancy) — no equipment-registry
-// state — so it is a pure projection that feeds EQM.ownership AND EQM.availability from ONE list (§4.2).
+// are skipped. This function reads ONLY recipe data — itemStages (app.js) and itemStageSpec (app.js) —
+// which is the ONE shared recipe-static source both the plan (via itemOccupancy, which now also reads
+// itemStageSpec) and this function read directly. NO equipment-registry state is read here: itemStageSpec
+// deliberately never touches equipList()/localStorage, so THIS function is a pure projection that feeds
+// EQM.ownership AND EQM.availability from ONE list (§4.2), regardless of what the caller currently owns.
+//
+// Review fix (Critical): a prior version called itemOccupancy(meta, s.kind, null) directly, whose
+// standalone (dev=null) path resolves hanging via ownsHangingDevice() — LIVE registry state — so the same
+// recipe could derive different rows purely because owned equipment changed. cap.hang below is therefore
+// a recipe PREFERENCE (spec.hang, whatever the recipe asks for), never gated on ownership; whether an
+// OWNED device actually satisfies that preference is resolved per-device at ownership time (Task 3,
+// EQM.ownership), not here. Because hang no longer suppresses the area demand, a single row may now carry
+// BOTH cap.hang and demand.area_cm2 — legal per the schema (capability? and demand? are independent
+// optionals).
 //
 // D2 — device properties the requires model READS today (spec §4.1, "honestly"): the demand/capability
 // here consumes areaCm2 (via deviceCapacity, at ownership time), cap.baths (via chooseBath), canHang+hooks
@@ -42,15 +54,22 @@ function deriveRequires(meta, methodKey, order){
   const rows = [];
   stages.forEach(function(s){
     const kind = REQ_KIND[s.kind]; if(!kind) return;            // only smoke/sv/cook become requires rows
-    const occ = (typeof itemOccupancy==='function') ? itemOccupancy(meta, s.kind, null) : null;
+    const spec = (typeof itemStageSpec==='function') ? itemStageSpec(meta, s.kind) : {};
     const row = { role:'cook', kind:kind, source:'derived' };
     const cap = {};
     if(typeof s.temp==='number' && s.temp>0) cap.maxTempC = s.temp;              // device must REACH the cited temp
-    if(occ && occ.mode==='hang' && occ.hang) cap.hang = occ.hang;                // recipe wants hanging
-    if(occ && occ.mode==='volume' && occ.litres>0) cap.bathMinL = occ.litres;   // bath must be this big
+    if(s.kind==='sv'){
+      const litres = Number(spec.min_bath_l)||0;
+      if(litres>0){
+        cap.bathMinL = litres;                                                   // bath must be this big
+        row.demand = { metric:'litres', amount:litres };
+      }
+    } else {
+      if(spec.hang) cap.hang = spec.hang;                                       // recipe PREFERENCE — resolved per-device at ownership time
+      const fp = spec.footprint_cm2;
+      if(fp!=null && !isNaN(Number(fp)) && Number(fp)>0) row.demand = { metric:'area_cm2', amount:Number(fp) };
+    }
     if(Object.keys(cap).length) row.capability = cap;
-    if(occ && occ.mode==='volume' && occ.litres>0) row.demand = { metric:'litres', amount:occ.litres };
-    else if(occ && occ.mode==='area' && typeof occ.cm2==='number' && occ.cm2>0) row.demand = { metric:'area_cm2', amount:occ.cm2 };
     rows.push(row);
   });
   return rows;

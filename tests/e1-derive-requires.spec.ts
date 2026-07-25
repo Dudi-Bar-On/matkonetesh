@@ -54,14 +54,29 @@ test('a sv+smoke combo derives BOTH a bath and a smoker row (sv covered day one,
   expect(kinds).toContain('smoker');
 });
 
-test('DoD-6 negative case — an item with no cook stages derives an empty list', async ({ page }) => {
+test('DoD-6 negative case — an item whose stages carry NO smoke/sv/cook device stage derives an empty list', async ({ page }) => {
   await boot(page);
-  // A make whose profile is a bare non-device flow, or any item itemStages returns no smoke/sv/cook for,
-  // must derive []. (Pick a produce/spec item that has only a grill 'cook' — assert it derives grill, not
-  // an over-broad set — OR an item with no device stage at all derives [].) This proves the filter works.
-  const rows = await derive(page, 'cut-1');
-  expect(Array.isArray(rows)).toBe(true);           // never null/undefined for a real item
-  expect(rows.every(r => ['smoker','bath','grill'].includes(r.kind))).toBe(true);
+  // Review finding (Spec gap): the old version of this test ran on cut-1's normal combo, which is NEVER
+  // empty, so `rows.length===0` was never actually exercised. Verified LIVE against the full built catalog
+  // (all 130 cuts + 47 specials + 52 makes, every one of their real method keys — 279 items) that NO real
+  // item+method combination produces a stage list with zero smoke/sv/cook stages: this app's whole premise
+  // is live-fire cooking, so every real recipe ends in at least one device stage (confirmed via a throwaway
+  // enumeration script against dist/index.html; 0/279 items had an empty case — a produce/spec item was NOT
+  // available as the brief hypothesized). So this test exercises the REAL skip predicate
+  // (`REQ_KIND[s.kind]` — the same one `deriveRequires` calls) against a REAL non-device stage tail taken
+  // verbatim from a REAL item's REAL itemStages() output (cut-1, 'c:smoke_sv': dry/rest/bcheck), by
+  // temporarily substituting what itemStages returns for the duration of ONE call — deriveRequires itself
+  // runs unmodified and its actual RETURNED value is what gets asserted empty.
+  const rows = await page.evaluate(`(function(){
+    var m = resolveItem('cut-1');
+    var real = itemStages(m, 'c:smoke_sv', true);                       // REAL stages of a REAL item+method
+    var nonDevice = real.filter(function(s){ return !REQ_KIND[s.kind]; }); // the REAL non-device tail (dry/rest/bcheck)
+    var orig = itemStages;
+    itemStages = function(){ return nonDevice; };    // a "filtered order/method": only non-device stages reach deriveRequires
+    try { return deriveRequires(m, 'c:smoke_sv'); } finally { itemStages = orig; }
+  })()`) as any[];
+  expect(Array.isArray(rows)).toBe(true);           // never null/undefined
+  expect(rows.length).toBe(0);                       // the actual negative: an OBSERVABLY empty result
 });
 
 test('DoD-10 safety invariance — deriving never mutates the item object or its itemStages output', async ({ page }) => {
@@ -75,4 +90,48 @@ test('DoD-10 safety invariance — deriving never mutates the item object or its
   })()`) as any;
   expect(snap.objEq).toBe(true);
   expect(snap.stagesEq).toBe(true);
+});
+
+test('CRITICAL fix — deriveRequires is a PURE projection: rows are identical regardless of the owned-equipment registry', async ({ page }) => {
+  // Review finding: deriveRequires used to call itemOccupancy(meta, s.kind, null), whose standalone
+  // (dev=null) path runs ownsHangingDevice() -> equipList() -> localStorage 'mk-equipment' — LIVE registry
+  // state. Two calls on the IDENTICAL item could return different rows purely because owned equipment
+  // changed, which violates the spec's "PURE projection of recipe data — no registry reads" property. The
+  // fix reads itemStageSpec(meta, stageKind) (recipe-static merge only) instead.
+  await boot(page);   // registry EMPTY — boot() seeds no 'mk-equipment' key at all
+  // A REAL hang-class item, found LIVE (never guessed) — 'm-frank' (frankfurters) carries
+  // equip.spec.hang='short' and has exactly one method ('smoke'), so its default stage kind is
+  // deterministic. Verified live: Object.keys(DATA.makes) enumerated for any equip.spec.hang.
+  const key = await page.evaluate(`(function(){
+    return Object.keys(DATA.makes).find(function(k){ var e=DATA.makes[k].equip; return e && e.spec && e.spec.hang; });
+  })()`) as string;
+  expect(key).toBeTruthy();
+
+  const rowsEmptyRegistry = await page.evaluate(`deriveRequires(resolveItem('make-${key}'))`) as any[];
+  expect(rowsEmptyRegistry.length).toBeGreaterThan(0);   // sanity: the item DOES derive a device row
+
+  // Reboot with a REAL hang-capable device seeded — shape copied from occupancy-hanging.spec.ts's
+  // CABINET_WITH_HOOKS fixture (canHang:true, hooks:8). SAME item; ONLY the registry changed.
+  await seedApp(page, {
+    'mk-uilevel-asked': 'true',
+    'mk-lang': JSON.stringify('he'),
+    'mk-equipment': JSON.stringify([
+      { id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'ארון', cap: { racks: 4, areaCm2: 6000, canHang: true, hooks: 8 } },
+    ]),
+    'mk-equip-set': 'true',
+  });
+  await page.waitForFunction(`typeof deriveRequires==='function' && typeof resolveItem==='function'`);
+  const rowsSeededRegistry = await page.evaluate(`deriveRequires(resolveItem('make-${key}'))`) as any[];
+
+  // THE fix: identical recipe, identical stages -> identical rows. Registry ownership must never matter.
+  expect(rowsSeededRegistry).toEqual(rowsEmptyRegistry);
+
+  // The row must carry the recipe's hang PREFERENCE as a capability REGARDLESS of ownership — whether an
+  // owned device actually satisfies it is resolved per-device at ownership time (Task 3, EQM.ownership),
+  // not here. If a footprint were also cited, the area demand would coexist on the SAME row (capability?
+  // and demand? are independent optionals in the schema) — asserted conditionally since this item's data
+  // carries no footprint_cm2 (make_equip() never sets it for makes, verified live).
+  const hungRow = rowsEmptyRegistry.find((r: any) => r.capability && r.capability.hang);
+  expect(hungRow).toBeTruthy();
+  if (hungRow.demand) expect(hungRow.demand.metric).toBe('area_cm2');
 });

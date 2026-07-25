@@ -353,12 +353,21 @@ function deviceDisplayName(dev){
   const he = (typeof getLang!=='function'||getLang()==='he');
   return base + (he ? ' · מס׳ '+(idx+1) : ' · #'+(idx+1));
 }
+// The recipe-static merge (per-item equip.spec, overridden per-stage by equip.by[stageKind].spec) — the
+// ONE shared source both the plan (via itemOccupancy below) and deriveRequires (equipment.js, directly)
+// read. Deliberately reads ONLY meta/eq — no equipment-registry state — so it is a pure function of the
+// recipe alone (spec §4.2's anti-drift property extends to this shared helper, not just itemOccupancy).
+function itemStageSpec(meta, stageKind){
+  const eq = (meta && ((meta.obj && meta.obj.equip) || meta.equip)) || null;
+  if(!eq) return {};
+  const by = (eq.by && eq.by[stageKind]) || {};
+  return Object.assign({}, eq.spec || {}, by.spec || {});
+}
 function itemOccupancy(meta, stageKind, dev){
   const none={mode:'area', cm2:0, hooks:0, litres:0, hang:null};
   if(!meta) return none;
   const eq=(meta.obj&&meta.obj.equip)||meta.equip; if(!eq) return none;
-  const by=(eq.by&&eq.by[stageKind])||{};
-  const spec=Object.assign({}, eq.spec||{}, by.spec||{});
+  const spec=itemStageSpec(meta, stageKind);
   if(stageKind==='sv') return {mode:'volume', cm2:0, hooks:0, litres:Number(spec.min_bath_l)||0, hang:null};
   const hang=spec.hang||null;
   // Hanging is decided by the DEVICE the item is on (its own canHang + hooks). Called with a device →
