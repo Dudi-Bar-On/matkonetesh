@@ -8272,6 +8272,63 @@ function timerEventName(key){ if(!key) return ''; const evs=evList(); for(var i=
 function evGenId(){ return 'ev-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e4).toString(36); }
 function evMenuHasContent(m){ m=m||((typeof menuState==='function')?menuState():{keys:[]}); return (m.keys||[]).length>0; }
 function isDraft(){ return !evActive() && evMenuHasContent(); }
+// ── E2 Task 5: production wiring — a saved event's device-staged items own real ledger holds; deleting
+// frees them; re-saving is idempotent (release-then-allocate, never ghost holds). Uses the SAME
+// stage-timing primitives buildList/workPlanHtml use (itemStages → planSchedule), so a hold's window can
+// never disagree with the work-plan view for the same item — but takes a deliberately SIMPLER slice of
+// the live view's inputs:
+//   · method/order: eqmRequiresMethodKey(meta) (E1) + no order override — the SAME choice eqmRequiresChip
+//     already makes for the equipment card's chip, so a hold can never disagree with what that chip
+//     already promised, and this does not need to thread the item's live tlState() method pin through a
+//     second, independent path.
+//   · ready: hardcoded true when calling itemStages, exactly like deriveRequires's own internal call —
+//     verified against itemStages' own branching that the ready flag ONLY ever adds/removes the
+//     non-device 'prep' stage (and planSchedule works backward from serve, so a stage's own hours can
+//     never move anything scheduled AFTER it in the array — 'prep' is always first), never a smoke/sv/cook
+//     stage, so this can never desync the stage-kind SET between the requires rows and the stage windows
+//     they are matched against below.
+//   · blocked (multi-day, not-yet-ready) items are still skipped, reading tlState() ONLY for that one
+//     flag — buildList's own `blocked` formula, preserved verbatim — because a "prep ahead" item has no
+//     real scheduled slot to book yet; the equipment-card CHIP shows it regardless (display, not a
+//     reservation), but a real ledger hold must not claim a device for a cook that isn't actually
+//     happening on this pass.
+// CRITICAL (plan Task 5, step 1d): one EQM.allocate call PER (item, requires-row) — never several rows
+// sharing one call — because two rows on the SAME item can carry DIFFERENT stage windows (a smoke+sv
+// combo), and allocate's all-or-nothing semantics are PER CALL; bundling them would let one row's
+// unrelated availability drag the other row's window into the same pass/fail. Every allocate's return is
+// deliberately never inspected for control flow: holds must NEVER block the save in E2 (no UI surfaces a
+// failed hold yet — blocking is E3's gate). A hold write failure here is silently tolerated by design.
+function evSyncEquipmentHolds(rec){
+  if(!rec || typeof EQM==='undefined' || typeof deriveRequires!=='function' || typeof itemStages!=='function' || typeof planSchedule!=='function') return;
+  const holder={type:'event', id:rec.id};
+  try{ EQM.release(holder); }catch(e){}                        // old holds die before any new one is written — makes re-save idempotent
+  const keys=[...new Set((rec.menu&&rec.menu.keys)||[])];
+  if(!keys.length) return;
+  const scopeState=(typeof tlState==='function')?tlState():{};
+  const t=String(rec.serve||'19:00').split(':').map(Number);
+  let serve;
+  if(rec.date){ serve=new Date(rec.date+'T00:00:00'); serve.setHours(t[0]||0,t[1]||0,0,0); }
+  else { serve=new Date(); serve.setHours(t[0]||0,t[1]||0,0,0); if(serve.getTime()<Date.now()) serve.setDate(serve.getDate()+1); }   // same fallback shape as serveDateTime()
+  keys.forEach(function(key){
+    const meta=(typeof resolveItem==='function')?resolveItem(key):null; if(!meta) return;
+    const profile=(typeof itemProfile==='function')?itemProfile(meta):null; if(!profile) return;
+    const st=scopeState[key]||{ready:true};
+    if(profile.multiDay && !st.ready) return;                  // blocked — buildList excludes it from the timed plan too
+    const methodKey=(typeof eqmRequiresMethodKey==='function')?eqmRequiresMethodKey(meta):undefined;
+    let stages, requires;
+    try{ stages=itemStages(meta, methodKey, true)||[]; requires=deriveRequires(meta, methodKey)||[]; }catch(e){ return; }
+    if(!requires.length) return;
+    const sched=planSchedule(stages, serve.getTime());
+    sched.stages.forEach(function(p,i){ if(stages[i]){ stages[i].start=new Date(p.startMs); stages[i].end=new Date(p.endMs); } });
+    requires.forEach(function(row){
+      if(!row || !row.demand) return;                          // capability-only rows reserve nothing — same early-out EQM.allocate itself applies
+      const stageKind=KIND_TO_STAGE[row.kind];
+      const stage=stages.find(function(s){ return s && s.kind===stageKind; }); if(!stage || !stage.start || !stage.end) return;
+      try{ EQM.allocate([row], {startMs:stage.start.getTime(), endMs:stage.end.getTime()}, holder); }catch(e){}
+    });
+  });
+}
+
 // snapshot current working menu (mk-menu) into an event
 function evSaveCurrent(name,desc,date){
   const m=(typeof menuState==='function')?menuState():{};
@@ -8285,6 +8342,7 @@ function evSaveCurrent(name,desc,date){
   const idx=list.findIndex(e=>e.id===id);
   if(idx>=0) list[idx]=rec; else list.push(rec);
   evSaveList(list); store.set('mk-active',id);
+  try{ evSyncEquipmentHolds(rec); }catch(e){}   // E2 Task 5: release-then-allocate ledger holds — never gates the save above, which has already happened
   return id;
 }
 function evLoad(id){
@@ -8315,10 +8373,12 @@ function evLoad(id){
 }
 function evDelete(id){
   const wasActive=(evActive()===id);
+  try{ if(typeof EQM!=='undefined' && typeof EQM.release==='function') EQM.release({type:'event', id:id}); }catch(e){}   // E2 Task 5 (Q3): cancel/delete frees ALL of this event's ledger holds
   evSaveList(evList().filter(e=>e.id!==id));
   if(wasActive){ evClearActive(); }
 }
 function evDeleteAll(){
+  try{ if(typeof EQM!=='undefined' && typeof EQM.release==='function') evList().forEach(function(e){ if(e && e.id) EQM.release({type:'event', id:e.id}); }); }catch(e){}   // E2 Task 5: wiping all events must not orphan their holds either
   evSaveList([]); evClearActive();
 }
 function evClearActive(){
