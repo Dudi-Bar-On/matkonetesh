@@ -1,0 +1,289 @@
+<!doctype html><html lang="he" dir="rtl"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CP2 · מסלולי בישול — Variant B (List)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800&family=Suez+One&display=swap" rel="stylesheet">
+<style>
+:root{
+  --char:#fdf6ec; --char2:#fffaf3; --char3:#fff2e4;
+  --ember:#e76f51; --ember2:#f4a261;
+  --ash:#6e5340; --bone:#5a3a28; --smoke:#7a5f4c;
+  --line:#f0dcc4; --line2:#f5e0c8;
+  --good:#1a9a7a; --fresh:#1a9a7a; --fresh-l:#d8f0e8;
+  --over:#c2553f; --over-l:#f7e4de;
+  --terra-d:#d2691e; --bg2:#faecd8; --card:#fffaf3;
+  --ink-strong:#3a2418;
+  --r:16px;
+  --font-body:'Heebo',sans-serif; --font-display:'Suez One',serif;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --char:#241a12; --char2:#2c2019; --char3:#33251c;
+    --ember:#e8825f; --ember2:#f4a261;
+    --ash:#d8c3ae; --bone:#f3e6d8; --smoke:#c2ab93;
+    --line:#4a3626; --line2:#4a3626;
+    --fresh-l:#173a30; --over-l:#3a2019; --terra-d:#e08a4a; --bg2:#1c140e; --card:#2c2019;
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{background:var(--bg2);color:var(--bone);font-family:var(--font-body);line-height:1.5;max-width:390px;margin:0 auto;min-height:844px;padding-bottom:28px}
+h1,h2,h3,h4{font-family:var(--font-display);font-weight:400;margin:0}
+button{font-family:var(--font-body)}
+.page{background:var(--char)}
+.panel-top{padding:18px 20px 14px;border-bottom:1px solid var(--line);position:relative;overflow:hidden}
+.panel-top::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--c,var(--ember))}
+.panel-top .cat{font-family:var(--font-body);font-size:11px;font-weight:700;letter-spacing:.14em;color:var(--ember2);text-transform:uppercase}
+.panel-top h2{font-size:32px;line-height:1.05;margin:.15em 0 .1em;color:var(--bone)}
+.panel-top .en{color:var(--smoke);font-size:13.5px}
+.panel-body{padding:14px 20px 26px}
+.itemdesc{font-size:13.5px;line-height:1.65;color:var(--bone);opacity:.92;background:var(--char2);border-inline-start:3px solid var(--ember2);border-radius:8px;padding:11px 13px;margin:12px 0 4px}
+.eqm-reqs{display:flex;flex-wrap:wrap;gap:4px;margin:10px 0 2px}
+.eqm-req{font-size:11px;line-height:1.4;padding:3px 9px;border-radius:999px;border:1px solid var(--line);background:var(--char2);color:var(--ash);white-space:nowrap;font-weight:700}
+.eqm-req .eqm-num{font-variant-numeric:tabular-nums}
+.eqm-req-partial{border-color:var(--ember);background:color-mix(in srgb, var(--ember) 14%, transparent)}
+.statline{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0 4px;transition:opacity .15s}
+.statline.swap{opacity:0}
+.stat{background:var(--char2);border:1px solid var(--line);border-radius:10px;padding:9px 12px;min-width:80px;flex:1 0 auto}
+.stat .l{font-size:10px;color:var(--smoke);letter-spacing:.06em;text-transform:uppercase;font-weight:700}
+.stat .v{font-size:16.5px;font-weight:800;margin-top:2px;color:var(--ink-strong)}
+.stat .v small{font-size:11.5px;color:var(--ash);font-weight:600}
+h4.sec{font-family:var(--font-body);font-size:12px;letter-spacing:.11em;text-transform:uppercase;color:var(--ember2);margin:20px 0 8px;font-weight:800}
+.steps{margin-top:2px}
+.step{display:flex;gap:10px;padding:11px 0;border-top:1px solid var(--line)}
+.step:first-child{border-top:none}
+.step-dot{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--char3);border:1.5px solid var(--line2);display:grid;place-items:center;font-size:10.5px;font-weight:800;color:var(--ash);margin-top:1px}
+.step-main{flex:1;min-width:0}
+.step-t{font-weight:800;font-size:14.5px;color:var(--bone)}
+.step-c{font-size:13px;color:var(--ash);margin-top:2px;line-height:1.55}
+.var{margin-top:22px}
+.varitem{background:var(--char2);border:1px solid var(--line);border-radius:10px;padding:11px 13px;margin-top:6px}
+.varitem .vt{font-weight:800;font-size:13px;color:var(--bone);margin-bottom:3px}
+.varitem p{font-size:12.5px;color:var(--ash);margin:0;line-height:1.55}
+.raw{margin-top:22px}
+.raw table{width:100%;border-collapse:collapse;font-size:12.5px}
+.raw td{padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
+.raw td:first-child{color:var(--smoke);width:38%;font-weight:600}
+.raw td:last-child{font-weight:600}
+.srcnote{font-size:11px;opacity:.7;margin-top:2px;font-weight:400}
+.orderimpact{margin-top:10px}
+.oi-h{font-family:var(--font-body);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--ember2);margin:2px 0;font-weight:800}
+.oi-line{font-size:12.5px;line-height:1.5;color:var(--ash);margin:4px 0}
+.oi-line b{color:var(--bone)}
+.gridwrap{margin:26px 20px 0;padding-top:16px;border-top:2px dashed var(--line2)}
+.gridwrap .gh{font-size:11px;font-weight:800;color:var(--terra-d);letter-spacing:.03em;margin-bottom:8px;line-height:1.5}
+.minicard{display:flex;gap:10px;align-items:center;background:var(--char2);border:1.5px solid var(--line2);border-radius:14px;padding:12px 14px}
+.minicard .mc-ico{font-size:26px;flex:0 0 auto}
+.minicard .mc-body{flex:1;min-width:0}
+.minicard .mc-name{font-family:var(--font-display);font-size:17px;color:var(--bone)}
+.minicard .mc-line{font-size:12px;color:var(--ash);margin-top:2px}
+.footnote{margin:22px 20px 0;font-size:11px;color:var(--smoke);line-height:1.6;border-top:1px solid var(--line);padding-top:12px}
+.toast{position:fixed;inset-inline:0;bottom:18px;display:flex;justify-content:center;pointer-events:none;z-index:50}
+.toast .tbody{background:var(--ink-strong);color:#fff;font-size:12.5px;font-weight:700;padding:10px 18px;border-radius:999px;opacity:0;transform:translateY(8px);transition:all .2s;box-shadow:0 6px 18px rgba(0,0,0,.25)}
+.toast.on .tbody{opacity:1;transform:translateY(0)}
+.cite-ok{display:inline-flex;align-items:center;gap:3px;color:var(--fresh);font-weight:800}
+.cite-soon{display:inline-flex;align-items:center;gap:3px;color:var(--terra-d);font-weight:800}
+</style>
+</head>
+<style>
+.cp-list{margin:18px 0 4px;border:1.5px solid var(--line2);border-radius:16px;background:var(--char2);overflow:hidden}
+.cp-list-head{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:none;border:none;padding:14px 16px;cursor:pointer;text-align:start}
+.cp-lh-main{display:flex;align-items:center;gap:8px;font-weight:800;font-size:14px;color:var(--bone)}
+.cp-def-badge{font-size:9.5px;font-weight:800;background:var(--fresh-l);color:var(--fresh);padding:2px 8px;border-radius:999px;white-space:nowrap}
+.cp-lh-count{display:flex;align-items:center;gap:5px;font-size:12px;color:var(--ash);font-weight:700;flex:0 0 auto}
+.cp-lh-count .chev{transition:transform .2s;display:inline-block}
+.cp-lh-count.open .chev{transform:rotate(180deg)}
+.cp-list-body{border-top:1px solid var(--line2)}
+.cp-row{display:flex;align-items:center;gap:10px;padding:12px 16px;border-top:1px solid var(--line);cursor:pointer}
+.cp-row:first-child{border-top:none}
+.cp-row .radio{width:18px;height:18px;border-radius:50%;border:2px solid var(--line2);flex:0 0 auto;display:grid;place-items:center;background:var(--char)}
+.cp-row.on .radio{border-color:var(--ember)}
+.cp-row.on .radio:after{content:'';width:9px;height:9px;border-radius:50%;background:var(--ember)}
+.cp-row .crmain{flex:1;min-width:0}
+.cp-row .crtitle{font-weight:700;font-size:13.5px;color:var(--bone);display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.cp-row .crfig{font-size:12px;color:var(--ash);margin-top:2px}
+.cp-row .crcite{font-size:11px;margin-top:2px}
+.cp-row.soon{opacity:.55;cursor:default}
+</style>
+<body>
+<div class="page">
+
+   <div class="panel-top" style="--c:#c0392b">
+     <div class="cat">בקר · נתח #1</div>
+     <h2>בריסקט</h2>
+     <div class="en">Brisket · <span dir="ltr">5.5</span> ק״ג · רמת קושי ●●●●●</div>
+   </div>
+   <div class="panel-body">
+
+     <p class="itemdesc">חזה בקר עתיר קולגן — הנתח הקלאסי לבישול איטי, נמס לפירוק מלא בין <span dir="ltr">90–96°</span>.</p>
+     <div class="eqm-reqs" aria-label="ציוד דרוש">
+       <span class="eqm-req">🔧 מעשנת <span dir="ltr" class="eqm-num">≥120°</span></span>
+       <span class="eqm-req eqm-req-partial">🔧 אמבט סו-ויד <span dir="ltr" class="eqm-num">≥30 L</span></span>
+     </div>
+     <div class="statline" id="statline"></div>
+
+     <div class="cp-list" id="cpList">
+       <button class="cp-list-head" id="cpListHead">
+         <span class="cp-lh-main" id="cpListMain"></span>
+         <span class="cp-lh-count" id="cpListCount"><span>5 מסלולים</span> <span class="chev">▾</span></span>
+       </button>
+       <div class="cp-list-body" id="cpListBody" style="display:none"></div>
+     </div>
+     <div class="steps" id="stepsArea"></div>
+
+     <div class="var">
+       <h4 class="sec">ווריאנט תיבול חלופי</h4>
+       <div class="varitem"><div class="vt">קראסט טקסני</div><p>מלח גס + פלפל שחור גס ביחס 1:1 — קראסט "מלח-פלפל" קלאסי, ללא ראב מתוק.</p></div>
+       <div class="varitem"><div class="vt">🪵 עץ מומלץ</div><p>אלון/היקורי — עשן חזק שמחזיק מעמד לאורך בישול ארוך.</p></div>
+     </div>
+
+     <div class="raw">
+       <h4 class="sec">📚 מקורות ואימות</h4>
+       <table>
+         <tr><td>סו-ויד</td><td>Douglas Baldwin — <span dir="ltr">sous-vide.html</span><div class="srcnote">פסטור מלא לפי עובי — 68°/30 שעות לחזה שלם.</div></td></tr>
+         <tr><td>עישון</td><td>AmazingRibs — Texas-Style Smoked Brisket<div class="srcnote">עישון 105–120° · קרום (bark) לפני הכנסה לאמבט/גימור.</div></td></tr>
+         <tr><td>בטיחות</td><td><span dir="ltr">USDA FSIS</span><div class="srcnote">טמפ׳ פנים בטוחה מוקדם, יעד מרקם 95° לפירוק קולגן מלא.</div></td></tr>
+       </table>
+       <div class="orderimpact">
+         <div class="oi-h">🔀 השפעת סדר</div>
+         <div class="oi-line"><b>סו-ויד→עישון</b>: סו-ויד 68°/30ש → ייבוש → עישון 120°/1.5ש <span style="opacity:.65">(גימור חם)</span></div>
+         <div class="oi-line"><b>עישון→סו-ויד</b>: עישון 75°/1.5–2ש <span style="opacity:.65">(עישון חם)</span> → סו-ויד 68°/30ש <span style="opacity:.65">(פסטור מלא)</span></div>
+       </div>
+     </div>
+   </div>
+</div>
+
+   <div class="gridwrap">
+     <div class="gh">בכרטיס הקטלוג (ללא שינוי בכל שלושת הווריאנטים) — שאלה פתוחה §9.2: מוצג ברירת המחדל בלבד, ללא רמז למסלולים נוספים.</div>
+     <article class="minicard">
+       <div class="mc-ico">🌊💨</div>
+       <div class="mc-body">
+         <div class="mc-name">בריסקט</div>
+         <div class="mc-line"><span dir="ltr">68°/30ש</span> → <span dir="ltr">120°/1.5ש</span> · חוסך מעשנת <span dir="ltr">9ש</span></div>
+       </div>
+     </article>
+   </div>
+
+   <div class="footnote">
+     כל הניסוח בעברית במסך זה הוא <b>הצעה (proposed)</b> לצורך אישור חזותי בלבד — הניסוח הסופי ייקבע בשלב
+     המימוש. Variant B: מדור "מסלולי בישול" מתקפל — סגור מציג ברירת מחדל + מונה מסלולים; פתוח מציג את כל 5 השורות. נתוני הבישול (טמפ׳/שעות) תואמים את המקורות המצוטטים שכבר קיימים בנתוני הפריט
+     (AmazingRibs, Baldwin); שתי השורות המסומנות "בקרוב" הן placeholder למחקר CP3 ואינן ניתנות לבחירה.
+   </div>
+<div class="toast" id="toast"><div class="tbody"></div></div>
+<script>
+
+const PATHS = [
+  { id:'sv-smoke', def:true, cited:true, icons:['🌊','💨'], label:'סו-ויד → עישון', short:'סו-ויד → עישון',
+    fig:'<span dir="ltr">68°/30ש</span> → <span dir="ltr">120°/1.5ש</span>',
+    ref:'AmazingRibs — Texas-Style Smoked Brisket',
+    stat:[{l:'סו-ויד',v:'68°',s:'30ש'},{l:'עישון (גימור)',v:'120°',s:'1.5ש'},{l:'יעד מרקם',v:'95°'},{l:'בטיחות',v:'63°'},{l:'חוסך מעשנת',v:'9ש'}],
+    steps:[
+      {t:'ראב והכנה',c:'שפשוף מלח גס ופלפל שחור גס בשכבה נדיבה, מנוחה 30 דק׳ לפני האיטום.'},
+      {t:'סו-ויד <span dir="ltr">68°/30ש</span>',c:'איטום ואקום, אמבט 68° למשך 30 שעות — פסטור מלא וריכוך קולגן מלא.'},
+      {t:'ייבוש קצר במקרר',c:'הוצאה מהשקית, ניגוב וייבוש פתוח כ-3 שעות — קריטי לקבלת קרום (bark) בעישון.'},
+      {t:'עישון גימור <span dir="ltr">120°/1.5ש</span>',c:'עשן חם עד לקרום כהה. מקור מצוטט: AmazingRibs — Texas-Style Smoked Brisket.'},
+      {t:'מנוחה ובדיקת טמפ׳ פנים',c:'60 דק׳ מנוחה, מדחום בליבה עד ליעד <span dir="ltr">95°</span>.'}
+    ]},
+  { id:'smoke-sv', def:false, cited:true, icons:['💨','🌊'], label:'עישון → סו-ויד', short:'עישון → סו-ויד',
+    fig:'<span dir="ltr">75°/1.5–2ש</span> → <span dir="ltr">68°/30ש</span>',
+    ref:'Baldwin — פסטור לפי עובי הבשר',
+    stat:[{l:'עישון (חם)',v:'75°',s:'1.5–2ש'},{l:'סו-ויד (פסטור מלא)',v:'68°',s:'30ש'},{l:'יעד מרקם',v:'95°'},{l:'בטיחות',v:'63°'}],
+    steps:[
+      {t:'ראב על בשר גולמי',c:'שפשוף מלח גס ופלפל שחור גס — ישירות על הבשר החי, ללא סו-ויד מקדים.'},
+      {t:'עישון חם <span dir="ltr">75°/1.5–2ש</span>',c:'עישון קצר על בשר גולמי לטבעת-עשן מרבית; לא ארוך מ-2 שעות (אזור סכנה).'},
+      {t:'איטום ומעבר לסו-ויד',c:'איטום ואקום מיידי מיד לאחר העישון, בעודו חם.'},
+      {t:'סו-ויד <span dir="ltr">68°/30ש</span>',c:'אמבט 68° — פסטור מלא של המשטח והפנים. מקור מצוטט: Baldwin — פסטור לפי עובי.'},
+      {t:'מנוחה ובדיקת טמפ׳ פנים',c:'מדחום בליבה עד ליעד <span dir="ltr">95°</span>.'}
+    ]},
+  { id:'smoke-only', def:false, cited:true, icons:['💨'], label:'עישון בלבד', short:'עישון בלבד',
+    fig:'<span dir="ltr">105°/3ש</span>',
+    ref:'AmazingRibs — Texas-Style Smoked Brisket (טור עישון בלבד)',
+    stat:[{l:'עישון',v:'105°',s:'3ש'},{l:'יעד מרקם',v:'95°'},{l:'בטיחות',v:'63°'}],
+    steps:[
+      {t:'ראב והכנה',c:'שפשוף מלח גס ופלפל שחור גס.'},
+      {t:'עישון <span dir="ltr">105°/3ש</span>',c:'עישון ישיר ללא סו-ויד מקדים — הזמן הקצר ביותר מבין המסלולים המצוטטים, פחות דיוק ברכות.'},
+      {t:'מנוחה ובדיקת טמפ׳ פנים',c:'מדחום בליבה עד ליעד <span dir="ltr">95°</span>.'}
+    ]},
+  { id:'oven-only', def:false, cited:false, soon:true, icons:['🎛'], label:'תנור בלבד', short:'תנור בלבד', fig:'בקרוב — מקור בבדיקה' },
+  { id:'sv-oven', def:false, cited:false, soon:true, icons:['🌊','🎛'], label:'סו-ויד → תנור', short:'סו-ויד → תנור', fig:'בקרוב — מקור בבדיקה' }
+];
+
+
+function isl(v){ return '<span dir="ltr">'+v+'</span>'; }
+function statHTML(p){
+  return p.stat.map(function(s){
+    return '<div class="stat"><div class="l">'+s.l+'</div><div class="v">'+isl(s.v)+(s.s?'<small> / '+isl(s.s)+'</small>':'')+'</div></div>';
+  }).join('');
+}
+function stepsHTML(p){
+  return p.steps.map(function(s,i){
+    return '<div class="step"><div class="step-dot">'+(i+1)+'</div><div class="step-main"><div class="step-t">'+s.t+'</div><div class="step-c">'+s.c+'</div></div></div>';
+  }).join('');
+}
+function citeHTML(p){
+  if(p.soon) return '<span class="cite-soon">⏳ בקרוב — מקור בבדיקה</span>';
+  return '<span class="cite-ok">✓ מקור מצוטט</span> <span style="color:var(--smoke);font-weight:600">· '+p.ref+'</span>';
+}
+let toastTimer=null;
+function toast(msg){
+  const el=document.getElementById('toast'); if(!el) return;
+  el.querySelector('.tbody').textContent=msg;
+  el.classList.add('on');
+  clearTimeout(toastTimer);
+  toastTimer=setTimeout(function(){ el.classList.remove('on'); }, 1800);
+}
+function byId(id){ return PATHS.find(function(p){ return p.id===id; }); }
+function renderStatline(id){
+  const p=byId(id);
+  const sl=document.getElementById('statline');
+  sl.classList.add('swap');
+  setTimeout(function(){
+    sl.innerHTML=statHTML(p);
+    sl.classList.remove('swap');
+  }, 90);
+}
+function renderSteps(id){
+  const p=byId(id);
+  document.getElementById('stepsArea').innerHTML='<h4 class="sec">שלבי בישול — '+p.label+'</h4>'+stepsHTML(p);
+}
+
+
+function rowHTML(p){
+  const icos=p.icons.join('');
+  return '<div class="cp-row'+(p.id===current?' on':'')+(p.soon?' soon':'')+'" data-id="'+p.id+'">'+
+    (p.soon?'':'<div class="radio"></div>')+
+    '<div class="crmain"><div class="crtitle">'+icos+' '+p.label+(p.def?'<span class="cp-def-badge">ברירת מחדל</span>':'')+'</div>'+
+    '<div class="crfig">'+p.fig+'</div>'+
+    '<div class="crcite">'+citeHTML(p)+'</div></div>'+
+    '</div>';
+}
+function renderListHead(){
+  const p=byId(current);
+  document.getElementById('cpListMain').innerHTML = p.icons.join('')+' '+p.label+(p.def?'<span class="cp-def-badge" style="margin-inline-start:6px">ברירת מחדל</span>':'');
+}
+function renderListBody(){
+  document.getElementById('cpListBody').innerHTML = PATHS.map(rowHTML).join('');
+  document.querySelectorAll('.cp-row').forEach(function(r){
+    r.addEventListener('click', function(){
+      const id=r.dataset.id, p=byId(id);
+      if(p.soon){ toast('מסלול זה עדיין במחקר CP3 — יתווסף עם מקור מצוטט'); return; }
+      current=id;
+      renderListHead(); renderListBody(); renderStatline(current); renderSteps(current);
+      setTimeout(function(){ toggleList(false); }, 380);
+    });
+  });
+}
+function toggleList(open){
+  const body=document.getElementById('cpListBody'), cnt=document.getElementById('cpListCount');
+  body.style.display = open?'block':'none';
+  cnt.classList.toggle('open', open);
+  listOpen=open;
+}
+document.getElementById('cpListHead').addEventListener('click', function(){ toggleList(!listOpen); });
+let current='sv-smoke', listOpen=false;
+renderListHead(); renderListBody(); toggleList(true);
+document.getElementById('statline').innerHTML = statHTML(byId(current));
+renderSteps(current);
+
+</script>
+</body></html>
