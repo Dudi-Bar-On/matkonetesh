@@ -449,6 +449,30 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 > as binding text. O-2's consult button may EXPLAIN the options; the options themselves are
 > deterministic scheduler output, never AI-generated.
 
+> **AMENDMENT O-4 — owner ruling in conversation, 2026-07-25 (cited ranges are free parameters).**
+> Refines O-3's safety rail without weakening it. Some stage durations/temperatures are defined in the
+> item's cited data **as ranges or alternative cited schedules** — e.g. a sous-vide hold of "2–4 h", a
+> time-defined smoke of "1.5–2 h" (the `order_smokesv` entries already carry exactly this shape,
+> `h:'1.5-2'`), or a cited higher-temperature schedule that shortens a smoke. **Within those cited
+> bounds, the parameter is FREE for the orchestrator** — a legitimate schedule-side degree of freedom
+> for hitting the timeline, alongside O-3's shift/reassign/reorder moves. Binding boundaries:
+> **(a) Cited endpoints only.** A parameter is free ONLY where the item's own cited data defines the
+> range or the alternative schedule. No interpolation formulas, no extrapolation past an endpoint, no
+> transferring a range from one item to another. Absent cited range ⇒ the value is fixed, O-3's rail
+> applies verbatim.
+> **(b) Safety minimums always hold.** The pasteurization/safety minimum end of a cited range is a
+> floor, never crossable; a stage **gated by internal temperature** (probe target, `bcheck`) is NOT
+> time-adjustable — its gate is the thermometer, not the clock.
+> **(c) Approval or auto mode.** Every free-parameter adjustment is SHOWN in O-3's impact preview.
+> In default mode the user approves before it applies; a **system-settings "auto mode"** lets the user
+> pre-authorize the orchestrator to apply free-parameter adjustments autonomously (the preview still
+> shows what was adjusted, after the fact). Auto mode never extends to O-3's dialogue decisions
+> (delay serving / cancel) — those always ask.
+> **(d) Data note for the authoring track:** ranges must be stored as structured cited data (min/max +
+> source), not prose, for the orchestrator to use them — rides the same registered authoring item as
+> the order vocabulary (`registered-2026-07-25-order-vocabulary.md`), and "maybe there are more" free
+> parameters enter the same way: cited, structured, one at a time.
+
 ---
 
 ## 7. Replacements (owner design §6) + Retroactive invalidation (owner design §7)
