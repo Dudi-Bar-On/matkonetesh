@@ -6849,7 +6849,11 @@ function openEquipment(){
     if(c.capKey && d.cap && d.cap[c.capKey]!=null) s+=`<span class="eq-chip spec">${c.capEm?c.capEm+' ':''}${esc(d.cap[c.capKey]+' '+L(c.capHe,c.capEn))}</span>`;
     if(c.multiCap){ const mk=c.multiCap; let arr=(d.cap&&Array.isArray(d.cap[mk.key])&&d.cap[mk.key].length)?d.cap[mk.key]:[]; if(!arr.length && mk.key==='baths' && d.cap && d.cap.bathL!=null) arr=[d.cap.bathL];   // legacy single bathL
       if(arr.length) s+=`<span class="eq-chip spec">${mk.em?mk.em+' ':''}${esc(arr.join(' · ')+' '+L(mk.uHe,mk.uEn))}</span>`; }
-    if(d.cap && d.cap.area) s+=`<span class="eq-chip spec">📐 ${esc(d.cap.area)}</span>`;   // total cooking / smoking area (metric)
+    // D3 (E1 Task 5): the free-text cap.area alias is gone. The canonical numeric areaCm2 needs NO
+    // dedicated chip line here — it is a 'core' prop in EQUIP_CATS (app.js:37/51/62) and already renders
+    // via the generic property-chip loop below (raw=d.cap.areaCm2, kind:'num' → the else-branch chip).
+    // Adding a second explicit areaCm2 chip here (as an earlier draft of this task did) would show the
+    // SAME number twice in two unit spellings (cm² and ס״מ²) — the opposite of "collapse onto one field".
     // Property chips: only STORED values (not class defaults) — a chip means "you told us this".
     (c.props||[]).forEach(function(p){
       const raw=d.cap?d.cap[p.key]:undefined; if(raw===undefined||raw===''||raw===null) return;
@@ -7009,7 +7013,6 @@ function openEquipment(){
       if(cc.multiCap){ const mi=$("#eqMultiIn"); if(mi&&mi.value){ const pv=parseFloat((mi.value||'').replace(/[^\d.]/g,'')); if(!isNaN(pv)&&pv>0&&pv<100000&&multiVals.indexOf(pv)<0) multiVals.push(pv); }   // flush a typed-but-not-yet-added size
         if(multiVals.length){ multiVals.sort(function(a,b){return a-b;}); d.cap[cc.multiCap.key]=multiVals.slice(); } else delete d.cap[cc.multiCap.key]; if(cc.multiCap.key==='baths') delete d.cap.bathL; }   // sousvide bath sizes / stuffer output-tube sizes
       const fEl=$("#eqvFuel"); if(fEl) d.fuel=fEl.value||''; else if(['smoker','grill','oven'].indexOf(nc)<0) d.fuel='';
-      const aEl=$("#eqvArea"); if(aEl){ const av=(aEl.value||'').trim(); if(av) d.cap.area=av; else delete d.cap.area; }
       // Equipment properties: empty -> delete the key so the class default applies (never store 0/''). Numeric
       // fields route through propParse so a typed unit suffix ('500F') converts, and a mismatched unit
       // ('300mm' into a temperature field) is REJECTED rather than silently stored as a bogus value.
@@ -7053,7 +7056,7 @@ function openEquipment(){
       const multiField=cc.multiCap?`<div class="eq-vfield"><label>${L(cc.multiCap.he,cc.multiCap.en)}${sp}</label><div class="eq-multi${fc}" id="eqMultiWrap">${multiHtml()}</div></div>`:'';
       const grid=capField?`<div class="eq-vrow">${typeField}${capField}</div>`:typeField;   // sub-type full-width when there's no single-capacity field
       const extraMulti=cc.multiCap?multiField:'';   // multi-value editor (bath sizes / output sizes) always full-width below
-      const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div><div class="eq-vfield"><label>${L('שטח בישול','Cooking area')}${sp}</label><input id="eqvArea" class="eq-vin${fc}" placeholder="${L('לדוגמה 3700 cm²','e.g. 3700 cm²')}" value="${d.area?esc(d.area):''}"></div></div>`:'';
+      const fuelRow=showFuel?`<div class="eq-vrow"><div class="eq-vfield"><label>${L('דלק','Fuel')}${sp}</label><select id="eqvFuel" class="eq-vin${fc}">${fuelOpts(d.fuel||'')}</select></div></div>`:'';   // D3: the redundant free-text cooking-area input is gone — the canonical numeric #eqProp-areaCm2 (props loop below) is the one area field
       // Equipment properties. Core render inline; pro collapse into one <details>. Each label carries its
       // own icon, tinted by the category accent already on the sheet. The class default is shown as the
       // PLACEHOLDER so an empty field reads as "using the default", never as missing data.
@@ -7131,7 +7134,7 @@ function openEquipment(){
     const back=$("#eqBack"); if(back) back.addEventListener('click', function(){ editId=null; drawList(); });
     if(dev){ const cc=capC(dev.cat);
       const capVal=(cc.capKey&&dev.cap&&dev.cap[cc.capKey]!=null)?dev.cap[cc.capKey]:'';
-      paintVerify({ name:dev.name||'', type:dev.type||'', cap:capVal, fuel:dev.fuel||'', area:(dev.cap&&dev.cap.area)||'' }); }
+      paintVerify({ name:dev.name||'', type:dev.type||'', cap:capVal, fuel:dev.fuel||'' }); }   // D3: no `area:` key — fuelRow no longer has an area field to prefill (cap.area removed); the numeric #eqProp-areaCm2 field prefills itself from dev.cap.areaCm2 via propVal (app.js above), independent of this data object
     else paintVerify({});
   };
 

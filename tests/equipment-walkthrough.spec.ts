@@ -226,7 +226,7 @@ test('FORM AI (mock): lookup verify+save, browse catalogue, redo (EN)', async ({
   expect(await page.locator('#panel #eqName').inputValue()).toBe('Traeger Pro 575');
   expect(await page.locator('#panel #eqType').inputValue()).toBe('פלטים');
   expect(await page.locator('#panel #eqvFuel').inputValue()).toBe('pellet');
-  expect(await page.locator('#panel #eqvArea').inputValue()).toBe('3703 cm²');   // metric, converted from in²
+  expect(await page.locator('#panel #eqProp-areaCm2').inputValue()).toBe('3703');   // D3: canonical numeric areaCm2 field (#eqvArea removed) — no unit suffix, propCoerce kept it in-range as given
   expect(await page.locator('#panel .eq-vin.eq-aifilled').count()).toBeGreaterThan(0);   // green tint
   expect(await page.locator('#panel .eq-vfield label .sp').count()).toBeGreaterThan(0);   // ✨ markers
   const srcNote = await page.locator('#panel .eq-v-src').textContent();
@@ -351,7 +351,7 @@ test('אביה 150 (a) MANUAL: cabinet smoker, 5 racks, charcoal (HE)', async ({
   await page.selectOption('#panel #eqType', 'ארון / קבינט');
   await page.fill('#panel #eqCapKey', '5');
   await page.selectOption('#panel #eqvFuel', 'charcoal');
-  await page.fill('#panel #eqvArea', '150×60 cm');
+  await page.fill('#panel #eqProp-areaCm2', '8000');   // D3: canonical numeric field replaces the removed free-text #eqvArea
   await page.click('#panel #eqSave');
   await page.waitForSelector('#panel .eq-dev');
   const dev = await page.evaluate(`equipByCat('smoker').find(d=>d.name==='הנפח אביה 150')`) as any;
@@ -359,7 +359,7 @@ test('אביה 150 (a) MANUAL: cabinet smoker, 5 racks, charcoal (HE)', async ({
   expect(dev.type).toBe('ארון / קבינט');
   expect(dev.cap.racks).toBe(5);
   expect(dev.fuel).toBe('charcoal');
-  expect(dev.cap.area).toBe('150×60 cm');
+  expect(dev.cap.areaCm2).toBe(8000);   // D3: canonical numeric field; the cap.area free-text alias no longer exists
   // card shows cabinet tile 🗄️ + "5 racks/grates" + "⚫ charcoal"
   const card = page.locator('#panel .eq-dev', { hasText: 'הנפח אביה 150' });
   expect(await card.locator('.eq-tile').textContent()).toBe('🗄️');
@@ -382,7 +382,7 @@ test('אביה 150 (b) LOOKUP FLOW (mock): verify card fills, saved as ai (HE)',
   await page.waitForFunction(`(document.querySelector('#panel #eqCapKey')||{}).value==='5'`);
   expect(await page.locator('#panel #eqType').inputValue()).toBe('ארון / קבינט');
   expect(await page.locator('#panel #eqvFuel').inputValue()).toBe('charcoal');
-  expect(await page.locator('#panel #eqvArea').inputValue()).toBe('9000 cm²');
+  expect(await page.locator('#panel #eqProp-areaCm2').inputValue()).toBe('9000');   // D3: canonical numeric areaCm2 field (#eqvArea removed)
   expect(await page.locator('#panel .eq-vin.eq-aifilled').count()).toBeGreaterThan(0);   // green tint
   expect(await page.locator('#panel .eq-vfield label .sp').count()).toBeGreaterThan(0);   // ✨ markers
   const aiNote = await page.locator('#panel #eqAiNote').textContent();
@@ -395,5 +395,5 @@ test('אביה 150 (b) LOOKUP FLOW (mock): verify card fills, saved as ai (HE)',
   expect(dev.specSource).toBe('ai');
   expect(dev.cap.racks).toBe(5);
   expect(dev.fuel).toBe('charcoal');
-  expect(dev.cap.area).toBe('9000 cm²');
+  expect(dev.cap.areaCm2).toBe(9000);   // D3: canonical numeric field; the cap.area free-text alias no longer exists
 });
