@@ -681,6 +681,7 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .footlink{display:inline-block;margin:0 5px 12px;color:var(--ember2);font-weight:700;font-size:calc(13px * var(--fscale));font-family:var(--font-body);text-decoration:none;background:transparent;cursor:pointer;border:1px solid var(--line);border-radius:999px;padding:8px 16px}
 .footlink:hover{border-color:var(--ember);background:var(--char2)}
 .footnote{color:var(--smoke);font-size:calc(12.5px * var(--fscale));line-height:1.6}
+.foot-news{display:inline-block;margin-top:2px;font-size:calc(11.5px * var(--fscale));color:var(--smoke)}
 .empty{text-align:center;color:var(--smoke);padding:60px 0;font-size:calc(16px * var(--fscale))}
 
 /* add-to-list button on cards */

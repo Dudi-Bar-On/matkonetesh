@@ -2,7 +2,8 @@
 
 Summary changelog per release (owner request, 2026-07-25). Detailed coverage starts at **v262**;
 earlier versions are summarized coarsely. Maintained as part of the release protocol: every version
-bump adds its entry here in the same commit.
+bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
+updated in the same commit.
 
 ## מהדורה 263 · 25.7.26
 

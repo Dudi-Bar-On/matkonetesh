@@ -126,6 +126,10 @@ payload = {
 }
 DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
+# footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
+# updated in every version-bump commit, in lockstep with CHANGELOG.md.
+WHATS_NEW = "מה חדש: תגית ציוד נדרש על כרטיסי הקטלוג · תיקון חישוב תאריכים בשעון קיץ · קול במצב AI מנוהל"
+
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
@@ -331,7 +335,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 263 · 25.7.26</b></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 263 · 25.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -399,7 +403,7 @@ if _en_keys:
         _pct = round(100 * _cov / len(_en_keys))
         print("[i18n] %s: %d/%d keys vs en (%d%%)%s" % (_code, _cov, len(_en_keys), _pct, (" · %d orphaned" % len(_orph)) if _orph else ""))
 I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
-html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")")
+html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
 import os as _os, shutil as _shutil
 _root = _os.path.dirname(_os.path.abspath(__file__))
 # 1) index.html at repo root — used by the dev server, tests, and manual upload
