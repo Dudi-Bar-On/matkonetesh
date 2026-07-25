@@ -1,7 +1,16 @@
 # Equipment & Cooking-Constraint Programme — Equipment Manager as SSOT — Spec
 
-**Date:** 2026-07-25 · **Status: DRAFT — awaiting owner approval.** (Per `development-discipline.md` §2,
-`writing-plans` may not begin until the owner approves this file itself, not merely the brainstorm it records.)
+**Date:** 2026-07-25 · **Status: APPROVED by the owner, 2026-07-25** (spec-file review, pipeline gate 2 —
+`writing-plans` may begin).
+
+**Owner's spec-review rulings, 2026-07-25 — all six §12 flags confirmed as drafted, none overridden:**
+**F1** the P9 boundary stands where §10 draws it — the capacity-share ledger + availability query are IN now
+(per Q3); the automated cross-event re-allocator stays OUT (per R5) until its own phase. · **F2**
+`capacityDemand` ships with the static footprint; D5 guest-scaling is a **named future gap**, not an E2
+commitment. · **F3** `EQM` stays a five-method API; the delete-impact query remains internal. · **F4**
+day-one declared requires = grinder + stuffer; the sealer row is an E6 stretch. · **F5** `equipment.js`
+inlines before `app.js` with the `build.py` single-definition assertion. · **F6** `EQM.alternatives` runs
+with `search:false`.
 
 **Author's brief.** The owner brainstormed this programme and **approved the design** (decisions Q1, Q3, Q4,
 Q5 and the nine approved design sections, reproduced verbatim as the fixed skeleton in §0.1). This document
