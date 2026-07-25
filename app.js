@@ -1552,6 +1552,58 @@ function svgThumb(cat,label,ekey,origin){
 function headArt(cat){return `<div class="phead-ico">${svgRaw(iconType(cat))}</div>`;}
 
 /* ---------- render cards ---------- */
+// ── E1 · catalog-card required-equipment chip (spec §5.2, INFORMATIONAL form; DoD-5/L8 consumer) ──────
+// The production reader that makes deriveRequires + EQM.ownership fire on real catalog data. app.js
+// composes the module's two entry points here (the spec's compute-once design, §4.2): deriveRequires
+// (pure recipe projection) feeds EQM.ownership (registry check). NON-BLOCKING — E3 escalates this SAME
+// verdict into the bold-invalid gate + plan-add/event-add blocks; here it only informs. Gated on
+// equipConfigured() so it renders for a user who HAS a kit (where "missing/owned" is meaningful) and
+// costs nothing — no itemStages recompute — for a no-kit user. Copy below is PROPOSED, not final (DoD-9).
+const EQM_KIND_HE = { smoker:['מעשנה','Smoker'], bath:['אמבט סו-ויד','Sous-vide bath'], grill:['גריל/אש','Grill'],
+                      oven:['תנור','Oven'], grinder:['מטחנה','Grinder'], stuffer:['מזרק','Stuffer'],
+                      sealer:['ואקום','Vacuum'], curing:['תא יִישון','Curing'] };
+// eqmRequiresMethodKey — the chip needs deriveRequires to see the recipe's RAW default cook combo, not the
+// GEAR-ADAPTED one. For meta.kind==='cut', itemProfile(meta).methods[0] comes from activeMethods(c,key) →
+// gearAwareDefault(c,rules), which reads live equipment-registry state (gearConfigured()/gearCan()) and
+// narrows the default combo down to whatever the user already owns (e.g. a bath-only owner's default
+// silently drops to sv-only) — exactly backwards for an ownership-GAP indicator, and it defeats the chip
+// the moment it's gated on equipConfigured()===true (the only time it ever runs). Passing this explicit,
+// gear-independent methodKey (methodRules(c).def, sorted+joined to match comboMethodEntry's key format)
+// makes deriveRequires resolve the same combo entry regardless of what's owned. spec/make profiles are
+// static (no gear adaptation), so returning undefined there is a no-op — itemStages falls back to
+// p.methods[0] exactly as before. Never reads/writes equipment state itself — stays a pure projection.
+function eqmRequiresMethodKey(meta){
+  if(!meta || meta.kind!=='cut' || !meta.obj || typeof methodRules!=='function') return undefined;
+  const rules = methodRules(meta.obj);
+  return 'c:'+(rules.def||[]).slice().sort().join('_');
+}
+
+function eqmRequiresChip(key){
+  if(typeof EQM==='undefined' || typeof deriveRequires!=='function') return '';   // module absent → never crash a card
+  if(typeof equipConfigured==='function' && !equipConfigured()) return '';         // gated: no kit → silent, zero cost
+  const meta = (typeof resolveItem==='function') ? resolveItem(key) : null; if(!meta) return '';
+  let requires; try{ requires = deriveRequires(meta, eqmRequiresMethodKey(meta)); }catch(e){ return ''; }
+  if(!requires || !requires.length) return '';
+  const own = EQM.ownership(requires);
+  const missing={}, partial={};
+  (own.missing||[]).forEach(function(r){ missing[r.kind]=true; });
+  (own.partial||[]).forEach(function(r){ partial[r.kind]=true; });
+  const seen={};
+  const chips = requires.map(function(r){
+    if(seen[r.kind]) return ''; seen[r.kind]=true;                                 // one chip per kind
+    const lbl = EQM_KIND_HE[r.kind] || [r.kind, r.kind];
+    const cls = missing[r.kind] ? 'eqm-req-missing' : (partial[r.kind] ? 'eqm-req-partial' : 'eqm-req-ok');
+    const cap = r.capability || {};
+    // L13: capability numerals/units live in a dir="ltr" island so RTL never flips "≥12 L" / "≥120°".
+    let note='';
+    if(cap.bathMinL) note = ` <span dir="ltr" class="eqm-num">≥${cap.bathMinL} L</span>`;
+    else if(cap.maxTempC) note = ` <span dir="ltr" class="eqm-num">≥${cap.maxTempC}°</span>`;
+    return `<span class="eqm-req ${cls}">🔧 ${L(lbl[0], lbl[1])}${note}</span>`;
+  }).join('');
+  if(!chips) return '';
+  return `<div class="eqm-reqs" aria-label="${L('ציוד דרוש','Required equipment')}">${chips}</div>`;
+}
+
 function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
   return `<article class="card" data-n="${c.n}" data-kind="cut" tabindex="0" role="button" aria-label="${c.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
@@ -1578,6 +1630,7 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
         <span class="saved">⏱ חוסך ${c.saved}ש מעשנת</span>
       </div>
       ${DATA.builds["cut-"+c.n]?'<span class="bld">🔨 בנייה מאפס</span>':''}`}
+      ${eqmRequiresChip(key)}
     </div>
   </article>`;
 }
@@ -1592,6 +1645,7 @@ function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=cat
       <div class="meta"><span>עישון <b>${smk}</b></span>${s.tgt!=='—'&&s.tgt?`<span>יעד <b>${s.tgt}${typeof s.tgt==='number'?'°':''}</b></span>`:''}</div>
       <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(s.diff)}${ratingMini(key)}</span><span style="color:var(--smoke)">${s.wood}</span></div>
       ${DATA.builds["spec-"+s.n]?'<span class="bld">🔨 בנייה מאפס</span>':''}
+      ${eqmRequiresChip(key)}
     </div>
   </article>`;
 }
@@ -1605,6 +1659,7 @@ function makeCard(id,m){const nv=(m.build.variants||[]).length, col=catColor(m.c
       <div class="en">${m.eng}${m.origin?` · ${m.origin}`:''}</div>
       <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(m.diff)}${ratingMini(key)}</span>${nv?`<span style="color:var(--smoke)">${nv} ווריאנטים</span>`:''}</div>
       <span class="bld">🔨 בנייה מאפס</span>
+      ${eqmRequiresChip(key)}
     </div>
   </article>`;
 }

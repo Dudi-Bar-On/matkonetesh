@@ -1708,3 +1708,15 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 
 /* M2: an equipment field whose typed value failed validation on save — flag it, don't silently drop it */
 .eq-invalid{border-color:#c2553f !important;background:rgba(194,85,63,.06)}
+
+/* E1 · required-equipment chip on catalog cards (informational, non-blocking). */
+.eqm-reqs{ display:flex; flex-wrap:wrap; gap:4px; margin-top:6px; }
+.eqm-req{ font-size:11px; line-height:1.4; padding:1px 7px; border-radius:999px;
+          border:1px solid rgba(0,0,0,.12); background:rgba(0,0,0,.04); white-space:nowrap; }
+.eqm-req .eqm-num{ font-variant-numeric:tabular-nums; }
+.eqm-req-ok{ }                                                   /* owned + capable: neutral */
+.eqm-req-partial{ border-color:rgba(224,150,40,.55); background:rgba(224,150,40,.12); }
+.eqm-req-missing{ border-color:rgba(200,60,50,.55);  background:rgba(200,60,50,.12); }
+@media (prefers-color-scheme: dark){
+  .eqm-req{ border-color:rgba(255,255,255,.16); background:rgba(255,255,255,.06); }
+}
