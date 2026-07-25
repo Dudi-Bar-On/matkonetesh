@@ -388,7 +388,12 @@ function deviceCapacity(dev){
   const explicitRaw=dev.cap?dev.cap.areaCm2:undefined;
   const hasExplicit=explicitRaw!==undefined && explicitRaw!=='' && explicitRaw!==null;
   let area, measured;
-  if(hasExplicit){ area=Number(explicitRaw)||0; measured=area>0; }
+  // owner-verification gaps 2-3 (Fix 3c, 2026-07-25): a value we already flagged as implausible
+  // (eqDeviceSuspect) must not enjoy MEASURED confidence — demote it to the same loose FIT_HARD_FACTOR
+  // tolerance an estimate gets. It returns to measured the moment the user confirms/edits it to a
+  // plausible number (eqDeviceSuspect re-evaluates from cap every call; there is no separate "was once
+  // suspect" flag to clear). A genuine behavior change, ruled by the owner: suspect == loose.
+  if(hasExplicit){ area=Number(explicitRaw)||0; measured=area>0 && !eqDeviceSuspect(dev); }
   else {
     const derived=eqDeriveAreaCm2(dev);
     if(derived){ area=derived.areaCm2; measured=!derived.estimated; }
@@ -7021,17 +7026,46 @@ function openEquipment(){
     // props loop below (which reads an input element per key). Same bespoke-chip shape as capKey/multiCap
     // above, for the same reason: a real stored value with nowhere else in the generic loop to render.
     if(d.cap && d.cap.volumeL>0) s+=`<span class="eq-chip spec">📦 ${esc(d.cap.volumeL+' '+L('ליטר','L'))}</span>`;
+    // owner-verification gaps 2-3 (Fix 4, 2026-07-25): outer-dims (dimH/W/D) and shelf-dims (shelfW/D) each
+    // share ONE emoji in EQUIP_CATS (📏/📐) — the identical-icon chips the owner read as "nothing was
+    // extracted". Chose the CLEANER of the two ruled options: when the full triple/pair is present, render
+    // ONE combined chip ("📏 150×60×43 ס״מ") instead of three/two indistinguishable ones, over labeling each
+    // with a ג׳/ר׳/ע׳ abbreviation — documented here since the alternative was viable. A PARTIAL set (only
+    // 1-2 of the 3 outer dims, the uncommon case) still falls through to the generic props loop below, which
+    // now prefixes exactly those keys with the abbreviation so it is never ambiguous even off the common path.
+    const hasAllDims=d.cap && d.cap.dimH_cm>0 && d.cap.dimW_cm>0 && d.cap.dimD_cm>0;
+    if(hasAllDims) s+=`<span class="eq-chip spec">📏 <span dir="ltr">${esc(d.cap.dimH_cm+'×'+d.cap.dimW_cm+'×'+d.cap.dimD_cm)}</span> ${esc(L('ס״מ','cm'))}</span>`;
+    const hasShelfDims=d.cap && d.cap.shelfW_cm>0 && d.cap.shelfD_cm>0;
+    if(hasShelfDims) s+=`<span class="eq-chip spec">📐 <span dir="ltr">${esc(d.cap.shelfW_cm+'×'+d.cap.shelfD_cm)}</span> ${esc(L('ס״מ','cm'))}</span>`;
+    // Fix 4 rider: a DERIVED (not stored) total area was otherwise invisible on the card — the gap2 repro's
+    // exact complaint. Sourced from eqDeriveAreaCm2 (the SAME function deviceCapacity uses — O-6 single
+    // path), never recomputed here. Only when there is no EXPLICIT stored areaCm2 (that already renders via
+    // the generic props loop below) and a derivation actually exists; the estimated/measured split mirrors
+    // the same distinction the fit-tolerance math already makes (FIT_SLOT_TOL vs FIT_HARD_FACTOR).
+    const hasExplicitArea=d.cap && d.cap.areaCm2!=null && d.cap.areaCm2!=='';
+    if(!hasExplicitArea){
+      const derived=eqDeriveAreaCm2(d);
+      if(derived && derived.areaCm2>0){
+        const numTxt=Math.round(derived.areaCm2).toLocaleString('en-US');
+        const suffix=derived.estimated?L('משוער','estimated'):L('מדוד','measured');
+        s+=`<span class="eq-chip spec eq-chip-derived">📐 <span dir="ltr">${esc(numTxt)}</span> ${esc(L('ס״מ²','cm²'))} · ${esc(suffix)}</span>`;
+      }
+    }
     // D3 (E1 Task 5): the free-text cap.area alias is gone. The canonical numeric areaCm2 needs NO
     // dedicated chip line here — it is a 'core' prop in EQUIP_CATS (app.js:37/51/62) and already renders
     // via the generic property-chip loop below (raw=d.cap.areaCm2, kind:'num' → the else-branch chip).
     // Adding a second explicit areaCm2 chip here (as an earlier draft of this task did) would show the
     // SAME number twice in two unit spellings (cm² and ס״מ²) — the opposite of "collapse onto one field".
     // Property chips: only STORED values (not class defaults) — a chip means "you told us this".
+    const DIM_ABBR={dimH_cm:['ג׳','H'],dimW_cm:['ר׳','W'],dimD_cm:['ע׳','D'],shelfW_cm:['ר׳','W'],shelfD_cm:['ע׳','D']};
     (c.props||[]).forEach(function(p){
       const raw=d.cap?d.cap[p.key]:undefined; if(raw===undefined||raw===''||raw===null) return;
       if(p.kind==='bool'){ if(raw===true||raw==='true') s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(L(p.he,p.en))}</span>`; return; }
       if(p.kind==='choice'){ const o=(p.opts||[]).find(function(x){return x.v===raw;}); s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(o?L(o.he,o.en):String(raw))}</span>`; return; }
-      s+=`<span class="eq-chip spec"><span class="em">${p.em}</span> ${esc(String(raw)+(p.unit?' '+p.unit:''))}</span>`;
+      if(hasAllDims && ['dimH_cm','dimW_cm','dimD_cm'].indexOf(p.key)>=0) return;   // already rendered combined above
+      if(hasShelfDims && ['shelfW_cm','shelfD_cm'].indexOf(p.key)>=0) return;       // already rendered combined above
+      const abbr=DIM_ABBR[p.key]; const pfx=abbr?esc(L(abbr[0],abbr[1]))+' ':'';
+      s+=`<span class="eq-chip spec"><span class="em">${p.em}</span> ${pfx}${esc(String(raw)+(p.unit?' '+p.unit:''))}</span>`;
     });
     if(d.fuel) s+=`<span class="eq-chip"><span class="em">${FUEL_EMOJI[d.fuel]||''}</span> ${esc(fuelLabel(d.fuel))}</span>`;
     return s; };
@@ -7232,6 +7266,55 @@ function openEquipment(){
       const inp=$("#eqMultiIn"); if(inp) inp.addEventListener('keydown', function(e){ if(e.key==='Enter'){ e.preventDefault(); addMulti(); } });
       const w=$("#eqMultiWrap"); if(w) w.querySelectorAll('[data-eqmultirm]').forEach(function(b){ b.addEventListener('click', function(){ const i=parseInt(b.dataset.eqmultirm,10); if(!isNaN(i)){ multiVals.splice(i,1); repaintMulti(); } }); });
     };
+    // owner-verification gaps 2-3 (Fix 2, 2026-07-25): OFFER the derived area instead of only computing it
+    // silently for the fit math. Reuses eqDeriveAreaCm2 verbatim (ONE source for the math, never
+    // re-implemented) but reads the CURRENTLY TYPED form values — not just the stored dev.cap — so the
+    // suggestion updates live as dims/shelf/racks are typed (this is what makes Fix 3(b)'s auto-opened
+    // Advanced section useful: type 60/43 and the suggestion appears immediately).
+    const readDeriveCapFromForm=function(){
+      const nc=($("#eqCat")||{}).value||curCat; const cc=capC(nc);
+      const g=function(key){ const el=$("#eqProp-"+key); if(!el) return undefined;
+        const s=(el.value==null?'':String(el.value)).trim(); if(s==='') return undefined;
+        const spec=propSpec(nc, key, ($("#eqType")||{}).value); const parsed=spec?propParse(spec, s):null;
+        return parsed?parsed.v:undefined; };
+      const cap={};
+      if(cc.capKey){ const ck=$("#eqCapKey"); const v=ck?parseFloat(ck.value):NaN; if(!isNaN(v)) cap[cc.capKey]=v; }
+      ['dimW_cm','dimD_cm','shelfW_cm','shelfD_cm'].forEach(function(k){ const v=g(k); if(v!==undefined) cap[k]=v; });
+      return {cap:cap};
+    };
+    const refreshAreaSuggest=function(){
+      const fe=$("#eqProp-areaCm2"); if(!fe) return;
+      const wrap=fe.closest?fe.closest('.eq-vfield'):fe.parentNode; if(!wrap) return;
+      const old=wrap.querySelector('.eq-area-suggest'); if(old) old.remove();
+      const cur=(fe.value==null?'':String(fe.value)).trim();
+      // Fix 3(b) reconciliation: the repair flow flags this exact field 'eq-repair-focus' precisely because
+      // its STORED value is suspect — the field is never empty there (it still shows the bad 2580), so the
+      // plain "only when empty" gate (the normal add/edit case) would hide the suggestion exactly where it
+      // is needed most. Outside the repair flow, behaviour is unchanged: suggest only into an empty field.
+      if(cur!=='' && !fe.classList.contains('eq-repair-focus')) return;
+      const pseudo=readDeriveCapFromForm();
+      const derived=eqDeriveAreaCm2(pseudo);                          // the ONE math source — never re-implemented
+      if(!derived || !(derived.areaCm2>0)) return;
+      const shelfW=pseudo.cap.shelfW_cm, shelfD=pseudo.cap.shelfD_cm;
+      const useMeasured=shelfW>0 && shelfD>0;
+      const w=useMeasured?shelfW:pseudo.cap.dimW_cm, dd=useMeasured?shelfD:pseudo.cap.dimD_cm;
+      const racks=Number(pseudo.cap.racks||pseudo.cap.zones)||0;
+      const areaTxt=Math.round(derived.areaCm2).toLocaleString('en-US');
+      const suffix=derived.estimated?L('משוער','estimated'):L('מדוד','measured');
+      const div=document.createElement('div'); div.className='eq-area-suggest';
+      div.innerHTML=`<span class="eq-area-suggest-txt">${esc(L('מחושב מהמידות: ','Derived from dimensions: '))}`
+        +`<b dir="ltr">${esc(w+'×'+dd+'×'+racks+' = '+areaTxt)}</b> ${esc(L('ס״מ²','cm²'))} — ${esc(suffix)}</span>`
+        +`<button type="button" class="eq-area-accept">${esc(L('קבל','Accept'))}</button>`;
+      wrap.appendChild(div);
+      const btn=div.querySelector('.eq-area-accept');
+      btn.addEventListener('click', function(){ fe.value=String(Math.round(derived.areaCm2)); fe.classList.add('eq-aifilled'); div.remove(); });
+    };
+    const wireAreaSuggestTriggers=function(){
+      refreshAreaSuggest();
+      ['eqCapKey','eqProp-dimW_cm','eqProp-dimD_cm','eqProp-shelfW_cm','eqProp-shelfD_cm','eqProp-areaCm2'].forEach(function(id){
+        const el=document.getElementById(id); if(el) el.addEventListener('input', refreshAreaSuggest);
+      });
+    };
     const paintVerify=function(data){
       const nc=($("#eqCat")||{}).value||curCat; const cc=capC(nc);
       const showFuel=['smoker','grill','oven'].indexOf(nc)>=0;
@@ -7255,8 +7338,19 @@ function openEquipment(){
         const dflt=propDef(nc, p.key, (d.type||((cm(nc).types||[])[0])));
         const lbl=`<label data-propfor="${esc(p.key)}"><span class="eq-pem">${p.em}</span> ${esc(L(p.he,p.en))}${p.unit?` <small>(${esc(p.unit)})</small>`:''}</label>`;
         if(p.kind==='bool'){
-          const on=(dv===''?(dflt===true):(dv===true||dv==='true'));
-          return `<div class="eq-vfield">${lbl}<select id="eqProp-${esc(p.key)}" class="eq-vin"><option value="true" ${on?'selected':''}>${L('כן','Yes')}</option><option value="false" ${!on?'selected':''}>${L('לא','No')}</option></select></div>`;
+          // owner-verification gaps 2-3 (Fix 5, 2026-07-25): a bool select used to ALWAYS resolve to
+          // "true"/"false" (defaulting the display to dflt when unstated), so doSave's `raw===''` branch —
+          // the one that correctly leaves the class default alone — could never fire: merely opening and
+          // saving an edit form MATERIALIZED canHang:true/waterPan:true onto every device that had never
+          // stated it. A real "not stated" option (value="") makes the unstated case representable again;
+          // doSave already deletes the key when raw==='' (unchanged), so nothing but this rendering moves.
+          const stated=(dv===true||dv==='true'||dv===false||dv==='false');
+          const cur=stated?(dv===true||dv==='true'):null;
+          const dfltLbl=dflt===true?L('כן','Yes'):L('לא','No');
+          return `<div class="eq-vfield">${lbl}<select id="eqProp-${esc(p.key)}" class="eq-vin">`
+            +`<option value="" ${!stated?'selected':''}>${esc(L('ברירת מחדל','Default'))} (${esc(dfltLbl)})</option>`
+            +`<option value="true" ${cur===true?'selected':''}>${L('כן','Yes')}</option>`
+            +`<option value="false" ${cur===false?'selected':''}>${L('לא','No')}</option></select></div>`;
         }
         if(p.kind==='choice'){
           const cur=(dv===''?dflt:dv);
@@ -7269,15 +7363,22 @@ function openEquipment(){
         return `<div class="eq-vfield">${lbl}<input id="eqProp-${esc(p.key)}" class="eq-vin" type="text" inputmode="decimal" value="${esc(dv)}" placeholder="${dflt!==undefined?esc(String(dflt)):''}"></div>`;
       };
       const _props=(cm(nc).props||[]);
+      const proSpecs=_props.filter(function(p){return p.tier==='pro';});
       const coreProps=_props.filter(function(p){return p.tier==='core';}).map(propField).join('');
-      const proProps=_props.filter(function(p){return p.tier==='pro';}).map(propField).join('');
+      const proProps=proSpecs.map(propField).join('');
+      // owner-verification gaps 2-3 (Fix 1, 2026-07-25): when the AI lookup fills ANY pro-tier field (dims,
+      // hooks, waterPan…), auto-open the collapsed "⚙️ מתקדם" details so the extracted values are actually
+      // visible — root cause of the gap: dims extracted correctly but hidden behind the collapsed section
+      // read, to the owner, as "not extracted". Scoped to AI mode only — a plain edit of an existing device
+      // with stored pro values still opens collapsed by default (unchanged, untouched behaviour).
+      const proFilled=ai && proSpecs.some(function(p){ return propVal(p)!==''; });
       const propRows=(coreProps?`<div class="eq-vrow">${coreProps}</div>`:'')
-        +(proProps?`<details class="eq-adv vc-gem"><summary>⚙️ ${L('מתקדם','Advanced')}</summary><div class="eq-vrow">${proProps}</div></details>`:'');
+        +(proProps?`<details class="eq-adv vc-gem"${proFilled?' open':''}><summary>⚙️ ${L('מתקדם','Advanced')}</summary><div class="eq-vrow">${proProps}</div></details>`:'');
       const heading=ai?`<div class="eq-verify-h"><span>✨</span> ${L('הנה מה שמצאתי — ','Here’s what I found — ')}<b>${L('אמת ושמור','verify & save')}</b></div>`:`<div class="eq-verify-h">${dev?L('פרטי המכשיר','Device details'):L('פרטים','Details')}</div>`;
       const src=ai?`<p class="eq-v-src">${L('<b>✨ מולא אוטומטית</b> ממקורות רשת. גע בכל שדה כדי לשנות — <b>עדיין לא נשמר.</b>','<b>✨ Auto-filled</b> from web sources. Tap any field to change it — <b>nothing is saved yet.</b>')}</p>`:'';
       const saveLbl=dev?L('שמור','Save'):(ai?L('נראה טוב — שמור','Looks right — save'):L('הוסף','Add'));
       const acts=`<div class="eq-v-acts"><button id="eqSave" class="eq-con-go" type="button">${saveLbl}</button>${ai?`<button id="eqRedo" class="eq-ghost" type="button">↺ ${L('אפס','Redo')}</button>`:`<button id="eqCancel" class="eq-ghost" type="button">${L('בטל','Cancel')}</button>`}</div>`;
-      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+extraMulti+fuelRow+propRows+src+acts; wireVerify(); if(cc.multiCap) wireMulti(); }
+      const v=$("#eqVerify"); if(v){ v.innerHTML=heading+nameField+grid+extraMulti+fuelRow+propRows+src+acts; wireVerify(); if(cc.multiCap) wireMulti(); wireAreaSuggestTriggers(); }
       const st=$("#eqSheetTile"); if(st) st.textContent=equipTypeIcon(nc, d.type||((cm(nc).types||[])[0]));
     };
 
@@ -7332,9 +7433,35 @@ function openEquipment(){
         fe.classList.add('eq-repair-focus');
         const lbl=document.querySelector('#panel [data-propfor="'+opts.focusKey+'"]');
         if(lbl && !lbl.parentNode.querySelector('.eq-repair-hint')){
+          // Fix 3(a) (owner-verification gaps 2-3, 2026-07-25): name WHAT WILL BE USED if the field is
+          // cleared — the derived value when dims/shelf are available on the STORED device, else the class
+          // default with its actual number. Replaces a vague "looks wrong" with an honest, specific outcome.
+          const derivedNow=(opts.focusKey==='areaCm2')?eqDeriveAreaCm2(dev):null;
+          let whatTxt='';
+          if(derivedNow && derivedNow.areaCm2>0){
+            const numTxt=Math.round(derivedNow.areaCm2).toLocaleString('en-US');
+            whatTxt=L('אם יישאר ריק: יחושב מהמידות (','If left empty: derived from dimensions (')+numTxt+L(' ס״מ²)',' cm²)');
+          } else {
+            const dflt=propDef(dev.cat, opts.focusKey, dev.type);
+            if(dflt!=null) whatTxt=L('אם יישאר ריק: ברירת-מחדל ','If left empty: class default ')+Math.round(Number(dflt)).toLocaleString('en-US');
+          }
           const hint=document.createElement('div'); hint.className='eq-repair-hint';
-          hint.textContent=L('נראה נמוך מדי לכלל המדפים — בדוק ועדכן','Looks too low for all the shelves — check and update');
+          hint.textContent=L('נראה נמוך מדי לכלל המדפים — בדוק ועדכן','Looks too low for all the shelves — check and update')
+            +(whatTxt?('. '+whatTxt):'');
           lbl.insertAdjacentElement('afterend', hint);
+        }
+        // Fix 3(b): the owner's REAL device has no dims at all — eqDeriveAreaCm2 can offer nothing until he
+        // types them. Auto-open Advanced (dims/shelf live there, tier:'pro') with a short prompt, so typing
+        // 60/43 immediately surfaces Fix 2's suggestion (already wired to these same inputs, above).
+        const adv=document.querySelector('#panel details.eq-adv');
+        if(adv && opts.focusKey==='areaCm2' && !eqDeriveAreaCm2(dev)){
+          adv.open=true;
+          const summary=adv.querySelector('summary');
+          if(summary && !adv.querySelector('.eq-repair-dims-prompt')){
+            const p=document.createElement('div'); p.className='eq-repair-dims-prompt';
+            p.textContent=L('הקלד את המידות למטה — נציע לך שטח מחושב','Type the dimensions below — we’ll suggest a computed area');
+            summary.insertAdjacentElement('afterend', p);
+          }
         }
         if(fe.scrollIntoView) fe.scrollIntoView({block:'center'});
         // showPanel() (top of this function) already scheduled a requestAnimationFrame that moves focus to

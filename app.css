@@ -1474,6 +1474,14 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 /* the repair-chip's "re-check" opens the edit form focused on this field */
 .eq-repair-focus{border-color:var(--terra-d) !important;box-shadow:0 0 0 3px rgba(210,105,30,.18)}
 .eq-repair-hint{font-size:calc(11.5px * var(--fscale));color:var(--terra-d);font-weight:700;margin:-4px 2px 8px}
+/* owner-verification gaps 2-3 (2026-07-25): the repair flow's "type dims below" prompt (Fix 3b) + the
+   one-tap derived-area suggestion under the area field (Fix 2) + a dashed marker on a derived (not
+   stored) chip (Fix 4) — same warm-warning/advisory language as .eq-dev-suspect/.eq-repair-hint above. */
+.eq-repair-dims-prompt{font-size:calc(11.5px * var(--fscale));color:var(--terra-d);font-weight:700;margin:-6px 2px 10px}
+.eq-area-suggest{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:7px;background:var(--tint-warm);border:1px dashed rgba(210,105,30,.4);border-radius:10px;padding:7px 10px;font-size:calc(11.5px * var(--fscale));color:var(--ash)}
+.eq-area-suggest-txt b{color:var(--bone);font-weight:800}
+.eq-area-accept{flex:none;margin-inline-start:auto;border:none;background:var(--terra-d);color:#fff;font-family:var(--font-body);font-weight:800;font-size:calc(11.5px * var(--fscale));padding:5px 12px;border-radius:999px;cursor:pointer}
+.eq-chip-derived{border-style:dashed;opacity:.92}
 .eq-add-tile{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;cursor:pointer;background:none;border:2px dashed var(--line2);border-radius:16px;padding:14px;font-family:var(--font-body);font-weight:800;font-size:calc(14px * var(--fscale));color:var(--terra-d)}
 .eq-add-tile:hover{border-color:var(--ember);color:var(--ember);background:rgba(231,111,81,.03)}.eq-add-tile .pl{font-size:1.3em;line-height:1}
 .eq-sheet-head{display:flex;align-items:center;gap:11px;padding:6px 0 14px}
