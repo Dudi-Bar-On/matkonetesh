@@ -1,7 +1,13 @@
 import { test, expect, seedApp } from './_fixtures';
 
-// A 5-shelf cabinet. areaCm2 8500 → usable ~7225 / 5 = ~1445 per shelf... we want ~1020, so use 6000.
+// A cabinet. areaCm2 8500 → usable ~7225 / 5 = ~1445 per shelf... we want ~1020, so use 6000.
 // Estimated (class-default) area vs user-measured area is the axis under test.
+// BUG-2 (Wave B, 2026-07-25): the 'ארון / קבינט' class default moved 6000→7900 (a sourced 3-model average
+// — see the props block comment in app.js, EQUIP_CATS). ESTIMATE below is a 6-rack fixture (not 5) so the
+// per-shelf estimate lands back in the same "bad but within 1.6x tolerance" band the test is actually
+// about: usableCm2=round(7900*0.85)=6715, perSlot=round(6715/6)=1119 — brisket 1320 > 1119 (bad) but
+// <= 1119*1.6=1790 (not hard) → 'tight'. MEASURED (used by the other two tests) is unaffected — it stores
+// its own explicit areaCm2:6000, never touching the class default.
 const boot = async (page: any, kit: any[]) => {
   await seedApp(page, {
     'mk-uilevel-asked': 'true',
@@ -11,8 +17,8 @@ const boot = async (page: any, kit: any[]) => {
   });
   await page.waitForFunction(`typeof deviceOccupancy==='function' && typeof FIT_HARD_FACTOR!=='undefined'`);
 };
-// cabinet with NO cap.areaCm2 → area comes from the class default (estimate). racks:5.
-const ESTIMATE = [{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{racks:5} }];
+// cabinet with NO cap.areaCm2 → area comes from the class default (estimate). racks:6 — see the note above.
+const ESTIMATE = [{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{racks:6} }];
 // cabinet WITH a user area too small for the brisket → measured.
 const MEASURED = [{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{racks:5, areaCm2:6000} }];
 

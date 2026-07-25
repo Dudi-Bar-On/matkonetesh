@@ -36,7 +36,14 @@ const EQUIP_CATS=[
    props:[
     {key:'areaCm2', he:'שטח בישול כולל', en:'Total cooking area', kind:'num', unit:'ס״מ²', em:'📐', tier:'core',
      bounds:[200,40000], alt:['in2->cm2','m2->cm2','ft2->cm2'],
-     def:{'ארון / קבינט':6000,'אופסט / סטיק-ברנר':5000,'פלטים':3700,'קמאדו / קרמי':1650,
+     // BUG-2 (Wave B, owner bug round 2026-07-25): 'ארון / קבינט' raised 6000→7900, a sourced 3-model
+     // average (see docs/process/development-discipline.md report for the full derivation) —
+     //   1. הנפח אביה 150 (the owner's own device, hanapach.co.il): 150×60×43cm H/W/D, 5 shelves,
+     //      shelf 60×43=2580cm² → total 12900cm² (the exact bug repro number).
+     //   2. Masterbuilt 40" ThermoTemp XL propane cabinet smoker: 960 in² / 4 racks → 6194cm² total.
+     //   3. Pit Boss 3-Series vertical pellet cabinet smoker: 721 in² / 4 racks → 4652cm² total.
+     //   avg = (12900+6194+4652)/3 = 7915 → rounded to 7900.
+     def:{'ארון / קבינט':7900,'אופסט / סטיק-ברנר':5000,'פלטים':3700,'קמאדו / קרמי':1650,
           'WSM / חבית':3300,'קטל (ככלי עישון)':2400,'גז (עם תיבת עשן)':3500,'חשמלי':4400}},
     {key:'maxC',     he:'טמפ׳ מרבית',  en:'Max temp',  kind:'num',  unit:'°C', em:'🌡️', tier:'core', bounds:[40,600], alt:['F->C'],
      def:{'חשמלי':135,'ארון / קבינט':150,'פלטים':260,'קמאדו / קרמי':350,'אופסט / סטיק-ברנר':300,'WSM / חבית':150,'קטל (ככלי עישון)':300,'גז (עם תיבת עשן)':260}},
@@ -45,6 +52,18 @@ const EQUIP_CATS=[
     {key:'hooks',    he:'מספר ווים',   en:'Hooks',     kind:'num',  em:'🪝', tier:'pro', bounds:[1,200], alt:[]},
     {key:'waterPan', he:'מגש מים מובנה',en:'Water pan', kind:'bool', em:'💧', tier:'pro',
      def:{'ארון / קבינט':true,'WSM / חבית':true}},
+    // BUG-2 (Wave B) rider: capture the cabinet's OUTER dimensions and its SHELF dimensions as their own
+    // structured fields — flat cap keys (dimH_cm/dimW_cm/dimD_cm, shelfW_cm/shelfD_cm), matching every
+    // other prop on this device (dev.cap has no nested objects anywhere else). Two consumers:
+    //   (1) eqDeriveAreaCm2() (app.js, next to deviceCapacity) uses shelf/outer dims to derive the TOTAL
+    //       area when the source never states one — see that function's own comment for the precedence.
+    //   (2) dimH_cm doubles as the cabinet's USABLE HEIGHT for hanging cuts (shelves removed) — deliberately
+    //       just the raw outer height, no separate field; wiring it into hang-fit math is E3/E6's, not this wave's.
+    {key:'dimH_cm', he:'גובה חיצוני', en:'Outer height', kind:'num', unit:'ס״מ', em:'📏', tier:'pro', bounds:[10,300], alt:['in->cm','mm->cm']},
+    {key:'dimW_cm', he:'רוחב חיצוני', en:'Outer width', kind:'num', unit:'ס״מ', em:'📏', tier:'pro', bounds:[10,300], alt:['in->cm','mm->cm']},
+    {key:'dimD_cm', he:'עומק חיצוני', en:'Outer depth', kind:'num', unit:'ס״מ', em:'📏', tier:'pro', bounds:[10,300], alt:['in->cm','mm->cm']},
+    {key:'shelfW_cm', he:'רוחב מדף', en:'Shelf width', kind:'num', unit:'ס״מ', em:'📐', tier:'pro', bounds:[10,300], alt:['in->cm','mm->cm']},
+    {key:'shelfD_cm', he:'עומק מדף', en:'Shelf depth', kind:'num', unit:'ס״מ', em:'📐', tier:'pro', bounds:[10,300], alt:['in->cm','mm->cm']},
    ]},
   {cat:'grill', he:'גריל', en:'Grill', icon:'🔥', acc:'#e76f51', accL:'#f9ddd3', capEm:'🔥', types:['פחם','גז','קטל','פלנצ׳ה / פלטה','לבה / אינפרא'], capKey:'zones', capHe:'אזורי חום', capEn:'heat zones',
    props:[
@@ -302,6 +321,49 @@ const FIT_HARD_FACTOR = 1.6;
 // that any cook handles without thinking — was reported as "fits nowhere" AND raised a clash banner.
 const FIT_SLOT_TOL = 1.10;
 
+// BUG-2 (Wave B, owner bug round 2026-07-25): the AI lookup can genuinely only find a cabinet's OUTER
+// dimensions, or ONE shelf's size — a manufacturer page almost never states a "total cooking area" figure
+// directly (the הנפח אביה 150 repro: the page gives 150×60×43cm and "5 shelves", nothing else). Deriving the
+// total from whichever real numbers we DO have, in strict precedence order, closes the class of bug where a
+// single shelf's area (2580cm²) got stored AS the total and then divided by racks a second time downstream
+// (deviceCapacity → packDevice), producing a phantom ~439cm² shelf.
+//   1. explicit dev.cap.areaCm2 — handled by the CALLER (deviceCapacity), not here: an explicit source/typed
+//      number always wins, right or wrong — this function only fills the gap when there is none.
+//   2. shelfW_cm × shelfD_cm × racks — a REAL shelf measurement, so the caller treats it as "measured"
+//      (tight FIT_SLOT_TOL, same as a user-typed areaCm2).
+//   3. dimW_cm × dimD_cm × racks — the OUTER footprint standing in for one shelf. An APPROXIMATION (a real
+//      shelf is always a bit smaller than the outer footprint — cabinet walls, rails, waterpan clearance),
+//      so it is flagged `estimated:true` and the caller uses it exactly like a class default (loose
+//      FIT_HARD_FACTOR tolerance) — never claims false confidence from a number we only approximated.
+//   4. class default — handled by the CALLER, not here.
+// Pure; reads only dev.cap (flat keys — this device model has no nested objects). Returns null when neither
+// shelf dims nor outer dims + a rack/zone count are available.
+function eqDeriveAreaCm2(dev){
+  if(!dev || !dev.cap) return null;
+  const racks=Number(dev.cap.racks||dev.cap.zones)||0;
+  if(racks<1) return null;
+  const shelfW=Number(dev.cap.shelfW_cm), shelfD=Number(dev.cap.shelfD_cm);
+  if(shelfW>0 && shelfD>0) return {areaCm2:shelfW*shelfD*racks, estimated:false};
+  const dimW=Number(dev.cap.dimW_cm), dimD=Number(dev.cap.dimD_cm);
+  if(dimW>0 && dimD>0) return {areaCm2:dimW*dimD*racks, estimated:true};
+  return null;
+}
+// BUG-2 (Wave B) plausibility guard: flags a smoker whose STORED (explicit) areaCm2, divided by its rack
+// count, implies an implausibly small shelf (< 800cm² ≈ 28×28cm) for a device with 2+ racks — exactly the
+// shape of the shelf-math bug (one shelf's area stored as the device total). "Measured value only": reads
+// dev.cap.areaCm2 directly, never the class-default/derived fallback deviceCapacity() computes — a device
+// that never had an explicit number typed/fetched is never "suspect", it is simply unmeasured. Scoped to
+// 'smoker' only (the category the bug was reported against, and the only one with shelf/dim capture — see
+// the props block above); a grill's 'zones' share one continuous grate, a different physical situation this
+// guard does not attempt to judge. Pure; no I/O.
+function eqDeviceSuspect(dev){
+  if(!dev || dev.cat!=='smoker') return false;
+  const racks=Number(dev.cap && dev.cap.racks)||0;
+  if(racks<2) return false;
+  const measured=Number(dev.cap && dev.cap.areaCm2);
+  if(!(measured>0)) return false;
+  return (measured/racks) < 800;
+}
 function deviceCapacity(dev){
   const none={mode:'area', areaCm2:0, usableCm2:0, racks:0, hooks:0, litres:0, known:false};
   if(!dev) return none;
@@ -316,11 +378,26 @@ function deviceCapacity(dev){
     const litres=baths.length?Math.max.apply(null,baths):((!isNaN(bathL)&&bathL>0)?bathL:(propOf(dev,'maxL')||0));
     return {mode:'volume', areaCm2:0, usableCm2:0, racks:0, hooks:0, litres:litres, known:litres>0};
   }
-  const area=Number(propOf(dev,'areaCm2'))||0;
+  // BUG-2 (Wave B): precedence — explicit stored areaCm2 > shelf-dims-derived (measured) >
+  // outer-dims-derived (estimated) > class default. See eqDeriveAreaCm2()'s own comment above.
+  // "Explicit" mirrors propOf's own presence check (undefined/''/null = absent) rather than a falsy
+  // check — occupancy-model.spec.ts O15 / occupancy-slots.spec.ts S5 deliberately seed cap.areaCm2:0 to
+  // mean "known to be unknown, never invent a number"; a naive `||0` would treat that stored 0 exactly
+  // like "absent" and send it through derivation/class-default, resurrecting a number the caller
+  // explicitly zeroed out.
+  const explicitRaw=dev.cap?dev.cap.areaCm2:undefined;
+  const hasExplicit=explicitRaw!==undefined && explicitRaw!=='' && explicitRaw!==null;
+  let area, measured;
+  if(hasExplicit){ area=Number(explicitRaw)||0; measured=area>0; }
+  else {
+    const derived=eqDeriveAreaCm2(dev);
+    if(derived){ area=derived.areaCm2; measured=!derived.estimated; }
+    else { area=Number(propDef(dev.cat,'areaCm2',dev.type))||0; measured=false; }   // class default — never "measured"
+  }
   const racks=Number(dev.cap&&(dev.cap.racks||dev.cap.zones))||0;
   const hooks=(propOf(dev,'canHang')===true)?(Number(propOf(dev,'hooks'))||0):0;
   return {mode:'area', areaCm2:area, usableCm2:Math.round(area*PACK_EFF), racks:racks, hooks:hooks,
-          known:area>0, areaMeasured:!!(dev.cap && Number(dev.cap.areaCm2)>0)};
+          known:area>0, areaMeasured:measured};
 }
 
 // What one item consumes during a given stage kind. Hanging (Task 6) frees grate area entirely,
@@ -6804,6 +6881,16 @@ function equipAiOn(){ return typeof aiAvail==='function' && aiAvail(); }
 // web-grounded spec lookup → normalized {subtype, fuel, cap:{...}, area, note}. Advisory; user confirms before save.
 // format a metric cooking area (cm²) → "3710 cm²", or "2.4 m²" for big rigs
 function acmFmt(cm2){ cm2=Math.round(cm2); return cm2>=10000 ? (+(cm2/10000).toFixed(2))+' m²' : cm2+' cm²'; }
+// BUG-2 (Wave B, owner bug round 2026-07-25): ROOT CAUSE was a weak "Total cooking area" prompt — a
+// manufacturer page for the owner's הנפח אביה 150 (5-shelf cabinet) states only 150×60×43cm dims and the
+// shelf count, never a total-area figure, and the model reported one shelf's area (60×43=2580) AS the
+// total. This single constant is the ONE wording for the "areaCm2" JSON key, reused for BOTH the top-level
+// schema field and (via propSchemaField) the catProps-generated one — areaCm2 is also a smoker/grill/oven
+// "core" property, so it used to get described TWICE in the same schema string, once strongly and once
+// genetically; a single shared constant makes that impossible to reintroduce by accident.
+const AREA_CM2_SCHEMA_FIELD='"areaCm2":"<TOTAL cooking area in square centimetres, SUMMED ACROSS ALL racks/shelves — '
+  +'if the source gives only ONE shelf\'s size or dimensions, MULTIPLY it by the shelf count; NEVER report a '
+  +'single shelf/rack as the total. A plain number, or null if the source gives neither a total nor a way to compute one.>"';
 async function aiLookupDevice(query, cat){
   if(!equipAiOn()) throw new Error('no-key');
   const c=equipCat(cat)||{}; const types=c.types||[];
@@ -6813,6 +6900,11 @@ async function aiLookupDevice(query, cat){
   const propSchemaField=function(p){
     if(p.kind==='bool') return '"'+p.key+'":"true|false|null — '+(p.en||p.key)+'"';
     if(p.kind==='choice') return '"'+p.key+'":"'+(p.opts||[]).map(function(o){return o.v;}).join('|')+'|null — '+(p.en||p.key)+'"';
+    // BUG-2 (Wave B): areaCm2 gets its OWN, stronger wording — the shelf-math bug was a manufacturer page
+    // giving only one shelf's size, which a weaker "Total cooking area" prompt let the model report AS the
+    // total. This wording must match the top-level "areaCm2" schema field below it exactly (both describe
+    // the SAME key), so there is only ever one instruction for this field, never two disagreeing ones.
+    if(p.key==='areaCm2') return AREA_CM2_SCHEMA_FIELD;
     return '"'+p.key+'":"<'+(p.en||p.key)+(p.unit?' in '+p.unit:'')+' as a plain number, or null>"';
   };
   const q=String(query||'').trim(); const isUrl=/^https?:\/\//i.test(q);
@@ -6824,7 +6916,7 @@ async function aiLookupDevice(query, cat){
     +'"channels":"<probe channels or null>","bathL":"<sous-vide bath litres or null>",'
     +'"volume":"<sausage-stuffer cylinder litres or null>",'
     +'"nozzles":"<array of output-tube diameters in mm, e.g. [10,20,30,40], or null>",'
-    +'"areaCm2":"<TOTAL cooking area in square centimetres as a plain number, or null>",'
+    +AREA_CM2_SCHEMA_FIELD+','
     +(catProps.length?(catProps.map(propSchemaField).join(',')+','):'')
     +'"note":"<one short factual line>","details":"<extra specs — dimensions, weight, material, power — one line, or null>"}';
   const task=(isUrl?('Extract the published specs for the cooking device on THIS product page: '+q+'. ')
@@ -6833,7 +6925,7 @@ async function aiLookupDevice(query, cat){
     +'ALWAYS use METRIC units — total cooking area as a number of SQUARE CENTIMETRES (areaCm2), volumes in litres, tube diameters in millimetres; convert any imperial spec to metric. '
     +'"name" must be the clean product/model name, NEVER a URL. '
     +(types.length?('For "subtype" return the EXACT string from this list, do NOT translate it: '+JSON.stringify(types)+'. '):'')
-    +'Fill every property that applies to this device type: racks/shelves; grill heat zones; probe channels; sous-vide bath litres; sausage-stuffer cylinder litres (volume) and its output-tube diameters in mm (nozzles); total cooking area (areaCm2). Use null for anything not applicable or that you cannot determine. '
+    +'Fill every property that applies to this device type: racks/shelves; grill heat zones; probe channels; sous-vide bath litres; sausage-stuffer cylinder litres (volume) and its output-tube diameters in mm (nozzles); the outer cabinet dimensions (dimH_cm/dimW_cm/dimD_cm) and, if separately stated, one shelf/grate\'s own dimensions (shelfW_cm/shelfD_cm); total cooking area (areaCm2) — see its own field description, it is NEVER one shelf\'s size. Use null for anything not applicable or that you cannot determine. '
     +'Only state a property IF the page actually gives it — use null otherwise. Never guess a value: an absent property falls back to a sane default, but a wrong one silently poisons the plan.';
   const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:900, outLang:'en'});
   const cap={}; ['racks','zones','channels','bathL','volume'].forEach(function(k){ const v=parseFloat(raw&&raw[k]); if(!isNaN(v)&&v>0&&v<100000) cap[k]=(k==='racks'||k==='zones'||k==='channels')?Math.round(v):v; });
@@ -6890,6 +6982,11 @@ function openEquipment(){
     if(c.capKey && d.cap && d.cap[c.capKey]!=null) s+=`<span class="eq-chip spec">${c.capEm?c.capEm+' ':''}${esc(d.cap[c.capKey]+' '+L(c.capHe,c.capEn))}</span>`;
     if(c.multiCap){ const mk=c.multiCap; let arr=(d.cap&&Array.isArray(d.cap[mk.key])&&d.cap[mk.key].length)?d.cap[mk.key]:[]; if(!arr.length && mk.key==='baths' && d.cap && d.cap.bathL!=null) arr=[d.cap.bathL];   // legacy single bathL
       if(arr.length) s+=`<span class="eq-chip spec">${mk.em?mk.em+' ':''}${esc(arr.join(' · ')+' '+L(mk.uHe,mk.uEn))}</span>`; }
+    // BUG-2 (Wave B) rider: volumeL is DERIVED (dimH×dimW×dimD/1000 at save time — see doSave above), not an
+    // independently-editable prop, so it has no #eqProp-volumeL input and cannot go through the generic
+    // props loop below (which reads an input element per key). Same bespoke-chip shape as capKey/multiCap
+    // above, for the same reason: a real stored value with nowhere else in the generic loop to render.
+    if(d.cap && d.cap.volumeL>0) s+=`<span class="eq-chip spec">📦 ${esc(d.cap.volumeL+' '+L('ליטר','L'))}</span>`;
     // D3 (E1 Task 5): the free-text cap.area alias is gone. The canonical numeric areaCm2 needs NO
     // dedicated chip line here — it is a 'core' prop in EQUIP_CATS (app.js:37/51/62) and already renders
     // via the generic property-chip loop below (raw=d.cap.areaCm2, kind:'num' → the else-branch chip).
@@ -6934,7 +7031,14 @@ function openEquipment(){
         const chips=ds.map(function(d){ const it=otherConst(d.type,d.name); if(!it) return `<span class="eq-chip">🧰 ${esc(d.name||typeLabel(d.type)||d.type)}</span>`; const v=otherPropVal(it,d); return `<span class="eq-chip">${it.em} ${esc(L(it.he,it.en)+(v?' · '+propOptLabel(it.prop,v):''))}</span>`; }).join('');
         return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4><div class="eq-othchips">${chips}</div><button class="eq-add-tile" data-eqaddcat="other"><span class="pl">＋</span> ${L('ערוך אביזרים','Edit accessories')}</button></section>`;
       }
-      const cards=ds.map(function(d){ return `<article class="eq-card eq-spine eq-dev" style="--eqacc:${c.acc};--eqacc-l:${c.accL}"><div class="eq-tile">${equipTypeIcon(d.cat,d.type)}</div><div class="eq-dev-main"><div class="eq-dev-top"><span class="eq-dev-name">${esc(d.name||typeLabel(d.type)||'')}</span>${d.specSource==='ai'?`<span class="eq-dev-ai">✨ AI</span>`:''}</div><p class="eq-dev-sub">${esc(typeLabel(d.type)||'')}</p>${chipsFor(d)?`<div class="eq-dev-chips">${chipsFor(d)}</div>`:''}</div><div class="eq-dev-acts"><button class="eq-iconbtn" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-iconbtn" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">✕</button></div></article>`; }).join('');
+      // BUG-2 (Wave B): a suspect device (see eqDeviceSuspect above deviceCapacity, app.js) gets a warning
+      // chip with a one-tap repair action. Chose the LIGHTER of the two ruled options — open the existing
+      // edit form pre-focused on the areaCm2 field with a hint line (drawForm's new `opts.focusKey`, wired
+      // below) — over re-running the full AI lookup, because a re-lookup needs a live AI key/network and can
+      // fail exactly the same way the first one did; the edit form always works and keeps "never silent
+      // rewrite" literal — the user reviews and saves the number themselves.
+      const susp=function(d){ if(!eqDeviceSuspect(d)) return ''; return `<div class="eq-dev-suspect"><span class="eq-susp-ic">⚠️</span> <span>${L('שטח מדף חשוד — בדוק שוב','Suspicious shelf area — re-check')}</span><button type="button" class="eq-susp-fix" data-eqrepair="${d.id}">${L('בדוק שוב','Re-check')}</button></div>`; };
+      const cards=ds.map(function(d){ return `<article class="eq-card eq-spine eq-dev" style="--eqacc:${c.acc};--eqacc-l:${c.accL}"><div class="eq-tile">${equipTypeIcon(d.cat,d.type)}</div><div class="eq-dev-main"><div class="eq-dev-top"><span class="eq-dev-name">${esc(d.name||typeLabel(d.type)||'')}</span>${d.specSource==='ai'?`<span class="eq-dev-ai">✨ AI</span>`:''}</div><p class="eq-dev-sub">${esc(typeLabel(d.type)||'')}</p>${chipsFor(d)?`<div class="eq-dev-chips">${chipsFor(d)}</div>`:''}${susp(d)}</div><div class="eq-dev-acts"><button class="eq-iconbtn" data-eqedit="${d.id}" aria-label="${L('ערוך','Edit')}">✎</button><button class="eq-iconbtn" data-eqrm="${d.id}" aria-label="${L('הסר','Remove')}">✕</button></div></article>`; }).join('');
       return `<section class="eq-sec"><h4><span class="em">${c.icon}</span> ${L(c.he,c.en)} <span class="sc">· ${ds.length}</span></h4>${cards}<button class="eq-add-tile" data-eqaddcat="${c.cat}"><span class="pl">＋</span> ${L('הוסף עוד','Add another')} ${L(c.he,c.en)}</button></section>`;
     }).join('');
     showPanel(headHtml(true,sub)+`<div class="panel-body eq-wrap">${capsHtml}${secs}</div>`);
@@ -6943,6 +7047,9 @@ function openEquipment(){
     pnl.querySelectorAll('[data-eqaddcat]').forEach(function(b){ b.addEventListener('click', function(){ editId=null; drawForm(b.dataset.eqaddcat); }); });
     pnl.querySelectorAll('[data-eqedit]').forEach(function(b){ b.addEventListener('click', function(){ const d=equipList().find(function(x){return x.id===b.dataset.eqedit;}); if(!d) return; editId=d.id; drawForm(d.cat, d); }); });
     pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); drawList(); }); });
+    // BUG-2 (Wave B): the suspect chip's "re-check" — same edit-form open as data-eqedit above, plus
+    // {focusKey:'areaCm2'} so drawForm highlights the one field the owner actually needs to look at.
+    pnl.querySelectorAll('[data-eqrepair]').forEach(function(b){ b.addEventListener('click', function(){ const d=equipList().find(function(x){return x.id===b.dataset.eqrepair;}); if(!d) return; editId=d.id; drawForm(d.cat, d, {focusKey:'areaCm2'}); }); });
   };
 
   // "Other" = an accessories CHECKLIST: presets (specific icon, some with a small property) + any custom
@@ -6995,7 +7102,7 @@ function openEquipment(){
     const bk=$("#eqOthBack"); if(bk) bk.addEventListener('click', function(){ drawList(); });
   };
 
-  const drawForm=function(cat, dev){
+  const drawForm=function(cat, dev, opts){
     const curCat=cat||(dev&&dev.cat)||'smoker'; const aiOn=equipAiOn();
     if(curCat==='other') return drawOtherChecklist();   // accessories are a checklist, not a device form
     let vmode = dev ? 'edit' : 'manual';   // → 'ai' after a successful web lookup
@@ -7065,6 +7172,11 @@ function openEquipment(){
         if(p.kind==='choice'){ d.cap[p.key]=raw; return; }
         const r=propParse(p, raw); if(r) d.cap[p.key]=r.v; else delete d.cap[p.key];
       });
+      // BUG-2 (Wave B) rider: derive+store total VOLUME (litres) from the outer dims, whenever all three are
+      // present — kept in sync with the dims fields it comes from (recomputed every save; removed the moment
+      // any dim is cleared, never left stale). display-only; not read by any fit/occupancy math.
+      if(d.cap.dimH_cm>0 && d.cap.dimW_cm>0 && d.cap.dimD_cm>0) d.cap.volumeL=Math.round(d.cap.dimH_cm*d.cap.dimW_cm*d.cap.dimD_cm/1000*10)/10;
+      else delete d.cap.volumeL;
       if(vmode==='ai'){ d.specSource='ai'; if(aiDetails) d.notes=aiDetails; }
       equipSave(list2); equipSetConfigured(); const bb=$("#gearBanner"); if(bb) bb.remove(); if(typeof cRefreshHome==='function') cRefreshHome();
       editId=null; drawList();
@@ -7177,6 +7289,28 @@ function openEquipment(){
       const capVal=(cc.capKey&&dev.cap&&dev.cap[cc.capKey]!=null)?dev.cap[cc.capKey]:'';
       paintVerify({ name:dev.name||'', type:dev.type||'', cap:capVal, fuel:dev.fuel||'' }); }   // D3: no `area:` key — fuelRow no longer has an area field to prefill (cap.area removed); the numeric #eqProp-areaCm2 field prefills itself from dev.cap.areaCm2 via propVal (app.js above), independent of this data object
     else paintVerify({});
+    // BUG-2 (Wave B): the suspect chip's "re-check" opens THIS same edit form with {focusKey:'areaCm2'} — highlight
+    // the one field the owner actually needs to look at, with a hint line, instead of a silent re-lookup/rewrite.
+    // areaCm2 is tier:'core' so its field is always rendered (never behind the collapsed "Advanced" <details>).
+    if(opts && opts.focusKey){
+      const fe=$("#eqProp-"+opts.focusKey);
+      if(fe){
+        fe.classList.add('eq-repair-focus');
+        const lbl=document.querySelector('#panel [data-propfor="'+opts.focusKey+'"]');
+        if(lbl && !lbl.parentNode.querySelector('.eq-repair-hint')){
+          const hint=document.createElement('div'); hint.className='eq-repair-hint';
+          hint.textContent=L('נראה נמוך מדי לכלל המדפים — בדוק ועדכן','Looks too low for all the shelves — check and update');
+          lbl.insertAdjacentElement('afterend', hint);
+        }
+        if(fe.scrollIntoView) fe.scrollIntoView({block:'center'});
+        // showPanel() (top of this function) already scheduled a requestAnimationFrame that moves focus to
+        // the sheet's own close button (or the panel itself, on a sheet like this one whose close button is
+        // `.eq-sheet-x`, not the generic `.x` showPanel looks for) — a focus() call here, right now, would
+        // just get overwritten one frame later. Queuing ours in ANOTHER requestAnimationFrame — registered
+        // after showPanel's, so it runs after it within the same upcoming frame — lets ours win last.
+        requestAnimationFrame(function(){ fe.focus(); });
+      }
+    }
   };
 
   // header "Add" → choose a category first (chips), then its form
