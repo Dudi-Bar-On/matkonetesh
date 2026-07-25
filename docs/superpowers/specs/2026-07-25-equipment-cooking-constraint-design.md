@@ -485,6 +485,27 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 > stored — "every safe value must trace to a cited primary source, never guess" applies to ranges
 > exactly as to single values.
 
+> **AMENDMENT O-5 — owner ruling in conversation, 2026-07-25 (the uncookable item explains itself).**
+> A catalog item that **cannot be cooked with the owned equipment** is **emphasized to the user** (the
+> bold-invalid treatment of §5.2) **with a clear, simple explanation of WHY and HOW TO FIX IT** —
+> never a bare badge. Binding shape:
+> **(1) Two honesty levels.** *Uncookable* = NO cited method of the item resolves against the owned
+> kit — full bold-invalid emphasis. *Default-method-blocked* = the default combo fails but another
+> cited method works — lighter emphasis, and the working method IS one of the fixes offered. The
+> distinction prevents crying wolf on an item the user can in fact cook another cited way.
+> **(2) WHY, concretely.** Name the device(s): which required kind is missing entirely and which is
+> owned-but-insufficient (the `partial` verdict — e.g. bath too small for the demanded litres), read
+> straight from `EQM.ownership`'s missing/partial rows. Plain language, Hebrew-first, one line per gap.
+> **(3) HOW TO FIX, deterministically.** The offered fixes are the real ones, in order of cheapness:
+> add/configure the device in the Equipment Manager (deep-link there); switch to another **cited**
+> method/order of the same item that the owned kit satisfies; use a **cited** replacement device when
+> E5's ladder offers one (approve/deny as specified). O-2's consult button may sit beside the
+> explanation to elaborate — but the fix list itself is deterministic output of ownership + the item's
+> own cited data, never AI-generated.
+> **(4) Delivery.** Task 4's informational chip is the seed (per-kind ok/partial/missing); the full
+> emphasized why-and-fix treatment is **E3's** bold-invalid surface (same verdict, escalated), with
+> E5 supplying the replacement-fix path when it lands. E3's plan carries this amendment as binding.
+
 ---
 
 ## 7. Replacements (owner design §6) + Retroactive invalidation (owner design §7)
