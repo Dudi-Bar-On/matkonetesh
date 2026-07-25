@@ -233,7 +233,8 @@ function eqmLedgerHeld(deviceId, window){
 }
 
 // ── the ONE narrow global (ruling F3/F5: exactly five methods). E1 made `ownership` functional; E2
-// Task 2 makes `availability` functional. `allocate`/`release` (E2 Task 3) and `alternatives` (E5) still throw.
+// Task 2 made `availability` functional; E2 Task 3 makes `allocate`/`release` functional. Only
+// `alternatives` (E5) still throws.
 const EQM = {
   // physical, catalog-level, window-independent (spec §5.1). The SINGLE verdict all three E3 gates read
   // (§5.2) — B-i.1's "three capacity rules for one device" closed to one, structurally. Answers from the
@@ -277,18 +278,44 @@ const EQM = {
     });
     return { state: worst, room: minRoom, perRow: perRow };
   },
-  // holder-tracked reservation (spec §5.1) — Phase E2 Task 3. NOTE for Task 3's implementer (owner
-  // ruling 2026-07-25, capacityDemand.tempC amendment, spec §4.3): when this stub becomes real, the
-  // ledger entry it writes must copy metric+amount+tempC from row.demand — not just metric+amount. A sv
-  // row's cited tempC has to ride into the REAL held ledger entry, or eqmFitVerdict's bath-temp
-  // exclusivity check (volume branch, fixed 2026-07-25) has nothing real to compare against once actual
-  // events start allocating baths.
+  // holder-tracked reservation (spec §5.1) — E2 Task 3. ALL-OR-NOTHING: re-checks EQM.availability
+  // (Task 2) over the whole requires set first — if the combined verdict is 'busy', nothing is written
+  // at all (a half-booked event is a lie in both directions, in either direction: it would either claim
+  // equipment it never reserved, or silently leave a caller thinking a booking succeeded when only part
+  // of it did). Otherwise writes one 'held' ledger entry per row that carries a `demand`, on the SAME
+  // deviceId availability() chose for that row's index (perRow[i].deviceId) — never re-resolved
+  // independently, so allocate can never disagree with the availability check that gated it.
+  // capacityDemand copies metric+amount+tempC from row.demand (owner ruling 2026-07-25, capacityDemand.tempC
+  // amendment, spec §4.3): a sv row's cited tempC rides into the REAL held ledger entry, or
+  // eqmFitVerdict's bath-temp exclusivity check (volume branch) has nothing real to compare against once
+  // actual events start allocating baths — verified round-trip by tests/e2-allocate-release.spec.ts.
   allocate: function(requires, window, holder){
-    throw new Error('EQM.allocate: not implemented until E2 (reservation ledger)');
+    const avail = EQM.availability(requires, window);
+    if(avail.state==='busy') return { ok:false, holdIds:[] };
+    const ids = [];
+    (requires||[]).forEach(function(row, i){
+      if(!row || !row.demand) return;                       // capability-only rows reserve nothing
+      const devId = avail.perRow[i] && avail.perRow[i].deviceId; if(!devId) return;
+      ids.push(eqmLedgerAdd({ deviceId: devId, window: { startMs: window.startMs, endMs: window.endMs },
+        capacityDemand: Object.assign({ metric: row.demand.metric, amount: row.demand.amount },
+          (typeof row.demand.tempC==='number') ? { tempC: row.demand.tempC } : {}),   // owner ruling 2026-07-25: bath-temp exclusivity — a hold without its tempC would blind the fit check
+        holder: { type: holder.type, id: holder.id }, state: 'held' }));
+    });
+    return { ok: true, holdIds: ids };
   },
-  // frees ALL of a holder's holds (spec §5.1) — Phase E2.
+  // frees ALL of a holder's holds, ONLY that holder's (spec §5.1, Q3: cancelling an event frees
+  // everything, one call) — E2 Task 3. Flips matching 'held' entries to 'released' in place; never
+  // deletes (release-vs-delete keeps the audit trail, per the ledger section comment above — a sweep is
+  // a later concern). Matches on holder.type+id together, so two different holder TYPES sharing the same
+  // id string can never cross-free each other's holds.
   release: function(holder){
-    throw new Error('EQM.release: not implemented until E2 (reservation ledger)');
+    const list = eqmLedger(); let n = 0;
+    list.forEach(function(e){
+      if(e && e.state==='held' && e.holder && holder &&
+         e.holder.type===holder.type && e.holder.id===holder.id){ e.state='released'; n++; }
+    });
+    eqmLedgerWrite(list);
+    return { freed: n };
   },
   // replacement ladder (spec §7.1) — Phase E5.
   alternatives: function(missingReq){
