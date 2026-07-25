@@ -114,6 +114,25 @@ function eqmOwnershipRow(row){
   return meets ? 'ok' : 'partial';                          // owns the kind but no unit clears the capability
 }
 
+// ── the ONE fit arithmetic (O-6). deviceOccupancy (app.js) delegates here in E2 Task 4, and
+// availability applies the same function to ledger entries — one arithmetic, two callers, zero drift.
+// Area: SUM of known demands vs usableCm2 (PACK_EFF already inside). Litres: MAX of demands vs bath
+// litres — min_bath_l is a per-item CONSTRAINT, not additive displacement (deviceOccupancy's rule,
+// app.js:497 — items SHARE a bath, so litres never summed across occupants). Unknown capacity NEVER
+// fits: a device whose size we don't know must not absorb bookings silently (D11's spirit).
+function eqmFitVerdict(cap, demands){
+  if(!cap || !cap.known) return { fits:false, usedPct:null, room:null };
+  const amts = (demands||[]).map(function(d){ return (d && Number(d.amount)) || 0; });
+  if(cap.mode==='volume'){
+    const maxReq = amts.length ? Math.max.apply(null, amts) : 0;
+    return { fits: maxReq <= cap.litres, usedPct: cap.litres>0 ? Math.round(maxReq/cap.litres*100) : null,
+             room: Math.max(0, cap.litres - maxReq) };
+  }
+  const sum = amts.reduce(function(a,b){ return a+b; }, 0);
+  return { fits: sum <= cap.usableCm2, usedPct: cap.usableCm2>0 ? Math.round(sum/cap.usableCm2*100) : null,
+           room: Math.max(0, cap.usableCm2 - sum) };
+}
+
 // ── the reservation ledger (spec §4.3, Q3) — the ONE net-new store. Entries are never deleted in E2,
 // only flipped to 'released' (release-vs-delete keeps the audit trail; a sweep is a later concern).
 // D5 note (owner 2026-07-25): capacityDemand carries the STATIC footprint/min_bath_l — guest-scaling
@@ -144,7 +163,8 @@ function eqmLedgerHeld(deviceId, window){
   });
 }
 
-// ── the ONE narrow global (ruling F3/F5: exactly five methods). E1 makes only `ownership` functional.
+// ── the ONE narrow global (ruling F3/F5: exactly five methods). E1 made `ownership` functional; E2
+// Task 2 makes `availability` functional. `allocate`/`release` (E2 Task 3) and `alternatives` (E5) still throw.
 const EQM = {
   // physical, catalog-level, window-independent (spec §5.1). The SINGLE verdict all three E3 gates read
   // (§5.2) — B-i.1's "three capacity rules for one device" closed to one, structurally. Answers from the
@@ -159,9 +179,34 @@ const EQM = {
     });
     return { ok: missing.length===0 && partial.length===0, missing:missing, partial:partial };
   },
-  // ledger + capacity fit (spec §5.1) — Phase E2.
+  // ledger + capacity fit over a window (spec §5.1). Per requires row: find the owned candidate
+  // devices (same cookerCandidates policy ownership uses), and the row is served by the FIRST device
+  // where held-demands + this demand still fit. free = every row fits with margin on some device;
+  // partial = every row fits but at least one lands ≥90% used; busy = some row fits nowhere.
+  // D11: no candidate device, empty registry, unknown capacity → that row is busy, deviceId:null —
+  // the "✓ everything fits" fall-through (app.js's occupancy fit line) is impossible by construction here.
   availability: function(requires, window){
-    throw new Error('EQM.availability: not implemented until E2 (ledger + capacity fit)');
+    const perRow = []; let worst = 'free'; let minRoom = null;
+    (requires||[]).forEach(function(row){
+      const stageKind = KIND_TO_STAGE[row && row.kind];
+      const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind) : [];
+      let served = null, rowRoom = null, tight = false;
+      owned.some(function(dev){
+        const cap = deviceCapacity(dev);
+        const held = eqmLedgerHeld(dev.id, window).map(function(e){ return e.capacityDemand; });
+        const all = held.concat(row.demand ? [row.demand] : []);
+        const v = eqmFitVerdict(cap, all);
+        if(!v.fits) return false;
+        served = dev; rowRoom = v.room; tight = v.usedPct!=null && v.usedPct >= 90;
+        return true;
+      });
+      perRow.push({ kind: row ? row.kind : null, state: served ? (tight ? 'partial' : 'free') : 'busy',
+                    deviceId: served ? served.id : null });
+      if(!served) worst = 'busy';
+      else if(tight && worst!=='busy') worst = 'partial';
+      if(rowRoom!=null) minRoom = (minRoom==null) ? rowRoom : Math.min(minRoom, rowRoom);
+    });
+    return { state: worst, room: minRoom, perRow: perRow };
   },
   // holder-tracked reservation (spec §5.1) — Phase E2.
   allocate: function(requires, window, holder){

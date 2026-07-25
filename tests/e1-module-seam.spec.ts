@@ -22,9 +22,12 @@ test('EQM exposes EXACTLY five methods, all functions (ruling F3/F5)', async ({ 
   expect(await page.evaluate(`Object.keys(EQM).length`)).toBe(5);   // no sixth surface member
 });
 
-test('the four not-yet-implemented methods throw their phase name (scaffold, not a silent no-op)', async ({ page }) => {
+// E2 Task 2 made `availability` functional (tests/e2-availability.spec.ts covers it) — this assertion
+// is now legitimately obsolete for `availability` only; the remaining three stubs still throw their
+// phase name until `allocate`/`release` (E2 Task 3) and `alternatives` (E5) are implemented.
+test('the three not-yet-implemented methods throw their phase name (scaffold, not a silent no-op)', async ({ page }) => {
   await boot(page);
-  for (const [m, phase] of [['availability','E2'],['allocate','E2'],['release','E2'],['alternatives','E5']] as const) {
+  for (const [m, phase] of [['allocate','E2'],['release','E2'],['alternatives','E5']] as const) {
     const msg = await page.evaluate(`(function(){ try{ EQM['${m}']({},{},{}); return 'NO-THROW'; }catch(e){ return String(e.message||e); } })()`) as string;
     expect(msg).toContain(phase);
   }
