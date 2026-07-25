@@ -1732,9 +1732,11 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
   // smokeFin is non-null for virtually every non-produce cut (methodRules always allows a sv+smoke
   // combo); it carries the citation's finish when order_svsmoke.smoke exists, or reproduces the
   // catalog-equivalent value when it doesn't — byte-identical to today for every uncited item (the
-  // negative case, tests/cp1-surfaces.spec.ts (c)). Produce cards never reach this branch, so no call
-  // is needed for them.
-  const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(metaCut(c)):null;
+  // negative case, tests/cp1-surfaces.spec.ts (c)). Produce cards render a produce-only meta line
+  // (below) that never reads smtV/smhV at all, so the call is GUARDED here to the non-produce branch
+  // — calling it unconditionally would waste the accessor call on every produce card for a value
+  // nothing consumes (review finding, CP1 Task 3 wave 1).
+  const smokeFin=(!isProduce(c) && typeof svSmokeFinish==='function')?svSmokeFinish(metaCut(c)):null;
   const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
   return `<article class="card" data-n="${c.n}" data-kind="cut" tabindex="0" role="button" aria-label="${c.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
