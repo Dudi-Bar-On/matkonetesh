@@ -36,3 +36,10 @@ owner's call once E4 lands.
 - Mechanism dependency: **E4** (recipe-level default + override, ledger re-sequencing; after E2).
 - This item consolidates into the gaps-closing programme at the next consolidation pass; it is a
   content/authoring item, not a code phase, and does not alter the approved equipment spec's scope.
+
+## Addendum — citation-review task (owner ruling 2026-07-25, bug round)
+
+Re-verify the three `cold:True` lamb citations in `sources.py` (n=35 Leg of Lamb, n=36 Rack of Lamb,
+n=60 Lamb Loin) — tagged cold-smoke at 55–60°C, above any standard cold-smoking ceiling (≤~30°C).
+Until resolved, labels follow the cited flag as-is (data doctrine: code never overrides a citation).
+Same authoring track as the order vocabulary; primary-source re-check, not a code task.
