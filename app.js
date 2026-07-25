@@ -1727,6 +1727,15 @@ function eqmRequiresChip(key){
 }
 
 function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
+  // CP1 Task 3 (spec 2026-07-25 §4): the grid card's smoke figures reuse svSmokeFinish — the SAME
+  // accessor Task 2 wired into openCut (app.js ~2268) — instead of the catalog's raw smt/smh literal.
+  // smokeFin is non-null for virtually every non-produce cut (methodRules always allows a sv+smoke
+  // combo); it carries the citation's finish when order_svsmoke.smoke exists, or reproduces the
+  // catalog-equivalent value when it doesn't — byte-identical to today for every uncited item (the
+  // negative case, tests/cp1-surfaces.spec.ts (c)). Produce cards never reach this branch, so no call
+  // is needed for them.
+  const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(metaCut(c)):null;
+  const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
   return `<article class="card" data-n="${c.n}" data-kind="cut" tabindex="0" role="button" aria-label="${c.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(c.cat,"#"+c.n,"cut-"+c.n)}
@@ -1744,7 +1753,7 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
         <span class="saved" style="background:rgba(79,138,61,.14);border-color:rgba(79,138,61,.4);color:var(--saved-ink)">${c.cat==='פירות'?'🍑 לגריל/קינוח':'🥦 לגריל/תוספת'}</span>
       </div>`:`<div class="meta">
         <span>סו-ויד <b>${c.svt}°</b>/${c.svh}ש</span>
-        <span>עישון <b>${c.smt}°</b>/${c.smh}ש</span>
+        <span>עישון <b>${smtV}°</b>/${smhV}ש</span>
         <span>יעד <b>${c.tgt}°</b></span>
       </div>
       <div class="meta" style="justify-content:space-between;align-items:center">
@@ -6472,9 +6481,27 @@ function renderTimelinePanel(){
       let cardSteps=[];
       if(detail && c.m.kind==='cut'){
         const mm=c.profile.methods.find(x=>x.key===c.st.method)||c.profile.methods[0];
-        try{ cardSteps=injectSeasoningSteps(composedSteps(c.m.obj, mm.combo||['smoke']), c.m.key); }catch(e){ cardSteps=[]; }
+        // CP1 Task 3 (spec 2026-07-25 §4): thread svSmokeFinish through composedSteps here the SAME
+        // way openCut does (app.js ~2268) — reusing the accessor, never re-deriving the methodKey/order
+        // lookup — so the plan's smoke-stage detail text agrees with its own row label (built from
+        // c.stages, already wired via itemStages/effectiveSchedule). Without this the detail text fell
+        // back to composedSteps' internal c.smt/c.smh default, contradicting the label it sits under.
+        const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(c.m):null;
+        try{ cardSteps=injectSeasoningSteps(composedSteps(c.m.obj, mm.combo||['smoke'], smokeFin), c.m.key); }catch(e){ cardSteps=[]; }
       }
       const findDetail=(kw)=>{ if(!detail) return '';
+        // CP1 Task 3 fix (discovered via RED-first TDD, tests/cp1-surfaces.spec.ts (b)): prefer an EXACT
+        // label match over a substring one. "עישון" (Smoke) — svSteps/soSteps' own literal label for the
+        // temperature-bearing smoke step — is ALSO a substring of the earlier "ייבוש לפני עישון" (Dry
+        // before smoking) step, so a pure .includes() scan always matched the dry step first and the
+        // smoke step's own text (and hence the just-threaded smokeFin value) was never reached — the
+        // detail text showed drying instructions with no temperature at all, regardless of smokeFin.
+        // Every findDetail call site's keyword list already includes at least one keyword that IS some
+        // step's own exact label (e.g. 'הכנת הנתח','עישון','Smoke'), so trying an exact match first only
+        // ever sharpens an existing hit — no keyword here equals two different steps' labels at once, so
+        // this cannot change any call site that had no such collision (sv/prep/grill branches: unchanged).
+        const exact=cardSteps.find(s=>kw.includes(s[0]));
+        if(exact) return exact[1];
         const hit=cardSteps.find(s=>kw.some(k=>s[0].includes(k)));
         return hit? hit[1] : ''; };
       const sel=selectedSeasonings(c.m.key).map(seasoningById).filter(Boolean);
