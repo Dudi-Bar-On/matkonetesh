@@ -155,6 +155,24 @@ token attached to each number must survive translation verbatim-or-equivalent (�
 `scratch/translate-eval/` (untracked). Registered the same day the harness was built — before any
 bulk run, which is the point.
 
+**OWNER RULING (2026-07-25, in conversation):** temperatures are **Celsius everywhere, especially in
+Hebrew**; the displayed unit changes **only via the system units setting** (which already exists —
+`pref('units')`, app.js:7274, metric/imperial), and when it changes, the **value is converted by the
+app's internal deterministic algorithm** — **never by translation**. Translation must preserve unit
+tokens verbatim; unit localization is an app function, full stop. This ruling makes G-T2's check
+well-defined: the D1 scorer's unit-literal test fails any translation whose unit token differs from
+the source's.
+
+**Root-cause detail found while registering:** the DATA-path prompt (`mtTranslate`, app.js:7466)
+says only *"Keep ALL numbers, temperatures, times and units EXACTLY as written"* — it LACKS the
+explicit *"do NOT convert between units (no °C→°F, no metric→imperial)"* clause the VOICE path's
+prompt gained in P0 (app.js:5531, amendment A-4). The smoke run used the data-path prompt and the
+model invented °F anyway — explicit beats implied. **Registered fix (first task of the translation
+track, full TDD cycle):** harden `mtTranslate`'s prompt to match the voice path's clause; the
+harness will A/B both prompts in the full eval to measure whether the clause alone closes the gap
+or the unit-literal scorer must remain the backstop (it remains regardless — a prompt is a request,
+a scorer is a gate).
+
 ---
 
 ## G-A1 addendum · non-canonical Unicode, and two spoken-as-verified boundaries
