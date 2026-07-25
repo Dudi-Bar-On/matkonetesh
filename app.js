@@ -1726,6 +1726,102 @@ function eqmRequiresChip(key){
   return `<div class="eqm-reqs" aria-label="${L('ציוד דרוש','Required equipment')}">${chips}</div>`;
 }
 
+// ═══ E3 Task 1 (spec §5.2 + AMENDMENT O-5) · eqmValidity — the convergence verdict ═══════════════════
+// Fuses E1's EQM.ownership with CP1's itemPaths into the two O-5 honesty levels: 'uncookable' (NO cited
+// path resolves against the owned kit — full bold-invalid emphasis) and 'blocked-default' (the DEFAULT
+// combo fails but another CITED path works — lighter emphasis, "prevents crying wolf on an item the user
+// can in fact cook another cited way"). Runs ownership over EVERY itemPaths entry (CP2-INPUT, binding:
+// itemPaths[].isDefault is session/gear-dependent and is NEVER read here — enumerate ALL paths). "Default"
+// here means the GEAR-INDEPENDENT combo eqmRequiresMethodKey resolves, in its default (non-reversed)
+// order — the SAME call eqmRequiresChip already makes, never itemPaths[].isDefault. Gated on
+// equipConfigured() exactly like the chip (R5 lineage): no kit → always 'ok', zero equipment noise.
+function eqmValidity(meta){
+  const EMPTY = { level:'ok', okPaths:[], gaps:[], fixes:[] };
+  if(typeof EQM==='undefined' || typeof deriveRequires!=='function' || typeof itemPaths!=='function') return EMPTY;
+  if(typeof equipConfigured!=='function' || !equipConfigured()) return EMPTY;   // R5: no kit → always ok
+  if(!meta) return EMPTY;
+  let paths; try{ paths = itemPaths(meta) || []; }catch(e){ paths = []; }
+  if(!paths.length) return EMPTY;   // nothing cited to evaluate — never invent a formula verdict
+
+  const okPaths = [];
+  paths.forEach(function(p){
+    let req; try{ req = deriveRequires(meta, p.methodKey, p.order) || []; }catch(e){ req = []; }
+    if(!req.length){ okPaths.push(p.id); return; }        // no device-gated stage on this path → trivially cookable
+    if(EQM.ownership(req).ok) okPaths.push(p.id);
+  });
+
+  let defReq; try{ defReq = deriveRequires(meta, eqmRequiresMethodKey(meta)) || []; }catch(e){ defReq = []; }
+  const defOwn = EQM.ownership(defReq);
+  if(defOwn.ok) return { level:'ok', okPaths:okPaths, gaps:[], fixes:[] };
+
+  const level = okPaths.length ? 'blocked-default' : 'uncookable';
+
+  // WHY (O-5 point 2): one line per missing/partial KIND, deduped — 'missing' (no device at all) outranks
+  // 'partial' (owned but insufficient) if the default combo somehow names the same kind both ways.
+  const gapState = {};
+  (defOwn.missing||[]).forEach(function(r){ gapState[r.kind] = 'missing'; });
+  (defOwn.partial||[]).forEach(function(r){ if(!gapState[r.kind]) gapState[r.kind] = 'partial'; });
+  const gaps = Object.keys(gapState).map(function(k){ return { kind:k, state:gapState[k] }; });
+
+  // HOW TO FIX (O-5 point 3), deterministic, in order of cheapness: configure the device (deep-link to
+  // the Equipment Manager); switch to another CITED path the owned kit already satisfies; a cited
+  // replacement once E5's ladder lands (disabled placeholder until then — never AI-generated, per O-5).
+  const fixes = [{ type:'configure', label: L('הוסף/הגדר ציוד בניהול הציוד','Add/configure equipment in Equipment Management') }];
+  paths.forEach(function(p){
+    if(okPaths.indexOf(p.id)>=0){
+      fixes.push({ type:'switch-path', pathId:p.id, label: L('זמין במסלול: ','Available on path: ') + p.label });
+    }
+  });
+  fixes.push({ type:'replace-e5', label: L('החלפת ציוד — בקרוב (E5)','Equipment replacement — coming soon (E5)') });
+
+  return { level:level, okPaths:okPaths, gaps:gaps, fixes:fixes };
+}
+// the catalog's bold-invalid card treatment + umake-panel row treatment — computed ONCE per card from the
+// SAME eqmValidity verdict the item's own why/fix panel reads (compute-once, spec §4.2 style). 'ok' (incl.
+// unconfigured, R5) → both empty strings, the negative case: NOTHING renders anywhere.
+function eqInvState(key){
+  const meta=(typeof resolveItem==='function')?resolveItem(key):null;
+  const v=(typeof eqmValidity==='function')?eqmValidity(meta):{level:'ok'};
+  const cls = v.level==='uncookable' ? ' eq-inv' : (v.level==='blocked-default' ? ' eq-inv-soft' : '');
+  // O-5 point 1: the badge is 'uncookable'-only — blocked-default gets the lighter class alone, never
+  // crying wolf on an item the user can in fact cook another cited way.
+  const badge = v.level==='uncookable' ? `<span class="eq-inv-badge">⚠ ${L('חסר ציוד','Missing equipment')}</span>` : '';
+  return { cls:cls, badge:badge };
+}
+// the item panel's WHY-and-HOW-TO-FIX explanation (O-5 point 4: the catalog chip's per-kind verdict is
+// the seed; this is the full emphasized treatment). '' when eqmValidity is 'ok' — nothing renders.
+function eqInvPanelHtml(meta){
+  const v=(typeof eqmValidity==='function')?eqmValidity(meta):{level:'ok'};
+  if(!v || v.level==='ok') return '';
+  const soft = v.level==='blocked-default';
+  const title = soft
+    ? L('מסלול ברירת המחדל חסום — אך יש דרך אחרת לבשל','The default route is blocked — but another way works')
+    : L('לא ניתן לבשל את הפריט הזה עם הציוד שלך','This item cannot be cooked with your equipment');
+  const why=(v.gaps||[]).map(function(g){
+    const lbl=EQM_KIND_HE[g.kind]||[g.kind,g.kind];
+    const st=g.state==='missing' ? L('חסר','missing') : L('קיים אך לא מספיק','owned but insufficient');
+    return `<li>${L('דרוש','Requires')}: ${L(lbl[0],lbl[1])} <span class="eq-inv-state">— ${st}</span></li>`;
+  }).join('');
+  const fixes=(v.fixes||[]).map(function(f){
+    if(f.type==='configure') return `<button type="button" class="pp-item eq-inv-fix" data-eqfix="configure">🔧 <b>${esc(f.label)}</b></button>`;
+    if(f.type==='switch-path') return `<button type="button" class="pp-item eq-inv-fix" data-eqfix="switch-path" data-pathid="${esc(f.pathId||'')}">↪ <b>${esc(f.label)}</b></button>`;
+    return `<button type="button" class="pp-item eq-inv-fix eq-inv-fix-disabled" data-eqfix="replace-e5" disabled aria-disabled="true">🔁 <b>${esc(f.label)}</b></button>`;
+  }).join('');
+  return `<div class="var eq-inv-panel${soft?' eq-inv-panel-soft':''}">
+      <h4>⚠️ ${title}</h4>
+      <ul class="eq-inv-why">${why}</ul>
+      <div class="eq-inv-fixes">${fixes}</div>
+    </div>`;
+}
+// wires the panel's fix rows: configure deep-links to the Equipment Manager (O-5 point 3); switch-path
+// is honest-label-only in E3 (CP2's path-selector UI isn't built yet — the plan explicitly allows this);
+// replace-e5 stays inert (disabled) until E5 lands.
+function wireEqInvPanel(root){
+  const r=root||document;
+  r.querySelectorAll('[data-eqfix="configure"]').forEach(function(b){ b.addEventListener('click', function(){ if(typeof openEquipment==='function') openEquipment(); }); });
+  r.querySelectorAll('[data-eqfix="switch-path"]').forEach(function(b){ b.addEventListener('click', function(){ if(typeof toast==='function') toast(L('בחר את השיטה הזו למעלה, בבורר השיטה','Pick this method above, in the method selector')); }); });
+}
+
 function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
   // CP1 Task 3 (spec 2026-07-25 §4): the grid card's smoke figures reuse svSmokeFinish — the SAME
   // accessor Task 2 wired into openCut (app.js ~2268) — instead of the catalog's raw smt/smh literal.
@@ -1738,11 +1834,13 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
   // nothing consumes (review finding, CP1 Task 3 wave 1).
   const smokeFin=(!isProduce(c) && typeof svSmokeFinish==='function')?svSmokeFinish(metaCut(c)):null;
   const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
-  return `<article class="card" data-n="${c.n}" data-kind="cut" tabindex="0" role="button" aria-label="${c.heb}">
+  const eqInv=(typeof eqInvState==='function')?eqInvState(key):{cls:'',badge:''};
+  return `<article class="card${eqInv.cls}" data-n="${c.n}" data-kind="cut" tabindex="0" role="button" aria-label="${c.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(c.cat,"#"+c.n,"cut-"+c.n)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${c.cat} ${kosherTag("cut-"+c.n)}${gearTag("cut-"+c.n)}</div>
+      ${eqInv.badge}
       <h3>${itemName(c)}</h3>
       <div class="en">${c.eng} · ${c.kg} ק״ג</div>
       ${isProduce(c)?`<div class="meta">
@@ -1768,11 +1866,13 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
   </article>`;
 }
 function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=catColor(s.cat), key="spec-"+s.n;
-  return `<article class="card" data-n="${s.n}" data-kind="spec" tabindex="0" role="button" aria-label="${s.heb}">
+  const eqInv=(typeof eqInvState==='function')?eqInvState(key):{cls:'',badge:''};
+  return `<article class="card${eqInv.cls}" data-n="${s.n}" data-kind="spec" tabindex="0" role="button" aria-label="${s.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(s.cat,"#"+s.n,"spec-"+s.n, s.origin)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${s.cat} ${kosherTag(key)}</div>
+      ${eqInv.badge}
       <h3>${itemName(s)}</h3>
       <div class="en">${s.eng}${s.origin?` · ${s.origin}`:''}</div>
       <div class="meta"><span>עישון <b>${smk}</b></span>${s.tgt!=='—'&&s.tgt?`<span>יעד <b>${s.tgt}${typeof s.tgt==='number'?'°':''}</b></span>`:''}</div>
@@ -1783,11 +1883,13 @@ function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=cat
   </article>`;
 }
 function makeCard(id,m){const nv=(m.build.variants||[]).length, col=catColor(m.cat), key="make-"+id;
-  return `<article class="card" data-mid="${id}" data-kind="make" tabindex="0" role="button" aria-label="${m.heb}">
+  const eqInv=(typeof eqInvState==='function')?eqInvState(key):{cls:'',badge:''};
+  return `<article class="card${eqInv.cls}" data-mid="${id}" data-kind="make" tabindex="0" role="button" aria-label="${m.heb}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(m.cat,null,"make-"+id, m.origin)}
     <div class="cbody">
       <div class="cat" style="color:${col}">${m.cat} ${kosherTag(key)}</div>
+      ${eqInv.badge}
       <h3>${itemName(m)}</h3>
       <div class="en">${m.eng}${m.origin?` · ${m.origin}`:''}</div>
       <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(m.diff)}${ratingMini(key)}</span>${nv?`<span style="color:var(--smoke)">${nv} ווריאנטים</span>`:''}</div>
@@ -2290,6 +2392,7 @@ function openCut(c){
    </div>
    <div class="panel-body">
      ${c.desc?`<p class="itemdesc" data-mt>${c.desc}</p>`:''}
+     ${eqInvPanelHtml(meta)}
      <div class="statline">
        ${isProduce(c)?`
        <div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.sot}°<small> / ${Math.round(upperHours(c.soh)*60)}${L("ד'",'m')}</small></div></div>
@@ -2352,6 +2455,7 @@ function openCut(c){
      ${sourcesBlock(c)}
    </div>`;
   showPanel(html);
+  if(typeof wireEqInvPanel==='function') wireEqInvPanel($("#panel"));
   $("#servHost").innerHTML=servingsCalcHTML(c); wireServCalc($("#servHost"),c);
   fillExtras(key);
   // method tabs
@@ -2641,6 +2745,7 @@ function openSpec(s){
   }
   const key=`spec-${s.n}`;
   const col=catColor(s.cat);
+  const meta=metaSpec(s);
   const html=`
    <div class="panel-top" style="--c:${col}">
      ${headArt(s.cat)}
@@ -2650,6 +2755,7 @@ function openSpec(s){
      <div class="en">${s.eng} · ${L('רמת קושי','difficulty')} ${dots(s.diff)}</div>
    </div>
    <div class="panel-body">${s.desc?`<p class="itemdesc" data-mt>${s.desc}</p>`:''}
+     ${eqInvPanelHtml(meta)}
      <div class="statline">
        <div class="stat"><div class="l">${L('עישון','Smoke')}</div><div class="v" style="font-size:15px">${smk}</div></div>
        <div class="stat"><div class="l">${L('יעד / הבשלה','Target / age')}</div><div class="v" style="font-size:15px">${typeof s.tgt==='number'?s.tgt+'°':(s.age!=='—'?t(s.age):s.tgt)}</div></div>
@@ -2666,6 +2772,7 @@ function openSpec(s){
      ${sourcesBlock(s)}
    </div>`;
   showPanel(html);
+  if(typeof wireEqInvPanel==='function') wireEqInvPanel($("#panel"));
   fillExtras(key);
   function quick(){
     const steps=buildSteps();
@@ -2688,6 +2795,7 @@ function openMake(id){
   const m=DATA.makes[id]; if(!m) return;
   curProject=pendingProject; pendingProject=null;
   const col=catColor(m.cat);
+  const meta=metaMake(id,m);
   const html=`
    <div class="panel-top" style="--c:${col}">
      ${headArt(m.cat)}
@@ -2696,8 +2804,9 @@ function openMake(id){
      <h2>${itemName(m)}</h2>
      <div class="en">${m.eng} · ${L('רמת קושי','difficulty')} ${dots(m.diff)}</div>
    </div>
-   <div class="panel-body">${m.desc?`<p class="itemdesc" data-mt>${m.desc}</p>`:''}<div class="progress"><i id="prog"></i></div><div id="methodArea"></div>${equipSectionHtml(m.equip)}<div id="extras"></div>${sourcesBlock(m)}</div>`;
+   <div class="panel-body">${m.desc?`<p class="itemdesc" data-mt>${m.desc}</p>`:''}${eqInvPanelHtml(meta)}<div class="progress"><i id="prog"></i></div><div id="methodArea"></div>${equipSectionHtml(m.equip)}<div id="extras"></div>${sourcesBlock(m)}</div>`;
   showPanel(html);
+  if(typeof wireEqInvPanel==='function') wireEqInvPanel($("#panel"));
   renderBuildInto("#methodArea", "make-"+id, m.build);
   fillExtras("make-"+id);
 }
@@ -9671,9 +9780,10 @@ function openMakeMeta(meta){
   if(!meta) return;
   const col='#9e4a3d';
   showPanel(`<div class="panel-top" style="--c:${col}"><button class="x" aria-label="סגור">✕</button><div class="cat" style="color:${col}">${meta.cat} · ✨ המתכון שלי</div><h2>${meta.heb}</h2><div class="en">נוצר ע\u05f4י AI · לא-מאומת בטיחות</div></div>
-    <div class="panel-body"><div id="methodArea"></div>
+    <div class="panel-body">${eqInvPanelHtml(meta)}<div id="methodArea"></div>
       <button class="ccta" id="umProj" style="margin-top:14px">🧫 צור פרויקט מהמתכון</button>
       <button class="akc-back" id="umDel" style="margin-top:8px;color:var(--ember)">🗑️ מחק מתכון</button></div>`);
+  if(typeof wireEqInvPanel==='function') wireEqInvPanel($("#panel"));
   renderBuildInto("#methodArea", meta.key, meta.build);
   const pj=$("#umProj"); if(pj) pj.addEventListener('click',()=>openProjectWizard(meta));
   const dl=$("#umDel"); if(dl) dl.addEventListener('click',async()=>{ if((await appConfirm('למחוק את המתכון?',{okLabel:'מחק',danger:true}))===true){ const o=umakes(); delete o[meta.key]; saveUmakes(o); if(typeof closePanel==='function') closePanel(); if(typeof toast==='function') toast('נמחק'); } });
@@ -9693,7 +9803,7 @@ function openRecipeGen(){
     <textarea id="genPrompt" placeholder="${L('למשל: נקניקיית טלה חריפה בסגנון מרוקאי עם הרבה כמון וכוסברה','e.g. a spicy Moroccan-style lamb sausage with lots of cumin and coriander')}" style="width:100%;min-height:80px;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:12px;color:var(--bone);font-family:'Heebo';font-size:15px;margin-bottom:10px"></textarea>
     <div class="chips" style="margin-bottom:14px">${examples.map(e=>`<span class="chip" data-genex="${e}">${e}</span>`).join('')}</div>
     <button class="ccta" id="genGo">✨ ${L('צור מתכון','Create recipe')}</button>
-    ${myList.length?`<div class="pp-group" style="margin-top:18px"><div class="pp-gh">✨ ${L('המתכונים שלי','My recipes')} · ${myList.length}</div>${myList.map(([id,m])=>`<button class="pp-item" data-umopen="${id}"><div class="pp-item-h"><span class="pp-emoji">🍖</span><b>${(typeof itemName==='function'?itemName(m):m.heb)}</b><span class="pp-diff" style="color:var(--smoke)">${t(m.cat)}</span></div></button>`).join('')}</div>`:''}
+    ${myList.length?`<div class="pp-group" style="margin-top:18px"><div class="pp-gh">✨ ${L('המתכונים שלי','My recipes')} · ${myList.length}</div>${myList.map(([id,m])=>{ const eqInv=(typeof eqInvState==='function')?eqInvState(id):{cls:'',badge:''}; return `<button class="pp-item${eqInv.cls}" data-umopen="${id}"><div class="pp-item-h"><span class="pp-emoji">🍖</span><b>${(typeof itemName==='function'?itemName(m):m.heb)}</b><span class="pp-diff" style="color:var(--smoke)">${t(m.cat)}</span></div>${eqInv.badge}</button>`; }).join('')}</div>`:''}
   </div>`);
   const ta=$("#genPrompt");
   $("#panel").querySelectorAll('[data-genex]').forEach(c=>c.addEventListener('click',()=>{ if(ta) ta.value=c.dataset.genex; }));

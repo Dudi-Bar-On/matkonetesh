@@ -1747,3 +1747,24 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 /* -ok: owned + capable — deliberately neutral (base .eqm-req style above), no state tint needed */
 .eqm-req-partial{ border-color:var(--ember); background:color-mix(in srgb, var(--ember) 14%, transparent); }
 .eqm-req-missing{ border-color:var(--over); background:var(--over-l); }
+
+/* E3 Task 1 (spec §5.2 + AMENDMENT O-5) · the catalog bold-invalid treatment + the item panel's
+   why/fix explanation. SAME THEMES inline-var mechanism as .eqm-req above (--over/--over-l for the
+   uncookable "bold" emphasis, --ember for the lighter blocked-default emphasis) — no prefers-color-scheme
+   media query (review finding I1, same as the E1 chip's own comment above). */
+.card.eq-inv, .pp-item.eq-inv{ border-color:var(--over); box-shadow:0 0 0 1.5px var(--over) inset; }
+.card.eq-inv-soft, .pp-item.eq-inv-soft{ border-color:var(--ember); }
+.eq-inv-badge{ display:inline-block; font-family:var(--font-body); font-size:calc(10.5px * var(--fscale));
+  font-weight:800; padding:1px 8px; border-radius:999px; margin:2px 0 0;
+  background:var(--over-l); border:1px solid var(--over); color:var(--over); }
+/* the why/fix panel — a `.var`-family section inside the item's own detail panel (openCut/openSpec/
+   openMake/openMakeMeta), right above the informational per-device eq-sec checklist it escalates. */
+.eq-inv-panel{ border:1.5px solid var(--over); border-radius:13px; background:var(--over-l); padding:12px 14px; margin-top:8px; }
+.eq-inv-panel h4{ margin:0 0 8px; font-size:calc(14px * var(--fscale)); color:var(--over); }
+.eq-inv-panel-soft{ border-color:var(--ember); background:color-mix(in srgb, var(--ember) 14%, transparent); }
+.eq-inv-panel-soft h4{ color:var(--ember); }
+.eq-inv-why{ margin:0 0 10px; padding-inline-start:20px; font-size:calc(13px * var(--fscale)); color:var(--bone); line-height:1.6; }
+.eq-inv-state{ color:var(--smoke); font-size:calc(11.5px * var(--fscale)); }
+.eq-inv-fixes{ display:flex; flex-direction:column; gap:6px; }
+.eq-inv-fix{ display:flex; align-items:center; gap:8px; }
+.eq-inv-fix-disabled{ opacity:.55; cursor:default; }
