@@ -407,9 +407,31 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 > never promise what the cook screen would refuse. Registered companion (authoring track):
 > `docs/analysis/program/registered-2026-07-25-order-vocabulary.md`.
 
+> **AMENDMENT O-2 — owner ruling in conversation, 2026-07-25 (the consulting-AI button).**
+> Next to BOTH decision surfaces — the **order-change option** (§6, both O-1 layers) and the
+> **replacement / substitute-device option** (§7, E5) — the app offers a **consult-AI button**: a live,
+> AI-composed explanation of *what this action means* (consequences of flipping the order; what cooking
+> on the alternative device type changes), grounded first in the item's own cited data and then in **the
+> best reliable web sources, fetched live with search grounding, citations shown**. Binding rails:
+> **(a) advisory only** — the consult answer never mutates state, never enters the plan, and is not a
+> source of truth; O-1 stands: semantics live in the item's cited data, and approving a replacement
+> remains the user's explicit act (E5's approve/deny contract). **(b)** All existing AI trust rails
+> apply unchanged — the numeric guard on safety figures (model-originated numbers are never presented
+> as verified), dangerous-intent refusal, and `aiAvail()` gating (online-first). **(c)** This is a NEW
+> AI usage with its own `AI_SEARCH` registry key with search grounding **enabled** — it does not alter
+> E5's separate alternatives-suggestion call (deterministic ladder first, `search:false`), which stays
+> as specified; suggestion and consultation are different calls with different grounding policies.
+> **(d)** Delivery rides the phase that owns each surface: E4 (order side), E5 (replacement side).
+> If voiced later under the voice track, `vcGuardSpoken` applies as everywhere.
+
 ---
 
 ## 7. Replacements (owner design §6) + Retroactive invalidation (owner design §7)
+
+> **AMENDMENT O-2 applies to this section's E5 surface** (see the full block in §6): a consult-AI
+> button beside the replacement offer explains, live and web-grounded with citations, what cooking on
+> the alternative device changes — advisory only, distinct from the alternatives-suggestion call
+> (which keeps its deterministic-first, `search:false` policy).
 
 ### 7.1 · The replacement ladder (§6)
 
