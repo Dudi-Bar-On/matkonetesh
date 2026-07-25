@@ -20,10 +20,40 @@ const REQ_KIND = { smoke: 'smoker', sv: 'bath', cook: 'grill' };
 // declared process kinds (grinder/stuffer/sealer/curing) and their own category resolution.
 const KIND_TO_STAGE = { smoker: 'smoke', grill: 'cook', bath: 'sv' };
 
-// ── deriveRequires — Task 2 fills this body. Seam declared here so build.py's inline + the module-seam
-// test see a real global function from Task 1 onward.
+// ── requires derivation (Q4 source 1: AUTO-DERIVED). Reads the SAME stage data the plan computes, so it
+// cannot disagree with the plan (the anti-drift property, spec §4.2). ONE row per cook-device stage
+// (kind smoke/sv/cook → device-kind via REQ_KIND); prep/note/dry/rest/bcheck are not device stages and
+// are skipped. This function reads ONLY recipe data (itemStages/itemOccupancy) — no equipment-registry
+// state — so it is a pure projection that feeds EQM.ownership AND EQM.availability from ONE list (§4.2).
+//
+// D2 — device properties the requires model READS today (spec §4.1, "honestly"): the demand/capability
+// here consumes areaCm2 (via deviceCapacity, at ownership time), cap.baths (via chooseBath), canHang+hooks
+// (via deviceCanHang), and maxC (device temp ceiling). The other 14 registered properties stay PARKED and
+// are NOT activated by E1: plates/nozzles go live in E6 (choosePlate/chooseNozzle join); bagKind/bagW are
+// an E6 sealer stretch (F4); lid/fan/accuracy/pulse/rotisserie/speed/steam/throughput/waterPan/watts have
+// no requires consumer in this spec's scope. This comment is E1's D2 deliverable — the honest accounting
+// that stops the plan from claiming to have "activated the device properties".
+//
+// DECLARED rows (grinder/stuffer/sealer/curing, source:'declared', altOf) are authored DATA and land in
+// E6 — deriveRequires emits none. The row SCHEMA (below) already carries those fields so E6 adds no shape.
 function deriveRequires(meta, methodKey, order){
-  return [];   // TASK-2 replaces this entire body with the real derivation.
+  if(!meta || !meta.obj || typeof itemStages!=='function') return [];
+  const stages = itemStages(meta, methodKey, true, order) || [];
+  const rows = [];
+  stages.forEach(function(s){
+    const kind = REQ_KIND[s.kind]; if(!kind) return;            // only smoke/sv/cook become requires rows
+    const occ = (typeof itemOccupancy==='function') ? itemOccupancy(meta, s.kind, null) : null;
+    const row = { role:'cook', kind:kind, source:'derived' };
+    const cap = {};
+    if(typeof s.temp==='number' && s.temp>0) cap.maxTempC = s.temp;              // device must REACH the cited temp
+    if(occ && occ.mode==='hang' && occ.hang) cap.hang = occ.hang;                // recipe wants hanging
+    if(occ && occ.mode==='volume' && occ.litres>0) cap.bathMinL = occ.litres;   // bath must be this big
+    if(Object.keys(cap).length) row.capability = cap;
+    if(occ && occ.mode==='volume' && occ.litres>0) row.demand = { metric:'litres', amount:occ.litres };
+    else if(occ && occ.mode==='area' && typeof occ.cm2==='number' && occ.cm2>0) row.demand = { metric:'area_cm2', amount:occ.cm2 };
+    rows.push(row);
+  });
+  return rows;
 }
 
 // ── eqmOwnershipRow — Task 3 fills this body (per-row ok/missing/partial via cookerCandidates + caps).
