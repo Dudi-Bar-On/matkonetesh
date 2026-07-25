@@ -127,6 +127,36 @@ full ten-string evidence set and the measured fidelity scores.
 
 ---
 
+## G-T2 · 🔴 The translation guards are also blind to UNIT INVENTION — °C silently becomes °F
+
+**Found:** 2026-07-25, during the `translategemma:27b` smoke run (10 real strings, he→en), on the
+translation-harness track. **Severity:** 🔴 — sibling of G-T1, same structural class, arguably worse
+direction. **Scope:** every translation backend, both paths (`mtTranslate`/`mtSafe` DATA path and
+`vcTransSafe` Voice path).
+
+**The reproduction:** string s10 — *"Cook to 71° internal"*, with 70–75 °C established two sentences
+earlier in the same string — was translated as **"71°F"**. An invented unit that contradicts its own
+context. 71 °F ≈ 21.7 °C: read literally, a dangerous undercook instruction.
+
+**Why every existing guard passes it:**
+- `mtSafe`/`mtNumSig` compare **numbers** — 71 is unchanged → pass. (G-T1's blindness, same root.)
+- The D1 content-word recall scorer filters single-letter unit suffixes as noise → pass.
+- `vcTransSafe` compares `(value, unit-CLASS)` pairs — `°` and `°F` both classify as `temp`, so
+  `(71,temp)==(71,temp)` → pass. **The class comparison was built to catch cross-class swaps (temp
+  vs time); it is blind to intra-class scale swaps (°C vs °F) by construction.**
+
+**Consequence for D1/D9:** the content-fidelity bar (≥0.90/≥0.70 recall + mtSafe 100%) is NOT
+sufficient for a ship decision. The D1 gate needs a third check: **unit-literal fidelity** — the unit
+token attached to each number must survive translation verbatim-or-equivalent (°/°C stays Celsius;
+°F may never be introduced where the source has none). Cheap to implement in the existing scorer
+(the harness already extracts number+unit pairs via the shipped `mtNumSig` machinery's siblings).
+
+**Cross-reference:** `scratch/translate-eval/REPORT` content in the session ledger; harness at
+`scratch/translate-eval/` (untracked). Registered the same day the harness was built — before any
+bulk run, which is the point.
+
+---
+
 ## G-A1 addendum · non-canonical Unicode, and two spoken-as-verified boundaries
 
 **Added 2026-07-24 at the Phase A gate's request (round 8), measured on the real built app.** These are

@@ -283,9 +283,13 @@ Every catalog item (cut / spec / make / umake) exposes a **`requires` list**. Ea
 `itemStages(meta, methodKey, ready, order)` kinds (`app.js:3223`), the cited method temps (`obj.smt/svt/sot`,
 resolved exactly as `askContextFor` reads them), and the footprint the occupancy engine already uses
 (`itemOccupancy`, `app.js:356`, `meta.obj.equip.spec.footprint_cm2` / `min_bath_l` / `hang`). It maps
-`stage.kind` → `kind` via the existing `cookerCandidates` policy (`app.js:233`; `smoke`→smoker|grill,
-`cook`→smoker|oven, `sv`→bath) and attaches `capability.minTempC`/`maxTempC` from the cited temps and `demand`
-from the footprint. **Because it is derived from the same inputs the plan reads, it cannot disagree with the
+`stage.kind` → `kind` via the existing `cookerCandidates` policy (`app.js:233`; `smoke`→smoker + a
+charcoal/kettle/gas grill, `cook`→grill|oven, `sv`→bath — *erratum corrected 2026-07-25 after the E1
+whole-branch review: this line previously mis-stated the pre-existing policy as "cook→smoker|oven"; the
+code was always as now described*) and attaches `capability.maxTempC` from the cited temps and `demand`
+from the footprint (*E1 note: a `minTempC`/hold-low capability — the cold-smoke constraint — has no
+derivable source in E1 and is an OPEN owner question recorded at the phase boundary, not silently
+dropped*). **Because it is derived from the same inputs the plan reads, it cannot disagree with the
 plan** — this is the anti-drift property the owner named, and it closes D4's "no device requirement is declared
 in data" for the **cook** role structurally (the narrow `equipPlan` fuel/refuel enrichment breadth is a
 separate, out-of-scope concern, §10). `sv` is covered here from day one (unlike `equipPlan`, which never
