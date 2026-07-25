@@ -1,5 +1,24 @@
 # מתכונת · מדריך האש — changelog
 
+Summary changelog per release (owner request, 2026-07-25). Detailed coverage starts at **v262**;
+earlier versions are summarized coarsely. Maintained as part of the release protocol: every version
+bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
+updated in the same commit.
+
+## מהדורה 265 · 25.7.26
+
+**Owner verification round 2 — making the v264 fixes visible where users actually look:**
+- **Device add/verify**: the Advanced section auto-opens when the AI lookup fills it; extracted
+  dimensions are visible immediately; when dims + shelf count exist, the derived total area appears
+  as a one-tap suggestion under the area field.
+- **Suspect-device repair**: the warning chip's flow now states what will be used if the field is
+  cleared, opens the dims fields with a prompt, and offers the computed value live as you type.
+- **Honest confidence**: a value accepted from an outer-dims estimate keeps its "משוער" marker and
+  the looser fit tolerance until a human confirms it; suspicious stored values also lose tight-fit
+  trust until corrected.
+- Dims render as one labeled chip (e.g. 150×60×43); cabinet volume shown; editing a device no longer
+  silently stores unstated yes/no properties.
+
 ## מהדורה 264 · 25.7.26
 
 **Owner bug round — three production fixes, all owner-reported from live v263 testing:**
@@ -14,11 +33,6 @@
   `order_svsmoke` schedule (brisket: 120°/1.5ש hot-bark finish; shrimp: gentle 100° instead of a
   230° reblast), with explanatory sub-lines wherever order-specific temperatures appear, and a
   generation-time drift guard so catalog and order schedules can't silently diverge again.
-
-Summary changelog per release (owner request, 2026-07-25). Detailed coverage starts at **v262**;
-earlier versions are summarized coarsely. Maintained as part of the release protocol: every version
-bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
-updated in the same commit.
 
 ## מהדורה 263 · 25.7.26
 
