@@ -3055,7 +3055,10 @@ function leadHours(meta){
 /* ── v144: sv/smoke order — two schools of thought, user-selectable per item ── */
 const SV_SMOKE_ORDERS={
   'sv-smoke':{ name:'סו-ויד ← עישון', nameEn:'Sous-vide → smoke', desc:'בטוח כברירת־מחדל: מתבשל לדיוק ומפוסטר בסו-ויד, ואז מקבל טעם וקראסט בעישון-גימור חם.', descEn:'Safe by default: cooked to precision and pasteurized in the sous-vide, then gets flavor and crust in a hot finishing smoke.' },
-  'smoke-sv':{ name:'עישון ← סו-ויד', nameEn:'Smoke → sous-vide', desc:'אסכולה מתקדמת: עישון קר על בשר גולמי לטבעת-עשן מרבית, ואז סו-ויד לדיוק ולפסטור מלא.', descEn:'Advanced school: cold smoke on raw meat for a maximal smoke ring, then sous-vide for precision and full pasteurization.' }
+  // BUG-1 fix: this desc is currently DEAD (unwired — never rendered), but corrected in place so a future
+  // wiring does not resurface the same blanket "cold smoke" claim itemStages() used to make. Temp-agnostic:
+  // whether a given item's citation is cold or hot smoke is decided per-item by osm.cold, not by the order name.
+  'smoke-sv':{ name:'עישון ← סו-ויד', nameEn:'Smoke → sous-vide', desc:'אסכולה מתקדמת: עישון על בשר גולמי לטבעת-עשן מרבית, ואז סו-ויד לדיוק ולפסטור מלא.', descEn:'Advanced school: smoke on raw meat for a maximal smoke ring, then sous-vide for precision and full pasteurization.' }
 };
 function svOrderName(k){ const o=SV_SMOKE_ORDERS[k]||{}; return getLang()==='he'?o.name:(o.nameEn||o.name); }
 function svOrderDesc(k){ const o=SV_SMOKE_ORDERS[k]||{}; return getLang()==='he'?o.desc:(o.descEn||o.desc); }
@@ -3329,7 +3332,12 @@ function itemStages(meta,methodKey,ready,order){
       const svT=(osv.t!=null)?osv.t:m.svTemp;
       const svH=(osv.h!=null)?upperHours(osv.h):m.svHours;
       const cited=(osm.t!=null && osv.t!=null);
-      stages.push({label:`${L('עישון קר','Cold smoke')} ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:L('על בשר גולמי — טבעת עשן מרבית','on raw meat — maximal smoke ring')+(cited?' · '+L('מקור מצוטט','cited source'):'')});
+      // BUG-1 fix (owner bug round, 2026-07-25): the label must honor the CITATION's own cold flag, not
+      // assume every reverse-order smoke is cold. osm.cold===true (cited data) → "Cold smoke"; false,
+      // absent, or the coldSmokeTemp() formula fallback (no cited data at all) → plain "Smoke". Mirrors
+      // the already-correct pattern in sourcesBlock() (app.js ~2152), which branches on ob.smoke.cold.
+      const smokeLbl=(osm.cold===true)?L('עישון קר','Cold smoke'):L('עישון','Smoke');
+      stages.push({label:`${smokeLbl} ${coldT}°`,hours:coldHrs,kind:'smoke',temp:coldT,note:L('על בשר גולמי — טבעת עשן מרבית','on raw meat — maximal smoke ring')+(cited?' · '+L('מקור מצוטט','cited source'):'')});
       stages.push({label:L('איטום ומעבר לסו-ויד','Seal and move to sous-vide'),hours:0,kind:'note'});
       stages.push({label:`${L('סו-ויד','Sous-vide')} ${svT}° (${L('כולל פסטור','incl. pasteurization')})`,hours:svH,kind:'sv',temp:svT,safety:'pasteur'});
     } else {
@@ -3459,7 +3467,10 @@ function cheeseBuild(meta){
   const ph=[];
   ph.push(['1 · הכנה','הבא את הגבינה לטמפ׳ החדר, יבש את פני השטח היטב (משטח לח = עשן לא נדבק). חתוך לגושים לפי הצורך.',1800]);
   if(o.cure) ph.push(['2 · המלחה/ריפוי',`${o.cure}. שכבת מלח/תמלחת מייבשת פני-שטח ומעצימה טעם.`,3600]);
-  if(o.smt) ph.push([`${o.cure?3:2} · עישון קר`,`עישון קר ≤${o.smt}°C למשך ${o.smh||'2-4'} שעות על ${o.wood||'עץ פרי'} (מחולל עשן tube/maze). מעל הטמפ׳ הזו הגבינה נמסה — הימנע!`,(parseInt(o.smh)||3)*3600]);
+  // BUG-1 fix: no cold-style flag exists in cheese data at all (owner ruling, 2026-07-25) — plain "עישון"
+  // for every cheese, never "עישון קר". The smt=110 smoked-cream-cheese outlier (own note says HOT) was
+  // rendering the self-contradictory "עישון קר ≤110°C"; plain is automatically correct for it too.
+  if(o.smt) ph.push([`${o.cure?3:2} · עישון`,`עישון ≤${o.smt}°C למשך ${o.smh||'2-4'} שעות על ${o.wood||'עץ פרי'} (מחולל עשן tube/maze). מעל הטמפ׳ הזו הגבינה נמסה — הימנע!`,(parseInt(o.smh)||3)*3600]);
   ph.push([`${(o.cure?1:0)+(o.smt?1:0)+2} · איטום ויישון`,`${o.age||'עטוף בנייר גבינות/ואקום וקרר'} — היישון מאזן את העשן החד לעומק אגוזי-מעושן נעים. סבלנות משתלמת.`, 0]);
   ph.push([`${(o.cure?1:0)+(o.smt?1:0)+3} · בשלות והגשה`,`הגבינה מוכנה כשהעשן התמזג (${o.age||'שבוע-שבועיים'}). פרוס והגש בטמפ׳ החדר.`,0]);
   return {phases:ph};
@@ -3557,11 +3568,12 @@ function pantryAddFinish(pid){
   const a=pantry(); const p=a.find(x=>x.id===pid); if(!p) return;
   const meta=p.key?resolveItem(p.key):null;
   const o=(meta&&meta.obj)||{};
-  // cheese → cold-smoke + aging; else generic cure window
+  // cheese → smoke + aging; else generic cure window. BUG-1 fix: no cold-style flag exists in cheese
+  // data at all (owner ruling, 2026-07-25) — plain "עישון", never "עישון קר" (see cheeseBuild() above).
   if(p.key && meta && meta.cat==='גבינה'){
     p.type='cure'; p.source='bought-finish'; p.stage='building'; p.start=today();
     const days=parseInt((o.age||'').match(/\d+/)?.[0]||'')||7; p.days=days;
-    p.finish='עישון קר'+(o.smt?` ≤${o.smt}°C`:'')+(o.smh?` · ${o.smh}ש`:'')+(o.age?` · יישון ${o.age}`:'');
+    p.finish='עישון'+(o.smt?` ≤${o.smt}°C`:'')+(o.smh?` · ${o.smh}ש`:'')+(o.age?` · יישון ${o.age}`:'');
   } else {
     p.type='cure'; p.source='bought-finish'; p.stage='building'; p.start=today(); p.days=p.days||2;
     p.finish='סיום/יישון לפני הגשה';
@@ -6374,7 +6386,7 @@ function renderTimelinePanel(){
       ${orderItems.map(c=>`<div class="tl-order tl-order-plan">
         <span class="tl-order-lbl">${itemName(c.m)}:</span>
         <select data-tlorder="${c.m.key}">${Object.entries(SV_SMOKE_ORDERS).map(([k,o])=>`<option value="${k}" ${k===c.st.svSmokeOrder?'selected':''}>${svOrderName(k)}</option>`).join('')}</select>
-      </div>${c.st.svSmokeOrder==='smoke-sv'?`<div class="tl-safety-warn">⚠️ <b>${itemName(c.m)}:</b> ${L('הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the cold smoke <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full. When in doubt — switch to the sous-vide→smoke order.')}</div>`:''}`).join('')}
+      </div>${c.st.svSmokeOrder==='smoke-sv'?`<div class="tl-safety-warn">⚠️ <b>${itemName(c.m)}:</b> ${L('הבשר שוהה בטמפ׳-סכנה בשלב העישון <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the smoke stage <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full. When in doubt — switch to the sous-vide→smoke order.')}</div>`:''}`).join('')}
     </div>`:'';
     const _blk=computed.filter(c=>c.blocked).map(c=>esc(itemName(c.m)));   // F4: multi-day items are excluded from the timed plan — surface them as a prep-ahead advisory instead of dropping them silently
     // Slice 1C: per-item cooker picker — only shown when >1 device fits a cook stage (a real choice)
@@ -6477,7 +6489,7 @@ function renderTimelinePanel(){
         <span class="tl-order-lbl">${L('סדר בישול','Cook order')}:</span>
         <select data-tlorder="${m.key}">${Object.entries(SV_SMOKE_ORDERS).map(([k,o])=>`<option value="${k}" ${k===st.svSmokeOrder?'selected':''}>${svOrderName(k)}</option>`).join('')}</select>
       </div>`:'';
-    const orderWarn=(showOrder && st.svSmokeOrder==='smoke-sv')?`<div class="tl-safety-warn">⚠️ <b>${L('דורש תשומת-לב:','Needs attention:')}</b> ${L('הבשר שוהה בטמפ׳-סכנה בעישון הקר <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו — לפי טבלת פסטור מוכרת לפי עובי. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the cold smoke <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full — per a recognized pasteurization table by thickness. When in doubt — switch to the sous-vide→smoke order.')}</div>`:'';
+    const orderWarn=(showOrder && st.svSmokeOrder==='smoke-sv')?`<div class="tl-safety-warn">⚠️ <b>${L('דורש תשומת-לב:','Needs attention:')}</b> ${L('הבשר שוהה בטמפ׳-סכנה בשלב העישון <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו — לפי טבלת פסטור מוכרת לפי עובי. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the smoke stage <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full — per a recognized pasteurization table by thickness. When in doubt — switch to the sous-vide→smoke order.')}</div>`:'';
     const stageRows=stages.map((s,si)=>{
       if(s.kind==='bcheck') return `<div class="tl-stage tl-bcheck">🌡️ <b>${s.label}</b>${s.note?` · ${s.note}`:''}</div>`;   // D1: internal-temp safety gate
       if(s.hours===0) return `<div class="tl-stage tl-stage-note">↳ ${s.label}</div>`;
