@@ -311,10 +311,17 @@ one source of truth for "what does this cook need", consulted by every gate. See
 The one genuinely new store. An array of entries:
 
 ```
-{ id, deviceId, window:{ startMs, endMs }, capacityDemand:{ metric, amount }, holder, state }
+{ id, deviceId, window:{ startMs, endMs }, capacityDemand:{ metric, amount, tempC? }, holder, state }
    holder := { type:'event'|'plan', id }        // who reserved it — cancelling frees all of a holder's holds
    state  := 'held' | 'released'
 ```
+
+> **AMENDMENT (owner ruling 2026-07-25, post Task-2 review): `capacityDemand.tempC`.** Volume (bath)
+> demands carry the stage's cited temperature. One circulator runs ONE bath at ONE temperature: the
+> fit check lets **same-temp demands share** (the MAX-litres rule) and marks **different-temp
+> overlapping demands busy** — the cross-event twin of the single-event bath-temp detector
+> (`app.js:3210`). A demand without `tempC` (legacy/area rows) is temp-agnostic. Added BEFORE any
+> real ledger data exists, so no migration is ever needed.
 
 **Capacity math is `deviceOccupancy`'s existing fit arithmetic, absorbed (Q3).** The ledger does **not**
 re-invent fit; `EQM.availability` computes, for a candidate `(deviceId, window, capacityDemand)`, the sum of
@@ -612,7 +619,7 @@ its real home). **Nothing is silently dropped** — that is the Waiver Gate appl
 | **C1** | Phase-3a solver 0% built | **PARTIAL** | The **hold-safety spine** (`allocate`/`release` + the §2.2 safety invariance) is built (E2/E5). The **move-solver** (`movesForClash`/`applyMove`) is **OUT** — stays P8 (§10) |
 | **C2** | No AI proposer exists | **COVERED** (replacement axis only) | E5 AI-suggested **replacements** through the guarded layer (§7.1). AI **move**-proposal is OUT (P8) |
 | **C3** | Cross-event resource allocation does not exist | **COVERED** (substrate) | The ledger + `EQM.availability` answer cross-event free/partial/busy; holds are holder-tracked across events (§4.3/§5). **Automated cross-event re-allocation stays P9** (§10, flag F1) |
-| **C4** | Placer searches with the wrong fit test (whole-device) | **PARTIAL** | `EQM.availability` uses the **per-slot** honest verdict (§4.3); the *placer's candidate-set search* improvement is P5a/P8 |
+| **C4** | Placer searches with the wrong fit test (whole-device) | **PARTIAL** | *(re-worded per owner ruling 2026-07-25, post Task-2 review)* E2's `EQM.availability` uses the whole-device sum **plus a per-slot FLOOR** (no single demand may exceed one slot's estimated capacity — kills the "hides inside a comfortable total %" lie for ledger bookings); **full per-slot packing over ledger entries lands at E3**. The *placer's candidate-set search* improvement stays P5a/P8 |
 | C8 | User cannot influence durations/shelf/preheat/method | **PARTIAL** | E4 adds **two** affordances (AMENDMENT O-1: the catalog-card default order selector + the per-occurrence override, §6) — order selection only, never durations/temps. The rest (shelf/preheat/duration overrides) is P7 |
 | C5 | Non-uniform slack set silently discarded (`uniq.length!==1`) | **NOT-HERE** | Plan-pipeline scheduling advisory (P5a/P8); the ledger does not touch intra-item slack |
 | C6 | Advisory recommends non-existent "cook in batches" | **NOT-HERE** | Advisory copy (P7); capacity-share (§4.3) addresses the underlying share concept but not the copy |
