@@ -792,6 +792,21 @@ This is the forward-going complement to the one-pass **source-Hebrew** cleanup: 
 Hebrew source (`דרי`→`יבש`; `דריי-ברין`→`ברין יבש`, Hebrew noun-then-adjective order) are hunted in a periodic sweep
 and fixed at the root, with dependent dictionary keys re-keyed in lockstep (§10.19 rule 3).
 
+### 10.21 Owner test handoffs are a Hebrew use-case script (owner instruction, 2026-07-26)
+> **Owner instruction.** Whenever you ask the owner to test a shipped version, hand them **simple, precise
+> test instructions in Hebrew** — a short **numbered list of concrete use cases**, one per changed/added
+> feature, each naming the **screen**, the **exact action** to perform, and the **expected result** to look
+> for. Never a vague "please test the new features". The owner tests in Hebrew, so the whole script is in
+> Hebrew.
+
+This is the owner-facing complement to **§10.10**: §10.10 is what *you* verify (Playwright on the live URL)
+before telling the owner a version is live; §10.21 is the tester's script you then hand the owner so their
+own verification is fast, unambiguous, and covers every change in the release. A use case has three parts:
+**מה לבדוק** (which screen/feature) · **מה לעשות** (the exact taps/inputs, with concrete example values —
+a real model name, a real recipe) · **מה אמור לקרות** (the observable expected result). A ship handoff that
+lacks this Hebrew script is an incomplete handoff — write it from the release's changed-feature list, not
+from memory, and keep it to the few use cases that actually exercise what changed.
+
 ### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
 > **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
 > changed. Update it as part of committing and pushing — and sooner than that where practical.

@@ -121,3 +121,5 @@ the A6 guard + A7 test as it ships.
 - Safety invariance asserted (numbers identical across languages).
 - Full suite green (plain `npx playwright test`), diag/temp specs removed.
 - Live-verify per §10.10 + real-AI/production-verified per owner (ship ≠ production until verified).
+- Owner test handoff per §10.21: a Hebrew numbered use-case script (screen · exact action · expected result)
+  covering each localized surface, so the owner can verify each language fast.
