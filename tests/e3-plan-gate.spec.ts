@@ -26,12 +26,14 @@ import { test, expect, seedApp } from './_fixtures';
 //                                                harness; the real production WRITE function is exercised)
 //   6. pantry/project → bridge to plan       → pantryToPlan(pid)                 — tested below, direct call
 //   7. seasoning-picker "go instance" add    → spkGoInstance(key,...)            — tested below, direct call
-//   8. legacy meal-builder manual add        → renderMenu's [data-addcat] handler — gated in code, NOT
-//      (openMenu → ➕ הוסף מנה)                                                     independently
-//      9. legacy meal-builder dish swap      → swapDish(i)                          Playwright-exercised:
-//   (both openMenu-scoped — a secondary/legacy surface the wizard has replaced as the primary add flow,
-//   "UX #3" app.js:5560 — both route through the SAME eqmAddGate/eqmAddGateKeys already proven correct by
-//   the 7 tests above; disclosed here rather than silently left untested)
+//   8. legacy meal-builder manual add        → renderMenu's [data-addcat] handler — tested below (2b),
+//      (openMenu → ➕ הוסף מנה)                                                     real click
+//   9. legacy meal-builder dish swap         → swapDish(i) via [data-mswap] ↻      — tested below (2b),
+//                                                                                    real click
+//   (both openMenu-scoped — a secondary/legacy surface the wizard has replaced as the primary add flow
+//   ("UX #3", openBuilder). openMenu has no remaining nav entry point, so the 2b tests open the panel
+//   programmatically and drive the gated control itself with a REAL click. E3 phase-gate finding I2
+//   closed — both wirings mutation-proven, evidence in .superpowers/sdd/e3-i2-fix-report.md)
 // NOT gated (checked, confirmed inapplicable — see .superpowers/sdd/e3-task-2-report.md):
 //   - presetFromCart() — `cart` is a permanently-empty Set (app.js:1598, "vestigial... kept empty to
 //     avoid breakage") — cannot ever add anything, cookable or not. Verified below.
@@ -186,6 +188,47 @@ test.describe('(2) every enumerated add path — uncookable case', () => {
     await page.evaluate(`spkGoInstance('make-m-brat', null, true)`);
     await page.waitForFunction(`(document.querySelector('#toast')||{}).textContent==='לא נוסף — חסר גריל/אש'`);
     expect(await page.evaluate(`menuState().keys`)).not.toContain('make-m-brat');
+  });
+});
+
+// (2b) — E3 phase-gate finding I2: paths 8 and 9 of the enumeration above were gated in code but had no
+// test exercising the WIRING (a regression at either call site would have been invisible to the suite).
+// Both live inside the legacy meal-builder panel (openMenu → renderMenu), which "UX #3" retired as a nav
+// destination — openMenu() is the panel's only remaining entry, so the tests call it programmatically
+// (navigation setup only, same precedent as cwGo/cNavGo in (2) above) and then drive the GATED CONTROL
+// with a real click. recipesInCat is stubbed exactly like the presetMenu test above: both handlers pick a
+// RANDOM candidate from it, so pinning the candidate list to ['make-m-brat'] is the only way the real
+// random pick is deterministic — the REAL handler, closure and gate call are what execute.
+test.describe('(2b) legacy meal-builder (openMenu) — finding I2, real clicks', () => {
+  test('legacy "add dish" (data-addcat): real category-chip click is BLOCKED — toast + not in store', async ({ page }) => {
+    await boot(page, BATH);
+    await page.evaluate(`(function(){ window.__origRecipesInCat = recipesInCat; window.recipesInCat = function(){ return ['make-m-brat']; }; })()`);
+    await page.evaluate(`openMenu()`);
+    await page.waitForSelector('#mAdd');
+    await page.click('#mAdd');                                      // ➕ הוסף מנה — opens the category chips
+    await page.waitForSelector('#mAddCats [data-addcat]');
+    await page.locator('#mAddCats [data-addcat]').first().click();  // category irrelevant under the stub
+    await page.waitForFunction(`(document.querySelector('#toast')||{}).textContent==='לא נוסף — חסר גריל/אש'`);
+    const keys = await page.evaluate(`menuState().keys`) as string[];
+    expect(keys).not.toContain('make-m-brat');
+    expect(keys.length).toBe(0);                                    // nothing else slipped in either
+    await page.evaluate(`window.recipesInCat = window.__origRecipesInCat;`);
+  });
+
+  test('legacy dish swap (data-mswap → swapDish): real ↻ click never swaps IN an uncookable replacement', async ({ page }) => {
+    // Current dish: make-m-weiss (DATA.makes['m-weiss'], same 'נקניקיות' cat as m-brat) — seeded
+    // programmatically (programmatic writes are deliberately ungated, block (3) below). The stub makes
+    // make-m-brat the ONLY swap-in candidate (swapDish filters out the current key and current plan keys).
+    await boot(page, BATH, { 'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['make-m-weiss'], sides: [], drinks: [], desserts: [], gpm: 0 }) });
+    await page.evaluate(`(function(){ window.__origRecipesInCat = recipesInCat; window.recipesInCat = function(){ return ['make-m-brat']; }; })()`);
+    await page.evaluate(`openMenu()`);
+    await page.waitForSelector('[data-mswap="0"]');
+    await page.click('[data-mswap="0"]');                           // the dish row's ↻ swap button
+    await page.waitForFunction(`(document.querySelector('#toast')||{}).textContent==='לא נוסף — חסר גריל/אש'`);
+    const keys = await page.evaluate(`menuState().keys`) as string[];
+    expect(keys).not.toContain('make-m-brat');
+    expect(keys).toContain('make-m-weiss');                         // the swap never happened — current dish intact
+    await page.evaluate(`window.recipesInCat = window.__origRecipesInCat;`);
   });
 });
 
