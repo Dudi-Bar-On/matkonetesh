@@ -531,6 +531,21 @@ off the order-aware `itemStages`, **provided E4 lands after E2** (the ledger exi
 > authoring adds the probe property to the device catalog the same way other cited properties enter.
 > Not an E1 scope row — registered before the E1 gate, binding from E2 onward.
 
+> **AMENDMENT O-7a — owner clarification in conversation, 2026-07-26 (probe = STANDALONE only).** The
+> owner's original intent for O-7 was specifically a **standalone, preferably wireless, meat probe**
+> (MEATER/Inkbird class — the `cat:'probe'` registry device), NOT a device-integrated one: *"my original
+> intention when I said probe I meant a standalone probe preferred wireless like my MEATER and Inkbird…
+> focus on this kind of probes and not a device integrated one."* This **supersedes O-7's device-integral
+> branch**: `capability.probe` is satisfied **only** by an owned standalone `cat:'probe'` device, never by
+> a smoker/oven built-in. Rationale: a built-in is typically an ambient/chamber thermometer, not
+> meat-internal, so it never truly satisfied the internal-temp gate; and this realigns O-7 with the app's
+> existing display layer (`hasCat('probe')`, app.js:958). **Delivery:** `eqmProbeSatisfiedBy` becomes
+> standalone-only (drop the `hasProbe` device-integral branch); `eqmProbeAvailable` collapses to the
+> kit-wide standalone check; the `hasProbe`/`מדחום מובנה` property is removed from smoker/oven (now dead
+> and misleading); E3 Task 3 tests invert the device-integral case (integral does NOT satisfy); the probe
+> nudge's fast-path is standalone-only — which also fixes the E3 review's over-widening finding. Supersedes
+> the E3 phase gate's O-7 finding (amendment post-gate; the re-implementation + updated tests cover it).
+
 > **AMENDMENT O-6 — owner ruling in conversation, 2026-07-25 (the device-usage display reads EQM).**
 > The existing graphic display of device usage (the occupancy view) **is part of the Equipment
 > Management domain and sources its data from the module** — it becomes a READER of `EQM`
