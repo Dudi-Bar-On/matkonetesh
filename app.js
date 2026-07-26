@@ -1997,33 +1997,101 @@ function wireEqInvPanel(root){
 // (evLoad, evClearActive, evNewDraft, the evLoad undo-toast) — spec §7's retroactive-invalidation flow
 // (a separate, later task) owns an ALREADY-in-plan item that BECOMES uncookable after an equipment
 // change; THIS gate only ever intercepts a brand-new key entering the plan via a user's own action.
+// E3 Task 5 (spec §5.2 event-add gate). Is `meta` blocked by a BUSY window in the CURRENT dated-event
+// context? Per the spec's own gate table, "plan-add" (undated working menu) gets ownership-only
+// treatment; "event-add" (a DATED event) additionally consults EQM.availability(window) — the
+// distinguishing fact is a known calendar date, not whether the event has been saved to mk-events yet
+// (a user picking dishes for a not-yet-saved dated draft must be stopped just as surely as one editing an
+// already-saved event). Returns:
+//   null            — no dated-event scope to check (still "a plan", or R5 unconfigured) — caller falls
+//                      through to ownership-only behaviour, exactly per the spec's table.
+//   { busy:false }  — dated event, but this item's derived window(s) all fit.
+//   { busy:true, kind } — at least one derived row's window answers 'busy'; `kind` is that row's device
+//                      kind (EQM_KIND_HE-labelled by the caller), so the reason names the real device —
+//                      the same B-i.6 closure eqmValidity's gaps already give the uncookable leg.
+// Reuses eqmItemWindows — the SAME window derivation evSyncEquipmentHolds uses to write the real hold —
+// against the SAME default method/order (eqmRequiresMethodKey, no override) the real save will book, so
+// this check can never disagree with what the next save actually reserves.
+function eqmEventWindowCheck(meta){
+  if(!meta || typeof menuCtx!=='function' || menuCtx()!=='event') return null;
+  if(typeof equipConfigured!=='function' || !equipConfigured()) return null;   // R5 — mirrors eqmValidity's own short-circuit
+  const m=(typeof menuState==='function')?menuState():null;
+  if(!m || !m.evDate) return null;                              // no date known yet — still "a plan" (§5.2)
+  if(typeof eqmItemWindows!=='function' || typeof EQM==='undefined') return null;
+  const t=String((typeof store!=='undefined'&&store.get('mk-tlserve'))||'19:00').split(':').map(Number);
+  let serve;
+  try{ serve=new Date(m.evDate+'T00:00:00'); serve.setHours(t[0]||0,t[1]||0,0,0); }catch(e){ return null; }
+  if(isNaN(serve.getTime())) return null;
+  const pairs=eqmItemWindows(meta, serve);
+  for(let i=0;i<pairs.length;i++){
+    const row=pairs[i].row;
+    // A row whose OWNERSHIP already fails (no capable device of the kind at all — e.g. cut-1's raw
+    // default combo cites a bath row on a smoke-only kit, a `blocked-default` case Task 2 rules ADDS
+    // NORMALLY) must never surface here as "busy": EQM.availability's D11 fall-through reports that
+    // EXACT same shape (state:'busy', deviceId:null) for "no candidate device" as it does for "a real
+    // device that's occupied" — the two are indistinguishable from availability() alone (by design,
+    // capacity/ownership-blind). Filtering to ownership-ok rows first is what makes "busy" here mean
+    // ONLY "you own it, but it's occupied then" (the task's own distinction), never a relabeled ownership
+    // gap the uncookable/blocked-default leg above already owns.
+    let own; try{ own=EQM.ownership([row]); }catch(e){ continue; }
+    if(!own || !own.ok) continue;
+    let av; try{ av=EQM.availability([row], pairs[i].window); }catch(e){ continue; }
+    if(av && av.state==='busy') return { busy:true, kind: row.kind };
+  }
+  return { busy:false };
+}
+
 function eqmAddGate(key){
   const meta=(typeof resolveItem==='function')?resolveItem(key):null;
   if(!meta) return true;                                                     // unresolvable key — not this gate's concern
   const v=(typeof eqmValidity==='function')?eqmValidity(meta):{level:'ok'};
-  if(v.level!=='uncookable') return true;
-  const kind=(v.gaps&&v.gaps[0]&&v.gaps[0].kind)||'';
-  const lbl=(typeof EQM_KIND_HE!=='undefined'&&EQM_KIND_HE[kind])||[kind,kind];
-  if(typeof toast==='function') toast(L('לא נוסף — חסר ','Not added — missing ')+L(lbl[0],lbl[1]));
-  return false;
+  if(v.level==='uncookable'){
+    const kind=(v.gaps&&v.gaps[0]&&v.gaps[0].kind)||'';
+    const lbl=(typeof EQM_KIND_HE!=='undefined'&&EQM_KIND_HE[kind])||[kind,kind];
+    if(typeof toast==='function') toast(L('לא נוסף — חסר ','Not added — missing ')+L(lbl[0],lbl[1]));
+    return false;
+  }
+  // E3 Task 5 (spec §5.2 event-add gate): second leg, DISTINCT reason — the item is cookable (ownership
+  // already cleared above) but the CURRENT dated-event's derived window for it answers 'busy'. Returns
+  // null (no-op) for a plain/undated plan — see eqmEventWindowCheck's own comment.
+  const wc=(typeof eqmEventWindowCheck==='function')?eqmEventWindowCheck(meta):null;
+  if(wc && wc.busy){
+    const lbl=(typeof EQM_KIND_HE!=='undefined'&&EQM_KIND_HE[wc.kind])||[wc.kind,wc.kind];
+    if(typeof toast==='function') toast(L('לא נוסף — עסוק בחלון הזה: ','Not added — busy in this window: ')+L(lbl[0],lbl[1]));
+    return false;
+  }
+  return true;
 }
 // bulk sibling for the preset/AI-import write paths (presetMenu, presetFromFavs, evPlanApply): filters
 // candidate keys down to the cookable ones, firing ONE toast (the FIRST blocked item's missing device,
 // same copy as the single-item gate) if anything was dropped — never a silent bulk drop.
 function eqmAddGateKeys(keys){
-  let blockedLbl=null;
+  let blockedLbl=null;       // uncookable — takes priority over busy, matching eqmAddGate's own check order
+  let blockedBusyLbl=null;
   const kept=(keys||[]).filter(function(k){
     const meta=(typeof resolveItem==='function')?resolveItem(k):null;
     if(!meta) return true;
     const v=(typeof eqmValidity==='function')?eqmValidity(meta):{level:'ok'};
-    if(v.level!=='uncookable') return true;
-    if(!blockedLbl){
-      const kind=(v.gaps&&v.gaps[0]&&v.gaps[0].kind)||'';
-      blockedLbl=(typeof EQM_KIND_HE!=='undefined'&&EQM_KIND_HE[kind])||[kind,kind];
+    if(v.level==='uncookable'){
+      if(!blockedLbl){
+        const kind=(v.gaps&&v.gaps[0]&&v.gaps[0].kind)||'';
+        blockedLbl=(typeof EQM_KIND_HE!=='undefined'&&EQM_KIND_HE[kind])||[kind,kind];
+      }
+      return false;
     }
-    return false;
+    // E3 Task 5: window-busy leg — same eqmEventWindowCheck eqmAddGate uses, so a bulk add can never
+    // disagree with a single add for the identical key.
+    const wc=(typeof eqmEventWindowCheck==='function')?eqmEventWindowCheck(meta):null;
+    if(wc && wc.busy){
+      if(!blockedBusyLbl){
+        blockedBusyLbl=(typeof EQM_KIND_HE!=='undefined'&&EQM_KIND_HE[wc.kind])||[wc.kind,wc.kind];
+      }
+      return false;
+    }
+    return true;
   });
   if(blockedLbl && typeof toast==='function') toast(L('לא נוסף — חסר ','Not added — missing ')+L(blockedLbl[0],blockedLbl[1]));
+  else if(blockedBusyLbl && typeof toast==='function') toast(L('לא נוסף — עסוק בחלון הזה: ','Not added — busy in this window: ')+L(blockedBusyLbl[0],blockedBusyLbl[1]));
   return kept;
 }
 
@@ -9433,6 +9501,32 @@ function isDraft(){ return !evActive() && evMenuHasContent(); }
 // unrelated availability drag the other row's window into the same pass/fail. Every allocate's return is
 // deliberately never inspected for control flow: holds must NEVER block the save in E2 (no UI surfaces a
 // failed hold yet — blocking is E3's gate). A hold write failure here is silently tolerated by design.
+// E3 Task 5 (spec §5.2 event-add gate) — extracted from evSyncEquipmentHolds's own per-item stage/window
+// computation (which used to inline this) so the event-add gate's CHECK (EQM.availability, below) can
+// never disagree with the real hold the next save's WRITE (EQM.allocate, evSyncEquipmentHolds) makes for
+// the same item — one derivation, two callers, the same "can never drift" shape as deriveRequires/
+// eqmFitVerdict. Returns [{row, window:{startMs,endMs}}] — one pair per requires row that carries a
+// `demand` AND resolves to a real stage window; capability-only rows and rows whose stage never got a
+// start/end are silently skipped (the SAME early-outs evSyncEquipmentHolds's own forEach applied before
+// this extraction — behaviour unchanged, verified by tests/e2-event-holds.spec.ts staying green).
+function eqmItemWindows(meta, serve){
+  if(!meta || !serve || typeof itemStages!=='function' || typeof deriveRequires!=='function' || typeof planSchedule!=='function' || typeof KIND_TO_STAGE==='undefined') return [];
+  const methodKey=(typeof eqmRequiresMethodKey==='function')?eqmRequiresMethodKey(meta):undefined;
+  let stages, requires;
+  try{ stages=itemStages(meta, methodKey, true)||[]; requires=deriveRequires(meta, methodKey)||[]; }catch(e){ return []; }
+  if(!requires.length) return [];
+  const sched=planSchedule(stages, serve.getTime());
+  sched.stages.forEach(function(p,i){ if(stages[i]){ stages[i].start=new Date(p.startMs); stages[i].end=new Date(p.endMs); } });
+  const out=[];
+  requires.forEach(function(row){
+    if(!row || !row.demand) return;                             // capability-only rows reserve nothing
+    const stageKind=KIND_TO_STAGE[row.kind];
+    const stage=stages.find(function(s){ return s && s.kind===stageKind; }); if(!stage || !stage.start || !stage.end) return;
+    out.push({ row: row, window:{startMs:stage.start.getTime(), endMs:stage.end.getTime()} });
+  });
+  return out;
+}
+
 function evSyncEquipmentHolds(rec){
   if(!rec || typeof EQM==='undefined' || typeof deriveRequires!=='function' || typeof itemStages!=='function' || typeof planSchedule!=='function') return;
   const holder={type:'event', id:rec.id};
@@ -9449,17 +9543,12 @@ function evSyncEquipmentHolds(rec){
     const profile=(typeof itemProfile==='function')?itemProfile(meta):null; if(!profile) return;
     const st=scopeState[key]||{ready:true};
     if(profile.multiDay && !st.ready) return;                  // blocked — buildList excludes it from the timed plan too
-    const methodKey=(typeof eqmRequiresMethodKey==='function')?eqmRequiresMethodKey(meta):undefined;
-    let stages, requires;
-    try{ stages=itemStages(meta, methodKey, true)||[]; requires=deriveRequires(meta, methodKey)||[]; }catch(e){ return; }
-    if(!requires.length) return;
-    const sched=planSchedule(stages, serve.getTime());
-    sched.stages.forEach(function(p,i){ if(stages[i]){ stages[i].start=new Date(p.startMs); stages[i].end=new Date(p.endMs); } });
-    requires.forEach(function(row){
-      if(!row || !row.demand) return;                          // capability-only rows reserve nothing — same early-out EQM.allocate itself applies
-      const stageKind=KIND_TO_STAGE[row.kind];
-      const stage=stages.find(function(s){ return s && s.kind===stageKind; }); if(!stage || !stage.start || !stage.end) return;
-      try{ EQM.allocate([row], {startMs:stage.start.getTime(), endMs:stage.end.getTime()}, holder); }catch(e){}
+    // E3 Task 5: the per-item stage/window computation itself now lives in eqmItemWindows (extracted,
+    // byte-identical logic) — shared with eqmEventWindowCheck's CHECK so it can never disagree with the
+    // hold this WRITE is about to make. One EQM.allocate call PER (item, requires-row), never bundled —
+    // see eqmItemWindows' own comment for why (a smoke+sv combo carries different windows per row).
+    eqmItemWindows(meta, serve).forEach(function(pr){
+      try{ EQM.allocate([pr.row], pr.window, holder); }catch(e){}
     });
   });
 }
