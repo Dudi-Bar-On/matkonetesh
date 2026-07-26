@@ -70,7 +70,9 @@ test('T5: manager adds/removes devices; settings opens it', async ({ page }) => 
   expect(await page.evaluate(`equipByCat('smoker').length`)).toBe(1);
   expect(await page.evaluate(`primaryOf('smoker').cap.racks`)).toBe(2);
   expect(await page.evaluate(`equipConfigured()`)).toBe(true);
-  await page.click('#panel [data-eqrm]');            // remove
+  await page.click('#panel [data-eqrm]');            // remove → E3 Task 4 (ccdee01) confirm-before-delete dialog
+  await page.waitForSelector('#appdlg [data-adk="ok"]');   // R5: no plan/event items hold this device → ordinary confirm
+  await page.click('#appdlg [data-adk="ok"]');
   expect(await page.evaluate(`equipByCat('smoker').length`)).toBe(0);
   expect(await page.evaluate(`typeof openEquipment==='function' && typeof openGear==='undefined'`)).toBe(true);
 });

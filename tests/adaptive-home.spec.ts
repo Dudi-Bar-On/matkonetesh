@@ -143,7 +143,9 @@ test('adaptive home Phase 3: editing gear from Home re-gates the lanes on panel 
   // open "My gear" from Home and turn sous-vide off, like a real user
   await page.evaluate(`openEquipment()`);
   await page.waitForSelector('#panel.open [data-eqrm="eq-sousvide"]');
-  await page.click('#panel [data-eqrm="eq-sousvide"]');   // remove the sous-vide device
+  await page.click('#panel [data-eqrm="eq-sousvide"]');   // remove → E3 Task 4 (ccdee01) confirm-before-delete dialog
+  await page.waitForSelector('#appdlg [data-adk="ok"]');   // R5: no plan/event items hold this device → ordinary confirm
+  await page.click('#appdlg [data-adk="ok"]');
   await page.evaluate(`closePanel()`);
   await page.waitForFunction(`document.querySelector('#scr-home').classList.contains('on') && !document.querySelector('.lane-sv')`);
   // home re-gated on close WITHOUT any navigation: the 💧 lane is gone

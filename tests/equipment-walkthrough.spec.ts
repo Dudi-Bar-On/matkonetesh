@@ -124,7 +124,9 @@ test('LIST view: header-add, caps banner, concierge, add-another, edit, remove, 
 
   // (9) remove (✕) deletes the device and re-renders
   const before = await page.evaluate(`equipList().length`);
-  await page.locator('#panel [data-eqrm="pr2"]').click();
+  await page.locator('#panel [data-eqrm="pr2"]').click();   // → E3 Task 4 (ccdee01) confirm-before-delete dialog
+  await page.waitForSelector('#appdlg [data-adk="ok"]');   // R5: no plan/event items hold this device → ordinary confirm
+  await page.click('#appdlg [data-adk="ok"]');
   await page.waitForFunction(`equipList().length===${(before as number) - 1}`);
   expect(await page.evaluate(`equipList().some(d=>d.id==='pr2')`)).toBe(false);
   expect(await page.locator('#panel .eq-dev').count()).toBe((before as number) - 1);
