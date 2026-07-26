@@ -269,3 +269,107 @@ test('(f) EN leak + L13 — English mode: own-authored panel copy in English, no
   // numeric-readout bidi hazard L13 exists to catch. Documented, not asserted as a no-digit rule.
   expect(html).toContain('(E5)');
 });
+
+// ═══ FIX WAVE 1 (2026-07-26, E3 Task 1 review "Important") — generation-stamped memoization ═══════
+// eqmValidity/eqInvState ran 3-4 uncached ownership computations PER CARD on the catalog grid's
+// per-keystroke re-render path (perf #4's debounce, app.js:1581 — ~279 cards). This block proves:
+//   (i)   a re-render with an UNCHANGED kit computes ZERO ownership the second time (cache hit);
+//   (ii)  a REAL equipment-form save (equipSave, the one mutation choke point) bumps the generation
+//         and the next render recomputes for real — not just "recomputes", but recomputes CORRECTLY.
+// (iii, the existing-18-tests-stay-green requirement) is proven by leaving every test above untouched.
+test.describe('FIX WAVE 1 — generation-stamped ownership memoization', () => {
+  test('cache proof — an unchanged-kit re-render computes ZERO ownership; a REAL equipment-form save invalidates it', async ({ page }) => {
+    await boot(page, BATH);
+
+    // Instrument the REAL EQM.ownership + render (both top-level bindings the app itself calls bare,
+    // same monkeypatch technique the CP2-INPUT test above already uses on itemPaths) — counts every
+    // ownership computation and marks when a render pass has completed, so the waits below are on
+    // OBSERVABLE conditions, never a fixed timeout. Installed BEFORE the first catalog render (not
+    // after) — installing it after would let that first, un-measured render already warm the cache for
+    // every card, making the "first" measured render a false cache-hit instead of the real cold start.
+    await page.evaluate(`(function(){
+      window.__eqmOwnCalls = 0; window.__renderCalls = 0;
+      var origOwn = EQM.ownership;
+      EQM.ownership = function(){ window.__eqmOwnCalls++; return origOwn.apply(EQM, arguments); };
+      var origRender = render;
+      window.render = function(){ var r = origRender.apply(this, arguments); window.__renderCalls++; return r; };
+    })()`);
+
+    // RENDER A — a REAL click into the מלאכה category tile (the group m-brat lives in): the very FIRST
+    // render of every card in the group under this kit's generation → must compute real ownership.
+    await page.click('button[data-cnav="catalog"]');
+    await page.click('button.cattile[data-tilegroup="מלאכה"]');
+    await page.waitForFunction(`window.__renderCalls>=1`);
+    expect(await page.locator('[data-mid="m-brat"]').count()).toBe(1);   // fixture check — never take the filtered set on faith
+    const own1 = await page.evaluate(`window.__eqmOwnCalls`) as number;
+    expect(own1).toBeGreaterThan(0);
+
+    // RENDER B — a REAL keystroke in the REAL #q search input (fill() dispatches a genuine 'input'
+    // event through the app's own perf #4 debounce; not a direct catView()/render() call), narrowing
+    // the SAME group to a SUBSET of render A's cards — every key it renders was already primed by
+    // render A, so a warm cache must serve every one of them for free. RED WITNESS (see the fix-wave
+    // report section): on pre-fix app.js this assertion FAILS (own2 > 0) because eqInvState/
+    // eqmRequiresChip recomputed ownership from scratch on every single render, cache or not.
+    await page.evaluate(`window.__eqmOwnCalls=0; window.__renderCalls=0;`);
+    await page.fill('#q', 'א');
+    await page.waitForFunction(`window.__renderCalls>=1`);
+    expect(await page.locator('[data-mid="m-brat"]').count()).toBe(1);   // still in the (narrowed) result set
+    const own2 = await page.evaluate(`window.__eqmOwnCalls`) as number;
+    expect(own2).toBe(0);
+
+    const genBefore = await page.evaluate(`eqmKitGen()`) as number;
+
+    // GEN-BUMP — mutate the kit through the REAL equipment-manager form (not equipSave() called
+    // directly): add a grill, the device kind m-brat's DEFAULT (grill) path is missing under BATH.
+    await page.evaluate(`openEquipment()`);
+    await page.waitForSelector('#panel #eqAddNew');
+    await page.click('#panel #eqAddNew');
+    await page.waitForSelector('#panel [data-eqpick="grill"]');
+    await page.click('#panel [data-eqpick="grill"]');
+    await page.waitForSelector('#panel #eqSave');
+    await page.selectOption('#panel #eqCat', 'grill');
+    await page.selectOption('#panel #eqType', 'פחם');
+    await page.fill('#panel #eqName', 'Test Grill');
+    await page.click('#panel #eqSave');
+    await page.waitForFunction(`equipByCat('grill').length===1`);
+    const genAfter = await page.evaluate(`eqmKitGen()`) as number;
+    expect(genAfter).toBeGreaterThan(genBefore);   // equipSave (the ONE choke point) bumped _eqKitGen
+    await page.click('#panel .x');
+    await page.waitForFunction(`!document.querySelector('#panel').classList.contains('open')`);
+
+    // RENDER C — same filtered card set as render B (trailing space trims away, same query, same
+    // keys) — ONLY the kit changed. A stale cache would keep serving render B's ownership verdict
+    // (still 0 calls, still uncookable); the generation stamp must force a real recompute, AND that
+    // recompute must be CORRECT (not just non-zero).
+    await page.evaluate(`window.__eqmOwnCalls=0; window.__renderCalls=0;`);
+    await page.fill('#q', 'א ');
+    await page.waitForFunction(`window.__renderCalls>=1`);
+    const own3 = await page.evaluate(`window.__eqmOwnCalls`) as number;
+    expect(own3).toBeGreaterThan(0);
+    const cardCls = await page.locator('[data-mid="m-brat"]').getAttribute('class');
+    expect(cardCls).not.toContain('eq-inv');   // the grill just added now satisfies the default combo — verdict genuinely changed, not just recomputed
+  });
+
+  test('functional smoke — real catalog search with a configured kit: grid filters correctly, eq-inv badge stays correct', async ({ page }) => {
+    await boot(page, BATH);
+    await page.click('button[data-cnav="catalog"]');
+    await page.click('button.cattile[data-tilegroup="מלאכה"]');
+    await page.waitForSelector('[data-mid="m-brat"]');
+    const before = await page.locator('#makeGrid [data-mid]').count();
+    expect(before).toBeGreaterThan(2);   // sanity: the group has more than a couple items, so a name search is a real narrowing
+
+    // real keystroke: search m-brat's own Hebrew name ("בראטוורסט", Bratwurst). Not asserted UNIQUE —
+    // n-thuringer ("טורינגר רוסטבראטוורסט", Rostbratwurst) shares the same root substring, so at most 2
+    // cards can match; the grid must genuinely narrow, and m-brat must still be one of the results.
+    await page.fill('#q', 'בראטוורסט');
+    await page.waitForFunction(`(function(){ var g=document.querySelectorAll('#makeGrid [data-mid]');
+      return g.length>0 && g.length<${before} && document.querySelector('#makeGrid [data-mid="m-brat"]'); })()`);
+    const after = await page.locator('#makeGrid [data-mid]').count();
+    expect(after).toBeLessThan(before);   // the real search genuinely narrowed the grid
+    expect(after).toBeLessThanOrEqual(2);
+    const card = page.locator('[data-mid="m-brat"]');
+    // the badge/class came off the SAME memoized cache path exercised above — must still be correct
+    await expect(card).toHaveClass(/eq-inv\b/);
+    await expect(card.locator('.eq-inv-badge')).toContainText('חסר ציוד');
+  });
+});

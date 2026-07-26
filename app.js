@@ -237,8 +237,18 @@ function propParse(p, text){
   if(b && !(c>=b[0] && c<=b[1])) return null;
   return {v:Math.round(c*100)/100, conv:convKey};
 }
+// ═══ FIX WAVE 1 (2026-07-26, E3 Task 1 review, "Important") — generation-stamped kit memoization ═══
+// eqmValidity/eqInvState ran 3-4 uncached ownership computations PER CARD on the catalog grid's
+// per-keystroke re-render path (perf #4's debounce, app.js:1581 — ~279 cards). _eqKitGen bumps on
+// EVERY mutation of the mk-equipment store; equipSave below is the ONE choke point every mutation
+// site funnels through (verified: 'mk-equipment' appears nowhere else in app.js/equipment.js —
+// grep-audited; the full mutation-site list is in .superpowers/sdd/e3-task-1-report.md's fix-wave
+// section). Anything cached against a stale gen recomputes; nothing else needs to know a mutation
+// happened at all.
+let _eqKitGen = 0;
+function eqmKitGen(){ return _eqKitGen; }
 function equipList(){ const l=store.get('mk-equipment'); return Array.isArray(l)?l:[]; }
-function equipSave(list){ store.set('mk-equipment', Array.isArray(list)?list:[]); }
+function equipSave(list){ store.set('mk-equipment', Array.isArray(list)?list:[]); _eqKitGen++; }
 function equipId(){ return 'eq-'+(typeof uid==='function'?uid():Math.random().toString(36).slice(2,9)); }
 function equipByCat(cat){ return equipList().filter(function(d){return d && d.cat===cat;}); }
 function hasCat(cat){ return equipByCat(cat).length>0; }
@@ -1700,13 +1710,55 @@ function eqmRequiresMethodKey(meta){
   return 'c:'+(rules.def||[]).slice().sort().join('_');
 }
 
+// ═══ FIX WAVE 1 (2026-07-26) shared caches, keyed by catalog `key`, for the E1 chip + E3 validity ═══
+// Two redundancies closed here (E3 Task 1 review, "Important" finding), both generation-stamped
+// (_eqKitGen/eqmKitGen, defined near equipList/equipSave — any equipment mutation invalidates every
+// entry below; nothing here can ever serve stale ownership):
+//  1. eqmResolveCached — cutCard/specCard/makeCard each call BOTH eqInvState(key) (E3) AND
+//     eqmRequiresChip(key) (E1) for the SAME key; each independently ran resolveItem(key), which for
+//     cut-/spec- keys is an O(n) linear .find() over DATA.cuts/specials — the same scan, twice, per
+//     card, ~279 cards. DATA is static for the app's lifetime (never mutated after load) so this needs
+//     NO generation check and can never go stale — deliberately EXCLUDED for 'umake-' keys, which ARE
+//     mutated at runtime (umakeSave/delete); resolveItem's own umake branch is already an O(1) object
+//     lookup, so there is no perf case for caching it anyway (and caching it would risk serving a
+//     deleted/edited recipe).
+//  2. eqmDefaultReqOwn — eqmRequiresChip and eqmValidity each independently ran
+//     deriveRequires(meta, eqmRequiresMethodKey(meta)) + EQM.ownership(...) for the RAW default combo
+//     — mechanically the exact same call (same meta, same methodKey, same order-undefined), so they
+//     now read/write ONE cache entry. eqmValidity's own itemPaths loop (below) also SEEDS this cache
+//     in-loop whenever a path IS the raw default combo, instead of paying for a separate call
+//     afterward — closing the loop's own internal redundancy the same way.
+const _eqStaticMetaCache = new Map();          // key -> meta (cut-/spec-/make- only; see note above)
+function eqmResolveCached(key){
+  if(typeof resolveItem!=='function') return null;
+  if(!key || key.indexOf('umake-')===0) return resolveItem(key);
+  if(_eqStaticMetaCache.has(key)) return _eqStaticMetaCache.get(key);
+  const meta = resolveItem(key);
+  _eqStaticMetaCache.set(key, meta);
+  return meta;
+}
+const _eqDefReqCache = new Map();              // key -> { gen, requires, own } for the RAW default combo
+function eqmDefaultReqOwn(meta){
+  const key = meta && meta.key;
+  const gen = (typeof eqmKitGen==='function') ? eqmKitGen() : 0;
+  if(key){ const hit=_eqDefReqCache.get(key); if(hit && hit.gen===gen) return hit; }
+  let requires; try{ requires = deriveRequires(meta, eqmRequiresMethodKey(meta)) || []; }catch(e){ requires = []; }
+  const own = EQM.ownership(requires);
+  const entry = { gen: gen, requires: requires, own: own };
+  if(key) _eqDefReqCache.set(key, entry);
+  return entry;
+}
+
 function eqmRequiresChip(key){
   if(typeof EQM==='undefined' || typeof deriveRequires!=='function') return '';   // module absent → never crash a card
   if(typeof equipConfigured!=='function' || !equipConfigured()) return '';         // gated: no kit → silent, zero cost (fail-CLOSED: an absent symbol also renders nothing, never crashes a card)
-  const meta = (typeof resolveItem==='function') ? resolveItem(key) : null; if(!meta) return '';
-  let requires; try{ requires = deriveRequires(meta, eqmRequiresMethodKey(meta)); }catch(e){ return ''; }
+  const meta = (typeof eqmResolveCached==='function') ? eqmResolveCached(key) : ((typeof resolveItem==='function') ? resolveItem(key) : null);
+  if(!meta) return '';
+  const shared = (typeof eqmDefaultReqOwn==='function') ? eqmDefaultReqOwn(meta) : null;
+  let requires, own;
+  if(shared){ requires = shared.requires; own = shared.own; }
+  else { try{ requires = deriveRequires(meta, eqmRequiresMethodKey(meta)); }catch(e){ return ''; } own = EQM.ownership(requires||[]); }
   if(!requires || !requires.length) return '';
-  const own = EQM.ownership(requires);
   const missing={}, partial={};
   (own.missing||[]).forEach(function(r){ missing[r.kind]=true; });
   (own.partial||[]).forEach(function(r){ partial[r.kind]=true; });
@@ -1735,52 +1787,99 @@ function eqmRequiresChip(key){
 // here means the GEAR-INDEPENDENT combo eqmRequiresMethodKey resolves, in its default (non-reversed)
 // order — the SAME call eqmRequiresChip already makes, never itemPaths[].isDefault. Gated on
 // equipConfigured() exactly like the chip (R5 lineage): no kit → always 'ok', zero equipment noise.
+// FIX WAVE 1: the full convergence verdict, cached by meta.key + kit generation — see the shared-cache
+// block above eqmRequiresChip. On a gen-fresh hit this returns WITHOUT touching itemPaths, deriveRequires,
+// or EQM.ownership at all — the entire per-card cost the review flagged collapses to a Map lookup after
+// the first render of a given key under a given kit.
+const _eqValidityCache = new Map();            // key -> { gen, result }
 function eqmValidity(meta){
   const EMPTY = { level:'ok', okPaths:[], gaps:[], fixes:[] };
   if(typeof EQM==='undefined' || typeof deriveRequires!=='function' || typeof itemPaths!=='function') return EMPTY;
   if(typeof equipConfigured!=='function' || !equipConfigured()) return EMPTY;   // R5: no kit → always ok
   if(!meta) return EMPTY;
+
+  const cacheKey = meta.key;
+  const gen = (typeof eqmKitGen==='function') ? eqmKitGen() : 0;
+  if(cacheKey){
+    const hit = _eqValidityCache.get(cacheKey);
+    if(hit && hit.gen===gen) return hit.result;
+  }
+
   let paths; try{ paths = itemPaths(meta) || []; }catch(e){ paths = []; }
-  if(!paths.length) return EMPTY;   // nothing cited to evaluate — never invent a formula verdict
+  if(!paths.length) return EMPTY;   // nothing cited to evaluate — never invent a formula verdict (not cached — cheap, and never reached the expensive path anyway)
+
+  // "Default" combo = the GEAR-INDEPENDENT key eqmRequiresMethodKey resolves (see the big comment above
+  // that function) — never itemPaths[].isDefault (CP2-INPUT). Wrapped in try/catch to match the original
+  // fail-safe: eqmRequiresMethodKey must never be allowed to throw eqmValidity itself.
+  let rawDefKey; try{ rawDefKey = eqmRequiresMethodKey(meta); }catch(e){ rawDefKey = undefined; }
 
   const okPaths = [];
+  let defReq = null, defOwn = null;   // captured IN-LOOP when a path IS the default combo (FIX 2: no separate recompute below)
   paths.forEach(function(p){
     let req; try{ req = deriveRequires(meta, p.methodKey, p.order) || []; }catch(e){ req = []; }
-    if(!req.length){ okPaths.push(p.id); return; }        // no device-gated stage on this path → trivially cookable
-    if(EQM.ownership(req).ok) okPaths.push(p.id);
-  });
-
-  let defReq; try{ defReq = deriveRequires(meta, eqmRequiresMethodKey(meta)) || []; }catch(e){ defReq = []; }
-  const defOwn = EQM.ownership(defReq);
-  if(defOwn.ok) return { level:'ok', okPaths:okPaths, gaps:[], fixes:[] };
-
-  const level = okPaths.length ? 'blocked-default' : 'uncookable';
-
-  // WHY (O-5 point 2): one line per missing/partial KIND, deduped — 'missing' (no device at all) outranks
-  // 'partial' (owned but insufficient) if the default combo somehow names the same kind both ways.
-  const gapState = {};
-  (defOwn.missing||[]).forEach(function(r){ gapState[r.kind] = 'missing'; });
-  (defOwn.partial||[]).forEach(function(r){ if(!gapState[r.kind]) gapState[r.kind] = 'partial'; });
-  const gaps = Object.keys(gapState).map(function(k){ return { kind:k, state:gapState[k] }; });
-
-  // HOW TO FIX (O-5 point 3), deterministic, in order of cheapness: configure the device (deep-link to
-  // the Equipment Manager); switch to another CITED path the owned kit already satisfies; a cited
-  // replacement once E5's ladder lands (disabled placeholder until then — never AI-generated, per O-5).
-  const fixes = [{ type:'configure', label: L('הוסף/הגדר ציוד בניהול הציוד','Add/configure equipment in Equipment Management') }];
-  paths.forEach(function(p){
-    if(okPaths.indexOf(p.id)>=0){
-      fixes.push({ type:'switch-path', pathId:p.id, label: L('זמין במסלול: ','Available on path: ') + p.label });
+    const isDefaultCombo = (p.methodKey===rawDefKey) && !p.order;   // non-reversed order only, per eqmRequiresMethodKey's contract
+    if(!req.length){
+      okPaths.push(p.id);        // no device-gated stage on this path → trivially cookable
+      if(isDefaultCombo){ defReq = req; defOwn = { ok:true, missing:[], partial:[] }; }   // matches EQM.ownership([])'s shape
+      return;
     }
+    const own = EQM.ownership(req);
+    if(own.ok) okPaths.push(p.id);
+    if(isDefaultCombo){ defReq = req; defOwn = own; }
   });
-  fixes.push({ type:'replace-e5', label: L('החלפת ציוד — בקרוב (E5)','Equipment replacement — coming soon (E5)') });
 
-  return { level:level, okPaths:okPaths, gaps:gaps, fixes:fixes };
+  if(!defOwn){
+    // the raw default combo never matched any cited path (e.g. a gear-narrowed default not itself cited,
+    // or a spec/make profile where eqmRequiresMethodKey is a no-op) — fall back to the SAME shared cache
+    // eqmRequiresChip (E1) reads/writes, so the two can never diverge and, after either one runs first,
+    // the other never pays for this identical deriveRequires+EQM.ownership call again either.
+    const shared = eqmDefaultReqOwn(meta);
+    defReq = shared.requires; defOwn = shared.own;
+  } else if(cacheKey){
+    // the opposite direction: THIS call already computed the default combo's real ownership in the loop
+    // above — seed the shared cache so eqmRequiresChip, if it runs next for the same card (it does,
+    // cutCard/specCard/makeCard call eqInvState then eqmRequiresChip in that order), hits instead of
+    // recomputing the identical call.
+    _eqDefReqCache.set(cacheKey, { gen: gen, requires: defReq, own: defOwn });
+  }
+
+  let result;
+  if(defOwn.ok){
+    result = { level:'ok', okPaths:okPaths, gaps:[], fixes:[] };
+  } else {
+    const level = okPaths.length ? 'blocked-default' : 'uncookable';
+
+    // WHY (O-5 point 2): one line per missing/partial KIND, deduped — 'missing' (no device at all) outranks
+    // 'partial' (owned but insufficient) if the default combo somehow names the same kind both ways.
+    const gapState = {};
+    (defOwn.missing||[]).forEach(function(r){ gapState[r.kind] = 'missing'; });
+    (defOwn.partial||[]).forEach(function(r){ if(!gapState[r.kind]) gapState[r.kind] = 'partial'; });
+    const gaps = Object.keys(gapState).map(function(k){ return { kind:k, state:gapState[k] }; });
+
+    // HOW TO FIX (O-5 point 3), deterministic, in order of cheapness: configure the device (deep-link to
+    // the Equipment Manager); switch to another CITED path the owned kit already satisfies; a cited
+    // replacement once E5's ladder lands (disabled placeholder until then — never AI-generated, per O-5).
+    const fixes = [{ type:'configure', label: L('הוסף/הגדר ציוד בניהול הציוד','Add/configure equipment in Equipment Management') }];
+    paths.forEach(function(p){
+      if(okPaths.indexOf(p.id)>=0){
+        fixes.push({ type:'switch-path', pathId:p.id, label: L('זמין במסלול: ','Available on path: ') + p.label });
+      }
+    });
+    fixes.push({ type:'replace-e5', label: L('החלפת ציוד — בקרוב (E5)','Equipment replacement — coming soon (E5)') });
+
+    result = { level:level, okPaths:okPaths, gaps:gaps, fixes:fixes };
+  }
+
+  if(cacheKey) _eqValidityCache.set(cacheKey, { gen: gen, result: result });
+  return result;
 }
 // the catalog's bold-invalid card treatment + umake-panel row treatment — computed ONCE per card from the
 // SAME eqmValidity verdict the item's own why/fix panel reads (compute-once, spec §4.2 style). 'ok' (incl.
 // unconfigured, R5) → both empty strings, the negative case: NOTHING renders anywhere.
 function eqInvState(key){
-  const meta=(typeof resolveItem==='function')?resolveItem(key):null;
+  // FIX WAVE 1: shared cache (see block above eqmRequiresChip) — the SAME resolveItem this card's own
+  // eqmRequiresChip(key) call also needs for the identical key, previously each ran it independently.
+  const meta=(typeof eqmResolveCached==='function')?eqmResolveCached(key):((typeof resolveItem==='function')?resolveItem(key):null);
   const v=(typeof eqmValidity==='function')?eqmValidity(meta):{level:'ok'};
   const cls = v.level==='uncookable' ? ' eq-inv' : (v.level==='blocked-default' ? ' eq-inv-soft' : '');
   // O-5 point 1: the badge is 'uncookable'-only — blocked-default gets the lighter class alone, never
