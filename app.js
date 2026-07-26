@@ -70,6 +70,12 @@ const EQUIP_CATS=[
     {key:'dimD_cm', he:'עומק חיצוני', en:'Outer depth', kind:'num', unit:'ס״מ', em:'📏', tier:'pro', bounds:[10,300], alt:['in->cm','mm->cm']},
     {key:'shelfW_cm', he:'רוחב מדף', en:'Shelf width', kind:'num', unit:'ס״מ', em:'📐', tier:'pro', bounds:[10,300], alt:['in->cm','mm->cm']},
     {key:'shelfD_cm', he:'עומק מדף', en:'Shelf depth', kind:'num', unit:'ס״מ', em:'📐', tier:'pro', bounds:[10,300], alt:['in->cm','mm->cm']},
+    // E2 (owner Decision 3 rider, 2026-07-26): free-text "what's loaded right now" — a LIVE state field,
+    // not a device spec, so it is deliberately excluded from the AI web-lookup schema/extraction (see the
+    // p.kind==='text' skip in _lookupOnce below) — a public spec page can never say what's in the firebox
+    // today. kind:'text' is a NEW props kind (first of its kind here); doSave's per-prop save loop stores
+    // it verbatim (no propParse — free text is never "invalid"), matching bool/choice's own dedicated branch.
+    {key:'loadedWood', he:'עץ טעון כעת', en:'Wood loaded now', kind:'text', em:'🪵', tier:'pro'},
    ]},
   {cat:'grill', he:'גריל', en:'Grill', icon:'🔥', acc:'#e76f51', accL:'#f9ddd3', capEm:'🔥', types:['פחם','גז','קטל','פלנצ׳ה / פלטה','לבה / אינפרא'], capKey:'zones', capHe:'אזורי חום', capEn:'heat zones',
    props:[
@@ -7067,6 +7073,36 @@ function renderTimelinePanel(){
           }
           let _sub=s.note||'';
           if(s.kind==='sv'){ const bt=_svBatch[c.m.key+'@'+s.start.getTime()]; if(bt){ const bn='🌊 '+L('אמבט משותף עם ','shared bath with ')+bt.names.join(', ')+(bt.bath?(' · '+L('השתמש באמבט ','use the ')+bt.bath+L(' ל׳',' L')+L(' לכולם',' bath for all')):''); _sub=_sub?_sub+' · '+bn:bn; } }
+          // E2 (owner Decision 3 rider, 2026-07-26): wood-load advisory — a FLAVOR nudge, never a gate
+          // (unlike capability/safety). Reuses the exact same annotation slot as the sv-share note above
+          // (append into _sub, ' · '-joined) rather than inventing new layout. Gated on cat==='smoker'
+          // specifically, not merely "cookerFor returned something for kind 'smoke'" — cookerCandidates('smoke')
+          // also returns a charcoal/kettle/gas GRILL (app.js cookerCandidates), and loadedWood is a prop only
+          // on the smoker category's schema; a grill device has no UI field to ever set/clear it, so gating
+          // on cat here (rather than kind alone) avoids an eternally-unfixable advisory on a kettle-as-smoker.
+          if(s.kind==='smoke'){
+            const cwood=c.m.kind==='cut'?c.m.obj.wood:(c.profile&&c.profile.wood);
+            if(cwood){
+              const smDev=cookerFor(c.m.key,'smoke',_ckScope);
+              if(smDev && smDev.cat==='smoker'){
+                // normalize: trim + collapse internal spaces; a match = the loaded string equals or is
+                // contained in one of the recipe's "/"-separated options, or vice-versa.
+                const loadedRaw=(smDev.cap&&smDev.cap.loadedWood!=null)?String(smDev.cap.loadedWood):'';
+                const loaded=loadedRaw.trim().replace(/\s+/g,' ');
+                if(!loaded){
+                  const wn='🪵 '+L('בדוק וטען עץ מתאים: ','Check/load a suitable wood: ')+t(cwood);
+                  _sub=_sub?_sub+' · '+wn:wn;
+                } else {
+                  const woodOpts=String(cwood).split('/').map(function(o){return o.trim().replace(/\s+/g,' ');}).filter(Boolean);
+                  const woodMatch=woodOpts.some(function(o){return o===loaded||o.indexOf(loaded)>=0||loaded.indexOf(o)>=0;});
+                  if(!woodMatch){
+                    const wn='🪵 '+L('המתכון מבקש ','Recipe calls for ')+t(cwood)+L(' — טעון: ',' — loaded: ')+t(loaded);
+                    _sub=_sub?_sub+' · '+wn:wn;
+                  }
+                }
+              }
+            }
+          }
           tasks.push({t:s.start,label:`${s.kind==='sv'?'🌊':s.kind==='smoke'?'💨':'🔥'} ${s.label} — ${name}`,sub:_sub,kind:s.kind,det,dur:Math.round(s.hours*3600),tid:s.tid,cooker:cookerLabel(c.m.key,s.kind),contention:!!_clashOcc[c.m.key+'|'+s.kind]});
         }
       });
@@ -7567,7 +7603,11 @@ const AREA_CM2_SCHEMA_FIELD='"areaCm2":"<TOTAL cooking area in square centimetre
 // stays the ONE public entry point — the caller (app.js #eqLookup handler) is unchanged.
 async function _lookupOnce(query, cat, enrich){
   const c=equipCat(cat)||{}; const types=c.types||[];
-  const catProps=(c.props||[]);   // this category's own props[] (Task 1) — only ask for what applies (a stuffer has no maxC)
+  // E2 rider: kind:'text' props (e.g. smoker.loadedWood) hold LIVE state ("what's in the firebox right
+  // now"), never a published device spec — a web lookup can never answer that, so they are excluded from
+  // both the schema this function asks the model to fill AND the extraction loop below, never merely
+  // left to fail silently on a numeric parse.
+  const catProps=(c.props||[]).filter(function(p){return p.kind!=='text';});   // this category's own props[] (Task 1) — only ask for what applies (a stuffer has no maxC)
   // Describe each property by its CANONICAL unit (propCoerce prefers it, converting only when the raw value
   // is implausible as given) so the model's answer needs the least amount of guessing to land in range.
   const propSchemaField=function(p){
@@ -7966,6 +8006,7 @@ function openEquipment(){
         if(raw===''){ delete d.cap[p.key]; return; }                 // empty -> fall back to the class default
         if(p.kind==='bool'){ d.cap[p.key]=(raw==='true'); return; }
         if(p.kind==='choice'){ d.cap[p.key]=raw; return; }
+        if(p.kind==='text'){ d.cap[p.key]=raw; return; }             // free text (e.g. loadedWood) — store verbatim, never numeric-parsed
         const r=propParse(p, raw); if(r) d.cap[p.key]=r.v; else delete d.cap[p.key];
       });
       // review Important: cap.areaEst provenance — an accepted derived-ESTIMATE (Fix 2's "Accept" button,

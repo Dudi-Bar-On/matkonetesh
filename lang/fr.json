@@ -334,5 +334,9 @@
  "יש לך מדחום פנימי?": "Vous avez un thermomètre interne ?",
  "הרבה מתכונים דורשים מדידת טמפ׳ פנימית. אם יש לך מדחום — רשום אותו וכל המתכונים האלה ייפתחו.": "De nombreuses recettes nécessitent une mesure de température interne. Si vous en avez un, enregistrez-le et toutes ces recettes se débloqueront.",
  "רשום מדחום": "Enregistrer le thermomètre",
- "אין לי": "Pas de thermomètre"
+ "אין לי": "Pas de thermomètre",
+ "עץ טעון כעת": "Bois actuellement chargé",
+ "בדוק וטען עץ מתאים: ": "Vérifiez/chargez un bois adapté : ",
+ "המתכון מבקש ": "La recette demande ",
+ " — טעון: ": " — chargé : "
 }

@@ -30,7 +30,9 @@ test('E2: every property declares an icon and a tier', async ({ page }) => {
     EQUIP_CATS.forEach(function(c){ (c.props||[]).forEach(function(p){
       if(!p.em) out.push(c.cat+'.'+p.key+' missing em');
       if(['core','pro'].indexOf(p.tier)<0) out.push(c.cat+'.'+p.key+' bad tier');
-      if(['num','bool','choice'].indexOf(p.kind)<0) out.push(c.cat+'.'+p.key+' bad kind');
+      // 'text' added for E2 (owner Decision 3 rider, 2026-07-26): smoker.loadedWood — free-text live state,
+      // not a number/bool/choice; doSave/propField/_lookupOnce all know this 4th kind explicitly (app.js).
+      if(['num','bool','choice','text'].indexOf(p.kind)<0) out.push(c.cat+'.'+p.key+' bad kind');
     }); });
     return out;
   })()`) as string[];
