@@ -5,6 +5,26 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 266 · 26.7.26
+
+**Equipment validity gates (E3) + one-source cooking schedules (CP1) + three new languages:**
+- **Items you can't cook with your kit now say so — clearly and helpfully.** A catalog item whose
+  cooking needs your equipment can't meet is flagged, with a plain "why" (which device is missing) and
+  "how to fix it" (configure the device, or switch to a cited path your kit *does* support). Adding an
+  uncookable item to a plan is blocked with the reason. Nothing is ever blocked from *view* — you can
+  always look and explore alternatives.
+- **Temperature-probe awareness.** Recipes with an internal-temperature stage now require a standalone
+  (e.g. wireless) meat probe; a one-time nudge lets you register a thermometer you already own so those
+  recipes unlock at once.
+- **Deleting a device warns you first** when it would affect items already in a plan or event — with the
+  real count — and releases only the affected holds.
+- **One source of truth for every cooking schedule (CP1).** The item card, timeline, work plan, and the
+  AI assistant all read the same cited schedule now — the "105° on the card, something else on the
+  timeline" class of contradiction is gone by construction.
+- **French, German, and Spanish** now covered at ~99%, via a locally-run, safety-gated translation
+  pipeline, with a semantic-correctness repair pass and a Hebrew-source cleanup (correcting Anglicized
+  cooking terms at the root so every language inherits accurate terminology).
+
 ## מהדורה 265 · 25.7.26
 
 **Owner verification round 2 — making the v264 fixes visible where users actually look:**
