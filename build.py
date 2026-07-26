@@ -404,6 +404,58 @@ if _en_keys:
         _cov = len(_k & _en_keys); _orph = _k - _en_keys
         _pct = round(100 * _cov / len(_en_keys))
         print("[i18n] %s: %d/%d keys vs en (%d%%)%s" % (_code, _cov, len(_en_keys), _pct, (" · %d orphaned" % len(_orph)) if _orph else ""))
+# ── v268 Task 11 — active-langs ⊆ LANGNAME (spec §10, M-1) ─────────────────────────────────────
+# Every active language (each lang/<code>.json code present, i.e. _i18n's keys — .data.json files are
+# merged INTO an existing code above and never introduce a new one) must be a key in app.js's
+# `const LANGNAME={...}` literal, or aiJSON (5484 `LANGNAME[outLang]||'English'`) and mtTranslate
+# (8694 `LANGNAME[lang]||lang`) silently default that language's AI replies / prose-MT to English. This
+# makes I5 (the Italian-defaulted-to-English bug) non-recurring: the NEXT queued language cannot ship
+# without a LANGNAME entry either.
+import sys as _sys
+_langname_m = _re.search(r'const\s+LANGNAME\s*=\s*\{([^}]*)\}', _js)
+assert _langname_m, "[i18n:M-1] could not locate `const LANGNAME={...}` literal in app.js"
+_langname_keys = set(_re.findall(r'(\w+)\s*:', _langname_m.group(1)))
+# _i18n keys also include underscore-prefixed lang/ ARTIFACT files (_extracted.json, _callsite-sig.json,
+# a future _i18n-allow-identical.json/_i18n-deferred.json) picked up by the *.json glob above (pre-
+# existing, line ~385) — those are not language codes and must never be required in LANGNAME.
+_active_langs = set(_c for _c in _i18n.keys() if not _c.startswith("_"))
+_missing_from_langname = sorted(_active_langs - _langname_keys)
+if _missing_from_langname:
+    print("[i18n:M-1] active language(s) present under lang/ but missing from app.js LANGNAME: %s" % _missing_from_langname)
+    print("[i18n:M-1] add the missing code(s) to `const LANGNAME={...}` (app.js) before shipping — otherwise")
+    print("[i18n:M-1] aiJSON/mtTranslate silently default that language's AI replies to English (spec §10).")
+    _sys.exit(1)
+# ── v268 Task 11 — Guard D: call-site structural signature (spec §4.5, the honest deploy boundary) ─────
+# HONEST SCOPE (spec §4.5 — do not overclaim): this is a CHEAP STRUCTURAL signature — a single regex pass
+# counting app.js's `L(`/`t(`/`toast(` call sites and hashing (sha1) the sorted multiset of each call's
+# static string-literal FIRST argument. It is NOT a re-extraction and NOT a full acorn AST walk (that is
+# scripts/i18n-extract.mjs / Task 2, which never runs on Cloudflare — python build.py alone has no
+# guaranteed Node there). Guard D catches an L/t/toast call site ADDED, REMOVED, or having its literal
+# first-arg STRING EDITED without regenerating the committed manifest (lang/_callsite-sig.json) — i.e.
+# "an L string changed/added without regenerating". It does NOT catch every possible drift (e.g. an edit
+# confined to a 2nd/3rd arg, or a semantics change that preserves the exact literal multiset). THE
+# PLAYWRIGHT SUITE (spec §8.3 — full acorn extractor re-run, deep-equal vs the committed lang/_extracted.json)
+# IS THE COMPLETE COVERAGE GATE; Guard D is Cloudflare-side defense-in-depth for the no-Node deploy path.
+import hashlib as _hashlib
+def _i18n_callsite_sig(_text):
+    _pat = _re.compile(r'\b(?:L|t|toast)\(\s*(\'(?:[^\'\\]|\\.)*\'|"(?:[^"\\]|\\.)*")')
+    _lits = _pat.findall(_text)
+    return {"count": len(_lits), "sha1": _hashlib.sha1(("\n".join(sorted(_lits))).encode("utf-8")).hexdigest()}
+_i18n_sig_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "lang", "_callsite-sig.json")
+_i18n_computed_sig = _i18n_callsite_sig(_js)
+if _os.environ.get("I18N_REGEN_SIG") == "1":
+    with open(_i18n_sig_path, "w", encoding="utf-8") as _f:
+        json.dump(_i18n_computed_sig, _f, ensure_ascii=False, indent=2)
+    print("[i18n:GuardD] regenerated %s -> %r" % (_i18n_sig_path, _i18n_computed_sig))
+else:
+    with open(_i18n_sig_path, encoding="utf-8") as _f:
+        _i18n_committed_sig = json.load(_f)
+    if _i18n_computed_sig != _i18n_committed_sig:
+        print("[i18n:GuardD] call-site structural signature drift — an L(/t(/toast( call site was added,")
+        print("[i18n:GuardD] removed, or had its literal first-arg string edited without regenerating the")
+        print("[i18n:GuardD] committed manifest. committed=%r computed=%r" % (_i18n_committed_sig, _i18n_computed_sig))
+        print("[i18n:GuardD] regenerate (after re-running the extractor, spec §4.5): I18N_REGEN_SIG=1 python build.py")
+        _sys.exit(1)
 I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
 html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
 import os as _os, shutil as _shutil

@@ -8546,7 +8546,7 @@ const THEME_SCHEME={cream:'light',charcoal:'dark',walnut:'light',slate:'light'};
 const I18N_DICTS = __I18N_DICTS__;
 const I18N_LANGS = (function(){ const o={he:'עברית'}; try{ Object.keys(I18N_DICTS).forEach(function(k){ o[k]=((I18N_DICTS[k]||{}).__meta__||{}).name||k; }); }catch(e){} return o; })();
 const LANG_FLAG = {he:'🇮🇱', en:'🇬🇧', fr:'🇫🇷', de:'🇩🇪', es:'🇪🇸', ar:'🇸🇦', ru:'🇷🇺', it:'🇮🇹'};
-const LANGNAME={en:'English',ar:'Arabic',ru:'Russian',es:'Spanish',fr:'French',de:'German'};   // shared code→language-name map (aiJSON outLang + mtTranslate)
+const LANGNAME={en:'English',ar:'Arabic',ru:'Russian',es:'Spanish',fr:'French',de:'German',it:'Italian'};   // shared code→language-name map (aiJSON outLang + mtTranslate) — v268 T11: 'it' added (spec §10/M-1, all active langs en/fr/de/es/it covered)
 function langFlag(k){ return LANG_FLAG[k]||'🌐'; }
 function langRowHtml(){ return `<div class="lang-row" role="group" aria-label="Language">`+Object.keys(I18N_LANGS).map(function(k){ return `<button class="lang-flag ${k===getLang()?'on':''}" data-setlang="${k}" title="${I18N_LANGS[k]}" aria-label="${I18N_LANGS[k]}" aria-pressed="${k===getLang()}"><span class="lf-emoji">${langFlag(k)}</span><span class="lf-name">${I18N_LANGS[k]}</span></button>`; }).join('')+`</div>`; }
 function wireLangRow(root){ (root||document).querySelectorAll('[data-setlang]').forEach(function(b){ b.addEventListener('click',function(){ setLang(b.dataset.setlang); }); }); }
