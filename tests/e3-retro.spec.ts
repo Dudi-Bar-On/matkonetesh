@@ -24,6 +24,9 @@ const boot = async (page: any, kit: any[] | null, extra: Record<string, string> 
 
 const SMOKER = [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'ארון', cap: { racks: 4, areaCm2: 6000, maxC: 150 } }];
 const FULL = SMOKER.concat([{ id: 'g1', cat: 'grill', type: 'חשמלי', name: 'גריל', cap: { areaCm2: 5000, maxC: 300 } }]);
+// BATH: neither of make-m-brat's cited paths (grill/smoke) is satisfied — same fixture role as
+// e3-validity.spec.ts/e3-plan-gate.spec.ts's own BATH kit, reused here for the gate-prep divergence test.
+const BATH = [{ id: 'b1', cat: 'sousvide', type: 'טבילה (immersion)', name: 'אמבט', cap: { baths: [20] } }];
 const MENU = { guests: 8, appetite: 'reg', kosher: false, keys: ['make-m-brat'], sides: [], drinks: [], desserts: [], gpm: 0 };
 
 const openEquipPanel = async (page: any) => {
@@ -48,6 +51,33 @@ test.describe('(a)+(b) real delete click — the warn dialog shows REAL counts +
     await page.screenshot({ path: 'mockups/e3-retro-warn-dialog.png' });
     // cancel this instance so the fixture is untouched for inspection above — the dedicated (c) test
     // below proves cancel behaviour itself
+    await page.click('#appdlg [data-adk="cancel"]');
+    await page.waitForFunction(`!document.querySelector('#appdlg')`);
+  });
+
+  // E3 gate-prep (Task 4 review Minor, DoD-9): the (a) test above only ever exercised M===1/N===1 (the
+  // singular branch) and its report claimed the plural branch "proven correct" purely by analogy to other
+  // L(sing,plur) call sites — never actually rendered. This fixture forces N≥2/M≥2 for real: TWO make-
+  // items sharing MAKE_COOK['נקניקיות'] (grill default + smoke alt, app.js) both sit at 'blocked-default'
+  // under a SMOKER-only kit, so deleting the one smoker flips BOTH to 'uncookable' at once — a genuine
+  // plural, not an invented one.
+  test('(a3) DoD-9 plural — N≥2: dialog renders יושפעו (plural verb) + פריטים (plural noun), real click', async ({ page }) => {
+    const MENU2 = { guests: 8, appetite: 'reg', kosher: false, keys: ['make-m-brat', 'make-m-weiss'], sides: [], drinks: [], desserts: [], gpm: 0 };
+    await boot(page, SMOKER, { 'mk-menu': JSON.stringify(MENU2) });
+    // sanity — both items really are 'blocked-default' before trusting the delete-impact math
+    const levels = await page.evaluate(`[eqmValidity(resolveItem('make-m-brat')).level, eqmValidity(resolveItem('make-m-weiss')).level]`) as string[];
+    expect(levels).toEqual(['blocked-default', 'blocked-default']);
+
+    await openEquipPanel(page);
+    await page.click('#panel [data-eqrm="d1"]');
+    await page.waitForSelector('#appdlg .appdlg-msg');
+    const html = await page.locator('#appdlg .appdlg-msg').innerHTML();
+    expect(html).toMatch(/<span dir="ltr">2<\/span>\s*מתוך\s*<span dir="ltr">2<\/span>/);
+    expect(html).toContain('יושפעו');       // plural VERB (agrees with N=2) — never asserted before this test
+    expect(html).toContain('פריטים');       // plural NOUN (agrees with M=2) — never asserted before this test
+    expect(html).not.toContain('יושפע:');   // never the singular form (which the real template would render as "...יושפע: ")
+    expect(html).toContain('בראטוורסט');
+    expect(html).toContain('וייסוורסט');
     await page.click('#appdlg [data-adk="cancel"]');
     await page.waitForFunction(`!document.querySelector('#appdlg')`);
   });
@@ -249,4 +279,49 @@ test('DoD-10 safety invariance — a real delete-confirm never mutates the item 
     return before===after && stagesBefore===stagesAfter;
   })()`) as boolean;
   expect(eq).toBe(true);
+});
+
+// E3 gate-prep (Task 4 review Important #2): eqmValidityWithKit deliberately has NO equivalent to
+// eqmValidity's eqmDefaultReqOwn fallback branch (see the comment above eqmValidityWithKit, app.js) — the
+// fallback only ever fires for a "default combo not itself a cited path" edge, which on REAL catalog data
+// is real (unconditional) for every make/spec-kind item (eqmRequiresMethodKey is a no-op there) but a
+// provable NO-OP in value: deriveRequires(meta,undefined) resolves the exact same default combo
+// itemPaths[0] already names, so eqmValidity's fallback never actually disagrees with the per-path loop
+// eqmValidityWithKit also runs. This test forces a DISAGREEMENT synthetically — patches the shared
+// eqmDefaultReqOwn to (wrongly) claim the default combo is owned — to pin the SAFE DIRECTION if the two
+// ever did diverge on real data: eqmValidity, trusting the (here lying) fallback, answers 'ok'; the
+// what-if mirror, which never consults that fallback, still answers correctly from the real per-path
+// ownership — i.e. the missing branch can only make eqmValidityWithKit MORE conservative (over-flag
+// 'uncookable'), never less (never mask a real gap by under-flagging).
+test('E3 gate-prep — eqmValidityWithKit never under-flags relative to a (forced) diverging default-combo fallback', async ({ page }) => {
+  await boot(page, BATH, { 'mk-menu': JSON.stringify(MENU) });   // BATH: neither of m-brat's cited paths (grill/smoke) is satisfied
+  const r = await page.evaluate(`(function(){
+    var meta = resolveItem('make-m-brat');
+    // sanity — this item really does hit the "default combo not itself cited" edge on every call:
+    // eqmRequiresMethodKey is unconditionally undefined for non-'cut' kinds (see its own comment, app.js)
+    var edgeConfirmed = (eqmRequiresMethodKey(meta) === undefined);
+    // BEFORE: on real (unpatched) data the two never disagree — the no-op claim itself, pinned
+    var realLevelBefore = eqmValidity(meta).level;
+    var mirrorLevelBefore = eqmValidityWithKit(meta, equipList()).level;
+    // AFTER: force the shared fallback to (wrongly) claim the default combo IS owned — a disagreement
+    // that never arises from real data (see comment above) but pins the safe direction if it ever did.
+    // eqmValidity's own gen-stamped cache (_eqValidityCache) already memoized the BEFORE result under the
+    // unchanged live kit generation — clear it first, or the AFTER call would just replay the BEFORE
+    // answer without ever reaching the (now-patched) fallback at all.
+    _eqValidityCache.clear();
+    var orig = eqmDefaultReqOwn;
+    eqmDefaultReqOwn = function(){ return { requires: [], own: { ok: true, missing: [], partial: [] } }; };
+    var realLevel, mirrorLevel;
+    try {
+      realLevel = eqmValidity(meta).level;                       // trusts the (lying) fallback -> 'ok'
+      mirrorLevel = eqmValidityWithKit(meta, equipList()).level;  // no fallback -> the real per-path truth
+    } finally { eqmDefaultReqOwn = orig; _eqValidityCache.clear(); }   // leave no lying-fallback residue in the shared cache
+    return { edgeConfirmed: edgeConfirmed, realLevelBefore: realLevelBefore, mirrorLevelBefore: mirrorLevelBefore, realLevel: realLevel, mirrorLevel: mirrorLevel };
+  })()`) as any;
+  expect(r.edgeConfirmed).toBe(true);
+  // BEFORE (real, unpatched fallback): no divergence — both agree 'uncookable'
+  expect(r.realLevelBefore).toBe('uncookable');
+  expect(r.mirrorLevelBefore).toBe('uncookable');
+  expect(r.realLevel).toBe('ok');            // eqmValidity fooled by the lying fallback (forced, not real-data-reachable)
+  expect(r.mirrorLevel).toBe('uncookable');  // eqmValidityWithKit stays correct — over-flags relative to eqmValidity here, never under-flags the true gap
 });

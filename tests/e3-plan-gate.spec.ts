@@ -43,6 +43,11 @@ import { test, expect, seedApp } from './_fixtures';
 //     here would silently strip an already-saved event's items on every load, which is exactly the
 //     silent behaviour spec §7's (separate, later) retroactive-invalidation task forbids. Proven NOT
 //     gated below (an uncookable item survives a real evLoad intact).
+//   - resetMenu's own undo-toast restore (E3 gate-prep, Task 2 review Minor) — a 4th programmatic-restore
+//     bypass of the same shape, found late and disclosed here rather than left silently unlisted: `prev`
+//     (the pre-reset menu, possibly holding an uncookable item) is restored verbatim on undo, same
+//     reasoning as evLoad's undo — gating it would silently strip an item the user had BEFORE they reset.
+//     Proven NOT gated below.
 
 const boot = async (page: any, kit: any[] | null, extra: Record<string, string> = {}) => {
   const kv: Record<string, string> = { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...extra };
@@ -190,6 +195,21 @@ test.describe('(3) confirmed NOT gated — programmatic writes and inert paths',
     await page.evaluate(`store.set('mk-events', [{id:'ev-A', name:'בדיקה', serve:'19:00', menu:{keys:['make-m-brat']}}])`);
     await page.evaluate(`evLoad('ev-A')`);
     expect(await page.evaluate(`menuState().keys`)).toContain('make-m-brat');   // never silently stripped
+  });
+
+  // E3 gate-prep (Task 2 review Minor) — the 4th programmatic-restore path, same shape as evLoad above:
+  // resetMenu's own undo-toast restores `prev` (the pre-reset menu) VERBATIM via a real click on the
+  // toast's [data-undo] button — never through eqmAddGate. Gating it would silently strip an uncookable
+  // item the user already had BEFORE they hit reset, exactly the silent-strip behaviour this whole
+  // "programmatic restore" family is deliberately exempt from.
+  test('resetMenu\'s undo-toast restore is NEVER gated — a real undo click brings an uncookable item back intact', async ({ page }) => {
+    await boot(page, BATH, { 'mk-menu': JSON.stringify({ guests: 8, appetite: 'reg', kosher: false, keys: ['make-m-brat'], sides: [], drinks: [], desserts: [], gpm: 0 }) });
+    await page.evaluate(`resetMenu()`);
+    await page.waitForFunction(`(menuState().keys||[]).length===0`);   // sanity — the reset itself really cleared the plan
+    await page.waitForSelector('#toast [data-undo]');
+    await page.click('#toast [data-undo]');
+    await page.waitForFunction(`(menuState().keys||[]).includes('make-m-brat')`);
+    expect(await page.evaluate(`menuState().keys`)).toContain('make-m-brat');   // never silently stripped on undo
   });
 
   test('presetFromCart is confirmed inert — cart is a permanently-empty Set, adds nothing regardless of kit', async ({ page }) => {

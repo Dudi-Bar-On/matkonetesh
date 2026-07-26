@@ -2037,6 +2037,28 @@ function eqmAddGateKeys(keys){
 // exactly like eqmValidity (R5): an unconfigured kit never reports impact, zero equipment noise. Only the
 // 'level' is needed here — no gaps/fixes construction (that machinery is for the why/fix panel, unused by
 // the delete-warning dialog).
+//
+// E3 GATE-PREP (Task 4 review, Important #2) — DISCLOSED DIVERGENCE, not fixed: this "mirror" is NOT
+// byte-faithful to eqmValidity's algorithm. eqmValidity has one extra branch below — when NO path in the
+// paths-loop matches the gear-independent default combo (eqmRequiresMethodKey), it falls back to the
+// shared, LIVE-kit-only eqmDefaultReqOwn(meta) to decide 'ok' vs not (see the `!defOwn` block above). This
+// function has no equivalent fallback — its verdict is 'ok' iff SOME cited path's own per-path ownership
+// (under kitOverride) is satisfied, full stop. The two verdicts can only diverge in the direction of THIS
+// function being MORE conservative: a hypothetical case where eqmValidity's fallback would call the
+// default combo 'ok' by a route this function never checks. It can therefore only OVER-flag 'uncookable'
+// relative to a fully-mirrored version, never UNDER-flag — a real gap is never masked, so eqmRetroImpact's
+// N/M count can (in that unreached edge) over-count impact, never under-count it. Unify-vs-disclose
+// judged at gate-prep: eqmDefaultReqOwn's fallback is cached and LIVE-kit-only by construction (no
+// kitOverride param, shared with eqmRequiresChip/E1) — giving eqmValidityWithKit an equivalent would mean
+// either (a) adding an uncached, kit-parameterized twin of eqmDefaultReqOwn solely for this rare edge, or
+// (b) threading an ownership-fn through both functions' shared loop body — real surgery on a cached,
+// heavily-relied-on core (eqmValidity feeds every catalog card + the plan-add gate) for a branch that, on
+// today's real catalog data, is provably a no-op: it only ever fires for 'make'/'spec' kind meta (where
+// eqmRequiresMethodKey is unconditionally undefined — its own comment above), and there
+// deriveRequires(meta, undefined) resolves the SAME default combo itemPaths[0] already is, so the fallback
+// never disagrees with the loop's own per-path check in practice. Given the safe-only direction and the
+// no-op-on-real-data status, disclosure (this comment) was chosen over unification — pinned by the test
+// below rather than left as an unverified claim.
 function eqmValidityWithKit(meta, kitOverride){
   if(typeof EQM==='undefined' || typeof deriveRequires!=='function' || typeof itemPaths!=='function') return {level:'ok'};
   if(typeof equipConfigured!=='function' || !equipConfigured()) return {level:'ok'};   // R5, same gate as eqmValidity
@@ -5741,6 +5763,9 @@ function resetMenu(){
   store.set(mkMenuqtyKey(),{});
   renderMenu();
   const label=(typeof menuCtx==='function'&&menuCtx()==='cook')?'הבישול אופס':'התפריט אופס — תפריט חדש';
+  // E3 gate-prep disclosure (Task 2 review Minor): this undo restore is a PROGRAMMATIC restore, same
+  // family as evLoad/evClearActive/evNewDraft/evLoad's own undo-toast — deliberately NOT run through
+  // eqmAddGate (restoring `prev` verbatim must never silently strip an item the user had before reset).
   toast(label,()=>{ saveMenu(prev); renderMenu(); });
 }
 function openMenu(){
