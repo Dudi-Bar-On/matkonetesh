@@ -3345,7 +3345,7 @@ function shopData(){
   srcKeys.forEach(k=>{
     if(k.startsWith("cut-")){
       const c=DATA.cuts.find(x=>"cut-"+x.n===k); if(!c)return;
-      items.push({cat:c.cat,name:(getLang&&getLang()!=='he'?c.eng:c.heb+" · "+c.eng),key:k});
+      items.push({cat:c.cat,name:(getLang&&getLang()!=='he'?itemName(c):c.heb+" · "+c.eng),key:k});
       collectSeas(k,nm(c,k));
       // per-guest RAW quantity via the shared rawGramsFor — never the whole-cut catalog weight (c.kg),
       // and computed live so it can't go stale against the menu screen or the print menu.
@@ -3358,7 +3358,7 @@ function shopData(){
       if(c.coal) coal.add(c.coal);
     } else if(k.startsWith("spec-")){
       const s=DATA.specials.find(x=>"spec-"+x.n===k); if(!s)return;
-      items.push({cat:s.cat,name:(getLang&&getLang()!=='he'?s.eng:s.heb+" · "+s.eng),key:k});
+      items.push({cat:s.cat,name:(getLang&&getLang()!=='he'?itemName(s):s.heb+" · "+s.eng),key:k});
       collectSeas(k,nm(s,k));
       { const _m=resolveItem(k); const _raw=_m?rawGramsFor(_m):0;
         meat.push(`${nm(s,k)} — ~${(_raw/1000).toFixed(1)} ${kg}`); }
@@ -3366,7 +3366,7 @@ function shopData(){
       const b=DATA.builds["spec-"+s.n]; if(b&&b.materials) b.materials.forEach(m=>equip.add(m));
     } else if(k.startsWith("make-")){
       const id=k.slice(5), m=DATA.makes[id]; if(!m)return;
-      items.push({cat:m.cat,name:(getLang&&getLang()!=='he'?m.eng:m.heb+" · "+m.eng),key:k});
+      items.push({cat:m.cat,name:(getLang&&getLang()!=='he'?itemName(m):m.heb+" · "+m.eng),key:k});
       collectSeas(k,nm(m,k));
       { const _m=resolveItem(k); const _raw=_m?rawGramsFor(_m):0;
         meat.push(`${nm(m,k)} (${t(m.cat)}) — ~${(_raw/1000).toFixed(1)} ${kg}`); }
@@ -8556,7 +8556,16 @@ function getLang(){
 }
 function setLang(l){ if(!I18N_LANGS[l]) return; store.set('mk-lang',l); applyLang(); }
 function getDict(){ return (getLang()==='he')?null:(I18N_DICTS[getLang()]||{}); }
-function itemName(m){ if(!m) return ''; if(getLang()!=='he' && m.eng) return m.eng; return m.heb||m.eng||''; }
+// v268 T6 (spec §11/I-D — the ONE names scheme): recipe/category/cut/make display names live in a dict
+// `__names__` sub-map keyed by m.heb, resolved DIRECTLY here — no L/t call, no flat `he␟name` key
+// (names must never collide with the chrome __ctx__ homograph scheme). he-mode is byte-identical to
+// pre-refactor (getDict() is null in he-mode, so __names__ is never even reached); en-mode is unchanged
+// (m.eng, zero-regression — __names__ is fr/de/es/it-only, populated by Task 8's translation pass).
+function itemName(m){ if(!m) return '';
+  const l=getLang(); if(l==='he') return m.heb||m.eng||'';
+  if(l==='en') return m.eng||m.heb||'';                                          // en: shipped English, zero-regression
+  const nm=getDict().__names__||{}; return nm[m.heb] || m.eng || m.heb || '';    // fr/de/es/it: __names__, fallback m.eng (never blank)
+}
 // v268 T4 (spec §2 mech-4/§3.3 M-3): additive 3rd arg `ctx` — mirrors L's homograph disambiguator, so
 // a table-scoped nested-leaf lookup (e.g. doneLabel's DONE_SCALES) can key the dict by `heb+'␟'+ctx`
 // without colliding with an unrelated bare-keyed sense for the same Hebrew text elsewhere.
@@ -9324,7 +9333,7 @@ function renderHomeLanes(){
   HOME_LANES.forEach(function(ln){
     if(typeof gearCan==='function' && !gearCan(ln.m)) return;                    // gear gate — lane shows only for gear you own
     const chips=ln.keys.map(function(k){ const it=(typeof resolveItem==='function')?resolveItem(k):null; if(!it) return '';   // guard: skip a key that no longer resolves
-      const nm=he?it.heb:(it.eng||it.heb);
+      const nm=(typeof itemName==='function')?itemName(it):(he?it.heb:(it.eng||it.heb));   // v268 T6: route through __names__ (spec §11)
       return `<button class="lane-chip" data-k="${k}">${nm}</button>`;
     }).filter(Boolean).join('');
     if(!chips) return;
@@ -9646,7 +9655,7 @@ function combinedEventsRows(){
       // the backward walk. Still iterated BACKWARD: `smokeWin` takes the first smoke seen walking back,
       // i.e. the LAST smoke stage of the chain, and the push order is preserved.
       const _sched=planSchedule(stages, serve.getTime());
-      let smokeWin=null; const row={ev:ev, ei:ei, key:key, name:meta.heb, eng:meta.eng, serve:serve, totalH:totalH, contention:false};
+      let smokeWin=null; const row={ev:ev, ei:ei, key:key, name:meta.heb, eng:meta.eng, nm:(typeof itemName==='function')?itemName(meta):meta.heb, serve:serve, totalH:totalH, contention:false};   // v268 T6: nm routes the render through __names__ (spec §11)
       for(var i=_sched.stages.length-1;i>=0;i--){ const p=_sched.stages[i], s=stages[i]||{};
         if(['smoke','cook','sv'].indexOf(p.kind)>=0){
           if(p.kind==='smoke' && !smokeWin) smokeWin={start:p.startMs,end:p.endMs};
@@ -9694,7 +9703,7 @@ function crossEventShopData(){
       // (guests/appetite/sides live in ev.menu) — never the whole-cut catalog weight (c.kg). Prefer the
       // menu-screen cache when present (same formula), else compute live so a wizard-built event is correct too.
       const kg = (mq[key]!=null ? mq[key] : rawGramsFor(meta, ev.menu)) / 1000;
-      if(!map[key]) map[key]={key:key, name:meta.heb, eng:meta.eng, cat:meta.cat, totalKg:0, events:[]};
+      if(!map[key]) map[key]={key:key, name:meta.heb, eng:meta.eng, nm:(typeof itemName==='function')?itemName(meta):meta.heb, cat:meta.cat, totalKg:0, events:[]};   // v268 T6: nm routes the render through __names__ (spec §11)
       map[key].totalKg += kg; map[key].events.push({name:ev.name, kg:kg});
       if(c.wood) String(c.wood).split('/').forEach(function(w){ w=w.trim(); if(w&&w!=='ללא') woods[w]=1; });
       if(c.coal) coals[c.coal]=1;
@@ -9714,7 +9723,7 @@ function openCrossEventCart(){
     return `<div class="shop-group"><h4>${esc(t(cat))}</h4>`+byCat[cat].map(function(it){
       const qty = it.totalKg? `~${it.totalKg.toFixed(1)} ${kg}` : '';
       const brk = it.events.length>1? it.events.map(function(e){return e.name+(e.kg?` ${e.kg.toFixed(1)}${kg}`:'');}).join(' + ') : '';
-      const disp = (en?it.eng:`${it.name} (${it.eng})`)+(qty?' — '+qty:'');
+      const disp = (en?(it.nm||it.eng):`${it.name} (${it.eng})`)+(qty?' — '+qty:'');   // v268 T6: en-branch routed through __names__ (spec §11); the storage KEY below stays heb+eng (unlocalized, language-stable) on purpose
       return xline(`${it.name} (${it.eng})${qty?' — '+qty:''}`, disp, brk);
     }).join('')+`</div>`;
   }).join('');
@@ -9740,7 +9749,7 @@ function combinedTimelineHTML(){
   const listHtml=rows.map(function(r){ const col=EV_COLORS[r.ei%EV_COLORS.length];
     const day=isoDate(r.start); let head='';
     if(day!==curDay){ curDay=day; head=`<div class="cet-day">📅 ${esc(serveDayLabel(r.start))} · ${new Date(r.start).toLocaleDateString(dloc,{day:'numeric',month:'short'})}</div>`; }
-    return `${head}<div class="cet-row ${r.start<now?'cet-past':''} ${r.contention?'cet-clash':''}" style="border-inline-start:4px solid ${col}" data-cetgo="${esc(r.ev.id)}" data-cetitem="${esc(r.key||'')}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(en?(r.eng||r.name):r.name)}${r.contention?' <span class="cet-warn" title="'+L('חפיפת מעשנה בין אירועים','Smoker overlap between events')+'">⚠ '+L('מעשנה','Smoker')+'</span>':''}</b><small style="color:${col}">${esc(r.ev.name)} · ${L('הגשה','Serve')} ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+L('ד','m'):r.totalH.toFixed(1)+L('ש','h')):''}</span><span class="cet-go">←</span></div>`;
+    return `${head}<div class="cet-row ${r.start<now?'cet-past':''} ${r.contention?'cet-clash':''}" style="border-inline-start:4px solid ${col}" data-cetgo="${esc(r.ev.id)}" data-cetitem="${esc(r.key||'')}"><span class="cet-time">${fmtClock(r.start)}</span><span class="cet-body"><b>${esc(en?(r.nm||r.eng||r.name):r.name)}${r.contention?' <span class="cet-warn" title="'+L('חפיפת מעשנה בין אירועים','Smoker overlap between events')+'">⚠ '+L('מעשנה','Smoker')+'</span>':''}</b><small style="color:${col}">${esc(r.ev.name)} · ${L('הגשה','Serve')} ${fmtServe(r.serve)}</small></span><span class="cet-dur">${r.totalH?(r.totalH<1?Math.round(r.totalH*60)+L('ד','m'):r.totalH.toFixed(1)+L('ש','h')):''}</span><span class="cet-go">←</span></div>`;
   }).join('');
   const clashN=rows.filter(function(r){return r.contention;}).length;
   const clashNote=clashN?`<div class="cet-clashnote">⚠ <b>${L('חפיפת מעשנה:','Smoker overlap:')}</b> ${clashN} ${L('פריטים מאירועים שונים מתוזמנים לעשן בו-זמנית. מעשנה אחת לא תספיק — פזר את שעות ההגשה או השתמש בשתי מעשנות.','items from different events are scheduled to smoke at the same time. One smoker will not be enough — stagger the serve times or use two smokers.')}</div>`:'';
