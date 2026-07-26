@@ -330,5 +330,9 @@
  "אין נתוני קיבולת": "No hay datos de capacidad.",
  "עישון קצר — הפסטור המלא בסו-ויד": "Ahumado rápido: la receta completa de sous vide",
  "גימור לאחר סו-ויד — מקור מצוטט": "Acabado después del sous vide — fuente citada.",
- "מפתח Gemini חינמי · חד-פעמי · ~2 דקות": "Clave de Gemini gratuita · De un solo uso · Aproximadamente 2 minutos."
+ "מפתח Gemini חינמי · חד-פעמי · ~2 דקות": "Clave de Gemini gratuita · De un solo uso · Aproximadamente 2 minutos.",
+ "יש לך מדחום פנימי?": "¿Tienes un termómetro interno?",
+ "הרבה מתכונים דורשים מדידת טמפ׳ פנימית. אם יש לך מדחום — רשום אותו וכל המתכונים האלה ייפתחו.": "Muchas recetas necesitan una lectura de temperatura interna. Si tienes uno, regístralo y se desbloquearán todas esas recetas.",
+ "רשום מדחום": "Registrar termómetro",
+ "אין לי": "Sin termómetro"
 }

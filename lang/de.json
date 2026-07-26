@@ -330,5 +330,9 @@
  "אין נתוני קיבולת": "Keine Kapazitätsangaben vorhanden.",
  "עישון קצר — הפסטור המלא בסו-ויד": "Kurzes Räuchern – die vollständige Pasteurisierung im Sous-Vide-Verfahren",
  "גימור לאחר סו-ויד — מקור מצוטט": "Abschlussverfahren nach dem Sous-Vide-Verfahren – zitierte Quelle",
- "מפתח Gemini חינמי · חד-פעמי · ~2 דקות": "Kostenloser Gemini-Schlüssel · Einmalig · ~2 Minuten"
+ "מפתח Gemini חינמי · חד-פעמי · ~2 דקות": "Kostenloser Gemini-Schlüssel · Einmalig · ~2 Minuten",
+ "יש לך מדחום פנימי?": "Haben Sie ein internes Thermometer?",
+ "הרבה מתכונים דורשים מדידת טמפ׳ פנימית. אם יש לך מדחום — רשום אותו וכל המתכונים האלה ייפתחו.": "Viele Rezepte benötigen eine Messung der Kerntemperatur. Wenn Sie eines haben, registrieren Sie es, und alle diese Rezepte werden freigeschaltet.",
+ "רשום מדחום": "Thermometer registrieren",
+ "אין לי": "Kein Thermometer"
 }

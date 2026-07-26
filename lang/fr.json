@@ -330,5 +330,9 @@
  "טיימר הסתיים": "Le minuteur est terminé.",
  "אין נתוני קיבולת": "Aucune donnée de capacité n'est disponible.",
  "עישון קצר — הפסטור המלא בסו-ויד": "Fumage rapide – la recette complète du poisson en cuisson sous vide.",
- "גימור לאחר סו-ויד — מקור מצוטט": "Finition après cuisson sous vide – source citée."
+ "גימור לאחר סו-ויד — מקור מצוטט": "Finition après cuisson sous vide – source citée.",
+ "יש לך מדחום פנימי?": "Vous avez un thermomètre interne ?",
+ "הרבה מתכונים דורשים מדידת טמפ׳ פנימית. אם יש לך מדחום — רשום אותו וכל המתכונים האלה ייפתחו.": "De nombreuses recettes nécessitent une mesure de température interne. Si vous en avez un, enregistrez-le et toutes ces recettes se débloqueront.",
+ "רשום מדחום": "Enregistrer le thermomètre",
+ "אין לי": "Pas de thermomètre"
 }
