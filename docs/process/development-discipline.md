@@ -750,6 +750,30 @@ verified, prefer enabling Serena only for agents doing genuinely symbol-shaped w
 > instrumented experiment completes — §11a L18 forbids mid-run kills — and its data feeds the debugging;
 > but no NEW measurement starts while the root cause is open.)
 
+### 10.19 Translation QA — gate-passing is necessary, not sufficient (owner instruction, 2026-07-26)
+> **Owner instruction. Applies to EVERY language we translate to.**
+The structural gate (safety-lexicon, unit-literal, Hebrew-leak) proves a translation's **structure**
+survived — it does **not** certify **meaning**. A string can pass every gate and still be wrong: `תרבית`→`nitrito`
+(fermentation *starter culture* rendered as the cure chemical *nitrite*) passed a source-conditioned gate;
+`«dary»/«semi-dary»` (a transliteration of an already-Anglicized Hebrew source `דרי`) passed with every number
+intact. Both were caught only by **semantic** review. Three rules per language, **before it ships**:
+1. **Semantic correctness pass.** Every entry is analyzed term-by-term against the Hebrew source (+ the English
+   ground truth) and fixed where wrong — not merely gate-run. Dev-time AI (an external model, or Claude) *proposes*;
+   the gate **plus a human safety-check** remain the **arbiter** before merge (the local model made these errors —
+   a stronger model repairing them earns no blind trust). Correct at **development time** (distributed to every user
+   in the build), **not** at runtime — the runtime "gate-blocks → AI repairs → updates dict" path is a deprioritized
+   fallback.
+2. **Physical Playwright verification.** Walk the running app in the target locale and assert **(a)** strings render
+   translated and correct, and **(b)** each rendered string comes from the **external dictionary** (`lang/*.json`),
+   never a hardcoded `app.js` literal — proving the i18n path is genuinely data-driven.
+3. **Fix the infrastructure on any issue.** When a *class* of error surfaces (a gate blind spot, a source-Hebrew
+   transliteration, a hardcoded literal), fix the gate / pipeline / i18n-loader so it cannot recur — not just the one
+   string. Errors in the **source Hebrew** (Anglicized transliterations like `דרי`, `דריי-ברין`) are fixed at the
+   **root** in `data.py`/`sources.py`, and every dependent dictionary key re-keyed in lockstep (the Hebrew source
+   string is the i18n lookup key).
+The full realization is the **Translation QA & Repair programme** (a target-side safety-invention scan across all
+languages + AI-repair of gate-fallback entries + these three rules) — it gets its own brainstorm → spec.
+
 ### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
 > **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
 > changed. Update it as part of committing and pushing — and sooner than that where practical.
