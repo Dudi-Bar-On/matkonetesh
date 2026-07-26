@@ -229,7 +229,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
               'verified': '2026-07-12',
               'grill': {'ref': 'AmazingRibs (Meathead) — plate / low & slow',
                         'url': 'https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/',
-                        'note': 'לא לגריל ישיר (כנתח שלם): פלייט עתיר שומן וקולגן (מקור פסטרמי/צלעות פלייט) שדורש '
+                        'note': 'לא לגריל ישיר (כנתח שלם): שפונדרה עתירת שומן וקולגן (מקור פסטרמי/צלעות שפונדרה) שדורש '
                                 'בישול ארוך ל-~95°C. אש ישירה על הנתח השלם לא מרככת.'}},
       'order_svsmoke': {'sv': {'t': 68, 'h': '24'},
                         'dry': {'h': '2-4'},
@@ -1008,7 +1008,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                         'url': 'https://amazingribs.com/tested-recipes/pork-recipes/ultimate-smoked-ham-recipe/'}},
  33: {'src': {'grill': {'ref': 'AmazingRibs (Meathead) — Smoked & Grilled Pork Chop (reverse sear)',
                         'url': 'https://amazingribs.com/tested-recipes/pork-recipes/smoked-and-grilled-pork-chop-recipe/',
-                        'note': "ריוורס-סיר לצ'ופ עבה: צד עקיף בלid סגור עד ~54°C (130°F), אז סיר על צד ישיר לוהט "
+                        'note': "ריוורס-סיר לצ'ופ עבה: צד עקיף בכלי סגור עד ~54°C (130°F), אז סיר על צד ישיר לוהט "
                                 "(~260°C/500°F+) עד יעד 63°C. לצ'ופ דק אפשר ישיר בלבד ~3-4 דק' לצד."},
               'verified': '2026-07-12',
               'sv': {'ref': 'Baldwin — Practical Guide to Sous Vide (pork core temps)',
@@ -1163,7 +1163,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                         'url': 'https://amazingribs.com/tested-recipes/lamb-recipes/smoked-lamb-ribs-recipe/'}},
  58: {'src': {'grill': {'ref': 'AmazingRibs (Meathead) — Smoked Lamb Ribs / 2-Zone Setup',
                         'url': 'https://amazingribs.com/tested-recipes/lamb-recipes/smoked-lamb-ribs-recipe/',
-                        'note': "צלעות פלייט/חזה עבות; רק דו-אזורי/עקיף: סורג ~110-135°C, 3-4 שע' עד ~92-96°C פנימי "
+                        'note': "צלעות שפונדרה/חזה עבות; רק דו-אזורי/עקיף: סורג ~110-135°C, 3-4 שע' עד ~92-96°C פנימי "
                                 'ורכות fall-off-bone, אופציונלי סיר קצר לגלייז. לא צלייה ישירה.'},
               'verified': '2026-07-12',
               'sv': {'ref': 'Baldwin — Practical Guide to Sous Vide (tough-cut window)',
@@ -1463,8 +1463,8 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                        'url': 'https://amazingribs.com/bbq-technique-and-science/sous-vide-que/'}},
  9: {'src': {'grill': {'ref': 'ThermoWorks / Serious Eats — grilled duck breast (score skin, render fat)',
                        'url': 'https://blog.thermoworks.com/grilled-duck-breast/',
-                       'note': "משרטטים את העור בקרוסהאץ', מתחילים עור-למטה על אש ישירה בינונית (~200°C) לרנדור "
-                               "השומן והקרנצ', הופכים; מושכים סביב 63-65°C ליבה. שריר שלם בטוח בדרגה זו."},
+                       'note': "משרטטים את העור בחריטה מוצלבת, מתחילים עור-למטה על אש ישירה בינונית (~200°C) להמסת "
+                               "השומן והפריכות, הופכים; מושכים סביב 63-65°C ליבה. שריר שלם בטוח בדרגה זו."},
              'verified': '2026-07-12',
              'sv': {'ref': 'Baldwin — poultry medium 60-65°C, pasteurized',
                     'url': 'https://douglasbaldwin.com/sous-vide.html',
@@ -1543,7 +1543,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                         'url': 'https://amazingribs.com/bbq-technique-and-science/sous-vide-que/'}},
  39: {'src': {'grill': {'ref': 'Serious Eats / Kenji López-Alt — grilled buffalo wings (two-zone, dry-brine)',
                         'url': 'https://www.chilesandsmoke.com/grilled-chicken-wings/',
-                        'note': "דריי-ברין (מלח+אבקת אפייה) ואז צד קר ~30 דק' לרנדור, חריכה ישירה 400-450°F (~230°C) "
+                        'note': "ברין יבש (מלח+אבקת אפייה) ואז צד קר ~30 דק' להמסת שומן, חריכה ישירה 400-450°F (~230°C) "
                                 'לדקות אחרונות. בטיחות ב-74°C, אך מגישים כנף ב-82-85°C לרקמת חיבור רכה.'},
               'verified': '2026-07-12',
               'sv': {'ref': 'Baldwin — poultry table (thin joint)',
@@ -1568,7 +1568,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                         'url': 'https://amazingribs.com/bbq-technique-and-science/sous-vide-que/'}},
  40: {'src': {'grill': {'ref': '101 Cooking For Two / RecipeTeacher — grilled chicken legs (two-zone)',
                         'url': 'https://www.101cookingfortwo.com/art-of-drummies-grilling-chicken/',
-                        'note': 'עקיף תחילה לרנדור שומן תת-עורי ואז ישיר לפריכות; בשר כהה מיטבי סביב 79-85°C. '
+                        'note': 'עקיף תחילה להמסת שומן תת-עורי ואז ישיר לפריכות; בשר כהה מיטבי סביב 79-85°C. '
                                 'עצם—דו-אזורי מונע חריכה חיצונית לפני בישול הפנים.'},
               'verified': '2026-07-12',
               'sv': {'ref': 'Baldwin — poultry table; dark meat wants higher',
@@ -1700,7 +1700,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                                'confit',
                         'url': 'https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/',
                         'note': "קונפי תחילה (בישול ארוך בשומן), ואז חימום בעקיף ~15 דק' וסיום ישיר עור-למטה ~3-4 "
-                                "דק' לפריכות. הליבה כבר 82-85°C מהקונפי; זהו גימור-קראנץ' בלבד."},
+                                "דק' לפריכות. הליבה כבר 82-85°C מהקונפי; זהו גימור-פריכות בלבד."},
               'verified': '2026-07-12',
               'sv': {'ref': 'Baldwin — duck/goose leg confit 80°C for 8-12h',
                      'url': 'https://douglasbaldwin.com/sous-vide.html',
@@ -1724,7 +1724,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                         'url': 'https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/'}},
  46: {'src': {'grill': {'ref': 'AmazingRibs (Meathead) — Grill-Roasted Peking Duck',
                         'url': 'https://amazingribs.com/tested-recipes/duck-and-goose-recipes/grill-roasted-peking-duck-recipe/',
-                        'note': "מנקבים עור, צלייה עקיפה ~300-350°F (150-175°C) כ-1.5-2 ש' לרנדור שומן ופריכות עד "
+                        'note': "מנקבים עור, צלייה עקיפה ~300-350°F (150-175°C) כ-1.5-2 ש' להמסת שומן ופריכות עד "
                                 'ליבה 74°C. ברווז שלם—עקיף/דו-אזורי, זהירות מהתלקחות שומן.'},
               'verified': '2026-07-12',
               'sv': {'ref': 'Baldwin — poultry pasteurized by time',
@@ -1751,7 +1751,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
  47: {'src': {'grill': {'ref': 'AmazingRibs — Sous-Vide-Que Duck Confit; DadCooksDinner grilled duck legs',
                         'url': 'https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/',
                         'note': "לאחר קונפי—מחממים בעקיף להמסת שומן שנותר, ואז ישיר עור-למטה ~3-4 דק' עד עור מזוגג "
-                                "ופריך (ליבה ~68°C+ לחימום; הבשר כבר מבושל 82-85°C מהקונפי). גימור-קראנץ'."},
+                                "ופריך (ליבה ~68°C+ לחימום; הבשר כבר מבושל 82-85°C מהקונפי). גימור-פריכות."},
               'verified': '2026-07-12',
               'sv': {'ref': 'Baldwin — duck/goose leg confit 80°C for 8-12h',
                      'url': 'https://douglasbaldwin.com/sous-vide.html',
@@ -1776,7 +1776,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                         'url': 'https://amazingribs.com/tested-recipes/duck-and-goose-recipes/sous-vide-que-duck-confit-recipe/'}},
  48: {'src': {'grill': {'ref': 'Serious Eats / ThermoWorks — grilled duck breast, medium-rare (score, render)',
                         'url': 'https://blog.thermoworks.com/grilled-duck-breast/',
-                        'note': 'משרטטים עור, מתחילים עור-למטה ישיר בינוני (~200°C) לרנדור, הופכים; מושכים ~54-55°C '
+                        'note': 'משרטטים עור, מתחילים עור-למטה ישיר בינוני (~200°C) להמסת שומן, הופכים; מושכים ~54-55°C '
                                 'ליבה (מדיום-רייר, עולה ל-57°C במנוחה). שריר שלם—בטוח בדרגה זו.'},
               'verified': '2026-07-12',
               'sv': {'ref': 'ChefSteps — duck breast 135°F/57°C, ~2h; Serious Eats/Anova agree',
@@ -1805,7 +1805,7 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                         'url': 'https://www.chefsteps.com/activities/duck-breast-135-f-and-duck-skin-crumble'}},
  67: {'src': {'grill': {'ref': 'Wholesome Yum / Ovenspiration — grilled chicken leg quarters (two-zone)',
                         'url': 'https://www.wholesomeyum.com/grilled-chicken-quarters/',
-                        'note': "עקיף 40-60 דק' לרנדור שומן תת-עורי, ואז ישיר 2-4 דק' לכל צד לפריכות עד 79-82°C. עצם "
+                        'note': "עקיף 40-60 דק' להמסת שומן תת-עורי, ואז ישיר 2-4 דק' לכל צד לפריכות עד 79-82°C. עצם "
                                 'וגדול—דו-אזורי מונע חריכה חיצונית.'},
               'verified': '2026-07-12',
               'sv': {'ref': 'Baldwin — poultry table; dark meat higher temp',
