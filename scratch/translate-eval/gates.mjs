@@ -1,0 +1,294 @@
+#!/usr/bin/env node
+// gates.mjs — SHARED gate module for score.mjs (eval harness) AND bulk.mjs (bulk translator).
+// ONE source per the bulk-translation mission brief (2026-07-25): both consumers import from here so
+// the pass/fail logic used to grade the eval sample is byte-identical to the logic gating the bulk run.
+//
+// Contains, in order:
+//   1. loadShippedGuard() — extracts & vm-executes the SHIPPED mtNumSig/mtSafe from dist/index.html
+//      (never a reimplementation — see score.mjs's original header for the rationale this preserves).
+//   2. foldFractions() — NEW (2026-07-25 bulk mission Stage 1b). Unicode vulgar-fraction folding
+//      (½ -> "1/2" etc., NFKC-class) applied to BOTH sides before mtNumSig runs, so a Hebrew source
+//      written with a vulgar-fraction glyph and a spelled-out "1/2" translation don't false-fail the
+//      number-signature gate (mtNumSig's regex is plain `\d+(?:[.,]\d+)?` — it does not see a bare "½"
+//      at all, so an un-folded compare would see 0 source numbers vs 2 translated numbers). This is
+//      HARNESS-SIDE ONLY — the shipped app's own vulgar-fraction handling (if any) is a separate,
+//      already-tracked fix and is not touched here.
+//   3. hebrewLeak() — any Hebrew-block codepoint present in output.
+//   4. UNIT_FAMILY_RULES / extractNumUnitPairs / unitLiteralCheck — unit-literal fidelity (G-T2),
+//      moved verbatim from score.mjs (2026-07-25 refactor, no logic change).
+//   5. SAFETY_LEXICON_GROUPS / safetyLexiconCheck() — NEW (G-T3, 2026-07-25 bulk mission Stage 1a).
+//      Bidirectional safety-chemistry term lexicon: Hebrew source token -> required target-language
+//      token, with a swap/invention check (a DIFFERENT lexicon term's target form appearing when the
+//      source didn't ask for it is a FAIL — this is what catches nitrate<->nitrite swaps).
+
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import vm from 'node:vm';
+
+// ── 1. Shipped mtNumSig/mtSafe loader ──────────────────────────────────────────────────────────────
+export function loadShippedGuard(repoRoot) {
+  const distPath = join(repoRoot, 'dist', 'index.html');
+  const src = readFileSync(distPath, 'utf8');
+
+  const numSigMatch = src.match(/function mtNumSig\(text\)\{[\s\S]*?\n\}/);
+  const safeMatch = src.match(/function mtSafe\(src, translated\)\{[\s\S]*?\}/);
+  if (!numSigMatch) throw new Error('Could not locate function mtNumSig(...) in dist/index.html — has the source changed shape? Update the regex, do not hand-write a replacement.');
+  if (!safeMatch) throw new Error('Could not locate function mtSafe(...) in dist/index.html — has the source changed shape? Update the regex, do not hand-write a replacement.');
+
+  const sandbox = {};
+  vm.createContext(sandbox);
+  vm.runInContext(numSigMatch[0] + '\n' + safeMatch[0] + '\nthis.mtNumSig = mtNumSig; this.mtSafe = mtSafe;', sandbox);
+  return { mtNumSig: sandbox.mtNumSig, mtSafe: sandbox.mtSafe, sourceFile: distPath };
+}
+
+// ── 2. Fraction normalization (Stage 1b) ───────────────────────────────────────────────────────────
+// NFKC decomposes every Unicode vulgar-fraction codepoint (½ ¼ ¾ ⅓ ⅔ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ⅐ ⅑ ⅒) into
+// `digit U+2044(FRACTION SLASH) digit`, e.g. "½".normalize('NFKC') === "1⁄2". Swap U+2044 for a plain
+// ASCII "/" so mtNumSig's `\d+(?:[.,]\d+)?` regex — which does not match U+2044 or the fraction glyphs
+// at all — sees the same two numbers on both sides. Verified empirically (node REPL, 2026-07-25) that
+// NFKC covers the full vulgar-fraction block consistently; no hand-rolled glyph table needed.
+export function foldFractions(text) {
+  return String(text || '').normalize('NFKC').replace(/⁄/g, '/');
+}
+
+// mtSafe, but with fraction-folded inputs on both sides. Use this in place of guard.mtSafe(he, mt)
+// everywhere a gate needs the number-signature check — it is a strict superset (never turns a real
+// mtSafe PASS into a FAIL; only rescues false-fails caused by vulgar-fraction glyphs).
+export function mtSafeFolded(guard, src, translated) {
+  return guard.mtSafe(foldFractions(src), foldFractions(translated));
+}
+
+// ── 3. Hebrew-leak detector ─────────────────────────────────────────────────────────────────────────
+const HEBREW_RE = /[֐-׿]/;
+export function hebrewLeak(text) {
+  return HEBREW_RE.test(String(text || ''));
+}
+
+// ── 4. UNIT-LITERAL fidelity check (G-T2) — verbatim from score.mjs, moved not rewritten ─────────────
+// FRENCH forms added 2026-07-25 (bulk mission Stage 1c) after an empirical smoke run
+// (translategemma:27b, 50-string sample, he->fr) showed 5/50 false unit_dropped fails: the model
+// spells out "heure(s)" for hours (unlike "minute(s)", which is spelled identically in French and
+// English, so it already matched). Without this, EVERY he->fr string with an hour value would false-
+// fail unit-literal and get needlessly dropped to the Hebrew fallback. Also added the other common
+// French metric/imperial unit words on the same evidence-based basis (not exhaustively verified per
+// word — extend further if a real bulk output shows another gap, per this file's own convention).
+//
+// GERMAN forms added 2026-07-26 (bulk mission German-finisher Stage 1) after a hand-read 30-entry
+// random sample of the 249 unitLiteral-only de.failed.json rejects found 30/30 ARTIFACT (0 real
+// defects — no value changed, no unit converted, no family swapped in any of the 30; every case was a
+// correctly-translated German unit word the table simply didn't recognize, e.g. "45 Minuten"/"3
+// Stunden" spelled out in full, the exact same shape as the French heure(s) gap above). Added German
+// time/mass/volume/length words on the same evidence-based, non-exhaustive basis as the French set.
+// Also added a hyphen-tolerant separator (`[\s-]*` instead of `\s*`) to the length_metric rule only,
+// evidenced by sample item 8: he "8 מ״מ" -> correctly-translated de "8-mm-Scheibe" (German attaches a
+// numeral-unit-noun compound with hyphens, e.g. "8-mm-Platte" — a normal, correct German orthographic
+// convention, not a translation defect) — the bare `\s*` prefix on the existing cm/mm rule doesn't see
+// past the hyphen, so a correct hyphenated German compound was false-failing as unit_dropped.
+// SCOPE NOTE: two OTHER gate-bug shapes surfaced in the same 30-sample and were deliberately NOT
+// touched here (Circle of Control — note, don't fix while here): (1) sample item 1 — the bare `/^\s*°
+// \s*F\b/i` rule false-matches German "für" (starts with lowercase f) right after a bare "°" degree
+// sign, because JS's ASCII-only \b treats the transition from "f" to the following non-ASCII "ü" as a
+// boundary; this is a pre-existing regex-boundary bug unrelated to spelled-out-vs-symbol unit forms,
+// not evidenced to recur beyond that one sample entry, and out of THIS stage's scope (adding German
+// unit-word recognition), so left as a follow-up finding, not a fix. (2) sample item 17 — the Hebrew
+// vol_metric rule's `\b` after the Hebrew letter ל ("מ["׳״']?ל\b") can never match when ל is followed
+// by a non-word char (Hebrew letters are outside JS's ASCII \w, so no true \w/non-\w transition exists
+// there), so a real Hebrew "30 מ״ל" (30 ml) source token silently fails to register a source-side unit
+// family at all — also unrelated to this stage's German-word-gap fix and left as a follow-up finding.
+// Neither of these two is touched by (or touches) the additions below.
+//
+// SPANISH forms added 2026-07-26 (bulk mission Spanish-finisher Stage 1) on the same evidence-based
+// basis: classifying the 274 es.failed.json rejects found 268 unit mismatches of which 249 (130
+// "horas" + 116 "minutos" + 3 "hora") were correctly-translated spelled-out Spanish unit words the
+// table didn't recognize — the exact French heure(s)/German Stunden shape again. Added Spanish
+// time/mass/volume/length words (hora/minuto/gramo/kilogramo/mililitro/litro/centímetro/milímetro/
+// libra/onza/pulgada/pie, all ±plural-s) non-exhaustively, per this file's convention.
+// ALSO fixed in the same pass (registered follow-up finding (2) above, now DIRECTLY EVIDENCED by 8
+// Spanish rejects): the Hebrew vol_metric token מ"ל's trailing `\b` could never match (Hebrew letters
+// are outside JS's ASCII \w, so ל followed by space/punct has no \w transition), so a real source
+// "30 מ״ל" registered NO source unit family and a correct Spanish "30 ml" then false-failed as
+// unit_invented (8/8 such rejects were correct translations). Replaced the dead `\b` with an explicit
+// negative lookahead (?![א-ת]) — same intent (don't match מל as the prefix of a longer Hebrew word
+// like מלח/מלפפון), but actually functional after a final Hebrew letter. Follow-up finding (1) (the
+// `°F` rule's \b false-matching German "für") remains untouched — no Spanish entry trips it (no
+// Spanish word shaped f+non-ASCII follows a bare degree sign in the corpus).
+export const UNIT_FAMILY_RULES = [
+  { re: /^\s*°\s*F\b/i, fam: 'tempF' },
+  { re: /^\s*°\s*C\b/i, fam: 'tempC' },
+  { re: /^\s*°/, fam: 'tempC' },
+  { re: /^\s*%/, fam: 'pct' },
+  { re: /^\s*אחוז/, fam: 'pct' },
+  { re: /^\s*ppm\b/i, fam: 'ppm' },
+  { re: /^\s*(?:lbs?\b|pounds?\b|livres?\b|pfund\b|libras?\b)/i, fam: 'mass_imperial' },
+  { re: /^\s*(?:oz\b|ounces?\b|onces?\b|onzas?\b)/i, fam: 'mass_imperial' },
+  { re: /^\s*(?:kg\b|ק[׳"״']?ג|קילו|kilos?\b|kilogrammes?\b|kilogramm\b|kilogramos?\b)/i, fam: 'mass_metric' },
+  { re: /^\s*(?:g\b|grams?\b|gr\b|גרם|גר[׳']|ג[׳']|grammes?\b|gramm\b|gramos?\b)/i, fam: 'mass_metric' },
+  { re: /^\s*(?:gal(?:lons?)?\b|qt\b|quarts?\b|fl\.?\s*oz\b)/i, fam: 'vol_imperial' },
+  { re: /^\s*(?:ml\b|מ["׳״']?ל(?![א-ת])|ליטר|l\b|millilitres?\b|litres?\b|milliliter\b|liter\b|mililitros?\b|litros?\b)/i, fam: 'vol_metric' },
+  // אינץ׳ + Zoll added with the Spanish forms (2026-07-26): the table had NO Hebrew inch token, so
+  // adding pulgada exposed a false unit_invented on he "קוביות ½-1 אינץ׳" -> es "Cubos de ½ a 1
+  // pulgada." (source fam was none only because the Hebrew word wasn't recognized — same one-sided-
+  // blindness shape as the מ"ל fix above); recognizing the Hebrew side then exposed the German word
+  // for inch ("Zoll") missing too, on the SAME source string's correct de translation ("½–1 Zoll").
+  { re: /^\s*(?:in(?:ch(?:es)?)?\b|ft\b|feet\b|pouces?\b|pieds?\b|pulgadas?\b|pies?\b|zoll\b|אינץ[׳'"]?)/i, fam: 'length_imperial' },
+  { re: /^[\s-]*(?:cm\b|ס["׳״']?מ|mm\b|מ["׳״']?מ|centim[eè]tres?\b|millim[eè]tres?\b|zentimeter\b|millimeter\b|cent[ií]metros?\b|mil[ií]metros?\b)/i, fam: 'length_metric' },
+  { re: /^\s*ה?(?:שעות|שעה|שע(?=[׳'.,)\s]|$)|ש(?=[׳'.,)\s]|$))/, fam: 'time_hr' },
+  { re: /^\s*(?:hours?\b|hrs?\b|h\b|heures?\b|stunden?\b|horas?\b)/i, fam: 'time_hr' },
+  { re: /^\s*ה?(?:דקות|דקה|דק(?=[׳'.,)\s]|$))/, fam: 'time_min' },
+  { re: /^\s*(?:minutes?\b|mins?\b|minuten?\b|minutos?\b)/i, fam: 'time_min' },
+];
+// NOTE (2026-07-26, same German-finisher pass): re-running gateCheck across the ENTIRE de.staged.json
+// (not just the 30-entry hand-read sample) as a full regression check surfaced 8 entries that had been
+// PASSING under the pre-fix gate and now needed a second look — 2 were REAL pre-existing defects the
+// old gate's mutual blindness had been masking (Hebrew "שנ'" — a seconds abbreviation, no `time_sec`
+// family exists so it was never recognized either way — mistranslated to German "Minuten"; e.g. he
+// "45-60 שנ' לצד" (45-60 SECONDS per side, a quick-sear instruction) -> de "45-60 Minuten" is a real,
+// meaningful unit-family error, not touched/fixed here — it now correctly fails and goes to retry).
+// The other 6 were a SECOND artifact-class the 30-sample happened not to surface: two Hebrew-side
+// regex gaps in the שעות/שעה/דק rules above (not German-side, so evidenced independent of the German
+// word additions) — (a) the definite article ה prefixed onto the unit noun ("השעות"/"הדק'") wasn't
+// stripped before matching, and (b) the extremely common "שע'" hour abbreviation (ש+ע+geresh) wasn't
+// covered by the existing bare-ש lookahead (which only fires for a lone ש immediately followed by a
+// delimiter, not ש-ע-delimiter). Both are added above (optional leading `ה?`, plus the `שע(?=...)`
+// alternative) on the same non-exhaustive, evidence-based footing as every other rule in this table —
+// verified via a full regression pass (0 flips either direction) across fr.staged.json (3867),
+// fr.failed.json (41), and the RED-witness שניות->minutes reconstruction — see PROGRESS.log / the
+// German-finisher session report for the pasted evidence.
+const METRIC_FAMS = new Set(['mass_metric', 'vol_metric', 'length_metric']);
+const IMPERIAL_FAMS = new Set(['mass_imperial', 'vol_imperial', 'length_imperial']);
+
+export function extractNumUnitPairs(text) {
+  const s = String(text || '');
+  const out = [];
+  const re = /\d+(?:[.,]\d+)?/g;
+  let m;
+  while ((m = re.exec(s)) !== null) {
+    const value = parseFloat(m[0].replace(',', '.'));
+    const rest = s.slice(m.index + m[0].length);
+    let fam = 'none';
+    for (const rule of UNIT_FAMILY_RULES) { if (rule.re.test(rest)) { fam = rule.fam; break; } }
+    out.push({ value, fam, raw: m[0] });
+  }
+  return out;
+}
+
+// PAIRING NOTE (2026-07-26, Spanish-finisher): when the SAME numeric value appears more than once on
+// both sides with different unit families (evidenced 3× in es.failed.json: "24–72 שעות ב-~24°C" —
+// value 24 occurs once as a bare range-start and once as °C), the original first-value-match pairing
+// crossed them (bare-24 ↔ 24°C, then 24°C ↔ bare-24), yielding a deterministic false
+// unit_invented+unit_dropped that NO retry can ever clear (the numbers are identical in any correct
+// translation). Fix: prefer an EXACT same-family value match first, fall back to value-only exactly as
+// before. This only re-orders the assignment among equal-valued candidates — a genuine family error
+// still has no same-family candidate to pair with, so it is still flagged (verified by full regression
+// across fr/de/es staged+failed pools; see the Spanish-finisher session report for the flip counts).
+export function unitLiteralCheck(src, mt) {
+  const srcPairs = extractNumUnitPairs(src);
+  const mtPool = extractNumUnitPairs(mt);
+  const mismatches = [];
+  for (const sp of srcPairs) {
+    let idx = mtPool.findIndex((mp) => Math.abs(mp.value - sp.value) < 1e-9 && mp.fam === sp.fam);
+    if (idx === -1) idx = mtPool.findIndex((mp) => Math.abs(mp.value - sp.value) < 1e-9);
+    if (idx === -1) { mismatches.push({ value: sp.value, srcFam: sp.fam, mtFam: null, reason: 'value_missing_in_mt' }); continue; }
+    const mp = mtPool.splice(idx, 1)[0];
+    let reason = null;
+    if ((sp.fam === 'tempC') && mp.fam === 'tempF') reason = 'temp_c_to_f';
+    else if (sp.fam === 'time_hr' && mp.fam === 'time_min') reason = 'hour_to_minute';
+    else if (sp.fam === 'time_min' && mp.fam === 'time_hr') reason = 'minute_to_hour';
+    else if (sp.fam === 'none' && mp.fam !== 'none') reason = 'unit_invented';
+    else if (sp.fam !== 'none' && mp.fam === 'none') reason = 'unit_dropped';
+    else if (METRIC_FAMS.has(sp.fam) && IMPERIAL_FAMS.has(mp.fam)) reason = 'metric_to_imperial';
+    else if (IMPERIAL_FAMS.has(sp.fam) && METRIC_FAMS.has(mp.fam)) reason = 'imperial_to_metric';
+    else if (sp.fam !== mp.fam && sp.fam !== 'none' && mp.fam !== 'none' &&
+             !(sp.fam === 'tempC' && mp.fam === 'tempC')) reason = 'family_mismatch';
+    if (reason) mismatches.push({ value: sp.value, srcFam: sp.fam, mtFam: mp.fam, reason });
+  }
+  return { pass: mismatches.length === 0, checked: srcPairs.length, mismatches };
+}
+
+// ── 5. SAFETY-TERM LEXICON (G-T3, Stage 1a) ────────────────────────────────────────────────────────
+// Hebrew spellings verified by grep against sources.py/data.py (2026-07-25), not assumed:
+//   ניטריט   — "nitrite"  (data.py:208/209/233/421)
+//   ניטראט   — "nitrate"  (data.py:209)
+//   חנקה     — this app's own vocabulary for "nitrate" in the Cure #2 slow-release sense; CONFIRMED by
+//               sample.json s28: he "...לשחרור חנקה איטי..." / shipped en ground truth "...for slow
+//               nitrate release..." (data.py:209/406) — this is the exact term whose translategemma:27b
+//               and aya-expanse:32b outputs both drifted to "nitrite" (VERIFICATION.md, the finding this
+//               gate exists to catch).
+//   מלח ורוד — "pink salt", the common name for Cure #1/Prague Powder #1 (data.py:208). Best-effort
+//               French target pattern; extend per-language as real output shapes are observed — the
+//               table is deliberately small and evidence-based, not exhaustive.
+// NOTE ON SCOPE: "מלח מריחה" (named in the mission brief as a term to search for) does NOT occur
+// anywhere in sources.py/data.py — grepped, confirmed absent. "מריחה" alone occurs only as unrelated
+// BBQ vocabulary (Mop/Spritz basting, "somid" sous-vide-then-finish step) — never combined with מלח.
+// The real curing-salt common-name term in this codebase is מלח ורוד ("pink salt"), used instead.
+// SPANISH targets added 2026-07-26 (Spanish-finisher): patterns shaped by the model's REAL staged
+// output, not guessed — es.staged.json shows "nitrito"/"Nitrito de sodio" for ניטריט, "nitrato(s)"
+// for ניטראט/חנקה, and "sal rosa" for מלח ורוד (tolerate the "sal rosada" variant). Adding these
+// immediately caught one real staged drift: he "Cure #2 לשחרור חנקה איטי" (slow NITRATE release) ->
+// es "para una curación lenta" (generic "slow curing", nitrate dropped) — the exact s28 drift shape
+// this gate was built for (VERIFICATION.md). NOTE (registered follow-up, NOT changed here): the gate
+// rule is source-conditioned per the mission brief ("if the source contains a lexicon term..."), so a
+// target-side INVENTION on a lexicon-clean source (observed once: he "תרבית" (starter culture) -> es
+// "nitrito") is structurally outside it — that class is caught by the post-merge safety-lexicon scan,
+// not the gate.
+export const SAFETY_LEXICON_GROUPS = [
+  {
+    id: 'nitrite',
+    he: [/ניטריט/],
+    target: {
+      fr: /\bnitrites?\b/i,
+      en: /\bnitrites?\b/i,
+      es: /\bnitritos?\b/i,
+    },
+  },
+  {
+    id: 'nitrate',
+    he: [/ניטראט/, /חנקה/],
+    target: {
+      fr: /\bnitrates?\b/i,
+      en: /\bnitrates?\b/i,
+      es: /\bnitratos?\b/i,
+    },
+  },
+  {
+    id: 'pink_salt',
+    he: [/מלח\s*ורוד/],
+    target: {
+      fr: /\bsel\s*ros[ei]\b/i, // "sel rose" (curing-salt term) — tolerate "rosé" spelling variant
+      en: /\bpink\s*salt\b/i,
+      es: /\bsal\s*rosa(?:da)?\b/i, // "sal rosa" observed in staged output; tolerate "sal rosada"
+    },
+  },
+];
+
+// GATE RULE (mission brief, verbatim): if the source contains a lexicon term, the output must contain
+// that term's target form and MUST NOT contain a DIFFERENT lexicon term's form. Returns:
+//   { pass, checked (# lexicon groups the SOURCE matched), failures: [{id, reason}], hitGroups }
+// `reason` is one of:
+//   'missing_target_term'      — source asked for this term, target form absent from mt
+//   'invented_or_swapped_term' — a DIFFERENT group's target form is present in mt, though its own
+//                                 source pattern did NOT match (the nitrate->nitrite swap shape)
+// Only fires when `lang` has an entry in a given group's `target` map; a language with no lexicon
+// entry yet is silently unchecked for that group (not a fail) — extend the table, don't skip the gate.
+export function safetyLexiconCheck(he, mt, lang) {
+  const heText = String(he || '');
+  const mtText = String(mt || '');
+  const hitGroups = SAFETY_LEXICON_GROUPS.filter((g) => g.he.some((re) => re.test(heText)));
+  if (hitGroups.length === 0) return { pass: true, checked: 0, failures: [], hitGroups: [] };
+
+  const failures = [];
+  for (const g of hitGroups) {
+    const targetRe = g.target[lang];
+    if (!targetRe) continue;
+    if (!targetRe.test(mtText)) failures.push({ id: g.id, reason: 'missing_target_term' });
+  }
+  for (const g of SAFETY_LEXICON_GROUPS) {
+    const targetRe = g.target[lang];
+    if (!targetRe) continue;
+    const sourceAskedForThisGroup = hitGroups.some((h) => h.id === g.id);
+    if (!sourceAskedForThisGroup && targetRe.test(mtText)) {
+      failures.push({ id: g.id, reason: 'invented_or_swapped_term' });
+    }
+  }
+  return { pass: failures.length === 0, checked: hitGroups.length, failures, hitGroups: hitGroups.map((g) => g.id) };
+}
