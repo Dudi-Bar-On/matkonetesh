@@ -57,9 +57,12 @@ test('extractor: harvest modes 1-4 emit the expected keys (flat + nested + array
   expect(known['שלום']).toBe('Hello there');
   expect(known['טוב מאוד']).toBe('Very good');
 
-  // mode 2(c) — nested leaf-pair recursion
-  expect(known['נא']).toBe('Rare');
-  expect(known['עשוי']).toBe('Well done');
+  // mode 2(c) — nested leaf-pair recursion: table-scoped ctx (M-3, review C2) — NEST's leaves are
+  // reached by recursing into a nested object (depth > 0), so they are table-ctx'd, not bare-keyed
+  // (tableCtxFor falls back to the lowercased base identifier: 'nest').
+  expect(known['נא␟nest']).toBe('Rare');
+  expect(known['עשוי␟nest']).toBe('Well done');
+  expect(known['נא']).toBeUndefined(); // no bare key from a nested-table leaf
 
   // mode 2(b) — array-of-pairs partner
   expect(known['😌 עדין']).toBe('😌 Mild');
@@ -98,4 +101,51 @@ test('extractor: a needs-en placeholder is upgraded (not flagged a collision) on
   const { known, needsEn } = extract(src);
   expect(known['אותו טקסט בדיוק']).toBe('Exactly the same text');
   expect(needsEn).not.toContain('אותו טקסט בדיוק');
+});
+
+// ── review finding C1 — I-C bare-key retention ──
+test('extractor: a ctx\'d homograph emits BOTH the compound key AND the bare he key (I-C, review C1)', async () => {
+  const { extract } = await extractorModule;
+  const { known } = extract(`L('אש','Fire','fire');`);
+  expect(known['אש']).toBe('Fire');       // bare key — tnode static-shell path keys by bare Hebrew
+  expect(known['אש␟fire']).toBe('Fire');  // compound ctx key — the L() path
+});
+
+test('extractor: two ctx\'d homograph sites both keep their own compound key; the bare key holds the first-seen (primary) sense without colliding (I-C, review C1)', async () => {
+  const { extract } = await extractorModule;
+  const src = `L('אש','Fire','fire'); L('אש','Heat','heat');`;
+  const { known, collisions } = extract(src);
+  expect(known['אש␟fire']).toBe('Fire');
+  expect(known['אש␟heat']).toBe('Heat');
+  expect(known['אש']).toBe('Fire'); // first-seen ctx'd site is the primary sense
+  expect(collisions.length).toBe(0); // ctx'd sites must never trigger the bare-key collision lint
+});
+
+// ── review finding C2 — M-3 table-scoped ctx for nested tables ──
+test('extractor: a nested-table (DONE_SCALES-shape) homograph leaf emits under a table-scoped ctx, and does NOT bare-collide with an unrelated bare L() site for the same Hebrew text (review C2)', async () => {
+  const { extract } = await extractorModule;
+  const src = `
+const DONE_SCALES={steak:{rare:'נא'}};
+const DONE_SCALES_EN={steak:{rare:'Rare'}};
+L('נא','raw');
+`;
+  const { known, collisions } = extract(src);
+  expect(known['נא␟doneness']).toBe('Rare'); // table-scoped ctx — the doneness sense
+  expect(known['נא']).toBe('raw');           // bare key belongs to the unrelated kg/raw-weight sense
+  expect(collisions.length).toBe(0);         // the real 'נא' Rare-vs-raw collision must be gone
+});
+
+// ── review finding C3 — LANG_FLAG deny + Hebrew-semantic guard ──
+test('extractor: LANG_FLAG (language-code -> flag-emoji map) is deny-listed and not harvested (review C3)', async () => {
+  const { extract } = await extractorModule;
+  const src = `const LANG_FLAG={he:'🇮🇱', en:'🇬🇧', fr:'🇫🇷'};`;
+  const { known } = extract(src);
+  expect(known['🇮🇱']).toBeUndefined();
+});
+
+test('extractor: an all-emoji/no-Hebrew {he,en}-shaped object is not harvested regardless of name (semantic guard, review C3)', async () => {
+  const { extract } = await extractorModule;
+  const src = `const SOME_OTHER_TABLE={he:'🇮🇱', en:'🇬🇧', fr:'🇫🇷'};`;
+  const { known } = extract(src);
+  expect(known['🇮🇱']).toBeUndefined();
 });

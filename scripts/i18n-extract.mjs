@@ -56,7 +56,14 @@ const SENT = '␟'; // U+241F SYMBOL FOR UNIT SEPARATOR — the ␟ ctx-key sent
 // (tests/i18n-extractor.spec.ts), which seeds a denied internal config object and asserts it is
 // excluded. New `_EN`/`{he,en}` tables default to harvest; add an identifier here only for a
 // reviewed, confirmed-internal (never-rendered) object.
-export const DENY_TABLES = new Set([]);
+export const DENY_TABLES = new Set([
+  // LANG_FLAG (app.js:8570) is a generic {he,en,fr,de,es,ar,ru,it} language->flag-emoji map — its
+  // `he`/`en` properties are language codes paired with flag emoji, NOT a Hebrew/English UI-text
+  // pair. It shape-matches the generic mode-2 {he,en} sibling-literal walk and was mis-harvested as
+  // {"🇮🇱":"🇬🇧"} (review finding C3). Denied here; also caught defense-in-depth by the Hebrew-
+  // codepoint semantic guard below (any future LANG_FLAG-shaped table is skipped even if unlisted).
+  'LANG_FLAG',
+]);
 
 // THEME_NAMES_EN / FONT_NAMES_EN don't follow the `_EN`-suffix-stripped sibling-identifier
 // convention (there is no `THEME_NAMES`/`FONT_NAMES` object) — the Hebrew side is a nested `.name`
@@ -65,6 +72,29 @@ const SPECIAL_BASE_MAP = {
   THEME_NAMES_EN: { ident: 'THEMES', prop: 'name' },
   FONT_NAMES_EN: { ident: 'FONT_PAIRS', prop: 'name' },
 };
+
+// ── M-3 table-scoped ctx (review finding C2) — a nested (2-level) `_EN`-table leaf can be a
+// homograph with no `L(…,ctx)` call site to carry a sense hint (spec §3.3 mode 2 / M-3, e.g.
+// `DONE_SCALES.steak.rare='נא'`, app.js:2965, which also bare-collides with the unrelated
+// `L('נא','raw')` kg/raw-weight sense at app.js:5932/5961/5971). Leaves found while RECURSING into a
+// nested object (depth > 0 in harvestNestedPairs) are emitted under `he␟ctx` instead of a bare key —
+// a top-level flat `_EN` table's leaves (depth 0 — the other 7 flat tables, I-B) are unaffected and
+// stay bare-keyed, matching spec's "non-homograph leaves stay bare-keyed" (only the nested shape (c)
+// tables carry table-scoped ctx). Named per spec's own illustrative key (`'נא␟doneness'`); any future
+// nested table without an explicit entry falls back to a slugified base identifier.
+const NESTED_TABLE_CTX = {
+  DONE_SCALES: 'doneness',
+};
+function tableCtxFor(baseName) {
+  return NESTED_TABLE_CTX[baseName] || baseName.toLowerCase().replace(/_/g, '-');
+}
+
+// ── C3 semantic guard — a shape-only {he,en} match (both string-literal properties present) is not
+// necessarily a Hebrew/English UI-text pair (e.g. LANG_FLAG's `he`/`en` keys are language codes
+// carrying flag emoji, not Hebrew copy). Require the `he` value to actually contain a Hebrew
+// codepoint before harvesting — defense-in-depth alongside the DENY_TABLES entry above, so an
+// unlisted future table of the same shape doesn't silently re-introduce the bug.
+const HEBREW_RE = /[֐-׿]/;
 
 // ── generic AST walk with parent pointers (so mode-2-generic / mode-4 can find the nearest
 // enclosing `const NAME = …` for the deny-list check) — no acorn-walk dependency needed. ──
@@ -122,7 +152,7 @@ export function extract(src, opts = {}) {
   const collisions = [];  // {key, en1, en2} — surfaced as a thrown Error (spec §6)
   const needsEnSet = new Set(); // he/compound keys lacking a real English literal (I4)
 
-  function setKnownKey(key, en, { placeholder = false } = {}) {
+  function setKnownKey(key, en, { placeholder = false, noCollision = false } = {}) {
     if (!(key in known)) {
       known[key] = en;
       if (placeholder) placeholderKeys.add(key);
@@ -144,7 +174,9 @@ export function extract(src, opts = {}) {
     if (existingIsPlaceholder && placeholder) {
       return; // both placeholders — keep the first, nothing lost (both equal `he` by construction)
     }
-    // both real, both non-identical → the homograph collision (spec §6)
+    // both real, both non-identical.
+    if (noCollision) return; // caller-declared non-colliding path (I-C bare-key primary-sense write) — first wins, silently
+    // → the homograph collision (spec §6)
     collisions.push({ key, en1: known[key], en2: en });
   }
 
@@ -157,7 +189,11 @@ export function extract(src, opts = {}) {
   });
 
   // ── mode 2(c) — nested leaf-pair recursion (DONE_SCALES-shape), arbitrary depth ──
-  function harvestNestedPairs(heNode, enNode) {
+  // `tableCtx` (M-3, review C2): a leaf reached by RECURSING into a nested object (depth > 0) is
+  // emitted under a table-scoped `he␟tableCtx` key instead of a bare key, so a nested-table homograph
+  // (e.g. DONE_SCALES.steak.rare='נא') cannot bare-collide with an unrelated bare-keyed sense
+  // elsewhere in the corpus (e.g. `L('נא','raw')`). depth-0 (flat, shape (a)) leaves are unaffected.
+  function harvestNestedPairs(heNode, enNode, tableCtx, depth = 0) {
     if (!heNode || !enNode || heNode.type !== 'ObjectExpression' || enNode.type !== 'ObjectExpression') return;
     const enByKey = new Map();
     for (const p of enNode.properties) {
@@ -171,9 +207,13 @@ export function extract(src, opts = {}) {
       if (k == null || !enByKey.has(k)) continue;
       const heVal = p.value, enVal = enByKey.get(k);
       if (isStringLiteral(heVal) && isStringLiteral(enVal)) {
-        setKnownKey(heVal.value, enVal.value);
+        if (depth > 0 && tableCtx) {
+          setKnownKey(heVal.value + SENT + tableCtx, enVal.value);
+        } else {
+          setKnownKey(heVal.value, enVal.value);
+        }
       } else if (heVal.type === 'ObjectExpression' && enVal.type === 'ObjectExpression') {
-        harvestNestedPairs(heVal, enVal);
+        harvestNestedPairs(heVal, enVal, tableCtx, depth + 1);
       }
     }
   }
@@ -236,8 +276,9 @@ export function extract(src, opts = {}) {
     }
 
     if (baseNode.type === 'ObjectExpression') {
-      // (a) flat, or (c) nested — decided per shared key, leaf-pair recursion handles both uniformly
-      harvestNestedPairs(baseNode, enNode);
+      // (a) flat, or (c) nested — decided per shared key, leaf-pair recursion handles both uniformly.
+      // tableCtxFor(baseName) only takes effect for leaves reached by recursing (depth > 0, shape (c)).
+      harvestNestedPairs(baseNode, enNode, tableCtxFor(baseName));
       continue;
     }
     // unrecognized base shape — skip (not one of the 3 known _EN-table shapes)
@@ -253,7 +294,10 @@ export function extract(src, opts = {}) {
     const enP = node.properties.find((p) => p.type === 'Property' && propKeyName(p) === 'en' && isStringLiteral(p.value));
     if (heP && enP) {
       const declName = nearestDeclName(node);
-      if (!declName || !denyTables.has(declName)) {
+      // C3 semantic guard: a shape-only {he,en} match whose `he` value carries no Hebrew codepoint
+      // is not a UI translation pair (e.g. LANG_FLAG's he/en are language codes with flag emoji) —
+      // skip regardless of the deny-list, which only covers named/known offenders.
+      if ((!declName || !denyTables.has(declName)) && HEBREW_RE.test(heP.value.value)) {
         setKnownKey(heP.value.value, enP.value.value);
       }
       return; // an {he,en} object is not also a {heb,eng} name object
@@ -280,8 +324,18 @@ export function extract(src, opts = {}) {
       if (args.length >= 2 && isStringLiteral(args[1])) {
         const en = args[1].value;
         const ctx = args.length >= 3 && isStringLiteral(args[2]) ? args[2].value : undefined;
-        const key = ctx ? he + SENT + ctx : he;
-        setKnownKey(key, en);
+        if (ctx) {
+          // I-C bare-key retention (spec §6) — tnode/applyI18n keys static-shell text by the bare
+          // visible Hebrew and can never synthesize a `he␟ctx` key, so BOTH the compound key AND the
+          // bare `he` key must be emitted for every ctx'd homograph. The bare key carries the primary
+          // (first-seen) sense; later ctx'd sites for the same `he` contribute only their own
+          // compound key and must NOT collide the bare key (that's the ctx split's whole point) —
+          // hence `noCollision: true`, a first-write-wins with no error.
+          setKnownKey(he + SENT + ctx, en);
+          setKnownKey(he, en, { noCollision: true });
+        } else {
+          setKnownKey(he, en);
+        }
       }
       // a dynamic (non-literal) 2nd arg is an expr-arg / computed-ternary shape, out of static
       // mode-1 scope by design (handled by mode-2-generic on the underlying {he,en} object, or is
