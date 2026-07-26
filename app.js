@@ -705,11 +705,10 @@ function _occHeaderHtml(o){
 }
 // One tile for one item. Solid = measured; dashed (no number) = unmeasured (H1); over = capped + hatched bleed.
 function _occTile(it, cap){
-  const he=(typeof getLang!=='function'||getLang()==='he');
   if(it.cm2==null)  // unmeasured → dashed, never numbered
     return `<div class="occ2-tile occ2-dashed" title="${esc(it.name)}"><span class="occ2-tile-t">${esc(it.name)}</span><span class="occ2-tile-m">${L('מידה לא ידועה','size unknown')}</span></div>`;
   if(cap.perSlotCm2!=null && it.cm2>cap.perSlotCm2)  // over a single slot
-    return `<div class="occ2-tile occ2-big" title="${esc(it.name)}"><span class="occ2-tile-t">${esc(it.name)}</span><span class="occ2-tile-m" dir="ltr">${it.cm2} ${he?'סמ״ר':'cm²'}</span></div><div class="occ2-bleed"></div>`;
+    return `<div class="occ2-tile occ2-big" title="${esc(it.name)}"><span class="occ2-tile-t">${esc(it.name)}</span><span class="occ2-tile-m" dir="ltr">${it.cm2} ${L('סמ״ר', 'cm²')}</span></div><div class="occ2-bleed"></div>`;
   const frac=(cap.perSlotCm2>0)?Math.max(18,Math.round(it.cm2/cap.perSlotCm2*100)):40;
   return `<div class="occ2-tile" style="flex:0 0 ${frac}%" title="${esc(it.name)}"><span class="occ2-tile-t">${esc(it.name)}</span><span class="occ2-tile-m" dir="ltr">${it.cm2}</span></div>`;
 }
@@ -755,23 +754,21 @@ function _occOffsetBody(o){
 // Zone labels are "אזור N" only — the model does NOT know direct vs indirect, so it never claims to.
 function _occGrillBody(o, isRound){
   const cap=o.cap, n=Math.max(1, cap.slots||1);
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const cells=[];
   for(let i=0;i<n;i++){
     const sl=(o.slots||[])[i]||{items:[]};
     const inner = sl.items.length ? sl.items.map(function(it){return _occTile(it, cap);}).join('')
                                   : `<span class="occ2-free">${L('פנוי','free')}</span>`;
-    cells.push(`<div class="occ2-zone">${inner}<span class="occ2-zl">${he?'אזור':'zone'} ${i+1}</span></div>`);
+    cells.push(`<div class="occ2-zone">${inner}<span class="occ2-zl">${L('אזור', 'zone')} ${i+1}</span></div>`);
   }
   return `<div class="occ2-grill ${isRound?'occ2-round':'occ2-rect'}"><div class="occ2-zones">${cells.join('')}</div></div>${_occUnknownHtml(o)}`;
 }
 // Sous-vide: an open-topped vessel with a water line + circulator, one bag per item. NO % (H2): we count
 // bags and the largest single required litres; true fill needs displacement we do not have.
 function _occVesselBody(o){
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const bags=(o.items||[]).map(function(it){ return `<div class="occ2-bag">${esc(it.name)}</div>`; }).join('')
     || `<span class="occ2-free">${L('ריק','empty')}</span>`;
-  const need=o.usedLitres||0, has=(o.cap&&o.cap.litres)||0, u=he?'ל׳':'L';
+  const need=o.usedLitres||0, has=(o.cap&&o.cap.litres)||0, u=L('ל׳', 'L');
   const bath=(typeof chooseBath==='function')?chooseBath(o.dev, need):{ok:false,pick:null,sizes:[]};
   const isl=function(n){ return `<span dir="ltr">${n} ${u}</span>`; };   // number+unit LTR island (L13) — never wrap the whole Hebrew sentence in ltr
   // name the actual container from the sizes you registered, instead of implying your biggest one
@@ -845,7 +842,7 @@ function _occListHtml(o){
   const slotHe=(o.cap.slotKind==='zone')?'אזור':'מדף', slotEn=(o.cap.slotKind==='zone')?'zone':'shelf';
   const lis=(o.items||[]).filter(function(it){return it.mode==='area';}).map(function(it){
     const where = (it.slot!=null) ? `${he?slotHe:slotEn} ${it.slot+1}` : L('לא משובץ','unplaced');
-    const size = (it.cm2!=null) ? ` · ${it.cm2} ${he?'סמ״ר':'cm²'}` : ` · ${L('מידה לא ידועה','size unknown')}`;
+    const size = (it.cm2!=null) ? ` · ${it.cm2} ${L('סמ״ר', 'cm²')}` : ` · ${L('מידה לא ידועה','size unknown')}`;
     return `<li><b>${esc(it.name)}</b><span class="occ2-s">· ${where}${size}</span></li>`;
   });
   return lis.length ? `<ul class="occ2-list">${lis.join('')}</ul>` : '';
@@ -4476,11 +4473,11 @@ function journalCoach(){
 function _journalCoachHtml(){
   const he=(typeof getLang!=='function'||getLang()==='he'); const c=journalCoach(); if(!c.enough) return '';
   const bits=[];
-  bits.push(`<b>${c.count}</b> ${he?'בישולים תועדו':'cooks logged'}${c.avg!=null?` · ${he?'דירוג ממוצע':'avg'} ${c.avg}★`:''}`);
-  if(c.mostCooked && c.mostCooked.count>=2) bits.push(`${he?'הכי מבושל':'Most cooked'}: <b>${esc(c.mostCooked.name)}</b> (${c.mostCooked.count})`);
-  if(c.bestRated) bits.push(`${he?'הכי מדורג':'Best rated'}: <b>${esc(c.bestRated.name)}</b> (${Math.round(c.bestRated.avg*10)/10}★)`);
+  bits.push(`<b>${c.count}</b> ${L('בישולים תועדו', 'cooks logged')}${c.avg!=null?` · ${L('דירוג ממוצע', 'avg')} ${c.avg}★`:''}`);
+  if(c.mostCooked && c.mostCooked.count>=2) bits.push(`${L('הכי מבושל', 'Most cooked')}: <b>${esc(c.mostCooked.name)}</b> (${c.mostCooked.count})`);
+  if(c.bestRated) bits.push(`${L('הכי מדורג', 'Best rated')}: <b>${esc(c.bestRated.name)}</b> (${Math.round(c.bestRated.avg*10)/10}★)`);
   if(c.tempPattern){ const hotter=c.tempPattern.hi>c.tempPattern.lo; bits.push(he?`הבישולים המדורגים גבוה רצו ${hotter?'חם':'קריר'} יותר (~${c.tempPattern.hi}° מול ${c.tempPattern.lo}°).`:`Your higher-rated cooks ran ${hotter?'hotter':'cooler'} (~${c.tempPattern.hi}° vs ${c.tempPattern.lo}°).`); }
-  return `<div class="jcoach"><div class="jcoach-h">🎓 ${he?'המאמן שלך':'Your coach'}</div>${bits.map(function(b){return `<div class="jcoach-row">${b}</div>`;}).join('')}</div>`;
+  return `<div class="jcoach"><div class="jcoach-h">🎓 ${L('המאמן שלך', 'Your coach')}</div>${bits.map(function(b){return `<div class="jcoach-row">${b}</div>`;}).join('')}</div>`;
 }
 function openJournal(){
   const a=journal();
@@ -5082,7 +5079,7 @@ function askRefuse(q){ q=String(q||''); for(let i=0;i<AI_REFUSALS.length;i++){ t
 function askRefuseCardHTML(ref){
   const he=(typeof getLang!=='function'||getLang()==='he'); const c=he?ref.he:ref.en;
   return '<div class="abubble ask-refuse"><div class="ai-caveat ai-caveat-strong"><b>🚫 '+esc(c.title)+'</b><br>'+esc(c.body)
-    +'<div class="ai-refuse-src">📚 '+esc(ref.src)+'</div>'+(ref.calc?'<button class="ai-calc-link" data-aicalc>🧮 '+(he?'פתח מחשבון':'Open calculator')+'</button>':'')+'</div></div>';
+    +'<div class="ai-refuse-src">📚 '+esc(ref.src)+'</div>'+(ref.calc?'<button class="ai-calc-link" data-aicalc>🧮 '+(L('פתח מחשבון', 'Open calculator'))+'</button>':'')+'</div></div>';
 }
 // ── centralized Gemini transport (AI #2 timeout · #3 retry/backoff · #9 key-in-header) + the
 //    AI #8 endpoint-indirection seam: one place to point at a managed proxy later (monetization seam).
@@ -5252,8 +5249,7 @@ async function askGemini(qRaw, history){
   if(!aiAvail()) throw new Error('no-key');   // available via a personal key OR managed central access; gemFetch routes the transport
   const q=(qRaw||'').trim();
   const {ctx,ents}=askContextFor(q);
-  const he=(typeof getLang!=='function'||getLang()==='he');
-  const sys='אתה "האש" — עוזר בישול מומחה לאש, עישון, גריל, סו-ויד ושרקוטרי, בתוך אפליקציה ישראלית בשם "מתכונת · מדריך האש". '+(he?'ענה תמיד בעברית':'Reply ALWAYS in English (the app UI language is English)')+', בצורה מלאה ומועילה — אורך התשובה לפי הצורך, כולל רשימות, המלצות ופירוט כשזה עוזר. יש לך חיפוש באינטרנט: השתמש בו לשאלות על מידע עדכני/מקומי — עסקים, חנויות, ספקים, מחירים, זמינות, כתובות (למשל "היכן לקנות פחם איכותי בשרון" — תן רשימת עסקים אמיתית עם פרטים). כשסופקו נתונים מהקטלוג של האפליקציה והם רלוונטיים — התבסס עליהם וצטט טמפ׳/זמנים משם. אתה יכול לענות גם על שאלות מעשיות סביב עולם הבישול על אש (ציוד, קניות, מקומות) ולא רק על מתכונים. אל תמציא מספרי בטיחות קריטיים — אם אינך בטוח, אמור זאת והפנה לאימות.'+((typeof pref==='function'&&pref('units')==='metric')?(he?' השתמש תמיד ביחידות מטריות (°C, ס״מ, ק״ג, ליטר, מ״מ) — לא פרנהייט/אינץ׳/פאונד.':' Always use metric units (°C, cm, kg, litres, mm) — never Fahrenheit/inches/pounds.'):'');
+  const sys='אתה "האש" — עוזר בישול מומחה לאש, עישון, גריל, סו-ויד ושרקוטרי, בתוך אפליקציה ישראלית בשם "מתכונת · מדריך האש". '+(L('ענה תמיד בעברית', 'Reply ALWAYS in English (the app UI language is English)'))+', בצורה מלאה ומועילה — אורך התשובה לפי הצורך, כולל רשימות, המלצות ופירוט כשזה עוזר. יש לך חיפוש באינטרנט: השתמש בו לשאלות על מידע עדכני/מקומי — עסקים, חנויות, ספקים, מחירים, זמינות, כתובות (למשל "היכן לקנות פחם איכותי בשרון" — תן רשימת עסקים אמיתית עם פרטים). כשסופקו נתונים מהקטלוג של האפליקציה והם רלוונטיים — התבסס עליהם וצטט טמפ׳/זמנים משם. אתה יכול לענות גם על שאלות מעשיות סביב עולם הבישול על אש (ציוד, קניות, מקומות) ולא רק על מתכונים. אל תמציא מספרי בטיחות קריטיים — אם אינך בטוח, אמור זאת והפנה לאימות.'+((typeof pref==='function'&&pref('units')==='metric')?(L(' השתמש תמיד ביחידות מטריות (°C, ס״מ, ק״ג, ליטר, מ״מ) — לא פרנהייט/אינץ׳/פאונד.', ' Always use metric units (°C, cm, kg, litres, mm) — never Fahrenheit/inches/pounds.')):'');
   const turns=[];
   (history||[]).slice(-4).forEach(h=>turns.push({role:h.role==='ai'?'model':'user',parts:[{text:h.text}]}));
   turns.push({role:'user',parts:[{text:(ctx?ctx+'\n\n':'')+'שאלה: '+q}]});
@@ -5311,10 +5307,7 @@ function aiSafetyHasNumbers(txt){
 }
 function aiSafetyCaveat(txt){
   if(!aiSafetyHasNumbers(txt)) return '';
-  const he=(typeof getLang!=='function'||getLang()==='he');
-  return '<div class="ai-caveat">⚠ '+(he
-    ?'מספרי טמפ׳/ריפוי/בטיחות בתשובת ה-AI אינם מאומתים — אמת מול כרטיס המתכון והמחשבון באפליקציה לפני ביצוע.'
-    :'Temperature / cure / safety numbers in the AI answer are not verified — check them against the recipe card and the app calculator before you act.')+'</div>';
+  return '<div class="ai-caveat">⚠ '+(L('מספרי טמפ׳/ריפוי/בטיחות בתשובת ה-AI אינם מאומתים — אמת מול כרטיס המתכון והמחשבון באפליקציה לפני ביצוע.', 'Temperature / cure / safety numbers in the AI answer are not verified — check them against the recipe card and the app calculator before you act.'))+'</div>';
 }
 // W1-P3: numeric-invariant guard. Extract the safety-relevant numbers (temps °/°C/°F/bare C-F, ppm, %, pH) from AI prose,
 // and flag any that are NOT present in the vetted grounding context as ungrounded (likely fabricated) → escalate + deep-link the calculator.
@@ -5468,13 +5461,10 @@ function aiUngroundedSafety(answer, context){
 // grounded/unknown safety numbers → the mild "verify" caveat.
 function aiSafetyNote(answerText, groundingText){
   if(!aiSafetyHasNumbers(answerText)) return '';
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const ung=(groundingText!=null && groundingText!=='') ? aiUngroundedSafety(answerText, groundingText) : null;
   if(ung && ung.length){
-    return '<div class="ai-caveat ai-caveat-strong">🚫 '+(he
-      ?'התשובה כוללת מספרי בטיחות שאינם מהנתונים המאומתים של האפליקציה — אל תסתמך עליהם. השתמש במחשבון לחישוב מדויק:'
-      :'This answer contains safety numbers that are NOT from the app\'s verified data — do not rely on them. Use the calculator for the exact figure:')
-      +' <button class="ai-calc-link" data-aicalc>🧮 '+(he?'פתח מחשבון':'Open calculator')+'</button></div>';
+    return '<div class="ai-caveat ai-caveat-strong">🚫 '+(L('התשובה כוללת מספרי בטיחות שאינם מהנתונים המאומתים של האפליקציה — אל תסתמך עליהם. השתמש במחשבון לחישוב מדויק:', 'This answer contains safety numbers that are NOT from the app\'s verified data — do not rely on them. Use the calculator for the exact figure:'))
+      +' <button class="ai-calc-link" data-aicalc>🧮 '+(L('פתח מחשבון', 'Open calculator'))+'</button></div>';
   }
   return aiSafetyCaveat(answerText);
 }
@@ -6501,7 +6491,6 @@ function vcLtrNums(escaped){
 // advice, append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
 
 function vcGuardSpoken(text, tiers, lang){
-  const he=(lang||vcAnsLang())!=='en';
   const src=String(text||'');
   if(!aiSafetyNums(src).length) return src;          // no safety numbers at all → untouched
   const ok={};
@@ -6544,9 +6533,9 @@ function vcGuardSpoken(text, tiers, lang){
   out=out.replace(/\s{2,}/g,' ').trim();
   return out+' '+(redacted
     ? (redacted===1
-        ? (he?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':'This number isn\'t verified — check the item card.')
-        : (he?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':'These numbers aren\'t verified — check the item card.'))
-    : (he?'לפי המדריך המאומת.':'per the app\'s verified guide.'));
+        ? (L('מספר זה אינו מאומת — בדוק בכרטיס הפריט.', 'This number isn\'t verified — check the item card.'))
+        : (L('המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.', 'These numbers aren\'t verified — check the item card.')))
+    : (L('לפי המדריך המאומת.', 'per the app\'s verified guide.')));
 }
 
 async function vcAskAI(question, ent){
@@ -6654,15 +6643,12 @@ function _copilotStages(){ const tasks=(typeof window!=='undefined'&&Array.isArr
 }
 // W2-P2: stall detection + wrap/crutch advice, grounded in the app's vetted troubleshooting content (65-77°C evaporative plateau).
 function copilotStallInfo(tempC){
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const t=(typeof tempC==='number' && !isNaN(tempC))?tempC:null;
   const phase = (t==null)?'unknown' : (t<65?'below' : (t<=77?'stall':'above'));
-  const title = phase==='stall' ? (he?'אתה בתוך הסטָאל':'You’re in the stall')
-              : phase==='above' ? (he?'עברת את הסטָאל':'Past the stall')
-              : (he?'הסטָאל (Stall)':'The stall');
-  const body = he
-    ? 'התאדות-קירור סביב 65–77°C — נורמלי לחלוטין, יכול להימשך 1–3 שעות. אל תעלה חום בפאניקה. אפשרויות: סבלנות, או "Texas Crutch" — עטוף בנייר קצבים/אלומיניום כשהקרום כהה ויציב (בערך 68–70°C) כדי לפרוץ. עטיפה מוקדמת מדי מרככת את הקרום.'
-    : 'Evaporative cooling around 65–77°C — completely normal, can last 1–3 hours. Don’t panic-raise the heat. Options: patience, or the “Texas Crutch” — wrap in butcher paper/foil once the bark is dark and set (around 68–70°C) to break through. Wrapping too early softens the bark.';
+  const title = phase==='stall' ? (L('אתה בתוך הסטָאל', 'You’re in the stall'))
+              : phase==='above' ? (L('עברת את הסטָאל', 'Past the stall'))
+              : (L('הסטָאל (Stall)', 'The stall'));
+  const body = L('התאדות-קירור סביב 65–77°C — נורמלי לחלוטין, יכול להימשך 1–3 שעות. אל תעלה חום בפאניקה. אפשרויות: סבלנות, או "Texas Crutch" — עטוף בנייר קצבים/אלומיניום כשהקרום כהה ויציב (בערך 68–70°C) כדי לפרוץ. עטיפה מוקדמת מדי מרככת את הקרום.', 'Evaporative cooling around 65–77°C — completely normal, can last 1–3 hours. Don’t panic-raise the heat. Options: patience, or the “Texas Crutch” — wrap in butcher paper/foil once the bark is dark and set (around 68–70°C) to break through. Wrapping too early softens the bark.');
   return { inStall: phase==='stall', phase, title, body };
 }
 // W2-P3: probe capture + pace/ETA — the new subsystem. Manual entry (device-agnostic: read off the MEATER/Inkbird app).
@@ -6703,48 +6689,47 @@ function copilotPace(session){
   return out;
 }
 function _copilotPaceHtml(pace){
-  const he=(typeof getLang!=='function'||getLang()==='he'); const p=pace||{};
+  const p=pace||{};
   const note=function(cls,txt){ return `<div class="cop-pacenote ${cls||''}">${txt}</div>`; };
-  if(p.state==='no-reading') return note('', (he?'רשום קריאת מדחום כדי לעקוב אחר הקצב.':'Log a probe reading to track your pace.'));
-  if(p.state==='no-target') return note('', (he?'הגדר טמפ׳-יעד פנימית כדי לחשב זמן סיום.':'Set a target internal temp to get a finish-time estimate.'));
-  if(p.state==='need-more') return note('', `🌡️ ${p.lastTemp}°C · ${he?'רשום קריאה נוספת כדי לחזות זמן סיום.':'Log another reading to project a finish time.'}`);
-  if(p.state==='done') return note('cop-pace-ok', `✅ ${p.lastTemp}°C · ${he?'הגיע ליעד — נוח והגש.':'Target reached — rest and serve.'}`);
-  if(p.state==='stall') return note('cop-pace-warn', `🧱 ${p.lastTemp}°C · ${he?'בסטָאל — הקצב שטוח. עטוף לפרוץ, או המתן בסבלנות.':'In the stall — pace is flat. Wrap to break through, or wait it out.'}`);
-  if(p.state==='flat') return note('cop-pace-warn', `⚠ ${p.lastTemp}°C · ${he?'הטמפ׳ אינה עולה — בדוק את החום/הדלק.':'Temp isn’t rising — check your fire / fuel.'}`);
+  if(p.state==='no-reading') return note('', (L('רשום קריאת מדחום כדי לעקוב אחר הקצב.', 'Log a probe reading to track your pace.')));
+  if(p.state==='no-target') return note('', (L('הגדר טמפ׳-יעד פנימית כדי לחשב זמן סיום.', 'Set a target internal temp to get a finish-time estimate.')));
+  if(p.state==='need-more') return note('', `🌡️ ${p.lastTemp}°C · ${L('רשום קריאה נוספת כדי לחזות זמן סיום.', 'Log another reading to project a finish time.')}`);
+  if(p.state==='done') return note('cop-pace-ok', `✅ ${p.lastTemp}°C · ${L('הגיע ליעד — נוח והגש.', 'Target reached — rest and serve.')}`);
+  if(p.state==='stall') return note('cop-pace-warn', `🧱 ${p.lastTemp}°C · ${L('בסטָאל — הקצב שטוח. עטוף לפרוץ, או המתן בסבלנות.', 'In the stall — pace is flat. Wrap to break through, or wait it out.')}`);
+  if(p.state==='flat') return note('cop-pace-warn', `⚠ ${p.lastTemp}°C · ${L('הטמפ׳ אינה עולה — בדוק את החום/הדלק.', 'Temp isn’t rising — check your fire / fuel.')}`);
   // projected
   const eta=(typeof fmtClock==='function')?fmtClock(new Date(p.etaMs)):new Date(p.etaMs).toLocaleTimeString();
-  const vTxt = p.verdict==='behind'?(he?'מאחר':'behind') : p.verdict==='ahead'?(he?'מקדים':'ahead') : (he?'בקצב':'on pace');
+  const vTxt = p.verdict==='behind'?(L('מאחר', 'behind')) : p.verdict==='ahead'?(L('מקדים', 'ahead')) : (L('בקצב', 'on pace'));
   const cls = p.verdict==='behind'?'cop-pace-warn':'cop-pace-ok';
-  const slack = (typeof p.slackMin==='number')?` (${p.slackMin>0?'+':''}${p.slackMin} ${he?'דק׳':'min'})`:'';
-  const fix = p.verdict==='behind' ? (he?'להאיץ: העלה מעט את חום התא, או עטוף (Crutch) עכשיו; אפשר גם לקצר מנוחה או לדחות הגשה.':'To catch up: nudge the pit temp up, or wrap (Crutch) now; you can also shorten the rest or push serve.')
-            : p.verdict==='ahead' ? (he?'יש עודף זמן — אפשר להחזיק בקופסת בידוד (faux cambro).':'You have slack — hold it wrapped in a cooler (faux cambro).') : '';
-  return note(cls, `📈 ${p.lastTemp}°C · ${he?'קצב':'rate'} ~${p.rate}°C/${he?'ש':'h'} · ${he?'סיום ~':'ETA ~'}${eta}${p.verdict?` · <b>${vTxt}</b>${slack}`:''}`) + (fix?`<div class="cop-pacefix">💡 ${fix}</div>`:'');
+  const slack = (typeof p.slackMin==='number')?` (${p.slackMin>0?'+':''}${p.slackMin} ${L('דק׳', 'min')})`:'';
+  const fix = p.verdict==='behind' ? (L('להאיץ: העלה מעט את חום התא, או עטוף (Crutch) עכשיו; אפשר גם לקצר מנוחה או לדחות הגשה.', 'To catch up: nudge the pit temp up, or wrap (Crutch) now; you can also shorten the rest or push serve.'))
+            : p.verdict==='ahead' ? (L('יש עודף זמן — אפשר להחזיק בקופסת בידוד (faux cambro).', 'You have slack — hold it wrapped in a cooler (faux cambro).')) : '';
+  return note(cls, `📈 ${p.lastTemp}°C · ${L('קצב', 'rate')} ~${p.rate}°C/${L('ש', 'h')} · ${L('סיום ~', 'ETA ~')}${eta}${p.verdict?` · <b>${vTxt}</b>${slack}`:''}`) + (fix?`<div class="cop-pacefix">💡 ${fix}</div>`:'');
 }
 // W2-P6: "what do I do now?" — deterministic advice from the session state (always available, no key needed).
 function copilotAdviceLocal(session){
-  const he=(typeof getLang!=='function'||getLang()==='he'); const s=session||{};
+  const s=session||{};
   const pace=(typeof copilotPace==='function')?copilotPace(s):{state:'no-reading'};
-  if(pace.state==='done') return he?'הגעת ליעד — הוצא, עטוף ונוח בקופסת בידוד לפני הפריסה.':'You’ve hit the target — pull it, wrap it, and rest it in a cooler before slicing.';
-  if(pace.state==='stall') return he?'אתה בסטָאל: התאזר בסבלנות, או עטוף (Texas Crutch) כשהקרום כהה ויציב כדי לפרוץ. אל תעלה חום בפאניקה.':'You’re in the stall: wait it out, or wrap (Texas Crutch) once the bark is dark and set to break through. Don’t panic-raise the heat.';
-  if(pace.state==='flat') return he?'הטמפ׳ לא עולה — בדוק שהאש/הדלק תקינים ושכיסוי התא סגור.':'The temp isn’t rising — check your fire/fuel and that the lid is closed.';
-  if(pace.state==='projected' && pace.verdict==='behind') return he?'אתה מאחר להגשה: העלה מעט את חום התא, או עטוף עכשיו לפרוץ מהר; אפשר גם לקצר מנוחה או לדחות את ההגשה.':'You’re behind for serve: nudge the pit temp up, or wrap now to push faster; you can also shorten the rest or move serve later.';
-  if(pace.state==='projected' && pace.verdict==='ahead') return he?'אתה מקדים — כשתגיע ליעד, החזק עטוף בקופסת בידוד (faux cambro) עד ההגשה.':'You’re ahead — when it hits target, hold it wrapped in a cooler (faux cambro) until serve.';
-  if(pace.state==='projected') return he?'אתה בקצב טוב — המשך לפי התוכנית ובדוק מדחום מדי פעם.':'You’re on pace — stay the course and check the probe periodically.';
-  if(pace.state==='need-more') return he?'רשום עוד קריאת מדחום כדי שאחשב זמן-סיום מדויק.':'Log another probe reading so I can project a finish time.';
-  return he?'הגדר טמפ׳-יעד ורשום קריאת מדחום כדי שאעזור לכוון את התזמון.':'Set a target temp and log a reading so I can help you dial in the timing.';
+  if(pace.state==='done') return L('הגעת ליעד — הוצא, עטוף ונוח בקופסת בידוד לפני הפריסה.', 'You’ve hit the target — pull it, wrap it, and rest it in a cooler before slicing.');
+  if(pace.state==='stall') return L('אתה בסטָאל: התאזר בסבלנות, או עטוף (Texas Crutch) כשהקרום כהה ויציב כדי לפרוץ. אל תעלה חום בפאניקה.', 'You’re in the stall: wait it out, or wrap (Texas Crutch) once the bark is dark and set to break through. Don’t panic-raise the heat.');
+  if(pace.state==='flat') return L('הטמפ׳ לא עולה — בדוק שהאש/הדלק תקינים ושכיסוי התא סגור.', 'The temp isn’t rising — check your fire/fuel and that the lid is closed.');
+  if(pace.state==='projected' && pace.verdict==='behind') return L('אתה מאחר להגשה: העלה מעט את חום התא, או עטוף עכשיו לפרוץ מהר; אפשר גם לקצר מנוחה או לדחות את ההגשה.', 'You’re behind for serve: nudge the pit temp up, or wrap now to push faster; you can also shorten the rest or move serve later.');
+  if(pace.state==='projected' && pace.verdict==='ahead') return L('אתה מקדים — כשתגיע ליעד, החזק עטוף בקופסת בידוד (faux cambro) עד ההגשה.', 'You’re ahead — when it hits target, hold it wrapped in a cooler (faux cambro) until serve.');
+  if(pace.state==='projected') return L('אתה בקצב טוב — המשך לפי התוכנית ובדוק מדחום מדי פעם.', 'You’re on pace — stay the course and check the probe periodically.');
+  if(pace.state==='need-more') return L('רשום עוד קריאת מדחום כדי שאחשב זמן-סיום מדויק.', 'Log another probe reading so I can project a finish time.');
+  return L('הגדר טמפ׳-יעד ורשום קריאת מדחום כדי שאעזור לכוון את התזמון.', 'Set a target temp and log a reading so I can help you dial in the timing.');
 }
 async function copilotAskNow(){
   const s=(typeof liveSession==='function')?liveSession():null; if(!s) return;
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const host=$("#copAdvice"); if(!host) return;
   const local=copilotAdviceLocal(s);
   host.innerHTML=`<div class="cop-pacenote">${esc(local)}</div>`;                    // deterministic advice, always
   if(typeof aiAvail!=='function' || !aiAvail()) return;                              // no key → local only
   const prev=host.innerHTML;
-  host.innerHTML=`<div class="cop-pacenote">${(typeof aiSpinner==='function')?aiSpinner(he?'האש חושב':'The Fire is thinking'):'…'}</div>`;
+  host.innerHTML=`<div class="cop-pacenote">${(typeof aiSpinner==='function')?aiSpinner(L('האש חושב', 'The Fire is thinking')):'…'}</div>`;
   try{
     const stage=_copilotStages(); const stageLbl=stage.cur?stripEmoji(stage.cur.label||''):'';
-    const q=(he?'מצב הבישול:':'Cook situation:')+copilotVoiceContext()+(stageLbl?(' '+(he?'שלב נוכחי:':'current stage:')+' '+stageLbl):'')+' '+(he?'מה כדאי לעשות עכשיו? תשובה קצרה ומעשית.':'What should I do right now? Short, practical answer.');
+    const q=(L('מצב הבישול:', 'Cook situation:'))+copilotVoiceContext()+(stageLbl?(' '+(L('שלב נוכחי:', 'current stage:'))+' '+stageLbl):'')+' '+(L('מה כדאי לעשות עכשיו? תשובה קצרה ומעשית.', 'What should I do right now? Short, practical answer.'));
     const r=await askGemini(q, []);
     // SAFETY: grounding = the VETTED context only. copilotVoiceContext() carries the user's live probe
     // reading; feeding it here would let the AI "ground" an unsafe number in the user's own telemetry.
@@ -6754,22 +6739,21 @@ async function copilotAskNow(){
 }
 function openCopilot(){
   if(typeof showPanel!=='function') return;
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const sess=liveSession(); const st=_copilotStages();
   // probe check-in + pace/ETA card
   let probeCard='';
   if(sess){
     const tgt=(typeof sess.targetC==='number')?sess.targetC:null;
-    probeCard=`<div class="cop-probe"><div class="cop-probeh">🌡️ ${he?'בדיקת מדחום':'Probe check-in'}</div>
-      <div class="cop-proberow"><input id="copProbe" class="cop-in" type="number" inputmode="decimal" placeholder="${he?'טמפ׳ פנימית °C':'internal °C'}"><button class="mchip" id="copProbeLog">${he?'רשום':'Log'}</button></div>
-      ${tgt==null?`<div class="cop-proberow"><input id="copTarget" class="cop-in" type="number" inputmode="decimal" placeholder="${he?'יעד פנימי °C':'target internal °C'}"><button class="mchip" id="copTargetSet">${he?'הגדר יעד':'Set target'}</button></div>`:`<div class="cop-pacenote">🎯 ${he?'יעד':'target'} ${tgt}°C</div>`}
+    probeCard=`<div class="cop-probe"><div class="cop-probeh">🌡️ ${L('בדיקת מדחום', 'Probe check-in')}</div>
+      <div class="cop-proberow"><input id="copProbe" class="cop-in" type="number" inputmode="decimal" placeholder="${L('טמפ׳ פנימית °C', 'internal °C')}"><button class="mchip" id="copProbeLog">${L('רשום', 'Log')}</button></div>
+      ${tgt==null?`<div class="cop-proberow"><input id="copTarget" class="cop-in" type="number" inputmode="decimal" placeholder="${L('יעד פנימי °C', 'target internal °C')}"><button class="mchip" id="copTargetSet">${L('הגדר יעד', 'Set target')}</button></div>`:`<div class="cop-pacenote">🎯 ${L('יעד', 'target')} ${tgt}°C</div>`}
       ${_copilotPaceHtml(copilotPace(sess))}</div>`;
   }
   // W2-P4: adaptive timing — shift the serve (running late / moved / ahead) → verdict + plan recompute
   let adjustCard='';
   if(sess){
-    adjustCard=`<div class="cop-adjust"><div class="cop-adjusth">⏱️ ${he?'תזמון':'Timing'}${(typeof sess.serveTs==='number')?` · ${he?'הגשה':'serve'} ${fmtClock(new Date(sess.serveTs))}`:''}</div>
-      <div class="cop-proberow"><button class="mchip" data-copserve="30">+30 ${he?'דק׳':'min'}</button><button class="mchip" data-copserve="60">+1 ${he?'ש':'h'}</button><button class="mchip" data-copserve="-15">−15 ${he?'דק׳':'min'}</button></div></div>`;
+    adjustCard=`<div class="cop-adjust"><div class="cop-adjusth">⏱️ ${L('תזמון', 'Timing')}${(typeof sess.serveTs==='number')?` · ${L('הגשה', 'serve')} ${fmtClock(new Date(sess.serveTs))}`:''}</div>
+      <div class="cop-proberow"><button class="mchip" data-copserve="30">+30 ${L('דק׳', 'min')}</button><button class="mchip" data-copserve="60">+1 ${L('ש', 'h')}</button><button class="mchip" data-copserve="-15">−15 ${L('דק׳', 'min')}</button></div></div>`;
   }
   // stall advisory during smoke stages (uses the last probe reading if one exists — capture arrives in P3)
   let stallCard='';
@@ -6778,17 +6762,17 @@ function openCopilot(){
     const lastT=probes.length?probes[probes.length-1].tempC:null;
     const info=copilotStallInfo(lastT);
     const head=(lastT!=null&&info.inStall)?`🌡️ ${lastT}°C · ${info.title}`:info.title;
-    stallCard=`<div class="cop-stall${info.inStall?' cop-stall-on':''}"><div class="cop-stallh">🧱 ${esc(head)}</div><div class="cop-stallb">${esc(info.body)}</div><div class="ai-refuse-src">📚 ${he?'מתוך מדריך התקלות של האפליקציה':'From the app’s troubleshooting guide'}</div></div>`;
+    stallCard=`<div class="cop-stall${info.inStall?' cop-stall-on':''}"><div class="cop-stallh">🧱 ${esc(head)}</div><div class="cop-stallb">${esc(info.body)}</div><div class="ai-refuse-src">📚 ${L('מתוך מדריך התקלות של האפליקציה', 'From the app’s troubleshooting guide')}</div></div>`;
   }
   const stageHtml=function(t,tag){ if(!t) return ''; return `<div class="cop-stage"><div class="cop-stagek">${tag}</div><div class="cop-stagel">${esc(t.label||'')}</div>${t.sub?`<div class="cop-stagesub">${esc(t.sub)}</div>`:''}${(t.tid&&t.dur)?timerHTML(t.dur, t.tid, t.label||''):''}</div>`; };
   const body = (st.count
-    ? `${stageHtml(st.cur, he?'עכשיו':'Now')}${stageHtml(st.next, he?'הבא':'Next')}`
-    : `<div class="cop-empty">${he?'פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.':'Open the cook’s work plan to start a live session.'}</div>`) + stallCard + probeCard + adjustCard;
+    ? `${stageHtml(st.cur, L('עכשיו', 'Now'))}${stageHtml(st.next, L('הבא', 'Next'))}`
+    : `<div class="cop-empty">${L('פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.', 'Open the cook’s work plan to start a live session.')}</div>`) + stallCard + probeCard + adjustCard;
   showPanel(`${typeof toolTop==='function'?toolTop(L('טייס חי','Live Copilot'),L('הבישול שלך בזמן אמת','Your cook, live'),'🔥','#c0392b'):`<h2 style="padding:16px">${L('טייס חי','Live Copilot')}</h2>`}
     <div class="panel-body">
-      ${sess?`<div class="cop-hdr">🔥 ${he?'מושב חי פעיל':'Live session active'}${sess.serveTs?` · ${he?'הגשה':'serve'} ${fmtClock(new Date(sess.serveTs))}`:''}</div>`:''}
+      ${sess?`<div class="cop-hdr">🔥 ${L('מושב חי פעיל', 'Live session active')}${sess.serveTs?` · ${L('הגשה', 'serve')} ${fmtClock(new Date(sess.serveTs))}`:''}</div>`:''}
       ${body}
-      ${sess?`<button class="mchip cop-asknow" id="copAskNow">🤖 ${he?'מה לעשות עכשיו?':'What do I do now?'}</button><div id="copAdvice"></div>`:''}
+      ${sess?`<button class="mchip cop-asknow" id="copAskNow">🤖 ${L('מה לעשות עכשיו?', 'What do I do now?')}</button><div id="copAdvice"></div>`:''}
       <div class="cop-actions">
         <button class="mchip vc-launch" data-copvoice>🎙️ ${L('בישול קולי','Voice cook')}</button>
         ${sess?`<button class="mchip" id="copStop">■ ${L('סיים מושב','End session')}</button>`:''}
@@ -7502,24 +7486,23 @@ function gearConciergeApply(g, level){
   if(typeof cRefreshHome==='function') cRefreshHome();
 }
 function _gearConciergePreview(g, level){
-  const he=(typeof getLang!=='function'||getLang()==='he'); const rows=[];
-  const nameOf={smoker:he?'מעשנה':'Smoker',grill:he?'גריל':'Grill',sousvide:he?'סו-ויד':'Sous-vide',thermo:he?'מדחום':'Probe',grinder:he?'מטחנה':'Grinder',stuffer:he?'מכונת מילוי':'Stuffer',vacuum:he?'ואקום':'Vacuum'};
+  const rows=[];
+  const nameOf={smoker:L('מעשנה', 'Smoker'),grill:L('גריל', 'Grill'),sousvide:L('סו-ויד', 'Sous-vide'),thermo:L('מדחום', 'Probe'),grinder:L('מטחנה', 'Grinder'),stuffer:L('מכונת מילוי', 'Stuffer'),vacuum:L('ואקום', 'Vacuum')};
   Object.keys(g).forEach(function(k){ rows.push(`<div class="gc-row">✓ <b>${nameOf[k]||k}</b> · ${esc(t?t(g[k]):g[k])}</div>`); });
-  const lvl=({beginner:he?'מתחיל':'Beginner',mid:he?'בינוני':'Intermediate',pro:he?'מתקדם':'Pro'})[level]||level;
-  return rows.length ? `${rows.join('')}<div class="gc-row">🧭 ${he?'רמת ממשק מוצעת':'Suggested level'}: <b>${lvl}</b></div>` : `<div class="cop-pacenote">${he?'לא זיהיתי ציוד — נסה לתאר בפירוט (מעשנה, גריל, סו-ויד, מדחום…).':'Didn’t detect any gear — try describing it (smoker, grill, sous-vide, probe…).'}</div>`;
+  const lvl=({beginner:L('מתחיל', 'Beginner'),mid:L('בינוני', 'Intermediate'),pro:L('מתקדם', 'Pro')})[level]||level;
+  return rows.length ? `${rows.join('')}<div class="gc-row">🧭 ${L('רמת ממשק מוצעת', 'Suggested level')}: <b>${lvl}</b></div>` : `<div class="cop-pacenote">${L('לא זיהיתי ציוד — נסה לתאר בפירוט (מעשנה, גריל, סו-ויד, מדחום…).', 'Didn’t detect any gear — try describing it (smoker, grill, sous-vide, probe…).')}</div>`;
 }
 function openGearConcierge(){
   if(typeof showPanel!=='function') return;
-  const he=(typeof getLang!=='function'||getLang()==='he');
   showPanel(`${typeof toolTop==='function'?toolTop(L('ספר לי מה יש לך','Tell me your setup'),L('תאר את הציוד במילים שלך — אגדיר אותו','Describe your gear — I’ll set it up'),'✨','#5a7d8c'):`<h2 style="padding:16px">${L('הציוד שלי','My gear')}</h2>`}
     <div class="panel-body">
-      <textarea id="gcDesc" class="cop-in" rows="3" style="resize:vertical" placeholder="${he?'למשל: מעשנת אופסט, וובר קטל, מקל סו-ויד, מדחום MEATER, מטחנה ומכונת מילוי':'e.g. an offset smoker, a Weber kettle, a sous-vide stick, a MEATER probe, a grinder and a stuffer'}"></textarea>
-      <button class="ccta" id="gcGo" style="margin-top:10px">✨ ${he?'הגדר את הציוד שלי':'Set up my gear'}</button>
+      <textarea id="gcDesc" class="cop-in" rows="3" style="resize:vertical" placeholder="${L('למשל: מעשנת אופסט, וובר קטל, מקל סו-ויד, מדחום MEATER, מטחנה ומכונת מילוי', 'e.g. an offset smoker, a Weber kettle, a sous-vide stick, a MEATER probe, a grinder and a stuffer')}"></textarea>
+      <button class="ccta" id="gcGo" style="margin-top:10px">✨ ${L('הגדר את הציוד שלי', 'Set up my gear')}</button>
       <div id="gcResult"></div>
     </div>`);
   const go=$("#gcGo"); if(go) go.addEventListener('click',function(){ const desc=($("#gcDesc")||{}).value||''; const g=gearFromText(desc); const level=levelFromText(desc,g); const res=$("#gcResult");
-    if(res){ res.innerHTML=`<div class="gc-preview">${_gearConciergePreview(g,level)}</div>${Object.keys(g).length?`<button class="ccta" id="gcApply" style="margin-top:10px;background:var(--fresh);border-color:var(--fresh)">✓ ${he?'החל':'Apply'}</button>`:''}`;
-      const ap=$("#gcApply"); if(ap) ap.addEventListener('click',function(){ gearConciergeApply(g,level); if(typeof toast==='function') toast(he?'הציוד הוגדר ✓':'Gear set ✓'); if(typeof closePanel==='function') closePanel(); }); }
+    if(res){ res.innerHTML=`<div class="gc-preview">${_gearConciergePreview(g,level)}</div>${Object.keys(g).length?`<button class="ccta" id="gcApply" style="margin-top:10px;background:var(--fresh);border-color:var(--fresh)">✓ ${L('החל', 'Apply')}</button>`:''}`;
+      const ap=$("#gcApply"); if(ap) ap.addEventListener('click',function(){ gearConciergeApply(g,level); if(typeof toast==='function') toast(L('הציוד הוגדר ✓', 'Gear set ✓')); if(typeof closePanel==='function') closePanel(); }); }
   });
 }
 // Equipment 2.0 · Slice 1B — AI equipment helper. Curated brand list (offline) + web-grounded spec/model lookup.
@@ -7606,11 +7589,11 @@ function equipChip(tok, need){
 const EQUIP_PHASE_LABEL={sv:['סו-ויד','Sous-vide'], smoke:['עישון','Smoke'], grill:['גריל','Grill'], cook:['בישול','Cook'], cure:['ריפוי','Cure'], prep:['הכנה','Prep']};
 function equipSpecNote(spec){
   if(!spec) return '';
-  const he=(typeof getLang!=='function'||getLang()==='he'); const bits=[];
-  if(spec.min_bath_l)    bits.push(`${he?'אמבט':'Bath'} ≥ ${spec.min_bath_l} ${he?'ל׳':'L'}`);
-  if(spec.footprint_cm2) bits.push(`${he?'שטח':'Area'} ~${spec.footprint_cm2} ${he?'סמ״ר':'cm²'}`);
-  if(spec.casing_mm)     bits.push(`${he?'מעטה':'Casing'} ${spec.casing_mm} ${he?'מ״מ':'mm'}`);
-  if(spec.scale_res)     bits.push(`${he?'משקל':'Scale'} ≥ ${spec.scale_res} ${he?'(למינון קיור מדויק)':'(for accurate cure dosing)'}`);
+  const bits=[];
+  if(spec.min_bath_l)    bits.push(`${L('אמבט', 'Bath')} ≥ ${spec.min_bath_l} ${L('ל׳', 'L')}`);
+  if(spec.footprint_cm2) bits.push(`${L('שטח', 'Area')} ~${spec.footprint_cm2} ${L('סמ״ר', 'cm²')}`);
+  if(spec.casing_mm)     bits.push(`${L('מעטה', 'Casing')} ${spec.casing_mm} ${L('מ״מ', 'mm')}`);
+  if(spec.scale_res)     bits.push(`${L('משקל', 'Scale')} ≥ ${spec.scale_res} ${L('(למינון קיור מדויק)', '(for accurate cure dosing)')}`);
   return bits.length?`<span class="eq-spec">${bits.join(' · ')}</span>`:'';
 }
 function equipSectionHtml(eq){
@@ -9294,7 +9277,7 @@ function renderHomeChrome(){
   const gc=$("#cHomeGearChip");
   if(gc){
     if(typeof gearConfigured==='function' && gearConfigured()){
-      gc.innerHTML=`🔧 <span class="cgc-list">${he?'הציוד שלי':'My gear'}</span> <span class="cgc-edit">· ${he?'שנה':'change'}</span>`;
+      gc.innerHTML=`🔧 <span class="cgc-list">${L('הציוד שלי', 'My gear')}</span> <span class="cgc-edit">· ${L('שנה', 'change')}</span>`;
       gc.hidden=false;
     } else gc.hidden=true;
   }
@@ -9305,7 +9288,7 @@ function renderHomeChrome(){
     const evs=(typeof evList==='function')?evList():[];
     if(evs.length>=2){
       let clash=0; try{ clash=combinedEventsRows().filter(function(r){return r.contention;}).length; }catch(e){}
-      mv.innerHTML=`<span class="mev-ic">🗂️</span><span class="mev-txt"><b>${evs.length} ${he?'אירועים':'cookouts'}</b> · ${he?'לוח-זמנים משולב':'combined schedule'}${clash?` · <span class="mev-warn">⚠ ${clash} ${he?'חפיפות':'clashes'}</span>`:''}</span><span class="mev-go">←</span>`;
+      mv.innerHTML=`<span class="mev-ic">🗂️</span><span class="mev-txt"><b>${evs.length} ${L('אירועים', 'cookouts')}</b> · ${L('לוח-זמנים משולב', 'combined schedule')}${clash?` · <span class="mev-warn">⚠ ${clash} ${L('חפיפות', 'clashes')}</span>`:''}</span><span class="mev-go">←</span>`;
       mv.hidden=false;
     } else mv.hidden=true;
   }
@@ -9315,10 +9298,10 @@ function renderHomeChrome(){
     if(homeModOn('cHomeDock')){
       const byFn={}; DOCK_POOL.forEach(function(t){ byFn[t[3]]=t; });
       const tools=dockTools().map(function(fn){ return byFn[fn]; }).filter(Boolean);
-      const title=`<div class="dock-title">🛠️ ${he?'כלי הפיטמאסטר':'Pitmaster tools'}<button class="dock-edit" data-dockedit aria-label="${he?'התאם':'Customize'}">✎</button></div>`;
+      const title=`<div class="dock-title">🛠️ ${L('כלי הפיטמאסטר', 'Pitmaster tools')}<button class="dock-edit" data-dockedit aria-label="${L('התאם', 'Customize')}">✎</button></div>`;
       const grid=tools.length
         ? `<div class="dock-grid">${tools.map(function(x){return `<button class="dockbtn" data-hfn="${x[3]}"><span class="dk-ic">${x[0]}</span>${he?x[1]:x[2]}</button>`;}).join('')}</div>`
-        : `<button class="dock-empty" data-dockedit>＋ ${he?'הוסף כלים':'Add tools'}</button>`;
+        : `<button class="dock-empty" data-dockedit>＋ ${L('הוסף כלים', 'Add tools')}</button>`;
       dk.innerHTML=title+grid;
       dk.hidden=false;
       dk.querySelectorAll('.dockbtn[data-hfn]').forEach(function(b){ b.addEventListener('click',function(){ const fn=b.dataset.hfn; if(typeof window[fn]==='function') window[fn](); }); });
@@ -10520,7 +10503,7 @@ function charcuterieGuardian(p){
     if(lossNow<Math.max(targetLoss,SAFE_MIN)) out.push({level:'warn', text: he?`ירדת ${lossNow}% — עדיין לא בטוח לאכילה. המשך לייבש עד ~${Math.max(targetLoss,SAFE_MIN)}%.`:`${lossNow}% lost — not safe to eat yet. Keep drying to ~${Math.max(targetLoss,SAFE_MIN)}%.`});
     else out.push({level:'ok', text: he?`ירדת ${lossNow}% — הגעת לפעילות-מים בטוחה (~${SAFE_MIN}%+).`:`${lossNow}% lost — safe water activity reached (~${SAFE_MIN}%+).`});
   }
-  if(p.type==='dry'||p.type==='cure') out.push({level:'info', text: he?'מוצר מיובש/כבוש חייב ניטריט (Cure #1/#2) — ודא שהמתכון כלל אותו; היעדרו = סכנת בוטוליזם.':'A dry/cured product requires nitrite (Cure #1/#2) — make sure the recipe included it; without it = botulism risk.'});
+  if(p.type==='dry'||p.type==='cure') out.push({level:'info', text: L('מוצר מיובש/כבוש חייב ניטריט (Cure #1/#2) — ודא שהמתכון כלל אותו; היעדרו = סכנת בוטוליזם.', 'A dry/cured product requires nitrite (Cure #1/#2) — make sure the recipe included it; without it = botulism risk.')});
   return out;
 }
 function _guardianTop(p){ const f=charcuterieGuardian(p); if(!f.length) return null;
@@ -11121,29 +11104,26 @@ async function gemVision(dataUrl, prompt){
   const txt=cand&&cand.content&&(cand.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();
   if(!txt) throw new Error('empty'); return txt;
 }
-function _photoPrompt(){ const he=(typeof getLang!=='function'||getLang()==='he');
-  return he
-    ? 'אתה מומחה בישול-אש. נתח את התמונה של בשר/נקניק על האש: הערך קרום (bark), טבעת עשן, מידת עשייה חיצונית, ולשרקוטרי — עובש/התקשות-שפה. תשובה קצרה ומעשית בעברית. חשוב: זו הערכה ויזואלית בלבד — סיים תמיד ב"אמת עם מדחום לפי טמפ׳ הבטיחות בכרטיס". אל תקבע מספר טמפ׳-פנים בטוחה מהתמונה.'
-    : 'You are a fire-cooking expert. Analyze this photo of meat/sausage on the fire: assess bark, smoke ring, exterior doneness, and for charcuterie mold/case-hardening. Short, practical answer in English. IMPORTANT: this is a VISUAL estimate only — always end with "confirm with a probe against the safe temp on the card". Never state a numeric safe internal temperature from the photo.';
+function _photoPrompt(){
+  return L('אתה מומחה בישול-אש. נתח את התמונה של בשר/נקניק על האש: הערך קרום (bark), טבעת עשן, מידת עשייה חיצונית, ולשרקוטרי — עובש/התקשות-שפה. תשובה קצרה ומעשית בעברית. חשוב: זו הערכה ויזואלית בלבד — סיים תמיד ב"אמת עם מדחום לפי טמפ׳ הבטיחות בכרטיס". אל תקבע מספר טמפ׳-פנים בטוחה מהתמונה.', 'You are a fire-cooking expert. Analyze this photo of meat/sausage on the fire: assess bark, smoke ring, exterior doneness, and for charcuterie mold/case-hardening. Short, practical answer in English. IMPORTANT: this is a VISUAL estimate only — always end with "confirm with a probe against the safe temp on the card". Never state a numeric safe internal temperature from the photo.');
 }
 function openPhotoAnalyze(){
   if(typeof showPanel!=='function') return;
-  const he=(typeof getLang!=='function'||getLang()==='he');
   showPanel(`${typeof toolTop==='function'?toolTop(L('ניתוח תמונה','Photo read'),L('צלם/העלה — אעריך קרום, עשייה, עובש','Snap/upload — I’ll read the bark, doneness, mold'),'📸','#7a5cc2'):`<h2 style="padding:16px">${L('ניתוח תמונה','Photo read')}</h2>`}
     <div class="panel-body">
-      <div class="pa-note">📸 ${he?'הערכה ויזואלית · 🌡️ המדחום מכריע':'Advises visually · 🌡️ the probe decides'}</div>
+      <div class="pa-note">📸 ${L('הערכה ויזואלית · 🌡️ המדחום מכריע', 'Advises visually · 🌡️ the probe decides')}</div>
       <input type="file" accept="image/*" id="paFile" class="cop-in" style="padding:9px">
       <div id="paPreview"></div>
-      <button class="ccta" id="paGo" style="margin-top:10px" disabled>✨ ${he?'נתח':'Analyze'}</button>
+      <button class="ccta" id="paGo" style="margin-top:10px" disabled>✨ ${L('נתח', 'Analyze')}</button>
       <div id="paResult"></div>
     </div>`);
   let dataUrl=null;
   const f=$("#paFile"); if(f) f.addEventListener('change',function(){ const file=f.files&&f.files[0]; if(!file) return; const rd=new FileReader(); rd.onload=function(){ dataUrl=rd.result; const pv=$("#paPreview"); if(pv) pv.innerHTML=`<img src="${dataUrl}" alt="" style="max-width:100%;border-radius:12px;margin:10px 0">`; const go=$("#paGo"); if(go) go.disabled=false; }; rd.readAsDataURL(file); });
   const go=$("#paGo"); if(go) go.addEventListener('click',async function(){ if(!dataUrl) return; const res=$("#paResult");
-    if(typeof aiAvail!=='function' || !aiAvail()){ if(res) res.innerHTML=`<div class="ai-keybanner"><span>🔑 ${he?'ניתוח תמונות דורש מפתח AI.':'Photo analysis needs an AI key.'}</span><button class="ai-calc-link" id="paKey">${he?'הוסף מפתח':'Add key'}</button></div>`; const kb=$("#paKey"); if(kb) kb.addEventListener('click',function(){ if(typeof openKeyManager==='function') openKeyManager(); }); return; }
-    if(res) res.innerHTML=`<div class="cop-pacenote">${(typeof aiSpinner==='function')?aiSpinner(he?'מנתח את התמונה':'Analyzing the photo'):'…'}</div>`;
+    if(typeof aiAvail!=='function' || !aiAvail()){ if(res) res.innerHTML=`<div class="ai-keybanner"><span>🔑 ${L('ניתוח תמונות דורש מפתח AI.', 'Photo analysis needs an AI key.')}</span><button class="ai-calc-link" id="paKey">${L('הוסף מפתח', 'Add key')}</button></div>`; const kb=$("#paKey"); if(kb) kb.addEventListener('click',function(){ if(typeof openKeyManager==='function') openKeyManager(); }); return; }
+    if(res) res.innerHTML=`<div class="cop-pacenote">${(typeof aiSpinner==='function')?aiSpinner(L('מנתח את התמונה', 'Analyzing the photo')):'…'}</div>`;
     try{ const txt=await gemVision(dataUrl, _photoPrompt()); if(res) res.innerHTML=`<div class="pa-read">${esc(txt).replace(/\n/g,'<br>')}${(typeof aiSafetyNote==='function')?aiSafetyNote(txt, (typeof SAFETY_FACTS==='function'?SAFETY_FACTS():'')):''}</div>`; }
-    catch(e){ if(res) res.innerHTML=`<div class="cop-pacenote cop-pace-warn">${he?'הניתוח נכשל — נסה שוב או בדוק את המפתח.':'Analysis failed — try again or check your key.'}</div>`; }
+    catch(e){ if(res) res.innerHTML=`<div class="cop-pacenote cop-pace-warn">${L('הניתוח נכשל — נסה שוב או בדוק את המפתח.', 'Analysis failed — try again or check your key.')}</div>`; }
   });
 }
 const AI_TOOLS=[
@@ -11174,7 +11154,7 @@ function openHomeCustom(){
   const order=homeCustomOrder();
   const nameOf=id=>{ const m=HOME_MODULES.find(x=>x.id===id); return m?(he?m.he:m.en):id; };
   const rows=order.map(function(id){ const on=homeModOn(id);   // true visibility, incl. level gates — not just the off-list
-    return `<div class="hc-row" data-hcid="${id}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="hc-name">${nameOf(id)}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${id}">${on?(he?'מוצג':'Shown'):(he?'מוסתר':'Hidden')}</button></div>`;
+    return `<div class="hc-row" data-hcid="${id}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="hc-name">${nameOf(id)}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${id}">${on?(L('מוצג', 'Shown')):(L('מוסתר', 'Hidden'))}</button></div>`;
   }).join('');
   showPanel(`${typeof toolTop==='function'?toolTop(L('התאמת מסך הבית','Customize home'),L('גרור לשינוי סדר · הקש להצגה/הסתרה','Drag to reorder · tap to show/hide'),'⚙️','#5a7d8c'):`<h2 style="padding:16px">${L('התאמת מסך הבית','Customize home')}</h2>`}
     <div class="panel-body">
@@ -11188,7 +11168,7 @@ function openHomeCustom(){
     const onArr=[].slice.call(listEl.querySelectorAll('.hc-toggle.on')).map(b=>b.dataset.hctoggle).filter(homeModGate);   // only gated modules need a recorded opt-in
     store.set('mk-homecustom',{order:ord, off:offArr, on:onArr}); if(typeof cRefreshHome==='function') cRefreshHome(); };
   listEl.querySelectorAll('[data-hctoggle]').forEach(function(b){ b.addEventListener('click',function(){ b.classList.toggle('on');
-    b.textContent = b.classList.contains('on')?(he?'מוצג':'Shown'):(he?'מוסתר':'Hidden'); save(); }); });
+    b.textContent = b.classList.contains('on')?(L('מוצג', 'Shown')):(L('מוסתר', 'Hidden')); save(); }); });
   { const r=$("#hcReset"); if(r) r.addEventListener('click',function(){ store.set('mk-homecustom',null); if(typeof cRefreshHome==='function') cRefreshHome(); openHomeCustom(); }); }
   hcWireDrag(listEl, save);
 }
@@ -11199,7 +11179,7 @@ function openDockCustom(){
   const chosen=dockTools(); const chosenSet=new Set(chosen); const byFn={}; DOCK_POOL.forEach(function(t){ byFn[t[3]]=t; });
   const ordered=chosen.map(function(fn){return byFn[fn];}).filter(Boolean).concat(DOCK_POOL.filter(function(t){return !chosenSet.has(t[3]);}));   // chosen (in order) first, then the rest of the pool
   const rows=ordered.map(function(t){ const on=chosenSet.has(t[3]);
-    return `<div class="hc-row" data-hcid="${t[3]}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="dk-ic">${t[0]}</span><span class="hc-name">${he?t[1]:t[2]}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${t[3]}">${on?(he?'✓ במזח':'✓ In'):(he?'+ הוסף':'+ Add')}</button></div>`;
+    return `<div class="hc-row" data-hcid="${t[3]}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="dk-ic">${t[0]}</span><span class="hc-name">${he?t[1]:t[2]}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${t[3]}">${on?(L('✓ במזח', '✓ In')):(L('+ הוסף', '+ Add'))}</button></div>`;
   }).join('');
   showPanel(`${typeof toolTop==='function'?toolTop(L('כלי הפיטמאסטר','Pitmaster tools'),L('בחר וסדר את הכלים במזח','Pick and order the dock tools'),'🛠️','#5a7d8c'):`<h2 style="padding:16px">${L('כלי הפיטמאסטר','Pitmaster tools')}</h2>`}
     <div class="panel-body">
@@ -11211,7 +11191,7 @@ function openDockCustom(){
   const save=function(){ const inc=[].slice.call(listEl.querySelectorAll('.hc-row')).filter(function(r){ const tb=r.querySelector('.hc-toggle'); return tb&&tb.classList.contains('on'); }).map(function(r){return r.dataset.hcid;});
     store.set('mk-dock-tools', inc); if(typeof cRefreshHome==='function') cRefreshHome(); };
   listEl.querySelectorAll('[data-hctoggle]').forEach(function(b){ b.addEventListener('click',function(){ b.classList.toggle('on');
-    b.textContent=b.classList.contains('on')?(he?'✓ במזח':'✓ In'):(he?'+ הוסף':'+ Add'); save(); }); });
+    b.textContent=b.classList.contains('on')?(L('✓ במזח', '✓ In')):(L('+ הוסף', '+ Add')); save(); }); });
   { const r=$("#dkReset"); if(r) r.addEventListener('click',function(){ store.set('mk-dock-tools',null); if(typeof cRefreshHome==='function') cRefreshHome(); openDockCustom(); }); }
   if(typeof hcWireDrag==='function') hcWireDrag(listEl, save);
 }
