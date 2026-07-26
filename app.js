@@ -2112,12 +2112,29 @@ function eqmProbeNudgeKitHasNone(){
 // needs, reused verbatim rather than re-deriving a second what-if mechanism. Scans askAllItems()
 // (cuts+specials+makes, the SAME enumeration the Ask feature already reads) and stops at the first match —
 // with ~109 probe-gapped items in real data this is never a full-catalog scan in the steady state.
+//
+// FIX (2026-07-26, e3-validity cache-proof regression + perf): this whole scan — up to ~109+ items, each
+// paying eqmValidity AND the UNCACHED eqmValidityWithKit — was re-running on EVERY catView() render
+// (syncProbeNudge is unconditional at the top of catView, incl. every debounced #q keystroke), for the
+// exact audience the nudge targets (configured, no probe, not dismissed — the ordering comment on
+// eqmProbeNudgeShouldShow below calls these "the two steady states almost every render hits", but this
+// is the THIRD state: the one where the nudge is actually showing, which pays full price every render).
+// askAllItems() draws only from static build-time DATA (cuts/specials/makes — see its definition), so the
+// only thing that can change this boolean between renders is the owned kit — the exact thing eqmKitGen()
+// already tracks (same generation _eqValidityCache above is keyed on). Caching this result by that SAME
+// generation stamp is correct (recomputes exactly when equipSave/import/wipe bump it) and collapses the
+// per-keystroke full scan to a variable read in the steady state, matching eqmValidity's own cache shape.
+let _eqProbeNudgeCache = null;   // { gen, result } — gen-stamped, mirrors _eqValidityCache above
 function eqmProbeNudgeUnlocksAny(){
   if(typeof askAllItems!=='function' || typeof eqmValidity!=='function' || typeof eqmValidityWithKit!=='function' || typeof equipList!=='function') return false;
+  const gen = (typeof eqmKitGen==='function') ? eqmKitGen() : 0;
+  if(_eqProbeNudgeCache && _eqProbeNudgeCache.gen===gen) return _eqProbeNudgeCache.result;
   const withProbe = equipList().concat([{ id:'__probe-nudge-sim', cat:'probe', type:'other', name:'', cap:{} }]);
-  return askAllItems().some(function(meta){
+  const result = askAllItems().some(function(meta){
     return eqmValidity(meta).level==='uncookable' && eqmValidityWithKit(meta, withProbe).level==='ok';
   });
+  _eqProbeNudgeCache = { gen: gen, result: result };
+  return result;
 }
 // The full gate (owner Decision 5, all four ANDed): never dismissed, equipConfigured (R5 — zero equipment
 // noise until configured), no probe owned, at least one item a probe alone would unlock. Cheapest-first
