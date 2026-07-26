@@ -8584,12 +8584,21 @@ function t(heb, fallback){ const d=getDict(); if(d && d[heb]!=null) return d[heb
 // authored inline with its English counterpart; the active language picks which one is emitted. Falls
 // back to `en` for any non-Hebrew language (French/German/Spanish get English until localized, and the
 // online MT layer can still translate that). Interpolated Hebrew param values should be wrapped in t().
-function L(he, en){
+// v268 (spec docs/superpowers/specs/2026-07-26-full-localization-design-v2.md §3.1): additive 3rd arg
+// `ctx` — homograph disambiguator. When present the dict key is `he+'␟'+ctx`; he-mode still returns the
+// bare `he` arg unchanged (nothing stripped). `window.__i18nTrace`, when present (test harness only —
+// a single `if` on an absent global in production, ~free), records the real English-fallback branch for
+// non-en languages (a genuine dict-miss) and a diagnostic en-mode record carrying `hit` (does en.json
+// hold the key) — the en record never changes what L returns (en always wins via the inline arg).
+function L(he, en, ctx){
   const l=getLang();
   if(l==='he') return he;
-  if(l==='en') return en!=null?en:he;               // shipped English: inline arg wins → zero regression
-  const d=getDict();                                 // fr/de/es: prefer the per-lang dict, keyed by the Hebrew source
-  return (d && d[he]!=null) ? d[he] : (en!=null?en:he);
+  const key=ctx?(he+'␟'+ctx):he;
+  if(l==='en'){ if(window.__i18nTrace) __i18nTrace.push({key, en, lang:'en', hit: !!(getDict()&&getDict()[key])}); return en!=null?en:he; }               // shipped English: inline arg wins → zero regression
+  const d=getDict();                                 // fr/de/es: prefer the per-lang dict, keyed by the Hebrew source[␟ctx]
+  if(d && d[key]!=null) return d[key];
+  if(window.__i18nTrace) __i18nTrace.push({key, en, lang:l});   // real English-fallback event (I3)
+  return en!=null?en:he;
 }
 function _reEsc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 function applyI18n(root){ const d=getDict(); if(!d) return; const H=d.__html__||{}; const r=root||document;
