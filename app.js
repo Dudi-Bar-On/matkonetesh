@@ -1405,7 +1405,7 @@ function spkGoInstance(key, backFn, fresh){
   if(typeof closePanel==='function') closePanel();
   if(typeof cNavGo==='function') cNavGo('wizard');
   if(typeof cwGo==='function') cwGo(3);
-  if(typeof toast==='function') toast(ev?'הפריט נוסף לאירוע — בחר תיבול כאן':(fresh?'בישול חדש נפתח — בחר תיבול':'הפריט צורף — בחר תיבול'));
+  if(typeof toast==='function') toast(ev?L('הפריט נוסף לאירוע — בחר תיבול כאן','Item added to the event — pick a seasoning here'):(fresh?L('בישול חדש נפתח — בחר תיבול','New cook opened — pick a seasoning'):L('הפריט צורף — בחר תיבול','Item attached — pick a seasoning')));
 }
 function wireSeasPicker(host, key, cat, isProd, mode, onChange, backFn){
   const box=host.querySelector('#spk-'+CSS.escape(key)); if(!box) return;
@@ -1502,7 +1502,7 @@ function renderSeasonings(){
     const was=selectedSeasonings(seasCtxKey).includes(id);
     cwApplySeasKind(seasCtxKey, kind, was?'':id);
     renderSeasonings();
-    if(typeof toast==='function'){ const s=seasoningById(id); toast(was?`${s.heb} הוסר מהמופע`:`${s.heb} נבחר (${KIND_LABEL[kind]}) — הקודם מאותו סוג הוחלף`); }
+    if(typeof toast==='function'){ const s=seasoningById(id); toast(was?`${s.heb} ${L('הוסר מהמופע','removed from the instance')}`:`${s.heb} ${L('נבחר','selected')} (${kindLabel(kind)}) — ${L('הקודם מאותו סוג הוחלף','the previous one of the same type was replaced')}`); }
   }));
 }
 // produce: "גריל / עישון" path (direct fire) — no meat prep/pasteurization language
@@ -2271,7 +2271,7 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
   const smokeFin=(!isProduce(c) && typeof svSmokeFinish==='function')?svSmokeFinish(metaCut(c)):null;
   const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
   const eqInv=(typeof eqInvState==='function')?eqInvState(key):{cls:'',badge:''};
-  return `<article class="card${eqInv.cls}" data-n="${c.n}" data-kind="cut" tabindex="0" role="button" aria-label="${c.heb}">
+  return `<article class="card${eqInv.cls}" data-n="${c.n}" data-kind="cut" tabindex="0" role="button" aria-label="${itemName(c)}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(c.cat,"#"+c.n,"cut-"+c.n)}
     <div class="cbody">
@@ -2303,7 +2303,7 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
 }
 function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=catColor(s.cat), key="spec-"+s.n;
   const eqInv=(typeof eqInvState==='function')?eqInvState(key):{cls:'',badge:''};
-  return `<article class="card${eqInv.cls}" data-n="${s.n}" data-kind="spec" tabindex="0" role="button" aria-label="${s.heb}">
+  return `<article class="card${eqInv.cls}" data-n="${s.n}" data-kind="spec" tabindex="0" role="button" aria-label="${itemName(s)}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(s.cat,"#"+s.n,"spec-"+s.n, s.origin)}
     <div class="cbody">
@@ -2320,7 +2320,7 @@ function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=cat
 }
 function makeCard(id,m){const nv=(m.build.variants||[]).length, col=catColor(m.cat), key="make-"+id;
   const eqInv=(typeof eqInvState==='function')?eqInvState(key):{cls:'',badge:''};
-  return `<article class="card${eqInv.cls}" data-mid="${id}" data-kind="make" tabindex="0" role="button" aria-label="${m.heb}">
+  return `<article class="card${eqInv.cls}" data-mid="${id}" data-kind="make" tabindex="0" role="button" aria-label="${itemName(m)}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(m.cat,null,"make-"+id, m.origin)}
     <div class="cbody">
@@ -2930,10 +2930,10 @@ function openCut(c){
     const next=cur.includes(m)? cur.filter(x=>x!==m) : [...cur,m];
     if(!validCombo(c,next)){
       const r=methodRules(c);
-      let msg='לצומח: עד 2 שיטות — שלושתן יחד יבשלו יתר-על-המידה';
-      if(!next.length) msg='חייבת להישאר שיטה אחת לפחות';
-      else if(r.require&&!r.require.every(x=>next.includes(x))) msg='הפריט דורש ריכוך מקדים (סו-ויד)';
-      else if(r.needsCookFor==='grill'&&next.includes('grill')&&next.length===1) msg='נתח ארוך-בישול: גריל רק כגימור — השאר גם סו-ויד או עישון';
+      let msg=L('לצומח: עד 2 שיטות — שלושתן יחד יבשלו יתר-על-המידה','For produce: up to 2 methods — all three together will overcook it');
+      if(!next.length) msg=L('חייבת להישאר שיטה אחת לפחות','At least one method must remain');
+      else if(r.require&&!r.require.every(x=>next.includes(x))) msg=L('הפריט דורש ריכוך מקדים (סו-ויד)','This item requires pre-tenderizing (sous-vide)');
+      else if(r.needsCookFor==='grill'&&next.includes('grill')&&next.length===1) msg=L('נתח ארוך-בישול: גריל רק כגימור — השאר גם סו-ויד או עישון','Long-cook cut: grill as finish only — keep sous-vide or smoking too');
       toast(msg);
       return;
     }
@@ -3478,7 +3478,7 @@ document.addEventListener("click",e=>{
   if(fav){ e.stopPropagation(); toggleFav(fav.dataset.fav); return; }
   const addm=e.target.closest("[data-addmenu]");
   if(addm){ e.stopPropagation(); e.preventDefault(); const _tcr=(typeof toggleCart==='function')?toggleCart(addm.dataset.addmenu):null; if(_tcr===null) return;   // E3 T2: BLOCKED — the gate already toasted its own reason, skip the generic add/remove toast
-    syncAddMenuBtn(addm); if(typeof toast==='function') toast(menuHasKey(addm.dataset.addmenu)?'✓ נוסף לתפריט':'הוסר מהתפריט'); return; }
+    syncAddMenuBtn(addm); if(typeof toast==='function') toast(menuHasKey(addm.dataset.addmenu)?L('✓ נוסף לתפריט','✓ Added to menu'):L('הוסר מהתפריט','Removed from the menu')); return; }
   const card=e.target.closest(".card");if(!card)return;
   if(card.dataset.kind==="make"){ openMake(card.dataset.mid); return; }
   const n=+card.dataset.n;
@@ -3573,7 +3573,7 @@ let favs=new Set(store.get('mk-fav')||[]);
 function isFav(k){return favs.has(k);}
 function toggleFav(k){favs.has(k)?favs.delete(k):favs.add(k);store.set('mk-fav',[...favs]);updateFavBadge();render();}
 function updateFavBadge(){const e=$("#favN");if(e)e.textContent=favs.size;}
-function favStar(key){return `<button class="favstar ${isFav(key)?'on':''}" data-fav="${key}" aria-pressed="${isFav(key)}" aria-label="${isFav(key)?'הסר ממועדפים':'הוסף למועדפים'}">${isFav(key)?'★':'☆'}</button>`;}
+function favStar(key){return `<button class="favstar ${isFav(key)?'on':''}" data-fav="${key}" aria-pressed="${isFav(key)}" aria-label="${isFav(key)?L('הסר ממועדפים','Remove from favorites'):L('הוסף למועדפים','Add to favorites')}">${isFav(key)?'★':'☆'}</button>`;}
 // perf #4: read all ratings once into a Map instead of a synchronous localStorage.get per card, per render
 let _ratings=null;
 function ratingsMap(){ if(_ratings) return _ratings; _ratings=new Map(); try{ const ks=[]; for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k&&k.indexOf('rating:')===0) ks.push(k); } ks.forEach(function(k){ const v=store.get(k)||0; if(v) _ratings.set(k.slice(7),v); }); }catch(e){} return _ratings; }
@@ -5897,7 +5897,7 @@ function resetMenu(){
   saveMenu(fresh);                       // writes to the ACTIVE context (mk-menu or mk-cook)
   store.set(mkMenuqtyKey(),{});
   renderMenu();
-  const label=(typeof menuCtx==='function'&&menuCtx()==='cook')?'הבישול אופס':'התפריט אופס — תפריט חדש';
+  const label=(typeof menuCtx==='function'&&menuCtx()==='cook')?L('הבישול אופס','The cook was reset'):L('התפריט אופס — תפריט חדש','The menu was reset — new menu');
   // E3 gate-prep disclosure (Task 2 review Minor): this undo restore is a PROGRAMMATIC restore, same
   // family as evLoad/evClearActive/evNewDraft/evLoad's own undo-toast — deliberately NOT run through
   // eqmAddGate (restoring `prev` verbatim must never silently strip an item the user had before reset).
@@ -10244,7 +10244,7 @@ function seasonRecRender(key, cat, isProd, recs, backFn){
     cwApplySeasKind(key, kind, cur.includes(id)?'':id);
     const nowSel=(selectedSeasonings(key)||[]).includes(id);
     b.textContent=nowSel?'✓ נבחר':'＋ הוסף למופע'; b.style.background=nowSel?'var(--fresh-l)':'none';
-    if(typeof toast==='function') toast(nowSel?'נוסף למופע ✓':'הוסר מהמופע');
+    if(typeof toast==='function') toast(nowSel?L('נוסף למופע ✓','Added to the instance ✓'):L('הוסר מהמופע','removed from the instance'));
   }));
 }
 async function openSeasonRecAI(key, cat, isProd, backFn){
@@ -11392,7 +11392,7 @@ if('serviceWorker' in navigator && self.isSecureContext){   // was location.prot
       reg.addEventListener('updatefound',function(){ const nw=reg.installing; if(!nw) return;
         nw.addEventListener('statechange',function(){ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof toast==='function'){
           if((typeof anyTimerActive==='function'&&anyTimerActive())||(typeof planStarted==='function'&&planStarted())) return;   // don't interrupt a live cook — the update applies on the next natural reload
-          toast('גרסה חדשה זמינה', function(){location.reload();}, 'רענן עכשיו'); } });
+          toast(L('גרסה חדשה זמינה','A new version is available'), function(){location.reload();}, L('רענן עכשיו','Refresh now')); } });
       });
       // Actively ASK for a new worker instead of waiting for the browser to notice. An installed PWA that is
       // resumed (phone picked up by the smoker) may never issue a navigation, so without this a shipped
