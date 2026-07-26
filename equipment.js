@@ -5,6 +5,14 @@
   runtime scope — NO ES modules. app.js reaches this module ONLY through the global `EQM` (five methods)
   and the pure projection `deriveRequires` (the spec's compute-once design: ownership and availability
   answer from the SAME requires list, so the caller composes EQM.ownership(deriveRequires(meta))).
+  E2 widened this surface with THREE more legitimate entry points: `eqmFitVerdict` (app.js's
+  deviceOccupancy calls it directly for pct/over — the SAME fit arithmetic EQM.availability uses, so the
+  occupancy view and the booking gate can never drift apart) and `KIND_TO_STAGE` (app.js's
+  evSyncEquipmentHolds maps a requires row's device-kind back to its stage.kind to find that stage's
+  computed window before calling EQM.allocate) are called BY app.js; the newly-extracted
+  `eqmDeviceMeetsRow` is the shared capability predicate CALLED FROM WITHIN this module by both
+  `eqmOwnershipRow` and `EQM.availability` (never called directly by app.js) so those two verdicts can
+  never diverge from each other.
 
   ORDERING (H2): equipment.js runs before app.js, so it contains NO top-level statement that CALLS an
   app.js function — only declarations and the EQM literal of inline function expressions. app.js's top-level

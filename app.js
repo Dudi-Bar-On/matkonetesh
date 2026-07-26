@@ -633,7 +633,7 @@ function deviceOccupancy(devId, tMs, computed, scope){
       // unknownCm2Count/pctFloor stay LOCAL: display-only concerns, not fit arithmetic, so they are not
       // part of the eqmFitVerdict delegation surface (fits/floorFits are availability-only and unread here).
       const demands=out.items.filter(function(it){return it.cm2!=null;}).map(function(it){return {metric:'area_cm2', amount:it.cm2};});
-      const verdict=eqmFitVerdict(cap, demands);
+      const verdict=eqmFitVerdict(cap, demands);   // sumFits/usedPct are a SUM of ALL co-located items' areas vs usableCm2 — NOT a MAX (that is the volume/bath branch above); do not conflate the two aggregation rules
       out.pct=verdict.usedPct;
       out.over=!verdict.sumFits;
       out.pctFloor=out.unknownCm2Count>0;   // known-area sum excludes unmeasured items → the % is a floor

@@ -90,6 +90,29 @@ test('released capacity is really free again (allocate, release, allocate succee
   expect(r.afterFree).toBe(true);
 });
 
+// Coverage gap (E2 gate-prep) — owner amendment capacityDemand.tempC (spec §4.3): allocate copies
+// row.demand.tempC into the ledger's capacityDemand ONLY when it is a number (equipment.js allocate,
+// Object.assign guarded by typeof===...'number'). A sous-vide row that never cites a tempC must produce a
+// held entry whose capacityDemand OMITS the key entirely — never a stray tempC:undefined/0 — or
+// eqmFitVerdict's bath-temp exclusivity check (Task 2, volume branch) would treat that hold as if it were
+// cited at some real temperature and could falsely block a later demand that DOES cite one.
+const BATH_ROW_NOTEMP_ALLOC = { role:'cook', kind:'bath', source:'derived', demand:{metric:'litres', amount:12} };
+const BATH_ROW_TEMPED       = { role:'cook', kind:'bath', source:'derived', demand:{metric:'litres', amount:10, tempC:63} };
+
+test('tempC-key omission: a sous-vide row with NO tempC allocates a hold whose capacityDemand omits the key, and a later temp-cited demand is never falsely blocked by it', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(function(){
+    const a = EQM.allocate([${JSON.stringify(BATH_ROW_NOTEMP_ALLOC)}], ${JSON.stringify(W)}, {type:'event', id:'ev-notemp'});
+    const entry = eqmLedger().find(function(e){ return e.deviceId==='sv1'; });
+    const hasTempKey = entry ? Object.prototype.hasOwnProperty.call(entry.capacityDemand, 'tempC') : null;
+    const later = EQM.availability([${JSON.stringify(BATH_ROW_TEMPED)}], ${JSON.stringify(W)});
+    return { ok: a.ok, hasTempKey: hasTempKey, laterState: later.state };
+  })()`) as any;
+  expect(r.ok).toBe(true);
+  expect(r.hasTempKey).toBe(false);
+  expect(r.laterState).not.toBe('busy');
+});
+
 // BUGFIX — allocate inherits EQM.availability's capability gate (spec §5.1, owner Decision 3,
 // 2026-07-26): allocate reserves on availability.perRow[i].deviceId, so a row whose only right-kind
 // device fails a capability requires (here: maxTempC) must now resolve 'busy' at the availability

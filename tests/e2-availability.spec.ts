@@ -35,6 +35,22 @@ test('busy: overlapping holds already consume the device; non-overlapping window
   expect(later.state).toBe('free');
 });
 
+// Coverage gap (E2 gate-prep): 'partial' — the third availability state (equipment.js EQM.availability,
+// tight = usedPct>=90) — had no dedicated witness. sm1: usableCm2=4080, perSlotEst=2040, per-slot floor
+// = 2040*FIT_SLOT_TOL(1.10) = 2244 (documented above for BIG_SINGLE_ROW). Seed a held demand (2200,
+// under the floor) then ask for a fresh demand (1500, also under the floor) whose SUM (3700) still fits
+// the whole-device usableCm2 (4080) but lands at round(3700/4080*100)=91% used — over the >=90% "tight"
+// line while still fitting. This isolates 'partial' from both 'free' (fits, <90%) and 'busy' (doesn't fit).
+test('partial: a required row FITS but lands ≥90% used → state \'partial\' (not free, not busy)', async ({ page }) => {
+  await boot(page);
+  await page.evaluate(`eqmLedgerAdd({deviceId:'sm1', window:{startMs:900, endMs:1500}, capacityDemand:{metric:'area_cm2', amount:2200}, holder:{type:'event', id:'e1'}, state:'held'})`);
+  const PARTIAL_ROW = { role:'cook', kind:'smoker', source:'derived', demand:{metric:'area_cm2', amount:1500} };
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(PARTIAL_ROW)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('partial');
+  expect(r.perRow[0].state).toBe('partial');
+  expect(r.perRow[0].deviceId).toBe('sm1');
+});
+
 test('bath litres aggregate by MAX, not sum (deviceOccupancy rule preserved)', async ({ page }) => {
   await boot(page);
   await page.evaluate(`eqmLedgerAdd({deviceId:'sv1', window:{startMs:900, endMs:1500}, capacityDemand:{metric:'litres', amount:12}, holder:{type:'event', id:'e1'}, state:'held'})`);
