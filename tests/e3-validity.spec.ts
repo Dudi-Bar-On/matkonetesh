@@ -80,7 +80,15 @@ test.describe('eqmValidity(meta) — the contract shape', () => {
     const v = await page.evaluate(`eqmValidity(resolveItem('cut-1'))`) as any;
     expect(v.level).toBe('uncookable');
     const kinds = v.gaps.map((g: any) => g.kind).sort();
-    expect(kinds).toEqual(['bath', 'smoker']);
+    // PLANNED CONTRACT CHANGE (E3 Task 3, AMENDMENT O-7 — probe capability, cited per the schema-caution
+    // instruction in that task's brief): cut-1 (data.py: safe=63) is bcheck-gated, so its combo's LAST
+    // device-stage row (the finishing 'smoke' stage in the sv+smoke combo) now also carries
+    // capability.probe:true (equipment.js deriveRequires). Owning literally nothing (this test's fixture)
+    // satisfies neither the device-kind requirement nor the probe requirement, so eqmValidity's gap-builder
+    // (app.js) correctly surfaces a THIRD, distinct {kind:'probe', state:'missing'} line alongside the
+    // pre-existing bath/smoker gaps — verified this is the intended new shape, not a regression, before
+    // updating this assertion.
+    expect(kinds).toEqual(['bath', 'probe', 'smoker']);
     expect(v.gaps.every((g: any) => g.state === 'missing')).toBe(true);
   });
 

@@ -52,6 +52,11 @@ const EQUIP_CATS=[
     {key:'hooks',    he:'מספר ווים',   en:'Hooks',     kind:'num',  em:'🪝', tier:'pro', bounds:[1,200], alt:[]},
     {key:'waterPan', he:'מגש מים מובנה',en:'Water pan', kind:'bool', em:'💧', tier:'pro',
      def:{'ארון / קבינט':true,'WSM / חבית':true}},
+    // AMENDMENT O-7 (Task 3, spec Amendments block): device-integral probe availability — a device
+    // property, "especially for smokers and ovens" (the owner's own words). Verified live before adding
+    // this: no probeChannels-class prop existed anywhere in EQUIP_CATS (grepped), so this is genuinely new
+    // schema, not a reuse. No `def` — never assume a smoker has a built-in probe; the user states it.
+    {key:'hasProbe', he:'מדחום מובנה', en:'Built-in probe', kind:'bool', em:'🌡️', tier:'pro'},
     // BUG-2 (Wave B) rider: capture the cabinet's OUTER dimensions and its SHELF dimensions as their own
     // structured fields — flat cap keys (dimH_cm/dimW_cm/dimD_cm, shelfW_cm/shelfD_cm), matching every
     // other prop on this device (dev.cap has no nested objects anywhere else). Two consumers:
@@ -85,6 +90,9 @@ const EQUIP_CATS=[
      def:{'ביתי':275,'דק':400,'פיצה':500}},
     {key:'fan',   he:'טורבו',      en:'Fan',      kind:'bool', em:'🌀', tier:'pro', def:{'ביתי':true}},
     {key:'steam', he:'אדים',       en:'Steam',    kind:'bool', em:'♨️', tier:'pro'},
+    // AMENDMENT O-7 (Task 3) — see the identical prop on 'smoker' above for the full comment; repeated
+    // here per the owner's own "especially for smokers AND ovens" wording.
+    {key:'hasProbe', he:'מדחום מובנה', en:'Built-in probe', kind:'bool', em:'🌡️', tier:'pro'},
    ]},
   {cat:'sousvide', he:'סו-ויד', en:'Sous-vide', icon:'🌊', acc:'#2b7fb8', accL:'#dcecf6', capEm:'', types:['טבילה (immersion)','מיכל ייעודי'], capKey:null, multiCap:{key:'baths', he:'נפחי אמבט (ל׳)', en:'Bath sizes (L)', uHe:'ל׳', uEn:'L', em:'🛁'},
    props:[
@@ -1707,7 +1715,11 @@ function headArt(cat){return `<div class="phead-ico">${svgRaw(iconType(cat))}</d
 // costs nothing — no itemStages recompute — for a no-kit user. Copy below is PROPOSED, not final (DoD-9).
 const EQM_KIND_HE = { smoker:['מעשנה','Smoker'], bath:['אמבט סו-ויד','Sous-vide bath'], grill:['גריל/אש','Grill'],
                       oven:['תנור','Oven'], grinder:['מטחנה','Grinder'], stuffer:['מזרק','Stuffer'],
-                      sealer:['ואקום','Vacuum'], curing:['תא יִישון','Curing'] };
+                      sealer:['ואקום','Vacuum'], curing:['תא יִישון','Curing'],
+                      // AMENDMENT O-7 (Task 3): the synthetic gap-label kind eqmValidity pushes when a
+                      // failing row demands capability.probe and no owned device/standalone covers it —
+                      // never a `row.kind` value itself (that stays smoker/bath/grill/oven).
+                      probe:['מדחום','Probe'] };
 // eqmRequiresMethodKey — the chip needs deriveRequires to see the recipe's RAW default cook combo, not the
 // GEAR-ADAPTED one. For meta.kind==='cut', itemProfile(meta).methods[0] comes from activeMethods(c,key) →
 // gearAwareDefault(c,rules), which reads live equipment-registry state (gearConfigured()/gearCan()) and
@@ -1869,6 +1881,21 @@ function eqmValidity(meta){
     (defOwn.missing||[]).forEach(function(r){ gapState[r.kind] = 'missing'; });
     (defOwn.partial||[]).forEach(function(r){ if(!gapState[r.kind]) gapState[r.kind] = 'partial'; });
     const gaps = Object.keys(gapState).map(function(k){ return { kind:k, state:gapState[k] }; });
+
+    // AMENDMENT O-7 (Task 3): a failing row may ALSO be probe-gated (deriveRequires tags
+    // capability.probe onto the item's LAST device-stage row whenever itemStages appended a bcheck —
+    // see the comment on deriveRequires in equipment.js). Surfaced as its OWN gap line, separate from
+    // the device-kind gap already built above, because probe satisfaction is orthogonal to device-kind
+    // ownership — a smoker you own can still lack a probe, or a device with no probe can still be the
+    // one blocking the combo for an unrelated reason. eqmProbeAvailable checks the SAME satisfier set
+    // eqmOwnershipRow itself used (device-integral OR standalone), so this never claims a false "missing
+    // probe" when the real blocker is something else, and never stays silent when it genuinely is the
+    // probe.
+    const probeRow = (defOwn.missing||[]).concat(defOwn.partial||[])
+      .find(function(r){ return r && r.capability && r.capability.probe; });
+    if(probeRow && typeof eqmProbeAvailable==='function' && !eqmProbeAvailable(probeRow)){
+      gaps.push({ kind:'probe', state:'missing' });
+    }
 
     // HOW TO FIX (O-5 point 3), deterministic, in order of cheapness: configure the device (deep-link to
     // the Equipment Manager); switch to another CITED path the owned kit already satisfies; a cited

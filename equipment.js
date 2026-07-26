@@ -83,6 +83,28 @@ function deriveRequires(meta, methodKey, order){
     if(Object.keys(cap).length) row.capability = cap;
     rows.push(row);
   });
+  // ── AMENDMENT O-7 (owner ruling 2026-07-25, spec Amendments block): a stage GATED BY INTERNAL
+  // TEMPERATURE (probe target, kind:'bcheck') is executable only with a temperature probe. itemStages()
+  // (app.js, D1) already computes the ONE real structural marker for "internal-temp-gated": it appends a
+  // kind:'bcheck' stage whenever the item carries a numeric meta.obj.safe/tgt — read straight from the
+  // `stages` array this function was just built from (one source of truth; no second safe/tgt read here,
+  // and no text/prose heuristic — a real, cited, structural field or nothing).
+  //
+  // WHICH ROW carries capability.probe: the physical check happens ONCE — on whichever device the item is
+  // in when it leaves its LAST cook-device stage, immediately before rest/bcheck — so the capability rides
+  // ONLY the last row this function collected, never every row. SAME-KIND-STAGE ASSUMPTION (documented
+  // here, the registered E3-input from the plan's Global Constraints): itemStages structurally emits AT
+  // MOST ONE stage of each REQ_KIND (smoke/sv/cook) per combo/order today, so "the last row pushed" is
+  // unambiguous both temporally (rows preserve stages' original order — see the forEach above) and by
+  // kind (no combo today produces two rows of the SAME kind competing for "last"). If a future combo ever
+  // emitted two device stages of one kind, this position-based rule would still pick the temporally-last
+  // row correctly (array order is preserved regardless of kind repeats) — but the kind-uniqueness half of
+  // this note would need re-checking against that new shape before trusting it blindly.
+  if(rows.length && stages.some(function(st){ return st && st.kind==='bcheck'; })){
+    const lastRow = rows[rows.length-1];
+    if(!lastRow.capability) lastRow.capability = {};
+    lastRow.capability.probe = true;
+  }
   return rows;
 }
 
@@ -115,9 +137,43 @@ function eqmOwnershipRow(row){
     // cap.maxTempC = the cited stage temp; a FLOOR the device's own maxC must reach — never an upper
     // bound on cooking temp (review finding M4 — the name reads like a ceiling but it is a minimum).
     if(cap.maxTempC){ const mx=Number(propOf(dev,'maxC')); if(mx>0 && mx<cap.maxTempC) return false; }
+    // AMENDMENT O-7 (Task 3): probe availability — device-integral (THIS candidate's own `hasProbe`
+    // property, EQUIP_CATS smoker/oven) OR any owned standalone probe device (EQUIP_CATS cat:'probe',
+    // e.g. a MEATER/Inkbird) — a standalone probe is portable, so it satisfies regardless of which
+    // candidate device ends up serving the row.
+    if(cap.probe && !eqmProbeSatisfiedBy(dev)) return false;
     return true;
   });
   return meets ? 'ok' : 'partial';                          // owns the kind but no unit clears the capability
+}
+
+// AMENDMENT O-7 satisfier (Task 3, spec Amendments block) — the ONE definition of "is a probe available",
+// shared by eqmOwnershipRow's per-device gate above and eqmProbeAvailable's kit-wide gap check below.
+// Device-integral: EQUIP_CATS' `hasProbe` boolean prop, authored on 'smoker' and 'oven' (the owner's own
+// words carrying the amendment: "especially for smokers and ovens") — verified live before adding it: no
+// probeChannels-class prop existed on ANY EQUIP_CATS category before this task (grepped app.js), so this
+// is new schema, not a reused field, exactly as the plan's "verify existing props first" instruction asked.
+// Standalone: ANY owned device of EQUIP_CATS' own first-class 'probe' category (cat:'probe' — a
+// MEATER/Inkbird/instant-read/etc, the app's REAL "do you own a thermometer" registry entry; the plan's
+// brief guessed this would live in EQUIP_OTHER_ITEMS — grepped and confirmed it does NOT: EQUIP_OTHER_ITEMS
+// carries no probe/thermometer entry at all, so the real satisfier is this dedicated device category). A
+// standalone probe is a portable tool, so it satisfies ANY row regardless of which device physically
+// serves the stage — never gated on `dev` at all.
+function eqmProbeSatisfiedBy(dev){
+  return (typeof equipByCat==='function' && equipByCat('probe').length>0) ||
+         (!!dev && typeof propOf==='function' && propOf(dev,'hasProbe')===true);
+}
+// eqmProbeAvailable(row) — the SAME O-7 satisfier set, answering "is probe available to ANY candidate
+// device for this row's kind" (or standalone, kit-wide) rather than one specific dev — the coarser
+// question eqmValidity's WHY line needs (app.js, Task 3): a failing row may fail on probe, on an unrelated
+// capability, or both. Checking standalone FIRST (kit-wide, independent of which candidates are owned)
+// before falling back to a per-candidate integral scan avoids the false negative of "owns a probe but owns
+// zero smokers" reporting a probe gap when the real gap is the device itself.
+function eqmProbeAvailable(row){
+  if(eqmProbeSatisfiedBy(null)) return true;                // standalone alone already covers it
+  const stageKind = KIND_TO_STAGE[row && row.kind];
+  const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind) : [];
+  return owned.some(function(dev){ return eqmProbeSatisfiedBy(dev); });
 }
 
 // ── the ONE fit arithmetic (O-6). deviceOccupancy (app.js) delegates here in E2 Task 4, and
