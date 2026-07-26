@@ -774,6 +774,16 @@ intact. Both were caught only by **semantic** review. Three rules per language, 
 The full realization is the **Translation QA & Repair programme** (a target-side safety-invention scan across all
 languages + AI-repair of gate-fallback entries + these three rules) — it gets its own brainstorm → spec.
 
+### 10.20 A new string updates ALL language dictionaries in the same change (owner instruction, 2026-07-26)
+> **Owner instruction.** When you add or reword **any** user-facing string/expression in code, update **every**
+supported-language dictionary **in the same change** — currently `en` + `fr` + `de` + `es`, and any language added
+later — so all stay synchronized, complete, and correct. A new Hebrew(+English) string that leaves fr/de/es on the
+English fallback is an **incomplete** change, not a done one. The build-time per-language coverage check in `build.py`
+must not regress. The added translations receive §10.19's treatment (semantic correctness + physical verification).
+This is the forward-going complement to the one-pass **source-Hebrew** cleanup: Anglicized transliterations in the
+Hebrew source (`דרי`→`יבש`; `דריי-ברין`→`ברין יבש`, Hebrew noun-then-adjective order) are hunted in a periodic sweep
+and fixed at the root, with dependent dictionary keys re-keyed in lockstep (§10.19 rule 3).
+
 ### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
 > **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
 > changed. Update it as part of committing and pushing — and sooner than that where practical.
