@@ -8,7 +8,7 @@ import { test, expect, seedApp } from './_fixtures';
 //
 // Verified directly against sources.py / data.py (see report for the full derivation):
 //   cut-1   (בריסקט/Brisket):      catalog smt/smh = 105°/3h   → order_svsmoke.smoke = {t:120,h:'1.5',cold:false}
-//   cut-113 (שרימפס ג'מבו/Jumbo Shrimp): catalog smt/smh = 230°/0.1h → order_svsmoke.smoke = {t:100,h:'0.15',cold:false}
+//   cut-113 (חסילון ג'מבו/Jumbo Shrimp): catalog smt/smh = 230°/0.1h → order_svsmoke.smoke = {t:100,h:'0.15',cold:false}
 //   cut-103 (חסה רומאית/Romaine Hearts): NO order_svsmoke at all (produce, sv+smoke is a valid alt combo,
 //                                        not the card default) — the negative case: smt/smh must stay
 //                                        catalog-identical (250°/0.05h) when no citation exists.

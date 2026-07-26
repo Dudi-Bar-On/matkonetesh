@@ -246,7 +246,7 @@ test('CP1 Task4 negative: AI grounding + local instant answer stay catalog-ident
 type GateItem = { key: string; heb: string; tileGroup: string; label: string; isProduce: boolean };
 const GATE_POSITIVE: GateItem[] = [
   { key: 'cut-1', heb: 'בריסקט', tileGroup: 'בשר אדום', label: 'brisket', isProduce: false },
-  { key: 'cut-113', heb: "שרימפס ג'מבו", tileGroup: 'ים', label: 'jumbo-shrimp', isProduce: false },
+  { key: 'cut-113', heb: "חסילון ג'מבו", tileGroup: 'ים', label: 'jumbo-shrimp', isProduce: false },
 ];
 const GATE_NEGATIVE: GateItem = { key: 'cut-103', heb: 'חסה רומאית', tileGroup: 'צמחי', label: 'romaine-negative', isProduce: true };
 
