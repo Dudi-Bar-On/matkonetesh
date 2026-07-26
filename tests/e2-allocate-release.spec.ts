@@ -90,6 +90,23 @@ test('released capacity is really free again (allocate, release, allocate succee
   expect(r.afterFree).toBe(true);
 });
 
+// BUGFIX — allocate inherits EQM.availability's capability gate (spec §5.1, owner Decision 3,
+// 2026-07-26): allocate reserves on availability.perRow[i].deviceId, so a row whose only right-kind
+// device fails a capability requires (here: maxTempC) must now resolve 'busy' at the availability
+// re-check inside allocate — ALL-OR-NOTHING means nothing is written to the ledger at all.
+test('BUGFIX — allocate inherits the capability gate: a row whose only right-kind device fails maxTempC reserves NOTHING', async ({ page }) => {
+  await boot(page, [{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{racks:4, areaCm2:6000, maxC:150} }]);
+  const row = { role:'cook', kind:'smoker', source:'derived', capability:{maxTempC:300}, demand:{metric:'area_cm2', amount:1000} };
+  const r = await page.evaluate(`(function(){
+    const before = eqmLedger().length;
+    const a = EQM.allocate([${JSON.stringify(row)}], ${JSON.stringify(W)}, {type:'event', id:'ev-capblind'});
+    return { a: a, delta: eqmLedger().length - before };
+  })()`) as any;
+  expect(r.a.ok).toBe(false);
+  expect(r.a.holdIds).toEqual([]);
+  expect(r.delta).toBe(0);
+});
+
 test('DoD-10 phase-gate line: full allocate-then-release cycle leaves itemStages byte-identical', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(`(function(){

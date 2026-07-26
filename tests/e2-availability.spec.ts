@@ -149,6 +149,50 @@ test('FIX (wave 2) regression guard: the pre-existing MEASURED-device floor test
   expect(r.state).toBe('busy');
 });
 
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+// BUGFIX — capability-blind serving (spec §5.1, owner Decision 3, 2026-07-26). EQM.availability picked
+// the FIRST kind-matching owned device and applied ONLY eqmFitVerdict's capacity/ledger arithmetic — it
+// never checked the row's CAPABILITY requires (maxTempC floor, O-7a standalone probe, hang/bathMinL) the
+// way eqmOwnershipRow already does. So a right-kind device that CANNOT satisfy the row's requires (too
+// cold to reach the cited stage temp; no standalone probe for a bcheck-gated row) was still reported
+// 'free'/serving. Fixed by eqmDeviceMeetsRow — the ONE capability predicate both eqmOwnershipRow and
+// EQM.availability now call, so they can never diverge again (extracted verbatim from eqmOwnershipRow's
+// per-candidate check — no logic drift, ownership tests stay byte-identical green).
+// ═══════════════════════════════════════════════════════════════════════════════════════════════════
+const DEV_SMOKER_150 = [{ id:'d1', cat:'smoker', type:'ארון / קבינט', name:'ארון', cap:{racks:4, areaCm2:6000, maxC:150} }];
+const MAXTEMP_ROW_UNMET = { role:'cook', kind:'smoker', source:'derived', capability:{maxTempC:300}, demand:{metric:'area_cm2', amount:1000} };
+const MAXTEMP_ROW_MET   = { role:'cook', kind:'smoker', source:'derived', capability:{maxTempC:120}, demand:{metric:'area_cm2', amount:1000} };
+const PROBE_ROW = { role:'cook', kind:'smoker', source:'derived', capability:{probe:true}, demand:{metric:'area_cm2', amount:1000} };
+const PROBE_DEVICE = { id:'p1', cat:'probe', type:'מיידי (instant-read)', name:'Thermapen' };
+
+test('BUGFIX (a) — a right-kind device whose maxC cannot reach the row\'s cited maxTempC must NOT serve: busy, not free', async ({ page }) => {
+  await boot(page, DEV_SMOKER_150);   // maxC:150, row asks for 300°C — the smoker physically cannot reach it
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(MAXTEMP_ROW_UNMET)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('busy');
+  expect(r.perRow[0].deviceId).toBeNull();
+});
+
+test('BUGFIX (b) — a probe-required (O-7a) row with a right-kind device but NO standalone probe owned must NOT serve: busy, not free', async ({ page }) => {
+  await boot(page, DEV_SMOKER_150);   // owns the smoker; owns NO probe device at all
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(PROBE_ROW)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('busy');
+  expect(r.perRow[0].deviceId).toBeNull();
+});
+
+test('BUGFIX (c) positive/negative guard — a device that DOES meet capability requires + fits capacity still serves free (no regression)', async ({ page }) => {
+  await boot(page, DEV_SMOKER_150);   // maxC:150 clears the row's 120°C floor
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(MAXTEMP_ROW_MET)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('free');
+  expect(r.perRow[0].deviceId).toBe('d1');
+});
+
+test('BUGFIX (c) positive guard — probe requirement satisfied by an owned standalone probe still serves free', async ({ page }) => {
+  await boot(page, DEV_SMOKER_150.concat([PROBE_DEVICE]));
+  const r = await page.evaluate(`EQM.availability([${JSON.stringify(PROBE_ROW)}], ${JSON.stringify(W)})`) as any;
+  expect(r.state).toBe('free');
+  expect(r.perRow[0].deviceId).toBe('d1');
+});
+
 test('unit probe: eqmFitVerdict returns sumFits/floorFits with the documented meanings (over-demand -> sumFits false; floor-only violation -> sumFits true + floorFits false)', async ({ page }) => {
   await boot(page);   // sm1: cap.areaCm2:4800 (measured) → usableCm2=4080, racks=2, perSlotEst=2040
   const r = await page.evaluate(`(function(){

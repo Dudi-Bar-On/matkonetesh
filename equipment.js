@@ -120,39 +120,54 @@ function deriveRequires(meta, methodKey, order){
 // list instead of the live equipList()?" without ever mutating real state. Omitted by every existing
 // caller (app.js's eqmValidity/eqmRequiresChip, this file's own EQM.ownership below) — falls through to
 // the live kit exactly as before.
+// eqmDeviceMeetsRow(dev, row, list) — the ONE per-device CAPABILITY predicate (spec §5.1). Extracted
+// verbatim from eqmOwnershipRow's per-candidate check below (BUGFIX, owner Decision 3, 2026-07-26: this
+// is the same code, unchanged) so eqmOwnershipRow AND EQM.availability share ONE definition and can never
+// diverge again. Deliberately CAPACITY-BLIND by design — it answers only "can this device ever serve this
+// row's requires" (hang/bathMinL/maxTempC/probe), never "is there room right now" (that stays
+// eqmFitVerdict's ledger-aware job, called separately by each caller that needs it).
+//
+// THE BUG this closes (spec §5.1 "satisfying requires"): EQM.availability used to pick the FIRST
+// kind-matching owned device and apply ONLY eqmFitVerdict's capacity arithmetic — never this capability
+// gate — so a right-kind device that could never satisfy the row (too cold to reach a cited stage temp; no
+// standalone probe for a bcheck-gated row) was still reported 'free'/serving. allocate() inherited the
+// bug because it reserves on availability.perRow[i].deviceId. Fixed by calling this predicate from BOTH
+// eqmOwnershipRow and EQM.availability's owned.some() (before the capacity check), so a device must clear
+// BOTH capability and capacity to ever serve a row.
+function eqmDeviceMeetsRow(dev, row, list){
+  const cap = (row && row.capability) || {};
+  const demand = (row && row.demand) || null;
+  // cap.hang is a recipe PREFERENCE (spec.hang), never AND-gated with the row's area demand: the schema
+  // allows a single row to carry BOTH cap.hang and demand.area_cm2 (see the deriveRequires comment above)
+  // even though current real data never combines them (cut_equip sets footprint only, make_equip sets
+  // hang only, special_equip neither). A device satisfies a hang-preference row via EITHER hanging
+  // capacity (deviceCanHang) OR area fit (deviceCapacity), never requiring both — when no area demand
+  // rides along the row, hang is the only satisfier, which is today's real shape.
+  if(cap.hang){
+    const hangs = deviceCanHang(dev);
+    const areaFits = (demand && demand.metric==='area_cm2') ? (deviceCapacity(dev).usableCm2 >= demand.amount) : false;
+    if(!hangs && !areaFits) return false;
+  }
+  if(cap.bathMinL){ const b=chooseBath(dev, cap.bathMinL); if(!b || !b.ok) return false; }
+  // cap.maxTempC = the cited stage temp; a FLOOR the device's own maxC must reach — never an upper
+  // bound on cooking temp (review finding M4 — the name reads like a ceiling but it is a minimum).
+  if(cap.maxTempC){ const mx=Number(propOf(dev,'maxC')); if(mx>0 && mx<cap.maxTempC) return false; }
+  // AMENDMENT O-7a (owner ruling 2026-07-26, superseding O-7's device-integral branch): probe
+  // availability is STANDALONE-ONLY — any owned EQUIP_CATS cat:'probe' device (e.g. a MEATER/Inkbird),
+  // never THIS candidate's own device-integral state. Rationale (owner, in conversation): a
+  // device-integral "probe" on a smoker/oven is typically an AMBIENT/chamber thermometer, not a
+  // meat-internal one, so it never actually satisfied the internal-temp (bcheck) gate this capability
+  // guards — and this realigns with the app's own display semantics (`hasCat('probe')`, app.js:958). A
+  // standalone probe is portable, so it satisfies regardless of which candidate device ends up serving
+  // the row — `dev` is accepted only for call-signature compatibility below, never consulted.
+  if(cap.probe && !eqmProbeSatisfiedBy(dev, list)) return false;
+  return true;
+}
 function eqmOwnershipRow(row, list){
   const stageKind = KIND_TO_STAGE[row && row.kind];
   const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind, list) : [];
   if(!owned.length) return 'missing';                       // no device of the kind at all
-  const cap = (row && row.capability) || {};
-  const demand = (row && row.demand) || null;
-  const meets = owned.some(function(dev){
-    // cap.hang is a recipe PREFERENCE (spec.hang), never AND-gated with the row's area demand: the schema
-    // allows a single row to carry BOTH cap.hang and demand.area_cm2 (see the deriveRequires comment above)
-    // even though current real data never combines them (cut_equip sets footprint only, make_equip sets
-    // hang only, special_equip neither). A device satisfies a hang-preference row via EITHER hanging
-    // capacity (deviceCanHang) OR area fit (deviceCapacity), never requiring both — when no area demand
-    // rides along the row, hang is the only satisfier, which is today's real shape.
-    if(cap.hang){
-      const hangs = deviceCanHang(dev);
-      const areaFits = (demand && demand.metric==='area_cm2') ? (deviceCapacity(dev).usableCm2 >= demand.amount) : false;
-      if(!hangs && !areaFits) return false;
-    }
-    if(cap.bathMinL){ const b=chooseBath(dev, cap.bathMinL); if(!b || !b.ok) return false; }
-    // cap.maxTempC = the cited stage temp; a FLOOR the device's own maxC must reach — never an upper
-    // bound on cooking temp (review finding M4 — the name reads like a ceiling but it is a minimum).
-    if(cap.maxTempC){ const mx=Number(propOf(dev,'maxC')); if(mx>0 && mx<cap.maxTempC) return false; }
-    // AMENDMENT O-7a (owner ruling 2026-07-26, superseding O-7's device-integral branch): probe
-    // availability is STANDALONE-ONLY — any owned EQUIP_CATS cat:'probe' device (e.g. a MEATER/Inkbird),
-    // never THIS candidate's own device-integral state. Rationale (owner, in conversation): a
-    // device-integral "probe" on a smoker/oven is typically an AMBIENT/chamber thermometer, not a
-    // meat-internal one, so it never actually satisfied the internal-temp (bcheck) gate this capability
-    // guards — and this realigns with the app's own display semantics (`hasCat('probe')`, app.js:958). A
-    // standalone probe is portable, so it satisfies regardless of which candidate device ends up serving
-    // the row — `dev` is accepted only for call-signature compatibility below, never consulted.
-    if(cap.probe && !eqmProbeSatisfiedBy(dev, list)) return false;
-    return true;
-  });
+  const meets = owned.some(function(dev){ return eqmDeviceMeetsRow(dev, row, list); });
   return meets ? 'ok' : 'partial';                          // owns the kind but no unit clears the capability
 }
 
@@ -335,6 +350,11 @@ const EQM = {
       const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind) : [];
       let served = null, rowRoom = null, tight = false;
       owned.some(function(dev){
+        // BUGFIX (spec §5.1, owner Decision 3, 2026-07-26): a candidate must satisfy the row's FULL
+        // requires — kind (already true, `owned` is kind-filtered) AND every capability check
+        // (maxTempC/probe/hang/bathMinL) — before capacity/ledger fit is even considered. Shared with
+        // eqmOwnershipRow via eqmDeviceMeetsRow so the two verdicts can never diverge.
+        if(!eqmDeviceMeetsRow(dev, row)) return false;
         const cap = deviceCapacity(dev);
         const held = eqmLedgerHeld(dev.id, window).map(function(e){ return e.capacityDemand; });
         const all = held.concat(row.demand ? [row.demand] : []);
