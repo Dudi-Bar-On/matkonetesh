@@ -92,3 +92,28 @@ test('he-byte-identical: 20 real existing L(he,en) call sites render unchanged i
   );
   results.forEach((r, i) => expect(r).toBe(sites[i].he));
 });
+
+// Task 5 (v268 localization plan) — homograph disambiguation (spec §6). The 36 real homographs
+// resolved in app.js all added a 3rd `ctx` arg to their non-primary sense's call site(s). This is
+// the ctx-site parallel of the test above: L's he-mode contract ("return he unchanged, ctx or not",
+// §3.1) must hold for the REAL 3-arg L(he,en,ctx) call sites app.js now has, not just the hand-picked
+// fixture in the earlier __i18nTrace tests — proving the ctx argument never leaks into he-mode output
+// anywhere in the real corpus.
+test('he-byte-identical: real ctx\'d L(he,en,ctx) call sites (Task 5 homograph disambiguation) render unchanged in he-mode', async ({ page }) => {
+  const src = readFileSync(resolve(process.cwd(), 'app.js'), 'utf8');
+  // 3-arg L(strLit,strLit,strLit) — deliberately excludes the 4-arg primary-marker shape (none exist
+  // in the real corpus yet; the marker mechanism is exercised by the extractor's own unit tests).
+  const re = /L\('([^'\\]*)','([^'\\]*)','([^'\\]*)'\)/g;
+  const sites: { he: string; en: string; ctx: string }[] = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(src))) sites.push({ he: m[1], en: m[2], ctx: m[3] });
+  expect(sites.length).toBeGreaterThanOrEqual(20); // fixture-minimality negative case — Task 5 added ~50+ real ctx'd sites
+
+  await boot(page);
+  await page.evaluate(`setLang('he')`);
+  const results: string[] = await page.evaluate(
+    (list) => list.map((s: { he: string; en: string; ctx: string }) => (window as any).L(s.he, s.en, s.ctx)),
+    sites
+  );
+  results.forEach((r, i) => expect(r).toBe(sites[i].he));
+});

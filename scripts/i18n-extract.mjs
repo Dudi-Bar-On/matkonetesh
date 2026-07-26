@@ -50,6 +50,19 @@
 // or a toast/tr-default-label site with no resolvable English yet); a placeholder never collides —
 // it is silently upgraded the moment a real English value for the same key is seen (order-independent
 // in effect, since both directions are handled).
+//
+// Task 5 primary-bare-key mechanism (spec §6, I-C bare-key retention — supersedes T2/C1's
+// first-write-wins heuristic, which was file-order-dependent and could bare-key the WRONG sense):
+// for a homograph, exactly ONE call site is the designated PRIMARY sense and owns the bare `he` key;
+// every OTHER sense's call site takes a ctx (mode 1: `L(he,en,ctx)`; mode 2-generic: a sibling
+// `ctx:` string-literal property) and contributes ONLY its own `he␟ctx` compound key — it never
+// touches the bare key, so file order can no longer decide which sense ends up bare-keyed. Primary
+// designation is explicit, not positional: (a) the common case — leave the primary sense's call as a
+// plain 2-arg `L(he,en)` (or a ctx-less {he,en} object); it writes the bare key through the normal,
+// real-collision-checked path, independent of every ctx'd sense's own writes. (b) when no sense
+// naturally stays a plain 2-arg call, mark the primary explicitly with a 4th arg:
+// `L(he, en, ctx, true)` — this ctx'd site ALSO writes the bare key, through the same
+// real-collision-checked path (so two mistaken "primary" markers for one homograph still throw).
 
 import fs from 'node:fs';
 import path from 'node:path';
@@ -178,7 +191,12 @@ export function extract(src, opts = {}) {
   const collisions = [];  // {key, en1, en2} — surfaced as a thrown Error (spec §6)
   const needsEnSet = new Set(); // he/compound keys lacking a real English literal (I4)
 
-  function setKnownKey(key, en, { placeholder = false, noCollision = false } = {}) {
+  // Task 5 note: this function no longer takes a `noCollision` escape hatch (T2/C1 had one, for the
+  // old first-write-wins bare-key mechanism). Every caller now either (a) only ever writes a key it
+  // is entitled to own — a plain 2-arg L()/t() site, an un-ctx'd mode-2/4 object, or an explicit
+  // primary-marked ctx'd site — so a real mismatch here is always a genuine, order-independent
+  // collision, or (b) is itself the sole registered sense for that exact key.
+  function setKnownKey(key, en, { placeholder = false } = {}) {
     if (!(key in known)) {
       known[key] = en;
       if (placeholder) placeholderKeys.add(key);
@@ -200,9 +218,7 @@ export function extract(src, opts = {}) {
     if (existingIsPlaceholder && placeholder) {
       return; // both placeholders — keep the first, nothing lost (both equal `he` by construction)
     }
-    // both real, both non-identical.
-    if (noCollision) return; // caller-declared non-colliding path (I-C bare-key primary-sense write) — first wins, silently
-    // → the homograph collision (spec §6)
+    // both real, both non-identical → the homograph collision (spec §6)
     collisions.push({ key, en1: known[key], en2: en });
   }
 
@@ -375,7 +391,19 @@ export function extract(src, opts = {}) {
       // is not a UI translation pair (e.g. LANG_FLAG's he/en are language codes with flag emoji) —
       // skip regardless of the deny-list, which only covers named/known offenders.
       if ((!declName || !denyTables.has(declName)) && HEBREW_RE.test(heP.value.value)) {
-        setKnownKey(heP.value.value, enP.value.value);
+        // Task 5 (spec §6) — the same primary-bare-key mechanism as mode 1's L(he,en,ctx): a sibling
+        // `ctx:` string-literal property marks this {he,en} object as a NON-primary homograph sense
+        // (e.g. a props-array entry rendered generically through `L(p.he,p.en,p.ctx)`, spec §3.3's
+        // "L(o.he,o.en)@7849" shape). When `ctx` is present, emit the compound key ONLY — never the
+        // bare key — so an object-literal homograph sense can never collide with, or silently steal,
+        // the bare key from its L()-call-site primary. An object with no `ctx` property behaves as
+        // before: bare key, real collision detection.
+        const ctxP = node.properties.find((p) => p.type === 'Property' && propKeyName(p) === 'ctx' && isStringLiteral(p.value));
+        if (ctxP) {
+          setKnownKey(heP.value.value + SENT + ctxP.value.value, enP.value.value);
+        } else {
+          setKnownKey(heP.value.value, enP.value.value);
+        }
       }
       return; // an {he,en} object is not also a {heb,eng} name object
     }
@@ -401,15 +429,28 @@ export function extract(src, opts = {}) {
       if (args.length >= 2 && isStringLiteral(args[1])) {
         const en = args[1].value;
         const ctx = args.length >= 3 && isStringLiteral(args[2]) ? args[2].value : undefined;
+        // Task 5 (spec §6) — primary-bare-key mechanism, ORDER-INDEPENDENT by construction.
+        // The T2/C1 approach (a ctx'd site always wrote the bare key too, first-write-wins via
+        // `noCollision`) broke when a non-primary ctx'd site happened to appear earlier in app.js
+        // than its homograph's designated-primary 2-arg site: the later plain `setKnownKey(he,en)`
+        // call carries no `noCollision` flag, so it would throw against the ctx'd site's earlier
+        // (wrong-sense) bare write — file order, not sense, decided the outcome.
+        // Fix: a ctx'd call NEVER touches the bare key by itself. Exactly ONE call site per
+        // homograph is the designated PRIMARY sense and owns the bare key, chosen ONE of two ways:
+        //   (a) — the common case — leave that one sense's call as a plain 2-arg `L(he,en)`; it
+        //         writes the bare key through the normal (real-collision-checked) path below, with
+        //         no ctx involved at all.
+        //   (b) — when every sense's call site needs a ctx label (e.g. no sense is naturally the
+        //         "leave it alone" 2-arg site, or a future homograph needs it), pass an explicit 4th
+        //         arg `true`: `L(he, en, ctx, true)` marks THIS ctx'd site as ALSO the primary — it
+        //         writes the bare key too, through the same real-collision-checked path (not
+        //         first-write-wins), so a mistaken double-primary still throws.
+        // A ctx'd site with no primary marker writes ONLY its compound key — never the bare key —
+        // so file order can no longer affect which sense ends up bare-keyed.
+        const isPrimary = args.length >= 4 && args[3] && args[3].type === 'Literal' && args[3].value === true;
         if (ctx) {
-          // I-C bare-key retention (spec §6) — tnode/applyI18n keys static-shell text by the bare
-          // visible Hebrew and can never synthesize a `he␟ctx` key, so BOTH the compound key AND the
-          // bare `he` key must be emitted for every ctx'd homograph. The bare key carries the primary
-          // (first-seen) sense; later ctx'd sites for the same `he` contribute only their own
-          // compound key and must NOT collide the bare key (that's the ctx split's whole point) —
-          // hence `noCollision: true`, a first-write-wins with no error.
           setKnownKey(he + SENT + ctx, en);
-          setKnownKey(he, en, { noCollision: true });
+          if (isPrimary) setKnownKey(he, en);
         } else {
           setKnownKey(he, en);
         }

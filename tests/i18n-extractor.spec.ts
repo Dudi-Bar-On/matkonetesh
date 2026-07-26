@@ -103,22 +103,78 @@ test('extractor: a needs-en placeholder is upgraded (not flagged a collision) on
   expect(needsEn).not.toContain('אותו טקסט בדיוק');
 });
 
-// ── review finding C1 — I-C bare-key retention ──
-test('extractor: a ctx\'d homograph emits BOTH the compound key AND the bare he key (I-C, review C1)', async () => {
+// ── Task 5 — the primary-bare-key mechanism (spec §6, supersedes T2/C1's first-write-wins) ──
+// T2/C1 had a ctx'd site ALWAYS also write the bare key (first-write-wins via a `noCollision`
+// escape hatch) — order-dependent: whichever sense's call happened to appear first in app.js won
+// the bare key, regardless of which sense was actually meant to be primary. Task 5 replaces this
+// with an explicit, order-independent mechanism (see the file-header comment in i18n-extract.mjs):
+// a ctx'd L() call NEVER touches the bare key by itself; exactly one site per homograph is the
+// designated primary, either by staying a plain 2-arg `L(he,en)` call, or via an explicit 4th-arg
+// `true` marker on a ctx'd call.
+
+test('extractor: a lone ctx\'d L() site with NO primary marker emits ONLY the compound key — the bare key stays unset (Task 5, spec §6)', async () => {
   const { extract } = await extractorModule;
   const { known } = extract(`L('אש','Fire','fire');`);
-  expect(known['אש']).toBe('Fire');       // bare key — tnode static-shell path keys by bare Hebrew
-  expect(known['אש␟fire']).toBe('Fire');  // compound ctx key — the L() path
+  expect(known['אש␟fire']).toBe('Fire');
+  expect(known['אש']).toBeUndefined(); // no plain 2-arg site and no primary marker → no bare key
 });
 
-test('extractor: two ctx\'d homograph sites both keep their own compound key; the bare key holds the first-seen (primary) sense without colliding (I-C, review C1)', async () => {
+test('extractor: two ctx\'d homograph sites (no primary marker) each keep their own compound key and neither touches the bare key — no collision, order does not matter (Task 5, spec §6)', async () => {
   const { extract } = await extractorModule;
-  const src = `L('אש','Fire','fire'); L('אש','Heat','heat');`;
-  const { known, collisions } = extract(src);
+  const { known, collisions } = extract(`L('אש','Fire','fire'); L('אש','Heat','heat');`);
   expect(known['אש␟fire']).toBe('Fire');
   expect(known['אש␟heat']).toBe('Heat');
-  expect(known['אש']).toBe('Fire'); // first-seen ctx'd site is the primary sense
-  expect(collisions.length).toBe(0); // ctx'd sites must never trigger the bare-key collision lint
+  expect(known['אש']).toBeUndefined();
+  expect(collisions.length).toBe(0);
+});
+
+test('extractor: the plain 2-arg site is the primary and owns the bare key, regardless of whether it appears BEFORE or AFTER the ctx\'d sense in source order (Task 5 order-independence, spec §6)', async () => {
+  const { extract } = await extractorModule;
+  const before = extract(`L('אש','Fire'); L('אש','Heat','heat');`);
+  const after = extract(`L('אש','Heat','heat'); L('אש','Fire');`);
+  expect(before.known['אש']).toBe('Fire');
+  expect(after.known['אש']).toBe('Fire'); // same result regardless of which site came first
+  expect(before.collisions.length).toBe(0);
+  expect(after.collisions.length).toBe(0);
+});
+
+test('extractor: a 4th-arg `true` marks a ctx\'d site as the explicit primary — it writes BOTH its compound key and the bare key (Task 5 fallback mechanism, spec §6)', async () => {
+  const { extract } = await extractorModule;
+  const { known, collisions } = extract(`L('אש','Fire','fire',true); L('אש','Heat','heat');`);
+  expect(known['אש␟fire']).toBe('Fire');
+  expect(known['אש␟heat']).toBe('Heat');
+  expect(known['אש']).toBe('Fire'); // the explicitly-marked site owns the bare key
+  expect(collisions.length).toBe(0);
+});
+
+test('extractor: two ctx\'d sites BOTH marked primary (4th arg true) for the same homograph is a genuine authoring mistake and still collides (Task 5, spec §6)', async () => {
+  const { extract } = await extractorModule;
+  const { collisions } = extract(`L('אש','Fire','fire',true); L('אש','Heat','heat',true);`, { throwOnCollision: false });
+  expect(collisions.length).toBe(1);
+  expect(collisions[0].key).toBe('אש');
+});
+
+// ── mode 2-generic ctx (Task 5) — a sibling {he,en} object literal can also carry a `ctx` property,
+// for homograph senses expressed as data (e.g. a props-array entry rendered via L(p.he,p.en,p.ctx))
+// rather than a direct L() call. Same mechanism as mode 1: ctx present → compound-key only. ──
+test('extractor: a mode-2-generic {he,en,ctx} object emits ONLY the compound key, never the bare key (Task 5, spec §6)', async () => {
+  const { extract } = await extractorModule;
+  const src = `const ROW={he:'מספר ווים', en:'How many', ctx:'hooks-count'};`;
+  const { known } = extract(src);
+  expect(known['מספר ווים␟hooks-count']).toBe('How many');
+  expect(known['מספר ווים']).toBeUndefined();
+});
+
+test('extractor: a ctx-less mode-2-generic {he,en} object (the primary sense) coexists with a ctx\'d {he,en,ctx} sibling for the same homograph — no collision (Task 5, spec §6)', async () => {
+  const { extract } = await extractorModule;
+  const src = `
+const PRIMARY={he:'מספר ווים', en:'Hooks'};
+const ALT={he:'מספר ווים', en:'How many', ctx:'hooks-count'};
+`;
+  const { known, collisions } = extract(src);
+  expect(known['מספר ווים']).toBe('Hooks');
+  expect(known['מספר ווים␟hooks-count']).toBe('How many');
+  expect(collisions.length).toBe(0);
 });
 
 // ── review finding C2 — M-3 table-scoped ctx for nested tables ──
@@ -219,4 +275,57 @@ test('staleness: a fresh extraction of app.js seeded from the committed _extract
   expect(known['צירים מתקפלים']).toBe('Collapsible accordion');     // SHAPE_NAMES
   expect(known['😌 עדין']).toBe('😌 Mild');                          // SPK_HEAT
   expect(known['נא␟doneness']).toBe('Rare');                        // DONE_SCALES
+});
+
+// ── Task 5 — the real corpus, collision-lint GREEN with no --allow-collisions (spec §6) ──
+// RED for this test was witnessed on the CLI directly before Task 5's edits: `node
+// scripts/i18n-extract.mjs app.js` (no flag) threw "i18n-extract: homograph collision(s)" listing
+// ~63 colliding (key, en1, en2) pairs across ~36 distinct bare-he keys (אש, עישון, מתקדם, נתח,
+// אירועים, מספר ווים, כלי הפיטמאסטר, פחם/עצים via DEVICE_FUEL, …) — full output pasted in
+// .superpowers/sdd/v268-t5-report.md. This test is that RED's permanent GREEN witness.
+test('Task 5 GREEN: extract(app.js) throws NO collisions — every real homograph is ctx-disambiguated (spec §6)', async () => {
+  const { extract } = await extractorModule;
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const appSrc = fs.readFileSync(path.join(process.cwd(), 'app.js'), 'utf8');
+  expect(() => extract(appSrc)).not.toThrow();
+  const { collisions } = extract(appSrc, { throwOnCollision: false });
+  expect(collisions).toEqual([]);
+});
+
+test('Task 5: node scripts/i18n-extract.mjs app.js (NO --allow-collisions) exits 0 on the real corpus (spec §6)', async () => {
+  const { execFileSync } = await import('node:child_process');
+  const out = execFileSync(process.execPath, ['scripts/i18n-extract.mjs', 'app.js'], {
+    cwd: process.cwd(),
+    encoding: 'utf8',
+  });
+  expect(out).toContain('[i18n-extract] wrote lang/_extracted.json');
+  expect(out).not.toContain('collision');
+});
+
+// ── Task 5 — bare-key retention for the tnode static-shell path (spec I-C), on REAL resolved
+// homographs. Each of these words also (or plausibly could) render as static shell text keyed by
+// the bare Hebrew — the bare key must hold the designated PRIMARY sense's English, and the
+// compound ctx key(s) must hold every other sense, distinct from the bare value. ──
+test('Task 5: real resolved homographs retain a bare he key (primary sense) alongside their compound ctx key(s) (spec I-C)', async () => {
+  const { extract } = await extractorModule;
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  const appSrc = fs.readFileSync(path.join(process.cwd(), 'app.js'), 'utf8');
+  const { known } = extract(appSrc);
+  const cases: [string, string, string, string][] = [
+    ['אש', 'Fire', 'אש␟inline', 'fire'],
+    ['עישון', 'Smoke', 'עישון␟gerund', 'Smoking'],
+    ['מתקדם', 'Advanced', 'מתקדם␟tier', 'Pro'],
+    ['נתח', 'Cut', 'נתח␟analyze', 'Analyze'],
+    ['אירועים', 'events', 'אירועים␟summary', 'cookouts'],
+    ['מספר ווים', 'Hooks', 'מספר ווים␟hooks-count', 'How many'],
+    ['כלי הפיטמאסטר', 'Pitmaster tools', 'כלי הפיטמאסטר␟dock-tile', 'Pit-tools dock'],
+    ['פחם', 'Charcoal', 'פחם␟inline', 'charcoal'],
+  ];
+  for (const [bareKey, bareEn, ctxKey, ctxEn] of cases) {
+    expect(known[bareKey]).toBe(bareEn);
+    expect(known[ctxKey]).toBe(ctxEn);
+    expect(known[bareKey]).not.toBe(known[ctxKey]); // distinct senses, proven distinct
+  }
 });

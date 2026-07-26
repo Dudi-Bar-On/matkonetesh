@@ -1119,10 +1119,14 @@ const REFUEL_MIN={
   'קמאדו / קרמי':0,         // ceramic holds a single load for many hours
   'פלטים':0, 'גז (עם תיבת עשן)':0, 'חשמלי':0, 'ארון / קבינט':0
 };
+// Task 5 (spec §6): 'פחם'/'עצים' also carry a Title-case, plural primary sense elsewhere ('Charcoal'
+// heading @3421/9718, 'Woods' heading @4226/9717) — DEVICE_FUEL's own lowercase/singular fuel-type
+// label is the SAME "inline" non-primary sense already used for 'פחם' at app.js:7110, so it shares
+// that ctx (compound key: same he+ctx → same en, no re-collision).
 const DEVICE_FUEL={
   'פלטים':{he:'פלטים',en:'pellets'}, 'גז (עם תיבת עשן)':{he:'גז',en:'gas'}, 'חשמלי':{he:'חשמל',en:'electric'},
-  'WSM / חבית':{he:'פחם',en:'charcoal'}, 'קטל (ככלי עישון)':{he:'פחם',en:'charcoal'},
-  'קמאדו / קרמי':{he:'פחם',en:'charcoal'}, 'אופסט / סטיק-ברנר':{he:'עצים',en:'wood'}
+  'WSM / חבית':{he:'פחם',en:'charcoal',ctx:'inline'}, 'קטל (ככלי עישון)':{he:'פחם',en:'charcoal',ctx:'inline'},
+  'קמאדו / קרמי':{he:'פחם',en:'charcoal',ctx:'inline'}, 'אופסט / סטיק-ברנר':{he:'עצים',en:'wood',ctx:'inline'}
 };
 // The seam itself: equipment facts enter stage generation HERE and nowhere else. Pure — it returns enriched
 // copies and never writes onto the caller's stages — and a complete no-op when no kit is configured, so the
@@ -1136,7 +1140,7 @@ function equipPlan(meta, methodKey, stages, scope){
     const dev=(typeof cookerFor==='function')?cookerFor(meta&&meta.key, s.kind, scope):null;
     if(!dev) return s;
     const out=Object.assign({}, s);
-    const f=DEVICE_FUEL[dev.type]; if(f) out.fuelNote=L(f.he, f.en);
+    const f=DEVICE_FUEL[dev.type]; if(f) out.fuelNote=L(f.he, f.en, f.ctx);
     const rf=REFUEL_MIN[dev.type]||0;
     if(rf>0 && (Number(s.hours)||0)*60 > rf) out.refuelEveryMin=rf;   // only when the cook outlasts one load
     return out;
@@ -1145,12 +1149,12 @@ function equipPlan(meta, methodKey, stages, scope){
 function gearMissingHelp(c, methods){
   const items=methods.map(m=>{
     if(m==='sv'){
-      const alt=(c.sot?L(`עישון-בלבד (הנתח תומך: ~${c.soh}ש ב-${c.sot}°C)`,`Smoke-only (this cut supports it: ~${c.soh}h at ${c.sot}°C)`):(canSmoke()?L('עישון','Smoking'):canGrill()?L('גריל עם גימור זהיר','Grill with a careful finish'):L('בישול איטי בתנור','Slow-cook in the oven')));
+      const alt=(c.sot?L(`עישון-בלבד (הנתח תומך: ~${c.soh}ש ב-${c.sot}°C)`,`Smoke-only (this cut supports it: ~${c.soh}h at ${c.sot}°C)`):(canSmoke()?L('עישון','Smoking','gerund'):canGrill()?L('גריל עם גימור זהיר','Grill with a careful finish'):L('בישול איטי בתנור','Slow-cook in the oven')));
       return {ic:'🌊',name:L('סו-ויד','Sous-vide'),alt,altnote:L('מרקם: סו-ויד נותן אחידות פנימית; החלופה תיתן קרום/עישון חזק יותר.','Texture: sous-vide gives internal uniformity; the alternative gives a stronger crust/smoke.'),buy:L('סו-ויד טבילה (immersion) — קומפקטי וזול יחסית.','Immersion sous-vide — compact and relatively cheap.')};
     }
     if(m==='smoke'){
       const alt=(canGrill()?L('עישון בגריל עקיף (2-zone) עם תיבת עשן / נתחי עץ על הגחלים','Smoke on an indirect grill (2-zone) with a smoke box / wood chunks on the coals'):(canSV()?L('סו-ויד + גימור (בלי טעם עשן)','Sous-vide + finish (no smoke flavor)'):L('בישול בתנור נמוך','Cook in a low oven')));
-      return {ic:'💨',name:L('עישון','Smoking'),alt,altnote:L('ללא מעשנה ייעודית, גריל עקיף עם עץ נותן טעם עשן טוב.','Without a dedicated smoker, an indirect grill with wood gives good smoke flavor.'),buy:L('מעשנת פחם (WSM/חבית), קמאדו, או ארון.','A charcoal smoker (WSM/drum), kamado, or cabinet.')};
+      return {ic:'💨',name:L('עישון','Smoking','gerund'),alt,altnote:L('ללא מעשנה ייעודית, גריל עקיף עם עץ נותן טעם עשן טוב.','Without a dedicated smoker, an indirect grill with wood gives good smoke flavor.'),buy:L('מעשנת פחם (WSM/חבית), קמאדו, או ארון.','A charcoal smoker (WSM/drum), kamado, or cabinet.')};
     }
     if(m==='grill'){
       const alt=hasGear('torch')?L('גימור במבער/לפיד','Finish with a torch'):L('צריבה במחבת ברזל-יצוק חמה מאוד','Sear in a very hot cast-iron pan');
@@ -2251,7 +2255,7 @@ function eqmRetroWarnHtml(impact){
   const more = moreN>0 ? ' '+L('ועוד '+moreN,'+'+moreN+' more') : '';
   const itemsWord = impact.m===1 ? L('פריט','item') : L('פריטים','items');
   const verb = impact.n===1 ? L('יושפע','will be affected') : L('יושפעו','will be affected');
-  return `⚠ <span dir="ltr">${impact.n}</span> ${L('מתוך','out of')} <span dir="ltr">${impact.m}</span> ${itemsWord} ${verb}: <b>${shown}${more}</b>.<br>${L('למחוק בכל זאת?','Delete anyway?')}`;
+  return `⚠ <span dir="ltr">${impact.n}</span> ${L('מתוך','out of','phrase')} <span dir="ltr">${impact.m}</span> ${itemsWord} ${verb}: <b>${shown}${more}</b>.<br>${L('למחוק בכל זאת?','Delete anyway?')}`;
 }
 
 function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
@@ -2422,7 +2426,7 @@ function buildFilterBar(){
   const wrap=$("#filterBar"); if(!wrap) return;
   const msel=(v,cur)=>v==(cur)?' selected':'';
   wrap.innerHTML=`
-    <select data-f="method" aria-label="${L('שיטה','Method')}"><option value="">${L('כל שיטה','Any method')}</option><option value="grill"${msel('grill',filters.method)}>🔥 ${L('גריל / אש ישירה','Grill / direct heat')}</option><option value="sv"${msel('sv',filters.method)}>💧 ${L('סו-ויד','Sous-vide')}</option><option value="smoke"${msel('smoke',filters.method)}>💨 ${L('עישון','Smoking')}</option><option value="build"${msel('build',filters.method)}>🔨 ${L('בנייה מאפס','Build from scratch')}</option></select>
+    <select data-f="method" aria-label="${L('שיטה','Method')}"><option value="">${L('כל שיטה','Any method')}</option><option value="grill"${msel('grill',filters.method)}>🔥 ${L('גריל / אש ישירה','Grill / direct heat')}</option><option value="sv"${msel('sv',filters.method)}>💧 ${L('סו-ויד','Sous-vide')}</option><option value="smoke"${msel('smoke',filters.method)}>💨 ${L('עישון','Smoking','gerund')}</option><option value="build"${msel('build',filters.method)}>🔨 ${L('בנייה מאפס','Build from scratch')}</option></select>
     <select data-f="diff" aria-label="${L('קושי','Difficulty')}"><option value="0">${L('כל קושי','Any difficulty')}</option><option value="1"${msel(1,filters.diff)}>${L('קל (1)','Easy (1)')}</option><option value="2"${msel(2,filters.diff)}>${L('עד 2','Up to 2')}</option><option value="3"${msel(3,filters.diff)}>${L('עד 3','Up to 3')}</option><option value="4"${msel(4,filters.diff)}>${L('עד 4','Up to 4')}</option></select>
     <select data-f="time" aria-label="${L('זמן','Time')}"><option value="0">${L('כל זמן','Any time')}</option><option value="2"${msel(2,filters.time)}>${L('עד','Up to')} 2${L('ש','h')}</option><option value="6"${msel(6,filters.time)}>${L('עד','Up to')} 6${L('ש','h')}</option><option value="12"${msel(12,filters.time)}>${L('עד','Up to')} 12${L('ש','h')}</option><option value="24"${msel(24,filters.time)}>${L('עד','Up to')} 24${L('ש','h')}</option></select>
     <button data-f="kosher" class="fchip ${filters.kosher?'on':''}">${filters.kosher?'✓ ':''}${L('כשר בלבד','Kosher only')}</button>`;
@@ -2585,7 +2589,7 @@ function cureScaleGuardHTML(doseG, perUnitG, unitHe, unitEn){
   if(doseG>=advMax) return '';
   const hard=doseG<hardMax;
   const dTxt=(d===0.1)?L('0.1 גרם','0.1 g'):L('1 גרם','1 g');
-  const doseTxt=esc(doseG.toFixed(2))+' '+L('גרם','g');
+  const doseTxt=esc(doseG.toFixed(2))+' '+L('גרם','g','abbrev');
   const errPct=esc(String(Math.round((d/doseG)*100)));
   const target=perUnitG>0?advMax/perUnitG:0;
   const targetTxt=target>0?(esc(fmtQty(target))+' '+L(unitHe,unitEn)):'';
@@ -2796,8 +2800,8 @@ function sourcesBlock(c){
     const vt=`style="font-family:'Heebo';font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ember2);margin:2px 0"`;
     const hh=L('ש','h');
     order=`<div style="margin-top:10px"><div ${vt}>🔀 ${L('השפעת סדר','Order impact')}</div>`;
-    if(oa) order+=`<div style="font-size:13px;line-height:1.5">${L('סו-ויד→עישון','Sous-vide→smoke')}: ${L('סו-ויד','sous-vide')} ${oa.sv.t}°/${oa.sv.h}${hh}${oa.dry?` → ${L('ייבוש','dry')} ${oa.dry.h}${hh}`:''} → ${L('עישון','smoke')} ${oa.smoke.t}°/${oa.smoke.h}${hh} <span style="opacity:.65">(${L('גימור חם','hot finish')})</span>${orderNoteHTML(oa)}</div>`;
-    if(ob) order+=`<div style="font-size:13px;line-height:1.5">${L('עישון→סו-ויד','Smoke→sous-vide')}: ${L('עישון','smoke')} ${ob.smoke.t}°/${ob.smoke.h}${hh}${ob.smoke.cold?` <span style="opacity:.65">(${L('עישון קר','cold smoke')})</span>`:''} → ${L('סו-ויד','sous-vide')} ${ob.sv.t}°/${ob.sv.h}${hh} <span style="opacity:.65">(${L('פסטור מלא','full pasteurization')})</span>${orderNoteHTML(ob)}</div>`;
+    if(oa) order+=`<div style="font-size:13px;line-height:1.5">${L('סו-ויד→עישון','Sous-vide→smoke')}: ${L('סו-ויד','sous-vide','inline')} ${oa.sv.t}°/${oa.sv.h}${hh}${oa.dry?` → ${L('ייבוש','dry')} ${oa.dry.h}${hh}`:''} → ${L('עישון','smoke','inline')} ${oa.smoke.t}°/${oa.smoke.h}${hh} <span style="opacity:.65">(${L('גימור חם','hot finish')})</span>${orderNoteHTML(oa)}</div>`;
+    if(ob) order+=`<div style="font-size:13px;line-height:1.5">${L('עישון→סו-ויד','Smoke→sous-vide')}: ${L('עישון','smoke','inline')} ${ob.smoke.t}°/${ob.smoke.h}${hh}${ob.smoke.cold?` <span style="opacity:.65">(${L('עישון קר','cold smoke','inline')})</span>`:''} → ${L('סו-ויד','sous-vide','inline')} ${ob.sv.t}°/${ob.sv.h}${hh} <span style="opacity:.65">(${L('פסטור מלא','full pasteurization')})</span>${orderNoteHTML(ob)}</div>`;
     order+=`</div>`;
   }
   return `<div class="raw">${hd}<table>${rows}${ver}</table>${order}</div>`;
@@ -2868,7 +2872,7 @@ function openCut(c){
         <tr><td>${L('ראב הבית (תבנית)','House rub (template)')}</td><td>${c.rub}</td></tr>
         <tr><td>${L('טיפ הכנה','Prep tip')}</td><td>${c.somid||'—'}</td></tr>
         <tr><td>${L('עץ לעשן (אופציונלי)','Wood for smoke (optional)')}</td><td>${c.wood}</td></tr>
-        <tr><td>${L('רמת קושי','Difficulty')}</td><td>${c.diff} / 5</td></tr>
+        <tr><td>${L('רמת קושי','Difficulty','heading')}</td><td>${c.diff} / 5</td></tr>
        </table>`:`<table>
         <tr><td>${L("טמפ' / זמן סו-ויד",'Sous-vide temp / time')}</td><td>${c.svt}°C · ${c.svh} ${L('שעות','hours')}</td></tr>
         <tr><td>${L("טמפ' / זמן עישון (סו-ויד+עישון)",'Smoke temp / time (sous-vide+smoke)')}</td><td>${smtV}°C · ${smhV} ${L('שעות','hours')}</td></tr>
@@ -2882,7 +2886,7 @@ function openCut(c){
         <tr><td>${L('מרינדה / ראב','Marinade / rub')}</td><td>${c.rub}</td></tr>
         <tr><td>${L("צ'אנקים / עץ",'Chunks / wood')}</td><td>${c.wood}</td></tr>
         <tr><td>${L('פחם מומלץ','Recommended charcoal')}</td><td>${c.coal}</td></tr>
-        <tr><td>${L('רמת קושי','Difficulty')}</td><td>${c.diff} / 5</td></tr>
+        <tr><td>${L('רמת קושי','Difficulty','heading')}</td><td>${c.diff} / 5</td></tr>
        </table>`}
      </div>
      ${sourcesBlock(c)}
@@ -3348,7 +3352,7 @@ function shopData(){
       { const _m=resolveItem(k); const _raw=_m?rawGramsFor(_m):0;
         meat.push(`${nm(c,k)} — ~${(_raw/1000).toFixed(1)} ${kg}${ilFor(c.heb,c.eng)}`); }
       if(k==='cut-18'){ const dn=burgerDiners(); const tps=[...new Set(dn.flatMap(d=>d.tops||[]))]; const chs=[...new Set(dn.filter(d=>d.cheesePos!=='none').map(d=>d.cheese))]; const scs=[...new Set(dn.map(d=>d.sauce).filter(Boolean))]; const bns=[...new Set(dn.map(d=>d.bun).filter(Boolean))];
-        meat.push(`🍔 ${L('לבורגרים','for the burgers')} (${dn.length} ${L('סועדים','guests')}): ${L('לחמניות','buns')} ${bns.map(x=>t(x)).join('/')||'—'} ×${dn.length}${chs.length?` · ${L('גבינות','cheeses')}: ${chs.map(x=>t(x)).join(', ')}`:''}${tps.length?` · ${L('תוספות','toppings')}: ${tps.map(x=>t(x)).join(', ')}`:''}${scs.length?` · ${L('רטבים','sauces')}: ${scs.map(x=>t(x)).join(', ')}`:''}`); }
+        meat.push(`🍔 ${L('לבורגרים','for the burgers')} (${dn.length} ${L('סועדים','guests')}): ${L('לחמניות','buns')} ${bns.map(x=>t(x)).join('/')||'—'} ×${dn.length}${chs.length?` · ${L('גבינות','cheeses')}: ${chs.map(x=>t(x)).join(', ')}`:''}${tps.length?` · ${L('תוספות','toppings','toppings')}: ${tps.map(x=>t(x)).join(', ')}`:''}${scs.length?` · ${L('רטבים','sauces')}: ${scs.map(x=>t(x)).join(', ')}`:''}`); }
       // house rub flows through collectSeas as the default selection — no separate season.add (avoids double-listing)
       String(c.wood).split("/").forEach(w=>wood.add(w.trim()));
       if(c.coal) coal.add(c.coal);
@@ -3672,7 +3676,7 @@ const MAKE_COOK={
    methods:[{key:'serve',label:'הוצא והגש',tempC:'—',hours:0.1,note:'ג׳רקי/ביltong מוכן'}]},
 };
 function comboMethodEntry(c, combo, isCard){
-  const names={sv:L('סו-ויד','Sous-vide'),smoke:L('עישון','Smoking'),grill:L('גריל','Grill')};
+  const names={sv:L('סו-ויד','Sous-vide'),smoke:L('עישון','Smoking','gerund'),grill:L('גריל','Grill')};
   const label=(isCard?'⚡ ':'')+combo.map(m=>names[m]).join(' + ')+(isCard?L(' (מהכרטיסייה)',' (from the tab)'):'');
   let hours=0, svH=0, smH=0;
   if(combo.includes('sv')) { svH=upperHours(c.svh); hours+=svH; }
@@ -3680,7 +3684,7 @@ function comboMethodEntry(c, combo, isCard){
   if(combo.includes('grill')) hours+=0.3;
   const dtgt=(typeof donenessTarget==='function' && c.doneness)? donenessTarget(c) : c.tgt;
   const tgtLabel=c.doneness?`${L('יעד פנים','internal target')} ${dtgt}° (${doneLabel(c,currentDoneness(c))})`:`${L('יעד','target')} ${c.tgt}°`;
-  return {key:'c:'+combo.slice().sort().join('_'),label,tempC:combo.includes('sv')?`${c.svt}°`:(combo.includes('smoke')?`${c.sot||c.smt}°`:L('אש','fire')),
+  return {key:'c:'+combo.slice().sort().join('_'),label,tempC:combo.includes('sv')?`${c.svt}°`:(combo.includes('smoke')?`${c.sot||c.smt}°`:L('אש','fire','inline')),
     hours,note:tgtLabel,svHours:svH,smHours:smH,svTemp:c.svt,smTemp:combo.includes('sv')?c.smt:(c.sot||c.smt),combo};
 }
 function itemProfile(meta){
@@ -4289,7 +4293,7 @@ function pantryToPlan(pid){
   try{ const all=tlState(); all[p.key]=all[p.key]||{method:null}; const tls=(stg==='done')?'ready':'prepped'; all[p.key].stage=tls; all[p.key].ready=(tls==='ready'); tlSetState(all); }catch(e){}
   if(typeof updateCartBadge==='function') updateCartBadge();
   const ctxName=(typeof menuCtx==='function'&&menuCtx()==='event')?L('האירוע','the event'):L('הבישול','the cook');
-  if(typeof toast==='function') toast(`${p.name} ${L('נוסף ל','added to ')}${ctxName} · ${stg==='done'?L('מוכן להגשה','ready to serve'):L('רק סיום','finish only')}`);
+  if(typeof toast==='function') toast(`${p.name} ${L('נוסף ל','added to ')}${ctxName} · ${stg==='done'?L('מוכן להגשה','ready to serve','inline'):L('רק סיום','finish only')}`);
   if(typeof closePanel==='function') closePanel();
   if(typeof cNavGo==='function') cNavGo('wizard');
   if(typeof cwGo==='function') cwGo(3);
@@ -5921,7 +5925,7 @@ function openMenuPrint(){
     ${(s.sides||[]).length?`<h4>${L('תוספות','Sides')}</h4><ul>${s.sides.map(x=>`<li>${t(x)} <small>(${eventQty(x,'side',s.guests)})</small></li>`).join("")}</ul>`:''}
     ${(s.drinks||[]).length?`<h4>${L('שתייה','Drinks')}</h4><ul>${s.drinks.map(x=>`<li>${t(x)} <small>(${eventQty(x,'drink',s.guests)})</small></li>`).join("")}</ul>`:''}
     ${(s.desserts||[]).length?`<h4>${L('קינוחים','Desserts')}</h4><ul>${s.desserts.map(x=>x==='__fruit'?`<li>${L('מגש פירות העונה','Seasonal fruit platter')} (${t(eventSeason())}: ${seasonalFruitList().map(f=>t(f)).join(', ')}) <small>(${eventQty('','fruit',s.guests)})</small></li>`:`<li>${t(x)} <small>(${eventQty(x,'dessert',s.guests)})</small></li>`).join("")}</ul>`:''}
-    <p><b>${L('סה״כ בשר נא משוער','Est. total raw meat')}: ~${(totalRaw/1000).toFixed(1)} ${kg}</b> · ${L('תיאבון','appetite')} ${appName} · ${L('הגשה','serve')} ${serve}</p>
+    <p><b>${L('סה״כ בשר נא משוער','Est. total raw meat')}: ~${(totalRaw/1000).toFixed(1)} ${kg}</b> · ${L('תיאבון','appetite','inline')} ${appName} · ${L('הגשה','serve','inline')} ${serve}</p>
   </div>`;
   showPanel(`${toolTop(L('הדפסת תפריט','Print menu'),evName||L('תפריט האירוע','Event menu'),'🖨️','#cf6a4a')}
     <div class="panel-body" id="menuBody">
@@ -5956,7 +5960,7 @@ function renderMenu(){
     ${(s.desserts||[]).length?`<h4>${L('קינוחים','Desserts')}</h4><ul>${s.desserts.map(x=>x==='__fruit'?`<li>${L('מגש פירות העונה','Seasonal fruit platter')} (${t(eventSeason())}: ${seasonalFruitList().map(f=>t(f)).join(', ')}) <small>(${eventQty('','fruit',s.guests)})</small></li>`:`<li>${t(x)} <small>(${eventQty(x,'dessert',s.guests)})</small></li>`).join("")}</ul>`:''}
   </div>`;
   host.innerHTML=`
-    <div class="mrow"><label>${L('אורחים','Guests')}</label><input type="number" id="mG" min="1" value="${s.guests}"><span class="u">${L('איש','people')}</span></div>
+    <div class="mrow"><label>${L('אורחים','Guests','label')}</label><input type="number" id="mG" min="1" value="${s.guests}"><span class="u">${L('איש','people')}</span></div>
     <div class="mrow"><label>${L('תיאבון','Appetite')}</label>
       <select id="mA" ${s.gpm>0?'disabled':''}><option value="light"${s.appetite==='light'?' selected':''}>${L('קל','Light')}</option><option value="reg"${s.appetite==='reg'?' selected':''}>${L('רגיל','Regular')}</option><option value="heavy"${s.appetite==='heavy'?' selected':''}>${L('כבד','Heavy')}</option></select>
       <button class="mchip ${s.kosher?'on':''}" id="mK">${s.kosher?'✓ ':''}${L('כשר בלבד','Kosher only')}</button></div>
@@ -5983,7 +5987,7 @@ function renderMenu(){
     <div class="mchips">${DESSERTS.map(d=>`<button class="mchip ${(s.desserts||[]).includes(d.n)?'on':''}" data-dessert="${d.n}">${(s.desserts||[]).includes(d.n)?'✓ ':''}${d.fire?'🔥 ':''}${t(d.n)}</button>`).join("")}</div>
     <h4 class="mini-h" style="margin-top:14px">🍑 ${L('פירות טריים','Fresh fruit')} — ${t(eventSeason())}${(()=>{const st=menuState();return st.evDate?L(' (לפי תאריך האירוע)',' (by event date)'):L(' (החודש)',' (this month)');})()}</h4>
     <div class="mchips"><button class="mchip ${(s.desserts||[]).includes('__fruit')?'on':''}" data-dessert="__fruit">${(s.desserts||[]).includes('__fruit')?'✓ ':''}🍉 ${L('מגש פירות העונה','Seasonal fruit platter')}: ${seasonalFruitList().map(f=>t(f)).join(' · ')}</button></div>
-    ${(()=>{ const ex=[]; (s.sides||[]).forEach(x=>ex.push([L('תוספת','Side'),t(x),eventQty(x,'side',s.guests)])); (s.drinks||[]).forEach(x=>ex.push([L('שתייה','Drink'),t(x),eventQty(x,'drink',s.guests)])); (s.desserts||[]).forEach(x=>{ if(x==='__fruit') ex.push([L('פירות','Fruit'),L('מגש פירות העונה','Seasonal fruit platter')+' ('+t(eventSeason())+')',eventQty('','fruit',s.guests)]); else ex.push([L('קינוח','Dessert'),t(x),eventQty(x,'dessert',s.guests)]); });
+    ${(()=>{ const ex=[]; (s.sides||[]).forEach(x=>ex.push([L('תוספת','Side'),t(x),eventQty(x,'side',s.guests)])); (s.drinks||[]).forEach(x=>ex.push([L('שתייה','Drink','singular'),t(x),eventQty(x,'drink',s.guests)])); (s.desserts||[]).forEach(x=>{ if(x==='__fruit') ex.push([L('פירות','Fruit'),L('מגש פירות העונה','Seasonal fruit platter')+' ('+t(eventSeason())+')',eventQty('','fruit',s.guests)]); else ex.push([L('קינוח','Dessert'),t(x),eventQty(x,'dessert',s.guests)]); });
       return ex.length?`<div class="kbox k-ok" style="margin-top:14px"><b>${L('כמויות מומלצות ל-','Recommended quantities for ')}${s.guests} ${L('אורחים','guests')}:</b>${ex.map(e=>`<div class="mqty"><span>${e[0]}: ${e[1]}</span><b>${e[2]}</b></div>`).join('')}</div>`:''; })()}`}
     ${s.keys.length?`<div class="exactions" style="margin-top:16px">
       <button id="mCart">🛒 ${L('הוסף את כל המנות לרשימת קניות','Add all dishes to shopping list')}</button>
@@ -6744,7 +6748,7 @@ function openCopilot(){
   // W2-P4: adaptive timing — shift the serve (running late / moved / ahead) → verdict + plan recompute
   let adjustCard='';
   if(sess){
-    adjustCard=`<div class="cop-adjust"><div class="cop-adjusth">⏱️ ${L('תזמון', 'Timing')}${(typeof sess.serveTs==='number')?` · ${L('הגשה', 'serve')} ${fmtClock(new Date(sess.serveTs))}`:''}</div>
+    adjustCard=`<div class="cop-adjust"><div class="cop-adjusth">⏱️ ${L('תזמון', 'Timing')}${(typeof sess.serveTs==='number')?` · ${L('הגשה', 'serve', 'inline')} ${fmtClock(new Date(sess.serveTs))}`:''}</div>
       <div class="cop-proberow"><button class="mchip" data-copserve="30">+30 ${L('דק׳', 'min')}</button><button class="mchip" data-copserve="60">+1 ${L('ש', 'h')}</button><button class="mchip" data-copserve="-15">−15 ${L('דק׳', 'min')}</button></div></div>`;
   }
   // stall advisory during smoke stages (uses the last probe reading if one exists — capture arrives in P3)
@@ -6762,7 +6766,7 @@ function openCopilot(){
     : `<div class="cop-empty">${L('פתח את תוכנית העבודה של הבישול כדי להתחיל מושב חי.', 'Open the cook’s work plan to start a live session.')}</div>`) + stallCard + probeCard + adjustCard;
   showPanel(`${typeof toolTop==='function'?toolTop(L('טייס חי','Live Copilot'),L('הבישול שלך בזמן אמת','Your cook, live'),'🔥','#c0392b'):`<h2 style="padding:16px">${L('טייס חי','Live Copilot')}</h2>`}
     <div class="panel-body">
-      ${sess?`<div class="cop-hdr">🔥 ${L('מושב חי פעיל', 'Live session active')}${sess.serveTs?` · ${L('הגשה', 'serve')} ${fmtClock(new Date(sess.serveTs))}`:''}</div>`:''}
+      ${sess?`<div class="cop-hdr">🔥 ${L('מושב חי פעיל', 'Live session active')}${sess.serveTs?` · ${L('הגשה', 'serve', 'inline')} ${fmtClock(new Date(sess.serveTs))}`:''}</div>`:''}
       ${body}
       ${sess?`<button class="mchip cop-asknow" id="copAskNow">🤖 ${L('מה לעשות עכשיו?', 'What do I do now?')}</button><div id="copAdvice"></div>`:''}
       <div class="cop-actions">
@@ -7008,7 +7012,7 @@ function renderTimelinePanel(){
       html+=sorted.map(c=>itemRowHtml(c,serve)).join('');
       html+=`<div class="tlrow tl-serve"><span class="tl-t"><b>${fmtServe(serve)}</b></span><span class="tl-n"><b>🍽️ ${L('הגשה','Serve')}</b></span><span class="tl-lead"></span></div>`;
     }
-    html+=`<button class="prbtn" style="position:static;margin-top:12px" data-print>⎙ ${L('הדפס','Print')} ${viewMode==='plan'?L('תוכנית עבודה','work plan'):L('לוח זמנים','schedule')}</button>`;
+    html+=`<button class="prbtn" style="position:static;margin-top:12px" data-print>⎙ ${L('הדפס','Print')} ${viewMode==='plan'?L('תוכנית עבודה','work plan','inline'):L('לוח זמנים','schedule')}</button>`;
     if(typeof clearTimers==='function') clearTimers();   // stop stale intervals before re-wiring; state persists in mk-timers
     $("#tlList").innerHTML=html;
     if(_tlAllOpen){ $("#tlList").querySelectorAll('.tl-stages').forEach(function(s){s.style.display='block';}); $("#tlList").querySelectorAll('[data-tlexp]').forEach(function(b){b.textContent='▴';}); $("#tlList").querySelectorAll('.wp-acc').forEach(function(a){a.classList.add('open');}); }   // expand-all
@@ -7107,7 +7111,7 @@ function renderTimelinePanel(){
               det=findDetail(['עישון','Smoke']);
               const wd=c.m.kind==='cut'?c.m.obj.wood:(c.profile&&c.profile.wood);
               const cl=c.m.kind==='cut'?c.m.obj.coal:'';
-              if(wd&&wd!=='ללא'&&!(det||'').includes(wd)) det=(det?det+' ':'')+`[🪵 ${L('עץ','Wood')}: ${t(wd)}${cl?` · ${L('פחם','charcoal')}: ${t(cl)}`:''}]`;
+              if(wd&&wd!=='ללא'&&!(det||'').includes(wd)) det=(det?det+' ':'')+`[🪵 ${L('עץ','Wood')}: ${t(wd)}${cl?` · ${L('פחם','charcoal','inline')}: ${t(cl)}`:''}]`;
             }
             else det=findDetail(['גימור גריל','צריבה','צלייה','גריל','Grill','sear','Sear']);
             if(s.kind!=='smoke'&&c.m.kind==='cut'&&c.m.obj.doneness){
@@ -7177,7 +7181,7 @@ function renderTimelinePanel(){
       if(!c || c.blocked || !c.stages) return;
       c.stages.forEach(function(s){
         const every=s.refuelEveryMin||0; if(!every || !s.start || !s.end) return;
-        const fuel=s.fuelNote||L('דלק','fuel');
+        const fuel=s.fuelNote||L('דלק','fuel','inline');
         for(let t=s.start.getTime()+every*60e3; t<s.end.getTime()-5*60e3; t+=every*60e3){
           tasks.push({t:new Date(t), kind:'fire', det:'',
             label:L('🪵 הוספת '+fuel,'🪵 Add '+fuel),
@@ -7217,7 +7221,7 @@ function renderTimelinePanel(){
     computed.forEach(function(c){ if(c.blocked||!c.stages) return; const seen={};
       c.stages.forEach(function(s){ const kind=s.kind; if(['sv','smoke','cook'].indexOf(kind)<0||seen[kind]) return; seen[kind]=1;
         if(cookerCandidates(kind).length>=2 && !cookerFor(c.m.key, kind, _ckScope)){
-          const kl=kind==='sv'?L('סו-ויד','SV'):kind==='smoke'?L('עישון','smoke'):L('גריל','grill');
+          const kl=kind==='sv'?L('סו-ויד','SV','abbrev'):kind==='smoke'?L('עישון','smoke','inline'):L('גריל','grill','inline');
           _unresolved.push(esc(itemName(c.m))+' ('+kl+')');
         }
       });
@@ -7290,8 +7294,8 @@ function renderTimelinePanel(){
       const h=Math.floor(ms/3600e3), mn=Math.round((ms%3600e3)/60e3);
       // L13: do NOT wrap this in dir="ltr" — it mixes Hebrew words with numbers, and forcing LTR reorders
       // the segments ("מוכן שע׳ 45 דק׳ 12"). Left in the document's own direction it reads correctly.
-      const span=h?(h+' '+L('שע׳','h')+(mn?' '+mn+' '+L('דק׳','m'):'')):(mn+' '+L('דק׳','m'));
-      return `<span class="tl-early" title="${L('הוקדם כדי להיכנס למכשיר יחד עם השאר','Pulled earlier so it fits the cooker alongside the rest')}">⏳ ${L('מוכן','ready')} ${span} ${L('לפני ההגשה','before serving')}</span>`;
+      const span=h?(h+' '+L('שע׳','h')+(mn?' '+mn+' '+L('דק׳','m','abbrev'):'')):(mn+' '+L('דק׳','m','abbrev'));
+      return `<span class="tl-early" title="${L('הוקדם כדי להיכנס למכשיר יחד עם השאר','Pulled earlier so it fits the cooker alongside the rest')}">⏳ ${L('מוכן','ready','inline')} ${span} ${L('לפני ההגשה','before serving')}</span>`;
     })();
     const ck=cssKey(m.key);
     // v144: sv/smoke order — only relevant when this item's chosen method actually combines both
@@ -7481,7 +7485,7 @@ function _gearConciergePreview(g, level){
   const rows=[];
   const nameOf={smoker:L('מעשנה', 'Smoker'),grill:L('גריל', 'Grill'),sousvide:L('סו-ויד', 'Sous-vide'),thermo:L('מדחום', 'Probe'),grinder:L('מטחנה', 'Grinder'),stuffer:L('מכונת מילוי', 'Stuffer'),vacuum:L('ואקום', 'Vacuum')};
   Object.keys(g).forEach(function(k){ rows.push(`<div class="gc-row">✓ <b>${nameOf[k]||k}</b> · ${esc(t?t(g[k]):g[k])}</div>`); });
-  const lvl=({beginner:L('מתחיל', 'Beginner'),mid:L('בינוני', 'Intermediate'),pro:L('מתקדם', 'Pro')})[level]||level;
+  const lvl=({beginner:L('מתחיל', 'Beginner'),mid:L('בינוני', 'Intermediate'),pro:L('מתקדם', 'Pro', 'tier')})[level]||level;
   return rows.length ? `${rows.join('')}<div class="gc-row">🧭 ${L('רמת ממשק מוצעת', 'Suggested level')}: <b>${lvl}</b></div>` : `<div class="cop-pacenote">${L('לא זיהיתי ציוד — נסה לתאר בפירוט (מעשנה, גריל, סו-ויד, מדחום…).', 'Didn’t detect any gear — try describing it (smoker, grill, sous-vide, probe…).')}</div>`;
 }
 function openGearConcierge(){
@@ -7539,7 +7543,7 @@ const EQUIP_OTHER_ITEMS=[
           {key:'rhPct', he:'לחות יעד',  en:'Target RH',   kind:'num', unit:'%',  em:'💧', tier:'pro', def:78, bounds:[40,95], alt:[]}]},
   {key:'cooler',      he:'צידנית / קמברו',      en:'Cooler / cambro',  em:'🧊'},
   {key:'hooks',       he:'ווים / שבכות לתלייה', en:'Hanging hooks',    em:'🪝',
-   props:[{key:'count', he:'מספר ווים', en:'How many', kind:'num', em:'🪝', tier:'core', bounds:[1,200], alt:[]}]},
+   props:[{key:'count', he:'מספר ווים', en:'How many', ctx:'hooks-count', kind:'num', em:'🪝', tier:'core', bounds:[1,200], alt:[]}]},
   {key:'humidity',    he:'בקר לחות',            en:'Humidity control', em:'💧',
    props:[{key:'rhPct', he:'לחות יעד', en:'Target RH', kind:'num', unit:'%', em:'💧', tier:'pro', def:78, bounds:[40,95], alt:[]}]},
   {key:'torch',       he:'מבער / לפיד',         en:'Torch',            em:'🔥'},
@@ -7785,7 +7789,7 @@ function openEquipment(){
     // independently-editable prop, so it has no #eqProp-volumeL input and cannot go through the generic
     // props loop below (which reads an input element per key). Same bespoke-chip shape as capKey/multiCap
     // above, for the same reason: a real stored value with nowhere else in the generic loop to render.
-    if(d.cap && d.cap.volumeL>0) s+=`<span class="eq-chip spec">📦 ${esc(d.cap.volumeL+' '+L('ליטר','L'))}</span>`;
+    if(d.cap && d.cap.volumeL>0) s+=`<span class="eq-chip spec">📦 ${esc(d.cap.volumeL+' '+L('ליטר','L','abbrev'))}</span>`;
     // owner-verification gaps 2-3 (Fix 4, 2026-07-25): outer-dims (dimH/W/D) and shelf-dims (shelfW/D) each
     // share ONE emoji in EQUIP_CATS (📏/📐) — the identical-icon chips the owner read as "nothing was
     // extracted". Chose the CLEANER of the two ruled options: when the full triple/pair is present, render
@@ -7820,7 +7824,7 @@ function openEquipment(){
     const DIM_ABBR={dimH_cm:['ג׳','H'],dimW_cm:['ר׳','W'],dimD_cm:['ע׳','D'],shelfW_cm:['ר׳','W'],shelfD_cm:['ע׳','D']};
     (c.props||[]).forEach(function(p){
       const raw=d.cap?d.cap[p.key]:undefined; if(raw===undefined||raw===''||raw===null) return;
-      if(p.kind==='bool'){ if(raw===true||raw==='true') s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(L(p.he,p.en))}</span>`; return; }
+      if(p.kind==='bool'){ if(raw===true||raw==='true') s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(L(p.he,p.en,p.ctx))}</span>`; return; }
       if(p.kind==='choice'){ const o=(p.opts||[]).find(function(x){return x.v===raw;}); s+=`<span class="eq-chip"><span class="em">${p.em}</span> ${esc(o?L(o.he,o.en):String(raw))}</span>`; return; }
       // review Important (owner-verification gaps 2+3, 2026-07-25): an accepted derived-ESTIMATE
       // (d.cap.areaEst, set by doSave — see deviceCapacity's own comment for why this affects fit
@@ -7841,7 +7845,7 @@ function openEquipment(){
   // mockup .gl-head — Settings kicker + My Equipment title + optional sub + inline Add; .x auto-wires to closePanel
   const headHtml=function(withAdd, sub){
     return `<header class="eq-head"><button class="x eq-x" type="button" aria-label="${L('סגור','Close')}">✕</button>`
-      +`<div class="eq-head-t"><p class="eq-kick">${L('הגדרות','Settings')}</p><h1>🧰 ${L('הציוד שלי','My Equipment')}</h1>${sub?`<p class="eq-sub">${sub}</p>`:''}</div>`
+      +`<div class="eq-head-t"><p class="eq-kick">${L('הגדרות','Settings')}</p><h1>🧰 ${L('הציוד שלי','My Equipment','heading')}</h1>${sub?`<p class="eq-sub">${sub}</p>`:''}</div>`
       +(withAdd?`<button class="eq-add" id="eqAddNew" type="button"><span class="pl">＋</span> ${L('הוסף','Add')}</button>`:'')
       +`</header>`;
   };
@@ -8009,7 +8013,7 @@ function openEquipment(){
       document.querySelectorAll('#panel .eq-invalid').forEach(function(el){ el.classList.remove('eq-invalid'); });
       (cc.props||[]).forEach(function(p){ if(p.kind!=='num') return;
         const pe=$("#eqProp-"+p.key); if(!pe) return; const pv=(pe.value==null?'':String(pe.value)).trim();
-        if(pv!=='' && !propParse(p, pv)){ _invalid.push(L(p.he,p.en)); pe.classList.add('eq-invalid'); } });
+        if(pv!=='' && !propParse(p, pv)){ _invalid.push(L(p.he,p.en,p.ctx)); pe.classList.add('eq-invalid'); } });
       if(_invalid.length){
         if(typeof toast==='function') toast(L('לא נשמר — ערכים לא תקינים: ','Not saved — invalid values: ')+_invalid.join(', '));
         return;   // keep the form open, values intact, so the user can correct them
@@ -8189,7 +8193,7 @@ function openEquipment(){
       const propField=function(p){
         const dv=propVal(p);
         const dflt=propDef(nc, p.key, (d.type||((cm(nc).types||[])[0])));
-        const lbl=`<label data-propfor="${esc(p.key)}"><span class="eq-pem">${p.em}</span> ${esc(L(p.he,p.en))}${p.unit?` <small>(${esc(p.unit)})</small>`:''}</label>`;
+        const lbl=`<label data-propfor="${esc(p.key)}"><span class="eq-pem">${p.em}</span> ${esc(L(p.he,p.en,p.ctx))}${p.unit?` <small>(${esc(p.unit)})</small>`:''}</label>`;
         if(p.kind==='bool'){
           // owner-verification gaps 2-3 (Fix 5, 2026-07-25): a bool select used to ALWAYS resolve to
           // "true"/"false" (defaulting the display to dflt when unstated), so doSave's `raw===''` branch —
@@ -9176,7 +9180,7 @@ function cRefreshHome(){
   const savedCtx=(r&&r.ctx==='cook')?'cook':'event';
   const savedMenu=store.get(savedCtx==='cook'?'mk-cook':'mk-menu')||{keys:[]};
   const hasDraft=(savedMenu.keys||[]).length>0;
-  if(r&&r.title&&hasDraft){ box.hidden=false; const m=$("#cResumeM"); if(m) m.textContent=`${r.title} · ${r.serv} ${L('סועדים','guests')}${savedCtx==='cook'?' · '+L('בישול','cook'):''}`; }
+  if(r&&r.title&&hasDraft){ box.hidden=false; const m=$("#cResumeM"); if(m) m.textContent=`${r.title} · ${r.serv} ${L('סועדים','guests')}${savedCtx==='cook'?' · '+L('בישול','cook','inline'):''}`; }
   else { box.hidden=true; if(!hasDraft&&r) store.set('mk-cresume',null); }
   // last active project
   const pbox=$("#cResumeProj");
@@ -9216,7 +9220,7 @@ const HOME_MODULES=[
   { id:'cHomeLanes',   he:'מנות מהירות',          en:'Quick-pick lanes' },
   { id:'cHomeAskWrap', he:'שאל את האש · כלי AI',   en:'Ask the Fire · AI' },
   { id:'cHomePaths',   he:'תכנון אירוע / בישול',   en:'Plan / cook cards' },
-  { id:'cHomeDock',    he:'כלי הפיטמאסטר',         en:'Pit-tools dock', gate:'pro' },
+  { id:'cHomeDock',    he:'כלי הפיטמאסטר',         en:'Pit-tools dock', ctx:'dock-tile', gate:'pro' },
 ];
 // A module with a `gate` is hidden by default below that interface level — but an explicit "show" from Customize-home
 // overrides it. Before this, toggling the dock on at mid level silently did nothing (the level gate always won).
@@ -9282,7 +9286,7 @@ function renderHomeChrome(){
     const evs=(typeof evList==='function')?evList():[];
     if(evs.length>=2){
       let clash=0; try{ clash=combinedEventsRows().filter(function(r){return r.contention;}).length; }catch(e){}
-      mv.innerHTML=`<span class="mev-ic">🗂️</span><span class="mev-txt"><b>${evs.length} ${L('אירועים', 'cookouts')}</b> · ${L('לוח-זמנים משולב', 'combined schedule')}${clash?` · <span class="mev-warn">⚠ ${clash} ${L('חפיפות', 'clashes')}</span>`:''}</span><span class="mev-go">←</span>`;
+      mv.innerHTML=`<span class="mev-ic">🗂️</span><span class="mev-txt"><b>${evs.length} ${L('אירועים', 'cookouts', 'summary')}</b> · ${L('לוח-זמנים משולב', 'combined schedule')}${clash?` · <span class="mev-warn">⚠ ${clash} ${L('חפיפות', 'clashes')}</span>`:''}</span><span class="mev-go">←</span>`;
       mv.hidden=false;
     } else mv.hidden=true;
   }
@@ -9340,7 +9344,7 @@ function _liveCookState(){
 // floating shortcut to the Active-now hub — visible on any screen while cooking, hidden when a panel is open
 function syncActiveFab(){ try{ const fab=$("#cActiveFab"); if(!fab) return; const s=_liveCookState();
   const panelOpen=document.body.classList.contains('noscroll');
-  if(s.live && !panelOpen){ fab.hidden=false; const t=$("#cActiveFabT"); if(t) t.textContent = s.ringing? (L('הסתיים','Done')+' '+s.ringing) : (s.running? (s.running+' '+L('פעילים','running')) : L('פעיל עכשיו','Active now')); fab.classList.toggle('caf-ring', s.ringing>0); }
+  if(s.live && !panelOpen){ fab.hidden=false; const t=$("#cActiveFabT"); if(t) t.textContent = s.ringing? (L('הסתיים','Done')+' '+s.ringing) : (s.running? (s.running+' '+L('פעילים','running','running')) : L('פעיל עכשיו','Active now')); fab.classList.toggle('caf-ring', s.ringing>0); }
   else fab.hidden=true;
 }catch(e){} }
 // ═══════════ "Active now" hub — every ongoing timer / plan / long-term project in one place, each with a jump-back ═══════════
@@ -9986,7 +9990,7 @@ async function wcimAI(){
 function wcimRowHTML(o){
   const meta=(typeof resolveItem==='function')?resolveItem(o.key):null;
   const emoji=meta?itemEmoji(o.cat,o.key):'🍖';
-  const miss=(o.missing&&o.missing.length)?`<div class="wcim-miss">${L('חסר','Missing')}: ${o.missing.map(x=>t(x)).join(' · ')}</div>`:'';
+  const miss=(o.missing&&o.missing.length)?`<div class="wcim-miss">${L('חסר','Missing','heading')}: ${o.missing.map(x=>t(x)).join(' · ')}</div>`:'';
   const gearn=(o.gearNeed&&o.gearNeed.length)?`<div class="wcim-miss">${L('דורש','Requires')}: ${o.gearNeed.map(x=>t(x)).join(' · ')}</div>`:'';
   const note=o.note?`<div class="pp-desc">${esc(o.note)}</div>`:'';
   return `<button class="pp-item" data-wcimkey="${o.key}">
@@ -10043,11 +10047,11 @@ function padvRowHTML(r){
 function padvRender(data, aiUsed){
   const {targetDate, daysLeft}=data;
   const rows = aiUsed ? data.recommend : data.feasible;
-  const warnings = aiUsed ? (data.warnings||[]) : (data.tooLate||[]).slice(0,5).map(tt=>`${(typeof itemName==='function'&&resolveItem(tt.key)?itemName(resolveItem(tt.key)):tt.heb)} ${L('דורש','needs')} ~${tt.days} ${L('ימים — לא יספיק עד היעד.','days — will not make the target.')}`);
+  const warnings = aiUsed ? (data.warnings||[]) : (data.tooLate||[]).slice(0,5).map(tt=>`${(typeof itemName==='function'&&resolveItem(tt.key)?itemName(resolveItem(tt.key)):tt.heb)} ${L('דורש','needs','inline')} ~${tt.days} ${L('ימים — לא יספיק עד היעד.','days — will not make the target.')}`);
   const _loc2=(getLang&&getLang()!=='he')?'en-US':'he-IL';
   const dstr=new Date(targetDate).toLocaleDateString(_loc2,{weekday:'long',day:'numeric',month:'long'});
   let body=aiUsed?'<div class="ai-badge">✨ הועשר ע\u05f4י AI</div>':'';
-  body+=`<div class="padv-target">🎯 ${L('יעד','Target')}: <b>${dstr}</b> · ${L('בעוד','in')} ${daysLeft} ${L('ימים','days')}</div>`;
+  body+=`<div class="padv-target">🎯 ${L('יעד','Target','heading')}: <b>${dstr}</b> · ${L('בעוד','in')} ${daysLeft} ${L('ימים','days')}</div>`;
   body+=`<div class="pp-desc" style="margin:8px 0 14px">${L('משכי-הייצור מחושבים מנתוני האפליקציה. התחל את הארוכים ראשונים.','Production durations are computed from the app data. Start the longest ones first.')}</div>`;
   body+=`<div class="pp-group"><div class="pp-gh">${aiUsed?'✨ '+L('מומלץ להתחיל','Recommended to start'):'📋 '+L('אפשר להספיק','Can finish in time')} <span style="color:var(--smoke);font-weight:400">· ${rows.length}</span></div>`;
   body+= rows.length?rows.map(padvRowHTML).join(''):`<div class="shop-empty">${L('אין מלאכה שניתן להשלים עד התאריך הזה.','No craft can be completed by this date.')}</div>`;
@@ -10504,7 +10508,7 @@ function _guardianTop(p){ const f=charcuterieGuardian(p); if(!f.length) return n
   const order={danger:0,warn:1,info:2,ok:3}; f.sort(function(a,b){return order[a.level]-order[b.level];}); return f[0]; }
 function projProgress(p){
   if(p.source==='bought'&&p.type!=='cure'&&p.type!=='dry'){ return {pct:100,label:stageLabel(projStage(p))||L('מוכן','Ready'),day:'',ready:projStage(p)!=='building',sub:L('נקנה מוכן','Bought ready')}; }
-  if(p.type==='scratch'){ const ph=projPhases(p); const done=(p.doneSteps||[]).length; const total=Math.max(1,ph.length); const ready=done>=ph.length; return {pct:Math.round(done/total*100),label:`${done}/${ph.length} ${L('שלבים','steps')}`,day:'',ready,sub:L('בנייה מאפס','From scratch')}; }
+  if(p.type==='scratch'){ const ph=projPhases(p); const done=(p.doneSteps||[]).length; const total=Math.max(1,ph.length); const ready=done>=ph.length; return {pct:Math.round(done/total*100),label:`${done}/${ph.length} ${L('שלבים','steps')}`,day:'',ready,sub:L('בנייה מאפס','From scratch','compact')}; }
   if(!p.type){ return {pct:0,label:'',day:'',ready:true,sub:''}; }
   if(p.type==='dry'){ const target=Math.round(p.startW*p.factor); const targetLoss=Math.round((1-p.factor)*100);
     const lossNow=p.startW?Math.round((1-p.curW/p.startW)*100):0; const ready=p.curW<=target;
@@ -10525,7 +10529,7 @@ function cPaintProjects(){
     html+=projs.map(p=>{ const pr=projProgress(p); const stg=projStage(p); const bought=(p.source==='bought'||p.source==='bought-finish');
       return `<div class="cproj-card ${pr.ready?'ready':''}">
         <div class="cpc-top"><b>${p.name}</b><span class="cpc-day">${bought&&p.source==='bought'?stageLabel(stg):(pr.day||pr.label)}</span></div>
-        <div class="cpc-sub">${bought?(p.source==='bought'?'🛒 '+L('נקנה מוכן','Bought ready'):'🛒 '+L('נקנה + סיום','Bought + finish')):(p.type==='scratch'?'🍖 '+L('בנייה מאפס','From scratch'):(p.type==='dry'?L('ייבוש למשקל','Dry to weight'):L('כבישה','Curing')))}${p.finish?' · '+t(p.finish):''}${(p.source==='bought'||p.type==='scratch')?'':' · '+pr.sub}</div>
+        <div class="cpc-sub">${bought?(p.source==='bought'?'🛒 '+L('נקנה מוכן','Bought ready'):'🛒 '+L('נקנה + סיום','Bought + finish')):(p.type==='scratch'?'🍖 '+L('בנייה מאפס','From scratch','compact'):(p.type==='dry'?L('ייבוש למשקל','Dry to weight'):L('כבישה','Curing')))}${p.finish?' · '+t(p.finish):''}${(p.source==='bought'||p.type==='scratch')?'':' · '+pr.sub}</div>
         ${p.source==='bought'?'':`<div class="pbar"><i style="width:${pr.pct}%;background:${pr.ready?'var(--good)':'var(--ember)'}"></i></div>`}
         ${(p.type==='dry'&&p.source!=='bought')?`<div class="cpc-log"><label>${L('משקל נוכחי','Current weight')}</label><input type="number" data-cpw="${p.id}" value="${p.curW}"><span>${L('ג׳','g')} · ${pr.label}</span></div>`:(p.source!=='bought'?`<div class="cpc-log" style="color:var(--smoke)">${pr.label} · ${pr.ready?L('הסתיים ✓','Done ✓'):L('בתהליך','In progress')}</div>`:'')}
         ${pr.ready&&p.source!=='bought'?`<div class="cpc-ready">✓ ${L('מוכן!','Ready!')}</div>`:''}
@@ -10545,12 +10549,12 @@ function cPaintProjects(){
   }
   html+=`</div>`;
   // ── raw-material inventory ──
-  html+=`<div class="cproj-sec"><div class="cproj-h"><span>📦 ${L('מזווה — חומרי גלם','Pantry — raw materials')}${lowCount?` <span class="cinv-low-badge">${lowCount} ${L('חסרים','low')}</span>`:''}</span><span style="display:flex;gap:6px;flex-wrap:wrap">${lowCount?`<button class="cev-act" id="cInvShop">🛒 ${L('קניות','Shopping')}</button>`:''}<button class="cev-act" id="cInvAdd">+ ${L('פריט','Item')}</button><button class="cev-act" id="cInvReset" style="background:none;border:1px solid var(--line2);color:var(--smoke)">↺ ${L('שחזר','Restore')}</button></span></div>`;
+  html+=`<div class="cproj-sec"><div class="cproj-h"><span>📦 ${L('מזווה — חומרי גלם','Pantry — raw materials')}${lowCount?` <span class="cinv-low-badge">${lowCount} ${L('חסרים','low')}</span>`:''}</span><span style="display:flex;gap:6px;flex-wrap:wrap">${lowCount?`<button class="cev-act" id="cInvShop">🛒 ${L('קניות','Shopping')}</button>`:''}<button class="cev-act" id="cInvAdd">+ ${L('פריט','Item','button')}</button><button class="cev-act" id="cInvReset" style="background:none;border:1px solid var(--line2);color:var(--smoke)">↺ ${L('שחזר','Restore')}</button></span></div>`;
   const invGrpOrder=['ריפוי','שרוולים','מלח וסוכר','תבלינים','עצים','שונות'];
   const invByGrp={}; inv.forEach(i=>{ const g=i.grp||'שונות'; (invByGrp[g]=invByGrp[g]||[]).push(i); });
   const invRow=i=>{ const low=i.qty<=i.low;
     return `<div class="cinv-row ${low?'low':''}">
-      <div class="cinv-name">${t(i.name)}${low?` <span class="cinv-lowtag">${L('חסר','low')}</span>`:''}</div>
+      <div class="cinv-name">${t(i.name)}${low?` <span class="cinv-lowtag">${L('חסר','low','low-stock')}</span>`:''}</div>
       <div class="cinv-qty"><button data-invdec="${i.id}">−</button><input type="number" data-invq="${i.id}" value="${i.qty}"><span>${t(i.unit)}</span><button data-invinc="${i.id}">+</button></div>
       <button class="cinv-rm" data-invrm="${i.id}">×</button>
     </div>`; };
@@ -10723,7 +10727,7 @@ function openProjectCart(p){
   const invHas=(name)=>inv.some(i=>i.qty>0 && (i.name.includes(name)||name.includes(i.name.split(' ')[0])));
   // key stays the language-independent Hebrew label so checkbox state survives a language switch; disp is shown
   const line=(key,disp,have)=>{ const done=store.get("shop:"+key)?"done":"";
-    return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(key)}">${done?"✓":""}</span><span>${disp||key}${have?` <b style="color:var(--good)">· ${L('יש','in pantry')}</b>`:` <b style="color:var(--terra-d)">· ${L('חסר','missing')}</b>`}</span></div>`; };
+    return `<div class="shop-line ${done}"><span class="cbx ${done}" data-shopck="${encodeURIComponent(key)}">${done?"✓":""}</span><span>${disp||key}${have?` <b style="color:var(--good)">· ${L('יש','in pantry','in-pantry')}</b>`:` <b style="color:var(--terra-d)">· ${L('חסר','missing')}</b>`}</span></div>`; };
   const matHTML=mats.length?mats.map(mt=>{const key=String(mt).split(/[0-9]/)[0].trim();return line(mt,t(String(mt)),invHas(key));}).join(''):(boughtRaw?`<div class="shop-empty">${L('פריט שנקנה מוכן — אין חומרי-גלם לרכישה.','A bought item is ready — no raw ingredients to purchase.')}${p.finish?' '+L('שלב סיום:','Finishing step:')+' '+t(p.finish):''}</div>`:`<div class="shop-empty">${L('אין רשימת מרכיבים למתכון זה.','No ingredient list for this recipe.')}</div>`);
   const low=inv.filter(i=>i.qty<=i.low);
   const lowHTML=low.length?`<div class="shop-group"><h4>📦 ${L('מהמזווה — להשלים','From the pantry — to restock')}</h4>${low.map(i=>line(i.name+(i.low>0?` (יעד ≥${i.low} ${i.unit})`:'')+` · יש ${i.qty}`, t(i.name)+(i.low>0?` (${L('יעד','target')} ≥${i.low} ${t(i.unit)})`:'')+` · ${L('יש','have')} ${i.qty}`,false)).join('')}</div>`:'';
@@ -10767,7 +10771,7 @@ async function buyStoreCreate(meta){
   const stage=(ans===true)?'done':'ready';
   const p={id:uid(),key:meta.key,name:meta.heb,source:'bought',stage,start:today(),doneSteps:[]};
   const a=pantry(); a.push(p); savePantry(a);
-  if(typeof toast==='function') toast(`${itemName(meta)} ${L('נשמר במזווה','saved to pantry')} · ${stage==='done'?L('מוכן להגשה','ready to serve'):L('מוכן לסיום','ready to finish')}`);
+  if(typeof toast==='function') toast(`${itemName(meta)} ${L('נשמר במזווה','saved to pantry')} · ${stage==='done'?L('מוכן להגשה','ready to serve','inline'):L('מוכן לסיום','ready to finish')}`);
   cNavGo('projects'); cPaintProjects();
 }
 function ppAllItems(){
@@ -10827,7 +10831,7 @@ function saveBurgerDiners(a){ store.set(burgerKey(),a); }
 function burgerSummaryLine(d){
   const dn=BURGER_DONE[d.done]||BURGER_DONE.med;
   const ch=d.cheesePos==='none'?L('ללא גבינה','No cheese'):(d.cheesePos==='stuffed'?`🧀 ${t(d.cheese)} ${L('ממולא','stuffed')}`:`🧀 ${t(d.cheese)}`);
-  return `${t(dn[0])} ${dn[1]}° · ${ch} · ${d.tops.length} ${L('תוספות','toppings')}${d.sauce?` · ${t(d.sauce.split(' (')[0])}`:''}`;
+  return `${t(dn[0])} ${dn[1]}° · ${ch} · ${d.tops.length} ${L('תוספות','toppings','toppings')}${d.sauce?` · ${t(d.sauce.split(' (')[0])}`:''}`;
 }
 // pure task builder for the work plan (testable)
 function burgerPlanTasks(diners, startClock, serveClock, name, detail){
@@ -10871,7 +10875,7 @@ function openBurgerBuilder(){
         ${chip(L('ממולאת (Juicy Lucy)','Stuffed (Juicy Lucy)'),d.cheesePos==='stuffed',`data-bcp="stuffed" data-bid="${d.id}"`)}
       </div>
       ${d.cheesePos!=='none'?`<div class="cmethods" style="margin-top:6px">${cheeses.map(c=>chip(t(c),d.cheese===c,`data-bche="${c}" data-bid="${d.id}"`)).join('')}</div>`:''}
-      <h4 style="margin-top:12px">🥗 ${L('תוספות','Toppings')}</h4><div class="cmethods">${BURGER_TOPPINGS.map(tp=>chip(t(tp),(d.tops||[]).includes(tp),`data-btop="${tp}" data-bid="${d.id}"`)).join('')}</div>
+      <h4 style="margin-top:12px">🥗 ${L('תוספות','Toppings','toppings-heading')}</h4><div class="cmethods">${BURGER_TOPPINGS.map(tp=>chip(t(tp),(d.tops||[]).includes(tp),`data-btop="${tp}" data-bid="${d.id}"`)).join('')}</div>
       <h4 style="margin-top:12px">🥫 ${L('רוטב','Sauce')}</h4><div class="cmethods">${BURGER_SAUCES.map(x=>chip(t(x),d.sauce===x,`data-bsauce="${x}" data-bid="${d.id}"`)).join('')}</div>
       <h4 style="margin-top:12px">🍞 ${L('לחמנייה','Bun')}</h4><div class="cmethods">${BURGER_BUNS.map(x=>chip(t(x),d.bun===x,`data-bbun="${x}" data-bid="${d.id}"`)).join('')}</div>
     </div>`;
@@ -11023,13 +11027,13 @@ function pwRender(){
         return `<div class="pw-mat ${have?'have':''}"><span>${have?'✓':'○'}</span> ${t(String(mt))}</div>`;}).join(''):`<div style="color:var(--smoke);font-size:12.5px">${L('אין רשימת מרכיבים ייעודית.','No dedicated ingredient list.')}</div>`}</div>
       <button class="ccta" data-pwnext>${L('סקירה ויצירה ←','Review & create →')}</button>`;
   } else {
-    const tgt=s.type==='dry'?`${L('יעד','target')} ${Math.round(s.startW*s.factor)} ${L('ג׳','g')} (${L('ירידה','loss')} ${Math.round((1-s.factor)*100)}%)`:`${s.days} ${L('ימים','days')} · ${L('סיום','finish')} ${fmtDate(addDays(s.start,s.days))}`;
+    const tgt=s.type==='dry'?`${L('יעד','target')} ${Math.round(s.startW*s.factor)} ${L('ג׳','g')} (${L('ירידה','loss')} ${Math.round((1-s.factor)*100)}%)`:`${s.days} ${L('ימים','days')} · ${L('סיום','finish','inline')} ${fmtDate(addDays(s.start,s.days))}`;
     body=`<div class="cwq">${L('סקירה','Review')}</div><div class="cwsub">${L('בדוק ואשר — ייווצרו תזכורות אוטומטיות.','Check and confirm — automatic reminders will be created.')}</div>
       <div class="cscard">
         <div class="pw-rr"><span>${L('שם','Name')}</span><b>${s.name}</b></div>
         <div class="pw-rr"><span>${L('סוג','Type')}</span><b>${s.type==='dry'?L('ייבוש למשקל','Dry to weight'):L('כבישה בימים','Cure by days')}</b></div>
-        <div class="pw-rr"><span>${L('התחלה','Start')}</span><b>${fmtDate(s.start)}</b></div>
-        <div class="pw-rr"><span>${L('יעד','Target')}</span><b>${tgt}</b></div>
+        <div class="pw-rr"><span>${L('התחלה','Start','label')}</span><b>${fmtDate(s.start)}</b></div>
+        <div class="pw-rr"><span>${L('יעד','Target','heading')}</span><b>${tgt}</b></div>
       </div>
       <button class="ccta" data-pwcreate>✓ ${L('צור פרויקט','Create project')}</button>`;
   }
@@ -11108,7 +11112,7 @@ function openPhotoAnalyze(){
       <div class="pa-note">📸 ${L('הערכה ויזואלית · 🌡️ המדחום מכריע', 'Advises visually · 🌡️ the probe decides')}</div>
       <input type="file" accept="image/*" id="paFile" class="cop-in" style="padding:9px">
       <div id="paPreview"></div>
-      <button class="ccta" id="paGo" style="margin-top:10px" disabled>✨ ${L('נתח', 'Analyze')}</button>
+      <button class="ccta" id="paGo" style="margin-top:10px" disabled>✨ ${L('נתח', 'Analyze', 'analyze')}</button>
       <div id="paResult"></div>
     </div>`);
   let dataUrl=null;
@@ -11144,9 +11148,13 @@ function openAiHub(){
 // P7 — the "Customize home" editor: drag to reorder + tap to show/hide each home module, with reset-to-smart-default.
 function openHomeCustom(){
   if(typeof showPanel!=='function') return;
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const order=homeCustomOrder();
-  const nameOf=id=>{ const m=HOME_MODULES.find(x=>x.id===id); return m?(he?m.he:m.en):id; };
+  // Task 5 (spec §6): routed through L() (was a raw he?m.he:m.en ternary that bypassed the dict for
+  // every non-Hebrew language) so cHomeDock's ctx'd sense ('כלי הפיטמאסטר␟dock-tile') is a real,
+  // consumed dict entry — matches L's own he-mode contract (returns m.he verbatim), so behaviour for
+  // he/en is unchanged; fr/de/es/it now get a real translation lookup instead of a permanent English
+  // fallback.
+  const nameOf=id=>{ const m=HOME_MODULES.find(x=>x.id===id); return m?L(m.he,m.en,m.ctx):id; };
   const rows=order.map(function(id){ const on=homeModOn(id);   // true visibility, incl. level gates — not just the off-list
     return `<div class="hc-row" data-hcid="${id}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="hc-name">${nameOf(id)}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${id}">${on?(L('מוצג', 'Shown')):(L('מוסתר', 'Hidden'))}</button></div>`;
   }).join('');
@@ -11218,7 +11226,7 @@ function openMoreSheet(){
     ['🍽️', L('עבודה','Work'), [['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline',true],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint',true],['🛒',L('רשימת קניות','Shopping list'),'openCart']]],
     ['✨', L('חוויה','Experience'), [['🤖',L('כלי AI','AI tools'),'openAiHub'],['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
     ['🧰', L('עזר','Utilities'), [['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans',true],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders',true],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']]],
-    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎚️',L('התנהגות ואוטומציה','Behavior & automation'),'openPrefGroup'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🧰',L('הציוד שלי','My equipment'),'openEquipment'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
+    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎚️',L('התנהגות ואוטומציה','Behavior & automation'),'openPrefGroup'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🧰',L('הציוד שלי','My equipment','menu-item'),'openEquipment'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
   ];
   const reg={}; GROUPS.forEach(g=>g[2].forEach(it=>reg[it[2]]=it));
   const visible=it=>!(beg && it[3]);                                   // advanced items hidden at beginner level
