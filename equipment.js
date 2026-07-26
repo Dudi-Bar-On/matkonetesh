@@ -115,9 +115,14 @@ function deriveRequires(meta, methodKey, order){
 // extends this with their category resolution. The guard below returns 'missing' for an unmapped kind
 // rather than crashing (deriveRequires emits none of these process kinds today, so this is dormant until
 // E6 adds their producers).
-function eqmOwnershipRow(row){
+// E3 Task 4 (spec §7.2, plan Task 4) · optional `list` override — threaded straight through to
+// cookerCandidates/eqmProbeSatisfiedBy so a caller can ask "what would ownership say with THIS device
+// list instead of the live equipList()?" without ever mutating real state. Omitted by every existing
+// caller (app.js's eqmValidity/eqmRequiresChip, this file's own EQM.ownership below) — falls through to
+// the live kit exactly as before.
+function eqmOwnershipRow(row, list){
   const stageKind = KIND_TO_STAGE[row && row.kind];
-  const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind) : [];
+  const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind, list) : [];
   if(!owned.length) return 'missing';                       // no device of the kind at all
   const cap = (row && row.capability) || {};
   const demand = (row && row.demand) || null;
@@ -141,7 +146,7 @@ function eqmOwnershipRow(row){
     // property, EQUIP_CATS smoker/oven) OR any owned standalone probe device (EQUIP_CATS cat:'probe',
     // e.g. a MEATER/Inkbird) — a standalone probe is portable, so it satisfies regardless of which
     // candidate device ends up serving the row.
-    if(cap.probe && !eqmProbeSatisfiedBy(dev)) return false;
+    if(cap.probe && !eqmProbeSatisfiedBy(dev, list)) return false;
     return true;
   });
   return meets ? 'ok' : 'partial';                          // owns the kind but no unit clears the capability
@@ -159,8 +164,11 @@ function eqmOwnershipRow(row){
 // carries no probe/thermometer entry at all, so the real satisfier is this dedicated device category). A
 // standalone probe is a portable tool, so it satisfies ANY row regardless of which device physically
 // serves the stage — never gated on `dev` at all.
-function eqmProbeSatisfiedBy(dev){
-  return (typeof equipByCat==='function' && equipByCat('probe').length>0) ||
+// E3 Task 4: same optional `list` override as eqmOwnershipRow above — the standalone-probe check must
+// also read the WHAT-IF kit, never the live equipList(), or a what-if that removes the kit's only probe
+// device would still report it available.
+function eqmProbeSatisfiedBy(dev, list){
+  return (typeof equipByCat==='function' && equipByCat('probe', list).length>0) ||
          (!!dev && typeof propOf==='function' && propOf(dev,'hasProbe')===true);
 }
 // eqmProbeAvailable(row) — the SAME O-7 satisfier set, answering "is probe available to ANY candidate
@@ -296,10 +304,14 @@ const EQM = {
   // (§5.2) — B-i.1's "three capacity rules for one device" closed to one, structurally. Answers from the
   // SAME requires list EQM.availability (E2) will use (§4.2). E1's only production reader is the catalog
   // requires chip (Task 4); E3 adds the plan-add and event-add gates.
-  ownership: function(requires){
+  // E3 Task 4: optional `list` override (2nd arg) — threaded straight to eqmOwnershipRow, itself threaded
+  // to cookerCandidates/eqmProbeSatisfiedBy. Omitted by every pre-existing caller, so this stays
+  // byte-identical to the live-kit read those callers already rely on; app.js's retroactive-invalidation
+  // what-if (eqmValidityWithKit) is the one caller that ever passes it.
+  ownership: function(requires, list){
     const missing=[], partial=[];
     (requires||[]).forEach(function(row){
-      const v = eqmOwnershipRow(row);
+      const v = eqmOwnershipRow(row, list);
       if(v==='missing') missing.push(row);
       else if(v==='partial') partial.push(row);
     });
@@ -378,3 +390,19 @@ const EQM = {
     throw new Error('EQM.alternatives: not implemented until E5 (replacement ladder)');
   },
 };
+
+// E3 Task 4 (spec §7.2 point 3, plan Task 4) · a PLAIN HELPER, deliberately NOT a 6th EQM method (ruling
+// F3/F5 — the module's surface is fixed at exactly five). Released "or a targeted ledger sweep" per the
+// spec's own wording: releases EVERY held ledger entry pointing at deviceId, regardless of holder — a
+// device delete's impact can span several different holders (the active plan has none, but every SAVED
+// event that ever allocated this device does), and the ledger already carries deviceId on every entry, so
+// a targeted deviceId sweep is simpler and more complete than replaying EQM.release(holder) once per
+// holder. Same release-vs-delete convention as EQM.release above (flips state, never removes the row —
+// keeps the audit trail).
+function eqmReleaseByDevice(deviceId){
+  if(!deviceId) return { freed: 0 };
+  const list = eqmLedger(); let n = 0;
+  list.forEach(function(e){ if(e && e.state==='held' && e.deviceId===deviceId){ e.state='released'; n++; } });
+  eqmLedgerWrite(list);
+  return { freed: n };
+}

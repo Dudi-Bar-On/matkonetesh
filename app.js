@@ -258,7 +258,12 @@ function eqmKitGen(){ return _eqKitGen; }
 function equipList(){ const l=store.get('mk-equipment'); return Array.isArray(l)?l:[]; }
 function equipSave(list){ store.set('mk-equipment', Array.isArray(list)?list:[]); _eqKitGen++; }
 function equipId(){ return 'eq-'+(typeof uid==='function'?uid():Math.random().toString(36).slice(2,9)); }
-function equipByCat(cat){ return equipList().filter(function(d){return d && d.cat===cat;}); }
+// E3 Task 4 (spec §7.2, plan Task 4) · optional `list` override — an injectable device list for the
+// retroactive-invalidation WHAT-IF ("would this item still be cookable with deviceId removed?"). Every
+// existing call site omits the 2nd arg, so `list` defaults to falsy and this stays byte-identical to the
+// live equipList() read — additive-only, H2-safe (equipment.js's eval-time ordering is unaffected; only a
+// function BODY, evaluated at call time, gained a parameter).
+function equipByCat(cat, list){ return (list||equipList()).filter(function(d){return d && d.cat===cat;}); }
 function hasCat(cat){ return equipByCat(cat).length>0; }
 function hasGear(x){ return equipList().some(function(d){return d && (d.cat===x || d.type===x);}); }   // core cat OR migrated 'other' type (e.g. 'torch')
 function primaryOf(cat){ return equipByCat(cat)[0]||null; }                                            // first device = single-value display
@@ -267,12 +272,13 @@ function probeChannels(){ return equipByCat('probe').reduce(function(n,d){return
 function svBaths(){ return equipByCat('sousvide'); }
 // Equipment 2.0 · Slice 1C — item→cooker assignment (which physical device an item's cook stage uses)
 function cookerCatForKind(kind){ return kind==='sv'?'sousvide':kind==='smoke'?'smoker':kind==='cook'?'grill':null; }
-function cookerCandidates(kind){
+// E3 Task 4: same optional `list` override, threaded down to equipByCat — see the comment above it.
+function cookerCandidates(kind, list){
   const cat=cookerCatForKind(kind); if(!cat) return [];
-  let list=equipByCat(cat);
-  if(kind==='smoke') list=list.concat(equipByCat('grill').filter(function(d){return ['פחם','קטל','גז'].indexOf(d.type)>=0;}));   // a charcoal/kettle/gas grill can also smoke
-  if(kind==='cook')  list=list.concat(equipByCat('oven'));   // an oven can roast/finish a 'cook' stage, not just a grill
-  return list;
+  let out=equipByCat(cat, list);
+  if(kind==='smoke') out=out.concat(equipByCat('grill', list).filter(function(d){return ['פחם','קטל','גז'].indexOf(d.type)>=0;}));   // a charcoal/kettle/gas grill can also smoke
+  if(kind==='cook')  out=out.concat(equipByCat('oven', list));   // an oven can roast/finish a 'cook' stage, not just a grill
+  return out;
 }
 function itemCookerScope(scope){ return scope||((typeof evScope==='function')?evScope():'cook'); }
 function setItemCooker(itemKey, kind, deviceId, scope){ const k='mk-item-cooker-'+itemCookerScope(scope); const m=store.get(k)||{}; const mk=itemKey+'|'+kind; if(deviceId) m[mk]=deviceId; else delete m[mk]; store.set(k,m); }
@@ -795,6 +801,16 @@ function _occFitHtml(o){
   // it still goes through the normal ladder below, unchanged.
   if((!o.cap || !o.cap.known) && (!o.items || !o.items.length)){
     return `<div class="occ2-fit-none">${L('אין נתוני קיבולת','no capacity data')}</div>`;
+  }
+  // E3 Task 4 (E2-review residual, plan Task 4) · the WITH-items twin of the D11 guard above. An
+  // unknown-capacity device that DOES have items on it used to fall straight through to the unconditional
+  // "✓ everything fits" below (out.fit defaults to {verdict:'ok'} and is only ever overridden when
+  // cap.perSlotCm2 is known — packDevice sets perSlotCm2=null whenever !cap.known, so that override branch
+  // never runs) — an outright false claim, not merely an unverified one. Muted like .occ2-fit-none
+  // (reused verbatim, THEMES-var already, no new CSS) rather than red/orange: this asserts nothing about
+  // fit either way, only that fit cannot be verified — the same honesty the no-items case already has.
+  if(!o.cap || !o.cap.known){
+    return `<div class="occ2-fit-none">${L('קיבולת לא ידועה — לא ניתן לאמת התאמה','capacity unknown — cannot verify fit')}</div>`;
   }
   const f=o.fit||{verdict:'ok'};
   const overMsgs=[];
@@ -2003,6 +2019,78 @@ function eqmAddGateKeys(keys){
   });
   if(blockedLbl && typeof toast==='function') toast(L('לא נוסף — חסר ','Not added — missing ')+L(blockedLbl[0],blockedLbl[1]));
   return kept;
+}
+
+// ═══ E3 Task 4 (spec §7.2, plan Task 4) · retroactive-invalidation — the WHAT-IF ═══════════════════════
+// "Would this item flip to uncookable if deviceId vanished from the kit?" — WITHOUT ever mutating the
+// real registry (the brief's own ruled-out option (a)). Architecture chosen: an INJECTABLE kit list
+// threaded down through EQM.ownership → eqmOwnershipRow → cookerCandidates/eqmProbeSatisfiedBy (additive
+// optional params, H2-safe — see the comments at each of those functions). eqmValidityWithKit mirrors
+// eqmValidity's level algorithm (same itemPaths × deriveRequires × EQM.ownership convergence) but is a
+// DELIBERATELY SEPARATE, UNCACHED function — it does not reuse eqmValidity's per-keystroke
+// generation-stamped cache (_eqValidityCache) or eqmDefaultReqOwn's shared cache (_eqDefReqCache): both
+// are keyed on the LIVE kit generation (eqmKitGen()) alone, so seeding either with a what-if result under
+// the SAME key would corrupt every other card's render the instant this runs. This function is called only
+// from the delete-confirm flow below, over the plan + saved events (at most a few dozen items) — the
+// cache's whole purpose (amortizing a per-render cost across hundreds of catalog cards) does not apply
+// here, so paying an uncached compute is the correct trade, not a shortcut. Gated on equipConfigured()
+// exactly like eqmValidity (R5): an unconfigured kit never reports impact, zero equipment noise. Only the
+// 'level' is needed here — no gaps/fixes construction (that machinery is for the why/fix panel, unused by
+// the delete-warning dialog).
+function eqmValidityWithKit(meta, kitOverride){
+  if(typeof EQM==='undefined' || typeof deriveRequires!=='function' || typeof itemPaths!=='function') return {level:'ok'};
+  if(typeof equipConfigured!=='function' || !equipConfigured()) return {level:'ok'};   // R5, same gate as eqmValidity
+  if(!meta) return {level:'ok'};
+  let paths; try{ paths = itemPaths(meta) || []; }catch(e){ paths = []; }
+  if(!paths.length) return {level:'ok'};
+  const okPaths=[];
+  paths.forEach(function(p){
+    let req; try{ req = deriveRequires(meta, p.methodKey, p.order) || []; }catch(e){ req = []; }
+    if(!req.length){ okPaths.push(p.id); return; }              // no device-gated stage on this path → trivially cookable
+    if(EQM.ownership(req, kitOverride).ok) okPaths.push(p.id);
+  });
+  return { level: okPaths.length ? 'ok' : 'uncookable' };
+}
+// The REAL impact count (spec §7.2 point 1): which items — across the ACTIVE plan (menuState().keys) AND
+// every SAVED event's menu — would flip from cookable (eqmValidity 'ok'/'blocked-default', i.e. NOT
+// already broken for some unrelated reason) to 'uncookable' once deviceId is removed. Dedupes by item KEY
+// first (the union of plan+event keys) — the spec's count is about ITEMS, not occurrences, so the same
+// recipe sitting in the plan AND in three saved events is ONE item toward both N and M. M = the union's
+// size; N = how many of them are affected; names = the affected items' display names, in encounter order.
+function eqmRetroImpact(deviceId){
+  const EMPTY = { n:0, m:0, names:[] };
+  if(!deviceId || typeof equipList!=='function') return EMPTY;
+  const kitOverride = equipList().filter(function(d){ return d && d.id!==deviceId; });
+  const keySet = {};
+  ((typeof menuState==='function') ? (menuState().keys||[]) : []).forEach(function(k){ if(k) keySet[k]=true; });
+  ((typeof evList==='function') ? evList() : []).forEach(function(ev){
+    ((ev && ev.menu && ev.menu.keys) || []).forEach(function(k){ if(k) keySet[k]=true; });
+  });
+  const keys = Object.keys(keySet);
+  if(!keys.length) return EMPTY;
+  const names = [];
+  keys.forEach(function(key){
+    const meta = (typeof eqmResolveCached==='function') ? eqmResolveCached(key) : ((typeof resolveItem==='function') ? resolveItem(key) : null);
+    if(!meta) return;
+    const before = (typeof eqmValidity==='function') ? eqmValidity(meta) : {level:'ok'};
+    if(before.level==='uncookable') return;   // already broken for an unrelated reason — this device isn't what breaks it
+    const after = eqmValidityWithKit(meta, kitOverride);
+    if(after.level==='uncookable') names.push((typeof itemName==='function') ? itemName(meta) : (meta.heb||meta.key));
+  });
+  return { n: names.length, m: keys.length, names: names };
+}
+// The spec's dialog text (§7.2 point 2, plan Task 4's exact template): "N מתוך M פריטים יושפעו" + the
+// affected names (first 3 + "+K more"), <N>/<M> in dir="ltr" islands (L13), correct Hebrew singular/plural
+// on BOTH interpolated counts independently (DoD-9) — the noun ("item"/"items") agrees with M (the pool
+// size being described), the verb ("will be affected") agrees with N (the affected subset, the true
+// grammatical subject of "will be affected").
+function eqmRetroWarnHtml(impact){
+  const shown = impact.names.slice(0,3).map(esc).join(', ');
+  const moreN = impact.names.length-3;
+  const more = moreN>0 ? ' '+L('ועוד '+moreN,'+'+moreN+' more') : '';
+  const itemsWord = impact.m===1 ? L('פריט','item') : L('פריטים','items');
+  const verb = impact.n===1 ? L('יושפע','will be affected') : L('יושפעו','will be affected');
+  return `⚠ <span dir="ltr">${impact.n}</span> ${L('מתוך','out of')} <span dir="ltr">${impact.m}</span> ${itemsWord} ${verb}: <b>${shown}${more}</b>.<br>${L('למחוק בכל זאת?','Delete anyway?')}`;
 }
 
 function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
@@ -7561,7 +7649,31 @@ function openEquipment(){
     const an=$("#eqAddNew"); if(an) an.addEventListener('click', function(){ editId=null; drawPicker(); });   // header Add → pick a category first (not a hard-coded smoker form)
     pnl.querySelectorAll('[data-eqaddcat]').forEach(function(b){ b.addEventListener('click', function(){ editId=null; drawForm(b.dataset.eqaddcat); }); });
     pnl.querySelectorAll('[data-eqedit]').forEach(function(b){ b.addEventListener('click', function(){ const d=equipList().find(function(x){return x.id===b.dataset.eqedit;}); if(!d) return; editId=d.id; drawForm(d.cat, d); }); });
-    pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', function(){ equipSave(equipList().filter(function(d){return d.id!==b.dataset.eqrm;})); if(typeof cRefreshHome==='function') cRefreshHome(); drawList(); }); });
+    // E3 Task 4 (spec §7.2, plan Task 4) — the retroactive-invalidation WARN. Delete-only in this task
+    // (see the SCOPE LINE comment on doSave below, near "d.cat=nc" — a downgrade-edit-save is
+    // intentionally NOT covered here, with the reasoning written down there, not silently dropped).
+    // BEFORE the delete commits: compute the REAL impact (eqmRetroImpact) and always show a
+    // confirm — R5: zero/unconfigured impact gets the ORDINARY confirm (plain "remove this device?"), a
+    // real impact gets the SAME dialog with the spec's warning text on top (never a second, separate
+    // dialog — one appConfirm, its message chosen by whether anything is actually affected). On confirm:
+    // delete (equipSave — the ONE mutation choke point, bumps _eqKitGen so the catalog's bold-invalid
+    // treatment is correct on its very next render, no reload needed) THEN release every held ledger
+    // entry pointing at this device (eqmReleaseByDevice — a targeted deviceId sweep, spec §7.2 point 3).
+    pnl.querySelectorAll('[data-eqrm]').forEach(function(b){ b.addEventListener('click', async function(){
+      const devId=b.dataset.eqrm;
+      const dev=equipList().find(function(x){return x.id===devId;});
+      const impact=(typeof eqmRetroImpact==='function')?eqmRetroImpact(devId):{n:0,m:0,names:[]};
+      const devName=dev?(dev.name||typeLabel(dev.type)||''):'';
+      const msg = impact.n>0
+        ? eqmRetroWarnHtml(impact)
+        : L('להסיר את ','Remove ')+esc(devName)+L('?','?');
+      const ok=await appConfirm(msg,{okLabel:'🗑️ '+L('מחק','Delete'),danger:true});
+      if(ok!==true) return;
+      equipSave(equipList().filter(function(d){return d.id!==devId;}));
+      if(typeof eqmReleaseByDevice==='function') eqmReleaseByDevice(devId);
+      if(typeof cRefreshHome==='function') cRefreshHome();
+      drawList();
+    }); });
     // BUG-2 (Wave B): the suspect chip's "re-check" — same edit-form open as data-eqedit above, plus
     // {focusKey:'areaCm2'} so drawForm highlights the one field the owner actually needs to look at.
     pnl.querySelectorAll('[data-eqrepair]').forEach(function(b){ b.addEventListener('click', function(){ const d=equipList().find(function(x){return x.id===b.dataset.eqrepair;}); if(!d) return; editId=d.id; drawForm(d.cat, d, {focusKey:'areaCm2'}); }); });
@@ -7671,6 +7783,19 @@ function openEquipment(){
       const list2=equipList(); let d;
       if(editId){ d=list2.find(function(x){return x.id===editId;}); if(!d){ editId=null; return drawList(); } }
       else { d={id:equipId(),cat:nc,type:type,name:nm,brand:'',model:'',fuel:'',cap:{},specSource:'manual',notes:''}; list2.push(d); }
+      // E3 Task 4 SCOPE LINE (spec §7.2, plan Task 4): the retroactive-invalidation WARN is implemented for
+      // DEVICE DELETE only (the data-eqrm handler above) — a DOWNGRADE-SAVE here (editId set, a field
+      // shrinking the device's capability envelope: a lower maxTempC, a smaller areaCm2/bathMinL, canHang
+      // turned off, hasProbe unset, …) is NOT covered. Spec §7.2's own text names only "deleting a held
+      // device" — a downgrade impact-check was never a spec requirement, only a stretch the plan's Task 4
+      // brief raised for consideration ("may be a stretch — implement delete first, assess downgrade cost,
+      // disclose the line you draw"), so drawing the line here is not a §4 Waiver Gate case. The cost that
+      // tipped this out of scope: delete's what-if is a single boolean (device present/absent, one
+      // equipList()-minus-one-id list); a downgrade's what-if would need to snapshot the device's WHOLE
+      // capability envelope pre-save (every one of maxTempC/areaCm2/bathMinL/canHang+hooks/hasProbe) and
+      // diff it post-save per FIELD, then re-run the SAME kit-what-if for whichever fields actually
+      // shrank — a materially bigger, differently-shaped feature, not an extension of eqmValidityWithKit's
+      // single-list-swap architecture. Flagged for a follow-up task, not silently dropped.
       d.cat=nc; d.type=type; d.name=nm; d.cap=d.cap||{};
       if(cc.capKey){ const v=parseFloat(($("#eqCapKey")||{}).value); if(!isNaN(v)) d.cap[cc.capKey]=v; else delete d.cap[cc.capKey]; }
       if(cc.multiCap){ const mi=$("#eqMultiIn"); if(mi&&mi.value){ const pv=parseFloat((mi.value||'').replace(/[^\d.]/g,'')); if(!isNaN(pv)&&pv>0&&pv<100000&&multiVals.indexOf(pv)<0) multiVals.push(pv); }   // flush a typed-but-not-yet-added size
