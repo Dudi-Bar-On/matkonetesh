@@ -1364,8 +1364,16 @@ function seasPickerHTML(key, cat, isProd, mode){
 function spkGoInstance(key, backFn, fresh){
   const m=(typeof menuState==='function')?menuState():{keys:[]};
   m.keys=m.keys||[];
-  if(fresh){ m.keys=[key]; if(typeof saveMenu==='function') saveMenu(m); }
-  else if(!m.keys.includes(key)){ m.keys.push(key); if(typeof saveMenu==='function') saveMenu(m); }
+  let blocked=false;
+  if(fresh){
+    if(typeof eqmAddGate==='function' && !eqmAddGate(key)) blocked=true;
+    else { m.keys=[key]; if(typeof saveMenu==='function') saveMenu(m); }
+  }
+  else if(!m.keys.includes(key)){
+    if(typeof eqmAddGate==='function' && !eqmAddGate(key)) blocked=true;
+    else { m.keys.push(key); if(typeof saveMenu==='function') saveMenu(m); }
+  }
+  if(blocked) return;   // E3 T2 gate — the gate already toasted its own reason; never open the picker for a key that was never added
   if(typeof updateCartBadge==='function') updateCartBadge();
   window._tlSeasOpen=window._tlSeasOpen||new Set(); window._tlSeasOpen.add(key);
   const ev=(typeof menuCtx==='function'&&menuCtx()==='event');
@@ -1600,7 +1608,13 @@ let cart=new Set(); // vestigial (shopping now lives in menuState); kept empty t
 function saveCart(){/* mk-cart retired */}
 function menuHasKey(key){ return (((typeof menuState==='function')&&menuState().keys)||[]).includes(key); }
 /* state util: context-aware add/remove of an item in the active plan (no direct UI caller; used programmatically) */
-function toggleCart(key){ const s=menuState(); s.keys=s.keys||[]; const i=s.keys.indexOf(key); if(i>=0)s.keys.splice(i,1); else s.keys.push(key); saveMenu(s); updateCartBadge(); render(); }
+function toggleCart(key){
+  const s=menuState(); s.keys=s.keys||[];
+  const i=s.keys.indexOf(key);
+  if(i>=0){ s.keys.splice(i,1); saveMenu(s); updateCartBadge(); render(); return false; }   // remove — never gated
+  if(typeof eqmAddGate==='function' && !eqmAddGate(key)) return null;                        // BLOCKED — no state change, gate already toasted
+  s.keys.push(key); saveMenu(s); updateCartBadge(); render(); return true;
+}
 function updateCartBadge(){ const e=$("#cartN"); if(e) e.textContent=(((typeof menuState==='function')&&menuState().keys)||[]).length; }
 /* add-to-menu affordance (UX): a real control wired to the existing toggleCart, on every card + the item panel */
 function addMenuBtn(key){ const on=menuHasKey(key); const lbl=on?'הסר מהתפריט':'הוסף לתפריט'; return `<button class="addcart ${on?'on':''}" data-addmenu="${key}" aria-pressed="${on}" aria-label="${lbl}" title="${lbl}">${on?'✓':'＋'}</button>`; }
@@ -1919,6 +1933,49 @@ function wireEqInvPanel(root){
   const r=root||document;
   r.querySelectorAll('[data-eqfix="configure"]').forEach(function(b){ b.addEventListener('click', function(){ if(typeof openEquipment==='function') openEquipment(); }); });
   r.querySelectorAll('[data-eqfix="switch-path"]').forEach(function(b){ b.addEventListener('click', function(){ if(typeof toast==='function') toast(L('בחר את השיטה הזו למעלה, בבורר השיטה','Pick this method above, in the method selector')); }); });
+}
+
+// ═══ E3 Task 2 (spec §5.2) · the plan-add gate — BLOCKS adding an UNCOOKABLE item to the plan ═══════
+// Reads eqmValidity's cached, generation-stamped verdict (cheap at add-time — same cache T1's card
+// render seeds). Unconfigured kit → eqmValidity always answers 'ok' (R5), so this fires zero noise for
+// a user with no equipment set up. A 'blocked-default' item is NEVER blocked here — spec §5.2 blocks on
+// 'uncookable' only: a working alternative cited path exists, so the add proceeds (the catalog's lighter
+// emphasis for blocked-default is view-only, O-5 point 1 — never an add-time block).
+//
+// Every user-reachable write path that adds a NEW key to the active plan (mk-menu/mk-cook) calls one of
+// these two before writing — see the full enumeration + which sites are gated/why in the E3 Task 2
+// report (.superpowers/sdd/e3-task-2-report.md). Deliberately NOT called from programmatic restores
+// (evLoad, evClearActive, evNewDraft, the evLoad undo-toast) — spec §7's retroactive-invalidation flow
+// (a separate, later task) owns an ALREADY-in-plan item that BECOMES uncookable after an equipment
+// change; THIS gate only ever intercepts a brand-new key entering the plan via a user's own action.
+function eqmAddGate(key){
+  const meta=(typeof resolveItem==='function')?resolveItem(key):null;
+  if(!meta) return true;                                                     // unresolvable key — not this gate's concern
+  const v=(typeof eqmValidity==='function')?eqmValidity(meta):{level:'ok'};
+  if(v.level!=='uncookable') return true;
+  const kind=(v.gaps&&v.gaps[0]&&v.gaps[0].kind)||'';
+  const lbl=(typeof EQM_KIND_HE!=='undefined'&&EQM_KIND_HE[kind])||[kind,kind];
+  if(typeof toast==='function') toast(L('לא נוסף — חסר ','Not added — missing ')+L(lbl[0],lbl[1]));
+  return false;
+}
+// bulk sibling for the preset/AI-import write paths (presetMenu, presetFromFavs, evPlanApply): filters
+// candidate keys down to the cookable ones, firing ONE toast (the FIRST blocked item's missing device,
+// same copy as the single-item gate) if anything was dropped — never a silent bulk drop.
+function eqmAddGateKeys(keys){
+  let blockedLbl=null;
+  const kept=(keys||[]).filter(function(k){
+    const meta=(typeof resolveItem==='function')?resolveItem(k):null;
+    if(!meta) return true;
+    const v=(typeof eqmValidity==='function')?eqmValidity(meta):{level:'ok'};
+    if(v.level!=='uncookable') return true;
+    if(!blockedLbl){
+      const kind=(v.gaps&&v.gaps[0]&&v.gaps[0].kind)||'';
+      blockedLbl=(typeof EQM_KIND_HE!=='undefined'&&EQM_KIND_HE[kind])||[kind,kind];
+    }
+    return false;
+  });
+  if(blockedLbl && typeof toast==='function') toast(L('לא נוסף — חסר ','Not added — missing ')+L(blockedLbl[0],blockedLbl[1]));
+  return kept;
 }
 
 function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
@@ -3141,7 +3198,8 @@ document.addEventListener("click",e=>{
   const fav=e.target.closest("[data-fav]");
   if(fav){ e.stopPropagation(); toggleFav(fav.dataset.fav); return; }
   const addm=e.target.closest("[data-addmenu]");
-  if(addm){ e.stopPropagation(); e.preventDefault(); if(typeof toggleCart==='function') toggleCart(addm.dataset.addmenu); syncAddMenuBtn(addm); if(typeof toast==='function') toast(menuHasKey(addm.dataset.addmenu)?'✓ נוסף לתפריט':'הוסר מהתפריט'); return; }
+  if(addm){ e.stopPropagation(); e.preventDefault(); const _tcr=(typeof toggleCart==='function')?toggleCart(addm.dataset.addmenu):null; if(_tcr===null) return;   // E3 T2: BLOCKED — the gate already toasted its own reason, skip the generic add/remove toast
+    syncAddMenuBtn(addm); if(typeof toast==='function') toast(menuHasKey(addm.dataset.addmenu)?'✓ נוסף לתפריט':'הוסר מהתפריט'); return; }
   const card=e.target.closest(".card");if(!card)return;
   if(card.dataset.kind==="make"){ openMake(card.dataset.mid); return; }
   const n=+card.dataset.n;
@@ -3948,7 +4006,10 @@ function pantryToPlan(pid){
   const p=pantry().find(x=>x.id===pid); if(!p||!p.key) return;
   const stg=projStage(p);
   const m=(typeof menuState==='function')?menuState():{keys:[]}; m.keys=m.keys||[];
-  if(!m.keys.includes(p.key)){ m.keys.push(p.key); if(typeof saveMenu==='function') saveMenu(m); }
+  if(!m.keys.includes(p.key)){
+    if(typeof eqmAddGate==='function' && !eqmAddGate(p.key)) return;   // E3 T2 gate — the gate already toasted its own reason
+    m.keys.push(p.key); if(typeof saveMenu==='function') saveMenu(m);
+  }
   // set the timeline stage for this item: done→'ready' (serve only), ready→'prepped' (finish only)
   try{ const all=tlState(); all[p.key]=all[p.key]||{method:null}; const tls=(stg==='done')?'ready':'prepped'; all[p.key].stage=tls; all[p.key].ready=(tls==='ready'); tlSetState(all); }catch(e){}
   if(typeof updateCartBadge==='function') updateCartBadge();
@@ -5526,9 +5587,16 @@ function presetMenu(style){
   const s=menuState();
   const pick=cat=>{const l=recipesInCat(cat,s.kosher);return l.length?l[Math.floor(Math.random()*l.length)]:null;};
   const map={'מנגל מעורב':['בקר','עוף','צלייה טחונה','נקניקיות'],'שרקוטרי':['סלומי','נקניק מיובש','פסטרמה','גבינה'],'נקניקיות':['נקניקיות','נקניק מעושן','צלייה טחונה','בקר'],'דגים':['דג','דג מעושן','עוף']};
-  s.keys=(map[style]||[]).map(pick).filter(Boolean);saveMenu(s);renderMenu();
+  const picked=(map[style]||[]).map(pick).filter(Boolean);
+  s.keys=(typeof eqmAddGateKeys==='function')?eqmAddGateKeys(picked):picked;   // E3 T2 gate — bulk
+  saveMenu(s);renderMenu();
 }
-function presetFromFavs(){const s=menuState();let f=[...favs];if(s.kosher)f=f.filter(isKosherOk);s.keys=f.slice(0,8);saveMenu(s);renderMenu();}
+function presetFromFavs(){
+  const s=menuState();let f=[...favs];if(s.kosher)f=f.filter(isKosherOk);
+  const picked=f.slice(0,8);
+  s.keys=(typeof eqmAddGateKeys==='function')?eqmAddGateKeys(picked):picked;   // E3 T2 gate — bulk
+  saveMenu(s);renderMenu();
+}
 function presetFromCart(){
   const s=menuState();
   let items=[...cart].filter(k=>resolveItem(k));            // only valid dishes
@@ -5540,7 +5608,15 @@ function presetFromCart(){
   toast(items.length? (added?`${added} ${L('כרטיסיות מסומנות (✓) נוספו לתפריט','checked cards (✓) added to the menu')}`:L('כל המסומנות כבר בתפריט','All checked cards are already in the menu'))
                     : L('אין כרטיסיות מסומנות — סמן נתחים עם ＋ בכרטיסים','No checked cards — mark cuts with ＋ on the cards'));
 }
-function swapDish(i){const s=menuState();const cur=s.keys[i];const m=resolveItem(cur);if(!m)return;const cands=recipesInCat(m.cat,s.kosher).filter(k=>k!==cur&&!s.keys.includes(k));if(cands.length){s.keys[i]=cands[Math.floor(Math.random()*cands.length)];saveMenu(s);renderMenu();}}
+function swapDish(i){
+  const s=menuState();const cur=s.keys[i];const m=resolveItem(cur);if(!m)return;
+  const cands=recipesInCat(m.cat,s.kosher).filter(k=>k!==cur&&!s.keys.includes(k));
+  if(cands.length){
+    const pk=cands[Math.floor(Math.random()*cands.length)];
+    if(typeof eqmAddGate==='function' && !eqmAddGate(pk)) return;   // E3 T2 gate — never swap IN an uncookable replacement
+    s.keys[i]=pk;saveMenu(s);renderMenu();
+  }
+}
 function copyText(t){try{if(navigator.clipboard)navigator.clipboard.writeText(t);toast('הרשימה הועתקה ✓');}catch(e){toast('הועתק');}}
 function resetMenu(){
   const prev=menuState();
@@ -5659,7 +5735,7 @@ function renderMenu(){
       addC.innerHTML=allMenuCats().map(c=>`<button class="mchip" data-addcat="${c}" style="border-color:${catColor(c)};color:${catColor(c)}">${c}</button>`).join("");
       addC.querySelectorAll('[data-addcat]').forEach(cb=>cb.addEventListener('click',()=>{
         const st=menuState();const l=recipesInCat(cb.dataset.addcat,st.kosher).filter(k=>!st.keys.includes(k));
-        if(l.length){ const pk=l[Math.floor(Math.random()*l.length)]; if(!st.keys.includes(pk)){ st.keys.push(pk); saveMenu(st); } renderMenu();}
+        if(l.length){ const pk=l[Math.floor(Math.random()*l.length)]; if(!st.keys.includes(pk) && (typeof eqmAddGate!=='function' || eqmAddGate(pk))){ st.keys.push(pk); saveMenu(st); } renderMenu();}   // E3 T2 gate
       }));
     }
   });
@@ -8467,7 +8543,8 @@ function cwPaintPickList(){
   }).join('')||`<div style="color:var(--smoke);text-align:center;padding:20px">${L('לא נמצאו פריטים','No items found')}</div>`);
   host.querySelectorAll('[data-cwpick]').forEach(el=>el.addEventListener('click',()=>{
     const k=el.dataset.cwpick; const mm=cwMenu(); const s=new Set(mm.keys||[]);
-    s.has(k)?s.delete(k):s.add(k); mm.keys=[...s]; cwSave(mm); cwPaintPickList();
+    if(s.has(k)){ s.delete(k); } else { if(typeof eqmAddGate==='function' && !eqmAddGate(k)) return; s.add(k); }   // E3 T2 gate — add-only
+    mm.keys=[...s]; cwSave(mm); cwPaintPickList();
   }));
   host.querySelectorAll('[data-cwpreset]').forEach(el=>el.addEventListener('click',()=>{ const p=el.dataset.cwpreset;   // UX #3: presets in the wizard
     if(p==='__fav'){ if(typeof presetFromFavs==='function') presetFromFavs(); } else if(typeof presetMenu==='function'){ presetMenu(p); }
@@ -9620,13 +9697,16 @@ function evPlanApply(plan){
   setMenuCtx&&setMenuCtx('event');
   const s=menuState();
   s.guests=plan.guests; s.appetite=plan.appetite; s.kosher=plan.kosher;
-  s.keys=[...new Set(plan.keys)]; s.sides=plan.sides; s.drinks=plan.drinks; s.desserts=plan.desserts;
+  const uniqueKeys=[...new Set(plan.keys)];
+  s.keys=(typeof eqmAddGateKeys==='function')?eqmAddGateKeys(uniqueKeys):uniqueKeys;   // E3 T2 gate — bulk (the AI-generated "generator" apply flow)
+  const someBlocked=s.keys.length<uniqueKeys.length;   // the gate already fired its own reason toast — don't clobber it with the generic success toast below
+  s.sides=plan.sides; s.drinks=plan.drinks; s.desserts=plan.desserts;
   saveMenu(s);
   if(typeof closePanel==='function') closePanel();
   if(typeof cNavGo==='function') cNavGo('wizard');
   if(typeof cwSyncFromMenu==='function') cwSyncFromMenu();
   if(typeof cwGo==='function') cwGo(5);   // jump to review step
-  if(typeof toast==='function') toast('התפריט נטען לאשף — סקור וערוך ✓');
+  if(!someBlocked && typeof toast==='function') toast('התפריט נטען לאשף — סקור וערוך ✓');
 }
 async function evPlanRun(prompt){
   if(!prompt||!prompt.trim()){ if(typeof toast==='function') toast('כתוב מה לתכנן'); return; }
