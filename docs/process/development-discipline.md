@@ -763,6 +763,14 @@ intact. Both were caught only by **semantic** review. Three rules per language, 
    a stronger model repairing them earns no blind trust). Correct at **development time** (distributed to every user
    in the build), **not** at runtime — the runtime "gate-blocks → AI repairs → updates dict" path is a deprioritized
    fallback.
+   **Pivot through English for non-Hebrew targets (owner suggestion, 2026-07-26).** English is 100%-verified (v188)
+   and a far higher-resource MT source than Hebrew, so translate the **English value → target language**; the dict key
+   stays the **Hebrew** source string (runtime lookup unchanged — only the model's *input* becomes English). This raises
+   fluency AND reduces target-side inventions: the `תרבית`→nitrite class happens when a low-frequency Hebrew term is
+   unfamiliar to the model, whereas the verified English ("starter culture") is unambiguous. Because the English pivot is
+   *verified*, the usual telephone-game compounding risk is neutralized. **Still gate the target's numbers + safety terms
+   against the Hebrew ground truth** (English preserves them, so it is equivalent) — the pivot never licenses drift from
+   the source of truth. Confirm the gain empirically (en→X vs he→X on a sample) before committing a new language.
 2. **Physical Playwright verification.** Walk the running app in the target locale and assert **(a)** strings render
    translated and correct, and **(b)** each rendered string comes from the **external dictionary** (`lang/*.json`),
    never a hardcoded `app.js` literal — proving the i18n path is genuinely data-driven.
