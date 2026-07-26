@@ -17,7 +17,17 @@ import { test, expect, seedApp } from './_fixtures';
 
 // cut-1 = brisket, footprint 1320 cm², smoke-only 110°C/12h (same fixture fact tests/occupancy-multievent
 // .spec.ts and the plan's own Task 2/3 tests rely on) — one smoke-kind requires row, one smoke stage.
-const KIT = [{ id: 'sm1', cat: 'smoker', type: 'ארון / קבינט', name: 'המעשנת שלי', cap: { racks: 2, areaCm2: 4800 } }];
+// cut-1 also carries a numeric tgt/safe (data.py n=1: tgt=95, safe=63), so itemStages appends a kind:
+// 'bcheck' stage and deriveRequires (O-7) tags capability.probe:true onto that one smoke row. Since
+// commit 2543afd made EQM.availability/allocate capability-aware (eqmDeviceMeetsRow, O-7a), a kit with a
+// right-kind smoker but NO standalone cat:'probe' device now correctly fails that capability gate and
+// allocate refuses to write a hold — so the kit must own a standalone probe for these tests to exercise
+// the intended hold-allocation behavior (same fixture shape as tests/e2-availability.spec.ts's
+// PROBE_DEVICE for the sibling BUGFIX(b)/(c) cases).
+const KIT = [
+  { id: 'sm1', cat: 'smoker', type: 'ארון / קבינט', name: 'המעשנת שלי', cap: { racks: 2, areaCm2: 4800 } },
+  { id: 'pr1', cat: 'probe', type: 'מיידי (instant-read)', name: 'Thermapen' },
+];
 
 const boot = async (page: any, kit: any[] = KIT) => {
   await seedApp(page, {
