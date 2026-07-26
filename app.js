@@ -1084,17 +1084,10 @@ const SMOKER_TIPS={
   'גז (עם תיבת עשן)':'גז: הדלק מבער אחד בלבד לחום עקיף, תיבת עשן עם שבבים על המבער הפעיל, והבשר בצד הכבוי.',
   'חשמלי':'חשמלי: יציב וקל אך עשן חלש — הוסף שבבים לאורך הבישול לשמירת עשן רציף.'
 };
-const SMOKER_TIPS_EN={
-  'ארון / קבינט':'Cabinet smoker: very stable temp — great for long low & slow. Use the shelves for volume. Relatively low airflow — make sure the pellicle is dry before smoking so smoke sticks.',
-  'אופסט / סטיק-ברנר':'Offset: run a small, clean fire (bluish smoke). Thick/fat side toward the firebox, and rotate the cut halfway — there is a heat gradient along the chamber.',
-  'פלטים':'Pellet: set-and-forget. For heavier smoke — add a smoke tube/maze, and run max smoke for the first two hours while the meat is cold.',
-  'קמאדו / קרמי':'Kamado: stable and efficient. Add a deflector for indirect heat, tune gently with the vents, and wait for the temp to stabilize before adding the meat.',
-  'WSM / חבית':'WSM/drum: fill the water bowl to stabilize, Minion method for the coals, and keep the bottom vents toward the fire.',
-  'קטל (ככלי עישון)':'Kettle: set up 2 zones (coals to one side), meat on the cool side, a wood chunk on the coals. Add charcoal about every ~hour.',
-  'גז (עם תיבת עשן)':'Gas: light just one burner for indirect heat, a smoke box with chips over the lit burner, and the meat on the off side.',
-  'חשמלי':'Electric: stable and easy but weak smoke — add chips throughout the cook to keep smoke continuous.'
-};
-function smokerTip(){ if(!equipConfigured()) return ''; const d=primaryOf('smoker'); return d?((getLang()==='he'?SMOKER_TIPS:SMOKER_TIPS_EN)[d.type]||''):''; }
+// SMOKER_TIPS_EN deleted (v268 T4, spec §2 mech-4): the selector now routes the Hebrew value through
+// `t()` so fr/de/es/it get a real dict translation instead of hard-coded English. he-mode unchanged
+// (getDict() is null in he, so t() returns the Hebrew arg as-is — byte-identical).
+function smokerTip(){ if(!equipConfigured()) return ''; const d=primaryOf('smoker'); return d?t(SMOKER_TIPS[d.type]||''):''; }
 // ── equipment → plan (Phase 3, the seam that was waived) ──────────────────────────────────────
 // ONE table for how long a cooker takes to stabilize: `mins` drives the SCHEDULED light-up, the label
 // describes it. They cannot drift apart, which was D1 — the plan hard-coded 45 minutes while this advice
@@ -1281,8 +1274,8 @@ function injectSeasoningSteps(steps, key, tmpl){
   return out;
 }
 const KIND_LABEL={rub:'ראב יבש',marinade:'מרינדה',glaze:'גלייז',sauce:'רוטב'};
-const KIND_LABEL_EN={rub:'Dry rub',marinade:'Marinade',glaze:'Glaze',sauce:'Sauce'};
-function kindLabel(k){ return (getLang()==='he'?KIND_LABEL:KIND_LABEL_EN)[k]||k; }
+// KIND_LABEL_EN deleted (v268 T4, spec §2 mech-4) — routed through t() (dict-driven; he byte-identical).
+function kindLabel(k){ return t(KIND_LABEL[k]||k); }
 const KIND_EMOJI={rub:'🌶️',marinade:'🥣',glaze:'🍯',sauce:'🥄'};
 function seasoningsFor(cat, produce){
   return (DATA.seasonings||[]).filter(s=> produce? s.produce : s.cats.includes(cat));
@@ -1306,8 +1299,9 @@ let seasCtxKey=null; // when set, browser cards get a ＋ button adding to this 
 const SPK_FLAVORS=['מתוק','חמצמץ','חריף','מעושן','עשבי','הדרי','ארומטי-חם','אגוזי','אומאמי'];
 const SPK_BASES=['יבש','שמן','יוגורט','עגבניות','רכז-פירות','חמאה'];
 const SPK_HEAT=[[0,'😌 עדין'],[1,'🌶 קל'],[2,'🌶🌶 חריף'],[3,'🔥 בוער']];
-const SPK_HEAT_EN={0:'😌 Mild',1:'🌶 Light',2:'🌶🌶 Spicy',3:'🔥 Blazing'};
-function heatLabel(v,heLabel){ return getLang()==='he'?heLabel:(SPK_HEAT_EN[v]||heLabel); }
+// SPK_HEAT_EN deleted (v268 T4, spec §2 mech-4) — routed through t() (dict-driven; he byte-identical).
+// `v` is kept in the signature for call-site compatibility; the label itself carries the dict key.
+function heatLabel(v,heLabel){ return t(heLabel); }
 const SPK_CONTS=['אמריקה','דרום אמריקה','אירופה','אסיה','אפריקה','ישראל/מזה"ת'];
 let seasPkState={};
 function spkState(key){ return seasPkState[key]=seasPkState[key]||{axis:'rec',val:'',expand:{}}; }
@@ -2964,16 +2958,14 @@ const DONE_SCALES={
   dark:{mr:'רך',med:'מאוזן',well:'נשלף'},
   fish:{mr:'משיי',med:'פלקי',well:'מוצק'}
 };
-const DONE_SCALES_EN={
-  steak:{rare:'Rare',mr:'Medium-rare',med:'Medium',mw:'Medium-well',well:'Well done'},
-  white:{mr:'Juicy',med:'Balanced',well:'Firm'},
-  dark:{mr:'Tender',med:'Balanced',well:'Fall-apart'},
-  fish:{mr:'Silky',med:'Flaky',well:'Firm'}
-};
+// DONE_SCALES_EN deleted (v268 T4, spec §2 mech-4/§3.3 M-3) — routed through t() with the same
+// table-scoped 'doneness' ctx the extractor harvests for these nested leaves (avoids the bare 'נא'
+// homograph collision with the unrelated kg/raw-weight sense at app.js L('נא','raw')). he byte-identical.
 function doneLabel(cut,k){
   const sc=(cut&&cut.doneness&&cut.doneness.scale)||'steak';
-  const T=(typeof getLang==='function'&&getLang()!=='he')?DONE_SCALES_EN:DONE_SCALES;
-  return (T[sc]&&T[sc][k])||T.steak[k]||k;
+  const T=DONE_SCALES;
+  const v=(T[sc]&&T[sc][k])||T.steak[k]||k;
+  return t(v,undefined,'doneness');
 }
 function doneKey(cut){ return 'done:cut-'+cut.n; }
 function currentDoneness(cut){
@@ -4282,8 +4274,8 @@ function projStage(p){
   return projProgressReady(p)?'ready':'building';
 }
 const STAGE_LABEL={building:'⏳ בתהליך',ready:'📦 מוכן לסיום',done:'✅ מוכן להגשה'};
-const STAGE_LABEL_EN={building:'⏳ In progress',ready:'📦 Ready to finish',done:'✅ Ready to serve'};
-function stageLabel(k){ return (getLang()==='he'?STAGE_LABEL:STAGE_LABEL_EN)[k]||k; }
+// STAGE_LABEL_EN deleted (v268 T4, spec §2 mech-4) — routed through t() (dict-driven; he byte-identical).
+function stageLabel(k){ return t(STAGE_LABEL[k]||k); }
 // bridge a ready pantry item into the active plan (event/cook) at the right timeline stage
 function pantryToPlan(pid){
   const p=pantry().find(x=>x.id===pid); if(!p||!p.key) return;
@@ -8529,12 +8521,11 @@ const FONT_PAIRS={
 };
 const FONT_SCALES=[0.9,1,1.15,1.3];
 const FONT_SCALE_LABELS={0.9:'קטן',1:'רגיל',1.15:'גדול',1.3:'גדול מאוד'};
-const THEME_NAMES_EN={cream:'Warm cream',charcoal:'Charcoal & flame',walnut:'Wood & smoke',slate:'Copper & salt'};
-const FONT_NAMES_EN={current:'Current',editorial:'Editorial',geometric:'Geometric',humanist:'Humanist'};
-const FONT_SCALE_LABELS_EN={0.9:'Small',1:'Regular',1.15:'Large',1.3:'Very large'};
-function themeName(k){ return getLang()==='he'?(THEMES[k]||{}).name:(THEME_NAMES_EN[k]||(THEMES[k]||{}).name); }
-function fontName(k){ return getLang()==='he'?(FONT_PAIRS[k]||{}).name:(FONT_NAMES_EN[k]||(FONT_PAIRS[k]||{}).name); }
-function scaleLabel(s){ return getLang()==='he'?FONT_SCALE_LABELS[s]:(FONT_SCALE_LABELS_EN[s]||FONT_SCALE_LABELS[s]); }
+// THEME_NAMES_EN / FONT_NAMES_EN / FONT_SCALE_LABELS_EN deleted (v268 T4, spec §2 mech-4) — routed
+// through t() (dict-driven; he byte-identical since getDict() is null in he-mode).
+function themeName(k){ return t((THEMES[k]||{}).name); }
+function fontName(k){ return t((FONT_PAIRS[k]||{}).name); }
+function scaleLabel(s){ return t(FONT_SCALE_LABELS[s]); }
 function themeKey(){ return pref('theme'); }                       // migrates old coal/vintage/gold → cream
 function fontPairKey(){ return pref('fontPair'); }
 function fontScale(){ return pref('fontScale'); }
@@ -8562,7 +8553,10 @@ function getLang(){
 function setLang(l){ if(!I18N_LANGS[l]) return; store.set('mk-lang',l); applyLang(); }
 function getDict(){ return (getLang()==='he')?null:(I18N_DICTS[getLang()]||{}); }
 function itemName(m){ if(!m) return ''; if(getLang()!=='he' && m.eng) return m.eng; return m.heb||m.eng||''; }
-function t(heb, fallback){ const d=getDict(); if(d && d[heb]!=null) return d[heb]; return (fallback!=null?fallback:heb); }
+// v268 T4 (spec §2 mech-4/§3.3 M-3): additive 3rd arg `ctx` — mirrors L's homograph disambiguator, so
+// a table-scoped nested-leaf lookup (e.g. doneLabel's DONE_SCALES) can key the dict by `heb+'␟'+ctx`
+// without colliding with an unrelated bare-keyed sense for the same Hebrew text elsewhere.
+function t(heb, fallback, ctx){ const d=getDict(); const key=ctx?(heb+'␟'+ctx):heb; if(d && d[key]!=null) return d[key]; return (fallback!=null?fallback:heb); }
 // Generation-time i18n for dynamically-built recipe prose (steps/notes/tips): the Hebrew string is
 // authored inline with its English counterpart; the active language picks which one is emitted. Falls
 // back to `en` for any non-Hebrew language (French/German/Spanish get English until localized, and the
@@ -8736,8 +8730,8 @@ function uiLevelName(k){ const o=UI_LEVELS[k]||{}; return getLang()==='he'?o.nam
 function uiLevelDesc(k){ const o=UI_LEVELS[k]||{}; return getLang()==='he'?o.desc:(o.descEn||o.desc); }
 const LEVEL_SHAPE={beginner:'5', mid:'1', pro:'3'};   // 5=צירים מתקפלים · 1=קו-זמן אנכי · 3=צעדים אופקי
 const SHAPE_NAMES={'5':'צירים מתקפלים','1':'קו-זמן אנכי','3':'צעדים אופקי'};
-const SHAPE_NAMES_EN={'5':'Collapsible accordion','1':'Vertical timeline','3':'Horizontal steps'};
-function shapeName(k){ return (getLang()==='he'?SHAPE_NAMES:SHAPE_NAMES_EN)[k]||k; }
+// SHAPE_NAMES_EN deleted (v268 T4, spec §2 mech-4) — routed through t() (dict-driven; he byte-identical).
+function shapeName(k){ return t(SHAPE_NAMES[k]||k); }
 function uiLevel(){ return pref('uiLevel'); }
 function setUiLevel(l){ if(!UI_LEVELS[l]) return; store.set('mk-uilevel',l); }
 function tlShapeOverride(){ return pref('tlShape'); }

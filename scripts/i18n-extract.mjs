@@ -34,6 +34,15 @@
 //     `__names__` sub-map keyed by the Hebrew name. NOT a flat `he␟name` compound key, NOT an
 //     `L`/`t` call — the sole consumer is `itemName` (spec §11), which reads
 //     `getDict().__names__[m.heb]` directly.
+//  5. Post-`_EN`-deletion seed harvest (Task 4 wrinkle). Once a table's `_EN` partner is DELETED and
+//     its selector rerouted to `t(NAME[k])` (a DYNAMIC key the AST cannot statically resolve), mode 2
+//     can no longer pair the two trees — there is only one tree left. For the fixed, reviewed list of
+//     `POST_DELETION_TABLES` (the former 9 `_EN` tables' Hebrew-only survivors), this mode walks the
+//     SOLE remaining Hebrew tree and sources `en` from `opts.seed` — a he[␟ctx]→en map the CLI loads
+//     from the EXISTING committed `_extracted.json` before overwriting it (so the artifact is its own
+//     seed: idempotent — a fixed point once the seed and the source Hebrew agree). A seed miss (the
+//     Hebrew text changed with no fresh translation yet) degrades to the same needs-en placeholder
+//     convention used everywhere else in this file, never a crash.
 //
 // Collision-lint (spec §6): two sites sharing a BARE `he` key (no ctx) but supplying different,
 // non-placeholder `en` values throws — surfacing an unnoticed homograph as an error, never a silent
@@ -88,6 +97,22 @@ const NESTED_TABLE_CTX = {
 function tableCtxFor(baseName) {
   return NESTED_TABLE_CTX[baseName] || baseName.toLowerCase().replace(/_/g, '-');
 }
+
+// ── mode 5 registry (Task 4 wrinkle) — the former 9 `_EN` tables, post-deletion. Each entry names
+// the SOLE surviving Hebrew-side identifier and its leaf shape, so harvestPostDeletion() (below) can
+// walk it without a partner tree, sourcing `en` from opts.seed. Reviewed, closed list — a future new
+// `_EN` table follows the normal mode-2 twin-tree path (default: harvest) until it, too, is folded.
+const POST_DELETION_TABLES = [
+  { ident: 'SMOKER_TIPS', shape: 'flat' },        // app.js smokerTip()
+  { ident: 'KIND_LABEL', shape: 'flat' },         // app.js kindLabel()
+  { ident: 'STAGE_LABEL', shape: 'flat' },        // app.js stageLabel()
+  { ident: 'SHAPE_NAMES', shape: 'flat' },        // app.js shapeName()
+  { ident: 'FONT_SCALE_LABELS', shape: 'flat' },  // app.js scaleLabel()
+  { ident: 'SPK_HEAT', shape: 'array' },          // app.js heatLabel() — array-of-pairs, bare-keyed
+  { ident: 'DONE_SCALES', shape: 'nested', ctx: tableCtxFor('DONE_SCALES') }, // app.js doneLabel()
+  { ident: 'THEMES', shape: 'prop', prop: 'name' },       // app.js themeName() — Hebrew lives on .name
+  { ident: 'FONT_PAIRS', shape: 'prop', prop: 'name' },   // app.js fontName() — Hebrew lives on .name
+];
 
 // ── C3 semantic guard — a shape-only {he,en} match (both string-literal properties present) is not
 // necessarily a Hebrew/English UI-text pair (e.g. LANG_FLAG's `he`/`en` keys are language codes
@@ -144,6 +169,7 @@ function isArrayOfPairs(node) {
 
 export function extract(src, opts = {}) {
   const denyTables = opts.denyTables || DENY_TABLES;
+  const seed = opts.seed || {}; // he[␟ctx] -> en, from the previously-committed artifact (mode 5)
   const ast = acorn.parse(src, { ecmaVersion: 2022, sourceType: 'script', allowReturnOutsideFunction: true });
 
   const known = {};       // "<key>" -> "<en>" (chrome key set — spec §3.3)
@@ -284,6 +310,57 @@ export function extract(src, opts = {}) {
     // unrecognized base shape — skip (not one of the 3 known _EN-table shapes)
   }
 
+  // ── mode 5 — post-`_EN`-deletion seed harvest (Task 4 wrinkle, see file header + registry above).
+  // A single-tree walk (no partner) over each POST_DELETION_TABLES identifier still present in the
+  // source; `en` comes from `seed`, never from the AST (there is nothing left to read it from). ──
+  function harvestSeededLeaf(key, heVal, needsEnSet) {
+    const en = seed[key];
+    if (en != null) { setKnownKey(key, en); return; }
+    setKnownKey(key, heVal, { placeholder: true });
+    needsEnSet.add(key);
+  }
+  function harvestSoloTree(node, ctx, depth, needsEnSet) {
+    if (!node || node.type !== 'ObjectExpression') return;
+    for (const p of node.properties) {
+      if (p.type !== 'Property') continue;
+      const v = p.value;
+      if (isStringLiteral(v)) {
+        const heVal = v.value;
+        const key = (depth > 0 && ctx) ? heVal + SENT + ctx : heVal;
+        harvestSeededLeaf(key, heVal, needsEnSet);
+      } else if (v.type === 'ObjectExpression') {
+        harvestSoloTree(v, ctx, depth + 1, needsEnSet);
+      }
+    }
+  }
+  for (const table of POST_DELETION_TABLES) {
+    if (denyTables.has(table.ident)) continue;
+    const node = decls.get(table.ident);
+    if (!node) continue; // table not present (already deleted upstream, or a test fixture) — skip
+    if (table.shape === 'flat') {
+      harvestSoloTree(node, null, 0, needsEnSet);
+    } else if (table.shape === 'nested') {
+      harvestSoloTree(node, table.ctx, 0, needsEnSet);
+    } else if (table.shape === 'array') {
+      if (node.type !== 'ArrayExpression') continue;
+      for (const pairEl of node.elements) {
+        if (!pairEl || pairEl.type !== 'ArrayExpression' || pairEl.elements.length !== 2) continue;
+        const heLit = pairEl.elements[1];
+        if (!isStringLiteral(heLit)) continue;
+        harvestSeededLeaf(heLit.value, heLit.value, needsEnSet);
+      }
+    } else if (table.shape === 'prop') {
+      if (node.type !== 'ObjectExpression') continue;
+      for (const p of node.properties) {
+        if (p.type !== 'Property' || !p.value || p.value.type !== 'ObjectExpression') continue;
+        const nameProp = p.value.properties.find((pp) => pp.type === 'Property' && propKeyName(pp) === table.prop);
+        if (nameProp && isStringLiteral(nameProp.value)) {
+          harvestSeededLeaf(nameProp.value.value, nameProp.value.value, needsEnSet);
+        }
+      }
+    }
+  }
+
   // ── mode 2-generic — sibling `{he:…, en:…}` object literals anywhere in the file (the ~48
   //    expr-arg data objects: PREHEAT, DEVICE_FUEL, cm() catalog entries, prop.opts, makes,
   //    capability specs, …). Deny-listed by the nearest enclosing `const NAME = …` identifier. ──
@@ -409,7 +486,12 @@ async function main() {
   const inputPath = args[0] || 'app.js';
   const outputPath = args[1] || 'lang/_extracted.json';
   const src = fs.readFileSync(inputPath, 'utf8');
-  const { known, needsEn, collisions } = extract(src, { throwOnCollision: !allowCollisions });
+  // Mode 5 seed (Task 4 wrinkle): the artifact we are about to (re)write is also this run's INPUT for
+  // the post-`_EN`-deletion tables — read it BEFORE overwriting. Idempotent: as long as the seeded
+  // tables' Hebrew text is unchanged, a fresh run reproduces the same he->en pairs every time.
+  let seed = {};
+  try { if (fs.existsSync(outputPath)) seed = JSON.parse(fs.readFileSync(outputPath, 'utf8')); } catch (e) { seed = {}; }
+  const { known, needsEn, collisions } = extract(src, { throwOnCollision: !allowCollisions, seed });
   if (collisions && collisions.length) {
     console.log(`[i18n-extract] ${collisions.length} homograph collision(s) found (spec §6) — bare he key, differing en, no ctx:`);
     for (const c of collisions) console.log(`  key "${c.key}": "${c.en1}"  vs  "${c.en2}"`);

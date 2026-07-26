@@ -149,3 +149,74 @@ test('extractor: an all-emoji/no-Hebrew {he,en}-shaped object is not harvested r
   const { known } = extract(src);
   expect(known['🇮🇱']).toBeUndefined();
 });
+
+// ── mode 5 (Task 4 wrinkle) — post-`_EN`-deletion seed harvest ──
+// Once a table's `_EN` partner is gone (deleted, selector rerouted to `t(NAME[k])`), the AST alone
+// cannot recover `en` (the call site's key is dynamic). Mode 5 walks the SOLE surviving Hebrew tree
+// for the fixed POST_DELETION_TABLES registry and sources `en` from `opts.seed`.
+test('mode 5: a flat post-deletion table (SMOKER_TIPS-shape) is harvested from opts.seed, no _EN partner needed', async () => {
+  const { extract } = await extractorModule;
+  const src = `const SMOKER_TIPS={a:'שלום',b:'טוב'};`;
+  const { known, needsEn } = extract(src, { seed: { 'שלום': 'Hello', 'טוב': 'Good' } });
+  expect(known['שלום']).toBe('Hello');
+  expect(known['טוב']).toBe('Good');
+  expect(needsEn).toEqual([]);
+});
+
+test('mode 5: a seed MISS degrades to the standard needs-en placeholder, not a crash', async () => {
+  const { extract } = await extractorModule;
+  const src = `const KIND_LABEL={rub:'ראב יבש חדש'};`; // no matching seed entry
+  const { known, needsEn } = extract(src, { seed: {} });
+  expect(known['ראב יבש חדש']).toBe('ראב יבש חדש'); // placeholder = the Hebrew itself
+  expect(needsEn).toContain('ראב יבש חדש');
+});
+
+test('mode 5: array-of-pairs post-deletion table (SPK_HEAT-shape) harvested bare-keyed from opts.seed', async () => {
+  const { extract } = await extractorModule;
+  const src = `const SPK_HEAT=[[0,'😌 עדין'],[1,'🌶 קל']];`;
+  const { known } = extract(src, { seed: { '😌 עדין': '😌 Mild', '🌶 קל': '🌶 Light' } });
+  expect(known['😌 עדין']).toBe('😌 Mild');
+  expect(known['🌶 קל']).toBe('🌶 Light');
+});
+
+test('mode 5: nested post-deletion table (DONE_SCALES-shape) harvested under its table-scoped ctx from opts.seed', async () => {
+  const { extract } = await extractorModule;
+  const src = `const DONE_SCALES={steak:{rare:'נא',med:'מדיום'}};`;
+  const { known } = extract(src, { seed: { 'נא␟doneness': 'Rare', 'מדיום␟doneness': 'Medium' } });
+  expect(known['נא␟doneness']).toBe('Rare');
+  expect(known['מדיום␟doneness']).toBe('Medium');
+  expect(known['נא']).toBeUndefined(); // still no bare key from a nested-table leaf
+});
+
+test('mode 5: prop-shape post-deletion table (THEMES.name-shape) harvested bare-keyed from opts.seed', async () => {
+  const { extract } = await extractorModule;
+  const src = `const THEMES={cream:{name:'שמנת חמה', dots:[]}};`;
+  const { known } = extract(src, { seed: { 'שמנת חמה': 'Warm cream' } });
+  expect(known['שמנת חמה']).toBe('Warm cream');
+});
+
+// ── the staleness contract itself (Task 4's CRITICAL constraint / Task 12's gate) ──
+// A fresh extraction of the REAL app.js, seeded from the REAL committed lang/_extracted.json, must
+// reproduce that exact committed artifact — proving the 9 deleted `_EN` tables' keys survive the fold.
+test('staleness: a fresh extraction of app.js seeded from the committed _extracted.json reproduces it byte-for-byte', async () => {
+  const { extract } = await extractorModule;
+  const fs = await import('node:fs');
+  const path = await import('node:path');
+  // process.cwd() is the repo root — playwright is always invoked from there (config's testDir is
+  // relative, not a chdir); import.meta.url is unavailable here (this file is esbuild-transformed to
+  // CJS by Playwright, per the header comment above).
+  const root = process.cwd();
+  const appSrc = fs.readFileSync(path.join(root, 'app.js'), 'utf8');
+  const committed = JSON.parse(fs.readFileSync(path.join(root, 'lang', '_extracted.json'), 'utf8'));
+  const { known } = extract(appSrc, { seed: committed, throwOnCollision: false });
+  expect(known).toEqual(committed);
+  // the 9 deleted tables' representative keys, specifically:
+  expect(known['ראב יבש']).toBe('Dry rub');                         // KIND_LABEL
+  expect(known['⏳ בתהליך']).toBe('⏳ In progress');                 // STAGE_LABEL
+  expect(known['שמנת חמה']).toBe('Warm cream');                     // THEMES.name (was THEME_NAMES_EN)
+  expect(known['נוכחי']).toBe('Current');                           // FONT_PAIRS.name (was FONT_NAMES_EN)
+  expect(known['רגיל']).toBe('Regular');                            // FONT_SCALE_LABELS
+  expect(known['צירים מתקפלים']).toBe('Collapsible accordion');     // SHAPE_NAMES
+  expect(known['😌 עדין']).toBe('😌 Mild');                          // SPK_HEAT
+  expect(known['נא␟doneness']).toBe('Rare');                        // DONE_SCALES
+});
