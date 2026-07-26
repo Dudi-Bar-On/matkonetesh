@@ -1162,6 +1162,16 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .gear-banner span{flex:1;font-family:var(--font-body);font-size:calc(12.5px * var(--fscale));color:var(--bone);line-height:1.4}
 .gear-banner b{color:#3a6373}
 .gear-banner .gb-go{flex:none;color:#5a7d8c;font-size:calc(18px * var(--fscale))}
+/* E3 probe nudge (owner Decision 5) — same visual language as .gear-banner (tint-cool card, same border/
+   radius/spacing), composed with the app's existing atomic action classes (.cpc-act for the primary CTA,
+   .cnext-x for the dismiss ✕ — the SAME classes cProj/cResume dismiss controls use) rather than inventing
+   a whole new component: no exact "title+body+CTA+dismiss" banner pre-existed to reuse wholesale. */
+.probe-nudge{display:flex;align-items:flex-start;gap:10px;width:calc(100% - 32px);margin:0 16px 14px;padding:12px 14px;background:var(--tint-cool);border:1.5px solid var(--line2);border-radius:14px;text-align:start}
+.probe-nudge .pn-ico{flex:none;font-size:calc(22px * var(--fscale));line-height:1}
+.probe-nudge .pn-body{flex:1;min-width:0}
+.probe-nudge .pn-t{display:block;font-family:var(--font-body);font-size:calc(13.5px * var(--fscale));color:var(--bone)}
+.probe-nudge .pn-sub{margin:4px 0 8px;font-family:var(--font-body);font-size:calc(12px * var(--fscale));color:var(--smoke);line-height:1.4}
+.probe-nudge .pn-x{flex:none}
 .gear-group{margin-bottom:16px}
 .gear-group h4{font-family:var(--font-body);font-size:calc(14px * var(--fscale));color:var(--bone);margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--line2)}
 .gear-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:7px 0}

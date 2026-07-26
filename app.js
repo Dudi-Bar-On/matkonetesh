@@ -2073,6 +2073,51 @@ function eqmValidityWithKit(meta, kitOverride){
   });
   return { level: okPaths.length ? 'ok' : 'uncookable' };
 }
+
+// ═══ E3 probe nudge (owner Decision 5, 2026-07-26) · proactive one-time "register your probe" advisory ═══
+// A user who owns NO probe (neither a standalone device nor a device-integral hasProbe — the SAME O-7
+// satisfier set eqmProbeSatisfiedBy/eqmProbeAvailable above use) can be blocked from ~109 catalog items one
+// at a time. Rather than let them discover this item-by-item, a dismissible banner offers to register a
+// probe once. PURE ADVISORY — never blocks viewing/adding/cooking anything; only ever gates whether a
+// banner renders (syncProbeNudge, near syncGearBanner below).
+//
+// Trigger condition 2: "the owned kit has no probe capability at all". eqmProbeAvailable(row) is scoped to
+// ONE row's stageKind (the coarser question eqmValidity's WHY line needs); this predicate is coarser still
+// — kit-wide, no row at all — so it cannot reuse eqmProbeAvailable directly. It DOES reuse
+// eqmProbeSatisfiedBy(null) for the standalone half (kind-independent by construction — that function's own
+// comment in equipment.js), and widens the device-integral half from "one stageKind's candidates" to the
+// WHOLE owned kit — any owned device that could ever carry `hasProbe` (today: smoker/oven) counts, matching
+// the owner's own words ("especially for smokers and ovens") rather than assuming only smokers.
+function eqmProbeNudgeKitHasNone(){
+  if(typeof eqmProbeSatisfiedBy!=='function' || typeof equipList!=='function' || typeof propOf!=='function') return true;   // fail-safe: never nudge on an unreadable kit
+  if(eqmProbeSatisfiedBy(null)) return false;                          // a standalone probe alone already covers the whole kit
+  return !equipList().some(function(d){ return d && propOf(d,'hasProbe')===true; });
+}
+// Trigger condition 3: "a probe is the thing standing between owned-kit and cookable" — never count an item
+// already uncookable for some OTHER reason. eqmValidity(meta).level==='uncookable' means NO cited path is
+// currently ok; eqmValidityWithKit (E3 Task 4's injectable-kit what-if, immediately above) answers "would a
+// hypothetical probe make ANY path ok" WITHOUT mutating the real registry — the exact tool this question
+// needs, reused verbatim rather than re-deriving a second what-if mechanism. Scans askAllItems()
+// (cuts+specials+makes, the SAME enumeration the Ask feature already reads) and stops at the first match —
+// with ~109 probe-gapped items in real data this is never a full-catalog scan in the steady state.
+function eqmProbeNudgeUnlocksAny(){
+  if(typeof askAllItems!=='function' || typeof eqmValidity!=='function' || typeof eqmValidityWithKit!=='function' || typeof equipList!=='function') return false;
+  const withProbe = equipList().concat([{ id:'__probe-nudge-sim', cat:'probe', type:'other', name:'', cap:{} }]);
+  return askAllItems().some(function(meta){
+    return eqmValidity(meta).level==='uncookable' && eqmValidityWithKit(meta, withProbe).level==='ok';
+  });
+}
+// The full gate (owner Decision 5, all four ANDed): never dismissed, equipConfigured (R5 — zero equipment
+// noise until configured), no probe owned, at least one item a probe alone would unlock. Cheapest-first
+// ordering so the catalog's per-keystroke search re-render (catView() runs on every #q input, debounced)
+// never pays the catalog-scan cost once a user has dismissed the banner or already owns a probe — the two
+// steady states almost every render hits.
+function eqmProbeNudgeShouldShow(){
+  if(typeof store==='undefined' || store.get('mk-probe-nudge-dismissed')) return false;
+  if(typeof equipConfigured!=='function' || !equipConfigured()) return false;
+  if(!eqmProbeNudgeKitHasNone()) return false;
+  return eqmProbeNudgeUnlocksAny();
+}
 // The REAL impact count (spec §7.2 point 1): which items — across the ACTIVE plan (menuState().keys) AND
 // every SAVED event's menu — would flip from cookable (eqmValidity 'ok'/'blocked-default', i.e. NOT
 // already broken for some unrelated reason) to 'uncookable' once deviceId is removed. Dedupes by item KEY
@@ -2392,6 +2437,7 @@ function buildCatLanding(){
 }
 // ── catalog view controller: landing / category / gloss / fav / search ──
 function catView(mode){
+  try{ if(typeof syncProbeNudge==='function') syncProbeNudge(); }catch(e){}   // E3 probe nudge (owner D5) — re-synced on every catalog nav/search render
   const q=($("#q")&&$("#q").value||'').trim();
   if(!mode){ mode = q ? 'search' : (activeGroup? 'cat' : (filters.fav?'fav':'landing')); }
   const hide=ids=>ids.forEach(id=>{const e=$('#'+id); if(e) e.style.display='none';});
@@ -11030,6 +11076,37 @@ function syncGearBanner(){
       const b=$("#gearBanner"); if(b) b.addEventListener('click',()=>{ if(typeof openEquipment==='function') openEquipment(); });
     }
   } else host.innerHTML='';
+}
+
+// E3 probe nudge (owner Decision 5) — banner sync + its two actions. Host div is #cProbeNudge, at the top
+// of #mainContent in the catalog screen (build.py) — sibling of #catLanding, visible across every catalog
+// submode. Synced from catView() (app.js) on every navigation to catalog AND on every search re-render
+// (catView() runs on #q input, debounced), so it disappears the instant a probe is registered (return-to-
+// catalog re-runs catView → this) without any extra wiring at the add-device Save handler. Always rebuilds
+// innerHTML when shown (never short-circuits on host.firstChild, unlike syncGearBanner above) so the text
+// stays live-correct across a language switch mid-session — L()-generated, never a stale clone.
+function syncProbeNudge(){
+  const host=$("#cProbeNudge"); if(!host) return;
+  if(typeof eqmProbeNudgeShouldShow!=='function' || !eqmProbeNudgeShouldShow()){ host.innerHTML=''; return; }
+  host.innerHTML=`<div class="probe-nudge"><span class="pn-ico">🌡️</span><div class="pn-body"><b class="pn-t">${L('יש לך מדחום פנימי?','Have a probe thermometer?')}</b><p class="pn-sub">${L('הרבה מתכונים דורשים מדידת טמפ׳ פנימית. אם יש לך מדחום — רשום אותו וכל המתכונים האלה ייפתחו.','Many recipes need an internal-temperature reading. If you have one — register it and all those recipes unlock.')}</p><button class="cpc-act" id="pnGo" type="button">${L('רשום מדחום','Register probe')}</button></div><button class="cnext-x pn-x" id="pnX" type="button" aria-label="${L('אין לי','No probe')}">✕</button></div>`;
+  const go=$("#pnGo"); if(go) go.addEventListener('click', probeNudgeRegister);
+  const x=$("#pnX"); if(x) x.addEventListener('click', probeNudgeDismiss);
+}
+// primary action — deep-links into the REAL Equipment Manager probe-add flow (the SAME three steps
+// tests/e3-probe.spec.ts (b) drives by hand: openEquipment → header Add → the 'probe' category chip),
+// never a new add path. All three calls are synchronous (showPanel sets innerHTML then wires listeners in
+// the same tick — the established pattern throughout openEquipment), so no wait/rAF is needed between them.
+function probeNudgeRegister(){
+  if(typeof openEquipment==='function') openEquipment();
+  const add=document.querySelector('#panel #eqAddNew'); if(add) add.click();
+  const pick=document.querySelector('#panel [data-eqpick="probe"]'); if(pick) pick.click();
+}
+// dismiss — non-destructive, persists forever (store — the SAME mechanism #cResumeX/#cResumeProjX use for
+// their own one-time dismiss flags) — never shows again on this device.
+function probeNudgeDismiss(e){
+  if(e) e.stopPropagation();
+  store.set('mk-probe-nudge-dismissed', true);
+  if(typeof syncProbeNudge==='function') syncProbeNudge();
 }
 (()=>{ try{ syncGearBanner(); }catch(e){} })();
 (()=>{ const a=$("#cHomeAsk"); if(a) a.addEventListener('click',()=>{ if(typeof openAsk==='function') openAsk(); }); })();

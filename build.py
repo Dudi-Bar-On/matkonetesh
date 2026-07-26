@@ -281,6 +281,8 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <main id="mainContent" tabindex="-1">
+  <!-- E3 probe nudge (owner Decision 5) — dismissible, one-time; synced by syncProbeNudge() from catView() -->
+  <div id="cProbeNudge"></div>
   <!-- landing: category tiles -->
   <div id="catLanding"></div>
 
