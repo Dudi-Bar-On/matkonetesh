@@ -52,11 +52,12 @@ const EQUIP_CATS=[
     {key:'hooks',    he:'מספר ווים',   en:'Hooks',     kind:'num',  em:'🪝', tier:'pro', bounds:[1,200], alt:[]},
     {key:'waterPan', he:'מגש מים מובנה',en:'Water pan', kind:'bool', em:'💧', tier:'pro',
      def:{'ארון / קבינט':true,'WSM / חבית':true}},
-    // AMENDMENT O-7 (Task 3, spec Amendments block): device-integral probe availability — a device
-    // property, "especially for smokers and ovens" (the owner's own words). Verified live before adding
-    // this: no probeChannels-class prop existed anywhere in EQUIP_CATS (grepped), so this is genuinely new
-    // schema, not a reuse. No `def` — never assume a smoker has a built-in probe; the user states it.
-    {key:'hasProbe', he:'מדחום מובנה', en:'Built-in probe', kind:'bool', em:'🌡️', tier:'pro'},
+    // AMENDMENT O-7a (owner ruling 2026-07-26) REMOVED the `hasProbe`/'מדחום מובנה' device-integral prop
+    // that used to live here (added under O-7, spec Amendments block): a smoker's built-in "probe" is
+    // typically an ambient/chamber thermometer, not meat-internal, so it never actually satisfied
+    // `capability.probe` (equipment.js eqmProbeSatisfiedBy) — that capability is standalone-only now
+    // (EQUIP_CATS cat:'probe', e.g. MEATER/Inkbird). Do not re-add this prop as a probe-capability
+    // satisfier without a fresh owner ruling — see the spec's AMENDMENT O-7a block for the full rationale.
     // BUG-2 (Wave B) rider: capture the cabinet's OUTER dimensions and its SHELF dimensions as their own
     // structured fields — flat cap keys (dimH_cm/dimW_cm/dimD_cm, shelfW_cm/shelfD_cm), matching every
     // other prop on this device (dev.cap has no nested objects anywhere else). Two consumers:
@@ -90,9 +91,8 @@ const EQUIP_CATS=[
      def:{'ביתי':275,'דק':400,'פיצה':500}},
     {key:'fan',   he:'טורבו',      en:'Fan',      kind:'bool', em:'🌀', tier:'pro', def:{'ביתי':true}},
     {key:'steam', he:'אדים',       en:'Steam',    kind:'bool', em:'♨️', tier:'pro'},
-    // AMENDMENT O-7 (Task 3) — see the identical prop on 'smoker' above for the full comment; repeated
-    // here per the owner's own "especially for smokers AND ovens" wording.
-    {key:'hasProbe', he:'מדחום מובנה', en:'Built-in probe', kind:'bool', em:'🌡️', tier:'pro'},
+    // AMENDMENT O-7a removed the identical `hasProbe` device-integral prop that used to live here too —
+    // see the smoker category above for the full removal rationale.
    ]},
   {cat:'sousvide', he:'סו-ויד', en:'Sous-vide', icon:'🌊', acc:'#2b7fb8', accL:'#dcecf6', capEm:'', types:['טבילה (immersion)','מיכל ייעודי'], capKey:null, multiCap:{key:'baths', he:'נפחי אמבט (ל׳)', en:'Bath sizes (L)', uHe:'ל׳', uEn:'L', em:'🛁'},
    props:[
@@ -2075,23 +2075,35 @@ function eqmValidityWithKit(meta, kitOverride){
 }
 
 // ═══ E3 probe nudge (owner Decision 5, 2026-07-26) · proactive one-time "register your probe" advisory ═══
-// A user who owns NO probe (neither a standalone device nor a device-integral hasProbe — the SAME O-7
-// satisfier set eqmProbeSatisfiedBy/eqmProbeAvailable above use) can be blocked from ~109 catalog items one
-// at a time. Rather than let them discover this item-by-item, a dismissible banner offers to register a
-// probe once. PURE ADVISORY — never blocks viewing/adding/cooking anything; only ever gates whether a
-// banner renders (syncProbeNudge, near syncGearBanner below).
+// A user who owns NO standalone probe (AMENDMENT O-7a, owner ruling 2026-07-26, superseding O-7's
+// device-integral branch — the SAME satisfier eqmProbeSatisfiedBy/eqmProbeAvailable above use;
+// device-integral no longer counts at all, see equipment.js) can be blocked from ~109 catalog items one at
+// a time. Rather than let them discover this item-by-item, a dismissible banner offers to register a probe
+// once. PURE ADVISORY — never blocks viewing/adding/cooking anything; only ever gates whether a banner
+// renders (syncProbeNudge, near syncGearBanner below).
 //
 // Trigger condition 2: "the owned kit has no probe capability at all". eqmProbeAvailable(row) is scoped to
 // ONE row's stageKind (the coarser question eqmValidity's WHY line needs); this predicate is coarser still
-// — kit-wide, no row at all — so it cannot reuse eqmProbeAvailable directly. It DOES reuse
-// eqmProbeSatisfiedBy(null) for the standalone half (kind-independent by construction — that function's own
-// comment in equipment.js), and widens the device-integral half from "one stageKind's candidates" to the
-// WHOLE owned kit — any owned device that could ever carry `hasProbe` (today: smoker/oven) counts, matching
-// the owner's own words ("especially for smokers and ovens") rather than assuming only smokers.
+// — kit-wide, no row at all. Post-O-7a both collapse to the exact same underlying call
+// (eqmProbeSatisfiedBy(null)) because standalone satisfaction is already kit-wide and row-independent by
+// construction — there is no per-device/per-category scan left to widen. (The OLD device-integral "any
+// owned smoker/oven counts, kit-wide" scan this comment used to describe was the E3 review's over-widening
+// finding — a device from an UNRELATED category could wrongly suppress the nudge for a stage it has
+// nothing to do with. O-7a removes the branch that was being widened, not just the widening itself, so the
+// bug class is now structurally impossible, not merely narrowed.)
 function eqmProbeNudgeKitHasNone(){
-  if(typeof eqmProbeSatisfiedBy!=='function' || typeof equipList!=='function' || typeof propOf!=='function') return true;   // fail-safe: never nudge on an unreadable kit
-  if(eqmProbeSatisfiedBy(null)) return false;                          // a standalone probe alone already covers the whole kit
-  return !equipList().some(function(d){ return d && propOf(d,'hasProbe')===true; });
+  // fail-safe: if eqmProbeSatisfiedBy isn't callable (a broken/mid-load environment), TREAT the kit as
+  // having no probe rather than silently assuming it does — this nudge is pure advisory (never blocks
+  // anything, see the header comment above), so erring toward SHOWING it is the harmless direction; erring
+  // toward hiding it would silently withhold guidance the user needs. (Previously commented "never nudge
+  // on an unreadable kit" while `return true` here actually causes the OPPOSITE — the comment was
+  // inverted relative to the code; fixed here, flagged by review.)
+  if(typeof eqmProbeSatisfiedBy!=='function') return true;
+  // AMENDMENT O-7a: probe satisfaction is standalone-only and kit-wide by construction — this is now the
+  // SAME single check eqmProbeAvailable(row) collapses to above. The previous per-device
+  // `equipList().some(...propOf(d,'hasProbe')...)` scan for a device-integral flag is DEAD: that property
+  // no longer exists in EQUIP_CATS, and under O-7a it never satisfied this capability even when it did.
+  return !eqmProbeSatisfiedBy(null);
 }
 // Trigger condition 3: "a probe is the thing standing between owned-kit and cookable" — never count an item
 // already uncookable for some OTHER reason. eqmValidity(meta).level==='uncookable' means NO cited path is

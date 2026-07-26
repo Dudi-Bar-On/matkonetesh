@@ -142,46 +142,51 @@ function eqmOwnershipRow(row, list){
     // cap.maxTempC = the cited stage temp; a FLOOR the device's own maxC must reach — never an upper
     // bound on cooking temp (review finding M4 — the name reads like a ceiling but it is a minimum).
     if(cap.maxTempC){ const mx=Number(propOf(dev,'maxC')); if(mx>0 && mx<cap.maxTempC) return false; }
-    // AMENDMENT O-7 (Task 3): probe availability — device-integral (THIS candidate's own `hasProbe`
-    // property, EQUIP_CATS smoker/oven) OR any owned standalone probe device (EQUIP_CATS cat:'probe',
-    // e.g. a MEATER/Inkbird) — a standalone probe is portable, so it satisfies regardless of which
-    // candidate device ends up serving the row.
+    // AMENDMENT O-7a (owner ruling 2026-07-26, superseding O-7's device-integral branch): probe
+    // availability is STANDALONE-ONLY — any owned EQUIP_CATS cat:'probe' device (e.g. a MEATER/Inkbird),
+    // never THIS candidate's own device-integral state. Rationale (owner, in conversation): a
+    // device-integral "probe" on a smoker/oven is typically an AMBIENT/chamber thermometer, not a
+    // meat-internal one, so it never actually satisfied the internal-temp (bcheck) gate this capability
+    // guards — and this realigns with the app's own display semantics (`hasCat('probe')`, app.js:958). A
+    // standalone probe is portable, so it satisfies regardless of which candidate device ends up serving
+    // the row — `dev` is accepted only for call-signature compatibility below, never consulted.
     if(cap.probe && !eqmProbeSatisfiedBy(dev, list)) return false;
     return true;
   });
   return meets ? 'ok' : 'partial';                          // owns the kind but no unit clears the capability
 }
 
-// AMENDMENT O-7 satisfier (Task 3, spec Amendments block) — the ONE definition of "is a probe available",
-// shared by eqmOwnershipRow's per-device gate above and eqmProbeAvailable's kit-wide gap check below.
-// Device-integral: EQUIP_CATS' `hasProbe` boolean prop, authored on 'smoker' and 'oven' (the owner's own
-// words carrying the amendment: "especially for smokers and ovens") — verified live before adding it: no
-// probeChannels-class prop existed on ANY EQUIP_CATS category before this task (grepped app.js), so this
-// is new schema, not a reused field, exactly as the plan's "verify existing props first" instruction asked.
-// Standalone: ANY owned device of EQUIP_CATS' own first-class 'probe' category (cat:'probe' — a
-// MEATER/Inkbird/instant-read/etc, the app's REAL "do you own a thermometer" registry entry; the plan's
-// brief guessed this would live in EQUIP_OTHER_ITEMS — grepped and confirmed it does NOT: EQUIP_OTHER_ITEMS
-// carries no probe/thermometer entry at all, so the real satisfier is this dedicated device category). A
-// standalone probe is a portable tool, so it satisfies ANY row regardless of which device physically
-// serves the stage — never gated on `dev` at all.
-// E3 Task 4: same optional `list` override as eqmOwnershipRow above — the standalone-probe check must
-// also read the WHAT-IF kit, never the live equipList(), or a what-if that removes the kit's only probe
-// device would still report it available.
+// AMENDMENT O-7a satisfier (owner ruling 2026-07-26, superseding O-7's device-integral branch, spec
+// Amendments block) — the ONE definition of "is a probe available", shared by eqmOwnershipRow's
+// per-device gate above and eqmProbeAvailable's kit-wide gap check below. STANDALONE-ONLY: ANY owned
+// device of EQUIP_CATS' own first-class 'probe' category (cat:'probe' — a MEATER/Inkbird/instant-read/
+// etc, the app's REAL "do you own a thermometer" registry entry; EQUIP_OTHER_ITEMS carries no
+// probe/thermometer entry at all, so this dedicated device category is the real satisfier). A standalone
+// probe is a portable tool, so it satisfies ANY row regardless of which device physically serves the
+// stage — never gated on `dev` at all.
+// Culinary rationale for dropping the device-integral branch (owner, in conversation, 2026-07-26): "my
+// original intention when I said probe I meant a standalone probe preferred wireless like my MEATER and
+// Inkbird … focus on this kind of probes and not a device integrated one." A smoker/oven's built-in
+// "probe" is typically an AMBIENT (chamber) thermometer, not a meat-internal one, so it never truly
+// cleared the internal-temp (bcheck) gate `capability.probe` guards. This also realigns with the app's
+// own display semantics — `hasCat('probe')` (app.js:958, homeGear's `hasProbe` field) was already
+// standalone-based and is UNRELATED to the EQUIP_CATS `hasProbe` boolean prop this amendment removes from
+// smoker/oven (app.js EQUIP_CATS) — same field name, two different things; only the latter is deleted.
+// `dev` remains in the signature only for call-site compatibility with eqmOwnershipRow's per-candidate
+// call above — it is never consulted.
+// E3 Task 4 (unchanged by O-7a): same optional `list` override as eqmOwnershipRow above — the
+// standalone-probe check must also read the WHAT-IF kit, never the live equipList(), or a what-if that
+// removes the kit's only probe device would still report it available.
 function eqmProbeSatisfiedBy(dev, list){
-  return (typeof equipByCat==='function' && equipByCat('probe', list).length>0) ||
-         (!!dev && typeof propOf==='function' && propOf(dev,'hasProbe')===true);
+  return typeof equipByCat==='function' && equipByCat('probe', list).length>0;
 }
-// eqmProbeAvailable(row) — the SAME O-7 satisfier set, answering "is probe available to ANY candidate
-// device for this row's kind" (or standalone, kit-wide) rather than one specific dev — the coarser
-// question eqmValidity's WHY line needs (app.js, Task 3): a failing row may fail on probe, on an unrelated
-// capability, or both. Checking standalone FIRST (kit-wide, independent of which candidates are owned)
-// before falling back to a per-candidate integral scan avoids the false negative of "owns a probe but owns
-// zero smokers" reporting a probe gap when the real gap is the device itself.
+// eqmProbeAvailable(row) — the SAME O-7a satisfier, now COLLAPSED (standalone-only means probe
+// availability is kit-wide and row/`dev`-independent by construction): every candidate device would
+// resolve to the identical eqmProbeSatisfiedBy(null) answer regardless of which one `dev` is, so the old
+// per-candidate `cookerCandidates(...).some(...)` scan is DEAD code under O-7a — removed. `row` stays in
+// the signature for call-site compatibility (every caller passes a row/`null` question) but is no longer read.
 function eqmProbeAvailable(row){
-  if(eqmProbeSatisfiedBy(null)) return true;                // standalone alone already covers it
-  const stageKind = KIND_TO_STAGE[row && row.kind];
-  const owned = (stageKind && typeof cookerCandidates==='function') ? cookerCandidates(stageKind) : [];
-  return owned.some(function(dev){ return eqmProbeSatisfiedBy(dev); });
+  return eqmProbeSatisfiedBy(null);
 }
 
 // ── the ONE fit arithmetic (O-6). deviceOccupancy (app.js) delegates here in E2 Task 4, and

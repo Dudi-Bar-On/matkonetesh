@@ -4,8 +4,15 @@ import { test, expect, seedApp } from './_fixtures';
 // follow-on to E3 Task 3 / Amendment O-7, commit 378cfde). PURE ADVISORY — must never block viewing,
 // adding, or cooking anything; it only ever gates whether a dismissible banner renders.
 //
+// AMENDMENT O-7a (owner ruling 2026-07-26, superseding O-7's device-integral branch — spec's AMENDMENT
+// O-7a block) — probe satisfaction is now STANDALONE-ONLY. This also fixes the E3 review's "over-widening"
+// finding: the OLD kit-wide device-integral scan let an owned device from an UNRELATED category (e.g. an
+// oven) suppress the nudge for a completely unrelated stage's probe gap (e.g. a smoker's). O-7a removes
+// the device-integral branch entirely, so that bug class is now structurally impossible — see test 5b
+// (inverted) and the new multi-category regression test 5c below.
+//
 // REUSED MACHINERY (never reinvented — see tests/e3-probe.spec.ts for the underlying satisfaction logic):
-//   - eqmProbeSatisfiedBy(dev,list) / eqmProbeAvailable(row)  (equipment.js, E3 Task 3, O-7's satisfier set)
+//   - eqmProbeSatisfiedBy(dev,list) / eqmProbeAvailable(row)  (equipment.js, standalone-only under O-7a)
 //   - eqmValidity(meta) / eqmValidityWithKit(meta,kitOverride) (app.js, E3 Task 3+4 — the injectable-kit
 //     what-if is reused here, unmodified, to answer "would a hypothetical probe alone unlock this item").
 //   - openEquipment() → #eqAddNew → [data-eqpick="probe"]      (the REAL Equipment Manager add flow).
@@ -18,8 +25,12 @@ import { test, expect, seedApp } from './_fixtures';
 //     missing) — so under this kit spec-4 is eqmValidity level 'uncookable' today, and eqmValidityWithKit
 //     with a hypothetical probe added flips it to 'ok'. The cleanest real item for isolating "a probe alone
 //     would unlock this" (trigger condition 3) from "uncookable for some other reason" (never counted).
-//   SMOKER_INTEGRAL_PROBE — the SAME smoker with EQUIP_CATS' `hasProbe` bool already set true (E3 Task 3's
-//     device-integral satisfier) — negative fixture (b): kit already has probe capability everywhere.
+//   SMOKER_INTEGRAL_PROBE — the SAME smoker with a legacy/stray `cap.hasProbe:true` (pre-O-7a data, or the
+//     removed EQUIP_CATS prop's old shape) — under O-7a this is now a POSITIVE trigger fixture: it still
+//     has NO real (standalone) probe capability, so the nudge must still SHOW (test 5b, inverted).
+//   SMOKER_AND_OVEN_STALE_FLAGS — multi-category regression fixture (test 5c): a smoker AND an oven, BOTH
+//     carrying stale `cap.hasProbe:true`, no standalone anywhere — proves the nudge shows regardless of how
+//     many device categories or stray integral flags are present (the over-widening finding, above).
 
 const boot = async (page: any, kit: any[] | null) => {
   const kv: Record<string, string> = { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he') };
@@ -32,6 +43,14 @@ const boot = async (page: any, kit: any[] | null) => {
 
 const SMOKER_NO_PROBE = [{ id: 'd1', cat: 'smoker', type: 'ארון / קבינט', name: 'ארון', cap: { racks: 4, areaCm2: 6000, maxC: 150 } }];
 const SMOKER_INTEGRAL_PROBE = [{ id: 'd2', cat: 'smoker', type: 'ארון / קבינט', name: 'ארון-פרו', cap: { racks: 4, areaCm2: 6000, maxC: 150, hasProbe: true } }];
+// O-7a multi-category regression (test 5c) — a smoker AND an oven, BOTH carrying a stale/legacy
+// cap.hasProbe:true, no standalone probe anywhere. Under the OLD (pre-O-7a) kit-wide device-integral scan
+// this would have wrongly suppressed the nudge (E3 review's over-widening finding); under O-7a neither
+// device's flag counts at all, so the nudge must still show.
+const SMOKER_AND_OVEN_STALE_FLAGS = [
+  { id: 'd3', cat: 'smoker', type: 'ארון / קבינט', name: 'ארון', cap: { racks: 4, areaCm2: 6000, maxC: 150, hasProbe: true } },
+  { id: 'd4', cat: 'oven', type: 'ביתי', name: 'תנור', cap: { areaCm2: 4400, maxC: 275, hasProbe: true } },
+];
 
 const goCatalog = async (page: any) => {
   await page.click('button[data-cnav="catalog"]');
@@ -115,10 +134,22 @@ test.describe('E3 probe nudge — trigger + render (real UI)', () => {
     await expect(page.locator('#cProbeNudge .probe-nudge')).toHaveCount(0);
   });
 
-  test('5b. negative — a kit that already has a probe (device-integral hasProbe) never shows the nudge', async ({ page }) => {
+  test('5b. O-7a INVERTED — a kit with device-integral hasProbe (no standalone) still SHOWS the nudge — device-integral never satisfies', async ({ page }) => {
     await boot(page, SMOKER_INTEGRAL_PROBE);
     await goCatalog(page);
-    await expect(page.locator('#cProbeNudge .probe-nudge')).toHaveCount(0);
+    await page.waitForSelector('#cProbeNudge .probe-nudge', { timeout: 8000 });
+    await expect(page.locator('#cProbeNudge .probe-nudge')).toHaveCount(1);
+  });
+
+  test('5c. O-7a multi-category regression (subsumes the E3 review over-widening finding) — a smoker AND an oven, no standalone probe → the nudge SHOWS regardless (built-ins never count)', async ({ page }) => {
+    await boot(page, SMOKER_AND_OVEN_STALE_FLAGS);
+    // fixture minimality: confirm no standalone probe device is present, and both integral flags are stray data only
+    expect(await page.evaluate(`equipByCat('probe').length`)).toBe(0);
+    await goCatalog(page);
+    await page.waitForSelector('#cProbeNudge .probe-nudge', { timeout: 8000 });
+    const titleTxt = await page.locator('#cProbeNudge .pn-t').innerText();
+    expect(titleTxt).toBe('יש לך מדחום פנימי?');
+    await page.screenshot({ path: 'mockups/e3-probe-nudge-multi-category.png' });
   });
 
   test('6. Hebrew check — banner renders in Hebrew with no English leak', async ({ page }) => {

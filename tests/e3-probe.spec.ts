@@ -13,12 +13,17 @@ import { test, expect, seedApp } from './_fixtures';
 // before rest/bcheck (SAME-KIND-STAGE ASSUMPTION documented at the derivation site: itemStages emits at
 // most one row per REQ_KIND today, so "the last row pushed" is unambiguous).
 //
-// SATISFACTION (equipment.js, eqmOwnershipRow + the new eqmProbeSatisfiedBy/eqmProbeAvailable helpers):
-// device-integral (a NEW `hasProbe` bool prop on EQUIP_CATS smoker+oven — verified live before adding it
-// that no probeChannels-class prop existed anywhere in EQUIP_CATS) OR any owned standalone probe device
-// (EQUIP_CATS' own first-class 'probe' category — a MEATER/Inkbird/instant-read/etc; EQUIP_OTHER_ITEMS,
-// where the plan's brief guessed the key might live, carries NO probe/thermometer entry at all — grepped
-// and confirmed).
+// AMENDMENT O-7a (owner ruling 2026-07-26, superseding O-7's device-integral branch — see the spec's
+// AMENDMENT O-7a block) — probe capability is now STANDALONE-ONLY: a device-integral `hasProbe` (a
+// smoker/oven's built-in, typically-ambient thermometer) NEVER satisfies `capability.probe`; the property
+// itself is removed from EQUIP_CATS smoker/oven (app.js). This file's tests below are updated to match:
+// test (c) is INVERTED (device-integral does NOT satisfy) and the real-click UI flow that used to toggle
+// it is replaced with a check that the form field is gone.
+//
+// SATISFACTION (equipment.js, eqmOwnershipRow + eqmProbeSatisfiedBy/eqmProbeAvailable): ANY owned
+// standalone probe device — EQUIP_CATS' own first-class 'probe' category (a MEATER/Inkbird/instant-read/
+// etc; EQUIP_OTHER_ITEMS carries NO probe/thermometer entry at all — grepped and confirmed) — ONLY. A
+// device-integral flag, even if present in stored data (e.g. stale pre-O-7a records), is never consulted.
 //
 // GAP SURFACING (app.js, eqmValidity): an unmet probe requirement on a failing row is surfaced as its own
 // {kind:'probe'} gap line (EQM_KIND_HE.probe = ['מדחום','Probe']), distinct from the device-kind gap, so
@@ -149,9 +154,10 @@ test.describe('ownership + WHY panel — real clicks', () => {
     expect(await page.locator('#panel .eq-inv-panel').count()).toBe(0);
   });
 
-  // ── (c) device-integral probe — the NEW EQUIP_CATS `hasProbe` prop on smoker/oven, satisfies WITHOUT
-  // any standalone probe owned. Toggled on via the real Equipment Manager edit form's Advanced section. ─
-  test('(c) a device-integral probe (hasProbe on the owned smoker, no standalone) satisfies the gap — real clicks', async ({ page }) => {
+  // ── (c) AMENDMENT O-7a — device-integral is NOT a satisfier. The Equipment Manager's Advanced section
+  // no longer offers a `hasProbe` toggle at all (removed from EQUIP_CATS smoker/oven); confirm that via a
+  // real click into the edit form, then confirm ownership stays exactly as (a) left it — unowned probe. ──
+  test('(c) O-7a — the device-integral hasProbe field is gone from the real Equipment Manager form, and the smoker alone (no standalone) still fails ownership — real clicks', async ({ page }) => {
     await boot(page, SMOKER_NO_PROBE);
     // pre-condition: partial, exactly as (a) established
     const before = await page.evaluate(`EQM.ownership(deriveRequires(resolveItem('spec-4'), 'smoke'))`) as any;
@@ -163,21 +169,29 @@ test.describe('ownership + WHY panel — real clicks', () => {
     await page.waitForSelector('#panel #eqSave');
     const adv = page.locator('#panel details.eq-adv');
     await adv.locator('summary').click();
-    await page.selectOption('#panel #eqProp-hasProbe', 'true');
-    await page.click('#panel #eqSave');
-    await page.waitForFunction(`(function(){ var d=equipList().find(function(x){return x.id==='d1';}); return d && d.cap && d.cap.hasProbe===true; })()`);
+    expect(await page.locator('#panel #eqProp-hasProbe').count()).toBe(0);   // O-7a: field removed, real DOM check
+    // #eqBack (the edit sub-form's own "חזרה" ✕, app.js `eq-sheet-x`/`#eqBack`) returns to the device LIST
+    // still inside #panel — NOT the same control as `.x` (the generic panel-top close, only reachable once
+    // back at the list, per test (b)'s identical two-step close above). Both real clicks, no waitForTimeout.
+    await page.click('#panel #eqBack');
+    await page.waitForSelector('#panel #eqAddNew');
+    await page.click('#panel .x');
+    await page.waitForFunction(`!document.querySelector('#panel').classList.contains('open')`);
 
     const after = await page.evaluate(`EQM.ownership(deriveRequires(resolveItem('spec-4'), 'smoke'))`) as any;
-    expect(after.ok).toBe(true);   // the SAME smoker, no standalone probe added — the integral prop alone satisfies it
+    expect(after.ok).toBe(false);   // nothing changed the kit — still unsatisfied; no way left to set it via the smoker
   });
 
-  test('(c) unit-level confirmation — a device seeded with hasProbe:true satisfies with NO standalone owned', async ({ page }) => {
+  // ── (c) unit-level — INVERTED for O-7a: a device carrying legacy/stray `cap.hasProbe:true` data (e.g. a
+  // record saved before this amendment shipped) must NOT satisfy the probe requirement — device-integral
+  // is never a satisfier, regardless of how the flag got onto the device. ──────────────────────────────
+  test('(c) O-7a INVERTED — a device seeded with legacy hasProbe:true does NOT satisfy, with no standalone owned', async ({ page }) => {
     const SMOKER_INTEGRAL = [{ id: 'd2', cat: 'smoker', type: 'ארון / קבינט', name: 'ארון-פרו', cap: { racks: 4, areaCm2: 6000, maxC: 150, hasProbe: true } }];
     await boot(page, SMOKER_INTEGRAL);
     expect(await page.evaluate(`equipByCat('probe').length`)).toBe(0);   // fixture minimality: confirm no standalone is present
     const r = await page.evaluate(`EQM.ownership(deriveRequires(resolveItem('spec-4'), 'smoke'))`) as any;
-    expect(r.ok).toBe(true);
-    expect(r.partial).toEqual([]);
+    expect(r.ok).toBe(false);                                   // O-7a: device-integral never satisfies, even with the legacy prop present
+    expect(r.partial.map((x: any) => x.kind)).toEqual(['smoker']);
   });
 });
 
