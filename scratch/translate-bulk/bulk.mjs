@@ -12,13 +12,16 @@
 //     Stage 1 of this mission): mtSafe (fraction-folded), Hebrew-leak, unit-literal (G-T2),
 //     safety-lexicon (G-T3).
 //
-// SOURCE SET (mission Stage 2): the Hebrew keys of lang/en.json + lang/en.data.json — this app's full
-// translatable set. Five sub-sections, because lang/<lang>.json has internal structure:
+// SOURCE SET (mission Stage 2; extended v268 T8 setup — see "names" below): the Hebrew keys of
+// lang/en.json + lang/en.data.json — this app's full translatable set. Six sub-sections, because
+// lang/<lang>.json has internal structure:
 //   chrome        — en.json's regular (non "__"-prefixed) top-level keys
 //   chrome_units  — en.json.__units__ (short UI unit tokens: "min", "kg", "selected", ...)
 //   chrome_pre    — en.json.__pre__ (short UI prefix tokens: "Step", "Edition")
 //   chrome_html   — en.json.__html__ (contains inline HTML, e.g. "<b>cooking</b>" — the translation
 //                   prompt gets an extra clause telling the model to preserve tags verbatim)
+//   names         — en.json.__names__ (recipe/category/cut/make display names, he->eng; consumed at
+//                   runtime by itemName() reading getDict().__names__[m.heb] directly — spec I-D)
 //   data          — en.data.json (the ~3677-entry recipe/content corpus)
 // __meta__ is DELIBERATELY EXCLUDED — it is not a Hebrew-keyed translatable dict, it is the target
 // language's own descriptor ({name, dir}), already correctly present in every lang/<lang>.json file
@@ -134,6 +137,13 @@ function buildWorkList(lang) {
     { id: 'chrome_units', enObj: en.__units__ || {}, targetObj: target.__units__ || {}, html: false },
     { id: 'chrome_pre', enObj: en.__pre__ || {}, targetObj: target.__pre__ || {}, html: false },
     { id: 'chrome_html', enObj: en.__html__ || {}, targetObj: target.__html__ || {}, html: true },
+    // names — v268 T8 setup (spec §12/I-D): recipe/category/cut/make display names, harvested by the
+    // extractor into lang/_extracted.json's __names__ sub-map and copied into en.json.__names__ (he->eng,
+    // 24 entries today). itemName() (app.js ~8564) reads getDict().__names__[m.heb] directly for fr/de/
+    // es/it — NOT a flat he␟ctx L/t key — so it needs its own section here rather than folding into
+    // 'chrome'. merge.mjs writes this section's staged entries into target.__names__[he], mirroring the
+    // chrome_units/chrome_pre/chrome_html pattern.
+    { id: 'names', enObj: en.__names__ || {}, targetObj: target.__names__ || {}, html: false },
     { id: 'data', enObj: enData, targetObj: targetData, html: false },
   ];
 
