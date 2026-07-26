@@ -127,6 +127,10 @@ test('7 (bonus, closes the save-path gap): the equipment form itself persists fr
   const advOpen = await page.evaluate(`!!document.querySelector('#panel .eq-adv').open`);
   if (!advOpen) await page.click('#panel .eq-adv summary');
   await page.waitForSelector('#panel #eqProp-loadedWood');
+  // Finding 2 (review, minor): a kind:'text' field holding Hebrew wood names must not pop a numeric
+  // mobile keyboard — it must NOT inherit inputmode="decimal" from the generic numeric-prop branch.
+  const im = await page.getAttribute('#panel #eqProp-loadedWood', 'inputmode');
+  expect(im).not.toBe('decimal');
   await page.fill('#panel #eqProp-loadedWood', 'היקורי');
   await page.click('#panel #eqSave');
   await page.waitForFunction(`(equipList()[0].cap||{}).loadedWood==='היקורי'`);
@@ -144,4 +148,47 @@ test('8 (bonus, §10.20 i18n wiring): the fr/de/es dict entries are actually rea
   await boot(page, undefined, 'fr');
   const fr = await smokeRow(page).locator('.wp-body small').innerText();
   expect(fr).toContain('Vérifiez/chargez un bois adapté');
+});
+
+// Fixture-minimality gap (code review, commit 71052d8): tests 1-8 above ALL use cut-1 (brisket,
+// wood="אלון/היקורי") — a wood-bearing recipe. The gate at the review-flagged line (app.js ~7085) reads
+// `if(cwood){...}` — any TRUTHY wood, including the "no wood" sentinel string "ללא" that real
+// CUTS/SPECIALS carry (goose liver, veal brain, romaine hearts, halloumi, banana, biltong — data.py).
+// Those items still have smt/smh (a smoke stage exists) but the recipe explicitly calls for NO wood, so
+// the advisory nagging "check/load a suitable wood: ללא" is nonsensical. cut-74 (Goose Liver, data.py
+// n=74, cat="איברים פנימיים"/offal) is used here: wood="ללא", smt=110/smh=0.3 (has a smoke stage), and —
+// critically — offal's methodRules default to ['grill'] (not smoke), so the kit below deliberately owns
+// ONLY a smoker whose TYPE ('ארון / קבינט', cabinet) is excluded from canGrill()'s smoker-type allowlist
+// (app.js ~957: קמאדו/קטל/WSM/אופסט only) — no sous-vide, no grill device — so canGrill()===false and
+// canSV()===false, leaving 'smoke' as the ONLY gear-capable valid combo: gearAwareDefault naturally
+// auto-selects the smoke method on this smoker-only kit (verified by reading app.js's methodRules /
+// canGrill / gearAwareDefault — not assumed), giving a real .wp-smoke row without forcing any method
+// override. loadedWood is left unset (empty) — the exact precondition that makes the buggy gate fire.
+test('9 (Finding-1 fixture-minimality fix): a wood="ללא" (no-wood) recipe never shows the wood advisory, even with an empty loadedWood', async ({ page }) => {
+  const kit = JSON.stringify([
+    { id: 'sm2', cat: 'smoker', type: 'ארון / קבינט', name: 'הארון שלי', cap: { racks: 1 } },
+  ]);
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  await page.evaluate(`(function(){
+    equipSave(${kit});
+    equipSetConfigured();
+    saveMenu({guests:4,appetite:'reg',kosher:false,keys:['cut-74'],sides:[],drinks:[],desserts:[],gpm:0});
+    setItemCooker('cut-74','smoke','sm2');
+    store.set('mk-tlserve','19:00');
+    store.set('mk-tlview','plan');
+    openTimeline();
+  })()`);
+  await page.waitForSelector('#panel .workplan');
+  // sanity: the gear-adapted default really did select the smoke-only method for this offal item (guards
+  // the whole test against a silent method-selection drift making the assertion vacuous for the wrong reason).
+  await page.waitForSelector('#panel .wp-row.wp-smoke');
+  const row = page.locator('#panel .wp-row.wp-smoke');
+  const txt = await row.innerText();
+  expect(txt).not.toContain('🪵');
+  expect(txt).not.toContain('בדוק וטען');
+  expect(txt).not.toContain('המתכון מבקש');
+  // the specific nonsensical pre-fix nag this test guards against: "Check/load a suitable wood: ללא"
+  expect(txt).not.toContain('ללא');
+  await row.scrollIntoViewIfNeeded();
+  await page.screenshot({ path: 'scratch/wood-advisory-nowood-absent-390x844.png' });   // DoD §3.8/§3.9 evidence
 });

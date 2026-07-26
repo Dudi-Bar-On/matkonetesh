@@ -7082,7 +7082,7 @@ function renderTimelinePanel(){
           // on cat here (rather than kind alone) avoids an eternally-unfixable advisory on a kettle-as-smoker.
           if(s.kind==='smoke'){
             const cwood=c.m.kind==='cut'?c.m.obj.wood:(c.profile&&c.profile.wood);
-            if(cwood){
+            if(cwood&&cwood!=='ללא'){
               const smDev=cookerFor(c.m.key,'smoke',_ckScope);
               if(smDev && smDev.cat==='smoker'){
                 // normalize: trim + collapse internal spaces; a match = the loaded string equals or is
@@ -8170,7 +8170,11 @@ function openEquipment(){
         // all (the browser strips non-numeric characters as you type), which would silently defeat propParse's
         // unit-suffix handling on save. inputmode="decimal" still hints a numeric mobile keyboard for the
         // common bare-number case; propParse validates/converts whatever text ultimately lands here.
-        return `<div class="eq-vfield">${lbl}<input id="eqProp-${esc(p.key)}" class="eq-vin" type="text" inputmode="decimal" value="${esc(dv)}" placeholder="${dflt!==undefined?esc(String(dflt)):''}"></div>`;
+        // p.kind==='text' props (e.g. loadedWood) hold free-text Hebrew content (never numeric — doSave's
+        // kind:'text' branch stores it verbatim, propParse never runs on it), so inputmode is omitted here
+        // rather than hinting a numeric keyboard for a field that will never hold a number (review Finding 2).
+        const _im=p.kind==='text'?'':' inputmode="decimal"';
+        return `<div class="eq-vfield">${lbl}<input id="eqProp-${esc(p.key)}" class="eq-vin" type="text"${_im} value="${esc(dv)}" placeholder="${dflt!==undefined?esc(String(dflt)):''}"></div>`;
       };
       const _props=(cm(nc).props||[]);
       const proSpecs=_props.filter(function(p){return p.tier==='pro';});
