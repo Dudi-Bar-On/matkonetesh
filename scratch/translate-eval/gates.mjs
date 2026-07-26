@@ -112,30 +112,63 @@ export function hebrewLeak(text) {
 // like מלח/מלפפון), but actually functional after a final Hebrew letter. Follow-up finding (1) (the
 // `°F` rule's \b false-matching German "für") remains untouched — no Spanish entry trips it (no
 // Spanish word shaped f+non-ASCII follows a bare degree sign in the corpus).
+//
+// ITALIAN forms added 2026-07-26 (bulk mission Italian-finisher, first of the 23-language queue) on the
+// SAME evidence-based, non-exhaustive footing as fr/de/es. Classifying the 296 it.failed.json rejects
+// (English-pivot translategemma:27b) found the dominant class was correctly-translated spelled-out
+// Italian unit words the table didn't recognize — a unitLiteral follow-word frequency count over the
+// mismatched numbers showed "ore" (133, hours plural), "minuti" (116, minutes plural) and "ora" (3,
+// hour singular) as the overwhelming majority, the exact French heure(s)/German Stunden/Spanish
+// horas shape yet again. Added Italian time/mass/volume/length words (ora/ore, minuto/minuti,
+// grammo/grammi, chilo/chilogramm[io], millilitro/millilitri, litro/litri, centimetro/centimetri,
+// millimetro/millimetri, libbra/libbre, oncia/once, pollice/pollici, piede/piedi) and a spelled-out
+// Italian temperature word "gradi" (plural only — see next note), matching the full es family set even
+// where a given word wasn't itself in the reject sample, per this file's convention. The universal
+// symbol forms (g/kg/ml/l/cm/mm/°C) were already covered by the pre-existing rules and are untouched.
+// DELIBERATELY EXCLUDED — the bare Italian kg-plural colloquialism "chili": it was tried and then
+// removed after the fr/de/es regression pass caught it as a REAL collision — German/Italian recipes
+// write "1 Chili" for ONE CHILI PEPPER, and "chili"->mass_metric misread "1 Chili" as 1 kilogram,
+// flipping 5 de.staged entries pass->FAIL (e.g. "1 צ'ילי" -> "1 Chili"). "chilo"/"chilogramm[io]" cover
+// the kg meaning safely (they don't collide with the pepper); the rare Italian "2 chili di farina" kg-
+// plural falls back instead of risking a mass<->pepper safety-adjacent misread. Verified: removing the
+// bare "chili" token returns the fr/de/es delta to 0.
+// GRADI SCOPING (deliberate, to protect the fr/de/es regression): mapped ONLY the Italian plural
+// "gradi" -> tempC, NOT the singular "grado", because Spanish "grado(s)" would then cross-match and
+// flip Spanish results (the regression gate below requires 0 fr/de/es flips). Italian recipe
+// temperatures are virtually always plural ("175 gradi"), so this loses no real Italian coverage while
+// keeping the addition inert for es. "gradi" was not in the it reject sample (Italian output uses the
+// °C symbol there); it is added per the mission's explicit temperature instruction + Italian
+// orthography, scoped as above. SECONDS deliberately NOT added: there is no time_sec family anywhere in
+// this table (fr/de/es never added one — the de-finisher explicitly let a real שנ'/seconds defect fail
+// rather than invent one), and adding an Italian secondi word with no matching family would either be
+// inert or, if mapped to a wrong family, manufacture false fails; seconds handling remains a separate
+// cross-language gate question, out of this finisher's scope. Verified by a full fr/de/es regression
+// pass (0 flips either direction) + Italian unit witnesses — see the Italian-finisher session report.
 export const UNIT_FAMILY_RULES = [
   { re: /^\s*°\s*F\b/i, fam: 'tempF' },
   { re: /^\s*°\s*C\b/i, fam: 'tempC' },
   { re: /^\s*°/, fam: 'tempC' },
+  { re: /^\s*gradi\b/i, fam: 'tempC' }, // Italian spelled-out degrees (plural only; see ITALIAN note above)
   { re: /^\s*%/, fam: 'pct' },
   { re: /^\s*אחוז/, fam: 'pct' },
   { re: /^\s*ppm\b/i, fam: 'ppm' },
-  { re: /^\s*(?:lbs?\b|pounds?\b|livres?\b|pfund\b|libras?\b)/i, fam: 'mass_imperial' },
-  { re: /^\s*(?:oz\b|ounces?\b|onces?\b|onzas?\b)/i, fam: 'mass_imperial' },
-  { re: /^\s*(?:kg\b|ק[׳"״']?ג|קילו|kilos?\b|kilogrammes?\b|kilogramm\b|kilogramos?\b)/i, fam: 'mass_metric' },
-  { re: /^\s*(?:g\b|grams?\b|gr\b|גרם|גר[׳']|ג[׳']|grammes?\b|gramm\b|gramos?\b)/i, fam: 'mass_metric' },
+  { re: /^\s*(?:lbs?\b|pounds?\b|livres?\b|pfund\b|libras?\b|libbre?\b|libbra\b)/i, fam: 'mass_imperial' },
+  { re: /^\s*(?:oz\b|ounces?\b|onces?\b|onzas?\b|oncia\b|once\b)/i, fam: 'mass_imperial' },
+  { re: /^\s*(?:kg\b|ק[׳"״']?ג|קילו|kilos?\b|kilogrammes?\b|kilogramm\b|kilogramos?\b|chilogramm[io]\b|chilo\b)/i, fam: 'mass_metric' },
+  { re: /^\s*(?:g\b|grams?\b|gr\b|גרם|גר[׳']|ג[׳']|grammes?\b|gramm\b|gramos?\b|gramm[io]\b)/i, fam: 'mass_metric' },
   { re: /^\s*(?:gal(?:lons?)?\b|qt\b|quarts?\b|fl\.?\s*oz\b)/i, fam: 'vol_imperial' },
-  { re: /^\s*(?:ml\b|מ["׳״']?ל(?![א-ת])|ליטר|l\b|millilitres?\b|litres?\b|milliliter\b|liter\b|mililitros?\b|litros?\b)/i, fam: 'vol_metric' },
+  { re: /^\s*(?:ml\b|מ["׳״']?ל(?![א-ת])|ליטר|l\b|millilitres?\b|litres?\b|milliliter\b|liter\b|mililitros?\b|litros?\b|millilitr[io]\b|litr[io]\b)/i, fam: 'vol_metric' },
   // אינץ׳ + Zoll added with the Spanish forms (2026-07-26): the table had NO Hebrew inch token, so
   // adding pulgada exposed a false unit_invented on he "קוביות ½-1 אינץ׳" -> es "Cubos de ½ a 1
   // pulgada." (source fam was none only because the Hebrew word wasn't recognized — same one-sided-
   // blindness shape as the מ"ל fix above); recognizing the Hebrew side then exposed the German word
   // for inch ("Zoll") missing too, on the SAME source string's correct de translation ("½–1 Zoll").
-  { re: /^\s*(?:in(?:ch(?:es)?)?\b|ft\b|feet\b|pouces?\b|pieds?\b|pulgadas?\b|pies?\b|zoll\b|אינץ[׳'"]?)/i, fam: 'length_imperial' },
-  { re: /^[\s-]*(?:cm\b|ס["׳״']?מ|mm\b|מ["׳״']?מ|centim[eè]tres?\b|millim[eè]tres?\b|zentimeter\b|millimeter\b|cent[ií]metros?\b|mil[ií]metros?\b)/i, fam: 'length_metric' },
+  { re: /^\s*(?:in(?:ch(?:es)?)?\b|ft\b|feet\b|pouces?\b|pieds?\b|pulgadas?\b|pies?\b|zoll\b|אינץ[׳'"]?|pollici\b|pollice\b|piedi\b|piede\b)/i, fam: 'length_imperial' },
+  { re: /^[\s-]*(?:cm\b|ס["׳״']?מ|mm\b|מ["׳״']?מ|centim[eè]tres?\b|millim[eè]tres?\b|zentimeter\b|millimeter\b|cent[ií]metros?\b|mil[ií]metros?\b|centimetr[io]\b|millimetr[io]\b)/i, fam: 'length_metric' },
   { re: /^\s*ה?(?:שעות|שעה|שע(?=[׳'.,)\s]|$)|ש(?=[׳'.,)\s]|$))/, fam: 'time_hr' },
-  { re: /^\s*(?:hours?\b|hrs?\b|h\b|heures?\b|stunden?\b|horas?\b)/i, fam: 'time_hr' },
+  { re: /^\s*(?:hours?\b|hrs?\b|h\b|heures?\b|stunden?\b|horas?\b|ore\b|ora\b)/i, fam: 'time_hr' },
   { re: /^\s*ה?(?:דקות|דקה|דק(?=[׳'.,)\s]|$))/, fam: 'time_min' },
-  { re: /^\s*(?:minutes?\b|mins?\b|minuten?\b|minutos?\b)/i, fam: 'time_min' },
+  { re: /^\s*(?:minutes?\b|mins?\b|minuten?\b|minutos?\b|minut[io]\b)/i, fam: 'time_min' },
 ];
 // NOTE (2026-07-26, same German-finisher pass): re-running gateCheck across the ENTIRE de.staged.json
 // (not just the 30-entry hand-read sample) as a full regression check surfaced 8 entries that had been
@@ -239,6 +272,7 @@ export const SAFETY_LEXICON_GROUPS = [
       fr: /\bnitrites?\b/i,
       en: /\bnitrites?\b/i,
       es: /\bnitritos?\b/i,
+      it: /\bnitrit[io]\b/i, // Italian nitrito/nitriti (added 2026-07-26 Italian-finisher)
     },
   },
   {
@@ -248,6 +282,7 @@ export const SAFETY_LEXICON_GROUPS = [
       fr: /\bnitrates?\b/i,
       en: /\bnitrates?\b/i,
       es: /\bnitratos?\b/i,
+      it: /\bnitrat[io]\b/i, // Italian nitrato/nitrati
     },
   },
   {
@@ -257,6 +292,7 @@ export const SAFETY_LEXICON_GROUPS = [
       fr: /\bsel\s*ros[ei]\b/i, // "sel rose" (curing-salt term) — tolerate "rosé" spelling variant
       en: /\bpink\s*salt\b/i,
       es: /\bsal\s*rosa(?:da)?\b/i, // "sal rosa" observed in staged output; tolerate "sal rosada"
+      it: /\bsale\s*ros[ao]\b/i, // Italian "sale rosa"; tolerate "sale rosato" variant
     },
   },
 ];
