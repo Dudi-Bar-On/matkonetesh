@@ -7556,8 +7556,16 @@ function acmFmt(cm2){ cm2=Math.round(cm2); return cm2>=10000 ? (+(cm2/10000).toF
 const AREA_CM2_SCHEMA_FIELD='"areaCm2":"<TOTAL cooking area in square centimetres, SUMMED ACROSS ALL racks/shelves — '
   +'if the source gives only ONE shelf\'s size or dimensions, MULTIPLY it by the shelf count; NEVER report a '
   +'single shelf/rack as the total. A plain number, or null if the source gives neither a total nor a way to compute one.>"';
-async function aiLookupDevice(query, cat){
-  if(!equipAiOn()) throw new Error('no-key');
+// owner-reported (2026-07-26): a direct precise-name lookup ("הנפח אביה 150") used to acquire ALL
+// properties (dims/area/racks) but came back patchy — the browse->select path (a clean catalog name)
+// still worked fine, so the difference was query quality feeding a MINIMAL-thinking model call. Fix, two
+// parts: (1) bump reasoning to think:'high' on every model call this function makes — minimal reasoning
+// under-extracts a niche/grounded lookup; (2) self-correct on a THIN first result with ONE retry using an
+// ENRICHED task prompt (same query, explicitly asks for the manufacturer spec page + physical dims/racks/
+// area), also at think:'high'. Never falls back to the catalog/browse path — the owner explicitly does not
+// want this forced. _lookupOnce does the actual call+parse (identical shape either way); aiLookupDevice
+// stays the ONE public entry point — the caller (app.js #eqLookup handler) is unchanged.
+async function _lookupOnce(query, cat, enrich){
   const c=equipCat(cat)||{}; const types=c.types||[];
   const catProps=(c.props||[]);   // this category's own props[] (Task 1) — only ask for what applies (a stuffer has no maxC)
   // Describe each property by its CANONICAL unit (propCoerce prefers it, converting only when the raw value
@@ -7591,8 +7599,13 @@ async function aiLookupDevice(query, cat){
     +'"name" must be the clean product/model name, NEVER a URL. '
     +(types.length?('For "subtype" return the EXACT string from this list, do NOT translate it: '+JSON.stringify(types)+'. '):'')
     +'Fill every property that applies to this device type: racks/shelves; grill heat zones; probe channels; sous-vide bath litres; sausage-stuffer cylinder litres (volume) and its output-tube diameters in mm (nozzles); the outer cabinet dimensions (dimH_cm/dimW_cm/dimD_cm) and, if separately stated, one shelf/grate\'s own dimensions (shelfW_cm/shelfD_cm); total cooking area (areaCm2) — see its own field description, it is NEVER one shelf\'s size. Use null for anything not applicable or that you cannot determine. '
-    +'Only state a property IF the page actually gives it — use null otherwise. Never guess a value: an absent property falls back to a sane default, but a wrong one silently poisons the plan.';
-  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:900, outLang:'en'});
+    +'Only state a property IF the page actually gives it — use null otherwise. Never guess a value: an absent property falls back to a sane default, but a wrong one silently poisons the plan.'
+    // the self-correcting retry variant (only ever the SECOND call, on a thin first result) — steers the
+    // model at the one manufacturer page most likely to hold the physical facts a terse query under-extracted.
+    +(enrich?(' Find the MANUFACTURER\'S full specification page for this exact model; report the physical '
+      +'cabinet dimensions (dimH_cm/dimW_cm/dimD_cm), the shelf/grate count and one shelf\'s dimensions, and '
+      +'the total cooking area — these are the most important fields.'):'');
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:900, outLang:'en', think:'high'});
   const cap={}; ['racks','zones','channels','bathL','volume'].forEach(function(k){ const v=parseFloat(raw&&raw[k]); if(!isNaN(v)&&v>0&&v<100000) cap[k]=(k==='racks'||k==='zones'||k==='channels')?Math.round(v):v; });
   const keepCap=c.capKey?[c.capKey]:(cat==='sousvide'?['bathL']:[]); Object.keys(cap).forEach(function(k){ if(keepCap.indexOf(k)<0) delete cap[k]; });   // only this category's own capacity (no stray channels on a smoker, etc.)
   const FUELS=['charcoal','pellet','gas','wood','electric'];
@@ -7621,6 +7634,44 @@ async function aiLookupDevice(query, cat){
     const rc=propCoerce(p, v); if(rc) props[p.key]=rc.v;              // null -> no unit interpretation works -> skip
   });
   return { name:nm, subtype:subtype, fuel:(raw&&FUELS.indexOf(raw.fuel)>=0)?raw.fuel:'', cap:cap, nozzles:nozzles, area:area, props:props, note:(raw&&typeof raw.note==='string')?raw.note:'', details:details };
+}
+// category-aware "thin result" predicate (owner ruling 2026-07-26): the device acquired (almost) none of
+// the key properties its category should have — a real extraction gap, not just "this device has few
+// specs". A smoker/oven (capKey:'racks') or grill (capKey:'zones') is thin when it has NEITHER the
+// rack/zone count NOR any outer dimension NOR a total cooking area — three independent signals, any ONE
+// of which proves the lookup found something real. Generalizes per-category exactly as the owner specified:
+// a sous-vide is thin with no bath litres; a stuffer is thin with no cylinder volume. Categories with no
+// owner-specified "thin" shape (probe/vacuum/grinder/other) never trigger a retry — guessing a shape for
+// them risks wasting a call on a device that simply has few extractable specs.
+function _lookupIsThin(cat, r){
+  const c=equipCat(cat)||{}; const capKey=c.capKey; const props=(r&&r.props)||{}; const cap=(r&&r.cap)||{};
+  if(capKey==='racks'||capKey==='zones'){
+    const hasCap=cap[capKey]!=null;
+    const hasDims=(props.dimH_cm!=null||props.dimW_cm!=null||props.dimD_cm!=null);
+    const hasArea=(props.areaCm2!=null);
+    return !hasCap && !hasDims && !hasArea;
+  }
+  if(cat==='sousvide') return cap.bathL==null;
+  if(cat==='stuffer') return cap.volume==null;
+  return false;
+}
+// how many non-null properties a lookup result actually carries — used only to pick the FULLER of the
+// two attempts when a thin-result retry fires; never used to judge a non-thin single-call result.
+function _lookupFullness(r){
+  if(!r) return 0;
+  let n=0;
+  if(r.cap) n+=Object.keys(r.cap).length;
+  if(r.props) n+=Object.keys(r.props).length;
+  if(r.area) n+=1;
+  if(r.nozzles && r.nozzles.length) n+=1;
+  return n;
+}
+async function aiLookupDevice(query, cat){
+  if(!equipAiOn()) throw new Error('no-key');
+  const first=await _lookupOnce(query, cat, false);
+  if(!_lookupIsThin(cat, first)) return first;
+  const second=await _lookupOnce(query, cat, true);
+  return (_lookupFullness(second) > _lookupFullness(first)) ? second : first;
 }
 // web-grounded model browse for a brand → array of {name, spec} for the catalogue cards
 async function aiBrandModels(brand, cat){
