@@ -7122,6 +7122,13 @@ function importData(file){
     if(o&&o.app&&o.app!=='matkonet'){ if(typeof toast==='function')toast('❌ הגיבוי שייך לאפליקציה אחרת'); return; }
     const keys=Object.keys(d); let ok=0, fail=0;
     keys.forEach(k=>{ try{ localStorage.setItem(k, typeof d[k]==='string'?d[k]:JSON.stringify(d[k])); ok++; }catch(e){ fail++; } });   // Wave C: count per-key failures instead of swallowing them
+    // FIX WAVE 2 (2026-07-26, E3 Task 1 re-verification, "Important") — this loop mutates mk-equipment
+    // via a dynamic key (k comes from the backup's own key set) — literal-grep-invisible; bump the kit
+    // generation explicitly so any already-rendered card's cached ownership verdict (keyed on
+    // eqmKitGen(), see _eqValidityCache above) recomputes on the very next render() call below instead
+    // of serving a stale verdict from before the restore. Unconditional: cheaper than checking whether
+    // 'mk-equipment' was actually among the restored keys, and a missed bump is a correctness bug.
+    _eqKitGen++;
     favs=new Set(store.get('mk-fav')||[]);
     applyAppearance(); updateFavBadge(); updateCartBadge(); render();
     if(typeof toast==='function'){
@@ -7985,12 +7992,22 @@ function wipeAllData(){
   const snapshot={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); snapshot[k]=localStorage.getItem(k);}
   const keys=Object.keys(snapshot);
   keys.forEach(k=>{ if(k.startsWith('mk-')||k.startsWith('note:')||k.startsWith('rating:')||k.startsWith('shop:')||k.startsWith('done:')) localStorage.removeItem(k); });
+  // FIX WAVE 2 (2026-07-26, E3 Task 1 re-verification, "Important") — the 'mk-' prefix above removes
+  // mk-equipment via a dynamic key (k) — literal-grep-invisible; bump the kit generation explicitly so
+  // eqmValidity's gen-keyed cache doesn't keep serving the pre-wipe verdict after render() below.
+  _eqKitGen++;
   favs=new Set(); cart=new Set(); _ratings=null; activeCats.clear(); activeGroup=null;
   filters={fav:false,kosher:false,method:'',diff:0,time:0};
   const qq=$("#q"); if(qq) qq.value="";
   syncChips(); buildFilterBar(); updateCartBadge(); updateFavBadge(); render();
   closePanel();
-  toast('כל הנתונים אופסו',()=>{ Object.entries(snapshot).forEach(([k,v])=>localStorage.setItem(k,v)); favs=new Set(store.get('mk-fav')||[]); cart=new Set(); updateCartBadge(); updateFavBadge(); render(); });
+  toast('כל הנתונים אופסו',()=>{ Object.entries(snapshot).forEach(([k,v])=>localStorage.setItem(k,v)); favs=new Set(store.get('mk-fav')||[]); cart=new Set();
+    // FIX WAVE 2: the undo restore above also mutates mk-equipment via a dynamic key (k from the
+    // snapshot's own key set) — literal-grep-invisible; bump again so the restored kit's verdict is
+    // recomputed fresh on the render() call this same line makes, not served stale from either the
+    // pre-wipe OR the just-wiped cache generation.
+    _eqKitGen++;
+    updateCartBadge(); updateFavBadge(); render(); });
 }
 
 /* ---- exit the app (best-effort for installed PWA) ---- */
