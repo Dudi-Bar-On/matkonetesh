@@ -336,5 +336,6 @@
  "בדוק וטען עץ מתאים: ": "Check/load a suitable wood: ",
  "המתכון מבקש ": "Recipe calls for ",
  " — טעון: ": " — loaded: ",
- "לא נוסף — עסוק בחלון הזה: ": "Not added — busy in this window: "
+ "לא נוסף — עסוק בחלון הזה: ": "Not added — busy in this window: ",
+ "מה חדש: חיפוש דגם ציוד חכם יותר — שם מדויק מחזיר את כל המאפיינים כבר בפעם הראשונה; תזכורת לטעון את עץ העישון שהמתכון מבקש; שיבוץ ציוד מדויק יותר באירועים; ואיטלקית כשפה רביעית": "What's new: smarter equipment-model lookup — an exact name returns all the properties on the first try; a reminder to load the wood your recipe calls for; more precise equipment scheduling in events; and Italian as a fourth language"
 }

@@ -5,6 +5,26 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 267 · 26.7.26
+
+**Equipment refinements + a fourth language — owner-driven from live v266 testing:**
+- **Smarter device-model lookup.** Typing a precise model name (e.g. "הנפח אביה 150") now returns
+  the full property set on the first try — the AI thinks harder on a direct lookup and self-corrects
+  with an enriched retry when the first result comes back thin, so you no longer need the model
+  catalog to fill in dimensions the manufacturer publishes.
+- **Wood-load advisory.** A smoker imparts its wood's flavor, so the work plan now nudges you to check
+  and load the wood the recipe calls for when the smoker's loaded wood is empty or doesn't match. It's
+  a flavor reminder only — it never blocks the cook.
+- **Capability-aware serving.** The equipment engine now offers a device for a stage only when that
+  device actually meets the stage's demands (area, volume, temperature) — an owned-but-insufficient
+  device is no longer silently treated as available.
+- **More precise event scheduling.** Adding an item to an event is blocked when the device it needs is
+  already busy in that window, with a reason distinct from the "you don't own the device" case; the
+  window the gate checks and the hold it later writes are derived from one shared computation, so they
+  can't drift.
+- **Italian** joins French, German, and Spanish — translated via the same locally-run, safety-gated
+  pipeline (~98% coverage), now with an English-pivot step for higher translation fidelity.
+
 ## מהדורה 266 · 26.7.26
 
 **Equipment validity gates (E3) + one-source cooking schedules (CP1) + three new languages:**
