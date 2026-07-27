@@ -2996,7 +2996,7 @@
  "שמן זית + שום + עשבי תיבול טריים. פשוט ועובד כמעט על הכל.": "Olivenöl + Knoblauch + frische Kräuter. Einfach und funktioniert fast bei allem.",
  "חמצמץ": "säuerlich",
  "עשבי": "Kräuter",
- "הדרי": "Die Zitrone",
+ "הדרי": "Zitrusartig",
  "ארומטי-חם": "Aromatisch-warm.",
  "אגוזי": "Nüsse",
  "אומאמי": "Umami",
@@ -3679,5 +3679,14 @@
  "ריוורס-סיר לצ'ופ עבה: צד עקיף בלid סגור עד ~54°C (130°F), אז סיר על צד ישיר לוהט (~260°C/500°F+) עד יעד 63°C. לצ'ופ דק אפשר ישיר בלבד ~3-4 דק' לצד.": "Sous-vide-Methode für dickes Steak: Indirekte Hitze bei geschlossenem Deckel bis ca. 54 °C (130 °F), dann auf einer direkten, heißen Seite des Grillrosts (~260 °C/500 °F+) braten, bis eine Kerntemperatur von 63 °C erreicht ist. Für dünne Steaks kann man nur direkte Hitze verwenden, ca. 3-4 Minuten pro Seite.",
  "החזק חם ולח 24–48 שעות ב-~24°C ולחות 80–90% עד **ירידת pH ל-≤5.3** (דרי) / 4.6–5.2 (חצי-דרי). זהו מחסום הבטיחות הראשון.": "Warmhalten und feucht halten für 24–48 Stunden bei ~24°C und einer Luftfeuchtigkeit von 80–90%, bis der pH-Wert auf ≤5,3 (Derry) / 4,6–5,2 (halb-Derry) sinkt. Dies ist die erste Sicherheitsbarriere.",
  "החזק חם ולח 24–72 שעות ב-~24°C ולחות 80–90% עד **ירידת pH ל-≤5.3** (יבש) / 4.6–5.2 (חצי-יבש). זהו מחסום הבטיחות הראשון.": "Warm und feucht halten für 24–72 Stunden bei ~24 °C und einer Luftfeuchtigkeit von 80–90 %, bis der pH-Wert auf ≤5,3 (trocken) / 4,6–5,2 (halb trocken) sinkt. Dies ist die erste Sicherheitsbarriere.",
- "החזק חם ולח 24 שעות ב-~24°C ולחות 80–90% עד **ירידת pH ל-≤5.3** (יבש) / 4.6–5.2 (חצי-יבש). זהו מחסום הבטיחות הראשון.": "Warm und feucht bei ca. 24 °C und einer Luftfeuchtigkeit von 80–90 % für 24 Stunden lagern, bis der pH-Wert auf ≤ 5,3 (trocken) / 4,6–5,2 (halb trocken) sinkt. Dies ist die erste Sicherheitsbarriere."
+ "החזק חם ולח 24 שעות ב-~24°C ולחות 80–90% עד **ירידת pH ל-≤5.3** (יבש) / 4.6–5.2 (חצי-יבש). זהו מחסום הבטיחות הראשון.": "Warm und feucht bei ca. 24 °C und einer Luftfeuchtigkeit von 80–90 % für 24 Stunden lagern, bis der pH-Wert auf ≤ 5,3 (trocken) / 4,6–5,2 (halb trocken) sinkt. Dies ist die erste Sicherheitsbarriere.",
+ "2 עגבניות, 1 בצל, 1 פלפל ירוק — הכל בקוביות זעירות. + ¼ כוס חומץ, שמן, פטרוזיליה, מלח.": "2 Tomaten, 1 Zwiebel, 1 grüne Paprika – alles in feine Würfel schneiden. + ¼ Tasse Essig, Öl, Petersilie, Salz.",
+ "6 צ׳ילי ירוק/אדום, 1 כוס כוסברה, 4 שיני שום, 1 כפית כמון, 1 כפית הל, שמן זית, מלח. בלנדר לרסק.": "6 grüne/rote Chilischoten, 1 Tasse Koriander, 4 Knoblauchzehen, 1 TL Kreuzkümmel, 1 TL Kardamom, Olivenöl, Salz. Alles zu einer Paste pürieren.",
+ "1 כוס יוגורט, 1 צרור כוסברה, ½ צרור נענע, 3 שיני שום, 1 כף ג'ינג'ר, 2 צ'ילי ירוק, 1 כף גראם מסאלה, כמון, מיץ לימון, מלח.": "1 Tasse Joghurt, 1 Bund Koriander, ½ Bund Minze, 3 Knoblauchzehen, 1 EL Ingwer, 2 grüne Chilischoten, 1 EL Garam Masala, Kreuzkümmel, Zitronensaft, Salz.",
+ "6 עגבניות ירוקות (טומטיו), 2 חלפיניו, ½ בצל, 3 שיני שום, כוסברה, מיץ ליים, מלח.": "6 grüne Tomaten (Tomatillos), 2 Jalapeños, ½ Zwiebel, 3 Knoblauchzehen, Koriander, Limettensaft, Salz.",
+ "4 שיני שום, 3 צ'ילי ירוק, 1 צרור כוסברה (כולל שורש), 3 כף רוטב דגים, מיץ 3 ליים, 1 כף סוכר.": "4 Knoblauchzehen, 3 grüne Chilis, 1 Bund Koriander (inklusive Wurzeln), 3 EL Fischsauce, Saft von 3 Limetten, 1 EL Zucker.",
+ "1 צרור כוסברה, 1 בצל קצוץ דק, 2 עגבניות, 1 צ'ילי ירוק, שום, חומץ, שמן, מלח.": "1 Bund Koriander, 1 fein gehackte Zwiebel, 2 Tomaten, 1 grüne Chili, Knoblauch, Essig, Öl, Salz.",
+ "3 כף הויסין, 2 כף סויה, 2 כף דבש, 1 כף יין אורז, 1 כפית 5-תבלינים, 1 כפית שום, קורט צבע אדום/סלק. השרו חזיר 4-24ש.": "3 EL Hoisin-Sauce, 2 EL Sojasauce, 2 EL Honig, 1 EL Reiswein, 1 TL 5-Gewürze-Mischung, 1 TL Knoblauch, eine Prise rote/Rote-Bete-Lebensmittelfarbe. Das Schweinefleisch 4–24 Stunden marinieren.",
+ "3 כף אצ'יוטה, ½ כוס מיץ תפוז, ¼ כוס חומץ, 2 צ'ילי גוואחיו מושרים, 4 שיני שום, כמון, אורגנו, מלח.": "3 EL Achiote-Paste, ½ Tasse Orangensaft, ¼ Tasse Essig, 2 eingeweichte Guajillo-Chilis, 4 Knoblauchzehen, Kreuzkümmel, Oregano, Salz.",
+ "¼ כוס הויסין, 2 כף דבש, 1 כף סויה, ½ כפית 5-תבלינים, 1 שן שום. חממו קלות.": "¼ Tasse Hoisin-Sauce, 2 EL Honig, 1 EL Sojasauce, ½ TL 5-Gewürze-Pulver, 1 Knoblauchzehe. Leicht erwärmen."
 }

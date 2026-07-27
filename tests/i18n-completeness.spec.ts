@@ -150,6 +150,76 @@ for (const lang of LANGS) {
   });
 }
 
+// LEAK-scan (2026-07-27) — the three render paths the owner found leaking in Russian and that the
+// existing per-screen scan never drove: the seasoning FILTER CHIPS (continents/flavors/bases/heat/kinds,
+// via t()), the seasoning DETAIL panel prose (ing/use/sub, via t() → the cook-measure gate class), and
+// the PRO pit-tools DOCK (tool names, now via L(t[1],t[2])). Two parts per language:
+//   (1) DATA completeness — every seasoning's t(ing/use/sub/origin/cont) and each SPK_* chip value must
+//       not render raw Hebrew. This is the exhaustive guard (checks all 300+ without opening 300 panels).
+//   (2) RENDER PATH — actually drive the chips, one detail panel, and the pro dock, and scan the visible
+//       DOM (skip [data-mt] async-prose). Proves the strings reach the screen from the dict, not a literal.
+for (const lang of LANGS) {
+  test(`i18n LEAK-scan — seasoning chips + detail + pro dock render no raw Hebrew in ${lang}`, async ({ page }) => {
+    await seedApp(page, {
+      'mk-uilevel-asked': 'true',
+      'mk-uilevel': JSON.stringify('pro'),
+      'mk-lang': JSON.stringify(lang),
+    });
+    await page.waitForFunction(`typeof DATA!=='undefined' && DATA.seasonings && DATA.seasonings.length && typeof t==='function' && typeof setLang==='function'`);
+
+    // Seed a pro persona with a full kit + a menu, so the home dock renders.
+    await page.evaluate(`(function(){
+      equipSave([{id:'sm1',cat:'smoker',type:'קטל (ככלי עישון)',name:'Smoker',cap:{racks:2,areaCm2:4800}},{id:'sv1',cat:'sousvide',type:'טבילה (immersion)',name:'SV',cap:{maxL:20}}]);
+      equipSetConfigured();
+      saveMenu({guests:4,appetite:'reg',kosher:false,keys:['cut-1'],sides:[],drinks:[],desserts:[],gpm:0});
+      if(typeof setUiLevel==='function') setUiLevel('pro');
+      if(typeof setLang==='function') setLang(${JSON.stringify(lang)});
+    })()`);
+
+    // (1) DATA completeness — EVERY seasoning's prose fields via t() (the exhaustive prose guard; the
+    // filter-chip enums are covered by the rendered-chip scan 2a below). DATA/t are page-scope globals
+    // (const DATA / function t) — reachable as barewords in a string evaluate, NOT as window props.
+    const dataLeaks: string[] = await page.evaluate(`(function(){
+      var HE=/[֐-׿]/, out=[], seen={};
+      function add(v){ var s=String(v==null?'':v); if(s&&HE.test(s)){ var k=s.slice(0,50); if(!seen[k]){seen[k]=1;out.push(k);} } }
+      var seas=(typeof DATA!=='undefined'&&DATA.seasonings)||[];
+      for(var i=0;i<seas.length;i++){ var s=seas[i];
+        if(s.ing)add(t(s.ing)); if(s.use)add(t(s.use)); if(s.sub)add(t(s.sub)); if(s.origin)add(t(s.origin)); if(s.cont)add(t(s.cont)); }
+      return out;
+    })()`);
+    expect(dataLeaks.length, `${lang}: seasoning prose renders raw Hebrew: ${JSON.stringify(dataLeaks.slice(0, 12))}`).toBe(0);
+
+    const scan = `(function(root){
+      const HE=/[֐-׿]/; const out=[]; const seen=new Set();
+      const skip=el=>{ while(el){ if(el.getAttribute){ if(el.hasAttribute('data-mt'))return true; const c=(el.className||'').toString(); if(c.includes('lf-name')||c.includes('foot-stamp'))return true; } el=el.parentElement; } return false; };
+      const w=document.createTreeWalker(root||document.body,NodeFilter.SHOW_TEXT); let n;
+      while((n=w.nextNode())){ const tx=(n.textContent||'').trim(); if(!tx||!HE.test(tx))continue; const el=n.parentElement; if(!el||!el.getClientRects().length)continue; if(skip(el))continue; const k=tx.slice(0,50); if(!seen.has(k)){seen.add(k);out.push(k);} }
+      return out;
+    })`;
+
+    // (2a) FILTER CHIPS — open the seasoning browser and scan the chip rows.
+    await page.evaluate(`(function(){ if(typeof openSeasonings==='function') openSeasonings(); })()`);
+    await page.waitForFunction(`document.querySelector('#seasBody .chip')`);
+    const chipLeaks: string[] = await page.evaluate(`${scan}(document.querySelector('#seasBody'))`);
+    expect(chipLeaks.length, `${lang}: seasoning filter chips render raw Hebrew: ${JSON.stringify(chipLeaks.slice(0, 12))}`).toBe(0);
+
+    // (2b) DETAIL PANEL — open a seasoning that carries prose (ing/use), scan the panel.
+    await page.evaluate(`(function(){
+      var s=(DATA.seasonings||[]).find(x=>x.ing||x.use) || (DATA.seasonings||[])[0];
+      if(s && typeof openSeasoningDetail==='function') openSeasoningDetail(s.id);
+    })()`);
+    await page.waitForFunction(`document.querySelector('.seas-detail')`);
+    const detailLeaks: string[] = await page.evaluate(`${scan}(document.querySelector('#panel')||document.body)`);
+    expect(detailLeaks.length, `${lang}: seasoning detail prose renders raw Hebrew: ${JSON.stringify(detailLeaks.slice(0, 12))}`).toBe(0);
+
+    // (2c) PRO DOCK — close panels, render the home chrome, scan the pit-tools dock (must be visible + tools present).
+    await page.evaluate(`(function(){ if(typeof closePanel==='function') closePanel(); if(typeof cNavGo==='function') cNavGo('home'); if(typeof renderHomeChrome==='function') renderHomeChrome(); })()`);
+    await page.waitForFunction(`(function(){ var d=document.querySelector('#cHomeDock'); return d && !d.hidden && d.querySelector('.dockbtn'); })()`);
+    const dockLeaks: string[] = await page.evaluate(`${scan}(document.querySelector('#cHomeDock'))`);
+    expect(dockLeaks.length, `${lang}: pro pit-tools dock renders raw Hebrew: ${JSON.stringify(dockLeaks.slice(0, 12))}`).toBe(0);
+  });
+}
+
 test('i18n extractor staleness — a fresh extraction reproduces the committed lang/_extracted.json (spec §8.3)', async () => {
   execFileSync('node', ['scripts/i18n-extract.mjs', 'app.js'], { stdio: 'pipe' });
   const fresh = JSON.parse(readFileSync('lang/_extracted.json', 'utf8'));

@@ -9316,7 +9316,7 @@ function renderHomeChrome(){
       const tools=dockTools().map(function(fn){ return byFn[fn]; }).filter(Boolean);
       const title=`<div class="dock-title">🛠️ ${L('כלי הפיטמאסטר', 'Pitmaster tools')}<button class="dock-edit" data-dockedit aria-label="${L('התאם', 'Customize')}">✎</button></div>`;
       const grid=tools.length
-        ? `<div class="dock-grid">${tools.map(function(x){return `<button class="dockbtn" data-hfn="${x[3]}"><span class="dk-ic">${x[0]}</span>${he?x[1]:x[2]}</button>`;}).join('')}</div>`
+        ? `<div class="dock-grid">${tools.map(function(x){return `<button class="dockbtn" data-hfn="${x[3]}"><span class="dk-ic">${x[0]}</span>${L(x[1],x[2])}</button>`;}).join('')}</div>`
         : `<button class="dock-empty" data-dockedit>＋ ${L('הוסף כלים', 'Add tools')}</button>`;
       dk.innerHTML=title+grid;
       dk.hidden=false;
@@ -11199,7 +11199,7 @@ function openDockCustom(){
   const chosen=dockTools(); const chosenSet=new Set(chosen); const byFn={}; DOCK_POOL.forEach(function(t){ byFn[t[3]]=t; });
   const ordered=chosen.map(function(fn){return byFn[fn];}).filter(Boolean).concat(DOCK_POOL.filter(function(t){return !chosenSet.has(t[3]);}));   // chosen (in order) first, then the rest of the pool
   const rows=ordered.map(function(t){ const on=chosenSet.has(t[3]);
-    return `<div class="hc-row" data-hcid="${t[3]}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="dk-ic">${t[0]}</span><span class="hc-name">${he?t[1]:t[2]}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${t[3]}">${on?(L('✓ במזח', '✓ In')):(L('+ הוסף', '+ Add'))}</button></div>`;
+    return `<div class="hc-row" data-hcid="${t[3]}"><span class="hc-handle" aria-hidden="true">⠿</span><span class="dk-ic">${t[0]}</span><span class="hc-name">${L(t[1],t[2])}</span><button class="hc-toggle${on?' on':''}" data-hctoggle="${t[3]}">${on?(L('✓ במזח', '✓ In')):(L('+ הוסף', '+ Add'))}</button></div>`;
   }).join('');
   showPanel(`${typeof toolTop==='function'?toolTop(L('כלי הפיטמאסטר','Pitmaster tools'),L('בחר וסדר את הכלים במזח','Pick and order the dock tools'),'🛠️','#5a7d8c'):`<h2 style="padding:16px">${L('כלי הפיטמאסטר','Pitmaster tools')}</h2>`}
     <div class="panel-body">

@@ -84,7 +84,7 @@
  "מצב הצילו": "Modalità di assistenza",
  "שאל את האש": "Chiedi al fuoco.",
  "מדריך עצים": "Guida al legno",
- "מתרגם נתחים": "Taglia il traduttore.",
+ "מתרגם נתחים": "Traduttore di tagli",
  "מחשבון מלח/כמויות": "Calcolatore per la quantità di sale",
  "מתבלים ורטבים": "Condimenti e salse",
  "אודות והיכולות": "Informazioni e caratteristiche",
@@ -2131,7 +2131,7 @@
  "הניתוח נכשל — נסה שוב או בדוק את המפתח.": "Analisi non riuscita, riprovare o controllare la chiave.",
  "צלם את הבישול — קרום, עשייה, עובש (הערכה)": "Valuta l'aspetto del tuo prodotto: colore della crosta, grado di cottura, presenza di muffa (indicativo).",
  "שאלות חופשיות — זמן, טמפ׳, עץ, כמות, כשרות, איפה לקנות": "Domande gratuite: tempo, temperatura, tipo di legno, quantità, prodotto kosher, dove acquistare.",
- "אבחון תקלה": "Valuta le capacità di un cuoco.",
+ "אבחון תקלה": "Diagnosi guasti",
  "תאר מה השתבש — אבחון לפי היומן והפרויקטים שלך": "Descrivi cosa è andato storto, confrontandolo con il tuo diario.",
  "תובנות יומן": "Approfondimenti tratti dal diario",
  "דפוסים מהבישולים הקודמים שלך": "Schemi ricavati dalle tue precedenti preparazioni",
@@ -2434,5 +2434,8 @@
  "מה חדש: חיפוש מפרט המכשירים ב-AI תוקן — הקלדת שם דגם (למשל “הנפח אביה 150”) מחזירה שוב את כל המידות והמאפיינים מהאינטרנט; ועוד שאריות עברית תורגמו — תוכנית העבודה ובורר שפת-הקול.": "Novità: è stato risolto il problema della ricerca dei dispositivi tramite intelligenza artificiale: digitando nuovamente il nome di un modello (ad esempio, \"HaNapach Avia 150\"), verranno visualizzate tutte le sue dimensioni e proprietà recuperate da Internet; inoltre, sono state tradotte altre parti in lingua ebraica: il piano di lavoro e il selettore della lingua vocale.",
  "מה חדש: תשובות ה-AI כבר לא נחתכות באמצע — חיפוש מפרטי מכשירים (למשל “הנפח אביה 150”) וכל שאר קריאות ה-AI מקבלים מרחב פלט מלא, כך שהמקרה שבו חיפוש חזר כ“לא נמצא” לא יחזור.": "Novità: le risposte generate dall'IA non vengono più interrotte a metà — la ricerca specifica per dispositivo (ad esempio, \"HaNapach Avia 150\") e ogni altra chiamata all'IA ora dispongono di un budget completo per l'output, quindi non si verificherà più il caso in cui una ricerca restituisca il risultato \"non trovato\".",
  "מה חדש: דגלי המדינה של המתבלים חזרו בכל השפות — תוקן באג שבו התרגום השמיט את הדגל (🇺🇸, 🇫🇷…) לצד שם המקור בצרפתית, גרמנית, ספרדית ואיטלקית.": "Novità: le bandiere dei paesi per la classificazione degli ingredienti sono state reintrodotte in tutte le lingue; è stato corretto un errore che causava la scomparsa della bandiera (🇺🇸, 🇫🇷…) accanto al nome dell'ingrediente nelle versioni francese, tedesca, spagnola e italiana.",
- "מה חדש: רוסית נוספה כשפה שביעית — הקטלוג, שמות המנות, הקטגוריות והמקורות מתורגמים לרוסית, עם הגנת-הבטיחות שמוודאת שהמספרים והיחידות נשמרים מדויקים גם בכתב קירילי.": "Novità: il russo è stato aggiunto come settima lingua: il catalogo, i nomi dei piatti, le categorie e le indicazioni di origine sono stati tradotti in russo, con una funzione di sicurezza che garantisce l'esatta corrispondenza di numeri e unità anche nell'alfabeto cirillico."
+ "מה חדש: רוסית נוספה כשפה שביעית — הקטלוג, שמות המנות, הקטגוריות והמקורות מתורגמים לרוסית, עם הגנת-הבטיחות שמוודאת שהמספרים והיחידות נשמרים מדויקים גם בכתב קירילי.": "Novità: il russo è stato aggiunto come settima lingua: il catalogo, i nomi dei piatti, le categorie e le indicazioni di origine sono stati tradotti in russo, con una funzione di sicurezza che garantisce l'esatta corrispondenza di numeri e unità anche nell'alfabeto cirillico.",
+ "מלח / ריפוי": "Sale / salagione",
+ "עץ ופחם": "Legna e carbone",
+ "ציר זמן משולב": "Cronologia combinata"
 }

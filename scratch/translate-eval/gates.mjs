@@ -179,10 +179,28 @@ export const UNIT_FAMILY_RULES = [
   { re: /^\s*אחוז/, fam: 'pct' },
   { re: /^\s*(?:процент|τοις\s*εκατό)/i, fam: 'pct' }, // ru/el spelled-out percent
   { re: /^\s*(?:ppm\b|частей\s*на\s*миллион)/i, fam: 'ppm' }, // + ru "parts per million" phrase
+  // ── COOKING MEASURES (cook_measure) — 2026-07-27, LEAK-2 fix ──────────────────────────────────────
+  // Tablespoon/teaspoon/cup are NON-safety kitchen measures. Their OWN coarse family: a faithful
+  // measure↔measure pair (he "4 כפ׳" → ru "4 ст.л.") passes, while a measure↔SAFETY-unit swap (°C, g/kg,
+  // min/hr) or a measure→metric CONVERSION (½ cup → 125 ml, the translategemma Italian bug) still FAILS
+  // (family_mismatch / value drift). MUST sit ABOVE the time rules: Russian teaspoon "ч.л." would
+  // otherwise be grabbed by the bare-"ч" HOUR rule (ч followed by "." satisfies its (?![cyr]) lookahead),
+  // turning a correct teaspoon into a false hour_to_minute / unit_invented fail. No tbsp/tsp/cup
+  // sub-distinction is modelled (a tbsp↔tsp mix-up is not a safety hazard; requiring it would false-fail
+  // faithful variants). See scratch/translate-eval/cook-measure-gate.test.mjs (RED/GREEN witnesses).
+  { re: /^\s*(?:כפית|כפיות|כפות|כפ["'׳״]|כף|כוסות|כוס)/, fam: 'cook_measure' }, // he: tbsp(כף/כפ׳)/tsp(כפית)/cup(כוס)
+  { re: /^\s*(?:tbsps?\.?|tablespoons?|tsps?\.?|teaspoons?|cups?)\b/i, fam: 'cook_measure' }, // en
+  { re: /^\s*(?:ст\.?\s*л\.?|ч\.?\s*л\.?|столов|чайн|стакан|чашк)/i, fam: 'cook_measure' }, // ru: ст.л./ч.л./столовая/чайная ложка/стакан/чашка — ч.л. must beat the HOUR rule below
+  { re: /^\s*(?:c\.?\s*à\.?\s*[sc]\b|cuill[eè]res?|tasses?)\b/i, fam: 'cook_measure' }, // fr: c.à.s/c.à.c/cuillère/tasse
+  { re: /^\s*(?:EL\b|TL\b|essl[öo]ffel|teel[öo]ffel|tassen?)\b/i, fam: 'cook_measure' }, // de: EL/TL/Esslöffel/Teelöffel/Tasse
+  { re: /^\s*(?:cucharaditas?|cucharadas?|cdtas?\.?|cdas?\.?|tazas?)\b/i, fam: 'cook_measure' }, // es: cucharada(ita)/cda/cdta/taza
+  { re: /^\s*(?:cucchiaini|cucchiaino|cucchiai|cucchiaio|tazz[ae])\b/i, fam: 'cook_measure' }, // it: cucchiaio/cucchiaino/tazza
+  { re: /^\s*(?:κουταλ|φλιτζαν)/i, fam: 'cook_measure' }, // el: κουταλιά/κουταλιές/κουταλάκι (spoon), φλιτζάνι/φλιτζανιού (cup) — staged-pool neutrality
+  { re: /^\s*(?:colheres?|x[ií]caras?|ch[áa]venas?|copos?)\b/i, fam: 'cook_measure' }, // pt: colher(es) (de sopa/chá), xícara/chávena/copo — staged-pool neutrality
   { re: /^\s*(?:lbs?\b|pounds?\b|livres?\b|pfund\b|libras?\b|libbre?\b|libbra\b)/i, fam: 'mass_imperial' },
   { re: /^\s*(?:oz\b|ounces?\b|onces?\b|onzas?\b|oncia\b|once\b)/i, fam: 'mass_imperial' },
   { re: /^\s*(?:kg\b|ק[׳"״']?ג|קילו|kilos?\b|kilogrammes?\b|kilogramm\b|kilogramos?\b|chilogramm[io]\b|chilo\b|quilos?\b|ki-lô|килограмм|килограм|кг|κιλ|千克|公斤|キログラム|キロ|킬로그램|킬로|กิโลกรัม|กก|किलोग्राम|किलो|كيلوغرام|كيلو)/i, fam: 'mass_metric_kg' },
-  { re: /^\s*(?:g\b|grams?\b|gr\b|גרם|גר[׳']|ג[׳']|grammes?\b|gramm\b|gramos?\b|gramm[io]\b|gam\b|грамм|грамма|граммов|грам|грамів|г(?![а-яёіїєґА-ЯЁІЇЄҐ])|γραμμάρια|γρ|グラム|그램|克|กรัม|ग्राम|غرام|جرام)/i, fam: 'mass_metric_g' },
+  { re: /^\s*(?:g\b|grams?\b|gr(?![a-zà-ÿß])|גרם|גר[׳']|ג[׳']|grammes?\b|gramm\b|gramos?\b|gramm[io]\b|gam\b|грамм|грамма|граммов|грам|грамів|г(?![а-яёіїєґА-ЯЁІЇЄҐ])|γραμμάρια|γρ|グラム|그램|克|กรัม|ग्राम|غرام|جرام)/i, fam: 'mass_metric_g' }, // gr\b → gr(?![latin]) so German "grüne"/"größe" (green/size) is not misread as grams (JS \b fires after "gr" before a non-ASCII letter, 2026-07-27)
   { re: /^\s*(?:gal(?:lons?)?\b|qt\b|quarts?\b|fl\.?\s*oz\b)/i, fam: 'vol_imperial' },
   { re: /^\s*(?:ml\b|מ["׳״']?ל(?![א-ת])|ליטר|l\b|millilitres?\b|litres?\b|milliliter\b|liter\b|mililitros?\b|litros?\b|millilitr[io]\b|litr[io]\b)/i, fam: 'vol_metric' },
   // אינץ׳ + Zoll added with the Spanish forms (2026-07-26): the table had NO Hebrew inch token, so

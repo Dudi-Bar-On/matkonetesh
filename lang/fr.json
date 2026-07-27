@@ -2143,7 +2143,7 @@
  "צלם את הבישול — קרום, עשייה, עובש (הערכה)": "Prenez une photo de votre plat : aspect extérieur, cuisson, présence de moisissures (à titre d’information).",
  "שאלות חופשיות — זמן, טמפ׳, עץ, כמות, כשרות, איפה לקנות": "Questions gratuites : durée, température, type de bois, quantité, casher, où acheter.",
  "צור מתכון חדש בשפה חופשית": "Okay, I'm ready. Please provide the free description of the recipe you want me to generate. I will do my best to create a complete and coherent recipe based on your input.",
- "אבחון תקלה": "Évaluez les compétences d'un cuisinier.",
+ "אבחון תקלה": "Diagnostic de panne",
  "תאר מה השתבש — אבחון לפי היומן והפרויקטים שלך": "Décrivez ce qui s’est mal passé en vous basant sur votre journal.",
  "תובנות יומן": "Observations tirées du journal",
  "דפוסים מהבישולים הקודמים שלך": "Les tendances de vos précédentes préparations culinaires",
@@ -2437,5 +2437,8 @@
  "מה חדש: חיפוש מפרט המכשירים ב-AI תוקן — הקלדת שם דגם (למשל “הנפח אביה 150”) מחזירה שוב את כל המידות והמאפיינים מהאינטרנט; ועוד שאריות עברית תורגמו — תוכנית העבודה ובורר שפת-הקול.": "Nouveauté : la fonction de recherche d’appareils par IA a été corrigée – en tapant à nouveau le nom d’un modèle (par exemple, « HaNapach Avia 150 »), toutes ses dimensions et propriétés sont récupérées sur Internet. De plus, davantage de textes en hébreu ont été traduits, notamment le plan de travail et le sélecteur de langue vocale.",
  "מה חדש: תשובות ה-AI כבר לא נחתכות באמצע — חיפוש מפרטי מכשירים (למשל “הנפח אביה 150”) וכל שאר קריאות ה-AI מקבלים מרחב פלט מלא, כך שהמקרה שבו חיפוש חזר כ“לא נמצא” לא יחזור.": "Nouveauté : les réponses de l’IA ne sont plus interrompues en plein milieu – la recherche spécifique à un appareil (par exemple, « HaNapach Avia 150 ») et chaque autre appel à l’IA bénéficient désormais d’un budget de sortie complet, ce qui signifie que le cas où une recherche renvoyait « introuvable » ne se reproduira plus.",
  "מה חדש: דגלי המדינה של המתבלים חזרו בכל השפות — תוקן באג שבו התרגום השמיט את הדגל (🇺🇸, 🇫🇷…) לצד שם המקור בצרפתית, גרמנית, ספרדית ואיטלקית.": "Nouveauté : les drapeaux des pays sont de nouveau utilisés pour indiquer l’origine des ingrédients dans toutes les langues. Un problème a été corrigé : la traduction supprimait le drapeau (🇺🇸, 🇫🇷…) qui apparaissait à côté du nom d’origine en français, en allemand, en espagnol et en italien.",
- "מה חדש: רוסית נוספה כשפה שביעית — הקטלוג, שמות המנות, הקטגוריות והמקורות מתורגמים לרוסית, עם הגנת-הבטיחות שמוודאת שהמספרים והיחידות נשמרים מדויקים גם בכתב קירילי.": "Nouveauté : le russe est ajouté en tant que septième langue – le catalogue, les noms des plats, les catégories et les origines sont traduits en russe, avec une protection qui garantit que les chiffres et les unités restent inchangés, même dans l’alphabet cyrillique."
+ "מה חדש: רוסית נוספה כשפה שביעית — הקטלוג, שמות המנות, הקטגוריות והמקורות מתורגמים לרוסית, עם הגנת-הבטיחות שמוודאת שהמספרים והיחידות נשמרים מדויקים גם בכתב קירילי.": "Nouveauté : le russe est ajouté en tant que septième langue – le catalogue, les noms des plats, les catégories et les origines sont traduits en russe, avec une protection qui garantit que les chiffres et les unités restent inchangés, même dans l’alphabet cyrillique.",
+ "מלח / ריפוי": "Sel / salaison",
+ "עץ ופחם": "Bois et charbon",
+ "ציר זמן משולב": "Chronologie combinée"
 }

@@ -545,6 +545,11 @@ _GB_UNIT_CLASS = [
     (_reB.compile('^(?:ק' + _GB_QM + r'?ג|kg\b|kilos?|quilos?|ki-lô|килограмм|килограм|кг|κιλ|千克|公斤|キログラム|キロ|킬로그램|킬로|กิโลกรัม|กก|किलोग्राम|किलो|كيلوغرام|كيلو)', _reB.I), 'massKg'),
     (_reB.compile('^(?:ג' + _GB_QM + r'?|גרם|grams?|g\b|gramm|grammes?|gramos?|grammi|gam|грамм|грамма|граммов|грам|грамів|г(?![' + _GB_CYR + r'])|γραμμάρια|γρ|グラム|그램|克|กรัม|ग्राम|غرام|جرام)', _reB.I), 'massG'),
     (_reB.compile(r'^(?:lbs?\b|pounds?)', _reB.I), 'mass'),
+    # cooking measures (tbsp/tsp/cup) — non-safety kitchen units, own coarse family (2026-07-27, LEAK-2).
+    # Mirrors gates.mjs UNIT_FAMILY_RULES. MUST precede the time rules: ru "ч.л." (teaspoon) would
+    # otherwise be grabbed by the bare-ч HOUR rule. cook_measure is self-coarse (not in _GB_COARSE), so a
+    # measure↔measure pair passes while measure↔(°C/g-kg/min-hr) or measure→metric conversion FAILS.
+    (_reB.compile('^(?:כפית|כפיות|כפות|כפ' + _GB_QM + r'|כף|כוסות|כוס|tbsps?\.?|tablespoons?|tsps?\.?|teaspoons?|cups?\b|ст\.?\s*л\.?|ч\.?\s*л\.?|столов|чайн|стакан|чашк|c\.?\s*à\.?\s*[sc]\b|cuill[eè]res?|tasses?\b|EL\b|TL\b|essl[öo]ffel|teel[öo]ffel|tassen?\b|cucharaditas?|cucharadas?|cdtas?\.?|cdas?\.?|tazas?\b|cucchiaini|cucchiaino|cucchiai|cucchiaio|tazz[ae]\b|κουταλ|φλιτζαν|colheres?|x[ií]caras?|ch[áa]venas?|copos?\b)', _reB.I), 'cook_measure'),
     (_reB.compile('^(?:דק(?:ות|' + _GB_QM + r')?|minutes?|mins?\b|minutos?|minuti|minuten|minut|minuuttia|dakika|menit|perc\b|phút|phut|минут|мин(?![' + _GB_CYR + r'])|хвилин|хв(?![' + _GB_CYR + r'])|λεπτ|分钟|分|분|นาที|मिनट|دقيقة|دقائق)', _reB.I), 'timeMin'),
     (_reB.compile('^(?:שעות|שע' + _GB_QM + r'?|ש\b|hours?|hrs?\b|h\b|horas?|ore\b|stunden|heures?|hodin|godzin|óra|órát|timmar|tuntia|saat\b|jam\b|giờ|uur|uren|timer|часов|часа|час(?![' + _GB_CYR + r'])|ч(?![' + _GB_CYR + r'])|годин|ώρες|ώρα|ωρών|時間|小时|时|시간|ชั่วโมง|घंटे|घंटा|ساعة|ساعات)', _reB.I), 'timeHr'),
     (_reB.compile('^(?:ימים|יום|days?|d[ií]as?|giorni|tage|jours?|dni|dní|dny|dzień|den\\b|nap\\b|napot|dage|dagar|dager|dagen|päivää|gün|hari|ngày|zile|дней|дня|день(?![' + _GB_CYR + r'])|суток|днів|дні|μέρες|ημέρες|日|天|일|วัน|दिन|أيام|يوم)', _reB.I), 'timeDay'),

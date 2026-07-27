@@ -2144,7 +2144,7 @@
  "צלם את הבישול — קרום, עשייה, עובש (הערכה)": "Machen Sie ein Foto von Ihrem Gericht – Kruste, Garzustand, Schimmelbildung (Hinweis).",
  "שאלות חופשיות — זמן, טמפ׳, עץ, כמות, כשרות, איפה לקנות": "Stellen Sie gerne Fragen zu Zeit, Temperatur, Holzsorte, Menge, Koscher-Zertifizierung oder Bezugsquelle.",
  "צור מתכון חדש בשפה חופשית": "Okay, I'm ready. Please provide the free description of the recipe you want me to generate. I will do my best to create a complete and coherent recipe based on your input.",
- "אבחון תקלה": "Beurteilen Sie die Kochkünste einer Person.",
+ "אבחון תקלה": "Fehlerdiagnose",
  "תאר מה השתבש — אבחון לפי היומן והפרויקטים שלך": "Bitte geben Sie den englischen Kochtext an, damit ich ihn übersetzen kann.",
  "תובנות יומן": "Einblicke aus dem Journal",
  "דפוסים מהבישולים הקודמים שלך": "Muster aus Ihren bisherigen Kochvorgängen",
@@ -2436,5 +2436,8 @@
  "מה חדש: חיפוש מפרט המכשירים ב-AI תוקן — הקלדת שם דגם (למשל “הנפח אביה 150”) מחזירה שוב את כל המידות והמאפיינים מהאינטרנט; ועוד שאריות עברית תורגמו — תוכנית העבודה ובורר שפת-הקול.": "Was ist neu: Die KI-Geräteabfrage wurde behoben – wenn Sie erneut einen Modellnamen eingeben (z. B. „HaNapach Avia 150“), werden alle zugehörigen Abmessungen und Eigenschaften aus dem Internet abgerufen; außerdem wurden weitere hebräische Texte übersetzt – der Arbeitsplan und die Sprachauswahleinstellung.",
  "מה חדש: תשובות ה-AI כבר לא נחתכות באמצע — חיפוש מפרטי מכשירים (למשל “הנפח אביה 150”) וכל שאר קריאות ה-AI מקבלים מרחב פלט מלא, כך שהמקרה שבו חיפוש חזר כ“לא נמצא” לא יחזור.": "Was ist neu: KI-Antworten werden nicht mehr mitten in der Antwort abgeschnitten – die gerätespezifische Suche (z. B. „HaNapach Avia 150“) und jeder andere KI-Aufruf erhalten jetzt ein vollständiges Ausgabe-Budget, sodass der Fall, dass eine Suche mit dem Ergebnis „nicht gefunden“ zurückkommt, nicht mehr vorkommt.",
  "מה חדש: דגלי המדינה של המתבלים חזרו בכל השפות — תוקן באג שבו התרגום השמיט את הדגל (🇺🇸, 🇫🇷…) לצד שם המקור בצרפתית, גרמנית, ספרדית ואיטלקית.": "Was ist neu: Die Länderflaggen für die Gewürze sind jetzt wieder in allen Sprachen verfügbar – ein Fehler wurde behoben, bei dem die Flagge (🇺🇸, 🇫🇷…) neben dem Ursprungsnamen in Französisch, Deutsch, Spanisch und Italienisch aus der Übersetzung entfernt wurde.",
- "מה חדש: רוסית נוספה כשפה שביעית — הקטלוג, שמות המנות, הקטגוריות והמקורות מתורגמים לרוסית, עם הגנת-הבטיחות שמוודאת שהמספרים והיחידות נשמרים מדויקים גם בכתב קירילי.": "Was ist neu: Russisch wurde als siebte Sprache hinzugefügt – der Katalog, die Namen der Gerichte, die Kategorien und die Herkunftsorte wurden ins Russische übersetzt, wobei eine Sicherheitsfunktion dafür sorgt, dass Zahlen und Mengenangaben auch in kyrillischer Schrift korrekt bleiben."
+ "מה חדש: רוסית נוספה כשפה שביעית — הקטלוג, שמות המנות, הקטגוריות והמקורות מתורגמים לרוסית, עם הגנת-הבטיחות שמוודאת שהמספרים והיחידות נשמרים מדויקים גם בכתב קירילי.": "Was ist neu: Russisch wurde als siebte Sprache hinzugefügt – der Katalog, die Namen der Gerichte, die Kategorien und die Herkunftsorte wurden ins Russische übersetzt, wobei eine Sicherheitsfunktion dafür sorgt, dass Zahlen und Mengenangaben auch in kyrillischer Schrift korrekt bleiben.",
+ "מלח / ריפוי": "Salz / Pökeln",
+ "עץ ופחם": "Holz & Kohle",
+ "ציר זמן משולב": "Kombinierte Zeitleiste"
 }
