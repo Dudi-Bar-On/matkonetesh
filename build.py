@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: תשובות ה-AI כבר לא נחתכות באמצע — חיפוש מפרטי מכשירים (למשל “הנפח אביה 150”) וכל שאר קריאות ה-AI מקבלים מרחב פלט מלא, כך שהמקרה שבו חיפוש חזר כ“לא נמצא” לא יחזור."
+WHATS_NEW = "מה חדש: דגלי המדינה של המתבלים חזרו בכל השפות — תוקן באג שבו התרגום השמיט את הדגל (🇺🇸, 🇫🇷…) לצד שם המקור בצרפתית, גרמנית, ספרדית ואיטלקית."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -337,7 +337,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 271 · 27.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 272 · 27.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -397,7 +397,15 @@ for _code, _dfs in _i18n_data.items():
     if _code in _i18n:
         for _df in _dfs:
             with open(_df, encoding="utf-8") as _f:
-                _i18n[_code].update(json.load(_f))
+                # The prose corpus (.data.json) must NEVER clobber a chrome key the language file already
+                # defines — chrome is authoritative. A shared key (e.g. a seasoning ORIGIN, which is both a
+                # t() chrome key AND appears in the data corpus) had its flag-carrying chrome value
+                # "🇺🇸 Memphis" overwritten by the corpus's flag-STRIPPED "Memphis" (translategemma drops the
+                # flag emoji when translating the corpus), so 123/130 origins shipped flagless in fr/de/es/it
+                # while he (raw) and en (corpus kept the flag) still showed them (owner bug). setdefault →
+                # data only ADDS keys chrome doesn't have (the item-description prose); chrome always wins.
+                for _dk, _dv in json.load(_f).items():
+                    _i18n[_code].setdefault(_dk, _dv)
 # i18n coverage report (non-fatal): how far each language covers the English reference + orphaned keys
 _en_keys = set(_i18n.get("en", {}).keys())
 if _en_keys:

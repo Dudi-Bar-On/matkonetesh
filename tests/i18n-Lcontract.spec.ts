@@ -65,9 +65,14 @@ test('__i18nTrace: en-mode ALSO pushes a diagnostic lang:"en" record carrying a 
   await page.evaluate(`L('__en_hit_key','InlineEN')`);     // key present in en dict → hit:true
   await page.evaluate(`L('__en_miss_key','InlineEN2')`);   // key absent from en dict → hit:false
   const trace = await page.evaluate(`window.__i18nTrace`);
-  expect(trace.length).toBe(2);
-  expect(trace[0]).toMatchObject({ key: '__en_hit_key', en: 'InlineEN', lang: 'en', hit: true });
-  expect(trace[1]).toMatchObject({ key: '__en_miss_key', en: 'InlineEN2', lang: 'en', hit: false });
+  // Assert THIS test's two records, not the total trace length: under full-suite parallel load the shared
+  // in-memory server slows the page's async render, which can push an unrelated app L() record between the
+  // reset and this read. The contract under test is "en-mode L pushes a record with the right hit flag for
+  // a given key" — filter to our keys so concurrent app activity can't make it flaky.
+  const mine = trace.filter((r: any) => r.key === '__en_hit_key' || r.key === '__en_miss_key');
+  expect(mine.length).toBe(2);
+  expect(mine.find((r: any) => r.key === '__en_hit_key')).toMatchObject({ key: '__en_hit_key', en: 'InlineEN', lang: 'en', hit: true });
+  expect(mine.find((r: any) => r.key === '__en_miss_key')).toMatchObject({ key: '__en_miss_key', en: 'InlineEN2', lang: 'en', hit: false });
 });
 
 // DoD line 9 / plan Step 5 — he-byte-identical guard: a sample of 20 REAL existing L('he','en') call

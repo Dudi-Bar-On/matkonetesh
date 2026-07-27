@@ -5,6 +5,16 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 272 · 27.7.26
+
+**Seasoning country flags restored in all languages (owner-reported):** the origin of each rub/seasoning
+(e.g. "🇺🇸 Texas", "🇫🇷 Provence") lost its flag emoji in French/German/Spanish/Italian — 123 of 130
+origins shipped flagless. Root cause: the origin also lives in the translatable prose corpus, where the
+machine translation dropped the flag, and the build merged that flag-stripped value over the correct
+chrome value. The build now lets the interface dictionary win over the prose corpus for any shared key,
+so flags (and every other chrome string) can't be clobbered. A render-path test now guards that every
+origin keeps its flag through the build.
+
 ## מהדורה 271 · 27.7.26
 
 **AI output is never truncated again (owner policy):** every AI call — device-spec lookup, the assistant,

@@ -125,6 +125,31 @@ for (const lang of LANGS) {
   });
 }
 
+// v272 — origins carry a leading flag emoji in their KEY (e.g. "🇺🇸 ממפיס"); the SHIPPED per-language
+// value must keep that flag. Regression guard for the .data.json-clobbers-chrome bug: translategemma
+// strips the flag when translating the prose corpus, and build.py's corpus-merge used to overwrite the
+// flagged chrome value → 123/130 origins shipped flagless in fr/de/es/it (owner bug). Assert at the
+// RENDERED value (getDict via the built dict), not the source file — the bug was purely build-time.
+for (const lang of LANGS) {
+  test(`i18n — seasoning origin flags survive the build in ${lang}`, async ({ page }) => {
+    await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
+    await page.waitForFunction(`typeof DATA!=='undefined' && DATA.seasonings && DATA.seasonings.length && typeof t==='function' && typeof setLang==='function'`);
+    const bad = await page.evaluate(`(function(lg){
+      if (typeof setLang === 'function') setLang(lg);
+      var RI = function(cp){ return cp >= 0x1F1E6 && cp <= 0x1F1FF; };   // regional-indicator (flag) range
+      var seas = (DATA.seasonings || []);
+      var out = [], seen = {};
+      for (var i=0;i<seas.length;i++){ var o = seas[i].origin; if (!o || seen[o]) continue; seen[o]=1;
+        if (!RI(o.codePointAt(0))) continue;                              // 🌍/🏠-prefixed origins have no country flag — skip
+        var v = String(t(o) || '');
+        if (!RI(v.codePointAt(0))) out.push(o + ' -> ' + v);              // value lost its leading flag
+      }
+      return out;
+    })(${JSON.stringify(lang)})`) as string[];
+    expect(bad.length, `${lang}: origins dropped their flag: ${JSON.stringify(bad.slice(0, 6))}`).toBe(0);
+  });
+}
+
 test('i18n extractor staleness — a fresh extraction reproduces the committed lang/_extracted.json (spec §8.3)', async () => {
   execFileSync('node', ['scripts/i18n-extract.mjs', 'app.js'], { stdio: 'pipe' });
   const fresh = JSON.parse(readFileSync('lang/_extracted.json', 'utf8'));
