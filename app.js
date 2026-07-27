@@ -6527,11 +6527,15 @@ function vcGuardSpoken(text, tiers, lang){
           .replace(safetyNumRe(), function(){ redacted++; return VC_REDACT; });
   }
   out=out.replace(/\s{2,}/g,' ').trim();
+  // NOTE: the spoken reply follows the VOICE language `lang` (a param), NOT the UI getLang() — the voice is
+  // he/en only (TTS-locale beyond he/en is follow-up T-GuardB-runtime's sibling). v268 T3 wrongly folded
+  // these into getLang()-based L(); restored to the `lang`-param ternary so the spoken marker matches the
+  // spoken language (regression fix — tests/p0-spoken-safety).
   return out+' '+(redacted
     ? (redacted===1
-        ? (L('מספר זה אינו מאומת — בדוק בכרטיס הפריט.', 'This number isn\'t verified — check the item card.'))
-        : (L('המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.', 'These numbers aren\'t verified — check the item card.')))
-    : (L('לפי המדריך המאומת.', 'per the app\'s verified guide.')));
+        ? (lang==='he'?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':'This number isn\'t verified — check the item card.')
+        : (lang==='he'?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':'These numbers aren\'t verified — check the item card.'))
+    : (lang==='he'?'לפי המדריך המאומת.':'per the app\'s verified guide.'));
 }
 
 async function vcAskAI(question, ent){

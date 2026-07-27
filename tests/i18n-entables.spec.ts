@@ -80,8 +80,10 @@ test('T4 4/9 — doneLabel(): he byte-identical + ctx-scoped dict-driven after s
   // seed the TABLE-SCOPED ctx key ('נא␟doneness') — the bare 'נא' key must stay untouched by this
   await seedDictAndSwitch(page, 'fr', HE.doneLabel_steak_rare + '␟doneness', 'SEEDED-FR-RARE');
   expect(await page.evaluate(`doneLabel(${JSON.stringify(cut)}, 'rare')`)).toBe('SEEDED-FR-RARE');
-  // the unrelated bare-keyed sense (kg/raw-weight, L('נא','raw')) must NOT pick up the ctx'd entry
-  expect(await page.evaluate(`L(${JSON.stringify(HE.doneLabel_steak_rare)}, 'raw')`)).toBe('raw');
+  // the unrelated bare-keyed sense (kg/raw-weight, L('נא','raw')) must NOT pick up the ctx'd doneness entry.
+  // (the bare 'נא' now has its OWN real fr translation "cru" from v268 T8 — the point is distinctness: the
+  // ␟doneness seed 'SEEDED-FR-RARE' does not leak into the bare sense.)
+  expect(await page.evaluate(`L(${JSON.stringify(HE.doneLabel_steak_rare)}, 'raw')`)).not.toBe('SEEDED-FR-RARE');
 });
 
 test('T4 5/9 — stageLabel(): he byte-identical + dict-driven after seeding', async ({ page }) => {
