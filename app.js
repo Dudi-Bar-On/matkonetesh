@@ -4035,17 +4035,17 @@ function itemStages(meta,methodKey,ready,order){
         // (smoke→sv) branch above.
         const finLbl=(osv && osv.cold===true)?L('עישון קר','Cold smoke'):L('עישון','Smoke');
         const finSub=osv?L('גימור לאחר סו-ויד — מקור מצוטט','post-sous-vide finish — cited source'):'';
-        stages.push({label:`${finLbl} ${finT}°`,hours:finH,kind:'smoke',temp:finT,note:m.note,sub:finSub});
+        stages.push({label:`${finLbl} ${finT}°`,hours:finH,kind:'smoke',temp:finT,note:m.note?t(m.note):m.note,sub:finSub});
       }
     }
-    if(m.combo.includes('grill')) stages.push({label:m.combo.length===1?L('גריל / אש ישירה','Grill / direct heat'):L('גימור גריל (צריבה)','Grill finish (sear)'),hours:0.3,kind:'cook',note:m.combo.length===1?m.note:''});
+    if(m.combo.includes('grill')) stages.push({label:m.combo.length===1?L('גריל / אש ישירה','Grill / direct heat'):L('גימור גריל (צריבה)','Grill finish (sear)'),hours:0.3,kind:'cook',note:m.combo.length===1&&m.note?t(m.note):''});
   } else {
     if(m.svHours){ stages.push({label:`${L('סו-ויד','Sous-vide')} ${m.svTemp}°`,hours:m.svHours,kind:'sv',temp:m.svTemp}); stages.push({label:L('העברה למעשנת','Move to smoker'),hours:0,kind:'note'}); }
     if(m.smHours||m.hours){
       const hrs=m.smHours||m.hours;
-      stages.push({label:`${m.label} ${m.tempC||''}`.trim(),hours:hrs,kind:m.key.includes('smoke')||m.key==='sv'||m.key==='so'||m.key==='hot'||m.key==='cold'?'smoke':'cook',temp:m.smTemp,note:m.note});
+      stages.push({label:`${t(m.label)} ${m.tempC||''}`.trim(),hours:hrs,kind:m.key.includes('smoke')||m.key==='sv'||m.key==='so'||m.key==='hot'||m.key==='cold'?'smoke':'cook',temp:m.smTemp,note:m.note?t(m.note):m.note});
     } else if(!m.svHours){
-      stages.push({label:m.label,hours:m.hours,kind:'cook',note:m.note});
+      stages.push({label:t(m.label),hours:m.hours,kind:'cook',note:m.note?t(m.note):m.note});
     }
   }
   // D3: sous-vide pasteurization is timed from when the CORE reaches temp — the card said "+20%" but the
@@ -6268,10 +6268,10 @@ function vcRender(){
     <p class="vc-hint">💡 ${L('מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: "הבא", "הקודם", "הקרא שוב", "פרטים".','Big screen, big buttons — meant to stand by the smoker. Commands: "next", "back", "read again", "details".')}</p>
     <div class="vc-langrow">
       <span class="vc-langlbl">🎙️ ${L('שפת דיבור:','Speech language:')}</span>
-      <button class="vc-langbtn ${vcLang()==='he'?'on':''}" data-vc="lang-he">עברית</button>
+      <button class="vc-langbtn ${vcLang()==='he'?'on':''}" data-vc="lang-he">${L('עברית','Hebrew')}</button>
       <button class="vc-langbtn ${vcLang()==='en'?'on':''}" data-vc="lang-en">English</button>
       <span class="vc-langlbl">🔊 ${L('תשובה:','Answer:')}</span>
-      <button class="vc-langbtn ${vcAnsLang()==='he'?'on':''}" data-vc="anslang-he">עברית</button>
+      <button class="vc-langbtn ${vcAnsLang()==='he'?'on':''}" data-vc="anslang-he">${L('עברית','Hebrew')}</button>
       <button class="vc-langbtn ${vcAnsLang()==='en'?'on':''}" data-vc="anslang-en">English</button>
     </div>
     <p class="vc-hint">${vcLang()==='en'?'🇬🇧 Voice commands: next · back · read · details · temperature · when.':'פקודות עבריות: הבא · הקודם · הקרא · פרטים · טמפרטורה · מתי.'} ${L('דיבור באנגלית מזוהה לרוב מדויק יותר.','English speech is usually recognized more accurately.')}</p>
@@ -7696,7 +7696,11 @@ async function _lookupOnce(query, cat, enrich){
     +(enrich?(' Find the MANUFACTURER\'S full specification page for this exact model; report the physical '
       +'cabinet dimensions (dimH_cm/dimW_cm/dimD_cm), the shelf/grate count and one shelf\'s dimensions, and '
       +'the total cooking area — these are the most important fields.'):'');
-  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:900, outLang:'en', think:'high'});
+  // maxTokens must cover BOTH the think:'high' reasoning AND the full JSON: Gemini 3.x counts thinking
+  // tokens against maxOutputTokens, so the old 900 cap was exhausted by reasoning and the JSON came back
+  // truncated → finishReason MAX_TOKENS → 'bad-json' → the device read as "not found on the internet"
+  // (owner bug, הנפח אביה 150). 4000 leaves ample room; billing is on ACTUAL tokens, so the cap is free headroom.
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:4000, outLang:'en', think:'high'});
   const cap={}; ['racks','zones','channels','bathL','volume'].forEach(function(k){ const v=parseFloat(raw&&raw[k]); if(!isNaN(v)&&v>0&&v<100000) cap[k]=(k==='racks'||k==='zones'||k==='channels')?Math.round(v):v; });
   const keepCap=c.capKey?[c.capKey]:(cat==='sousvide'?['bathL']:[]); Object.keys(cap).forEach(function(k){ if(keepCap.indexOf(k)<0) delete cap[k]; });   // only this category's own capacity (no stray channels on a smoker, etc.)
   const FUELS=['charcoal','pellet','gas','wood','electric'];

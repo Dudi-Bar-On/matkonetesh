@@ -91,7 +91,7 @@ for (const lang of LANGS) {
     await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
     await page.evaluate(`(function(){
       equipSave([{id:'sm1',cat:'smoker',type:'קטל (ככלי עישון)',name:'My Smoker',cap:{racks:1,areaCm2:2400}}]); equipSetConfigured();
-      saveMenu({guests:4,appetite:'reg',kosher:false,keys:['cut-1','cut-74'],sides:[],drinks:[],desserts:[],gpm:0});
+      saveMenu({guests:4,appetite:'reg',kosher:false,keys:['cut-1','cut-74','make-m-brat'],sides:[],drinks:[],desserts:[],gpm:0});
       if(typeof setMenuCtx==='function') setMenuCtx('event');
       if(typeof setLang==='function') setLang(${JSON.stringify(lang)});
     })()`);
@@ -100,6 +100,9 @@ for (const lang of LANGS) {
       ['catalog-category', `setCatNav('בשר אדום'); if(typeof buildChips==='function')buildChips(); catView('cat');`],
       ['projects', `cNavGo('projects');`],
       ['events', `cNavGo('events');`],
+      // v270 — the work-plan timeline renders MAKE_COOK method labels/notes (raw-Hebrew leak owner-#1) + the voice panel.
+      ['timeline', `if(typeof closePanel==='function')closePanel(); if(typeof openTimeline==='function')openTimeline();`],
+      ['voice-cook', `if(typeof openVoiceCook==='function')openVoiceCook((window._wpTasks||[]));`],
     ];
     for (let i = 0; i < 6; i++) SCREENS.push([`wizard-step-${i}`, `cNavGo('wizard'); try{cwGo(${i});}catch(e){} if(typeof cwSyncFromMenu==='function'){try{cwSyncFromMenu();}catch(e){}}`]);
     const scan = `(function(){
