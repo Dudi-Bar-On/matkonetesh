@@ -1661,5 +1661,16 @@
  "תמלחת כבישה — שקלו לכסות את הנתח. שיטת שיווי-משקל (בשקית ואקום עם מעט מים) בטוחה מפני מליחות-יתר, ומינון ה-Cure מחושב לפי המשקל הכולל (בטוח). כבישה ~24ש לכל 1 ס״מ עובי.": "Salamoia di stagionatura — pesa quanto basta per coprire il pezzo. Il metodo dell’equilibrio (in un sacchetto sottovuoto con un po’ d’acqua) è sicuro contro l’eccesso di sale, e la dose di Cure è calcolata in base al peso totale (sicuro). Stagionatura ~24h ogni 1 cm di spessore.",
  "תשובה:": "Risposta:",
  "≈1 ל׳/ק״ג בשר בשקית ואקום": "≈1 L/kg di carne in un sacchetto sottovuoto",
- "🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג.": "🤖 Modalità IA attiva — risposte libere con ricerca sul web, basate sul catalogo. Solo uno strumento di supporto — verifica i valori di temperatura/sicurezza rispetto al catalogo."
+ "🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג.": "🤖 Modalità IA attiva — risposte libere con ricerca sul web, basate sul catalogo. Solo uno strumento di supporto — verifica i valori di temperatura/sicurezza rispetto al catalogo.",
+ "מדפים/שבכות": "griglie",
+ "אזורי חום": "zone di calore",
+ "מדפים": "griglie",
+ "נפח צילינדר (ל׳)": "cilindro (L)",
+ "יחידות בתשובות ה-AI": "Le unità di misura nelle risposte generate dall'IA",
+ "מכשיר": "dispositivo",
+ "מכשירים": "dispositivi",
+ "קטגוריות": "categorie",
+ "פרוב": "sonda",
+ "פרובים": "sondaggi",
+ "קטגוריה␟label": "Categoria"
 }

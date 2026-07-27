@@ -1666,5 +1666,16 @@
   "אקציה": "Acacia",
   "פחם מקומי (משולש/גדה)": "Local",
   "פחם דחוס/מעובד": "Compressed"
- }
+ },
+ "מדפים/שבכות": "racks/grates",
+ "אזורי חום": "heat zones",
+ "מדפים": "racks",
+ "נפח צילינדר (ל׳)": "cylinder (L)",
+ "יחידות בתשובות ה-AI": "Units in AI answers",
+ "מכשיר": "device",
+ "מכשירים": "devices",
+ "קטגוריות": "categories",
+ "פרוב": "probe",
+ "פרובים": "probes",
+ "קטגוריה␟label": "Category"
 }

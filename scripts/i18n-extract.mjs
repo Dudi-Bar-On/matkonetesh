@@ -417,12 +417,48 @@ export function extract(src, opts = {}) {
     }
   });
 
+  // ── mode 6 — `<prefix>He`/`<prefix>En` sibling data-pairs (capHe/capEn, uHe/uEn, hintHe/hintEn, …)
+  // not caught by the exact `he`/`en` walk above. Spec §3.3 C2 completeness: these UI label pairs are
+  // rendered via `he?obj.capHe:obj.capEn` and must be in the KNOWN set or they leak in fr/de/es/it.
+  // Same C3 Hebrew-codepoint guard + deny-list as the bare he/en walk. Bare `he`/`En`-only excluded.
+  walk(ast, null, (node) => {
+    if (node.type !== 'ObjectExpression') return;
+    const declName = nearestDeclName(node);
+    if (declName && denyTables.has(declName)) return;
+    for (const p of node.properties) {
+      if (p.type !== 'Property' || !isStringLiteral(p.value)) continue;
+      const k = propKeyName(p);
+      if (!k || k === 'he' || !/[A-Za-z]He$/.test(k)) continue;   // <prefix>He (prefix ends in a letter), not bare 'he'
+      const prefix = k.slice(0, -2);
+      const enProp = node.properties.find((pp) => pp.type === 'Property' && propKeyName(pp) === prefix + 'En' && isStringLiteral(pp.value));
+      if (!enProp) continue;
+      if (!HEBREW_RE.test(p.value.value)) continue;               // C3 semantic guard
+      setKnownKey(p.value.value, enProp.value.value);
+    }
+  });
+
   // ── mode 1 — static L(strLit,strLit[,strLit]) / t(strLit[,strLit]) ──
   // ── mode 3 — toast(strLit,…) first-args + the tr(x||'default-label') shape ──
   walk(ast, null, (node) => {
     if (node.type !== 'CallExpression' || node.callee.type !== 'Identifier') return;
     const name = node.callee.name;
     const args = node.arguments;
+
+    // ternary-branch L — L(cond?'heA':'heB', cond?'enA':'enB' | 'en') (plurals/conditionals, spec §3.3 C2):
+    // both Hebrew branches are literals → harvest each branch's (he,en) pair so they enter the KNOWN set.
+    if (name === 'L' && args.length >= 2 && args[0].type === 'ConditionalExpression'
+        && isStringLiteral(args[0].consequent) && isStringLiteral(args[0].alternate)) {
+      const heA = args[0].consequent.value, heB = args[0].alternate.value;
+      let enA, enB;
+      if (args[1].type === 'ConditionalExpression' && isStringLiteral(args[1].consequent) && isStringLiteral(args[1].alternate)) {
+        enA = args[1].consequent.value; enB = args[1].alternate.value;
+      } else if (isStringLiteral(args[1])) { enA = enB = args[1].value; }
+      if (enA !== undefined) {
+        if (HEBREW_RE.test(heA)) setKnownKey(heA, enA);
+        if (HEBREW_RE.test(heB)) setKnownKey(heB, enB);
+      }
+      return;
+    }
 
     if (name === 'L' && args.length >= 1 && isStringLiteral(args[0])) {
       const he = args[0].value;

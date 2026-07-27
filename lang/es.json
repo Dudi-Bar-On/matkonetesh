@@ -1666,5 +1666,16 @@
  "שם המכשיר": "Nombre del dispositivo",
  "תשובה:": "Respuesta:",
  "≈1 ל׳/ק״ג בשר בשקית ואקום": "≈1 L/kg de carne en bolsa al vacío",
- "🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג.": "🤖 Modo IA activo — respuestas libres con búsqueda web, basadas en el catálogo. Solo una ayuda — verifica los valores de temperatura/seguridad frente al catálogo."
+ "🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג.": "🤖 Modo IA activo — respuestas libres con búsqueda web, basadas en el catálogo. Solo una ayuda — verifica los valores de temperatura/seguridad frente al catálogo.",
+ "מדפים/שבכות": "rejillas",
+ "אזורי חום": "zonas de calor",
+ "מדפים": "rejillas",
+ "נפח צילינדר (ל׳)": "cilindro (L)",
+ "יחידות בתשובות ה-AI": "Las unidades en las respuestas de la IA",
+ "מכשיר": "dispositivo",
+ "מכשירים": "dispositivos",
+ "קטגוריות": "categorías",
+ "פרוב": "sonda",
+ "פרובים": "sondas",
+ "קטגוריה␟label": "Categoría"
 }

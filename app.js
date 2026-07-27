@@ -7983,7 +7983,7 @@ function openEquipment(){
       <div class="eq-sheet-grab"></div>
       <div class="eq-sheet-head"><span class="eq-tile" id="eqSheetTile" style="--eqacc-l:${cm(curCat).accL}">${equipTypeIcon(curCat,(dev&&dev.type)||((cm(curCat).types||[])[0]))}</span><h3 id="eqFormTitle">${title(curCat)}</h3><button class="eq-sheet-x" id="eqBack" type="button" aria-label="${L('חזרה','Back')}">✕</button></div>
       <div class="eq-sheet-body">
-        <label class="eq-step-l">${L('קטגוריה','Category')}</label>
+        <label class="eq-step-l">${L('קטגוריה','Category','label')}</label>
         <select id="eqCat" class="eq-inp">${EQUIP_CATS.map(function(x){return `<option value="${x.cat}" ${x.cat===curCat?'selected':''}>${L(x.he,x.en)}</option>`;}).join('')}</select>
         ${aiOn?`<label class="eq-step-l">${L('אמור לי את הדגם — אמשוך את המפרט','Tell me the model — I’ll pull the specs')}</label>
         <input id="eqLookupQ" class="eq-inp" list="eqBrandList" placeholder="${L('לדוגמה: Traeger Pro 575 · או קישור למוצר','e.g. Traeger Pro 575 · or a product link')}" value="${dev?esc(dev.name||''):''}">

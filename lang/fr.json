@@ -1667,5 +1667,16 @@
  "≈1 ל׳/ק״ג בשר בשקית ואקום": "≈1 L/kg de viande dans un sac sous vide",
  "⚠ אין מקום אחסון לתמונה — נשמר בלי תמונה": "⚠ Aucun espace de stockage pour l’image — enregistré sans elle",
  "🤖 מצב AI נבחר — צריך לחבר מפתח חינמי (חד-פעמי).": "🤖 Mode IA sélectionné — vous devez connecter une clé gratuite (à faire une seule fois).",
- "🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג.": "🤖 Mode IA actif — réponses libres avec recherche sur le web, ancrées dans le catalogue. Un simple outil d’aide — vérifiez les chiffres de température/sécurité par rapport au catalogue."
+ "🤖 מצב AI פעיל — תשובות חופשיות עם חיפוש באינטרנט, מעוגנות בקטלוג. כלי-עזר בלבד — אמת מספרי טמפ׳/בטיחות מול הקטלוג.": "🤖 Mode IA actif — réponses libres avec recherche sur le web, ancrées dans le catalogue. Un simple outil d’aide — vérifiez les chiffres de température/sécurité par rapport au catalogue.",
+ "מדפים/שבכות": "barres/grilles",
+ "אזורי חום": "zones de chaleur",
+ "מדפים": "barres",
+ "נפח צילינדר (ל׳)": "cylindre (L)",
+ "יחידות בתשובות ה-AI": "Les unités dans les réponses de l’IA",
+ "מכשיר": "appareil",
+ "מכשירים": "appareils",
+ "קטגוריות": "catégories",
+ "פרוב": "sondage",
+ "פרובים": "sondes",
+ "קטגוריה␟label": "Catégorie"
 }
