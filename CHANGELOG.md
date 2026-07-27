@@ -5,6 +5,19 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 277 · 27.7.26
+
+**More interface areas now translate in every language (continuing the v276 cleanup):**
+- The same English-leak class was cleaned from seven more render sites: the **portion calculator's**
+  dish-type selector and its notes, the **seasoning-prep and smoking-treatment** notes (chill/dry/score,
+  the 3-2-1 method, glaze timing…), the **equipment-occupancy** slot labels ("shelf"/"zone", "racks"), the
+  **home-screen** hero tips, and the **experience-level** picker — all of which had shown in English for
+  non-Hebrew languages. 41 strings were translated across every language, with cooking times preserved
+  exactly.
+- The both-directions leak test was extended to cover these screens. A few remaining spots were left by
+  design and reported: the AI example-prompts and refusal cards, and the two bilingual reference tools
+  (glossary term list, cut-name translator) where the English name *is* the feature.
+
 ## מהדורה 276 · 27.7.26
 
 **Recipe equipment, cooking-method and phase labels now translate in every language (owner-reported):**
