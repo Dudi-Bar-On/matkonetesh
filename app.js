@@ -5253,7 +5253,7 @@ async function askGemini(qRaw, history){
     system_instruction:{parts:[{text:sys}]},
     contents:turns,
     tools: searchFor('ask', !!ctx) ? [{google_search:{}}] : undefined,   // P0-app item 3: search only when local grounding is empty
-    generationConfig: gemGen('text', {temperature:0.8, maxOutputTokens:1600}, {think: thinkFor('ask')})
+    generationConfig: gemGen('text', {temperature:0.8, maxOutputTokens:8192}, {think: thinkFor('ask')})
   };
   const r=await gemFetch('text', body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
@@ -5476,7 +5476,7 @@ function aiMockActive(){ return typeof window!=='undefined' && window.__aiMock!=
 
 // A1 · generic grounded JSON call
 async function aiJSON(opts){
-  const {task, schemaHint, grounding='', temperature=0.4, maxTokens=1200, search=false, think='minimal'}=opts||{};
+  const {task, schemaHint, grounding='', temperature=0.4, maxTokens=8192, search=false, think='minimal'}=opts||{};
   if(aiMockActive()){ const m=window.__aiMock; return typeof m==='function' ? m(opts) : m; }
   if(!aiAvail()) throw new Error('no-key');   // available via a personal key OR managed central access; gemFetch routes the transport
   // W1-P1: output-language plumbing — human-readable string values follow the UI language (keys/ids stay as given). Fixes AI JSON coming back Hebrew in the English UI.
@@ -6344,7 +6344,7 @@ async function vcTranslateToEn(text){
   if(!aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
   const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking-instruction text to natural spoken English. Reply with ONLY the English translation, no quotes, no notes. Keep ALL numbers, temperatures, times and units EXACTLY as written — never change, add, drop or reorder a number. Do NOT convert 24-hour times to AM/PM, and do NOT convert between units (no °C→°F, no metric→imperial).'}]},
     contents:[{role:'user',parts:[{text:src}]}],
-    generationConfig: gemGen('text', {temperature:0.2, maxOutputTokens:300}, {think: thinkFor('translate')}) };
+    generationConfig: gemGen('text', {temperature:0.2, maxOutputTokens:8192}, {think: thinkFor('translate')}) };
   const r=await gemFetch('text', body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json(); const cand=j.candidates&&j.candidates[0];
@@ -6549,7 +6549,7 @@ async function vcAskAI(question, ent){
   const body={ system_instruction:{parts:[{text:sys}]},
     contents:[{role:'user',parts:[{text:userText}]}],
     tools: searchFor('vcAsk', !!ent) ? [{google_search:{}}] : undefined,   // P0-app item 3: search only when nothing local resolved
-    generationConfig: gemGen('text', {temperature:0.6, maxOutputTokens:400}, {think: thinkFor('vcAsk')}) };
+    generationConfig: gemGen('text', {temperature:0.6, maxOutputTokens:8192}, {think: thinkFor('vcAsk')}) };
   const r=await gemFetch('text', body, {timeout:30000});
   if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json(); const cand=j.candidates&&j.candidates[0];
@@ -7697,10 +7697,11 @@ async function _lookupOnce(query, cat, enrich){
       +'cabinet dimensions (dimH_cm/dimW_cm/dimD_cm), the shelf/grate count and one shelf\'s dimensions, and '
       +'the total cooking area — these are the most important fields.'):'');
   // maxTokens must cover BOTH the think:'high' reasoning AND the full JSON: Gemini 3.x counts thinking
-  // tokens against maxOutputTokens, so the old 900 cap was exhausted by reasoning and the JSON came back
+  // tokens against maxOutputTokens, so a small cap gets exhausted by reasoning and the JSON comes back
   // truncated → finishReason MAX_TOKENS → 'bad-json' → the device read as "not found on the internet"
-  // (owner bug, הנפח אביה 150). 4000 leaves ample room; billing is on ACTUAL tokens, so the cap is free headroom.
-  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:4000, outLang:'en', think:'high'});
+  // (owner bug, הנפח אביה 150). OWNER POLICY (2026-07-27): never cap AI output low — every call uses 8192.
+  // Billing is on ACTUAL tokens, so a high cap is free headroom; it only removes the truncation ceiling.
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.2, maxTokens:8192, outLang:'en', think:'high'});
   const cap={}; ['racks','zones','channels','bathL','volume'].forEach(function(k){ const v=parseFloat(raw&&raw[k]); if(!isNaN(v)&&v>0&&v<100000) cap[k]=(k==='racks'||k==='zones'||k==='channels')?Math.round(v):v; });
   const keepCap=c.capKey?[c.capKey]:(cat==='sousvide'?['bathL']:[]); Object.keys(cap).forEach(function(k){ if(keepCap.indexOf(k)<0) delete cap[k]; });   // only this category's own capacity (no stray channels on a smoker, etc.)
   const FUELS=['charcoal','pellet','gas','wood','electric'];
@@ -7774,7 +7775,7 @@ async function aiBrandModels(brand, cat){
   const c=equipCat(cat)||{};
   const schema='{"models":[{"name":"<model name>","spec":"<one short line: fuel · capacity · size / notable feature>"}]}';
   const task='List up to 8 well-known '+(c.en||cat||'cooking equipment')+' models made by "'+String(brand||'')+'", most popular first. For each, give the model name and a short one-line spec summary (fuel / racks or size / a notable feature).';
-  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.3, maxTokens:700, outLang:'en'});
+  const raw=await aiJSON({task, schemaHint:schema, search:true, temperature:0.3, maxTokens:8192, outLang:'en'});
   const arr=(raw&&Array.isArray(raw.models))?raw.models:(Array.isArray(raw)?raw:[]);
   return arr.map(function(m){ if(typeof m==='string') return {name:m,spec:''}; if(m&&typeof m.name==='string') return {name:m.name,spec:(typeof m.spec==='string'?m.spec:'')}; return null; }).filter(function(m){return m&&m.name.trim();}).slice(0,8);
 }
@@ -8701,7 +8702,7 @@ async function mtTranslate(src, lang){
     } else if(typeof gemFetch==='function' && aiAvail()){
       const LN=LANGNAME[lang]||lang;
       const body={ system_instruction:{parts:[{text:'Translate the following Hebrew cooking text to '+LN+'. Keep ALL numbers, temperatures, times and units EXACTLY as written — never change, add, or drop a number. Reply with ONLY the translation, no notes.'}]},
-        contents:[{role:'user',parts:[{text:src}]}], generationConfig: gemGen('text', {temperature:0.2, maxOutputTokens:600}, {think: thinkFor('dataMT')}) };
+        contents:[{role:'user',parts:[{text:src}]}], generationConfig: gemGen('text', {temperature:0.2, maxOutputTokens:8192}, {think: thinkFor('dataMT')}) };
       const r=await gemFetch('text', body, {timeout:20000}); const j=await r.json();
       const cand=j.candidates&&j.candidates[0]; out=cand&&cand.content&&(cand.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();
     }
@@ -9996,7 +9997,7 @@ async function wcimAI(){
   const grounding=wcimGrounding();
   const schema='{"makeable":[{"key":"<key>","note":"<קצר>"}],"almost":[{"key":"<key>","missing":["<פריט>"]}]}';
   const task='על סמך המלאי, היכולות והכלים — אילו מתכונים אפשר להכין עכשיו (makeable) ואילו כמעט (חסר 1-2 פריטים, almost)? השתמש אך ורק ב-keys מהרשימה.';
-  const raw=await aiJSON({task, schemaHint:schema, grounding, temperature:0.3, maxTokens:1400});
+  const raw=await aiJSON({task, schemaHint:schema, grounding, temperature:0.3, maxTokens:8192});
   // GROUNDING ENFORCEMENT: drop any key not in catalog
   const mk=aiValidateItems(raw&&raw.makeable).kept;
   const al=aiValidateItems(raw&&raw.almost).kept;
@@ -10128,7 +10129,7 @@ async function aiPlanEvent(prompt){
   const grounding=eventPlanGrounding();
   const schema='{"guests":<מספר>,"appetite":"light|reg|heavy","kosher":<true|false>,"keys":["<key>"],"sides":["<שם>"],"drinks":["<שם>"],"desserts":["<שם>"],"rationale":"<נימוק קצר לבחירות>"}';
   const task='בנה תפריט אירוע מאוזן לפי הבקשה: "'+prompt+'". בחר מנות עיקריות (keys מהקטלוג בלבד), תוספות, משקאות וקינוחים מהרשימות. אזן בין סוגי בשר/צומח. אם התבקשה כשרות או "בלי חזיר" — אל תכלול פריטים לא-כשרים/חזיר. החזר מספר סועדים ותיאבון סביר.';
-  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:1500, think: thinkFor('eventPlan')});
+  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:8192, think: thinkFor('eventPlan')});
   const wantKosher = !!(raw&&raw.kosher) || /כשר|בלי חזיר|ללא חזיר/.test(prompt);
   let keys=aiValidateKeys(raw&&raw.keys).kept;
   if(wantKosher && typeof isKosherOk==='function') keys=keys.filter(k=>isKosherOk(k));   // drop pork/shellfish/blood
@@ -10224,7 +10225,7 @@ async function aiSeasonRec(key, cat, isProd){
   const grounding=seasonRecGrounding(meta, cat, isProd);
   const schema='{"recommend":[{"id":"<id>","reason":"<קצר: למה מתאים>"}]}';
   const task='המלץ על 3-5 מתבלים/רטבים שמתאימים במיוחד ל'+(meta?meta.heb:cat)+'. גוון בין ראב/מרינדה/רוטב/גלייז אם רלוונטי. הסבר בקצרה למה כל אחד מתאים (טעם, מסורת, איזון). בחר id מהרשימה בלבד.';
-  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:1000});
+  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:8192});
   const recs=Array.isArray(raw&&raw.recommend)?raw.recommend:[];
   const validIds=aiValidateSeasonings(recs.map(r=>r.id), cat, isProd).kept;
   const validSet=new Set(validIds);
@@ -10292,7 +10293,7 @@ async function aiDiagnose(problem){
   const grounding=diagnoseGrounding(problem);
   const schema='{"diagnosis":"<אבחון קצר>","causes":["<סיבה>"],"fixes":["<פעולה מעשית>"],"related":["<id מרשימת הפתרונות>"]}';
   const task='אבחן את התקלה על סמך התיאור וההקשר האישי. תן אבחון קצר, סיבות אפשריות, ופעולות מתקנות מעשיות. הפנה ב-related ל-id של הפתרונות הרלוונטיים מהרשימה. אל תמציא מספרי טמפ׳/בטיחות — הסתמך על הפתרונות הקיימים.';
-  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.4,maxTokens:1100, think: thinkFor('diagnose')});
+  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.4,maxTokens:8192, think: thinkFor('diagnose')});
   const idx=troubleIndex(); const validIds=new Set(idx.map(s=>s.id));
   const related=[...new Set((Array.isArray(raw&&raw.related)?raw.related:[]).filter(id=>validIds.has(id)))].map(id=>idx.find(s=>s.id===id));
   const arr=x=>Array.isArray(x)?x.filter(s=>typeof s==='string').slice(0,6):[];
@@ -10380,7 +10381,7 @@ async function aiGenerateRecipe(prompt){
   const grounding=umakeGrounding();
   const schema='{"name":"<שם>","type":"fresh|cooked|dried","intro":"<תיאור קצר>","materials":["<חומר>"],"phases":[{"title":"<כותרת>","body":"<הסבר>"}]}';
   const task='כתוב מתכון בנייה-מאפס לפי הבקשה: "'+prompt+'". תן שם, סוג מוצר, תיאור, רשימת חומרים וציוד, ושלבי הכנה מפורטים ואיכותיים. אל תציין מספרי מלח/ריפוי — האפליקציה תוסיף מחשבון בטוח.';
-  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.6,maxTokens:1600});
+  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.6,maxTokens:8192});
   const v=umakeValidateStructure(raw, raw&&raw.type);
   if(!v) throw new Error('bad-structure');
   // ASSEMBLE with APP-SUPPLIED safe calc — never from AI
@@ -10464,7 +10465,7 @@ async function aiJournalInsights(){
   const grounding=journalInsightsGrounding();
   const schema='{"summary":"<סיכום קצר>","patterns":["<דפוס שזוהה>"],"suggestions":[{"title":"<כותרת>","detail":"<פירוט מעשי>"}]}';
   const task='נתח את יומן הבישולים: זהה דפוסים (מה מצליח, מה מדורג נמוך, מגמות טמפ׳/סוגים), ותן 2-4 הצעות שיפור מעשיות. הסתמך אך ורק על הרשומות שסופקו.';
-  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:1200});
+  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.5,maxTokens:8192});
   const arr=x=>Array.isArray(x)?x.filter(s=>typeof s==='string').slice(0,6):[];
   const sugg=Array.isArray(raw&&raw.suggestions)?raw.suggestions.filter(s=>s&&typeof s.title==='string').slice(0,5).map(s=>({title:s.title.slice(0,80),detail:(typeof s.detail==='string')?s.detail.slice(0,300):''})):[];
   return { summary:(raw&&typeof raw.summary==='string')?raw.summary.slice(0,400):'', patterns:arr(raw&&raw.patterns), suggestions:sugg };
@@ -10987,7 +10988,7 @@ async function pantryAdvisorAI(targetDate){
   const grounding=pantryAdvisorGrounding(targetDate);
   const schema='{"recommend":[{"key":"<key>","reason":"<קצר: למה כדאי>"}],"warnings":["<אזהרה>"]}';
   const task='המלץ אילו מלאכות כדאי להתחיל כדי להיות מוכן לתאריך היעד, לפי משכי-הייצור הנתונים. סדר לפי מה שצריך להתחיל ראשון. הוסף אזהרות אם משהו לא יספיק. בחר keys מהרשימה בלבד.';
-  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.35,maxTokens:1200});
+  const raw=await aiJSON({task,schemaHint:schema,grounding,temperature:0.35,maxTokens:8192});
   const rec=aiValidateItems(raw&&raw.recommend).kept;
   // recompute startBy IN-APP from data (never trust AI dates/durations — P3)
   const enriched=rec.map(r=>{ const meta=resolveItem(r.key); const days=prodDaysFor(meta); return {key:r.key, heb:meta.heb, cat:meta.cat, reason:r.reason, days, startBy:addDays(targetDate,-days), kind:projItemKind(meta)}; });
@@ -11113,7 +11114,7 @@ const CCAT_TILES=[
 async function gemVision(dataUrl, prompt){
   if(typeof aiAvail!=='function' || !aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
   const m=String(dataUrl||'').match(/^data:([^;]+);base64,(.+)$/); if(!m) throw new Error('bad-image');
-  const body={ contents:[{parts:[{inlineData:{mimeType:m[1], data:m[2]}}, {text:prompt}]}], generationConfig: gemGen('text', {temperature:0.4, maxOutputTokens:800}, {think: thinkFor('vision')}) };
+  const body={ contents:[{parts:[{inlineData:{mimeType:m[1], data:m[2]}}, {text:prompt}]}], generationConfig: gemGen('text', {temperature:0.4, maxOutputTokens:8192}, {think: thinkFor('vision')}) };
   const r=await gemFetch('text', body, {timeout:40000}); if(!r.ok) throw new Error('api-'+r.status);
   const j=await r.json(); const cand=j.candidates&&j.candidates[0];
   const txt=cand&&cand.content&&(cand.content.parts||[]).map(function(p){return p.text||'';}).join('').trim();

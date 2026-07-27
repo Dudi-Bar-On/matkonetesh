@@ -5,6 +5,15 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 271 · 27.7.26
+
+**AI output is never truncated again (owner policy):** every AI call — device-spec lookup, the assistant,
+the event planner, troubleshooting, voice answers, translation, vision, and per-item prose — now runs with
+a full output budget (8192 tokens) instead of the old per-call caps of 300–1600. Those caps could be
+exhausted by the model's reasoning before the answer finished, silently cutting it off (the root cause of
+the v269 device-lookup "not found"). Billing is on actual tokens used, so the higher ceiling only removes
+the truncation risk. The two tiny connectivity health-checks stay minimal by design.
+
 ## מהדורה 270 · 27.7.26
 
 **AI device lookup fixed + more localization gaps closed (owner-driven from live v269 testing):**

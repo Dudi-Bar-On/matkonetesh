@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: חיפוש מפרט המכשירים ב-AI תוקן — הקלדת שם דגם (למשל “הנפח אביה 150”) מחזירה שוב את כל המידות והמאפיינים מהאינטרנט; ועוד שאריות עברית תורגמו — תוכנית העבודה ובורר שפת-הקול."
+WHATS_NEW = "מה חדש: תשובות ה-AI כבר לא נחתכות באמצע — חיפוש מפרטי מכשירים (למשל “הנפח אביה 150”) וכל שאר קריאות ה-AI מקבלים מרחב פלט מלא, כך שהמקרה שבו חיפוש חזר כ“לא נמצא” לא יחזור."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -337,7 +337,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 270 · 27.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 271 · 27.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
