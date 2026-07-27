@@ -110,7 +110,7 @@
  "כל האירועים — תצוגה משולבת": "Tutti gli eventi – visualizzazione combinata",
  "סו-ויד": "Cottura sottovuoto",
  "עישון": "Affumicatura",
- "גריל": "Grigliare",
+ "גריל": "Griglia",
  "מנוחה": "Lascia riposare.",
  "הכנה": "Preparazione",
  "טיימר": "Cronometro",
@@ -1017,7 +1017,7 @@
  "בקר לחות": "Controllo dell'umidità",
  "מבער / לפיד": "Fiamma ossidrica",
  "ארובת הצתה": "Accendifuoco per camino",
- "כפפות חום": "Guanti riscaldati",
+ "כפפות חום": "Guanti termici",
  "מלקחיים": "Pinze",
  "מברשת גריל": "Spazzola per griglia",
  "מגש איסוף / מים": "Vassoio raccogligocce / vassoio per l'acqua",
@@ -2439,5 +2439,7 @@
  "מה חדש: נוקו טקסטים משובשים שנותרו מתהליך התרגום — בכמה מקומות בתפריט הופיע טקסט פנימי של מנוע-התרגום במקום התרגום עצמו. כל המקרים תוקנו בכל השפות, ונוספה בדיקת-בנייה אוטומטית שמונעת את חזרתם.": "Novità: è stato ripulito il testo corrotto rimasto dal processo di traduzione — in alcuni punti il menu mostrava il testo interno del motore di traduzione invece della traduzione vera e propria. Tutti i casi sono stati corretti in tutte le lingue e ora un controllo automatico ne impedisce il ritorno.",
  "מלח / ריפוי": "Sale / salagione",
  "עץ ופחם": "Legna e carbone",
- "ציר זמן משולב": "Cronologia combinata"
+ "ציר זמן משולב": "Cronologia combinata",
+ "סו-ויד ← עישון": "Sottovuoto → affumicatura",
+ "עישון ← סו-ויד": "Affumicatura → sottovuoto"
 }

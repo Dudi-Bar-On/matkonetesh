@@ -3675,6 +3675,54 @@ const MAKE_COOK={
  'בשר מיובש':     {multiDay:true, buildMin:0, restMin:0,
    methods:[{key:'serve',label:'הוצא והגש',tempC:'—',hours:0.1,note:'ג׳רקי/ביltong מוכן'}]},
 };
+// MAKE_COOK stores authored Hebrew labels/notes (a module-level const built ONCE — an inline L() there
+// would freeze the language at load time, breaking live language switching). Localize at render time
+// instead: mkMethodL/mkNoteL carry the static-literal L(he,en) calls (English 2nd arg = the fallback that
+// is shown on a genuine dict miss, never raw Hebrew). The literals are what the i18n extractor registers
+// as KNOWN keys, so build.py Guard A enforces a per-language translation for every one of them and Guard B
+// validates each note's temperatures survive the translation verbatim. Doing it in ONE place (itemProfile)
+// means every downstream consumer — itemStages, the method <select>, itemPaths, and the "available on
+// path" fix advisory — reads localized text with no per-site change. (Before this, these labels/notes were
+// orphaned dict entries reached only by a bare t() lookup: translated where the dict happened to hold the
+// key, raw Hebrew where it did not, and never Guard-A-enforced.)
+function mkMethodL(s){
+  switch(s){
+    case 'עישון':          return L('עישון','Smoke');
+    case 'עישון קצר':      return L('עישון קצר','Short smoke');
+    case 'עישון בלבד':     return L('עישון בלבד','Smoke only');
+    case 'עישון חם':       return L('עישון חם','Hot smoke');
+    case 'עישון קר':       return L('עישון קר','Cold smoke');
+    case 'סו-ויד + עישון': return L('סו-ויד + עישון','Sous-vide + smoke');
+    case 'גריל ישיר':      return L('גריל ישיר','Direct grill');
+    case 'תנור/רוטיסרי':   return L('תנור/רוטיסרי','Oven / rotisserie');
+    case 'הוצא ופרוס':     return L('הוצא ופרוס','Take out and slice');
+    case 'הוצא והגש':      return L('הוצא והגש','Take out and serve');
+    default: return s;
+  }
+}
+function mkNoteL(s){
+  switch(s){
+    case 'עד ~71° פנים':                         return L('עד ~71° פנים','to ~71° internal');
+    case 'עד ~68-71° פנים':                      return L('עד ~68-71° פנים','to ~68-71° internal');
+    case 'עד ~68-72° פנים':                      return L('עד ~68-72° פנים','to ~68-72° internal');
+    case 'מהיר, חם מאוד':                        return L('מהיר, חם מאוד','fast, very hot');
+    case 'עד ~74-82° פנים':                      return L('עד ~74-82° פנים','to ~74-82° internal');
+    case 'מנתח גולמי; אם כבר מעושן — קצר בהרבה':  return L('מנתח גולמי; אם כבר מעושן — קצר בהרבה','from a raw cut; if already smoked — much shorter');
+    case 'גימור קרום ועישון':                    return L('גימור קרום ועישון','crust finish and smoke');
+    case 'עד ~74° ואידוי לרכות':                 return L('עד ~74° ואידוי לרכות','to ~74° and steam to tenderness');
+    case 'עד ~63° פנים':                         return L('עד ~63° פנים','to ~63° internal');
+    case 'ללא בישול — לקס/גרבלקס':               return L('ללא בישול — לקס/גרבלקס','no cooking — lox/gravlax');
+    case 'מוכן לאכילה, רק לפרוס':                return L('מוכן לאכילה, רק לפרוס','ready to eat, just slice');
+    case 'ג׳רקי/ביltong מוכן':                   return L('ג׳רקי/ביltong מוכן','jerky/biltong ready');
+    default: return s;
+  }
+}
+function localizeMakeProfile(prof){
+  if(!prof || !prof.methods) return prof;
+  return Object.assign({}, prof, { methods: prof.methods.map(function(m){
+    return Object.assign({}, m, { label: mkMethodL(m.label), note: m.note?mkNoteL(m.note):m.note });
+  }) });
+}
 function comboMethodEntry(c, combo, isCard){
   const names={sv:L('סו-ויד','Sous-vide'),smoke:L('עישון','Smoking','gerund'),grill:L('גריל','Grill')};
   const label=(isCard?'⚡ ':'')+combo.map(m=>names[m]).join(' + ')+(isCard?L(' (מהכרטיסייה)',' (from the tab)'):'');
@@ -3709,7 +3757,7 @@ function itemProfile(meta){
   // make
   const prof=MAKE_COOK[meta.cat];
   if(!prof) return {multiDay:false,buildMin:30,restMin:10,methods:[{key:'cook',label:L('בישול','Cook'),tempC:'?',hours:1,note:''}]};
-  return prof;
+  return localizeMakeProfile(prof);
 }
 function leadHours(meta){
   const p=itemProfile(meta); if(!p) return 1;
@@ -3725,7 +3773,14 @@ const SV_SMOKE_ORDERS={
   // whether a given item's citation is cold or hot smoke is decided per-item by osm.cold, not by the order name.
   'smoke-sv':{ name:'עישון ← סו-ויד', nameEn:'Smoke → sous-vide', desc:'אסכולה מתקדמת: עישון על בשר גולמי לטבעת-עשן מרבית, ואז סו-ויד לדיוק ולפסטור מלא.', descEn:'Advanced school: smoke on raw meat for a maximal smoke ring, then sous-vide for precision and full pasteurization.' }
 };
-function svOrderName(k){ const o=SV_SMOKE_ORDERS[k]||{}; return getLang()==='he'?o.name:(o.nameEn||o.name); }
+// i18n: the sv/smoke cook-ORDER names render in the timeline order <select> — route through L() so a
+// non-Hebrew language shows its dict value, not the English `nameEn` fallback. Static L() literals here
+// (not the o.name variable) are what the extractor registers as KNOWN keys → Guard A enforces them.
+function svOrderName(k){
+  if(k==='sv-smoke') return L('סו-ויד ← עישון','Sous-vide → smoke');
+  if(k==='smoke-sv') return L('עישון ← סו-ויד','Smoke → sous-vide');
+  const o=SV_SMOKE_ORDERS[k]||{}; return getLang()==='he'?o.name:(o.nameEn||o.name);
+}
 function svOrderDesc(k){ const o=SV_SMOKE_ORDERS[k]||{}; return getLang()==='he'?o.desc:(o.descEn||o.desc); }
 function svSmokeOrderDefault(){ return 'sv-smoke'; }
 // app-computed (not AI, not user-typed) conservative cold-smoke temperature ceiling for the smoke-before-sv order
@@ -7580,11 +7635,14 @@ function equipOwnsToken(tok){
 }
 function equipChip(tok, need){
   const i=equipTokenInfo(tok); if(!i) return '';
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const owned=equipOwnsToken(tok), configured=(typeof equipConfigured==='function')&&equipConfigured();
   const mark=!configured?'' : (owned?'<span class="eqc-ok">✓</span>':'<span class="eqc-no">✗</span>');
   const cls='eqc'+(need?' eqc-need':' eqc-opt')+(configured&&!owned?' eqc-miss':'');
-  return `<span class="${cls}" style="--eqc:${i.acc};--eqcl:${i.accL}"><span class="eqc-em">${i.em}</span>${esc(he?i.he:i.en)}${mark}</span>`;
+  // i18n: route the equipment name through L() so a non-Hebrew language shows its DICT value, not the
+  // English fallback. i.he/i.en come from EQUIP_CATS/EQUIP_OTHER_ITEMS (both extractor-KNOWN keys), so
+  // Guard A already enforces a per-language translation; tnode() could never fix this because the old
+  // `he?i.he:i.en` emitted English, and tnode only rewrites Hebrew source text.
+  return `<span class="${cls}" style="--eqc:${i.acc};--eqcl:${i.accL}"><span class="eqc-em">${i.em}</span>${esc(L(i.he,i.en))}${mark}</span>`;
 }
 const EQUIP_PHASE_LABEL={sv:['סו-ויד','Sous-vide'], smoke:['עישון','Smoke'], grill:['גריל','Grill'], cook:['בישול','Cook'], cure:['ריפוי','Cure'], prep:['הכנה','Prep']};
 function equipSpecNote(spec){
@@ -7598,7 +7656,6 @@ function equipSpecNote(spec){
 }
 function equipSectionHtml(eq){
   if(!eq) return '';
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const row=(label, need, opt, spec)=>{
     const chips=(need||[]).map(function(k){return equipChip(k,true);}).join('')
               + (opt||[]).map(function(k){return equipChip(k,false);}).join('');
@@ -7611,7 +7668,9 @@ function equipSectionHtml(eq){
     const b=eq.by[ph]||{}, lab=EQUIP_PHASE_LABEL[ph];
     // a phase that just restates the cut's own footprint adds nothing — show only what's new for that phase
     const spec=(equipSpecNote(b.spec)===baseNote)?null:b.spec;
-    body+=row(lab?(he?lab[0]:lab[1]):ph, b.need, b.opt, spec);
+    // i18n: phase-row label via L(he,en) — EQUIP_PHASE_LABEL pairs are [he,en]; the old he?lab[0]:lab[1]
+    // shipped English for every non-Hebrew language (tnode cannot rescue an English string).
+    body+=row(lab?L(lab[0],lab[1]):ph, b.need, b.opt, spec);
   });
   if(!body) return '';
   const configured=(typeof equipConfigured==='function')&&equipConfigured();

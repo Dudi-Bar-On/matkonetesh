@@ -2441,5 +2441,7 @@
  "מה חדש: נוקו טקסטים משובשים שנותרו מתהליך התרגום — בכמה מקומות בתפריט הופיע טקסט פנימי של מנוע-התרגום במקום התרגום עצמו. כל המקרים תוקנו בכל השפות, ונוספה בדיקת-בנייה אוטומטית שמונעת את חזרתם.": "What's new: Cleaned up garbled text left over from the translation process — in a few places the menu showed the translation engine's own internal text instead of the actual translation. Every case was fixed in all languages, and an automatic build check now prevents it from coming back.",
  "מלח / ריפוי": "Salt / cure",
  "עץ ופחם": "Wood & charcoal",
- "ציר זמן משולב": "Combined timeline"
+ "ציר זמן משולב": "Combined timeline",
+ "סו-ויד ← עישון": "Sous-vide → smoke",
+ "עישון ← סו-ויד": "Smoke → sous-vide"
 }

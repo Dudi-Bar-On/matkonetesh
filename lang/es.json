@@ -984,7 +984,7 @@
  "נפחי אמבט (ל׳)": "Tamaños de los recipientes para baño maría (L)",
  "נפח מרבי": "Volumen máximo",
  "הספק": "Potencia",
- "ואקום": "Aspirar",
+ "ואקום": "Envasadora al vacío",
  "רוחב איטום": "Ancho del sello",
  "סוג שקיות": "Tipo de bolsa.",
  "גליל לחיתוך": "Pan que se puede cortar en rebanadas.",
@@ -1031,7 +1031,7 @@
  "בקר לחות": "Control de la humedad",
  "מבער / לפיד": "Soplete",
  "ארובת הצתה": "Encendedor de chimenea",
- "כפפות חום": "Calentar los guantes.",
+ "כפפות חום": "Guantes térmicos",
  "מלקחיים": "Pinzas",
  "מברשת גריל": "Cepillo para parrilla",
  "מגש איסוף / מים": "Bandeja para recoger los jugos / bandeja con agua",
@@ -2441,5 +2441,7 @@
  "מה חדש: נוקו טקסטים משובשים שנותרו מתהליך התרגום — בכמה מקומות בתפריט הופיע טקסט פנימי של מנוע-התרגום במקום התרגום עצמו. כל המקרים תוקנו בכל השפות, ונוספה בדיקת-בנייה אוטומטית שמונעת את חזרתם.": "Novedades: se ha limpiado el texto defectuoso que quedaba del proceso de traducción — en algunos lugares el menú mostraba el texto interno del motor de traducción en lugar de la traducción real. Todos los casos se corrigieron en todos los idiomas, y ahora una comprobación automática evita que vuelvan a aparecer.",
  "מלח / ריפוי": "Sal / curado",
  "עץ ופחם": "Madera y carbón",
- "ציר זמן משולב": "Cronología combinada"
+ "ציר זמן משולב": "Cronología combinada",
+ "סו-ויד ← עישון": "Sous vide → ahumado",
+ "עישון ← סו-ויד": "Ahumado → sous vide"
 }
