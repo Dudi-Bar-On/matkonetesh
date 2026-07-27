@@ -5,6 +5,19 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 276 · 27.7.26
+
+**Recipe equipment, cooking-method and phase labels now translate in every language (owner-reported):**
+- In the recipe's "Equipment for this cut" section, the equipment names (Probe, Smoker, Sous-vide, Vacuum,
+  Heat gloves…) and the phase-row labels (Sous-vide, Smoke…) rendered in **English** for every non-Hebrew
+  language, and a charcuterie recipe's cooking-method chip (e.g. "עישון") rendered in **Hebrew** — three
+  render sites bypassed the translation dictionary. They now route through it, so each shows the selected
+  language. A handful of genuinely wrong stored translations these surfaced were corrected too (e.g. a
+  thermometer that read "Test", heat-gloves that read "warm the gloves").
+- **A new test catches both leak directions at once** — leftover Hebrew *and* stray English where a real
+  translation exists — which the previous tests (Hebrew-only) missed. Cooking-step temperatures are
+  asserted to survive every translation unchanged.
+
 ## מהדורה 275 · 27.7.26
 
 **Translator-garbage cleanup across every language, plus a build guard so it can't return:**
