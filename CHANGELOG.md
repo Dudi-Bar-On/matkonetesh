@@ -5,6 +5,25 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 274 · 27.7.26
+
+**Leftover-Hebrew cleanup found in Russian sanity testing — fixed for every translated language:**
+- **Seasoning filter chips and prose.** The seasoning groups (continents, flavour/base/heat chips) and the
+  ingredient/usage text inside a rub were rendering Hebrew in the translated languages. The chips are now
+  fully translated (a missing Spanish "Cítrico" and two awkward French/German renderings fixed), and the
+  41 ingredient/usage fields that were falling back to Hebrew at runtime were re-translated and
+  gate-validated across fr/de/es/it/ru.
+- **Pitmaster tool names.** The tool names in the home dock (and its customiser) were shown in English for
+  every non-Hebrew language instead of the selected language. They now translate; three missing names
+  (Salt/cure, Wood & charcoal, Combined timeline) and two broken ones were added/corrected.
+- **The numeric-safety gate now knows kitchen measures.** Tablespoon/teaspoon/cup (כף/כפית/כוס and their
+  forms in every active language) are recognized as their own unit family, so a faithful measure→measure
+  translation passes while a measure→millilitre *conversion* — which silently loses the number — still
+  fails, alongside the existing °C↔°F, gram↔kilogram and minute↔hour protections. In the process a real
+  gate bug was fixed: German "grüne" (green) was being misread as grams.
+- The render-path leak test now also drives the seasoning chips, a seasoning detail panel, and the pro
+  pit-tools dock, so this class of leak is caught before shipping.
+
 ## מהדורה 273 · 27.7.26
 
 **Russian — a seventh language, and a safety-gate upgrade behind it:**
