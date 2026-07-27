@@ -2275,45 +2275,45 @@ function cutCard(c){const col=catColor(c.cat), key="cut-"+c.n;
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(c.cat,"#"+c.n,"cut-"+c.n)}
     <div class="cbody">
-      <div class="cat" style="color:${col}">${c.cat} ${kosherTag("cut-"+c.n)}${gearTag("cut-"+c.n)}</div>
+      <div class="cat" style="color:${col}">${t(c.cat)} ${kosherTag("cut-"+c.n)}${gearTag("cut-"+c.n)}</div>
       ${eqInv.badge}
       <h3>${itemName(c)}</h3>
-      <div class="en">${c.eng} · ${c.kg} ק״ג</div>
+      <div class="en">${c.eng} · ${c.kg} ${L('ק״ג','kg')}</div>
       ${isProduce(c)?`<div class="meta">
-        <span>גריל <b>${c.sot}°</b></span>
-        <span>סו-ויד <b>${c.svt}°</b></span>
-        <span>~${Math.round(upperHours(c.soh)*60)} דק'</span>
+        <span>${L('גריל','Grill')} <b>${c.sot}°</b></span>
+        <span>${L('סו-ויד','Sous-vide')} <b>${c.svt}°</b></span>
+        <span>~${Math.round(upperHours(c.soh)*60)} ${L('דק׳','min')}</span>
       </div>
       <div class="meta" style="justify-content:space-between;align-items:center">
         <span>${dots(c.diff)}${ratingMini(key)}</span>
-        <span class="saved" style="background:rgba(79,138,61,.14);border-color:rgba(79,138,61,.4);color:var(--saved-ink)">${c.cat==='פירות'?'🍑 לגריל/קינוח':'🥦 לגריל/תוספת'}</span>
+        <span class="saved" style="background:rgba(79,138,61,.14);border-color:rgba(79,138,61,.4);color:var(--saved-ink)">${c.cat==='פירות'?L('🍑 לגריל/קינוח','🍑 Grill/dessert'):L('🥦 לגריל/תוספת','🥦 Grill/side')}</span>
       </div>`:`<div class="meta">
-        <span>סו-ויד <b>${c.svt}°</b>/${c.svh}ש</span>
-        <span>עישון <b>${smtV}°</b>/${smhV}ש</span>
-        <span>יעד <b>${c.tgt}°</b></span>
+        <span>${L('סו-ויד','Sous-vide')} <b>${c.svt}°</b>/${c.svh}${L('ש','h')}</span>
+        <span>${L('עישון','Smoking','gerund')} <b>${smtV}°</b>/${smhV}${L('ש','h')}</span>
+        <span>${L('יעד','Target','stat')} <b>${c.tgt}°</b></span>
       </div>
       <div class="meta" style="justify-content:space-between;align-items:center">
         <span>${dots(c.diff)}${ratingMini(key)}</span>
-        <span class="saved">⏱ חוסך ${c.saved}ש מעשנת</span>
+        <span class="saved">⏱ ${L('חוסך','saves')} ${c.saved}${L('ש','h')} ${L('מעשנת','smoker')}</span>
       </div>
-      ${DATA.builds["cut-"+c.n]?'<span class="bld">🔨 בנייה מאפס</span>':''}`}
+      ${DATA.builds["cut-"+c.n]?`<span class="bld">🔨 ${L('בנייה מאפס','Build from scratch')}</span>`:''}`}
       ${eqmRequiresChip(key)}
     </div>
   </article>`;
 }
-function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}ש` : s.smh, col=catColor(s.cat), key="spec-"+s.n;
+function specCard(s){const smk = s.smt? `${s.smt}°/${s.smh}${L('ש','h')}` : s.smh, col=catColor(s.cat), key="spec-"+s.n;
   const eqInv=(typeof eqInvState==='function')?eqInvState(key):{cls:'',badge:''};
   return `<article class="card${eqInv.cls}" data-n="${s.n}" data-kind="spec" tabindex="0" role="button" aria-label="${itemName(s)}">
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(s.cat,"#"+s.n,"spec-"+s.n, s.origin)}
     <div class="cbody">
-      <div class="cat" style="color:${col}">${s.cat} ${kosherTag(key)}</div>
+      <div class="cat" style="color:${col}">${t(s.cat)} ${kosherTag(key)}</div>
       ${eqInv.badge}
       <h3>${itemName(s)}</h3>
-      <div class="en">${s.eng}${s.origin?` · ${s.origin}`:''}</div>
-      <div class="meta"><span>עישון <b>${smk}</b></span>${s.tgt!=='—'&&s.tgt?`<span>יעד <b>${s.tgt}${typeof s.tgt==='number'?'°':''}</b></span>`:''}</div>
-      <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(s.diff)}${ratingMini(key)}</span><span style="color:var(--smoke)">${s.wood}</span></div>
-      ${DATA.builds["spec-"+s.n]?'<span class="bld">🔨 בנייה מאפס</span>':''}
+      <div class="en">${s.eng}${s.origin?` · ${t(s.origin)}`:''}</div>
+      <div class="meta"><span>${L('עישון','Smoking','gerund')} <b>${smk}</b></span>${s.tgt!=='—'&&s.tgt?`<span>${L('יעד','Target','stat')} <b>${s.tgt}${typeof s.tgt==='number'?'°':''}</b></span>`:''}</div>
+      <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(s.diff)}${ratingMini(key)}</span><span style="color:var(--smoke)">${t(s.wood)}</span></div>
+      ${DATA.builds["spec-"+s.n]?`<span class="bld">🔨 ${L('בנייה מאפס','Build from scratch')}</span>`:''}
       ${eqmRequiresChip(key)}
     </div>
   </article>`;
@@ -2324,12 +2324,12 @@ function makeCard(id,m){const nv=(m.build.variants||[]).length, col=catColor(m.c
     ${foldCorner()}${favStar(key)}${addMenuBtn(key)}
     ${svgThumb(m.cat,null,"make-"+id, m.origin)}
     <div class="cbody">
-      <div class="cat" style="color:${col}">${m.cat} ${kosherTag(key)}</div>
+      <div class="cat" style="color:${col}">${t(m.cat)} ${kosherTag(key)}</div>
       ${eqInv.badge}
       <h3>${itemName(m)}</h3>
-      <div class="en">${m.eng}${m.origin?` · ${m.origin}`:''}</div>
-      <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(m.diff)}${ratingMini(key)}</span>${nv?`<span style="color:var(--smoke)">${nv} ווריאנטים</span>`:''}</div>
-      <span class="bld">🔨 בנייה מאפס</span>
+      <div class="en">${m.eng}${m.origin?` · ${t(m.origin)}`:''}</div>
+      <div class="meta" style="justify-content:space-between;align-items:center"><span>${dots(m.diff)}${ratingMini(key)}</span>${nv?`<span style="color:var(--smoke)">${nv} ${L('ווריאנטים','variants')}</span>`:''}</div>
+      <span class="bld">🔨 ${L('בנייה מאפס','Build from scratch')}</span>
       ${eqmRequiresChip(key)}
     </div>
   </article>`;
