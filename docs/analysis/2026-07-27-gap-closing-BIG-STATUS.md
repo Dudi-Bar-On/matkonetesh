@@ -75,8 +75,8 @@ The charter's abstract phases (P0–P10) were executed on the ground as **two ow
 | Increment | Status | Evidence |
 |---|---|---|
 | **E1** requires-layer foundation | ✅ CLOSED + shipped **v263** | `equipment.js`/EQM, `deriveRequires`, ownership verdicts, catalog requires-chip |
-| **E2** ledger + availability | ◑ built + review-clean (v263); capability-aware-serving fix shipped **v267** — **but v267 HALTED, phase gate never closed** | mk-eqm-ledger, eqmFitVerdict, allocate/release |
-| **E3** validity gates | ✅ T1–T4 CLOSED **v266** (682/682); **T5** (event-add window gate) shipped **v267**, ungated | eqmValidity, plan-add gate, probe capability, delete-warn |
+| **E2** ledger + availability | ✅ **PHASE GATE CLOSED 2026-07-27** — independent fresh-agent re-audit vs the spec: every §11.2 DoD line MET, free/partial/busy + **D11 negative** and the allocate→release `itemStages` byte-identity re-derived live; 816/816, Guards A/B/C OK | mk-eqm-ledger, eqmFitVerdict, allocate/release |
+| **E3** validity gates | ✅ T1–T4 CLOSED **v266** (682/682); **T5** (event-add window gate) **PHASE GATE CLOSED 2026-07-27** — re-audit MET on all lines: distinct "חסר…" vs "עסוק בחלון הזה: …" reasons in HE+EN at 390×844, DoD-10 byte-identity, 9/9 real-click tests | eqmValidity, plan-add gate, probe capability, delete-warn |
 | **E4** | ◻ NEXT: minTempC/cold-smoke + O-3 timeline-impact preview + downgrade-edit warn + 2 more | owner ruling; D4 deferrals ride here |
 | **E5, E6** | ◻ later | bound by amendments O-1…O-7 |
 | **CP1** single-source schedules | ✅ CLOSED + gated **v266** | `itemStages`/`effectiveSchedule`/`itemPaths` — contradictions dead by construction |
@@ -84,7 +84,7 @@ The charter's abstract phases (P0–P10) were executed on the ground as **two ow
 | **CP3** cited-paths research batch | ◻ data-only, zero new JS | |
 | **CP4** E4-remainder integration | ◻ per-event override + O-3 preview | |
 
-**★ Where the roadmap resumes:** v267 shipped **E2 capability-aware serving + E3-T5 event-window gate + wood-advisory** but the owner **halted it for inadequate UI verification** → the localization detour (v268–v272) happened instead. So the resume point is: **deep UI-verify + close the E2 / E3-T5 phase gates**, then build **CP2 (variant B)**, then **E4 → CP3 → CP4 → E5/E6**, with the auto-optimize **orchestrator (charter P8)** at the far end.
+**★ Where the roadmap resumes:** v267 shipped **E2 capability-aware serving + E3-T5 event-window gate + wood-advisory** but the owner **halted it for inadequate UI verification** → the localization detour (v268–v277) happened instead. **That resume-blocker is now cleared: the E2 and E3-T5 phase gates were verified in the real UI and CLOSED on 2026-07-27** (rendered-evidence pass + an independent fresh-agent re-audit against the spec, both clean). The localization arc also closed the recurring English/Hebrew render-leak class (v274–v277: equipment/method/phase labels, portion calc, treatment prose, occupancy, home/UI chrome + build Guard C). **Next: build CP2 (variant B — owner-approved 2026-07-27), then E4 → CP3 → CP4 → E5/E6**, with the auto-optimize **orchestrator (charter P8)** at the far end.
 
 ---
 
