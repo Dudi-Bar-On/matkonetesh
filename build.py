@@ -456,6 +456,43 @@ else:
         print("[i18n:GuardD] committed manifest. committed=%r computed=%r" % (_i18n_committed_sig, _i18n_computed_sig))
         print("[i18n:GuardD] regenerate (after re-running the extractor, spec §4.5): I18N_REGEN_SIG=1 python build.py")
         _sys.exit(1)
+# ── v268 Task 9 — Guard A: coverage (spec §4.1) — the leak-proof-by-construction gate ────────────────
+# Every KNOWN key (lang/_extracted.json — the acorn extractor's output: chrome keys + __names__) MUST be
+# present in EVERY active language's merged dict, and (for a translated language) its value must DIFFER
+# from the Hebrew source key — an untranslated value == the source is a leak — unless the key is an
+# allow-listed loanword/proper noun (lang/_i18n-allow-identical.json). Missing or untranslated → build
+# FAILS: a user-facing string cannot ship unlocalized for an active language. (KNOWN != full COVERAGE —
+# the acorn-re-run staleness gate + the render-path leak test, spec §5/§8, are the completeness gate;
+# Guard A is total over the KNOWN set.) This is the enforcing replacement for the "% coverage" line above.
+_extracted = _i18n.get("_extracted", {})
+if _extracted:
+    _extA_chrome = [k for k in _extracted if k != "__names__"]
+    _extA_names = list((_extracted.get("__names__") or {}).keys())
+    _allowA_path = _os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "lang", "_i18n-allow-identical.json")
+    _allowA = set()
+    if _os.path.exists(_allowA_path):
+        try: _allowA = set(json.load(open(_allowA_path, encoding="utf-8")))
+        except Exception: _allowA = set()
+    _guardA = []
+    for _code in sorted(_active_langs):
+        _dA = _i18n.get(_code, {})
+        _dnA = _dA.get("__names__") or {}
+        for _k in _extA_chrome:
+            _v = _dA.get(_k)
+            if _v is None:
+                _guardA.append((_code, "missing", _k))
+            elif _v == _k and _k not in _allowA:
+                _guardA.append((_code, "identical-to-source", _k))
+        for _nk in _extA_names:
+            if _nk not in _dnA:
+                _guardA.append((_code, "missing-name", _nk))
+    if _guardA:
+        print("[i18n:Guard-A] %d coverage violation(s) — a user-facing string is unlocalized for an active language:" % len(_guardA))
+        for _c, _why, _k in _guardA[:30]:
+            print("  [%s] %s: %r" % (_c, _why, _k[:70]))
+        if len(_guardA) > 30: print("  ... and %d more" % (len(_guardA) - 30))
+        _sys.exit(1)
+    print("[i18n:Guard-A] OK — %d KNOWN keys + %d names covered in all %d active langs" % (len(_extA_chrome), len(_extA_names), len(_active_langs)))
 I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
 html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
 import os as _os, shutil as _shutil
