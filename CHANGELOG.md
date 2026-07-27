@@ -5,6 +5,22 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 269 · 27.7.26
+
+**Localization made genuinely complete — the data, not just the chrome (owner-driven from live v268 testing):**
+- **Recipe & seasoning names, categories, origins, woods — all translated.** v268 localized the chrome
+  but ~525 of the ~550 catalog/seasoning names still fell back to English, and categories, country origins,
+  and wood types rendered in Hebrew. All ~740 data values are now translated into French, German, Spanish
+  and Italian. Cut names use the correct culinary term (Brisket→Brisket, Short Ribs→Côtes courtes), never a
+  wrong cut, and country flags stay attached to the right country.
+- **The screens that still leaked are clean.** The catalog grid + category view (chips, group tiles, the
+  count row, card kosher tags), the whole event wizard (the "event date" field, the step label, prompts),
+  seasonings (titles + countries) and projects/pantry now render with no Hebrew left in a non-Hebrew UI.
+- **It stays fixed by construction.** The render-path leak test now drives every one of those screens
+  (catalog, all six wizard steps, projects) and scans text *and* placeholder/aria-label attributes — the
+  gap this release closes fails the build if it ever returns.
+- Safety numbers remain guarded across every language (build-time numeric/unit gate, unchanged).
+
 ## מהדורה 268 · 27.7.26
 
 **Full interface localization (French / German / Spanish / Italian) — no longer half-English:**
