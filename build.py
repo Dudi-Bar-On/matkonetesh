@@ -514,22 +514,44 @@ import re as _reB
 _GB_NUM = r'(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:[.,]\d+)?)'   # grouped-thousands OR period/COMMA decimal (fr/de/es/it use "2,5")
 _GB_QM = "[\"״׳']"
 # Units span glyphs (°C/kg/ppm/% — language-neutral) AND WORDS. Because Guard B validates TRANSLATIONS, the
-# word-units must include the target-lang forms (de/fr/es/it) or a faithful "7 days→7 Tage" false-fails —
-# a deliberate divergence from the he/en-only runtime VC_UNIT_CLASS (follow-up T-GuardB-runtime). re.I → any case.
+# word-units must include the target-lang forms or a faithful "7 days→7 Tage" false-fails — a deliberate
+# divergence from the he/en-only runtime VC_UNIT_CLASS (follow-up T-GuardB-runtime). re.I → any case.
+#
+# ── 23-LANGUAGE unit-WORD extension (2026-07-27) ─────────────────────────────────────────────────────
+# he/en/de/fr/es/it were already covered. Extended to the full queued set (it,pt,el,ja,ko,th,nl,hu,pl,ro,
+# vi,hi,id,ru,uk,da,fi,nb,tr,sv,cs,ar,zh) so a FAITHFUL translation of a numeric string passes while a REAL
+# dropped/swapped number or unit still FAILS. Evidence: scratch/translate-bulk/ru.failed.json — 22 chrome
+# entries flagged unitLiteral were all correct translations (numbers preserved) blocked only by an
+# unrecognized Cyrillic unit word ("30 минут"/"1 г"/"2 см"/"частей на миллион"). NOTE the Cyrillic
+# HOMOGLYPHS: "см"/"г"/"кг" are Cyrillic с/м/г/к, NOT the Latin cm/g/kg glyphs — they must be listed
+# explicitly. Non-Latin scripts (Cyrillic/Greek/CJK/Arabic/Thai/Devanagari) are NOT ASCII-\w, so a trailing
+# \b never fires after them (same one-sided-blindness shape as the historical מ"ל \b bug in gates.mjs) —
+# these forms are matched by the ^-anchor + explicit prefix, ordered LONGER-FORM-FIRST, with an explicit
+# same-script negative-lookahead on the risky bare single-letter Cyrillic abbreviations only. CROSS-FAMILY
+# COLLISIONS guarded: bare Cyrillic "г"(gram) is a prefix of "градус"(degree) — temp is listed BEFORE mass
+# so "градусов"→temp wins; "час"(hour) is a prefix of "част-" as in "частей"(the ppm phrase) — bare "час"
+# carries (?![cyr]) and the inflections часов/часа are explicit; likewise bare мин/ч/см/мм/день. Latin
+# additions that were prefixes of already-matched tokens (minut→minuten, kilo→kilogram via "kilos?",
+# gram→gramas via "grams?", grad→grader) were NOT re-added. DELIBERATELY EXCLUDED: bare uk "год"(hour
+# abbrev) collides with ru "год"(year) → kept годин/години/година only; bare Arabic "غ"(gram abbrev) →
+# kept spelled غرام/جرام only. Latin day/hour homographs den(cs)/nap(hu)/jam(id)/timer(da) carry \b and are
+# gated by the post-edit build (Guard B runs over the shipped he/en/fr/de/es/it dict only) + a gates.mjs
+# staged-pool regression pass; any real flip there gets the word removed, per the it-finisher's chili precedent.
+_GB_CYR = r'а-яёіїєґА-ЯЁІЇЄҐ'  # Cyrillic-letter class for bare-abbreviation negative-lookaheads
 _GB_UNIT_CLASS = [
     (_reB.compile(r'^(?:°\s*C|C\b|celsius|צלזיוס)', _reB.I), 'tempC'),
     (_reB.compile(r'^(?:°\s*F|F\b|fahrenheit|פרנהייט)', _reB.I), 'tempF'),
-    (_reB.compile(r'^(?:°|מעלות|degrees?|grad|grados?|gradi|degr[ée]s?)', _reB.I), 'temp'),
-    (_reB.compile('^(?:ק' + _GB_QM + r'?ג|kg\b|kilos?)', _reB.I), 'massKg'),
-    (_reB.compile('^(?:ג' + _GB_QM + r'?|גרם|grams?|g\b|gramm|grammes?|gramos?|grammi)', _reB.I), 'massG'),
+    (_reB.compile(r'^(?:°|מעלות|degrees?|grad|grados?|gradi|degr[ée]s?|graus|astetta|stopni|stupňů|fok\b|derajat|derece|градус|βαθμ|度|도|องศา|डिग्री|độ|درجة)', _reB.I), 'temp'),
+    (_reB.compile('^(?:ק' + _GB_QM + r'?ג|kg\b|kilos?|quilos?|ki-lô|килограмм|килограм|кг|κιλ|千克|公斤|キログラム|キロ|킬로그램|킬로|กิโลกรัม|กก|किलोग्राम|किलो|كيلوغرام|كيلو)', _reB.I), 'massKg'),
+    (_reB.compile('^(?:ג' + _GB_QM + r'?|גרם|grams?|g\b|gramm|grammes?|gramos?|grammi|gam|грамм|грамма|граммов|грам|грамів|г(?![' + _GB_CYR + r'])|γραμμάρια|γρ|グラム|그램|克|กรัม|ग्राम|غرام|جرام)', _reB.I), 'massG'),
     (_reB.compile(r'^(?:lbs?\b|pounds?)', _reB.I), 'mass'),
-    (_reB.compile('^(?:דק(?:ות|' + _GB_QM + r')?|minutes?|mins?\b|minutos?|minuti|minuten)', _reB.I), 'timeMin'),
-    (_reB.compile('^(?:שעות|שע' + _GB_QM + r'?|ש\b|hours?|hrs?\b|h\b|horas?|ore\b|stunden|heures?)', _reB.I), 'timeHr'),
-    (_reB.compile(r'^(?:ימים|יום|days?|d[ií]as?|giorni|tage|jours?)', _reB.I), 'timeDay'),
-    (_reB.compile(r'^(?:ppm)', _reB.I), 'ppm'),
-    (_reB.compile(r'^(?:%|אחוז|percent|prozent|pour ?cent|por ?ciento|per ?cento)', _reB.I), 'pct'),
-    (_reB.compile('^(?:ס' + _GB_QM + r'?מ\s*(?:²|2)|cm\s*(?:²|2))', _reB.I), 'area'),
-    (_reB.compile('^(?:ס' + _GB_QM + r'?מ|cm\b)', _reB.I), 'len'),
+    (_reB.compile('^(?:דק(?:ות|' + _GB_QM + r')?|minutes?|mins?\b|minutos?|minuti|minuten|minut|minuuttia|dakika|menit|perc\b|phút|phut|минут|мин(?![' + _GB_CYR + r'])|хвилин|хв(?![' + _GB_CYR + r'])|λεπτ|分钟|分|분|นาที|मिनट|دقيقة|دقائق)', _reB.I), 'timeMin'),
+    (_reB.compile('^(?:שעות|שע' + _GB_QM + r'?|ש\b|hours?|hrs?\b|h\b|horas?|ore\b|stunden|heures?|hodin|godzin|óra|órát|timmar|tuntia|saat\b|jam\b|giờ|uur|uren|timer|часов|часа|час(?![' + _GB_CYR + r'])|ч(?![' + _GB_CYR + r'])|годин|ώρες|ώρα|ωρών|時間|小时|时|시간|ชั่วโมง|घंटे|घंटा|ساعة|ساعات)', _reB.I), 'timeHr'),
+    (_reB.compile('^(?:ימים|יום|days?|d[ií]as?|giorni|tage|jours?|dni|dní|dny|dzień|den\\b|nap\\b|napot|dage|dagar|dager|dagen|päivää|gün|hari|ngày|zile|дней|дня|день(?![' + _GB_CYR + r'])|суток|днів|дні|μέρες|ημέρες|日|天|일|วัน|दिन|أيام|يوم)', _reB.I), 'timeDay'),
+    (_reB.compile(r'^(?:ppm|частей\s*на\s*миллион)', _reB.I), 'ppm'),
+    (_reB.compile(r'^(?:%|אחוז|percent|prozent|pour ?cent|por ?ciento|per ?cento|процент|τοις\s*εκατό)', _reB.I), 'pct'),
+    (_reB.compile('^(?:ס' + _GB_QM + r'?מ\s*(?:²|2)|cm\s*(?:²|2)|см\s*(?:²|2))', _reB.I), 'area'),
+    (_reB.compile('^(?:ס' + _GB_QM + r'?מ|cm\b|mm\b|см(?![' + _GB_CYR + r'])|мм(?![' + _GB_CYR + r'])|厘米|毫米|センチ|ミリ|센티미터|밀리미터|เซนติเมตร|มิลลิเมตร|εκατοστά|χιλιοστά)', _reB.I), 'len'),
 ]
 _GB_COARSE = {'tempC':'temp','tempF':'temp','massG':'mass','massKg':'mass','timeMin':'time','timeHr':'time','timeDay':'time'}
 def _gb_coarse(c): return _GB_COARSE.get(c, c)

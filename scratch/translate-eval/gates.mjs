@@ -144,18 +144,45 @@ export function hebrewLeak(text) {
 // inert or, if mapped to a wrong family, manufacture false fails; seconds handling remains a separate
 // cross-language gate question, out of this finisher's scope. Verified by a full fr/de/es regression
 // pass (0 flips either direction) + Italian unit witnesses — see the Italian-finisher session report.
+// 23-LANGUAGE forms added 2026-07-27 (queued-language finisher: it,pt,el,ja,ko,th,nl,hu,pl,ro,vi,hi,id,
+// ru,uk,da,fi,nb,tr,sv,cs,ar,zh). SAME evidence-based, non-exhaustive footing as fr/de/es/it above.
+// Classifying the ru.failed.json unitLiteral rejects (22 chrome + 99 data entries) found the dominant
+// class was — yet again — correctly-translated spelled-out unit words the table didn't recognize, this
+// time in Cyrillic ("30 минут"/"1 г"/"2 см"/"частей на миллион"). Two structural notes specific to the
+// non-Latin scripts: (1) HOMOGLYPHS — Cyrillic "см"/"г"/"кг" are с/м/г/к in the Cyrillic block, NOT the
+// Latin cm/g/kg the pre-existing rules matched, so they are genuinely invisible until listed explicitly.
+// (2) JS's \b is ASCII-only, so a trailing \b never fires after a Cyrillic/Greek/CJK/Arabic/Thai/Devanagari
+// letter (the exact מ"ל \b failure documented in the Spanish note above) — these forms use the ^-anchor +
+// explicit prefix, ordered LONGER-FIRST (分钟 before 分), with a same-script negative-lookahead only on the
+// risky BARE single-letter Cyrillic abbreviations (г/ч/мин/хв/см/мм and час/день). CROSS-FAMILY COLLISIONS
+// guarded: bare "г"(gram) prefixes "градус"(degree) — the generic-degree rule below lists градус and, being
+// a tempC rule, is reached before the mass rules; "час"(hour) prefixes "част-"(as in the ppm phrase
+// "частей") — bare час carries (?![cyr]) while часов/часа are explicit. Latin additions that were already
+// prefixes of matched tokens were NOT re-added. DELIBERATELY EXCLUDED (ambiguity, per the it-finisher's
+// "chili" precedent): bare uk "год"(hour) collides with ru "год"(year) → kept годин only; bare Arabic
+// "غ"(gram) → kept غرام/جرام. NO time_day rule is added because this table has never modelled a day family
+// (build.py's Guard B does; gates.mjs does not — a pre-existing, deliberate divergence left intact here).
+// Generic spelled-out DEGREE words map to tempC to match the pre-existing gradi→tempC choice (this table
+// has no coarse 'temp' family, unlike build.py's _GB_UNIT_CLASS — same divergence, documented). The
+// mass_metric family is SPLIT into mass_metric_g / mass_metric_kg (see the METRIC_FAMS note below) so a
+// g↔kg swap — the 1000× cure-dose danger CLAUDE.md names build.py's Guard B as catching — now FAILS here
+// too; verified regression-neutral across the de/el/es/fr/it/pt/ru staged pools (no faithful translation
+// renders the same value as g on one side and kg on the other). Verified: full RED (dropped number /
+// min↔hr / °C↔°F / g↔kg all FAIL) + GREEN (22 chrome ru rejects now PASS) — see the session report.
 export const UNIT_FAMILY_RULES = [
   { re: /^\s*°\s*F\b/i, fam: 'tempF' },
   { re: /^\s*°\s*C\b/i, fam: 'tempC' },
   { re: /^\s*°/, fam: 'tempC' },
   { re: /^\s*gradi\b/i, fam: 'tempC' }, // Italian spelled-out degrees (plural only; see ITALIAN note above)
+  { re: /^\s*(?:מעלות|degr[ée]s?|grad|graus|astetta|stopni|stupňů|fok\b|derajat|derece|градус|βαθμ|度|도|องศา|डिग्री|độ|درجة)/i, fam: 'tempC' }, // 23-lang generic degrees → tempC (see note above). Hebrew מעלות added on the SOURCE side too: without it, a correct "68 מעלות"→"68 Grad/градусов" false-fails as unit_invented (build.py's _GB_UNIT_CLASS already had מעלות; this closes the same one-sided gap here).
   { re: /^\s*%/, fam: 'pct' },
   { re: /^\s*אחוז/, fam: 'pct' },
-  { re: /^\s*ppm\b/i, fam: 'ppm' },
+  { re: /^\s*(?:процент|τοις\s*εκατό)/i, fam: 'pct' }, // ru/el spelled-out percent
+  { re: /^\s*(?:ppm\b|частей\s*на\s*миллион)/i, fam: 'ppm' }, // + ru "parts per million" phrase
   { re: /^\s*(?:lbs?\b|pounds?\b|livres?\b|pfund\b|libras?\b|libbre?\b|libbra\b)/i, fam: 'mass_imperial' },
   { re: /^\s*(?:oz\b|ounces?\b|onces?\b|onzas?\b|oncia\b|once\b)/i, fam: 'mass_imperial' },
-  { re: /^\s*(?:kg\b|ק[׳"״']?ג|קילו|kilos?\b|kilogrammes?\b|kilogramm\b|kilogramos?\b|chilogramm[io]\b|chilo\b)/i, fam: 'mass_metric' },
-  { re: /^\s*(?:g\b|grams?\b|gr\b|גרם|גר[׳']|ג[׳']|grammes?\b|gramm\b|gramos?\b|gramm[io]\b)/i, fam: 'mass_metric' },
+  { re: /^\s*(?:kg\b|ק[׳"״']?ג|קילו|kilos?\b|kilogrammes?\b|kilogramm\b|kilogramos?\b|chilogramm[io]\b|chilo\b|quilos?\b|ki-lô|килограмм|килограм|кг|κιλ|千克|公斤|キログラム|キロ|킬로그램|킬로|กิโลกรัม|กก|किलोग्राम|किलो|كيلوغرام|كيلو)/i, fam: 'mass_metric_kg' },
+  { re: /^\s*(?:g\b|grams?\b|gr\b|גרם|גר[׳']|ג[׳']|grammes?\b|gramm\b|gramos?\b|gramm[io]\b|gam\b|грамм|грамма|граммов|грам|грамів|г(?![а-яёіїєґА-ЯЁІЇЄҐ])|γραμμάρια|γρ|グラム|그램|克|กรัม|ग्राम|غرام|جرام)/i, fam: 'mass_metric_g' },
   { re: /^\s*(?:gal(?:lons?)?\b|qt\b|quarts?\b|fl\.?\s*oz\b)/i, fam: 'vol_imperial' },
   { re: /^\s*(?:ml\b|מ["׳״']?ל(?![א-ת])|ליטר|l\b|millilitres?\b|litres?\b|milliliter\b|liter\b|mililitros?\b|litros?\b|millilitr[io]\b|litr[io]\b)/i, fam: 'vol_metric' },
   // אינץ׳ + Zoll added with the Spanish forms (2026-07-26): the table had NO Hebrew inch token, so
@@ -164,11 +191,13 @@ export const UNIT_FAMILY_RULES = [
   // blindness shape as the מ"ל fix above); recognizing the Hebrew side then exposed the German word
   // for inch ("Zoll") missing too, on the SAME source string's correct de translation ("½–1 Zoll").
   { re: /^\s*(?:in(?:ch(?:es)?)?\b|ft\b|feet\b|pouces?\b|pieds?\b|pulgadas?\b|pies?\b|zoll\b|אינץ[׳'"]?|pollici\b|pollice\b|piedi\b|piede\b)/i, fam: 'length_imperial' },
-  { re: /^[\s-]*(?:cm\b|ס["׳״']?מ|mm\b|מ["׳״']?מ|centim[eè]tres?\b|millim[eè]tres?\b|zentimeter\b|millimeter\b|cent[ií]metros?\b|mil[ií]metros?\b|centimetr[io]\b|millimetr[io]\b)/i, fam: 'length_metric' },
+  { re: /^[\s-]*(?:cm\b|ס["׳״']?מ|mm\b|מ["׳״']?מ|centim[eè]tres?\b|millim[eè]tres?\b|zentimeter\b|millimeter\b|cent[ií]metros?\b|mil[ií]metros?\b|centimetr[io]\b|millimetr[io]\b|см(?![а-яёіїєґА-ЯЁІЇЄҐ])|мм(?![а-яёіїєґА-ЯЁІЇЄҐ])|厘米|毫米|センチ|ミリ|센티미터|밀리미터|เซนติเมตร|มิลลิเมตร|εκατοστά|χιλιοστά)/i, fam: 'length_metric' },
   { re: /^\s*ה?(?:שעות|שעה|שע(?=[׳'.,)\s]|$)|ש(?=[׳'.,)\s]|$))/, fam: 'time_hr' },
-  { re: /^\s*(?:hours?\b|hrs?\b|h\b|heures?\b|stunden?\b|horas?\b|ore\b|ora\b)/i, fam: 'time_hr' },
+  { re: /^\s*(?:hours?\b|hrs?\b|h\b|heures?\b|stunden?\b|horas?\b|ore\b|ora\b|hodin|godzin|óra|órát|timmar|tuntia|saat\b|jam\b|giờ|uur|uren|timer)/i, fam: 'time_hr' }, // NB: bare "gio" was tried for vi giờ-without-diacritic and REMOVED — it matched Italian "giorni"(days) → 48 false-fails; "giờ" with the diacritic is kept.
+  { re: /^\s*(?:часов|часа|час(?![а-яёіїєґА-ЯЁІЇЄҐ])|ч(?![а-яёіїєґА-ЯЁІЇЄҐ])|годин|ώρες|ώρα|ωρών|時間|小时|时|시간|ชั่วโมง|घंटे|घंटा|ساعة|ساعات)/i, fam: 'time_hr' }, // 23-lang non-Latin hours. NB: Greek uses explicit ώρες|ώρα|ωρών, NOT a bare "ώρ" prefix — "ώρ" matched "ώριμα"(ripe) → false-fail.
   { re: /^\s*ה?(?:דקות|דקה|דק(?=[׳'.,)\s]|$))/, fam: 'time_min' },
-  { re: /^\s*(?:minutes?\b|mins?\b|minuten?\b|minutos?\b|minut[io]\b)/i, fam: 'time_min' },
+  { re: /^\s*(?:minutes?\b|mins?\b|minuten?\b|minutos?\b|minut[io]\b|minut|minuuttia|dakika|menit|perc\b|phút|phut)/i, fam: 'time_min' },
+  { re: /^\s*(?:минут|мин(?![а-яёіїєґА-ЯЁІЇЄҐ])|хвилин|хв(?![а-яёіїєґА-ЯЁІЇЄҐ])|λεπτ|分钟|分|분|นาที|मिनट|دقيقة|دقائق)/i, fam: 'time_min' }, // 23-lang non-Latin minutes
 ];
 // NOTE (2026-07-26, same German-finisher pass): re-running gateCheck across the ENTIRE de.staged.json
 // (not just the 30-entry hand-read sample) as a full regression check surfaced 8 entries that had been
@@ -187,7 +216,10 @@ export const UNIT_FAMILY_RULES = [
 // verified via a full regression pass (0 flips either direction) across fr.staged.json (3867),
 // fr.failed.json (41), and the RED-witness שניות->minutes reconstruction — see PROGRESS.log / the
 // German-finisher session report for the pasted evidence.
-const METRIC_FAMS = new Set(['mass_metric', 'vol_metric', 'length_metric']);
+// mass_metric was SPLIT into mass_metric_g / mass_metric_kg (2026-07-27) so a g↔kg swap — the 1000×
+// cure-dose danger — is a family_mismatch here, matching build.py's massG/massKg split. Both remain in
+// METRIC_FAMS so metric↔imperial detection is unchanged; a same-family g→g / kg→kg faithful pair still passes.
+const METRIC_FAMS = new Set(['mass_metric_g', 'mass_metric_kg', 'vol_metric', 'length_metric']);
 const IMPERIAL_FAMS = new Set(['mass_imperial', 'vol_imperial', 'length_imperial']);
 
 export function extractNumUnitPairs(text) {
@@ -231,6 +263,7 @@ export function unitLiteralCheck(src, mt) {
     else if (sp.fam !== 'none' && mp.fam === 'none') reason = 'unit_dropped';
     else if (METRIC_FAMS.has(sp.fam) && IMPERIAL_FAMS.has(mp.fam)) reason = 'metric_to_imperial';
     else if (IMPERIAL_FAMS.has(sp.fam) && METRIC_FAMS.has(mp.fam)) reason = 'imperial_to_metric';
+    else if ((sp.fam === 'mass_metric_g' && mp.fam === 'mass_metric_kg') || (sp.fam === 'mass_metric_kg' && mp.fam === 'mass_metric_g')) reason = 'gram_kilo_swap';
     else if (sp.fam !== mp.fam && sp.fam !== 'none' && mp.fam !== 'none' &&
              !(sp.fam === 'tempC' && mp.fam === 'tempC')) reason = 'family_mismatch';
     if (reason) mismatches.push({ value: sp.value, srcFam: sp.fam, mtFam: mp.fam, reason });
