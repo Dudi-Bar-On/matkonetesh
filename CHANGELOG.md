@@ -5,6 +5,20 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 270 · 27.7.26
+
+**AI device lookup fixed + more localization gaps closed (owner-driven from live v269 testing):**
+- **AI equipment lookup returns full specs again.** Typing a device model (e.g. "הנפח אביה 150") was
+  reporting "not found" — the model actually found it, but the high-reasoning lookup exhausted its output
+  budget and truncated the JSON mid-answer (`MAX_TOKENS`), so parsing failed. The budget is now large
+  enough to hold both the reasoning and the full result; the smoker returns its dimensions, rack count,
+  hanging capability and cabinet specs on the first try.
+- **The work plan is fully translated.** The build-from-scratch cooking-method labels and notes ("direct
+  grill", "to ~71° internal", …) rendered in Hebrew inside the timeline for non-Hebrew languages; they are
+  now translated (with their temperatures preserved exactly).
+- **Voice panel:** the speech-language button now shows the language's name in the active language.
+- The render-path leak test now also drives the work-plan timeline and the voice panel.
+
 ## מהדורה 269 · 27.7.26
 
 **Localization made genuinely complete — the data, not just the chrome (owner-driven from live v268 testing):**

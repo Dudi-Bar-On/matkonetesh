@@ -2432,5 +2432,6 @@
  "ללא בישול — לקס/גרבלקס": "no cooking — lox/gravlax",
  "מוכן לאכילה, רק לפרוס": "ready to eat, just slice",
  "ג׳רקי/ביltong מוכן": "jerky/biltong ready",
- "עברית": "Hebrew"
+ "עברית": "Hebrew",
+ "מה חדש: חיפוש מפרט המכשירים ב-AI תוקן — הקלדת שם דגם (למשל “הנפח אביה 150”) מחזירה שוב את כל המידות והמאפיינים מהאינטרנט; ועוד שאריות עברית תורגמו — תוכנית העבודה ובורר שפת-הקול.": "What's new: the AI device lookup is fixed — typing a model name (e.g. “HaNapach Avia 150”) again returns all its dimensions and properties from the internet; and more leftover Hebrew was translated — the work plan and the voice-language selector."
 }

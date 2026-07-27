@@ -2430,5 +2430,6 @@
  "ללא בישול — לקס/גרבלקס": "nessuna cottura — salmone affumicato/salmone marinato",
  "מוכן לאכילה, רק לפרוס": "pronto da mangiare, basta tagliarlo a fette",
  "ג׳רקי/ביltong מוכן": "la carne essiccata è pronta",
- "עברית": "Ebraico"
+ "עברית": "Ebraico",
+ "מה חדש: חיפוש מפרט המכשירים ב-AI תוקן — הקלדת שם דגם (למשל “הנפח אביה 150”) מחזירה שוב את כל המידות והמאפיינים מהאינטרנט; ועוד שאריות עברית תורגמו — תוכנית העבודה ובורר שפת-הקול.": "Novità: è stato risolto il problema della ricerca dei dispositivi tramite intelligenza artificiale: digitando nuovamente il nome di un modello (ad esempio, \"HaNapach Avia 150\"), verranno visualizzate tutte le sue dimensioni e proprietà recuperate da Internet; inoltre, sono state tradotte altre parti in lingua ebraica: il piano di lavoro e il selettore della lingua vocale."
 }
