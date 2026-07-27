@@ -18,7 +18,7 @@ Every task's requirements implicitly include this section.
 4. **Reuse, don't fork.** Citations come from the item's existing `c.src.<facet>` / `order_*` data that `srcRow`/`orderNoteHTML` already render — not a parallel citation store.
 5. **Test standard.** Real-UI Playwright walks: real clicks, assert rendered DOM, `tests/_fixtures` `seedApp`, `waitForFunction` never `waitForTimeout`. A behavioural claim proven only by `page.evaluate` is not acceptable. Every test must be **witnessed RED for the intended reason** (DoD-2) — a test that passes on first run is void.
 6. **Owner copy decisions (fixed).** (1) path-order arrow uses the **existing no-space literal** from `sourcesBlock()`. (2) the smoke-only path cites the same AmazingRibs reference, worded "(טור עישון בלבד)". (3) placeholder rows read "בקרוב — מקור בבדיקה" and tapping one **toasts**, never selects. (4) **no** catalog-grid multi-path hint — scope stays on the card panel. (5) the "חוסך מעשנת" stat **drops when inapplicable** (shown only for sv→smoke).
-7. **Line anchors drift.** Tasks 4–10 shift line numbers in `app.js`. Every task re-derives its anchors with `serena`/grep at the start rather than trusting a number written here.
+7. **Line anchors drift.** Tasks 3–9 shift line numbers in `app.js` (Task 3 first, by inserting a line inside `openCut`). Every task re-derives its anchors with `serena`/grep at the start rather than trusting a number written here. Where this plan prints a number it is the **pre-CP2** value, kept only so the content anchor can be recognised.
 
 ---
 
@@ -188,6 +188,20 @@ test('(d) itemPaths emits CP3 placeholder entries with cited:false and no method
 
 test('(d2) the cited flag can actually be false — every enumerated reverse-order path is cited by its order_smokesv ref', async ({ page }) => {
   await boot(page);
+  // NON-VACUOUS BY CONSTRUCTION (DoD-2): strip the citation ref on the live DATA object and re-enumerate.
+  // A hard-coded `cited:true` keeps saying true → RED; a real flag follows the citation → GREEN. The
+  // mutation is restored in a `finally` so a throw inside itemPaths cannot strip brisket's reverse
+  // citation for every later assertion on this warm worker page.
+  const r2 = await page.evaluate(`(function(){
+    const c=DATA.cuts.find(function(x){return x.n===1;});
+    const keep=c.order_smokesv.ref;
+    try{ delete c.order_smokesv.ref;
+         return itemPaths(metaCut(c)).filter(function(p){return p.order==='smoke-sv';}).map(function(p){return p.cited;});
+    } finally { c.order_smokesv.ref=keep; }
+  })()`) as boolean[];
+  expect(r2, 'a reverse path whose citation ref is gone is NOT cited').toEqual([false]);
+
+  // …and across the whole catalog the flag TRACKS the citation rather than being hard-coded either way
   const r = await page.evaluate(`(function(){
     var bad=[], n=0;
     (DATA.cuts||[]).forEach(function(c){
@@ -226,29 +240,9 @@ Expected failures, and the reason each proves:
 - `(b)` → `Error: expect(received).toContain(expected) … Expected substring: "75°" / Received string: "עישון 120° / 1.5ש"` — the store is not read; nothing consumes `mk-item-path`.
 - `(b2)` → `Expected: ["c:smoke_sv:rev"] / Received: ["c:smoke_sv"]` — `isDefault` is still the hard-coded `i===0`.
 - `(d)` → `Expected: ["oven-only","sv-oven"] / Received: []` — no placeholder is emitted (this is D1's first half).
-- `(d2)` → `ReferenceError`-free but `expect(r.bad).toEqual([])` passes **vacuously today** because `cited` is hard-coded `true` and every reverse path happens to have a ref. **A test that passes on first run is VOID (DoD-2)** — so before Step 4, temporarily edit one item's data in memory inside the test to prove the assertion has teeth:
-
-```bash
-# witness (d2) RED by proving the flag is hard-coded: run this one-off probe and paste its output
-npx playwright test tests/cp2-default-path.spec.ts -g "cited flag can actually be false" --reporter=list
-```
-
-Amend `(d2)` so it is non-vacuous **before** the first run — it must strip the ref and re-ask:
-
-```ts
-// non-vacuous by construction: strip the ref on a live clone and re-enumerate. A hard-coded
-// cited:true keeps saying true → RED; a real flag follows the citation → GREEN.
-const r2 = await page.evaluate(`(function(){
-  const c=DATA.cuts.find(function(x){return x.n===1;});
-  const keep=c.order_smokesv.ref; delete c.order_smokesv.ref;
-  const still=itemPaths(metaCut(c)).filter(function(p){return p.order==='smoke-sv';}).map(function(p){return p.cited;});
-  c.order_smokesv.ref=keep;
-  return still;
-})()`) as boolean[];
-expect(r2, 'a reverse path whose citation ref is gone is NOT cited').toEqual([false]);
-```
-Expected RED: `Expected: [false] / Received: [true]` — the literal proof that `cited:true` is hard-coded (D1).
-- `(a)`, `(a2)`, `(c)`, `(e)` are expected **GREEN on first run** and are stated here as *invariance* assertions, not as new behaviour — they exist to fail if Step 4/5 breaks today's semantics. That is their whole job; they are not the RED witness for this task and must not be counted as one.
+- `(d2)` → `Expected: [false] / Received: [true]` on the `r2` assertion — the literal proof that `cited:true` is hard-coded (D1). The whole-catalog half of the same test (`r.bad`) would pass vacuously on its own; the `r2` half is what gives it teeth, which is why it is written into the file in Step 2 rather than "amended later".
+- `(a)`, `(a2)`, `(c)` are expected **GREEN on first run** and are stated here as *invariance* assertions, not as new behaviour — they exist to fail if Step 4/5 breaks today's semantics. That is their whole job; they are not the RED witness for this task and must not be counted as one.
+- `(e)` is **also GREEN on first run** — but for a reason that changes mid-task: today no placeholder is emitted at all, so nothing uncited can reach `okPaths`. It becomes RED the moment Step 4 emits the placeholders and BEFORE Step 5b adds the filter. **Step 5b witnesses it**; do not skip that witness on the grounds that (e) "was already green".
 
 - [ ] **Step 4: Implement — the store, the real `cited` flag, the placeholder registry, and the store-driven `isDefault`.**
 
@@ -355,15 +349,29 @@ function effectiveSchedule(meta, sel){
   // identical to CP1 (test (a) asserts the identity across three items).
   const def=(typeof itemDefaultPath==='function')?itemDefaultPath(meta):null;
   const mk = (sel && sel.methodKey) ? sel.methodKey : (def?def.methodKey:undefined);
-  // The stored ORDER applies only to the stored path's OWN methodKey. A caller naming a DIFFERENT
-  // combo must never inherit the default's order — that would silently flip its schedule (this is the
-  // rule that keeps svSmokeFinish, app.js 4209-4216, correct: it asks for the sv+smoke combo by key,
-  // so it picks up a stored reverse order for THAT combo and nothing else).
-  const inherit = !!(def && def.order && (!sel || !sel.methodKey || sel.methodKey===def.methodKey));
-  const ord = (sel && sel.order) ? sel.order : (inherit?def.order:undefined);
+  // A caller that NAMED an order — even `order:null`, which means "this path HAS no order" — owns it
+  // outright. Only a caller that omitted the field ENTIRELY inherits the stored default's order. The
+  // distinction is load-bearing: itemPaths emits the forward sv+smoke entry as `{methodKey:'c:smoke_sv',
+  // order:null}`, so a truthiness test would make the forward row inherit a stored REVERSE order and
+  // print 75° under the forward citation — a rendered figure that does not trace to the source printed
+  // beside it (spec §5 / DoD-10). svSmokeFinish (app.js 4209-4216) calls effectiveSchedule with NO
+  // `order` key at all, so it still inherits a stored reverse order for its own combo, unchanged.
+  const hasOrd = !!(sel && Object.prototype.hasOwnProperty.call(sel,'order') && sel.order!==undefined);
+  const inherit = !hasOrd && !!(def && def.order && (!sel || !sel.methodKey || sel.methodKey===def.methodKey));
+  const ord = hasOrd ? (sel.order||undefined) : (inherit?def.order:undefined);
   return { stages: itemStages(meta, mk, true, ord) || [], path: { methodKey: mk||null, order: ord||null } };
 }
 ```
+
+- [ ] **Step 5b: WITNESS the placeholder filter RED before adding it — the filter is a NEW production change and must be proven load-bearing (DoD-2 / DoD-5).**
+
+With Step 4 applied (placeholders emitted) and lines **1872**/**2156** still untouched, run:
+
+```bash
+npx playwright test tests/cp2-default-path.spec.ts -g "placeholders are excluded" --reporter=list
+```
+
+Expected RED: `expect(received).toBe(expected) — Expected: false / Received: true` with the message `okPaths was ["c:smoke_sv",…,"oven-only","sv-oven"]` — an uncited path counted as cookable, because `eqmValidity` pushes unconditionally when `req` is empty (app.js 1885-1887: `if(!req.length){ okPaths.push(p.id); … return; }`). Paste that output. **Only then** apply the filter below and re-run the same command to GREEN.
 
 Then the two equipment-verdict guards. `eqmValidity` (line **1872**) and `eqmValidityWithKit` (line **2156**) both iterate **every** `itemPaths` entry and call `deriveRequires(meta, p.methodKey, p.order)`; a placeholder with `methodKey:null` returns an empty `req` and would be pushed into `okPaths` as "trivially cookable", corrupting `eqInvPanelHtml`'s fix list. Replace **both** lines with:
 
@@ -395,7 +403,7 @@ Expected on the second `python build.py`: `[i18n:Guard-A] OK — <N> KNOWN keys 
 ```bash
 npx playwright test tests/cp2-default-path.spec.ts --reporter=list
 ```
-Expected: `9 passed`, exit code 0. Paste the output.
+Expected: `8 passed`, exit code 0 — the file defines exactly eight tests: (a), (a2), (b), (b2), (c), (d), (d2), (e). Paste the output.
 
 Then the CP1 contract that must not have moved:
 
@@ -492,12 +500,15 @@ const boot = async (page: any, lang = 'he') => {
 };
 
 // ── FIDELITY (DoD-10): every printed number === the stage value it came from ───────────────────────
-test('pathFigures prints ONLY numbers that appear in that path\'s effectiveSchedule stages', async ({ page }) => {
+// The expectation is derived from itemStages DIRECTLY, not from a second effectiveSchedule call — a
+// test that asks the same accessor the implementation asks can only ever agree with it (it would have
+// missed the order-inheritance bug Task 1 Step 5's `hasOwnProperty` guard closes).
+test('pathFigures prints ONLY numbers that appear in that path\'s cited stages', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(`(function(){
     const m=resolveItem('cut-1');
     return itemPaths(m).filter(function(p){return p.cited;}).map(function(p){
-      const st=effectiveSchedule(m,{methodKey:p.methodKey,order:p.order}).stages
+      const st=(itemStages(m, p.methodKey, true, p.order||undefined)||[])
         .filter(function(s){ return s.temp!=null; });
       const fig=pathFigures(m,p);
       const nums=(fig.match(/\\d+(?:\\.\\d+)?/g)||[]).map(Number);
@@ -506,18 +517,46 @@ test('pathFigures prints ONLY numbers that appear in that path\'s effectiveSched
     });
   })()`) as any[];
   expect(r.length).toBeGreaterThan(1);
-  for (const row of r) expect(row.rogue, `path ${row.id} printed ${row.fig}`).toEqual([]);
+  for (const row of r) {
+    expect(row.rogue, `path ${row.id} printed ${row.fig}`).toEqual([]);
+    // spec §5 / DoD-10: `bcheck` is a SAFETY verification stage (temp = safe||tgt, hours 0), never a
+    // device setpoint. It must not appear in the compact schedule line, and its 0-hour tail must not
+    // render as if it were a cook duration.
+    expect(row.fig, 'the bcheck safety temp is never a path figure').not.toContain('/0ש');
+  }
+  const safe = await page.evaluate(`resolveItem('cut-1').obj.safe`) as number;
+  for (const row of r)
+    expect(row.fig, `the safety value ${safe}° must not render as a cooking stage`).not.toContain(`${safe}°`);
 });
 
-// ── L13: numeric readouts live in dir="ltr" islands ───────────────────────────────────────────────
-test('every figure fragment is wrapped in a dir="ltr" island (L13 — bidi flips the arrow otherwise)', async ({ page }) => {
+// ── the FORWARD row must not inherit a stored REVERSE order (Task 1 Step 5's hasOwnProperty guard) ──
+test('the forward sv→smoke row prints its OWN cited figures even when the reverse path is the stored default', async ({ page }) => {
+  await boot(page);
+  const rev = await page.evaluate(
+    `itemPaths(resolveItem('cut-1')).find(function(p){return p.order==='smoke-sv';}).id`) as string;
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'),
+                        'mk-item-path': JSON.stringify({ 'cut-1': rev }) });
+  await page.waitForFunction(`typeof pathFigures==='function' && typeof itemPaths==='function'`);
+  const fwdFig = await page.evaluate(`(function(){ const m=resolveItem('cut-1');
+    const f=itemPaths(m).find(function(p){ return p.methodKey && p.methodKey.indexOf('smoke_sv')>=0 && !p.order; });
+    return pathFigures(m,f); })()`) as string;
+  expect(fwdFig, 'the forward row prints the forward cited finish (order_svsmoke, 120°)').toContain('120');
+  expect(fwdFig, 'and never the reverse citation\'s 75° under the forward label').not.toContain('75');
+});
+
+// ── L13: the WHOLE figure run — numbers AND the arrow — is ONE dir="ltr" island ────────────────────
+// A bare '→' left between two isolated LTR islands inside an RTL run is laid out by bidi with the
+// logically-first island rightmost, so the arrow points away from the stage it leads to. Asserting
+// only that DIGITS live in islands cannot detect that (the stripped remainder holds no digit).
+test('L13 — the whole figure run (numbers AND the arrow) is ONE dir="ltr" island', async ({ page }) => {
   await boot(page);
   const bad = await page.evaluate(`(function(){
     const m=resolveItem('cut-1'), out=[];
     itemPaths(m).filter(function(p){return p.cited;}).forEach(function(p){
-      const fig=pathFigures(m,p);
-      const stripped=fig.replace(/<span dir="ltr">[^<]*<\\/span>/g,'');
-      if(/\\d/.test(stripped)) out.push(p.id+' :: '+fig);
+      const fig=pathFigures(m,p); if(!fig) return;
+      const stripped=fig.replace(/<span dir="ltr"[^>]*>[\\s\\S]*?<\\/span>/g,'');
+      if(/\\d|→/.test(stripped)) out.push('outside-island '+p.id+' :: '+fig);
+      if((fig.match(/dir="ltr"/g)||[]).length!==1) out.push('multi-island '+p.id+' :: '+fig);
     });
     return out;
   })()`) as string[];
@@ -549,6 +588,13 @@ test('owner decision 2 — the smoke-only path cites the same AmazingRibs ref, w
   })()`) as any;
   expect(r.got, 'brisket must enumerate a smoke-only path for this assertion to have teeth').toBeTruthy();
   expect(r.got.ref).toBe(`${r.base} (טור עישון בלבד)`);
+
+  // …and the qualifier belongs to the smoke-ONLY path alone: a smoke+grill route is not that source's
+  // column, and mis-attributing a citation is the one thing the Baldwin-backbone doctrine forbids.
+  const sg = await page.evaluate(`(function(){ const m=resolveItem('cut-1');
+    const p=itemPaths(m).find(function(x){ return x.methodKey==='c:grill_smoke'; });
+    return p?pathCitation(m,p):null; })()`) as any;
+  if (sg) expect(sg.ref, 'only the smoke-ONLY path carries the smoke-only-column qualifier').not.toContain('טור עישון בלבד');
 });
 
 // ── the citation MARKER: cited vs placeholder ─────────────────────────────────────────────────────
@@ -616,18 +662,27 @@ function pathIcons(p){
 }
 // One display-trimmed hours value straight off the stage. NEVER re-derives from catalog svh/smh/soh.
 function pathHours(h){ return (h==null)?null:(Math.round(h*10)/10); }
-// The compact schedule: every device stage of THIS path as "temp°/hoursש", joined by the same no-space
-// arrow the sources box already uses (owner decision 1, 2026-07-27). Each fragment is its own
-// dir="ltr" island — L13: bidi otherwise flips the arrow and the ° against the RTL run.
+// The compact schedule: every DEVICE stage of THIS path as "temp°/hoursש", joined by the same no-space
+// arrow the sources box already uses (owner decision 1, 2026-07-27). The WHOLE run is one dir="ltr"
+// island with `unicode-bidi:isolate` — L13: two separately-isolated fragments with a bare neutral '→'
+// between them are laid out by bidi with the logically-first fragment RIGHTMOST, so the arrow points
+// away from the stage it leads to (the same class of failure as '≥' flipping to '≤').
+//
+// The kind whitelist is a spec §5 / DoD-10 requirement, not tidiness: itemStages appends a `bcheck`
+// stage carrying `temp: safe||tgt` and `hours: 0` (app.js 4165-4167) — a SAFETY verification target,
+// not a device setpoint. A bare `s.temp!=null` filter would print the item's `safe` value as if it
+// were a cooking stage ("… → 63°/0ש"), which is exactly the conflation the spec forbids. `rest`,
+// `dry`, `note` and `prep` carry no temp and are excluded by the same rule.
+const CP_FIGURE_KINDS=['sv','smoke','cook'];       // device stages only — never bcheck/rest/dry/note/prep
 function pathFigures(meta, p){
   if(!p || p.cited===false) return '';               // an uncited path has no schedule to print
   let stages=[]; try{ stages=effectiveSchedule(meta,{methodKey:p.methodKey, order:p.order}).stages||[]; }catch(e){ stages=[]; }
   const hh=L('ש','h');
-  const bits=stages.filter(function(s){ return s.temp!=null; }).map(function(s){
+  const bits=stages.filter(function(s){ return s && s.temp!=null && CP_FIGURE_KINDS.indexOf(s.kind)>=0; }).map(function(s){
     const h=pathHours(s.hours);
-    return `<span dir="ltr">${s.temp}°${h!=null?`/${h}${hh}`:''}</span>`;
+    return `${s.temp}°${(h!=null&&h>0)?`/${h}${hh}`:''}`;
   });
-  return bits.join(' → ');
+  return bits.length ? `<span dir="ltr" style="unicode-bidi:isolate">${bits.join(' → ')}</span>` : '';
 }
 // D6 — WHERE a path's citation actually lives. The two ORDER paths carry their own citation blocks
 // (order_svsmoke / order_smokesv, the same objects sourcesBlock's "🔀 השפעת סדר" lines read, app.js
@@ -643,7 +698,11 @@ function pathCitation(meta, p){
     const o=(p.order==='smoke-sv')?c.order_smokesv:c.order_svsmoke;
     if(o&&o.ref) return { ref:o.ref, url:o.url||null };
   }
-  if(hasSmoke && !hasSV && c.order_svsmoke && c.order_svsmoke.ref){
+  // Gated on the smoke-ONLY key, not on a `hasSmoke && !hasSV` substring test: `c:grill_smoke` also
+  // satisfies that test, and a smoke+grill route is NOT the smoke-only column of that source. Owner
+  // decision 2 is about the smoke-ONLY path, and mis-attributing a citation is the one thing the
+  // Baldwin-backbone doctrine forbids.
+  if(mk==='c:smoke' && c.order_svsmoke && c.order_svsmoke.ref){
     return { ref:`${c.order_svsmoke.ref} ${L('(טור עישון בלבד)','(smoke-only column)')}`, url:c.order_svsmoke.url||null };
   }
   const s=c.src||{};
@@ -686,36 +745,21 @@ Expected on the second run: `[i18n:Guard-A] OK …`, `[i18n:Guard-B]` numeric-sa
 ```bash
 npx playwright test tests/cp2-path-presentation.spec.ts --reporter=list
 ```
-Expected: `10 passed`, exit 0. Paste it.
+Expected: `11 passed`, exit 0 — fidelity, the forward-order regression, L13, D6, owner decision 2, the citation marker, and DoD-9 × 5. Paste it.
 
 **Safety / fidelity witness (DoD-10):** the only arithmetic in this task is `Math.round(h*10)/10` on an hours value the stage already carries (display trim, the same convention as app.js 4075). No `svt`, `safe`, `tgt`, `bcheck` or cook duration is read from the catalog or derived — `pathFigures` reads `s.temp`/`s.hours` off `effectiveSchedule` output only, and the "no rogue number" test asserts that byte-for-byte against the stage list.
 
-- [ ] **Step 7: Commit.**
+- [ ] **Step 7: STAGE ONLY — do NOT commit. Task 3 commits this task's diff together with its own.**
+
+These four helpers have **no production reader** until Task 3 wires them into `cpRowHTML`. Committing them alone would put unreachable functions in the repo at a commit boundary — precisely what `docs/process/skills/no-inert-shipment/SKILL.md` exists to stop and what DoD-5 ("Consumer exists … name the render path AND confirm it fires on the real data") forbids. The tests here are the model-level contract; the rendered-DOM proof arrives with the consumer.
 
 ```bash
-git add app.js lang/en.json lang/ru.json lang/de.json lang/es.json lang/fr.json lang/it.json lang/_extracted.json lang/_callsite-sig.json tests/cp2-path-presentation.spec.ts
-git commit -m "$(cat <<'EOF'
-feat(cp2): path presentation helpers — icons, LTR figure islands, per-path citation
-
-spec 2026-07-25 §3 item 3: "the card lists ALL itemPaths entries with their cited schedules
-compact (per path: device icons, key temps/hours, the citation marker)".
-
-- pathIcons / pathFigures / pathCitation / pathCiteHTML, pure presentation over CP1's accessor.
-- pathFigures reads temps+hours off effectiveSchedule stages ONLY; each fragment is its own
-  dir="ltr" island (L13) and the arrow is the existing no-space literal (owner decision 1).
-- D6: the sv→smoke / smoke→sv rows read order_svsmoke.ref / order_smokesv.ref — the same
-  citation objects sourcesBlock's order-impact lines render.
-- owner decision 2: the smoke-only row cites the SAME AmazingRibs ref, "(טור עישון בלבד)".
-- new keys translated in ru/de/es/fr/it; מקור מצוטט + ש reused from the existing dict.
-
-Safety: no temp/hour derived — the only arithmetic is a 1-decimal display trim of a stage's own
-hours (same as app.js 4075). Asserted: no printed number is absent from the stage list.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FkEz5H2BEqg4KCagBicAXr
-EOF
-)"
+git add app.js lang/en.json lang/ru.json lang/de.json lang/es.json lang/fr.json lang/it.json \
+  lang/_extracted.json lang/_callsite-sig.json tests/cp2-path-presentation.spec.ts
+git status --short          # staged, UNCOMMITTED — Task 3 Step 8 commits both halves in one commit
 ```
+
+Expected: the staged list above and **no new commit** in `git log --oneline -1`. Do not run `git commit` in this task.
 
 ---
 
@@ -841,9 +885,14 @@ test('D5/D2/D4 — tapping the reverse-order row moves the default badge AND re-
   expect(smoke, `stat line was ${JSON.stringify(stats)}`).toContain('75°');
   expect(smoke).not.toContain('120°');
 
-  // D4 — the RAW-DATA TABLE re-rendered from the same path
+  // D4 — the RAW-DATA TABLE re-rendered from the same path. Matched on the SCHEDULE row's full label:
+  // a bare 'סו-ויד+עישון' substring also matches the unconditional reference row
+  // 'טיפול באמצע (סו-ויד+עישון)', so a .find() on it would depend on row order.
+  // (The value follows the stored default here because svSmokeFinish asks effectiveSchedule for the
+  // sv+smoke combo WITHOUT naming an order, so it inherits the stored reverse order for that combo —
+  // Task 1 Step 5. Task 7 later gives the table its own path presentation.)
   const rawRows = await page.locator('#panel .raw').first().locator('table tr').allInnerTexts();
-  const rawSmoke = rawRows.find(r => r.includes('סו-ויד+עישון'));
+  const rawSmoke = rawRows.find(r => r.includes("טמפ' / זמן עישון (סו-ויד+עישון)"));
   expect(rawSmoke, `raw rows were ${JSON.stringify(rawRows)}`).toContain('75°C');
   expect(rawSmoke).not.toContain('120°C');
 });
@@ -883,11 +932,15 @@ test('D9 — tapping a "soon" row (a row the wiring really bound) toasts and doe
 });
 
 // ── the placeholder row's own copy (owner decision 3) ─────────────────────────────────────────────
-test('owner decision 3 — the placeholder rows read "בקרוב — מקור בבדיקה"', async ({ page }) => {
+test('owner decision 3 — the placeholder rows read "בקרוב — מקור בבדיקה", exactly once per row', async ({ page }) => {
   await openBrisketCard(page);
   await expand(page);
   const txt = await page.locator('#cpListBody .cp-row.soon').first().innerText();
   expect(txt).toContain('בקרוב — מקור בבדיקה');
+  expect(txt.split('בקרוב — מקור בבדיקה').length - 1,
+    'the owner asked for that copy once — the figure slot must stay empty on a placeholder row').toBe(1);
+  // L13 (Task 2): a cited row's whole figure run is ONE isolated LTR island, arrow included
+  expect(await page.locator('#cpListBody .cp-row.on .crfig span[dir="ltr"]').count()).toBe(1);
 });
 
 // ── DoD-9 Hebrew/i18n: no English leak, count pill singular/plural ────────────────────────────────
@@ -952,9 +1005,9 @@ function cpDefBadge(){ return `<span class="cp-def-badge">${L('ברירת מחד
 function cpRowHTML(meta, p){
   const cls=`cp-row${p.isDefault?' on':''}${p.cited===false?' soon':''}`;
   const radio=(p.cited===false)?'':'<div class="radio"></div>';   // a placeholder is not a choice
-  const fig=(p.cited===false)
-    ? `${L('בקרוב — מקור בבדיקה','Coming soon — source under review')}`
-    : pathFigures(meta,p);
+  // A placeholder's figure slot is EMPTY: pathCiteHTML already prints "⏳ בקרוב — מקור בבדיקה" on the
+  // line directly below, and the owner asked for that copy once, not twice in the same row.
+  const fig=(p.cited===false) ? '' : pathFigures(meta,p);
   return `<div class="${cls}" data-id="${p.id}" role="option" aria-selected="${p.isDefault?'true':'false'}">`+
          radio+
          `<div class="crmain">`+
@@ -1106,7 +1159,7 @@ Expected: `[i18n:Guard-A] OK …`, exit 0.
 ```bash
 npx playwright test tests/cp2-path-panel.spec.ts --reporter=list
 ```
-Expected: `13 passed`, exit 0. Paste the output.
+Expected: `14 passed`, exit 0 — ALL-entries, layout, default pre-selected, D5/D2/D4, O-1 persistence, D9 soon-row, owner decision 3, the Hebrew count pill, DoD-9 × 5, DoD-8. Paste the output.
 
 ```bash
 # DoD-8: actually LOOK at all three, at 390×844 — do not tick this from the file existing
@@ -1123,10 +1176,12 @@ Expected: all pass, exit 0.
 
 **Safety / fidelity witness (DoD-10):** the panel renders only strings; every number in it comes from `pathFigures` → `effectiveSchedule` stages (Task 2's fidelity assertion covers it), and the select handler's entire mutation is `setItemPath(meta.key, id)` — one localStorage write of a path **id**. No `bcheck` stage, `safe`, `svt`, temp or duration is computed or mutated. Placeholder rows return before any write, so an uncited path can never become the default. The card re-render is a re-invocation of the *existing* `openCut`, which re-derives through the same accessor — the D5/D2/D4 test asserts the re-rendered stat line and raw table equal the newly selected path's cited values (75°C), not the old ones.
 
-- [ ] **Step 8: Commit.**
+- [ ] **Step 8: Commit — Task 2's staged helpers AND this task's consumer, in ONE commit.**
+
+Task 2 deliberately left its diff staged and uncommitted (no production reader until now); this commit is where those helpers acquire one, so both halves land together and no commit boundary carries inert code.
 
 ```bash
-git add app.js app.css lang/en.json lang/ru.json lang/de.json lang/es.json lang/fr.json lang/it.json lang/_extracted.json lang/_callsite-sig.json tests/cp2-path-panel.spec.ts mockups/cp2-panel-collapsed-390x844.png mockups/cp2-panel-expanded-390x844.png mockups/cp2-panel-after-switch-390x844.png
+git add app.js app.css lang/en.json lang/ru.json lang/de.json lang/es.json lang/fr.json lang/it.json lang/_extracted.json lang/_callsite-sig.json tests/cp2-path-presentation.spec.ts tests/cp2-path-panel.spec.ts mockups/cp2-panel-collapsed-390x844.png mockups/cp2-panel-expanded-390x844.png mockups/cp2-panel-after-switch-390x844.png
 git commit -m "$(cat <<'EOF'
 feat(cp2): the card's cooking-paths panel (owner-approved variant B) + select-to-set-default
 
@@ -1134,6 +1189,12 @@ spec 2026-07-25 §3 item 3: "the card lists ALL itemPaths entries with their cit
 compact ...; the default is selected; tapping another path re-renders the card's schedule from
 it and (per O-1) sets the per-recipe default."
 
+- pathIcons / pathFigures / pathCitation / pathCiteHTML (Task 2's presentation helpers, committed
+  here with their first production reader): figures are read off effectiveSchedule stages only,
+  device kinds only (bcheck's safety temp is never a figure), the whole run in ONE dir="ltr"
+  island so bidi cannot invert the arrow (L13), and the arrow is the existing no-space literal
+  (owner decision 1). D6: the order rows cite order_svsmoke.ref / order_smokesv.ref; owner
+  decision 2: the smoke-ONLY row cites the same AmazingRibs ref, "(טור עישון בלבד)".
 - cookingPathsPanel(meta) renders the approved variant-B DOM between the stat line and the
   doneness selector; wireCookingPaths handles expand/collapse and row selection.
 - lists ALL entries, cited AND the CP3 placeholders (owner decision 3): dimmed, no radio, and
@@ -1159,9 +1220,9 @@ EOF
 **Spec line:** *"**The item card** re-renders its cooking content from it: stat line, step list, raw-data table — all from stages. `composedSteps`/`svSteps`/`soSteps` retire from schedule duty…"* (spec §3, item 2) — and the surfaces table row *"Item card stat line / steps / raw table | `composedSteps`/`svSteps` on catalog smt/smh | `effectiveSchedule`"* (spec §4).
 
 **Files:**
-- Modify `app.js` — insert the seam block immediately **after** `sourcesBlock`'s closing brace (currently line **2863**) and before `function openCut(c){` (**2864**).
-- Modify `app.js` **2873–2874** — openCut's `smokeFin` / `smtV` / `smhV` locals (the D2 root: the card bakes these into the stat line, the raw table AND the steps).
-- Modify `app.js` **2888–2902** — the `.statline` block, replaced by one call.
+- Modify `app.js` — insert the seam block immediately **after** `sourcesBlock`'s closing brace (pre-CP2 line **2863**) and before `function openCut(c){`. **Task 3 already shifted every line number below `openCut`'s opening — anchor by content (Step 1), never by these numbers.**
+- Modify `app.js` — openCut's `smokeFin` / `smtV` / `smhV` locals (pre-CP2 **2873–2874**; the D2 root: the card bakes these into the stat line, the raw table AND the steps). **One edit, in Step 4.**
+- Modify `app.js` — the `.statline` block (pre-CP2 **2888–2902**), replaced by one call. **One edit, in Step 4.**
 - Modify `lang/_extracted.json`, `lang/_callsite-sig.json` — **regenerated**: this task MOVES ~10 `L()` call sites out of `openCut` into a new function, which is exactly what Guard D's structural signature tracks. **No new user-facing string is added and none is edited**, so no `lang/<code>.json` changes.
 - Create `tests/cp2-statline-seam.spec.ts`.
 
@@ -1182,13 +1243,17 @@ EOF
 
 ```bash
 cd C:/Users/dudib/source/repos/matconetesh
-sed -n '2862,2864p;2873,2874p' app.js       # sourcesBlock close → openCut open; the smokeFin locals
-sed -n '2888,2903p' app.js                  # the .statline block + the donenessSelector line after it
+grep -n 'function sourcesBlock\|function openCut\|<div class="statline">\|cookingPathsPanel(meta)\|${donenessSelector(c)}\|svSmokeFinish(meta):null' app.js
 grep -n "function isProduce\|function upperHours\|function dots\|function svSmokeFinish" app.js
 grep -rn "חוסך מעשנת" app.js tests/          # must appear ONCE, in app.js, and in NO test
 ```
 
-Expected: 2863 = `}` (sourcesBlock), 2864 = `function openCut(c){`; 2873 = `const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(meta):null;`, 2874 = `const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;`; 2888 = `<div class="statline">`, 2902 = `</div>`, 2903 = `${donenessSelector(c)}`; `isProduce` 1208, `upperHours` 6, `svSmokeFinish` 4209; `חוסך מעשנת` appears at app.js:2900 **only** (no test asserts it — so dropping it in Step 9 cannot silently break a spec).
+Expected **AFTER Task 3 has landed** — locate all of these by CONTENT, never by the numbers written here (Task 3 inserted a line into `openCut`, so every number below this point has moved):
+- `sourcesBlock`'s closing `}` is immediately followed by `function openCut(c){` — the seam's insertion point;
+- inside `openCut`, `const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(meta):null;` and, on the next line, `const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;`;
+- the `.statline` block opens at `<div class="statline">` and closes at the `</div>` immediately preceding `${typeof cookingPathsPanel==='function'?cookingPathsPanel(meta):''}` (Task 3's render anchor), which is itself followed by `${donenessSelector(c)}`;
+- `isProduce` 1208, `upperHours` 6, `svSmokeFinish` 4209 (these are above `openCut` and did not move);
+- `חוסך מעשנת` appears in `app.js` **once** and in **no** test — so dropping it in Step 9 cannot silently break a spec.
 
 Symbol-shaped confirmation (Serena, §10.17):
 
@@ -1344,100 +1409,20 @@ npx playwright test tests/cp2-statline-seam.spec.ts --reporter=list
 
 Expected: **every** test fails inside `boot`, at the `waitForFunction` — `TimeoutError: page.waitForFunction: Timeout 30000ms exceeded` — because `cardStatlineHTML` / `cardPathSel` do not exist. Paste the output. That is the honest phase-A RED: the seam is absent. It is **not** the RED for owner decision 5 — Step 8 witnesses that separately, after phase A is green.
 
-- [ ] **Step 4: Implement PHASE A — the pure extraction, no behaviour change.**
+- [ ] **Step 4: Implement PHASE A — the extraction, at the FINAL signature, with no behaviour change on an empty store.**
 
-Insert immediately **after** `sourcesBlock`'s closing brace (app.js 2863):
+The seam is introduced with the signature Tasks 5/6/7 bind to, and the four resolver helpers land with it. That is deliberate: giving phase A a temporary `(c, meta, smokeFin)` signature would make test (a) — which calls `cardStatlineHTML(m.obj, m, cardPathSel(m))` — structurally unable to pass, and would make phase A's `boot()` time out on `typeof cardPathSel==='function'`. The helpers are **behaviour-neutral with an empty store**: `cardPathSel` returns `null`, and `pathSmokeLeg(meta, null)` **is** `svSmokeFinish(meta)`, verbatim. Phase B then changes only `cardStatlineHTML`'s body and adds one predicate.
+
+Insert immediately **after** `sourcesBlock`'s closing brace:
 
 ```js
 // ── CP2 · the CARD'S STAT-LINE SEAM (spec §3 item 2: "The item card re-renders its cooking content
-// from it: stat line, step list, raw-data table — all from stages"). PHASE A is a pure MOVE of the
-// markup that lived inline in openCut (2888-2902): same tags, same L() literals, same values. It
-// exists so a path switch has ONE place to re-render (review defect D2: openCut computed smtV/smhV
-// locally and stamped them into the stat line, the raw table AND the steps, so re-rendering a sub-div
-// left stale figures beside a moved badge). No temp, hour, safe or bcheck value is computed here.
-function cardStatlineHTML(c, meta, smokeFin){
-  const hh=L('ש','h');
-  const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
-  if(isProduce(c)) return `
-       <div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.sot}°<small> / ${Math.round(upperHours(c.soh)*60)}${L("ד'",'m')}</small></div></div>
-       <div class="stat"><div class="l">${L('סו-ויד','Sous-vide')}</div><div class="v">${c.svt}°<small> / ${c.svh}${hh}</small></div></div>
-       <div class="stat"><div class="l">${L('גימור','Finish')}</div><div class="v">${smtV}°</div></div>
-       <div class="stat"><div class="l">${L('קושי','Difficulty')}</div><div class="v">${dots(c.diff)}</div></div>
-       `;
-  return `
-       <div class="stat"><div class="l">${L('סו-ויד','Sous-vide')}</div><div class="v">${c.svt}°<small> / ${c.svh}${hh}</small></div></div>
-       <div class="stat"><div class="l">${L('עישון','Smoke')}</div><div class="v">${smtV}°<small> / ${smhV}${hh}</small></div></div>
-       ${(c.grt!=null||c.grillable===false)?`<div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.grillable===false?'—':`${c.grt}°<small> / ${c.grh}${hh}</small>`}</div></div>`:''}
-       <div class="stat"><div class="l">${L('יעד מרקם','Texture target')}</div><div class="v" id="tgtStat">${c.tgt}°</div></div>
-       ${c.safe?`<div class="stat"><div class="l">${L('בטיחות','Safety')}</div><div class="v">${c.safe}°</div></div>`:''}
-       <div class="stat"><div class="l">${L('חוסך מעשנת','Smoker saved')}</div><div class="v" style="color:#a7d086">${c.saved}${hh}</div></div>
-       `;
-}
-```
+// from it: stat line, step list, raw-data table — all from stages"). PHASE A is a MOVE of the markup
+// that lived inline in openCut: same tags, same L() literals, same values. It exists so a path switch
+// has ONE place to re-render (review defect D2: openCut computed smtV/smhV locally and stamped them
+// into the stat line, the raw table AND the steps, so re-rendering a sub-div left stale figures beside
+// a moved badge). No temp, hour, safe or bcheck value is computed here.
 
-Replace app.js **2888–2902** (the whole `.statline` block, `<div class="statline">` through its `</div>`) with:
-
-```js
-     <div class="statline" id="cardStatline">${cardStatlineHTML(c, meta, smokeFin)}</div>
-```
-
-> `hh` replaces the four inline `L('ש','h')` calls — same literal, same key, fewer call sites. Guard D sees the delta; Step 6 regenerates the manifest. `id="tgtStat"` is preserved verbatim: `wireDoneness(c)` (openCut 3005) writes into it.
-
-- [ ] **Step 5: Run — phase A green, and the invariance assertions still hold.**
-
-```bash
-npx playwright test tests/cp2-statline-seam.spec.ts -g "(a)|(b)|(f)" --reporter=list
-```
-Expected: `3 passed`. Tests (c)/(d)/(e) still FAIL — that is phase B, not yet built. Paste the output; do not proceed past a failing (a)/(b)/(f).
-
-- [ ] **Step 6: Regenerate the i18n artifacts (Guard D) and confirm the build is clean.**
-
-```bash
-node scripts/i18n-extract.mjs app.js lang/_extracted.json --allow-collisions
-I18N_REGEN_SIG=1 python build.py
-python build.py          # second run: Guard A + Guard D must both pass with NO regen env var
-git diff --stat lang/    # expect ONLY lang/_extracted.json + lang/_callsite-sig.json to move
-```
-Expected on the second run: `[i18n:Guard-A] OK — <N> KNOWN keys + <M> names covered in all 6 active langs`, no Guard D drift line, exit 0. **No `lang/<code>.json` may appear in that diff** — this task adds and edits no string.
-
-- [ ] **Step 7: Commit phase A on its own — an extraction and a behaviour change never share a commit.**
-
-```bash
-git add app.js lang/_extracted.json lang/_callsite-sig.json tests/cp2-statline-seam.spec.ts
-git commit -m "$(cat <<'EOF'
-refactor(cp2): extract the card's stat line into cardStatlineHTML — the seam a path switch re-renders
-
-spec 2026-07-25 §3 item 2: "The item card re-renders its cooking content from it: stat line,
-step list, raw-data table — all from stages."
-
-Pure move, zero behaviour change: same markup, same L() literals, same values (asserted — the
-seam's output must EQUAL the rendered #cardStatline, and the brisket stat line still reads
-68°/30ש, the cited 120° finish, 95°/63°, 9ש). Behaviour follows in the next commit.
-
-Safety: nothing computed or mutated; smokeFin is still openCut's svSmokeFinish value.
-
-Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
-Claude-Session: https://claude.ai/code/session_01FkEz5H2BEqg4KCagBicAXr
-EOF
-)"
-```
-
-- [ ] **Step 8: WITNESS RED for PHASE B — owner decision 5 and D8, with the seam already in place.**
-
-```bash
-npx playwright test tests/cp2-statline-seam.spec.ts -g "owner decision 5|D8" --reporter=list
-```
-
-Expected failures, and the reason each proves:
-- `(c)` → `Expected: not to contain "חוסך מעשנת" / Received: ["סו-ויד","עישון","גריל","יעד מרקם","בטיחות","חוסך מעשנת"]` — the stat is rendered unconditionally for every non-produce item, so a grill-only offal card claims it saves smoker hours. **This is D3's witness: the first draft implemented owner decision 5 nowhere.**
-- `(d)` → same shape on the brisket with the reverse path stored — the reverse order saves nothing.
-- `(e)` → `Expected substring: "110°" / Received string: "עישון 120° / 1.5ש"` plus `Received` labels still containing `"סו-ויד"` — the stat line is pinned to the sv+smoke slot regardless of the selected path (D8).
-
-- [ ] **Step 9: Implement PHASE B — resolve the selection, gate the device stats, drop the saved stat.**
-
-Insert immediately **before** `cardStatlineHTML` (the block added in Step 4):
-
-```js
 // The card's resolved SELECTION. null = no explicit per-recipe default, in which case every helper
 // below falls back to exactly what the card did before CP2 (spec §2: "absent an explicit default,
 // today's methodRules default combo governs (unchanged behavior)").
@@ -1462,6 +1447,112 @@ function pathSmokeLeg(meta, sel){
   }
   return (typeof svSmokeFinish==='function')?svSmokeFinish(meta):null;
 }
+function cardStatlineHTML(c, meta, sel){
+  const hh=L('ש','h');
+  const leg=pathSmokeLeg(meta, sel);          // sel===null ⇒ svSmokeFinish(meta), byte-for-byte
+  const smtV=leg?leg.t:c.smt, smhV=leg?leg.h:c.smh;
+  if(isProduce(c)) return `
+       <div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.sot}°<small> / ${Math.round(upperHours(c.soh)*60)}${L("ד'",'m')}</small></div></div>
+       <div class="stat"><div class="l">${L('סו-ויד','Sous-vide')}</div><div class="v">${c.svt}°<small> / ${c.svh}${hh}</small></div></div>
+       <div class="stat"><div class="l">${L('גימור','Finish')}</div><div class="v">${smtV}°</div></div>
+       <div class="stat"><div class="l">${L('קושי','Difficulty')}</div><div class="v">${dots(c.diff)}</div></div>
+       `;
+  return `
+       <div class="stat"><div class="l">${L('סו-ויד','Sous-vide')}</div><div class="v">${c.svt}°<small> / ${c.svh}${hh}</small></div></div>
+       <div class="stat"><div class="l">${L('עישון','Smoke')}</div><div class="v">${smtV}°<small> / ${smhV}${hh}</small></div></div>
+       ${(c.grt!=null||c.grillable===false)?`<div class="stat"><div class="l">${L('גריל','Grill')}</div><div class="v">${c.grillable===false?'—':`${c.grt}°<small> / ${c.grh}${hh}</small>`}</div></div>`:''}
+       <div class="stat"><div class="l">${L('יעד מרקם','Texture target')}</div><div class="v" id="tgtStat">${c.tgt}°</div></div>
+       ${c.safe?`<div class="stat"><div class="l">${L('בטיחות','Safety')}</div><div class="v">${c.safe}°</div></div>`:''}
+       <div class="stat"><div class="l">${L('חוסך מעשנת','Smoker saved')}</div><div class="v" style="color:#a7d086">${c.saved}${hh}</div></div>
+       `;
+}
+```
+
+Replace openCut's `smokeFin`/`smtV`/`smhV` locals (the two lines Step 1 located by content) with the **final** resolution — this is the one openCut edit this task makes; Step 9 does not touch openCut again:
+
+```js
+  // CP2 (spec §3 item 2, review defect D2): the card's own numbers come from the SELECTED path. This
+  // one resolution feeds the stat line (#cardStatline), the raw-data table and the step list
+  // (paintMethod → composedSteps), which is why re-rendering a sub-div was never enough. With nothing
+  // stored, cardPathSel is null and pathSmokeLeg IS svSmokeFinish — pre-CP2 output, verbatim.
+  const pathSel=(typeof cardPathSel==='function')?cardPathSel(meta):null;
+  const smokeFin=(typeof pathSmokeLeg==='function')?pathSmokeLeg(meta,pathSel):((typeof svSmokeFinish==='function')?svSmokeFinish(meta):null);
+  const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
+```
+
+Then replace the whole `.statline` block (`<div class="statline">` through its closing `</div>`, the one immediately preceding Task 3's `cookingPathsPanel` line) with:
+
+```js
+     <div class="statline" id="cardStatline">${cardStatlineHTML(c, meta, pathSel)}</div>
+```
+
+> `hh` replaces the four inline `L('ש','h')` calls — same literal, same key, fewer call sites. Guard D sees the delta; Step 6 regenerates the manifest. `id="tgtStat"` is preserved verbatim: `wireDoneness(c)` (openCut ~3005) writes into it. `smtV`/`smhV` remain openCut locals because the raw-data table (Task 7's territory until it moves) still reads them.
+
+- [ ] **Step 5: Run — phase A green, and the invariance assertions still hold.**
+
+```bash
+npx playwright test tests/cp2-statline-seam.spec.ts -g "^\(a\)|^\(b\)|^\(f\)" --reporter=list
+```
+
+> The pattern is **anchored and escaped on purpose.** Playwright's `-g` is a JS regex over the full title: `(a)` is a capture group matching the bare letter `a`, which appears in almost every title here (`(c) owner decision 5 — an offal card …`), so `-g "(a)|(b)|(f)"` silently runs the WHOLE file and the "3 passed" expectation below becomes unreadable.
+
+Expected: `3 passed`. Tests (c)/(d)/(e) still FAIL — that is phase B, not yet built (they are excluded from this filtered run). Paste the output; do not proceed past a failing (a)/(b)/(f).
+
+- [ ] **Step 6: Regenerate the i18n artifacts (Guard D) and confirm the build is clean.**
+
+```bash
+node scripts/i18n-extract.mjs app.js lang/_extracted.json --allow-collisions
+I18N_REGEN_SIG=1 python build.py
+python build.py          # second run: Guard A + Guard D must both pass with NO regen env var
+git diff --stat lang/    # expect ONLY lang/_extracted.json + lang/_callsite-sig.json to move
+```
+Expected on the second run: `[i18n:Guard-A] OK — <N> KNOWN keys + <M> names covered in all 6 active langs`, no Guard D drift line, exit 0. **No `lang/<code>.json` may appear in that diff** — this task adds and edits no string.
+
+- [ ] **Step 7: Commit phase A on its own — an extraction and a behaviour change never share a commit.**
+
+```bash
+git add app.js lang/_extracted.json lang/_callsite-sig.json tests/cp2-statline-seam.spec.ts
+git commit -m "$(cat <<'EOF'
+refactor(cp2): extract the card's stat line into cardStatlineHTML — the seam a path switch re-renders
+
+spec 2026-07-25 §3 item 2: "The item card re-renders its cooking content from it: stat line,
+step list, raw-data table — all from stages."
+
+Zero behaviour change on an empty store: same markup, same L() literals, same values (asserted —
+the seam's output must EQUAL the rendered #cardStatline, and the brisket stat line still reads
+68°/30ש, the cited 120° finish, 95°/63°, 9ש). Behaviour follows in the next commit.
+
+The seam lands at its FINAL signature (c, meta, sel) with its four resolvers — cardPathSel /
+pathStages / pathHasKind / pathSmokeLeg — because pathSmokeLeg(meta, null) IS svSmokeFinish(meta)
+verbatim, so an empty store is byte-identical while the extraction stays a true seam (a temporary
+smokeFin parameter would have had to be re-cut a commit later, and its test could never pass).
+
+Safety: nothing computed or mutated; with no stored default the smoke leg is still svSmokeFinish.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FkEz5H2BEqg4KCagBicAXr
+EOF
+)"
+```
+
+- [ ] **Step 8: WITNESS RED for PHASE B — owner decision 5 and D8, with the seam already in place.**
+
+```bash
+npx playwright test tests/cp2-statline-seam.spec.ts -g "owner decision 5|D8" --reporter=list
+```
+
+Expected failures, and the reason each proves:
+- `(c)` → `Expected: not to contain "חוסך מעשנת" / Received: ["סו-ויד","עישון","גריל","יעד מרקם","בטיחות","חוסך מעשנת"]` — the stat is rendered unconditionally for every non-produce item, so a grill-only offal card claims it saves smoker hours. **This is D3's witness: the first draft implemented owner decision 5 nowhere.**
+- `(d)` → same shape on the brisket with the reverse path stored — the reverse order saves nothing.
+- `(e)` → `Expected substring: "110°" / Received string: "עישון 120° / 1.5ש"` plus `Received` labels still containing `"סו-ויד"` — the stat line is pinned to the sv+smoke slot regardless of the selected path (D8).
+
+- [ ] **Step 9: Implement PHASE B — gate the device stats and drop the saved stat. No signature change, no second openCut edit.**
+
+`cardPathSel` / `pathStages` / `pathHasKind` / `pathSmokeLeg` and openCut's `pathSel` resolution already landed in Step 4 (behaviour-neutral on an empty store). Phase B adds **one** predicate and replaces **one** function body.
+
+Insert immediately **before** `cardStatlineHTML`:
+
+```js
 // Owner decision 5 (2026-07-27): "חוסך מעשנת" quantifies the smoker hours the sv→smoke route saves by
 // doing the cooking in the bath. It is meaningless on a grill-only, smoke-only or REVERSE path, so it
 // DROPS when inapplicable. Purely presentational — c.saved is neither read for math nor written.
@@ -1473,7 +1564,7 @@ function savedStatApplies(meta, sel, stages){
 }
 ```
 
-Replace the body of `cardStatlineHTML` (Step 4's version) with the path-aware one — signature changes from `(c, meta, smokeFin)` to `(c, meta, sel)`:
+Replace the BODY of `cardStatlineHTML` (Step 4's version) with the path-aware one — **the signature `(c, meta, sel)` does not change**:
 
 ```js
 function cardStatlineHTML(c, meta, sel){
@@ -1509,22 +1600,11 @@ function cardStatlineHTML(c, meta, sel){
 }
 ```
 
-Replace openCut **2873–2874** (the `smokeFin`/`smtV`/`smhV` locals) with:
+`openCut` needs **no further edit** — Step 4 already resolves `pathSel` and passes it into the render anchor. Confirm that, rather than editing twice:
 
-```js
-  // CP2 (spec §3 item 2, review defect D2): the card's own numbers come from the SELECTED path. This
-  // one resolution feeds the stat line (#cardStatline), the raw-data table (2921-2946) and the step
-  // list (paintMethod → composedSteps), which is why re-rendering a sub-div was never enough. With
-  // nothing stored, cardPathSel is null and pathSmokeLeg IS svSmokeFinish — pre-CP2 output, verbatim.
-  const pathSel=(typeof cardPathSel==='function')?cardPathSel(meta):null;
-  const smokeFin=(typeof pathSmokeLeg==='function')?pathSmokeLeg(meta,pathSel):((typeof svSmokeFinish==='function')?svSmokeFinish(meta):null);
-  const smtV=smokeFin?smokeFin.t:c.smt, smhV=smokeFin?smokeFin.h:c.smh;
-```
-
-and the render anchor from Step 4 becomes:
-
-```js
-     <div class="statline" id="cardStatline">${cardStatlineHTML(c, meta, pathSel)}</div>
+```bash
+grep -n "cardStatlineHTML(c, meta, pathSel)\|const pathSel=(typeof cardPathSel" app.js   # one hit each
+grep -c "cardStatlineHTML(c, meta, smokeFin)" app.js                                     # must be 0
 ```
 
 > **Known intermediate state, closed by Task 5 (stated, not hidden):** Task 3 already lets a user store a path whose combo differs from the card's active method toggles. Between this commit and Task 5's, such a user sees a corrected stat line beside toggles that still show the old combo. Task 5's RED witness is exactly that inconsistency; per §10.1 the phase is not done until it is closed.
@@ -1569,9 +1649,9 @@ feat(cp2): the card's stat line follows the SELECTED path + "חוסך מעשנת
 spec 2026-07-25 §3 item 2 (card re-renders its cooking content from the accessor) + owner
 decision 5 (2026-07-27): the smoker-saved stat is shown only for sv→smoke.
 
-- cardPathSel / pathStages / pathHasKind / pathSmokeLeg / savedStatApplies.
-- openCut's smokeFin (2873) now resolves through the selected path — the ONE local the stat line,
-  the raw table and the steps all bake (review defect D2).
+- savedStatApplies(meta,sel,stages) + the gated cardStatlineHTML body (the resolvers cardPathSel /
+  pathStages / pathHasKind / pathSmokeLeg and openCut's pathSel landed with the seam, one commit
+  earlier, where they were byte-neutral on an empty store).
 - D8: a selected path with no smoke stage drops the smoke stat instead of showing the sv→smoke
   finish; a path with no sv stage drops the sous-vide stat. Gating applies ONLY when the user has
   chosen a path — with nothing stored the stat line is unchanged (asserted on an offal card).
@@ -1595,7 +1675,8 @@ EOF
 **Files:**
 - Modify `app.js` — insert the state machine + open-state helpers immediately **after** `wireCookingPaths`'s closing brace (Task 3's block; anchor by content: `grep -n "function wireCookingPaths" app.js`).
 - Modify `app.js` — inside `wireCookingPaths`: the head-click handler and the row-click handler (Task 3's bodies), replaced to call the new helpers.
-- Modify `app.js` — openCut's method-toggle handler (currently **2995**, `if(curProject) store.set(methodKeyFor(key),next); else cardSet('method:'+key,next);`) → `setCardCombo(key,next)`, so one function owns the two-store rule.
+- Modify `app.js` — openCut's method-toggle handler (pre-CP2 **2995**, `if(curProject) store.set(methodKeyFor(key),next); else cardSet('method:'+key,next);`) → `setCardCombo(key,next)`, so one function owns the combo write.
+- Modify `app.js` — `closePanel` (**3367**): call `cpResetOpen()` as its first statement (every SETUP owns a TEARDOWN, §11a).
 - Modify `app.css` — three lines appended to the CP2 block (the stat-line cross-fade).
 - Create `tests/cp2-path-select.spec.ts`.
 - **No `lang/*.json` change and no `_callsite-sig` regen**: this task adds, removes and edits **zero** `L()` call sites.
@@ -1605,9 +1686,9 @@ EOF
 - **Produces:**
   - `cardComboOf(p)` → `string[]|null` — a path's methodKey decoded to a method combo (`'c:smoke_sv'` → `['smoke','sv']`); `null` for a non-cut key or a placeholder.
   - `sameCombo(a,b)` → `boolean` — order-insensitive combo equality (Task 6 threads it).
-  - `setCardCombo(itemKey, combo)` → `void` — the two-store rule the method toggles have always used, now named once.
+  - `setCardCombo(itemKey, combo)` → `void` — the combo write, named once. Writes the persistent method store **and** the session store, so the combo has the same lifetime as the persistent path default it implies.
   - `selectCardPath(meta, id)` → `boolean` — validate → persist the per-recipe default → write the path's combo. `false` for an unknown/uncited id (nothing written).
-  - `cpSetOpen(host, open)` → `void`, `cpAutoCollapse()` → `void`, module flag `_cpListOpen` — the panel's open state survives the card re-render, then collapses ~380 ms later (the approved mockup's confirmation gesture).
+  - `cpSetOpen(host, open, key)` → `void`, `cpAutoCollapse(key)` → `void`, `cpResetOpen()` → `void`, module state `_cpListOpenKey` / `_cpCollapseTmo` — the panel's open state survives the card re-render **for that item only**, then collapses ~380 ms later (the approved mockup's confirmation gesture); `closePanel` cancels both.
 
 ---
 
@@ -1744,14 +1825,36 @@ test('(e) O-1 — select smoke-only, close, reopen: the row, the toggles and the
   expect(await statLabels(page)).not.toContain('סו-ויד');
 });
 
+// ── (f) the per-recipe default and the combo have ONE lifetime — they survive a reload together ─────
+test('(f) after a reload the panel\'s selected row and the method toggles still agree', async ({ page }) => {
+  await openBrisket(page);
+  await expand(page);
+  await page.locator('#cpListBody .cp-row[data-id="c:smoke"]').click();
+  await page.waitForFunction(`document.querySelector('#panel .cp-row.on').getAttribute('data-id')==='c:smoke'`);
+
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForFunction(`typeof openCut==='function' && typeof cookingPathsPanel==='function'`);
+  await openBrisket(page);
+  await expand(page);
+  expect(await page.locator('#panel .cp-row.on').getAttribute('data-id')).toBe('c:smoke');
+  expect(await onToggles(page), 'the toggles must agree with the PERSISTED path, not revert to rules.def').toEqual(['smoke']);
+});
+
 // ── DoD-8 · visual evidence at 390×844 ────────────────────────────────────────────────────────────
 test('DoD-8 — screenshots at 390×844: mid-select (open) and settled (collapsed)', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await openBrisket(page);
   await expand(page);
   await page.locator('#cpListBody .cp-row[data-id="c:smoke"]').click();
-  await page.waitForFunction(`document.querySelector('#cpListBody').style.display==='block' && document.querySelector('#panel .cp-row.on').getAttribute('data-id')==='c:smoke'`);
+  // freeze the 380ms auto-collapse BEFORE shooting: waiting for display==='block' and then screenshotting
+  // lets the collapse fire in between, which would silently produce a COLLAPSED "mid-select (open)"
+  // shot — DoD-8 evidence that can be wrong without the test failing is worse than no evidence.
+  await page.evaluate('clearTimeout(_cpCollapseTmo)');
+  await expect(page.locator('#cpListBody')).toBeVisible();
+  await page.waitForFunction(`document.querySelector('#panel .cp-row.on').getAttribute('data-id')==='c:smoke'`);
   await page.locator('#panel').screenshot({ path: 'mockups/cp2-select-open-390x844.png' });
+  // re-arm the collapse deliberately, then shoot the settled state
+  await page.evaluate('cpAutoCollapse(resolveItem("cut-1").key)');
   await page.waitForFunction(`document.querySelector('#cpListBody').style.display==='none'`);
   await page.locator('#panel').screenshot({ path: 'mockups/cp2-select-collapsed-390x844.png' });
 });
@@ -1766,8 +1869,11 @@ npx playwright test tests/cp2-path-select.spec.ts --reporter=list
 Expected: every test fails in `boot` at the `waitForFunction` — `TimeoutError: page.waitForFunction: Timeout 30000ms exceeded` — `selectCardPath` / `cpSetOpen` do not exist. Paste it. Then, after Step 4 defines them but **before** the handlers are rewired in Step 5, re-run to witness the second RED shape, which is the one that matters:
 
 ```bash
-npx playwright test tests/cp2-path-select.spec.ts -g "(a)|(b)" --reporter=list
+npx playwright test tests/cp2-path-select.spec.ts -g "^\(a\)|^\(b\)" --reporter=list
 ```
+
+> Anchored and escaped: unescaped `(a)` is a capture group matching the bare letter `a`, which appears in nearly every title in this file, so `-g "(a)|(b)"` would run the whole spec and this second RED — the one that matters — could not be read off the output.
+
 Expected: `(a)` → `expect(received).toEqual(expected) — Expected: ["smoke"] / Received: ["sv","smoke"]` (Task 3's handler wrote the path id and nothing else, so the card's toggles, note and steps stayed on sv+smoke); `(b)` → `TimeoutError … waiting for function` on the `display==='block'` condition (the re-rendered panel comes back collapsed, so the confirmation gesture never happens). Paste both.
 
 - [ ] **Step 4: Implement — the state machine and the open-state helpers.**
@@ -1789,12 +1895,23 @@ function sameCombo(a,b){
   if(!a||!b||a.length!==b.length) return false;
   return a.slice().sort().join('_')===b.slice().sort().join('_');
 }
-// The two-store rule the method toggles have always used (openCut 2995), named once so the toggle
-// handler and the path panel cannot drift: a PROJECT card writes the persistent per-project method
-// store, a catalog card writes the ephemeral per-visit session store.
+// The method-combo write, named once so the toggle handler and the path panel cannot drift.
+//
+// It writes BOTH stores, deliberately. A CP2 path default is PERSISTENT (mk-item-path, localStorage,
+// O-1) and Task 6's toggle handler records every combo flick as one — so the combo it implies must
+// persist too. Writing only the ephemeral session store (cardSess, app.js 1017, in-memory for the
+// visit) left a reload with the panel's `.on` row, the stat line and the steps derived from the
+// PERSISTED path while the method toggles had reverted to rules.def: the panel says "smoke-only" while
+// the toggles say sv+smoke — the exact card-vs-itself contradiction the single-source spec exists to
+// kill (spec §1.4). The session store is still written so the current visit reads it without a store
+// round-trip, and mk-item-path already crosses the catalog/project boundary by design (it is keyed by
+// itemKey, not by evScope), so the method store crossing it is the same scope, not a new one.
+//
+// DISCLOSED BEHAVIOUR CHANGE (§10.8 routine call, noted — not a spec waiver): a method-toggle flick on
+// a CATALOG card now persists where it used to be per-visit. State it in this task's report.
 function setCardCombo(itemKey, combo){
-  if(typeof curProject!=='undefined' && curProject) store.set(methodKeyFor(itemKey), combo);
-  else cardSet('method:'+itemKey, combo);
+  store.set(methodKeyFor(itemKey), combo);
+  cardSet('method:'+itemKey, combo);
 }
 // ONE transition. Returns false — writing NOTHING — for an unknown id or a CP3 placeholder (owner
 // decision 3: a placeholder toasts, it never selects). The combo it writes came from an ENUMERATED
@@ -1813,22 +1930,39 @@ function selectCardPath(meta, id){
 // The panel's open state must survive the card re-render, or the user never sees the radio move. The
 // approved mockup (mockups/cp2/variant-b-list.html, §10.9) then collapses it ~380ms later — that
 // collapse IS the confirmation that the per-recipe default moved.
-let _cpListOpen=false, _cpCollapseTmo=0;
-function cpSetOpen(host, open){
+//
+// The open flag is keyed to the ITEM and the timer is cancellable, because neither is scoped by the
+// DOM: showPanel replaces the panel wholesale (app.js 3309, `p.innerHTML=html`), so a bare boolean
+// would re-open the path list of the NEXT card the user opens inside the 380 ms window, and a
+// still-pending timer would collapse a list belonging to a different card (or race a test that has
+// just waited for `display==='block'`). Both are real: `cardClear` is called from exactly one site
+// (resetRecipeProgress, app.js 10819), so nothing else tears this state down.
+let _cpListOpenKey=null, _cpCollapseTmo=0;
+function cpSetOpen(host, open, key){
   if(!host) return;
   const body=host.querySelector('#cpListBody'), count=host.querySelector('#cpListCount'), head=host.querySelector('#cpListHead');
   if(!body) return;
   body.style.display=open?'block':'none';
   if(count) count.classList.toggle('open', open);
   if(head) head.setAttribute('aria-expanded', open?'true':'false');
-  _cpListOpen=!!open;
+  _cpListOpenKey = open ? (key||_cpListOpenKey) : null;
 }
-function cpAutoCollapse(){
+function cpResetOpen(){ clearTimeout(_cpCollapseTmo); _cpListOpenKey=null; }
+function cpAutoCollapse(key){
   clearTimeout(_cpCollapseTmo);
   _cpCollapseTmo=setTimeout(function(){
-    const panel=$("#panel"); cpSetOpen(panel&&panel.querySelector('#cpList'), false);
+    const panel=$("#panel");
+    if(!panel || !panel.classList.contains('open') || _cpListOpenKey!==key){ _cpListOpenKey=null; return; }
+    cpSetOpen(panel.querySelector('#cpList'), false, key);
   }, 380);
 }
+```
+
+And add `cpResetOpen()` as the FIRST statement of `closePanel` (app.js 3367) — every SETUP owns a matching TEARDOWN (§11a):
+
+```js
+function closePanel(){
+  if(typeof cpResetOpen==='function') cpResetOpen();   // CP2: cancel a pending path-list auto-collapse and drop the open key
 ```
 
 - [ ] **Step 5: Implement — rewire `wireCookingPaths` onto the state machine.**
@@ -1836,8 +1970,8 @@ function cpAutoCollapse(){
 Inside `wireCookingPaths`, replace the head-click handler block with:
 
 ```js
-  if(head&&body&&count) head.addEventListener('click', function(){ cpSetOpen(host, body.style.display!=='block'); });
-  if(_cpListOpen) cpSetOpen(host, true);        // the re-rendered panel comes back as the user left it
+  if(head&&body&&count) head.addEventListener('click', function(){ cpSetOpen(host, body.style.display!=='block', meta.key); });
+  if(_cpListOpenKey===meta.key) cpSetOpen(host, true, meta.key);   // THIS item's panel comes back as the user left it
 ```
 
 and replace the row-click handler's **select** branch (Task 3's `setItemPath(meta.key, id); if(typeof reopen==='function') reopen();`) with:
@@ -1845,11 +1979,11 @@ and replace the row-click handler's **select** branch (Task 3's `setItemPath(met
 ```js
       if(row.classList.contains('on')) return;                // already the default — nothing to move
       if(!selectCardPath(meta, id)) return;                   // unknown/uncited → nothing written
-      _cpListOpen=true;                                       // stay open through the re-render…
+      _cpListOpenKey=meta.key;                                // stay open through the re-render…
       if(typeof reopen==='function') reopen();
       const sl=$("#panel").querySelector('#cardStatline');     // …and cross-fade the new figures in
       if(sl){ sl.classList.add('swap'); requestAnimationFrame(function(){ sl.classList.remove('swap'); }); }
-      cpAutoCollapse();                                       // …then collapse: the O-1 confirmation
+      cpAutoCollapse(meta.key);                               // …then collapse: the O-1 confirmation
 ```
 
 Replace openCut's method-toggle store line (**2995**) with the named helper — identical semantics, one owner:
@@ -1873,7 +2007,7 @@ Append to the CP2 block at the end of `app.css`:
 ```bash
 npx playwright test tests/cp2-path-select.spec.ts --reporter=list
 ```
-Expected: `6 passed`, exit 0. Paste it.
+Expected: `7 passed`, exit 0 — (a)–(f) plus DoD-8. Paste it.
 
 ```bash
 npx playwright test tests/cp2-path-panel.spec.ts tests/cp2-statline-seam.spec.ts tests/cp2-default-path.spec.ts \
@@ -1909,10 +2043,14 @@ spec 2026-07-25 §3 item 3: "…tapping another path re-renders the card's sched
 - selectCardPath(meta,id): validate → setItemPath → setCardCombo. A path is a combo plus an
   order, so choosing one moves the method toggles, the method note and the step list with it —
   Task 3's handler wrote only the id, leaving the card contradicting its own default.
-- setCardCombo names the two-store rule (project store vs session store) once; the method-toggle
-  handler now calls it instead of repeating it inline.
-- cpSetOpen/_cpListOpen carry the panel's open state through the card re-render, then
-  cpAutoCollapse() collapses it ~380ms later — the approved mockup's confirmation gesture.
+- setCardCombo names the combo write once and gives it ONE lifetime: it writes the persistent
+  method store as well as the session store, because the path default it implies is persistent
+  (mk-item-path). Writing only the ephemeral store left a reload with the panel on the persisted
+  path and the toggles back on rules.def — the card contradicting itself (asserted, test (f)).
+  DISCLOSED: a method-toggle flick on a CATALOG card now persists (was per-visit).
+- cpSetOpen/_cpListOpenKey carry the panel's open state through the card re-render FOR THAT ITEM,
+  then cpAutoCollapse(key) collapses it ~380ms later — the approved mockup's confirmation gesture.
+  closePanel calls cpResetOpen(), so a pending collapse can never land on another card's panel.
 - D9: a placeholder tap toasts and writes NOTHING (asserted: mk-item-path stays absent).
 - .statline cross-fade is fade-IN only, so it can never leave the stat line invisible.
 
@@ -2299,7 +2437,7 @@ EOF
 **Interfaces:**
 - **Consumes:** `cardPathSel(meta)` / `pathSmokeLeg(meta,sel)` (Task 4), `itemPaths(meta)` (Task 1), `pathFigures(meta,p)` / `pathIcons(p)` (Task 2), `isProduce` (1208), `grillLine(c)` (2823), `upperHours` (6), `L`.
 - **Produces:**
-  - `cardActivePath(meta)` → `path|null` — the `itemPaths` entry the card is currently rendering (`isDefault`, which Task 1 resolves from the store).
+  - `cardActivePath(meta, sel)` → `path|null` — the `itemPaths` entry the card is currently rendering: matched against the SELECTION first (methodKey + order), falling back to `isDefault` (which Task 1 resolves from the store) only when there is no selection. Taking `sel` is what keeps the row's label and its figures describing the same path.
   - `cardRawTableHTML(c, meta, sel)` → `string` — the full `<div class="raw" id="cardRawTable">…</div>`: a leading **מסלול נבחר** row carrying the active path's icons/label/figures, the active schedule row marked `.rawpath-on`, and the sv+smoke row's label switching to the reverse wording when the active order is `smoke-sv`.
 
 ---
@@ -2356,6 +2494,9 @@ test('(a) the raw table leads with a "מסלול נבחר" row carrying the acti
   expect(r[0], `rows were ${JSON.stringify(r)}`).toContain('מסלול נבחר');
   expect(r[0]).toContain('68°');           // the default path's sous-vide leg
   expect(r[0]).toContain('120°');          // …and its cited smoke finish
+  // COHERENCE: the leading row's NAME and its FIGURES describe the same path — the forward one here
+  expect(r[0], 'the label must name the path whose figures are printed beside it').not.toContain('עישון→סו-ויד');
+  expect(r[0]).not.toContain('75°');
   // L13: the figures are LTR islands, not bare digits in an RTL run
   expect(await page.locator('#panel #cardRawTable tr.rawpath span[dir="ltr"]').count()).toBeGreaterThan(1);
   expect(await page.locator('#panel #cardRawTable tr.rawpath-on').count(), 'exactly one schedule row is the active one').toBe(1);
@@ -2377,7 +2518,17 @@ test('(b) D4 — switching to the reverse order re-renders the table: the row re
   expect(smokeRow).not.toContain('120°C');
   expect(r[0]).toContain('מסלול נבחר');
   expect(r[0]).toContain('75°');
-  expect(r.find(x => x.includes('סו-ויד+עישון')), 'the forward label is gone while the reverse is active').toBeFalsy();
+  // COHERENCE (the reason cardActivePath takes the selection): the leading row must NAME the reverse
+  // path whose figures it prints — one path's name over another's numbers is the bug, not a cosmetic
+  expect(r[0], 'the leading row names the path it is showing').toContain('עישון→סו-ויד');
+  expect(r[0]).not.toContain('120°');
+  // the forward SCHEDULE label is gone — scoped to the schedule row's own full literal. A bare
+  // 'סו-ויד+עישון' substring would also match the catalog reference row 'טיפול באמצע (סו-ויד+עישון)',
+  // which is unconditional and must survive, so that assertion could never pass.
+  expect(r.find(x => x.includes("טמפ' / זמן עישון (סו-ויד+עישון)")),
+    'the forward SCHEDULE label is gone while the reverse is active').toBeFalsy();
+  expect(r.find(x => x.includes('טיפול באמצע (סו-ויד+עישון)')),
+    'and the catalog REFERENCE row for that treatment still survives').toBeTruthy();
 });
 
 // ── (c) the active-row marker follows a path with no sv leg at all ────────────────────────────────
@@ -2460,12 +2611,20 @@ test('DoD-8 — screenshots at 390×844: the raw table default vs after a revers
 npx playwright test tests/cp2-rawtable-path.spec.ts --reporter=list
 ```
 
-Expected: every test fails in `boot` at `waitForFunction` — `cardRawTableHTML` / `cardActivePath` do not exist. Paste it. Then, to record the behavioural RED the task is really about, re-run `(b)` after Step 4 defines the helpers but **before** Step 5 renders them:
+Expected: every test fails in `boot` at `waitForFunction` — `cardRawTableHTML` / `cardActivePath` do not exist. Paste it.
+
+Now the behavioural RED the task is really about — the label/value contradiction — and it must be staged so the run can actually reach the assertion. Defining the helpers in Step 4 is not enough: until Step 5 renders them, `openCut` still emits the OLD inline `<div class="raw">` with no `id="cardRawTable"`, so every test dies in `openBrisket` at `waitForSelector('#panel #cardRawTable')` with a `TimeoutError` — a missing element, not a label contradiction. So:
+
+1. Apply Step 4 **and** Step 5, but with the reverse branch **pinned off** — emit the forward label unconditionally, i.e. temporarily write `const rev=false;` in place of `const rev=!!(sel && sel.order==='smoke-sv');`.
+2. Run:
 
 ```bash
 npx playwright test tests/cp2-rawtable-path.spec.ts -g "D4 —" --reporter=list
 ```
-Expected: `expect(received).toBeTruthy() — Received: undefined` on `smokeRow` (no row says `עישון→סו-ויד`: the table labels the reverse schedule *"סו-ויד+עישון"* even while the reverse path is selected, so the value moved to 75°C under a label that denies it). Paste it.
+
+Expected RED, for the intended reason: `expect(received).toBeTruthy() — Received: undefined` on `smokeRow` — the table labels the reverse schedule *"סו-ויד+עישון"* even while the reverse path is selected, so the value moved to 75°C under a label that denies it. Paste it.
+
+3. Restore the real `const rev=!!(sel && sel.order==='smoke-sv');` and re-run the same command to GREEN. Paste that too.
 
 - [ ] **Step 4: Implement the builder.**
 
@@ -2478,13 +2637,28 @@ Insert immediately **after** `cardStatlineHTML` (Task 4's block):
 // a leading row NAMING the active path with its compact cited figures, and a marker on whichever
 // schedule row that path actually uses. The sv+smoke row's LABEL follows the active order, because the
 // same numbers under the wrong label is the contradiction this whole spec exists to kill.
-function cardActivePath(meta){
+// The path the table is actually SHOWING. It takes the selection, not just the stored default: the row
+// beneath it prints figures resolved from `sel`, and `isDefault` is not a stable identity — methods[0]
+// is activeMethods(c,key) (app.js 3801-3803), which is gear- and session-dependent, so a stale
+// mk-item-path id, a gear change that removes the stored combo, or any future non-persisting selection
+// would put one path's NAME over another path's FIGURES. That is the same-numbers-wrong-label
+// contradiction this task exists to kill, so the resolver must answer for the selection first.
+function cardActivePath(meta, sel){
   let paths=[]; try{ paths=itemPaths(meta)||[]; }catch(e){ paths=[]; }
+  if(sel && sel.methodKey){
+    const hit=paths.find(function(p){ return p.methodKey===sel.methodKey && (p.order||null)===(sel.order||null); });
+    if(hit) return hit;
+  }
   return paths.find(function(p){ return p.isDefault; })||null;
 }
+// NOTE on the absent `typeof` guards below: pathSmokeLeg / pathStages / pathHasKind / pathFigures /
+// pathIcons are created by THIS plan (Tasks 2 and 4), not by an optional runtime. Guarding them would
+// turn a task-ordering mistake into a table that quietly falls back to pre-CP1 catalog values under a
+// CP2 label — silent degradation, the shape docs/process/skills/no-inert-shipment/SKILL.md exists to
+// prevent. They are called unconditionally so a missing helper throws on first render.
 function cardRawTableHTML(c, meta, sel){
   const hd=`<h4 style="font-family:'Heebo';font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--ember2);margin:0 0 8px">${L('נתוני גלם מהטבלה','Raw data from the table')}</h4>`;
-  const leg=(typeof pathSmokeLeg==='function')?pathSmokeLeg(meta,sel):null;
+  const leg=pathSmokeLeg(meta,sel);
   const smtV=leg?leg.t:c.smt, smhV=leg?leg.h:c.smh;
   if(isProduce(c)) return `<div class="raw" id="cardRawTable">${hd}<table>
         <tr><td>${L('גריל / אש ישירה','Grill / direct heat')}</td><td>${c.sot}°C · ~${Math.round(upperHours(c.soh)*60)} ${L("דק'",'min')}</td></tr>
@@ -2495,13 +2669,13 @@ function cardRawTableHTML(c, meta, sel){
         <tr><td>${L('עץ לעשן (אופציונלי)','Wood for smoke (optional)')}</td><td>${c.wood}</td></tr>
         <tr><td>${L('רמת קושי','Difficulty','heading')}</td><td>${c.diff} / 5</td></tr>
        </table></div>`;
-  const p=(typeof cardActivePath==='function')?cardActivePath(meta):null;
+  const p=cardActivePath(meta, sel);
   const rev=!!(sel && sel.order==='smoke-sv');
   // which schedule row the active path actually uses: the sv+smoke row (forward or reverse) when the
   // path has both legs, the smoke-only row when it has no sous-vide leg, neither otherwise.
-  const st=(typeof pathStages==='function')?pathStages(meta,sel):[];
-  const usesSvSmoke=(typeof pathHasKind==='function') && pathHasKind(st,'sv') && pathHasKind(st,'smoke');
-  const usesSmokeOnly=(typeof pathHasKind==='function') && !pathHasKind(st,'sv') && pathHasKind(st,'smoke');
+  const st=pathStages(meta,sel);
+  const usesSvSmoke=pathHasKind(st,'sv') && pathHasKind(st,'smoke');
+  const usesSmokeOnly=!pathHasKind(st,'sv') && pathHasKind(st,'smoke');
   const pathRow=p?`<tr class="rawpath"><td>${L('מסלול נבחר','Selected path')}</td><td>${pathIcons(p)} ${p.label} · ${pathFigures(meta,p)}</td></tr>`:'';
   return `<div class="raw" id="cardRawTable">${hd}<table>
         ${pathRow}
@@ -2617,7 +2791,7 @@ EOF
 
 **Files:**
 - Modify `app.js` — insert the six plan-level helpers immediately **after** `comboHasSvSmoke`'s closing brace (currently line **4222**, i.e. after Task 2's presentation block, which is inserted at that same point; re-anchor by content).
-- Modify `app.js` **7312–7320** — the plan-view order strip (`orderItems` filter + `orderControlsHtml`), inside `buildList`.
+- Modify `app.js` **7312–7319** — the plan-view order strip (`orderItems` filter + `orderControlsHtml`), inside `buildList`. **7319 is `orderControlsHtml`'s terminating `</div>`:'';` and is the LAST line to replace — 7320 is `const _blk=computed.filter(c=>c.blocked)…`, a live definition read ~34 lines later at 7354. Deleting it produces a `ReferenceError` that takes out the whole timeline.
 - Modify `app.js` **7416–7421** — the per-item timeline card's `showOrder` / `orderRow` / `orderWarn`.
 - Modify `app.js` **7479–7481** — the `[data-tlorder]` change handler → `[data-tlpath]`.
 - Modify `lang/{en,ru,de,es,fr,it}.json` — the two new keys this task introduces.
@@ -2632,7 +2806,7 @@ EOF
   - `tlPathOrderAttr(p)` → `'sv-smoke'|'smoke-sv'|''` — the sv/smoke ORDER a path resolves to; `''` when the path's combo does not carry both legs.
   - `tlPathIdFor(meta, st)` → `string|null` — the path id the **occurrence state** (`st.method` + `st.svSmokeOrder`) currently names.
   - `tlPathEligible(meta)` → `boolean` — ≥2 **cited** entries, i.e. the occurrence has a real choice.
-  - `tlApplyPath(all, itemKey, p)` → `void` — writes the per-occurrence override into `tlState` only (`method`+`methodPinned`+`svSmokeOrder`); never touches `mk-item-path`.
+  - `tlApplyPath(all, itemKey, p)` → `void` — writes the per-occurrence override into `tlState` only (`method`+`methodPinned`+`pathPinned`+`svSmokeOrder`); never touches `mk-item-path`. `pathPinned` is the flag Task 9 reads to decide whether an occurrence inherits the card's per-recipe default.
   - `tlPathSelectHTML(meta, st)` → `string` — `<select data-tlpath="<key>">` whose options carry `value="<path id>"` and `data-tlpathorder="<order>"`; placeholders render `disabled`.
 
 ---
@@ -2645,7 +2819,7 @@ grep -n "function comboHasSvSmoke\|function svSmokeOrderDefault\|function tlStat
 grep -n "data-tlorder" app.js                      # the THREE sites this task rewrites
 grep -n "const orderItems=computed.filter" app.js   # the plan-strip gate
 grep -n "const showOrder=comboHasSvSmoke" app.js    # the per-card gate
-grep -n "^  buildList();" app.js                    # openTimeline's tail (Task 9 anchors here too)
+grep -n "^  buildList();" app.js                    # openTimeline's tail — the handler must re-enter it
 ```
 
 Expected (pre-CP2 values, re-anchor if Tasks 1–7 shifted them): `comboHasSvSmoke` 4217, `svSmokeOrderDefault` 3840, `tlState` 6149, `tlSetState` 6150; `data-tlorder` at **7317** (plan strip), **7419** (per-card row) and **7479** (the change handler); `orderItems` at **7312**; `showOrder` at **7416**; `buildList();` at **7517**.
@@ -2777,6 +2951,7 @@ test('(d) §3.5 — the override lands in mk-tlstate-<scope> and mk-item-path is
   const st = await page.evaluate(`tlState()['cut-1']`) as any;
   expect(st.svSmokeOrder, 'the occurrence carries the reverse order').toBe('smoke-sv');
   expect(st.methodPinned, 'and the method it belongs to is pinned for this occurrence').toBe(true);
+  expect(st.pathPinned, 'the occurrence OWNS this path — Task 9 must not overwrite it from the card default').toBe(true);
   expect(await page.evaluate(`localStorage.getItem('mk-item-path')`),
     'a plan-level change must NEVER become the per-recipe default (spec §3.5 / O-1)').toBeNull();
 
@@ -2924,6 +3099,8 @@ function tlApplyPath(all, itemKey, p){
   const st=all[itemKey]=all[itemKey]||{ready:true};
   st.method=p.methodKey;
   st.methodPinned=true;                                   // an explicit occurrence choice, same as the method <select>
+  st.pathPinned=true;                                     // …and it owns the ORDER too — Task 9 reads this to decide
+                                                          // whether the occurrence inherits the card's default path
   const ord=tlPathOrderAttr(p);
   st.svSmokeOrder=ord||svSmokeOrderDefault();             // a path without both legs resets the order — never inherits
 }
@@ -2943,7 +3120,7 @@ function tlPathSelectHTML(meta, st){
 
 - [ ] **Step 5: Render it — the plan strip, the per-item card row, and the handler.**
 
-Replace app.js **7312–7320** (the `orderItems` filter through `orderControlsHtml`'s terminating `:'';`):
+Replace app.js **7312–7319** (the `orderItems` filter through `orderControlsHtml`'s terminating `</div>`:'';` — **not** 7320, which is `const _blk=…`):
 
 ```js
     // CP2 (spec §3 item 5): the plan strip is a PATH selector now, not an order selector. Visibility
@@ -2957,6 +3134,13 @@ Replace app.js **7312–7320** (the `orderItems` filter through `orderControlsHt
         ${tlPathSelectHTML(c.m, c.st)}
       </div>${(comboHasSvSmoke(c.m, c.st.method) && c.st.svSmokeOrder==='smoke-sv')?`<div class="tl-safety-warn">⚠️ <b>${itemName(c.m)}:</b> ${L('הבשר שוהה בטמפ׳-סכנה בשלב העישון <u>לפני</u> הפסטור. שלב הסו-ויד המסומן "כולל פסטור" חייב להתבצע במלואו. בספק — עבור לסדר סו-ויד←עישון.','The meat sits in the danger zone during the smoke stage <u>before</u> pasteurization. The sous-vide stage marked "incl. pasteurization" must be carried out in full. When in doubt — switch to the sous-vide→smoke order.')}</div>`:''}`).join('')}
     </div>`:'';
+```
+
+Then prove the neighbouring definition survived — the one-character range error that costs a debug cycle:
+
+```bash
+grep -n "const _blk=computed.filter" app.js    # must STILL exist, exactly once
+grep -n '\${_blk.length?' app.js               # its reader, still present
 ```
 
 Replace app.js **7416–7421** (`showOrder` / `orderRow` / `orderWarn`):
@@ -2980,7 +3164,8 @@ Replace app.js **7479–7481** (the `[data-tlorder]` change handler):
       // CP2 (spec §3 item 5): a plan-level change overrides FOR THAT OCCURRENCE only — it writes
       // mk-tlstate-<evScope> and never mk-item-path (the per-recipe default lives on the card, O-1).
       const all=tlState(); const k=sel.dataset.tlpath;
-      const meta=(typeof resolveItem==='function')?resolveItem(k):null; if(!meta) return;
+      const meta=resolveItem(k); if(!meta) return;      // resolveItem is unconditional everywhere else
+                                                        // (app.js 3617); the null-check is for an unknown key
       const p=tlPathChoices(meta).find(function(x){ return x.id===sel.value; });
       if(!p || p.cited===false) return;                 // an uncited path is never selectable (options are disabled too)
       tlApplyPath(all, k, p); tlSetState(all); buildList();
@@ -3119,78 +3304,484 @@ EOF
 
 ---
 
-## Task 9 — The both-directions i18n leak spec for the CP2 panel, and the language-switch repaint hook it exposes
+## Task 9 — The per-recipe default REACHES the occurrence: an unpinned plan/event item inherits the card's default path (§3.5 / O-1)
 
-**Spec line:** *"**The card's path panel (the owner's #2):** the card lists ALL `itemPaths` entries with their cited schedules compact (per path: device icons, key temps/hours, the citation marker)"* (spec §3, item 3) — under **DoD-9**: *"Any user-facing string: rendered in Hebrew, no English leak, correct singular/plural on interpolated counts, correct domain term."*
+**Spec line:** *"**Plan/event level (the owner's #4):** the timeline/event path selector offers the same `itemPaths` set; **a plan-level change overrides FOR THAT occurrence only** and always resolves through the item's cited entries — semantics never restated (O-1 law)."* (spec §3, item 5) — and the owner's binding anchor *"At the plan level allow to change the cooking path, but **the only single source of truth is the item and recipes behind the card**"* (spec §1.4 / O-1).
+
+**Why this task exists.** Task 8 delivers the *override* direction and asserts the two stores stay separate. The *inheritance* direction is the other half of the same sentence: an "override for that occurrence only" presupposes something to override. Concretely, after Tasks 1–8 the sv/smoke **ORDER** never reaches the plan — `buildList` does `if(!st.svSmokeOrder) st.svSmokeOrder=svSmokeOrderDefault();` (app.js **7047**) and `combinedEventsRows` does `order=st.svSmokeOrder||svSmokeOrderDefault()` (app.js **9805**), both of which resolve to `'sv-smoke'` no matter what path the card names as its default. So a user who sets the brisket card's default to the cited **reverse** path opens the timeline and sees the **forward** 120° schedule: the card contradicting the plan, which is the exact failure this whole spec was written to kill. Without this task the omission is an unraised §4 waiver.
+
+The METHOD half is already carried: `itemProfile`'s `methods[0]` is `comboMethodEntry(c, activeMethods(c,key), …)` (app.js **3801–3803**), and Task 5's `setCardCombo` writes the persistent method store, so `profile.methods[0].key` follows the card's combo. This task makes that inheritance **explicit** (resolved from `itemDefaultPath`, not incidentally through a second store) and closes the order gap.
 
 **Files:**
-- Modify `app.js` **8746** — add the panel-repaint hook beside `let _mkMethodRepaint=null;`.
-- Modify `app.js` **8748–8757** (`applyLang`) — call the hook, ahead of the existing `_mkMethodRepaint` line.
-- Modify `app.js` **3308** (`showPanel`'s `_mkMethodRepaint=null;`) — clear the new hook on every panel swap.
-- Modify `app.js` — register the hook in `openCut` (immediately after Task 6's `reopenCard` closure) and in `openTimeline` (immediately after its tail `buildList();`, currently line **7517**).
-- Modify `app.js` — one `pathLabel(p)` normalizer + its four call sites (`cpRowHTML`, `cpHeadMainHTML` from Task 3; `cardRawTableHTML` from Task 7; `tlPathSelectHTML` from Task 8).
-- Create `tests/cp2-i18n-panel-leak.spec.ts`.
-- **No `lang/<code>.json` change:** this task adds, removes and edits **zero** user-facing strings. `lang/_extracted.json` / `lang/_callsite-sig.json` are regenerated only if Guard D reports the `pathLabel` refactor moved an `L()` call site (it does not — `pathLabel` wraps `t()`, not `L()`); the step below verifies that rather than assuming it.
+- Modify `app.js` — insert `occPathFor(meta, st, profile)` immediately **after** Task 8's plan-level helper block (anchor by content: `grep -n "function tlPathSelectHTML" app.js`).
+- Modify `app.js` **7046–7047** — `buildList`'s two default-fill lines, replaced by one `occPathFor` call.
+- Modify `app.js` **9805** — `combinedEventsRows`' `method`/`order` resolution, replaced by one `occPathFor` call.
+- Create `tests/cp2-plan-inherits-default.spec.ts`.
+- **No `lang/*.json`, no `app.css`, no `_callsite-sig` regen:** this task adds, removes and edits **zero** `L()` call sites and zero user-facing strings.
 
 **Interfaces:**
-- **Consumes:** `getDict()` (8681), `I18N_DICTS` (the per-language maps `getDict` indexes), `applyLang()` (8748), `showPanel(html)` (3306), `reopenCard()` (Task 6, inside `openCut`), `buildList()` (inside `openTimeline`), `t(heb,fallback,ctx)` (8695), `itemPaths(meta)` (Task 1).
+- **Consumes:** `itemDefaultPath(meta)` (**Task 1**), `svSmokeOrderDefault()` (3840), `itemProfile(meta)` (3793), `st.pathPinned` (**Task 8**'s `tlApplyPath`), `itemStages` via the unchanged `buildList` (7053) and `combinedEventsRows` (9806) calls.
 - **Produces:**
-  - `_mkLangRepaint` (module let) + `setLangRepaint(fn)` → `void` — the ONE "rebuild me in the new language" hook for whichever panel is open.
-  - `pathLabel(p)` → `string` — a path's display label, dict-normalized once for every render site.
+  - `occOrderPinned(st)` → `boolean` — does the occurrence own its sv/smoke order? `st.pathPinned` alone on CP2-stamped state; on pre-CP2 state, also a stored non-default order (which could only have come from the retired `[data-tlorder]` select).
+  - `occPathFor(meta, st, profile)` → `{method, order}` — the (methodKey, order) an occurrence runs: its own pinned choice when it has one, otherwise the item's per-recipe default path, otherwise today's rule. **Pure** — it reads state and returns a pair; it writes nothing and computes no temp, hour or duration.
+  - `st._cp2` (occurrence-state stamp, written by `buildList`) — marks state whose order-pin has been normalized to `pathPinned`, so an *inherited* order can never later be mistaken for an explicit one.
 
 ---
 
-- [ ] **Step 1: Read the reference spec and verify every anchor.**
+- [ ] **Step 1: Verify the two resolution sites and the pin flag before touching anything.**
+
+```bash
+cd C:/Users/dudib/source/repos/matconetesh
+grep -n "if(!st.methodPinned || !st.method) st.method=profile.methods\[0\].key;" app.js
+grep -n "if(!st.svSmokeOrder) st.svSmokeOrder=svSmokeOrderDefault();" app.js
+grep -n "const method=st.method||profile.methods\[0\].key" app.js
+grep -n "st.pathPinned=true" app.js                  # Task 8 must already write it
+grep -n "function itemDefaultPath\|function svSmokeOrderDefault\|function tlPathSelectHTML" app.js
+```
+
+Expected (pre-CP2 numbers; Tasks 1–8 shifted everything below `openCut` — anchor by content): `buildList`'s pair at **7046/7047**, `combinedEventsRows`' resolution at **9805**, `svSmokeOrderDefault` at **3840**, `itemDefaultPath` from Task 1, and **exactly one** `st.pathPinned=true` (inside Task 8's `tlApplyPath`). If `pathPinned` is missing, stop — Task 8 is incomplete and this task's override branch has nothing to read.
+
+```
+mcp__serena__find_symbol             name_path="buildList"           relative_path="app.js" include_body=true
+mcp__serena__find_symbol             name_path="combinedEventsRows"  relative_path="app.js" include_body=true
+mcp__serena__find_referencing_symbols name_path="itemDefaultPath"    relative_path="app.js"
+```
+
+`itemDefaultPath`'s referencing symbols before this task must be `cardPathSel` (Task 4) only. That single-caller fact is the blast-radius budget for Step 4 and must be re-confirmed here, not remembered.
+
+- [ ] **Step 2: Write the failing test — set the default on the CARD with real clicks, then read the PLAN.**
+
+Create `tests/cp2-plan-inherits-default.spec.ts`:
+
+```ts
+import { test, expect, seedApp } from './_fixtures';
+
+// CP2 · Task 9 (spec 2026-07-25 §3 item 5: "a plan-level change overrides FOR THAT occurrence only";
+// §1.4 / O-1: "the only single source of truth is the item and recipes behind the card").
+//
+// The INHERITANCE direction. Task 8 proved the override does not leak upward (mk-item-path is never
+// written from the plan). This proves the default flows downward: an occurrence with no plan-level
+// choice of its own runs the path the CARD names — method AND order — and an occurrence that DOES have
+// one keeps it. The default is always set through the real card panel, never by seeding mk-item-path,
+// because "the card is where the default lives" is the claim under test.
+
+const boot = async (page: any, kv: Record<string, string> = {}) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...kv });
+  await page.waitForFunction(
+    `typeof openCut==='function' && typeof openTimeline==='function' && typeof occPathFor==='function' && typeof cookingPathsPanel==='function'`);
+};
+
+const openBrisketCard = async (page: any) => {
+  await page.click('button[data-cnav="catalog"]');
+  await page.click('button.cattile[data-tilegroup="בשר אדום"]');
+  await page.waitForSelector('.card[data-kind="cut"]', { timeout: 15000 });
+  const gc = page.locator('.card[data-kind="cut"]').filter({ hasText: 'בריסקט' }).first();
+  await gc.scrollIntoViewIfNeeded();
+  await gc.click();
+  await page.waitForSelector('#panel #cpList', { timeout: 10000 });
+};
+const expand = async (page: any) => {
+  await page.click('#panel #cpListHead');
+  await page.waitForFunction(`document.querySelector('#cpListBody').style.display==='block'`);
+};
+
+// pick the card's default through the REAL panel — the affordance the owner approved
+const setCardDefault = async (page: any, selector: string) => {
+  await openBrisketCard(page);
+  await expand(page);
+  const row = page.locator(selector);
+  await expect(row, `the panel must offer ${selector} for this test to have teeth`).toHaveCount(1);
+  const id = await row.getAttribute('data-id');
+  await row.click();
+  await page.waitForFunction(`document.querySelector('#panel .cp-row.on').getAttribute('data-id')==='${id}'`);
+  await page.click('#panel .x');
+  await page.waitForFunction(`!document.querySelector('#panel').classList.contains('open')`);
+  return id as string;
+};
+
+// the plan, seeded through the shipped timeline idiom (SETUP only — tests/bug1-smoke-labels.spec.ts:31)
+const openPlan = async (page: any, view: 'items' | 'plan' = 'items') => {
+  await page.evaluate(`(function(){
+    saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-1'],sides:[],drinks:[],desserts:[],gpm:0});
+    store.set('mk-tlserve','19:00'); store.set('mk-tlview',${JSON.stringify(view)}); openTimeline();
+  })()`);
+  await page.waitForSelector('#panel .tlcard', { timeout: 15000 });
+};
+const expandFirstCard = async (page: any) => {
+  const card = page.locator('#panel .tlcard').first();
+  await card.locator('[data-tlexp]').click();
+  await card.locator('.tl-stages').first().waitFor({ state: 'visible' });
+};
+const stageText = async (page: any) => (await page.locator('#panel .tl-stage').allInnerTexts()).join('\n');
+
+// ── (a) THE HOLE: the card's reverse default must reach the occurrence's rendered stage rows ────────
+test('(a) a reverse-order card default re-renders the timeline occurrence at the cited 75°, not 120°', async ({ page }) => {
+  await boot(page);
+  await setCardDefault(page, '#cpListBody .cp-row[data-id$=":rev"]');
+
+  await openPlan(page);
+  await expandFirstCard(page);
+  const txt = await stageText(page);
+  expect(txt, `stage rows were:\n${txt}`).toContain('75°');
+  expect(txt, 'the forward finish must not survive the card\'s reverse default').not.toContain('120°');
+  // SAFETY (spec §5): the reverse order carries the danger-zone advisory, and it must travel with it
+  await expect(page.locator('#panel .tl-safety-warn').first()).toBeVisible();
+  expect(await page.locator('#panel .tl-safety-warn').first().innerText()).toContain('טמפ׳-סכנה');
+});
+
+// ── (b) the OVERRIDE still wins: a plan-level choice is not overwritten by the card default ────────
+test('(b) §3.5 — an occurrence pinned to the forward path keeps it after the card default moves', async ({ page }) => {
+  await boot(page);
+  await openPlan(page);
+  // pin this occurrence to the FORWARD path through the real selector (Task 8's control). Go via the
+  // reverse option first: selecting the value the control already shows is not a reliable change event,
+  // and the pin must come from a real interaction, not from a same-value re-select.
+  const sel = () => page.locator('#panel select[data-tlpath]').first();
+  const rev = await sel().locator('option[data-tlpathorder="smoke-sv"]').first().getAttribute('value');
+  const fwd = await sel().locator('option[data-tlpathorder="sv-smoke"]').first().getAttribute('value');
+  expect(rev, 'the reverse path must be offered').toBeTruthy();
+  expect(fwd, 'the forward path must be offered').toBeTruthy();
+  await sel().selectOption(rev as string);
+  await page.waitForFunction(`(tlState()['cut-1']||{}).svSmokeOrder==='smoke-sv'`);
+  await sel().selectOption(fwd as string);
+  await page.waitForFunction(`(function(){ const s=tlState()['cut-1']||{}; return s.pathPinned===true && s.svSmokeOrder==='sv-smoke'; })()`);
+
+  // now move the CARD's default to the reverse path
+  await page.evaluate(`closePanel()`);
+  await setCardDefault(page, '#cpListBody .cp-row[data-id$=":rev"]');
+
+  await openPlan(page);
+  await expandFirstCard(page);
+  const txt = await stageText(page);
+  expect(txt, 'the occurrence keeps its own pinned forward path').toContain('120°');
+  expect(txt).not.toContain('75°');
+  expect(await page.locator('#panel .tl-safety-warn').count(), 'and no reverse-order warning applies').toBe(0);
+});
+
+// ── (c) the EVENTS screen inherits it too (§3.4 "Events combined screen") ──────────────────────────
+test('(c) the combined events screen shows the card default\'s own total duration', async ({ page }) => {
+  await boot(page);
+  // the two paths' totals, read LIVE off their own cited stages (setup only — never a hardcoded number)
+  const want = await page.evaluate(`(function(){
+    const m=resolveItem('cut-1');
+    const sum=function(st){ return st.reduce(function(a,s){return a+(s.hours||0);},0); };
+    const rev=itemPaths(m).find(function(p){return p.order==='smoke-sv';});
+    return { fwd: sum(itemStages(m, rev.methodKey, true, undefined)),
+             rev: sum(itemStages(m, rev.methodKey, true, 'smoke-sv')) };
+  })()`) as { fwd: number; rev: number };
+  expect(want.rev, 'the two paths must really differ in total hours for this test to have teeth').not.toBe(want.fwd);
+
+  await page.evaluate(`(function(){ store.set('mk-events',[{id:'ev-A',name:'ארוחה',serve:'19:00',menu:{keys:['cut-1'],guests:8},updated:Date.now()}]); })()`);
+  await setCardDefault(page, '#cpListBody .cp-row[data-id$=":rev"]');
+
+  await page.click('[data-cnav="events"]');
+  await page.waitForSelector('#cEvBody .cet-hero .cet-row');
+  const dur = await page.locator('#cEvBody .cet-hero .cet-row .cet-dur').first().innerText();
+  expect(dur, `the hero duration must be the REVERSE path's own total; got "${dur}"`).toContain(want.rev.toFixed(1));
+  expect(dur).not.toContain(want.fwd.toFixed(1));
+});
+
+// ── (d) INVARIANCE: with nothing stored, the occurrence state is byte-identical to today ───────────
+test('(d) invariance — no per-recipe default: the occurrence resolves exactly as before CP2', async ({ page }) => {
+  await boot(page);
+  await openPlan(page);
+  await expandFirstCard(page);
+  expect(await stageText(page), 'the untouched default is still the forward cited finish').toContain('120°');
+  const st = await page.evaluate(`(function(){ const s=tlState()['cut-1']||{};
+    return { m:s.method, o:s.svSmokeOrder, want:itemProfile(resolveItem('cut-1')).methods[0].key, def:svSmokeOrderDefault() }; })()`) as any;
+  expect(st.m, 'method = profile.methods[0].key, unchanged').toBe(st.want);
+  expect(st.o, 'order = svSmokeOrderDefault(), unchanged').toBe(st.def);
+  expect(await page.locator('#panel .tl-safety-warn').count()).toBe(0);
+});
+
+// ── (e) SAFETY: a card default with no sv+smoke combo leaves NO stale reverse order behind ────────
+test('(e) selecting the smoke-only path on the card leaves the occurrence with no reverse order', async ({ page }) => {
+  await boot(page);
+  await setCardDefault(page, '#cpListBody .cp-row[data-id$=":rev"]');   // first make it reverse…
+  await openPlan(page);                                                 // …and let the plan record it
+  await page.waitForFunction(`(tlState()['cut-1']||{}).svSmokeOrder==='smoke-sv'`);
+  await page.evaluate(`closePanel()`);
+
+  await setCardDefault(page, '#cpListBody .cp-row[data-id="c:smoke"]'); // …then move to smoke-only
+  await openPlan(page);
+  await expandFirstCard(page);
+  const txt = await stageText(page);
+  expect(txt, 'a smoke-only path has no bath leg').not.toContain('סו-ויד');
+  expect(txt).toContain('עישון');
+  expect(await page.evaluate(`(tlState()['cut-1']||{}).svSmokeOrder`),
+    'an order is meaningless without both legs — it must reset, never linger').toBe('sv-smoke');
+  expect(await page.locator('#panel .tl-safety-warn').count(),
+    'and a stale reverse order must not raise a danger-zone warning that does not apply').toBe(0);
+});
+
+// ── (f) MIGRATION: a PRE-CP2 occurrence order (no pathPinned, no _cp2 stamp) is never reset ────────
+test('(f) a pre-CP2 stored order survives the first buildList and is not overwritten by the card default', async ({ page }) => {
+  await boot(page);
+  // legacy state exactly as the retired [data-tlorder] handler wrote it: an order, no pin, no stamp.
+  // Written through the app's OWN key resolver (tlStateKey) — the scope depends on menuCtx, so a
+  // hardcoded 'mk-tlstate-cook' would silently seed a store nothing reads.
+  await page.evaluate(`(function(){
+    saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-1'],sides:[],drinks:[],desserts:[],gpm:0});
+    store.set('mk-tlserve','19:00');
+    store.set(tlStateKey(), { 'cut-1': { ready:true, svSmokeOrder:'smoke-sv' } });
+    openTimeline();
+  })()`);
+  await page.waitForSelector('#panel .tlcard', { timeout: 15000 });
+  await expandFirstCard(page);
+  expect(await stageText(page), 'the user\'s existing plan-level order still governs').toContain('75°');
+  const st = await page.evaluate(`tlState()['cut-1']`) as any;
+  expect(st.svSmokeOrder, 'unchanged').toBe('smoke-sv');
+  expect(st.pathPinned, 'and it has been normalized to the flag, once').toBe(true);
+  expect(st._cp2, 'the stamp retires the legacy heuristic for this occurrence').toBe(1);
+});
+
+// ── DoD-8 · visual evidence at 390×844 ────────────────────────────────────────────────────────────
+test('DoD-8 — screenshot at 390×844: the timeline occurrence running the card\'s reverse default', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await boot(page);
+  await setCardDefault(page, '#cpListBody .cp-row[data-id$=":rev"]');
+  await openPlan(page);
+  await expandFirstCard(page);
+  await page.locator('#panel .tlcard').first().screenshot({ path: 'mockups/cp2-plan-inherits-reverse-390x844.png' });
+});
+```
+
+- [ ] **Step 3: Run it and WITNESS RED for the intended reason (DoD-2).**
+
+```bash
+npx playwright test tests/cp2-plan-inherits-default.spec.ts --reporter=list
+```
+
+Expected: **every** test fails in `boot` at the `waitForFunction` — `TimeoutError: page.waitForFunction: Timeout 30000ms exceeded` — because `occPathFor` does not exist. Paste the output.
+
+Then the RED that names the defect. Add `occPathFor` (Step 4's first block) but do **not** yet rewire either call site, and run:
+
+```bash
+npx playwright test tests/cp2-plan-inherits-default.spec.ts -g "^\(a\)|^\(c\)|^\(e\)" --reporter=list
+```
+
+> Anchored and escaped: bare `(a)` is a capture group matching the letter `a` and would run the whole file.
+
+Expected failures, and the reason each proves:
+- `(a)` → `expect(received).toContain(expected) — Expected substring: "75°" / Received string: "… עישון 120° / 1.5ש …"` — `buildList` resolved `st.svSmokeOrder` from `svSmokeOrderDefault()` and never asked the item what its default path is, so the plan runs the forward schedule while the card names the reverse one.
+- `(c)` → the hero's `.cet-dur` still reads the FORWARD total — the events screen has the same gap.
+- `(e)` → fails on `not.toContain('סו-ויד')` **or** on the lingering `'smoke-sv'`, depending on which half is reached first: with the order pinned to the reverse literal from the earlier step and the combo moved to smoke-only, the occurrence carries an order its own combo cannot express.
+
+Paste all three.
+
+- [ ] **Step 4: Implement — one resolver, two call sites.**
+
+Insert immediately **after** Task 8's `tlPathSelectHTML`:
+
+```js
+// ── CP2 · the per-recipe default REACHES the occurrence (spec §3 item 5: "a plan-level change overrides
+// FOR THAT occurrence only"; §1.4 / O-1: "the only single source of truth is the item and recipes behind
+// the card"). An OVERRIDE presupposes something to override: with no plan-level choice of its own, an
+// occurrence runs the item's per-recipe default path — METHOD and ORDER. Before this, the order half was
+// hard-wired to svSmokeOrderDefault() at both resolution sites, so a card whose default was the cited
+// REVERSE path was contradicted by its own plan.
+//
+// PURE: reads state, returns a pair. Writes nothing, and computes no temp, no hour, no duration and no
+// safe value — itemStages still derives every stage from the (methodKey, order) it is handed, exactly as
+// it always has. The reverse path can only BE the default when comboHasSvSmoke held inside itemPaths
+// (cited order_smokesv with sv.pasteurize===true), so the safety gate is upstream of this and unmoved.
+// `st._cp2` is the migration stamp, and it is what makes the ORDER pin unambiguous. Without it the
+// legacy heuristic below would eat itself: buildList PERSISTS the resolved order into `st`, so an
+// order that was merely INHERITED from the card would look, on the next pass, exactly like a
+// pre-CP2 explicit choice ('smoke-sv' ≠ the default) and would freeze — the card could then never
+// move that occurrence again. Stamped state trusts `pathPinned` alone; unstamped state (written
+// before CP2 existed) gets the heuristic exactly once, in buildList.
+function occOrderPinned(st){
+  if(!st) return false;
+  if(st._cp2) return !!st.pathPinned;
+  // pre-CP2 state only: a non-default order can only have come from the retired [data-tlorder] select,
+  // which never set methodPinned. A user's existing plan-level order is never silently reset.
+  return !!(st.pathPinned || (st.svSmokeOrder && st.svSmokeOrder!==svSmokeOrderDefault()));
+}
+function occPathFor(meta, st, profile){
+  const dp=(typeof itemDefaultPath==='function')?itemDefaultPath(meta):null;
+  const mPinned=!!(st && st.methodPinned && st.method);
+  const method=mPinned ? st.method
+                       : ((dp&&dp.methodKey) || (profile&&profile.methods&&profile.methods[0]&&profile.methods[0].key));
+  // An inherited order applies only when the default path is THIS method's: an order belongs to its own
+  // combo and must never cross combos (the same rule effectiveSchedule enforces at the model level), so
+  // a smoke-only default RESETS the order instead of leaving 'smoke-sv' on a combo that cannot express it.
+  const inherited=(dp && dp.methodKey===method && dp.order) ? dp.order : null;
+  const order=occOrderPinned(st) ? st.svSmokeOrder : (inherited || svSmokeOrderDefault());
+  return { method:method, order:order };
+}
+```
+
+Replace `buildList`'s two default-fill lines (**7046–7047**, located by content in Step 1) with:
+
+```js
+      // CP2 (spec §3 item 5): an UNPINNED occurrence inherits the item's per-recipe default path —
+      // method AND order. A pinned occurrence keeps its own override; that is what "overrides FOR THAT
+      // occurrence only" means. The `itemStages(m, st.method, st.ready, st.svSmokeOrder)` call below is
+      // byte-unchanged — only which cited path it is asked for can differ.
+      //
+      // The stamp runs BEFORE the resolution and exactly once per occurrence: it converts a pre-CP2
+      // explicit order into the `pathPinned` flag while that is still distinguishable, and from then on
+      // `pathPinned` is the only pin signal anyone reads.
+      if(!st._cp2){ if(st.svSmokeOrder && st.svSmokeOrder!==svSmokeOrderDefault()) st.pathPinned=true; st._cp2=1; }
+      { const _op=occPathFor(m, st, profile); st.method=_op.method; st.svSmokeOrder=_op.order; }
+```
+
+Replace `combinedEventsRows`' resolution line (**9805**) with:
+
+```js
+        const _op=occPathFor(meta, st, profile);
+        const method=_op.method, ready=(st.ready!==false), order=_op.order;
+```
+
+> **Disclosure (§10.8, noted not waived) — the one §3.4 surface this task does NOT change.** `eqmRequiresMethodKey` (app.js **1771**) derives the equipment-requires methodKey from `methodRules(c).def`, so EQM's requires/holds follow neither the card's combo nor its path — a divergence that predates CP2 and is marked *"(already)"* in the spec's §4 surfaces table. Changing it moves equipment **holds**, which is safety-adjacent E-programme territory with its own gates. **Raise it with the owner in conversation** as a CP2 finding for the E-programme; do not fold it in here and do not record it as done. Task 11's gate carries it as an explicit open item.
+
+- [ ] **Step 5: Run and see GREEN — this spec, then every neighbour that reads occurrence state.**
+
+```bash
+npx playwright test tests/cp2-plan-inherits-default.spec.ts --reporter=list
+```
+Expected: `7 passed`, exit 0 — (a)–(f) plus DoD-8. Paste it.
+
+```bash
+npx playwright test tests/cp2-plan-selector.spec.ts tests/cp2-path-select.spec.ts tests/cp2-statline-seam.spec.ts \
+  tests/cp2-steps-path.spec.ts tests/cp2-rawtable-path.spec.ts tests/cp2-default-path.spec.ts \
+  tests/bug1-smoke-labels.spec.ts tests/bug3-order-finish.spec.ts tests/order-effect.spec.ts \
+  tests/timeline-enhancements.spec.ts tests/wave2-combined.spec.ts tests/wave2-multievent.spec.ts \
+  tests/waveE-multievent-pro.spec.ts tests/occupancy-multievent.spec.ts tests/p0-cross-event-warning.spec.ts \
+  tests/scheduler-planschedule.spec.ts tests/e2-event-holds.spec.ts tests/e3-validity.spec.ts --reporter=list
+```
+Expected: all pass, exit 0. This list is not decoration: `combinedEventsRows` feeds occupancy, cross-event contention and the scheduler specs, and `buildList`'s `st` is what the equipment-hold specs read. Task 8's test (d) passing here is the proof the override direction still holds in both directions at once.
+
+```bash
+python build.py          # NO regen: this task adds/removes/edits zero L() call sites
+git diff --stat lang/    # must be EMPTY
+```
+Expected: `[i18n:Guard-A] OK …`, no Guard D drift line, exit 0, and **no file under `lang/` in the diff**. If Guard D reports drift, stop and find which `L()` site moved.
+
+- [ ] **Step 6: Look at the screenshot (DoD-8).**
+
+```bash
+ls -l mockups/cp2-plan-inherits-reverse-390x844.png
+```
+Confirm at 390×844: the expanded timeline card's stage rows read `עישון 75°` **before** `סו-ויד 68° (כולל פסטור)`, the ⚠️ danger-zone advisory is present above them, and the item's start clock is earlier than the forward path's by the difference in total hours — the plan running the path the card names.
+
+**Safety / fidelity witness (DoD-10):** no `bcheck` stage, `safe`, `svt`, temp or duration is computed or mutated. `buildList` still derives stages through the byte-unchanged `itemStages(m, st.method, st.ready, st.svSmokeOrder)` call (app.js 7053) and `combinedEventsRows` through its own unchanged `itemStages(meta, method, ready, order)` — this task only changes *which cited path the occurrence names*. The reverse path is offered at all only because `comboHasSvSmoke` held inside `itemPaths` (cited `order_smokesv`, `sv.pasteurize===true`), so the eligibility gate is upstream and unmoved; and an order can no longer linger on a combo that cannot express it, which **tightens** the danger-zone warning rather than loosening it. Witness: test **(d)** (empty store → the occurrence's `method`/`svSmokeOrder` are byte-identical to today's rule), test **(e)** (no stale reverse order, no inapplicable warning), test **(a)** (the advisory travels with the order it belongs to), test **(f)** (a pre-CP2 plan-level order is never reset out from under the user).
+
+- [ ] **Step 7: Commit.**
+
+```bash
+git add app.js tests/cp2-plan-inherits-default.spec.ts mockups/cp2-plan-inherits-reverse-390x844.png
+git commit -m "$(cat <<'EOF'
+feat(cp2): an unpinned plan/event occurrence inherits the card's per-recipe default path
+
+spec 2026-07-25 §3 item 5: "a plan-level change overrides FOR THAT occurrence only and always
+resolves through the item's cited entries"; §1.4 / O-1: "the only single source of truth is the
+item and recipes behind the card".
+
+Task 8 delivered the override direction. This is the other half of the same sentence: an override
+presupposes something to override. The sv/smoke ORDER never reached the plan — buildList (7047) and
+combinedEventsRows (9805) both resolved it from svSmokeOrderDefault(), so a card whose default was
+the cited REVERSE path was contradicted by its own timeline and events screen.
+
+- occPathFor(meta, st, profile) + occOrderPinned(st): the occurrence's (method, order) — its own
+  pinned choice when it has one, otherwise the item's per-recipe default path, otherwise today's
+  rule. Pure; writes nothing.
+- st._cp2: a one-time stamp buildList writes BEFORE resolving. It converts a pre-CP2 explicit order
+  (written by the retired [data-tlorder] select, which never pinned) into pathPinned while that is
+  still distinguishable, and retires the heuristic afterwards. Without it the heuristic would eat
+  itself: buildList persists the resolved order, so an INHERITED 'smoke-sv' would look like an
+  explicit choice on the next pass and freeze — the card could never move that occurrence again.
+- an inherited order applies only to ITS OWN combo, so a smoke-only default resets the order
+  instead of leaving a reverse order on a combo that cannot express it — this TIGHTENS the
+  danger-zone warning's applicability.
+- empty store → the occurrence's method/svSmokeOrder are byte-identical to pre-CP2 (asserted).
+
+Raised, not fixed here: eqmRequiresMethodKey (1771) still derives from methodRules(c).def, so the
+equipment requires/holds follow neither the card's combo nor its path. Pre-CP2 divergence, marked
+"(already)" in the spec's §4 table; moving holds is E-programme territory — owner decision pending.
+
+Safety: no temp/hour/safe/svt/bcheck computed or mutated; itemStages' arguments unchanged at both
+sites. comboHasSvSmoke still gates whether the reverse path exists, inside itemPaths.
+
+Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01FkEz5H2BEqg4KCagBicAXr
+EOF
+)"
+```
+
+---
+
+## Task 10 — The both-directions i18n leak gate for every CP2 surface (test-only), proven RED by a dict mutation
+
+**Spec line:** *"**The card's path panel (the owner's #2):** the card lists ALL `itemPaths` entries with their cited schedules compact (per path: device icons, key temps/hours, the citation marker)"* (spec §3, item 3) — under **DoD-9**: *"Any user-facing string: rendered in Hebrew, no English leak, correct singular/plural on interpolated counts, correct domain term."*
+
+**What this task is, and what it is NOT.** It is a consolidated both-directions leak gate over every CP2 surface, in every active language. It makes **no production change** — and that is a correction, recorded here so the reasoning is not lost:
+
+> The earlier draft of this task added a `_mkLangRepaint`/`setLangRepaint` hook and a `pathLabel(p)` normalizer, justified by "switching language with a recipe open leaves the panel in Hebrew". **Both were traced through the real render path and both are unreachable.** Every language switcher in the app — `openLangMenu` (11438), `openAppearance` (8969), `openTools` (8565), the More panel (11408) — reaches `setLang` only via `wireLangRow`, and all four call `showPanel(html)` first, which does `p.innerHTML=html` (3309) and clears the repaint hooks (3308). The open card is therefore **destroyed before** `applyLang` ever runs, and the user's next card render is a fresh `L()` pass in the new language with or without a hook. There is no control anywhere that changes language while a recipe card stays mounted, so the defect the hook claimed to fix does not exist, the hook would have had no production consumer (DoD-5, `no-inert-shipment`), and its "RED witness" would have passed on first run (DoD-2). `pathLabel` is likewise a no-op: `comboMethodEntry`'s label (3782) is `L()`-built at call time, the reverse and placeholder labels are `L()` literals, and `t()` on a dict-keyed Hebrew string returns the same string. Both are dropped. *(`_mkMethodRepaint` has the same unreachability, and it is pre-existing — Chesterton's Fence: not this plan's to remove.)*
+
+Because there is no production change, this task's tests are **invariance guards**, and Step 3 proves they have teeth the only honest way: a deliberate runtime dict mutation that makes them fail for exactly the reason they exist, witnessed and then removed.
+
+**Files:**
+- Create `tests/cp2-i18n-panel-leak.spec.ts`.
+- Modify **nothing** in `app.js`, `app.css` or `lang/`. No `_extracted.json` / `_callsite-sig.json` regen: zero `L()` call sites move.
+
+**Interfaces:**
+- **Consumes:** `getDict()` (8681), `I18N_DICTS` (the per-language maps `getDict` indexes), `itemPaths(meta)` (Task 1), the rendered classes Tasks 2/3/7/8 produce (`.cp-row .crtitle`, `.crfig`, `.cite-ok`, `.cite-soon`, `#cpListCount`, `#cpListMain`, `#cardRawTable tr.rawpath`, `select[data-tlpath]`).
+- **Produces:** no production symbol. One spec file.
+
+---
+
+- [ ] **Step 1: Read the reference spec and confirm the mechanism.**
 
 Read `tests/i18n-equip-method-leak.spec.ts` end to end **before writing** — it is the shipped both-directions pattern this task follows: per language, derive `forbidden` (the English value) and `expected` (the dict value) **from the live dict**, enforce the forbidden set only where `dict[he] !== en` (the loanword clause), and assert the expected value positively.
 
 ```bash
 cd C:/Users/dudib/source/repos/matconetesh
-sed -n '8744,8760p' app.js                          # _mkMethodRepaint + applyLang
-grep -n "_mkMethodRepaint=null;" app.js             # showPanel's clear line
-grep -n "_mkMethodRepaint=paintMethod;" app.js      # openCut's registration idiom
-grep -n "^  buildList();" app.js                    # openTimeline's tail
+grep -n "function getDict\|function applyLang\|function tnode\|function wireLangRow\|function setLang" app.js
 grep -n "function cpRowHTML\|function cpHeadMainHTML\|function cardRawTableHTML\|function tlPathSelectHTML" app.js
+grep -rn "wireLangRow(" app.js               # every real language switcher — each preceded by showPanel
 ```
 
-Expected (pre-CP2 anchors; re-anchor after Tasks 1–8): `let _mkMethodRepaint=null;` **8746**; `applyLang` **8748**, with `if(_mkMethodRepaint && document.getElementById('methodArea')) _mkMethodRepaint();` at **8752** and the `if(l==='he'){ …restoreHe()…; return; }` early return at **8753**; `showPanel` **3306** clearing at **3308**; `openCut`'s `_mkMethodRepaint=paintMethod;` at **3004**; `buildList();` at **7517**.
+Expected: `wireLangRow` is called from exactly four sites (8565, 8969, 11408, 11438), each inside a function that called `showPanel` first — the trace that retired the repaint hook above. Confirm it rather than trusting this paragraph.
 
 ```
 mcp__serena__find_symbol             name_path="applyLang"  relative_path="app.js" include_body=true
-mcp__serena__find_referencing_symbols name_path="applyLang" relative_path="app.js"
-mcp__serena__find_symbol             name_path="showPanel"  relative_path="app.js" include_body=true
+mcp__serena__find_referencing_symbols name_path="setLang"   relative_path="app.js"
 ```
 
-Note the mechanism this task depends on, confirmed from `applyLang`'s body: for a non-Hebrew language it calls `tnode(document.body)`, which rewrites a text node **only when the node's whole trimmed text is an exact dict key**. Every composite node the CP2 panel builds (`🌊💨 ⚡ סו-ויד + עישון`, `120°/1.5ש → 75°/2ש`) is not a dict key, so `tnode` cannot rescue it — which is precisely why `_mkMethodRepaint` exists for the step list, and precisely why the CP2 panel needs the same hook.
+Note the mechanism the assertions rely on: for a non-Hebrew language `applyLang` calls `tnode(document.body)`, which rewrites a text node **only when the node's whole trimmed text is an exact dict key**. Every composite node the CP2 panel builds (`🌊💨 ⚡ סו-ויד + עישון`, `68°/30ש → 120°/1.5ש`) is not a dict key — so a CP2 string that is localized at all is localized because it went through `L()` at render time, and this spec is what proves it did.
 
-- [ ] **Step 2: Write the failing test.**
+- [ ] **Step 2: Write the spec.**
 
 Create `tests/cp2-i18n-panel-leak.spec.ts`:
 
 ```ts
 import { test, expect, seedApp } from './_fixtures';
 
-// CP2 · Task 9 — the BOTH-DIRECTIONS leak spec for the cooking-paths panel (spec 2026-07-25 §3 item 3,
+// CP2 · Task 10 — the BOTH-DIRECTIONS i18n leak GATE for every CP2 surface (spec 2026-07-25 §3 item 3,
 // under DoD-9). Pattern taken from tests/i18n-equip-method-leak.spec.ts (the shipped both-directions
 // gate): per language, derive from the LIVE dict what must NOT render (the English value) and what MUST
 // render (the dict value), and enforce the "must not be English" direction ONLY where the dict value
 // genuinely differs from English — the loanword clause (de/es/fr/it 'ש' → "h" IS English, legitimately;
 // only ru differs, 'ч.').
 //
-// Two directions, two RED reasons:
-//   (1) BOOT-IN-LANGUAGE — the panel rendered by a page that started in ru/de/es/fr/it. These are
-//       INVARIANCE assertions: Guard A already forces a value for every new CP2 key, so they are
-//       expected GREEN and exist to fail if a later change routes a string around the dict.
-//   (2) LANGUAGE SWITCH WHILE THE PANEL IS OPEN — the RED WITNESS of this task. The panel is built at
-//       render time by L(); applyLang's tnode() can only rewrite a text node whose WHOLE trimmed text
-//       is a dict key, and every CP2 row is a composite ("🌊💨 ⚡ סו-ויד + עישון", "68°/30ש → 120°/1.5ש").
-//       So a he→ru switch with the card open leaves the panel in Hebrew — the same defect _mkMethodRepaint
-//       was introduced for (app.js 8746/8752), which the panel does not yet have.
+// THIS SPEC ADDS NO BEHAVIOUR AND GUARDS NONE OF ITS OWN. It is an invariance gate: Guard A already
+// forces a value for every CP2 key in every active language, so a correctly built panel is localized
+// the moment it renders. The gate exists to FAIL LATER — the day a CP2 string is routed around the dict,
+// interpolated into a composite that L() never sees, or added without a translation. Its teeth are
+// proven by the deliberate dict mutation in the task's Step 3, not by a first-run failure.
+//
+// The Hebrew-glyph assertions are made PER CHROME ELEMENT, never over the panel's whole innerText.
+// Citation refs are authored source names rendered exactly as stored and are deliberately never
+// machine-translated (sources.py), so a blanket "no Hebrew glyph anywhere in #cpList" assertion would
+// flag correct behaviour as a leak and the fix would be to weaken it. Same carve-out shape as
+// tests/i18n-equip-method-leak.spec.ts uses for loanwords.
 
 const LANGS = ['ru', 'de', 'es', 'fr', 'it'] as const;
 const HEB = /[֐-׿]/;
 
-// The Hebrew SOURCE keys the CP2 panel renders. This literal list IS the contract (they are static
+// The Hebrew SOURCE keys the CP2 surfaces render. This literal list IS the contract (they are static
 // L() literals in app.js, which is what the extractor registers and Guard A enforces); the test derives
 // every expected/forbidden VALUE from the live dict, never from a hard-coded translation.
 const CP2_KEYS = [
@@ -3202,7 +3793,9 @@ const CP2_KEYS = [
   'תנור בלבד',               // placeholder label (Task 1)
   'סו-ויד→תנור',             // placeholder label (Task 1)
   'עישון→סו-ויד',            // the reverse path label (Task 1 / owner decision 1)
+  '(טור עישון בלבד)',         // the smoke-only citation qualifier (Task 2 / owner decision 2)
   'מסלול נבחר',              // the raw table's active-path row (Task 7)
+  'מסלול בישול',             // the plan-level selector's label (Task 8)
   'ש',                       // the hours unit inside the LTR figure islands (Task 2)
 ];
 
@@ -3216,7 +3809,7 @@ const openBrisketCard = async (page: any) => {
   await page.click('button[data-cnav="catalog"]');
   await page.click('button.cattile[data-tilegroup="בשר אדום"]');
   await page.waitForSelector('.card[data-kind="cut"]', { timeout: 15000 });
-  const gc = page.locator('.card[data-kind="cut"]').filter({ hasText: /./ }).first();
+  const gc = page.locator('.card[data-kind="cut"]').first();
   await gc.scrollIntoViewIfNeeded();
   await gc.click();
   await page.waitForSelector('#panel #cpList', { timeout: 10000 });
@@ -3225,10 +3818,23 @@ const expand = async (page: any) => {
   await page.click('#panel #cpListHead');
   await page.waitForFunction(`document.querySelector('#cpListBody').style.display==='block'`);
 };
-// the panel + the raw table's path row — the two CP2 surfaces inside the card
-const panelText = async (page: any) =>
-  (await page.locator('#panel #cpList').innerText()) + '\n' +
-  (await page.locator('#panel #cardRawTable tr.rawpath').innerText());
+
+// The CHROME the app itself generates, element by element — every citation REF span excluded by
+// construction, because a ref is authored text and not the dict's business.
+const CHROME_SEL = [
+  '#panel #cpListMain',
+  '#panel #cpListCount',
+  '#panel #cpListBody .cp-row .crtitle',
+  '#panel #cpListBody .cp-row .crfig',
+  '#panel #cpListBody .cp-row .crcite .cite-ok',
+  '#panel #cpListBody .cp-row .crcite .cite-soon',
+  '#panel #cardRawTable tr.rawpath td',
+];
+const chromeText = async (page: any): Promise<string> => {
+  const parts: string[] = [];
+  for (const sel of CHROME_SEL) parts.push(...await page.locator(sel).allInnerTexts());
+  return parts.join('\n');
+};
 
 // per-language enforcement sets, computed from the LIVE dict (loanword-safe by construction)
 const dictSets = (page: any) => page.evaluate(`(function(keys){
@@ -3239,8 +3845,8 @@ const dictSets = (page: any) => page.evaluate(`(function(keys){
     if(dv==null || ev==null) return;
     expected.push({key:k, val:dv});
     // enforce "not the English fallback" ONLY when the dict genuinely differs from English (loanword
-    // clause) AND the English token is long enough to match as a word without colliding with the
-    // authored English inside a citation ref (e.g. "h" occurs inside "thickness" in a Baldwin ref).
+    // clause) AND the English token is long enough to match as a word without colliding with unrelated
+    // text (e.g. "h" occurs inside "thickness").
     if(dv!==ev && ev.length>=3) forbidden.push({key:k, val:ev});
   });
   return {forbidden, expected};
@@ -3250,252 +3856,171 @@ const wordAbsent = (hay: string, needle: string) =>
   !(new RegExp(`(?<![A-Za-z])${needle.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![A-Za-z])`).test(hay));
 
 // ── (0) he BASELINE — the key list is real, i.e. these strings actually render ─────────────────────
-test('(0) he baseline — every CP2 key in the contract list actually renders in the panel', async ({ page }) => {
+test('(0) he baseline — every CP2 key in the contract list actually renders', async ({ page }) => {
   await boot(page, 'he');
   await openBrisketCard(page);
   await expand(page);
-  const txt = await panelText(page);
+  const card = (await chromeText(page)) + '\n' + (await page.locator('#panel #cpList').innerText());
+  await page.evaluate(`(function(){
+    saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-1'],sides:[],drinks:[],desserts:[],gpm:0});
+    store.set('mk-tlserve','19:00'); openTimeline();
+  })()`);
+  await page.waitForSelector('#panel select[data-tlpath]', { timeout: 15000 });
+  const plan = await page.locator('#panel .tl-order').first().innerText();
+  const txt = card + '\n' + plan;
   const missing = CP2_KEYS.filter(k => k !== 'ש' && !txt.includes(k));
-  expect(missing, `the key list must describe what the panel really renders; panel was:\n${txt}`).toEqual([]);
+  expect(missing, `the key list must describe what CP2 really renders; surfaces were:\n${txt}`).toEqual([]);
 });
 
-// ── (1) BOOT-IN-LANGUAGE — invariance guards (expected GREEN; not this task's RED witness) ────────
+// ── (1) the CARD surfaces, per language: no raw Hebrew, no English fallback, dict values present ────
 for (const lang of LANGS) {
-  test(`(1) boot in ${lang} — the panel is dict-localized: no raw Hebrew, no English fallback, dict values present`, async ({ page }) => {
+  test(`(1) the card's path panel and raw-table path row are dict-localized in ${lang}`, async ({ page }) => {
     await boot(page, lang);
     const sets = await dictSets(page) as { forbidden: { key: string; val: string }[]; expected: { key: string; val: string }[] };
     expect(sets.expected.length, 'the live dict must hold CP2 values to enforce (else this test is vacuous)').toBeGreaterThan(5);
 
     await openBrisketCard(page);
     await expand(page);
-    const txt = await panelText(page);
+    const chrome = await chromeText(page);
+    const full = await page.locator('#panel #cpList').innerText();
 
-    expect(txt, `raw Hebrew leaked into the ${lang} panel:\n${txt}`).not.toMatch(HEB);
+    expect(chrome, `raw Hebrew leaked into the ${lang} panel chrome:\n${chrome}`).not.toMatch(HEB);
     for (const f of sets.forbidden)
-      expect(wordAbsent(txt, f.val), `English fallback "${f.val}" (key ${f.key}) rendered instead of the ${lang} dict value; panel:\n${txt}`).toBe(true);
-    for (const e of sets.expected)
-      expect(txt, `expected the ${lang} dict value "${e.val}" (key ${e.key}) to render; panel:\n${txt}`).toContain(e.val);
+      expect(wordAbsent(chrome, f.val), `English fallback "${f.val}" (key ${f.key}) rendered instead of the ${lang} dict value; chrome:\n${chrome}`).toBe(true);
+    for (const e of sets.expected.filter(e => e.key !== 'מסלול בישול'))
+      expect(full, `expected the ${lang} dict value "${e.val}" (key ${e.key}) to render; panel:\n${full}`).toContain(e.val);
   });
 }
 
-// ── (2) THE RED WITNESS — a language switch while the panel is OPEN ───────────────────────────────
+// ── (2) the PLAN-LEVEL selector (Task 8's surface), per language ───────────────────────────────────
 for (const lang of LANGS) {
-  test(`(2) switching he→${lang} with the card open re-renders the panel in ${lang}`, async ({ page }) => {
-    await boot(page, 'he');
-    await openBrisketCard(page);
-    await expand(page);
-    expect(await panelText(page), 'precondition: the panel opened in Hebrew').toMatch(HEB);
-
-    // the real language switcher, not setLang() — [data-setlang] is the shipped control (app.js 8674)
-    await page.evaluate(`openLangMenu()`);
-    await page.click(`#panel [data-setlang="${lang}"]`);
-    await page.waitForFunction(`getLang()==='${lang}'`);
-    await page.evaluate(`closePanel()`);
-    await openBrisketCard(page);
-    await expand(page);
-
-    const sets = await dictSets(page) as { forbidden: { key: string; val: string }[]; expected: { key: string; val: string }[] };
-    const txt = await panelText(page);
-    expect(txt, `after a he→${lang} switch the panel still carries raw Hebrew:\n${txt}`).not.toMatch(HEB);
-    for (const e of sets.expected)
-      expect(txt, `after the switch, the ${lang} dict value "${e.val}" must render; panel:\n${txt}`).toContain(e.val);
-  });
-}
-
-// ── (3) the SAME hole on the timeline's path selector (Task 8's surface) ──────────────────────────
-for (const lang of LANGS) {
-  test(`(3) the plan-level path selector is dict-localized in ${lang} and survives a language switch`, async ({ page }) => {
-    await boot(page, 'he');
+  test(`(2) the plan-level path selector is dict-localized in ${lang}`, async ({ page }) => {
+    await boot(page, lang);
     await page.evaluate(`(function(){
       saveMenu({guests:8,appetite:'reg',kosher:false,keys:['cut-1'],sides:[],drinks:[],desserts:[],gpm:0});
       store.set('mk-tlserve','19:00'); openTimeline();
     })()`);
     await page.waitForSelector('#panel select[data-tlpath]', { timeout: 15000 });
-    const before = await page.locator('#panel .tl-order').first().innerText();
-    expect(before, 'precondition: the selector opened in Hebrew').toMatch(HEB);
+    const row = await page.locator('#panel .tl-order').first().innerText();
+    const opts = (await page.locator('#panel select[data-tlpath] option').allInnerTexts()).join('\n');
+    const txt = row + '\n' + opts;
 
-    await page.evaluate(`setLang(${JSON.stringify(lang)})`);
-    await page.waitForFunction(`getLang()==='${lang}'`);
-    const txt = await page.locator('#panel .tl-order').first().innerText();
-    expect(txt, `the plan-level path selector still carries raw Hebrew after switching to ${lang}:\n${txt}`).not.toMatch(HEB);
+    expect(txt, `the plan-level path selector carries raw Hebrew in ${lang}:\n${txt}`).not.toMatch(HEB);
+    const sets = await dictSets(page) as { forbidden: { key: string; val: string }[]; expected: { key: string; val: string }[] };
+    for (const f of sets.forbidden)
+      expect(wordAbsent(txt, f.val), `English fallback "${f.val}" (key ${f.key}) in the ${lang} selector:\n${txt}`).toBe(true);
+    const label = sets.expected.find(e => e.key === 'מסלול בישול');
+    if (label) expect(txt, `the ${lang} label must render`).toContain(label.val);
+    const soon = sets.expected.find(e => e.key === 'בקרוב — מקור בבדיקה');
+    if (soon) expect(opts, 'the disabled placeholder options carry the localized wording').toContain(soon.val);
   });
 }
 
 // ── DoD-8 · visual evidence at 390×844, in a non-Hebrew language ──────────────────────────────────
-test('DoD-8 — screenshot at 390×844: the panel in ru, after a live language switch', async ({ page }) => {
+test('DoD-8 — screenshot at 390×844: the panel in ru', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await boot(page, 'he');
-  await openBrisketCard(page);
-  await expand(page);
-  await page.evaluate(`openLangMenu()`);
-  await page.click(`#panel [data-setlang="ru"]`);
-  await page.waitForFunction(`getLang()==='ru'`);
-  await page.evaluate(`closePanel()`);
+  await boot(page, 'ru');
   await openBrisketCard(page);
   await expand(page);
   await page.locator('#panel').screenshot({ path: 'mockups/cp2-panel-ru-390x844.png' });
 });
 ```
 
-- [ ] **Step 3: Run it and WITNESS RED — and be explicit about which failures are the witness.**
+- [ ] **Step 3: WITNESS the gate RED — by mutating the dict, not by hoping it fails.**
+
+First the honest baseline:
 
 ```bash
 npx playwright test tests/cp2-i18n-panel-leak.spec.ts --reporter=list
 ```
 
-Expected, and what each proves:
-- **(2) × 5 — THE RED WITNESS.** `Error: expect(received).not.toMatch(expected) — Expected pattern: /[֐-׿]/ / Received string: "🌊💨 ⚡ סו-ויד + עישון ברירת מחדל …"`. The panel was built by `L()` while the page was in Hebrew; `applyLang`'s `tnode` cannot rewrite a composite text node, and the card has no repaint hook — so a user who switches language with a recipe open keeps reading Hebrew. This is the identical defect class `_mkMethodRepaint` (app.js 8746/8752) was added for, in a surface that never registered one.
-- **(3) × 5 — the same hole on the timeline**, same failure shape on `.tl-order`.
-- **(0)** and **(1) × 5** are expected **GREEN on first run**: Guard A already forces a dict value for every CP2 key, so the boot-in-language direction is an *invariance* assertion, not new behaviour. They are stated as guards and **must not be counted as this task's RED witness** (DoD-2).
+Expected: `12 passed`, exit 0 — **on first run**. State that plainly. This task adds no production behaviour, so there is nothing for a first run to fail on; Guard A already forces a dict value for every CP2 key. A guard whose green run is its normal state must still be *observed failing for the intended reason* (DoD-2), so prove it:
 
-Paste the full output, showing the 10 failures and the 6 passes.
+Temporarily insert this line into test **(1)**, immediately after `await boot(page, lang);` — it simulates the exact defect the gate exists to catch (a CP2 string resolving to its English fallback in a localized page). It is written with `page.evaluate(fn, arg)` rather than a template string precisely so there is no nested-interpolation ambiguity to get wrong:
 
-- [ ] **Step 4: Implement — one language-repaint hook, registered by both surfaces.**
-
-Replace app.js **8746** (`let _mkMethodRepaint=null;`) with:
-
-```js
-let _mkMethodRepaint=null;
-// CP2 Task 9: the ONE "rebuild me in the new language" hook for whichever PANEL is open. The step-list
-// hook above regenerates #methodArea only; the cooking-paths panel, the raw table's path row and the
-// timeline's path selector are all built by L() at render time into COMPOSITE text nodes ("🌊💨 ⚡ סו-ויד
-// + עישון", "68°/30ש → 120°/1.5ש"), which tnode() can never rewrite — it matches a text node only when
-// the whole trimmed text is a dict key. So the panel must re-render itself, exactly as the steps do.
-let _mkLangRepaint=null, _mkLangRepainting=false;
-function setLangRepaint(fn){ _mkLangRepaint=(typeof fn==='function')?fn:null; }
+```ts
+    // TEMPORARY RED PROBE — remove after witnessing. Forces one CP2 key to its English value.
+    await page.evaluate(([lg, key]: string[]) => {
+      (window as any).I18N_DICTS[lg][key] = ((window as any).I18N_DICTS['en'] || {})[key];
+    }, [lang, 'מסלולים']);
 ```
-
-In `applyLang`, insert immediately **before** the existing `_mkMethodRepaint` line (8752):
-
-```js
-  // Re-render the open panel in the new language BEFORE tnode/hydrateMT run, so those passes see the
-  // fresh DOM. Re-entrancy guarded: the repaint re-enters showPanel (which clears both hooks) and the
-  // panel builder re-registers them, but it never calls applyLang, so this cannot recurse.
-  try{ if(_mkLangRepaint && !_mkLangRepainting){ _mkLangRepainting=true; try{ _mkLangRepaint(); } finally { _mkLangRepainting=false; } } }catch(e){ _mkLangRepainting=false; }
-```
-
-In `showPanel`, replace the clear line (3308) with:
-
-```js
-  _mkMethodRepaint=null; _mkLangRepaint=null;   // i18n: clear any prior repaint hooks; a panel re-registers its own below
-```
-
-In `openCut`, immediately **after** Task 6's `reopenCard` closure definition and its `wireCookingPaths(...)` call, add:
-
-```js
-  setLangRepaint(reopenCard);   // i18n: a language switch rebuilds the WHOLE card — the path panel, the
-                                // raw table's path row and the stat line are all L()-built composites.
-```
-
-In `openTimeline`, replace its tail `buildList();` (line **7517**) with:
-
-```js
-  buildList();
-  setLangRepaint(buildList);   // i18n: the plan-level path selector's options are L()/t()-built at render time
-```
-
-- [ ] **Step 5: Implement — `pathLabel(p)`, one normalizer for all four render sites.**
-
-Insert immediately **after** `pathIcons` (Task 2's block):
-
-```js
-// One label normalizer for every path render site (the panel rows, the collapsed header, the raw
-// table's "מסלול נבחר" row and the plan-level <select>). A cut's profile label is already built from
-// L() inside comboMethodEntry (app.js 3782), and the placeholder/reverse labels are L() literals — so
-// this is a no-op for them by design. It exists so a FUTURE path source (CP3's data-only entries, or a
-// spec/make profile whose label is a bare Hebrew literal) cannot bypass the dict at four separate
-// sites: t() returns the dict value for a Hebrew key and the string itself for anything else.
-function pathLabel(p){
-  const s=(p&&p.label)||''; if(!s) return '';
-  return (typeof t==='function')?t(s, s):s;
-}
-```
-
-Then repoint the four call sites — `cpRowHTML` and `cpHeadMainHTML` (Task 3), `cardRawTableHTML` (Task 7), `tlPathSelectHTML` (Task 8):
 
 ```bash
-python - <<'PY'
-import io
-s=io.open('app.js',encoding='utf-8').read()
-subs=[
- ("<div class=\"crtitle\">${pathIcons(p)} ${p.label}${p.isDefault?cpDefBadge():''}</div>",
-  "<div class=\"crtitle\">${pathIcons(p)} ${pathLabel(p)}${p.isDefault?cpDefBadge():''}</div>"),
- ("return `${pathIcons(cur)} ${cur.label}${cur.isDefault?cpDefBadge():''}`;",
-  "return `${pathIcons(cur)} ${pathLabel(cur)}${cur.isDefault?cpDefBadge():''}`;"),
- ("<td>${pathIcons(p)} ${p.label} · ${pathFigures(meta,p)}</td>",
-  "<td>${pathIcons(p)} ${pathLabel(p)} · ${pathFigures(meta,p)}</td>"),
- ("`${p.label}${soon?` — ${soonTxt}`:''}`",
-  "`${pathLabel(p)}${soon?` — ${soonTxt}`:''}`"),
-]
-for a,b in subs:
-    assert s.count(a)==1, ('anchor not unique/found: '+a[:60])
-    s=s.replace(a,b)
-io.open('app.js','w',encoding='utf-8').write(s)
-print('4 call sites repointed at pathLabel')
-PY
-grep -n "p.label\|cur.label" app.js    # only pathLabel's own body may still name it
+npx playwright test tests/cp2-i18n-panel-leak.spec.ts -g "^\(1\)" --reporter=list
 ```
 
-- [ ] **Step 6: Run and see GREEN, and confirm the i18n artifacts did NOT move.**
+Expected RED × 5, for exactly the intended reason:
+`expect(received).toBe(expected) — Expected: true / Received: false` with the message `English fallback "paths" (key מסלולים) rendered instead of the ru dict value; chrome: … 5 paths …` — the count pill printing the English fallback inside a localized panel.
+
+Paste that output, then **delete the probe line** and re-run to confirm `12 passed` again. A probe left in the file is a broken test; `grep -n "TEMPORARY RED PROBE" tests/` must return nothing before Step 4.
+
+Then the second direction, the one the per-element carve-out exists for — prove the assertion is not vacuous by pointing it at prose it must NOT flag:
 
 ```bash
-npx playwright test tests/cp2-i18n-panel-leak.spec.ts --reporter=list
+# a Hebrew citation NOTE/REF is authored text and must never be treated as a leak
+grep -n "לא לגריל ישיר" sources.py     # a real Hebrew-authored citation note in the catalog
 ```
-Expected: `16 passed`, exit 0. Paste it.
+
+Confirm from the run above that no failure mentions an authored citation string. If one does, the carve-out is wrong: the fix is to narrow `CHROME_SEL`, never to widen the loanword clause.
+
+- [ ] **Step 4: Confirm nothing in the build moved.**
 
 ```bash
 python build.py          # NO regen: this task adds/removes/edits zero L() call sites
 git diff --stat lang/    # must be EMPTY
+git status --short app.js app.css    # must be EMPTY — this task changes no production file
 ```
-Expected: `[i18n:Guard-A] OK …`, `[i18n:Guard-B] OK`, `[i18n:Guard-C] OK`, no Guard D drift line, exit 0, and **no file under `lang/` in the diff**. If Guard D reports drift, stop and find which `L()` site moved before regenerating — `pathLabel` wraps `t()`, so nothing should have.
+Expected: `[i18n:Guard-A] OK …`, `[i18n:Guard-B] OK`, `[i18n:Guard-C] OK`, no Guard D drift line, exit 0, an empty `lang/` diff, and **no modification to `app.js` or `app.css`**. If either production file is dirty, something was implemented here that belongs to another task's DoD — revert it and raise it.
 
-Then the neighbours — a repaint hook that fires on the wrong panel is a regression:
+Then the neighbours, because a new spec that seeds language state can perturb them:
 
 ```bash
 npx playwright test tests/i18n-completeness.spec.ts tests/i18n-Lcontract.spec.ts tests/i18n-extractor.spec.ts \
   tests/i18n-equip-method-leak.spec.ts tests/i18n-entables.spec.ts tests/cp2-path-panel.spec.ts \
   tests/cp2-path-select.spec.ts tests/cp2-rawtable-path.spec.ts tests/cp2-plan-selector.spec.ts \
-  tests/cp1-card-unified.spec.ts tests/timeline-enhancements.spec.ts --reporter=list
+  tests/cp2-plan-inherits-default.spec.ts tests/cp1-card-unified.spec.ts tests/timeline-enhancements.spec.ts --reporter=list
 ```
-Expected: all pass, exit 0. `i18n-completeness`'s own "language-switch while a panel is open" step (tests/i18n-completeness.spec.ts:45) passing through the new hook is independent confirmation the fix works on the shipped sweep, not only on this spec's walk.
+Expected: all pass, exit 0.
 
-- [ ] **Step 7: Look at the screenshot (DoD-8/DoD-9).**
+- [ ] **Step 5: Look at the screenshot (DoD-8/DoD-9).**
 
 ```bash
 ls -l mockups/cp2-panel-ru-390x844.png
 ```
-Confirm at 390×844, in Russian, after a **live** switch: the header reads `Су-вид → копчение · По умолчанию.`, the count pill reads `5 способов`, each row's citation marker reads `✓ указанный источник · AmazingRibs — …` (the source name stays as authored — citation refs are never machine-translated), the placeholder rows read `Скоро — источник проверяется`, and the figure islands read `68°/30ч. → 120°/1.5ч.` with no Hebrew glyph anywhere.
+Confirm at 390×844, in Russian: the collapsed header reads `Су-вид → копчение · По умолчанию.`, the count pill reads `5 способов`, each row's citation marker reads `✓ указанный источник · AmazingRibs — …` (the source name stays as authored — citation refs are never machine-translated), the placeholder rows read `Скоро — источник проверяется`, and the figure islands read `68°/30ч. → 120°/1.5ч.` with **no Hebrew glyph in any app-generated string**.
 
-**Safety / fidelity witness (DoD-10):** this task renders nothing new and computes nothing. Its entire production change is (a) a repaint hook that re-invokes the *existing* `openCut` / `buildList` builders — the same functions, with the same arguments, producing the same numbers from the same `effectiveSchedule` stages — and (b) a `t()` pass-through on a label string. No `bcheck` stage, `safe`, `svt`, temp or duration is read, computed or mutated. The screenshot check above is also the numeric-invariance witness: `68°/30 → 120°/1.5` are byte-identical to the Hebrew rendering, and `build.py`'s Guard B independently asserts no translated value altered a number or its unit.
+**Safety / fidelity witness (DoD-10):** this task changes no production file, renders nothing new and computes nothing — `git status --short app.js app.css` is empty by design (Step 4). The numeric-invariance witness is the screenshot above read against the Hebrew shots from Tasks 3/5: `68°/30 → 120°/1.5` are byte-identical across languages, and `build.py`'s Guard B independently asserts no translated value altered a number or its unit.
 
-- [ ] **Step 8: Commit.**
+- [ ] **Step 6: Commit.**
 
 ```bash
-git add app.js tests/cp2-i18n-panel-leak.spec.ts mockups/cp2-panel-ru-390x844.png
+git add tests/cp2-i18n-panel-leak.spec.ts mockups/cp2-panel-ru-390x844.png
 git commit -m "$(cat <<'EOF'
-fix(cp2): the cooking-paths panel survives a live language switch + its both-directions leak spec
+test(cp2): both-directions i18n leak gate for every CP2 surface, in all 5 non-Hebrew languages
 
 spec 2026-07-25 §3 item 3, under DoD-9 ("rendered in Hebrew, no English leak, correct domain term").
 
-The panel is built by L() at render time into COMPOSITE text nodes ("🌊💨 ⚡ סו-ויד + עישון",
-"68°/30ש → 120°/1.5ש"). applyLang's tnode() rewrites a text node only when its whole trimmed text
-is a dict key, so it could not rescue any of them: switching language with a recipe open left the
-whole panel — and the plan-level path selector — in the previous language. Same defect class
-_mkMethodRepaint (app.js 8746/8752) was added for, in surfaces that never registered a hook.
+Per ru/de/es/fr/it: no raw Hebrew in any app-generated CP2 string, no English fallback where the
+live dict holds a differing value (loanword-safe: de/es/fr/it 'ש' → "h" IS English and is never
+flagged), and the positive assertion that the dict value renders — across the card's path panel,
+the raw table's path row and the plan-level path selector.
 
-- _mkLangRepaint + setLangRepaint(fn): one repaint hook, cleared by showPanel, registered by
-  openCut (reopenCard) and openTimeline (buildList), fired by applyLang ahead of tnode, guarded
-  against re-entrancy.
-- pathLabel(p): one dict normalizer for the four path render sites (panel rows, collapsed header,
-  raw-table path row, plan-level <select>) so a future path source cannot bypass the dict at four
-  places independently.
-- tests/cp2-i18n-panel-leak.spec.ts: per ru/de/es/fr/it, NO raw Hebrew and NO English fallback
-  where the live dict holds a differing value (loanword-safe: de/es/fr/it 'ש' → "h" IS English and
-  is never flagged), plus the positive assertion that the dict value renders. The RED witness was
-  the language-SWITCH direction; the boot-in-language direction is stated as an invariance guard.
+Hebrew-absence is asserted PER CHROME ELEMENT, never over the panel's whole innerText: citation
+refs are authored source names rendered as stored and deliberately never machine-translated, so a
+blanket assertion would flag correct behaviour and get weakened.
 
-Safety: nothing computed or mutated — the hook re-invokes the existing builders and pathLabel is a
-t() pass-through. Numbers byte-identical across languages (screenshot + Guard B).
+Test-only, by correction. An earlier draft added a _mkLangRepaint hook for "switching language with
+a recipe open", plus a pathLabel() normalizer. Both were traced through the real render path and
+both are unreachable: all four language switchers (openLangMenu 11438, openAppearance 8969,
+openTools 8565, More 11408) call showPanel first, which replaces the panel and clears the hooks, so
+no control changes language while a card stays mounted — the hook would have had no production
+consumer (DoD-5 / no-inert-shipment) and its "RED witness" passed on first run (DoD-2). pathLabel
+is a no-op: every path label is already L()-built at render time. Both dropped.
+
+The gate's teeth were witnessed by a temporary dict mutation forcing one CP2 key to its English
+fallback (5 RED, for exactly the asserted reason), then removed.
+
+Safety: no production file touched; numbers byte-identical across languages (screenshot + Guard B).
 
 Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
 Claude-Session: https://claude.ai/code/session_01FkEz5H2BEqg4KCagBicAXr
@@ -3505,7 +4030,7 @@ EOF
 
 ---
 
-## Task 10 — The CP2 phase gate: build guards, the plain full suite, bilingual real-UI evidence, every DoD line quoted, and an independent re-audit
+## Task 11 — The CP2 phase gate: build guards, the plain full suite, bilingual real-UI evidence, every DoD line quoted, and an independent re-audit
 
 **Spec line:** *"| **CP2** | the card path panel + default selection (O-1); plan-level path selector generalized | real-UI walks incl. path switch round-trips; **owner visual approval of the panel (mockup first, §10.9)** |"* (spec §8, phasing table) — with the per-phase gate from `docs/process/development-discipline.md` §3: *"every DoD line in the governing spec quoted and marked MET with evidence; any unmet line → phase incomplete, escalate; independent re-audit by a fresh agent **against the spec, not against the ledger**."*
 
@@ -3515,7 +4040,7 @@ EOF
 - Modify **nothing** in `app.js`, `app.css`, `lang/`, or `tests/`. **If this gate finds a defect, it is fixed under the DoD of the task that owns it** (write the failing test first, witness RED, fix, re-run) — never patched inside the gate.
 
 **Interfaces:**
-- **Consumes:** every artifact Tasks 1–9 produced — `tests/cp2-default-path.spec.ts`, `cp2-path-presentation.spec.ts`, `cp2-path-panel.spec.ts`, `cp2-statline-seam.spec.ts`, `cp2-path-select.spec.ts`, `cp2-steps-path.spec.ts`, `cp2-rawtable-path.spec.ts`, `cp2-plan-selector.spec.ts`, `cp2-i18n-panel-leak.spec.ts`; the mockup approval record `mockups/cp2/variant-b.png` + `mockups/cp2/variant-b-list.html`.
+- **Consumes:** every artifact Tasks 1–10 produced — `tests/cp2-default-path.spec.ts`, `cp2-path-presentation.spec.ts`, `cp2-path-panel.spec.ts`, `cp2-statline-seam.spec.ts`, `cp2-path-select.spec.ts`, `cp2-steps-path.spec.ts`, `cp2-rawtable-path.spec.ts`, `cp2-plan-selector.spec.ts`, `cp2-plan-inherits-default.spec.ts`, `cp2-i18n-panel-leak.spec.ts`; the mockup approval record `mockups/cp2/variant-b.png` + `mockups/cp2/variant-b-list.html`.
 - **Produces:** the pasted gate evidence — build-guard output, one plain full-suite run, the bilingual screenshot set, the quoted-DoD matrix, and a fresh-agent re-audit verdict. **No release.**
 
 ---
@@ -3527,10 +4052,10 @@ Two suite runs must never race, and Playwright's managed server collides with a 
 ```bash
 cd C:/Users/dudib/source/repos/matconetesh
 git status --short                     # the CP2 commits are in; nothing uncommitted may be in app.js/app.css/lang/tests
-git log --oneline -12                  # Tasks 1-9's commits, in order
+git log --oneline -14                  # Tasks 1-10's commits, in order
 netstat -ano | grep ":8123" || echo "port 8123 free"
 ```
-Expected: `git status --short` shows no modified `app.js`, `app.css`, `lang/*`, `tests/*` (untracked mockups are fine); the log shows the nine CP2 commits; port 8123 free. **If a manual server is up, stop it and re-verify the port refuses before continuing** — do not proceed with a port collision.
+Expected: `git status --short` shows no modified `app.js`, `app.css`, `lang/*`, `tests/*` (untracked mockups are fine); port 8123 free. The log shows **ten** CP2 commits — Task 1, Task 3 (which also carries Task 2's staged helpers: they had no production reader until then, so they were deliberately never committed alone), Task 4 phase A, Task 4 phase B, Task 5, Task 6, Task 7, Task 8, Task 9, Task 10. **If a manual server is up, stop it and re-verify the port refuses before continuing** — do not proceed with a port collision.
 
 - [ ] **Step 2: The build guards — A, B and C — with output pasted (D11).**
 
@@ -3557,7 +4082,33 @@ npx playwright test 2>&1 | tee scratch/cp2/gate/suite.txt
 echo "exit=$?"
 tail -5 scratch/cp2/gate/suite.txt
 ```
-Expected: `<N> passed (<t>)` and exit code `0`, where `<N>` equals the pre-CP2 baseline plus this programme's new tests (Task 1 **9** + Task 2 **10** + Task 3 **13** + Task 4 **7** + Task 5 **6** + Task 6 **11** + Task 7 **12** + Task 8 **8** + Task 9 **16** = **92**). Record the baseline for the arithmetic:
+Expected: `<N> passed (<t>)` and exit code `0`, where `<N>` equals the pre-CP2 baseline plus this programme's new tests:
+
+| task | spec file | tests |
+|---|---|---|
+| 1 | `cp2-default-path` | 8 |
+| 2 | `cp2-path-presentation` | 11 |
+| 3 | `cp2-path-panel` | 14 |
+| 4 | `cp2-statline-seam` | 7 |
+| 5 | `cp2-path-select` | 7 |
+| 6 | `cp2-steps-path` | 11 |
+| 7 | `cp2-rawtable-path` | 12 |
+| 8 | `cp2-plan-selector` | 8 |
+| 9 | `cp2-plan-inherits-default` | 7 |
+| 10 | `cp2-i18n-panel-leak` | 12 |
+| | **total** | **97** |
+
+Verify the arithmetic against the files rather than trusting the table — a stale count either raises a false alarm or masks a genuinely missing test:
+
+```bash
+for f in tests/cp2-*.spec.ts; do printf "%s " "$f"; grep -c "^\s*test(" "$f"; done
+npx playwright test tests/cp2-default-path.spec.ts tests/cp2-path-presentation.spec.ts tests/cp2-path-panel.spec.ts \
+  tests/cp2-statline-seam.spec.ts tests/cp2-path-select.spec.ts tests/cp2-steps-path.spec.ts \
+  tests/cp2-rawtable-path.spec.ts tests/cp2-plan-selector.spec.ts tests/cp2-plan-inherits-default.spec.ts \
+  tests/cp2-i18n-panel-leak.spec.ts --list | tail -3
+```
+
+(The `grep -c` count is a lower bound — the `for (const lang of …)` loops expand at runtime, which is why `--list` is the authority.) Record the baseline for the arithmetic:
 
 ```bash
 git stash list >/dev/null; git log --oneline -1 --format=%H > scratch/cp2/gate/head.txt
@@ -3673,19 +4224,27 @@ The matrix has one row per line below, each with **MET / UNMET** and a named art
 | S-4 | §3.3 *"and (per O-1) sets the per-recipe default"* | `cp2-default-path` (b)/(b2); `cp2-path-panel` "O-1 — the selection persists" |
 | S-5 | §3.2 *"The item card re-renders its cooking content from it: stat line, step list, raw-data table — all from stages"* | `cp2-statline-seam` (a)/(e); `cp2-steps-path` (a)/(b); `cp2-rawtable-path` (a)/(b) |
 | S-6 | §3.5 *"the timeline/event path selector offers the same `itemPaths` set"* | `cp2-plan-selector` (a) — DOM option ids `===` the model's |
-| S-7 | §3.5 *"a plan-level change overrides FOR THAT occurrence only"* | `cp2-plan-selector` (d) — `mk-tlstate` written, `mk-item-path` null, card default unmoved |
+| S-7 | §3.5 *"a plan-level change overrides FOR THAT occurrence only"* | `cp2-plan-selector` (d) — `mk-tlstate` written, `mk-item-path` null, card default unmoved; `cp2-plan-inherits-default` (b) — a pinned occurrence keeps its path after the card default moves |
+| S-7b | §3.5 *"…**and always resolves through the item's cited entries** — semantics never restated (O-1 law)"* + §1.4 *"the only single source of truth is the item and recipes behind the card"* | `cp2-plan-inherits-default` (a) the timeline occurrence runs the card's reverse default at the cited 75°, (c) the events hero's own total follows it, (d) empty store → byte-identical to pre-CP2, (e) no stale order on a combo that cannot express it. **Carries one RAISED item, not a MET one:** `eqmRequiresMethodKey` (app.js 1771) still derives from `methodRules(c).def`, so equipment requires/holds follow neither the card's combo nor its path — a pre-CP2 divergence the spec's §4 table marks *"(already)"*. Report it to the owner as an E-programme decision; **do not mark this row MET on the strength of the other four tests without stating it.** |
 | S-8 | §4 *"Item card path info … full path panel (§3.3) + the sources box stays"* | `cp2-rawtable-path` (d) — two `.raw` blocks, both order-impact lines present after a switch |
-| S-9 | §5 *"Every temp/hour any surface shows traces to a cited entry via `itemStages` — the refactor REMOVES formula surfaces, adds none. `bcheck`/`safe`/`svt` values untouched."* | `cp2-path-presentation` "prints ONLY numbers that appear in that path's effectiveSchedule stages"; `cp2-steps-path` (b); `cp2-default-path` (a) byte-identical stages; Guard B OK |
-| S-10 | §5 *"The reverse-order eligibility gate (`comboHasSvSmoke`-class …) generalizes per path kind"* | `cp2-default-path` (d2); `cp2-plan-selector` (e) |
+| S-9 | §5 *"Every temp/hour any surface shows traces to a cited entry via `itemStages` — the refactor REMOVES formula surfaces, adds none. `bcheck`/`safe`/`svt` values untouched."* | `cp2-path-presentation` "prints ONLY numbers that appear in that path's cited stages" — including the two explicit assertions that the `bcheck` safety temp and its `/0ש` tail never render as a cooking figure; `cp2-steps-path` (b); `cp2-default-path` (a) byte-identical stages; `cp2-plan-inherits-default` (d); Guard B OK |
+| S-10 | §5 *"The reverse-order eligibility gate (`comboHasSvSmoke`-class …) generalizes per path kind"* | `cp2-default-path` (d2); `cp2-plan-selector` (e); `cp2-plan-inherits-default` (e) |
 | S-11 | §8 CP2 gate *"real-UI walks incl. path switch round-trips"* | every CP2 spec drives real clicks; the gate's round-trip screenshots 3 → 4 |
-| S-12 | §8 CP2 gate *"owner visual approval of the panel (mockup first, §10.9)"* | variant B approved 2026-07-27 (`mockups/cp2/variant-b.png`); shipped panel matches — gate screenshots 1–2 |
+| S-12 | §8 CP2 gate *"owner visual approval of the panel (mockup first, §10.9)"* | variant B approved 2026-07-27 (`mockups/cp2/variant-b.png`); shipped panel matches — gate screenshots 1–2. **NEW UI NOT IN THE APPROVED MOCKUP, for explicit owner confirmation:** the raw table's leading `מסלול נבחר` row and its `.rawpath-on` ember-edged active row (Task 7) — evidence `mockups/cp2-gate-rawtable-he-390x844.png` and `mockups/cp2-gate-rawtable-ru-390x844.png`. Present them as an addition awaiting approval, not as covered by the variant-B approval. |
 | S-13 | §9.1 *"Path panel density … compact vs expandable (owner picks visually)"* | RESOLVED — variant B (expandable list) |
 | S-14 | §9.2 *"Grid card line — default path's figures only (proposed) vs a multi-path hint"* | RESOLVED — owner decision 4: **no** catalog-grid multi-path hint; scope stayed on the card panel. **State this to the owner explicitly as the resolution of an open item, not as a silent omission.** |
-| D-1…D-12 | The §3 twelve-point DoD, quoted line by line | per task: spec traced (S-rows), RED witnessed (each task's Step 3 output), GREEN, behavioural assertions on rendered DOM, consumers named, negative cases, regression red-green (Task 8's three migrated specs), screenshots looked at, Hebrew + 5-language check (`cp2-i18n-panel-leak`), safety invariance (S-9), no `waitForTimeout` (grep below), full suite (Step 3) |
+| O-1 | Owner copy decision 1 (2026-07-27): *the path-order arrow uses the EXISTING no-space literal from `sourcesBlock()`* | `cp2-i18n-panel-leak` (0) — the contract list includes `עישון→סו-ויד` and the test fails if it does not render; `cp2-rawtable-path` (b) asserts the leading row reads `עישון→סו-ויד`. Confirm by eye in gate screenshot 2 that **no** spaced `עישון ← סו-ויד` form appears in the panel (that form is the timeline `<select>`'s and `svOrderName` is untouched). |
+| O-2 | Owner copy decision 2: *the smoke-only path cites the SAME AmazingRibs reference, worded "(טור עישון בלבד)"* | `cp2-path-presentation` "owner decision 2 — …" asserts `ref === '<order_svsmoke.ref> (טור עישון בלבד)'` **and** that a smoke+grill path never carries the qualifier |
+| O-3 | Owner copy decision 3: *placeholder rows read "בקרוב — מקור בבדיקה" and tapping one **toasts**, never selects* | `cp2-path-panel` "D9 — tapping a 'soon' row (a row the wiring really bound)…" (asserts `__cpBound` before clicking, then the toast, then the unmoved selection) and "owner decision 3 — … exactly once" (the copy is not duplicated in the row); `cp2-path-select` (c) — nothing written; `cp2-plan-selector` (a) — the plan-level options are `disabled` and the handler re-rejects |
+| O-4 | Owner copy decision 4: *NO catalog-grid multi-path hint* | Same as S-14 — nothing was built; `git show` the CP2 commits and confirm `cutCard`'s grid line is untouched. State it to the owner as a resolution. |
+| O-5 | Owner copy decision 5: *the "חוסך מעשנת" stat DROPS when inapplicable (only for sv→smoke)* | `cp2-statline-seam` (c) an offal card (grill-only default) shows no `חוסך מעשנת`, (d) the reverse order drops it too, (e) the smoke-only path drops it, (b) it STAYS on the sv→smoke default, (f) nothing is gated away with no selection; `mockups/cp2-statline-offal-390x844.png` looked at |
+| D-1…D-12 | The §3 twelve-point DoD, quoted line by line | per task: spec traced (S-rows), RED witnessed (each task's own RED step output — including Task 1 Step 5b's placeholder-filter witness, Task 4 Step 8's owner-decision-5 witness, Task 7 Step 3's pinned-`rev` witness and Task 10 Step 3's dict-mutation probe), GREEN, behavioural assertions on rendered DOM, consumers named, negative cases, regression red-green (Task 8's three migrated specs), screenshots looked at, Hebrew + 5-language check (`cp2-i18n-panel-leak`), safety invariance (S-9), no `waitForTimeout` (grep below), full suite (Step 3) |
 
 ```bash
 grep -rn "waitForTimeout" tests/cp2-*.spec.ts scratch/cp2/gate/evidence.spec.ts    # DoD-11: must return NOTHING
 grep -rn "test.skip\|test.fixme\|test.only" tests/cp2-*.spec.ts                     # must return NOTHING
+grep -rn "TEMPORARY RED PROBE" tests/                                               # Task 10's probe removed
+grep -rn "const rev=false" app.js                                                   # Task 7's pinned-rev witness reverted
 ```
 
 Any row that cannot be marked MET with a named artifact makes the **phase incomplete** — escalate it to the owner in conversation with the spec text and the reason (§4 waiver gate). Do not soften it into a caveat, and do not defer it into CP3.
@@ -3708,10 +4267,17 @@ prompt:
   Verify independently, do not take a comment's word for it:
     - does the panel really list EVERY itemPaths entry, placeholders included?
     - does selecting a path really change the card's stat line, steps AND raw table (not just a badge)?
-    - is the per-recipe default really separate from the per-occurrence override (two stores)?
+    - is the per-recipe default really separate from the per-occurrence override (two stores) — AND does
+      an occurrence with no override of its own actually RUN the item's default path (both directions of
+      "overrides for that occurrence only")?
     - does anything compute or mutate a temp, hour, safe, svt or bcheck value anywhere in the CP2 diff?
-      (`git log --oneline` the cp2 commits, then `git show` each and read every changed hunk.)
+      (`git log --oneline` the cp2 commits, then `git show` each and read every changed hunk.) In
+      particular: does any rendered figure trace to the citation printed beside it, and is the bcheck
+      safety temperature ever rendered as a cooking setpoint?
     - is any test asserting only via page.evaluate on the model where the spec demands a rendered surface?
+    - does any test in tests/cp2-*.spec.ts pass without ever being able to fail (an assertion whose
+      expectation is derived from the same call the implementation makes, or a substring that is present
+      in every state)?
   Return a table + a one-line verdict. Report what you actually verified and what you could not.
 ```
 
@@ -3719,9 +4285,14 @@ Paste the auditor's verdict verbatim. **Any PARTIAL or UNMET is a defect**: fix 
 
 - [ ] **Step 7: Report to the owner and STOP.**
 
-Give the §10.6 three-part summary — **DONE** (what CP2 delivered, with the pasted build + suite output and the 12 screenshots), **NEXT** (CP3: research batch 1 paths as data, whose zero-new-JS proof is that a cited entry replaces a CP2 placeholder row with no code change), **LEFT UNTIL THE GRAND FINAL** (CP3 + CP4 on this spec, and the E-programme items that ride the panel — O-2's consult button, O-5's fix list). Include, called out by name:
+Give the §10.6 three-part summary — **DONE** (what CP2 delivered, with the pasted build + suite output and the 12 screenshots), **NEXT** (CP3: research batch 1 paths as data, whose zero-new-JS proof is that a cited entry replaces a CP2 placeholder row with no code change), **LEFT UNTIL THE GRAND FINAL** (CP3 + CP4 on this spec, and the E-programme items that ride the panel — O-2's consult button, O-5's fix list). Include, called out by name — each of these is a decision the owner must actually see, not a footnote:
 - **§9.2 resolved by owner decision 4** — no catalog-grid multi-path hint;
+- **all five owner copy decisions, each with the test that proves it** — matrix rows O-1…O-5;
+- **NEW UI awaiting approval:** the raw table's leading `מסלול נבחר` row and its ember-edged active row (Task 7) are not in the approved variant-B mockup — show `mockups/cp2-gate-rawtable-he-390x844.png` and ask;
+- **RAISED, not fixed:** `eqmRequiresMethodKey` (app.js 1771) derives the equipment requires/holds methodKey from `methodRules(c).def`, so EQM follows neither the card's combo nor its path. Pre-CP2 divergence, marked *"(already)"* in the spec's §4 table; moving equipment holds is safety-adjacent E-programme work. Owner decides whether it becomes an E-programme item;
+- **DISCLOSED behaviour change** from Task 5: a method-toggle flick on a **catalog** card now persists (was per-visit), because the path default it records is persistent (O-1) and the two must have one lifetime;
 - **the disclosed Russian plural limitation** from Task 3 (the dict is binary singular/plural, so 2–4 → *способа* cannot be expressed; `способов` is used for every n>1) — the owner decides whether a three-form mechanism is wanted;
+- **retired from this plan, with the trace:** the language-switch repaint hook and `pathLabel` normalizer the first draft of Task 10 proposed — no control in the app changes language while a card stays mounted, so both were inert (Task 10's header carries the full render-path trace);
 - the exact suite count and runtime.
 
 **This gate authorizes nothing beyond itself.** It is not a release:
