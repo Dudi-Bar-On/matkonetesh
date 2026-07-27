@@ -5,6 +5,18 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 273 · 27.7.26
+
+**Russian — a seventh language, and a safety-gate upgrade behind it:**
+- **Russian is added** (he/en/fr/de/es/it/ru). The catalog, dish names, categories, origins and woods are
+  translated; the full render-path leak test now covers Russian (zero Hebrew leaks, flags intact).
+- **The numeric-safety gate now understands non-Latin unit words.** Extending translation beyond Latin
+  scripts exposed that the gate recognized only he/en/de/fr/es/it unit words — a faithful Russian "30 минут"
+  or "1 г" was wrongly rejected. Unit recognition was extended to all queued scripts (Cyrillic, Greek, CJK,
+  Arabic, Thai, more Latin), and in the process a real hole was closed: grams and kilograms were merged in
+  one gate, so it now distinguishes them — a 1000× cure-dose g↔kg swap can no longer pass in any language.
+  A dropped or swapped number still fails the build.
+
 ## מהדורה 272 · 27.7.26
 
 **Seasoning country flags restored in all languages (owner-reported):** the origin of each rub/seasoning

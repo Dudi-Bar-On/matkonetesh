@@ -14,7 +14,7 @@ import { execFileSync } from 'node:child_process';
 const ext = JSON.parse(readFileSync('lang/_extracted.json', 'utf8'));
 const EXTKEYS = new Set(Object.keys(ext).filter(k => k !== '__names__'));
 const HEB = /[֐-׿]/;
-const LANGS = ['fr', 'de', 'es', 'it'];
+const LANGS = ['fr', 'de', 'es', 'it', 'ru'];
 
 async function driveStates(page: any, lang: string) {
   await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
