@@ -6137,8 +6137,8 @@ function hebSpeechText(t){
   return s.replace(/\s+/g,' ').trim();
 }
 /* ── bilingual voice (v132): input(ASR) lang + answer(TTS) lang ── */
-function vcLang(){ return (typeof getLang==='function'&&getLang()!=='he')?'en':'he'; }   // v268.1 (#4): voice follows the UI language (he→he, else en); the manual picker was removed. Voice + the spoken-safety guard are he/en; a fr/de/es/it UI gets English voice (safe) until vcGuardSpoken covers those unit words.
-function vcAnsLang(){ return vcLang(); } // answer/TTS language = the voice language (follows the UI)
+function vcLang(){ return store.get('mk-vclang')||((typeof getLang==='function'&&getLang()!=='he')?'en':'he'); }        // recognition language — defaults to the UI language
+function vcAnsLang(){ return store.get('mk-vcanslang')||vcLang(); } // answer/TTS language
 function vcLocale(l){ return l==='en'?'en-US':'he-IL'; }
 function enSpeechText(t){ return stripEmoji(String(t)).replace(/·|•/g,', ').replace(/\s+/g,' ').trim(); }
 function speechText(t, lang){ return (lang==='en')?enSpeechText(t):hebSpeechText(t); }
@@ -6266,6 +6266,14 @@ function vcRender(){
     </div>
     ${vcTasks.length>2?`<div class="vc-jumprow"><label>🎯 ${L('קפוץ לשלב:','Jump to step:')}</label><select id="vcStepJump">${vcTasks.map((tk,i)=>`<option value="${i}" ${i===vcIdx?'selected':''}>${esc(fmtClock(tk.t)+' · '+stripEmoji(tk.label))}</option>`).join('')}</select></div>`:''}
     <p class="vc-hint">💡 ${L('מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: "הבא", "הקודם", "הקרא שוב", "פרטים".','Big screen, big buttons — meant to stand by the smoker. Commands: "next", "back", "read again", "details".')}</p>
+    <div class="vc-langrow">
+      <span class="vc-langlbl">🎙️ ${L('שפת דיבור:','Speech language:')}</span>
+      <button class="vc-langbtn ${vcLang()==='he'?'on':''}" data-vc="lang-he">עברית</button>
+      <button class="vc-langbtn ${vcLang()==='en'?'on':''}" data-vc="lang-en">English</button>
+      <span class="vc-langlbl">🔊 ${L('תשובה:','Answer:')}</span>
+      <button class="vc-langbtn ${vcAnsLang()==='he'?'on':''}" data-vc="anslang-he">עברית</button>
+      <button class="vc-langbtn ${vcAnsLang()==='en'?'on':''}" data-vc="anslang-en">English</button>
+    </div>
     <p class="vc-hint">${vcLang()==='en'?'🇬🇧 Voice commands: next · back · read · details · temperature · when.':'פקודות עבריות: הבא · הקודם · הקרא · פרטים · טמפרטורה · מתי.'} ${L('דיבור באנגלית מזוהה לרוב מדויק יותר.','English speech is usually recognized more accurately.')}</p>
     ${aiAvail()?`<p class="vc-hint">✨ ${L('אפשר לשאול שאלות חופשיות בקול (למשל "כמה עוד זמן לחזה?") — אפשר לשאול באנגלית ולקבל תשובה בעברית.','You can ask free questions by voice (e.g. "how much longer for the brisket?") — you can ask in English and get an answer in Hebrew.')}</p>
     <div class="vc-askrow"><input id="vcAskInput" placeholder="${vcAnsLang()==='en'?'Type a question…':'הקלד שאלה…'}"><button class="vc-askbtn" data-vc="asktext">${vcAnsLang()==='en'?'Ask ✨':'שאל ✨'}</button></div>
@@ -6312,7 +6320,10 @@ function vcAction(a){
   }
   else if(a==='mic') vcToggleMic();
   else if(a==='asktext'){ const inp=$("#vcAskInput"); const q=inp&&inp.value.trim(); if(q) vcAskFlow(q); }
-  // v268.1 (#4): the speech/answer language picker was removed — voice follows the UI language (vcLang/vcAnsLang).
+  else if(a==='lang-he'){ store.set('mk-vclang','he'); const wasOn=!!vcRec; if(wasOn){vcRec._stop=true;try{vcRec.stop();}catch(e){}vcRec=null;} vcRender(); if(wasOn) vcToggleMic(); }
+  else if(a==='lang-en'){ store.set('mk-vclang','en'); const wasOn=!!vcRec; if(wasOn){vcRec._stop=true;try{vcRec.stop();}catch(e){}vcRec=null;} vcRender(); if(wasOn) vcToggleMic(); }
+  else if(a==='anslang-he'){ store.set('mk-vcanslang','he'); vcRender(); vcSpeak('התשובות יהיו בעברית','he'); }
+  else if(a==='anslang-en'){ store.set('mk-vcanslang','en'); vcRender(); vcSpeak('Answers will be in English','en'); }
   else if(a==='gemsave'){
     const inp=$("#gemKeyInp"); const k=(inp&&inp.value||'').trim();
     if(k.length<20){ toast('מפתח לא תקין'); return; }
