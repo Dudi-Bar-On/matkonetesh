@@ -381,6 +381,7 @@ assert not _re.search(r'(?m)(?:(?<![.\w])EQM|(?:window|globalThis|self)\.EQM)\s*
     "F5: app.js must not assign to EQM (bare, window., globalThis., or self. — it may only call EQM.*)"
 # i18n: one JSON dictionary file per language under lang/ → const I18N_DICTS = {en:{…}, fr:{…}, …}
 _i18n = {}
+_i18n_art = {}    # underscore-prefixed lang/ ARTIFACT files (_extracted / _callsite-sig / _i18n-allow-identical / _i18n-deferred) — build-time only, NEVER shipped as languages (would bloat dist + show fake langs in the picker)
 _i18n_data = {}   # <code>.data.json = bulk prose (item descriptions) merged into <code>
 for _lf in sorted(_glob.glob(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "lang", "*.json"))):
     _bn = _os.path.basename(_lf)
@@ -388,7 +389,10 @@ for _lf in sorted(_glob.glob(_os.path.join(_os.path.dirname(_os.path.abspath(__f
         _i18n_data.setdefault(_bn[:-len(".data.json")], []).append(_lf); continue
     _code = _os.path.splitext(_bn)[0]
     with open(_lf, encoding="utf-8") as _f:
-        _i18n[_code] = json.load(_f)
+        _obj = json.load(_f)
+    if _code.startswith("_"):
+        _i18n_art[_code] = _obj; continue     # artifact, not a language
+    _i18n[_code] = _obj
 for _code, _dfs in _i18n_data.items():
     if _code in _i18n:
         for _df in _dfs:
@@ -398,8 +402,8 @@ for _code, _dfs in _i18n_data.items():
 _en_keys = set(_i18n.get("en", {}).keys())
 if _en_keys:
     for _code in sorted(_i18n):
-        if _code == "en":
-            continue
+        if _code == "en" or _code.startswith("_") or not isinstance(_i18n.get(_code), dict):
+            continue   # skip underscore-prefixed lang/ ARTIFACT files (_extracted / _callsite-sig / _i18n-allow-identical[list] / _i18n-deferred) — not languages
         _k = set(_i18n[_code].keys())
         _cov = len(_k & _en_keys); _orph = _k - _en_keys
         _pct = round(100 * _cov / len(_en_keys))
@@ -464,7 +468,7 @@ else:
 # FAILS: a user-facing string cannot ship unlocalized for an active language. (KNOWN != full COVERAGE —
 # the acorn-re-run staleness gate + the render-path leak test, spec §5/§8, are the completeness gate;
 # Guard A is total over the KNOWN set.) This is the enforcing replacement for the "% coverage" line above.
-_extracted = _i18n.get("_extracted", {})
+_extracted = _i18n_art.get("_extracted", {})
 if _extracted:
     _extA_chrome = [k for k in _extracted if k != "__names__"]
     _extA_names = list((_extracted.get("__names__") or {}).keys())
