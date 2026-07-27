@@ -1412,7 +1412,7 @@ function wireSeasPicker(host, key, cat, isProd, mode, onChange, backFn){
   const rerender=()=>{ const nb=document.createElement('div'); nb.innerHTML=seasPickerHTML(key,cat,isProd,spkState(key).mode||mode); box.replaceWith(nb.firstElementChild); wireSeasPicker(host,key,cat,isProd,mode,onChange,backFn); };
   box.querySelectorAll('[data-spkinfo]').forEach(ib=>ib.addEventListener('click',()=>{
     const s=seasoningById(ib.dataset.spkinfo); if(!s) return;
-    const show=()=>showPanel(`${toolTop(s.heb, s.eng+' · '+s.origin, KIND_EMOJI[s.kind], cont2color(s.cont))}<div class="panel-body">${seasoningDetailHTML(s)}</div>`);
+    const show=()=>showPanel(`${toolTop(itemName(s), s.eng+' · '+t(s.origin), KIND_EMOJI[s.kind], cont2color(s.cont))}<div class="panel-body">${seasoningDetailHTML(s)}</div>`);
     if(backFn && typeof openFrom==='function') openFrom(backFn, show); else show();
   }));
   box.querySelectorAll('[data-seasall]').forEach(mb=>mb.addEventListener('click',()=>{
@@ -1502,7 +1502,7 @@ function renderSeasonings(){
     const was=selectedSeasonings(seasCtxKey).includes(id);
     cwApplySeasKind(seasCtxKey, kind, was?'':id);
     renderSeasonings();
-    if(typeof toast==='function'){ const s=seasoningById(id); toast(was?`${s.heb} ${L('הוסר מהמופע','removed from the instance')}`:`${s.heb} ${L('נבחר','selected')} (${kindLabel(kind)}) — ${L('הקודם מאותו סוג הוחלף','the previous one of the same type was replaced')}`); }
+    if(typeof toast==='function'){ const s=seasoningById(id); toast(was?`${itemName(s)} ${L('הוסר מהמופע','removed from the instance')}`:`${itemName(s)} ${L('נבחר','selected')} (${kindLabel(kind)}) — ${L('הקודם מאותו סוג הוחלף','the previous one of the same type was replaced')}`); }
   }));
 }
 // produce: "גריל / עישון" path (direct fire) — no meat prep/pasteurization language
@@ -2950,7 +2950,7 @@ function openCut(c){
   wireDoneness(c);
   $("#panel").querySelectorAll('[data-seas]').forEach(b=>b.addEventListener('click',()=>openFrom(()=>openCut(c), ()=>{
     const s=(DATA.seasonings||[]).find(x=>x.id===b.dataset.seas); if(!s) return;
-    showPanel(`${toolTop(s.heb, s.eng+' · '+s.origin, KIND_EMOJI[s.kind], cont2color(s.cont))}<div class="panel-body">${seasoningDetailHTML(s)}</div>`);
+    showPanel(`${toolTop(itemName(s), s.eng+' · '+t(s.origin), KIND_EMOJI[s.kind], cont2color(s.cont))}<div class="panel-body">${seasoningDetailHTML(s)}</div>`);
   })));
   wireSeasPicker($("#panel"), key, c.cat, isProduce(c), curProject?'edit':'view', ()=>{ clearTimers(); paintMethod(); toast('התיבול עודכן — השלבים חושבו מחדש'); }, ()=>openCut(c));
 }
