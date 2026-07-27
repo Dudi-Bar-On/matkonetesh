@@ -497,6 +497,83 @@ if _extracted:
         if len(_guardA) > 30: print("  ... and %d more" % (len(_guardA) - 30))
         _sys.exit(1)
     print("[i18n:Guard-A] OK — %d KNOWN keys + %d names covered in all %d active langs" % (len(_extA_chrome), len(_extA_names), len(_active_langs)))
+# ── v268 Task 10 — Guard B: numeric safety, UNIT-TOKEN-PRESERVING (spec §4.3, C1+S-1) ────────────────
+# Port of app.js vcNumPairs/vcTransSafe (8662-8679) + VC_UNIT_CLASS (8655-8661), with the coarse classes
+# (temp/time/mass) split into MAGNITUDE-SPECIFIC sub-classes when the unit token is explicit; a generic
+# unit (bare °/מעלות) stays coarse+tolerant; unclassifiable → FAIL CLOSED. Catches °C↔°F, g↔kg (1000×
+# cure-dose), min↔hr↔day, digit drift, cross-class swap. Runs over the _extracted chrome keys only (M-2).
+import re as _reB
+_GB_NUM = r'(?:\d{1,3}(?:,\d{3})+(?:\.\d+)?|\d+(?:[.,]\d+)?)'   # grouped-thousands OR period/COMMA decimal (fr/de/es/it use "2,5")
+_GB_QM = "[\"״׳']"
+# Units span glyphs (°C/kg/ppm/% — language-neutral) AND WORDS. Because Guard B validates TRANSLATIONS, the
+# word-units must include the target-lang forms (de/fr/es/it) or a faithful "7 days→7 Tage" false-fails —
+# a deliberate divergence from the he/en-only runtime VC_UNIT_CLASS (follow-up T-GuardB-runtime). re.I → any case.
+_GB_UNIT_CLASS = [
+    (_reB.compile(r'^(?:°\s*C|C\b|celsius|צלזיוס)', _reB.I), 'tempC'),
+    (_reB.compile(r'^(?:°\s*F|F\b|fahrenheit|פרנהייט)', _reB.I), 'tempF'),
+    (_reB.compile(r'^(?:°|מעלות|degrees?|grad|grados?|gradi|degr[ée]s?)', _reB.I), 'temp'),
+    (_reB.compile('^(?:ק' + _GB_QM + r'?ג|kg\b|kilos?)', _reB.I), 'massKg'),
+    (_reB.compile('^(?:ג' + _GB_QM + r'?|גרם|grams?|g\b|gramm|grammes?|gramos?|grammi)', _reB.I), 'massG'),
+    (_reB.compile(r'^(?:lbs?\b|pounds?)', _reB.I), 'mass'),
+    (_reB.compile('^(?:דק(?:ות|' + _GB_QM + r')?|minutes?|mins?\b|minutos?|minuti|minuten)', _reB.I), 'timeMin'),
+    (_reB.compile('^(?:שעות|שע' + _GB_QM + r'?|ש\b|hours?|hrs?\b|h\b|horas?|ore\b|stunden|heures?)', _reB.I), 'timeHr'),
+    (_reB.compile(r'^(?:ימים|יום|days?|d[ií]as?|giorni|tage|jours?)', _reB.I), 'timeDay'),
+    (_reB.compile(r'^(?:ppm)', _reB.I), 'ppm'),
+    (_reB.compile(r'^(?:%|אחוז|percent|prozent|pour ?cent|por ?ciento|per ?cento)', _reB.I), 'pct'),
+    (_reB.compile('^(?:ס' + _GB_QM + r'?מ\s*(?:²|2)|cm\s*(?:²|2))', _reB.I), 'area'),
+    (_reB.compile('^(?:ס' + _GB_QM + r'?מ|cm\b)', _reB.I), 'len'),
+]
+_GB_COARSE = {'tempC':'temp','tempF':'temp','massG':'mass','massKg':'mass','timeMin':'time','timeHr':'time','timeDay':'time'}
+def _gb_coarse(c): return _GB_COARSE.get(c, c)
+def _gb_val(s):
+    s = s.strip()
+    if _reB.match(r'^\d{1,3}(?:,\d{3})+(?:\.\d+)?$', s): return float(s.replace(',', ''))  # grouped thousands: strip
+    return float(s.replace(',', '.'))                                                       # decimal comma (or plain) → period
+def _gb_pairs(text):
+    s = str(text or ''); out = []
+    for m in _reB.finditer(_GB_NUM, s):
+        rest = _reB.sub(r'^[\s\-–]+', '', s[m.end():]); cls = '?'
+        for rx, c in _GB_UNIT_CLASS:
+            if rx.match(rest): cls = c; break
+        out.append((_gb_val(m.group(0)), cls))
+    return out
+def _gb_unit_ok(sc, vc):
+    if sc == vc: return True
+    if _gb_coarse(sc) != _gb_coarse(vc): return False
+    return sc == _gb_coarse(sc)   # generic source → tolerate specific glyph; explicit source → must match
+def _gb_safe(src, tr):
+    a, b = _gb_pairs(src), _gb_pairs(tr)
+    if not a: return True   # source carries NO number → nothing to preserve (safety numbers always have a digit in source; Hebrew number-WORDS like יומיים are non-safety UI)
+    if len(a) != len(b): return False
+    if any(c == '?' for _, c in a) or any(c == '?' for _, c in b): return a == b
+    used = [False] * len(b)
+    def match(i):
+        if i == len(a): return True
+        for j in range(len(b)):
+            if not used[j] and a[i][0] == b[j][0] and _gb_unit_ok(a[i][1], b[j][1]):
+                used[j] = True
+                if match(i + 1): return True
+                used[j] = False
+        return False
+    return match(0)
+_GB_SENT = '␟'
+_gb_fail = []
+for _code in sorted(_active_langs):
+    _dB = _i18n.get(_code, {})
+    for _key in _extracted:
+        if _key == '__names__': continue
+        _srch = _key.split(_GB_SENT)[0]
+        _val = _dB.get(_key)
+        if _val is None: continue
+        if not _gb_safe(_srch, _val):
+            _gb_fail.append((_code, _key, _srch, _val))
+if _gb_fail:
+    with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "scratch", "_guardB-fails.txt"), "w", encoding="utf-8") as _gbf:
+        for _c, _k, _s, _v in _gb_fail:
+            _gbf.write("[%s] key=%s\n   src=%s\n   val=%s\n" % (_c, _k, _s, _v))
+    print("[i18n:Guard-B] %d numeric/unit drift(s) — a translated value changed a number or its unit (details: scratch/_guardB-fails.txt):" % len(_gb_fail))
+    _sys.exit(1)
+print("[i18n:Guard-B] OK — numbers+units preserved across all active langs")
 I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
 html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
 import os as _os, shutil as _shutil
