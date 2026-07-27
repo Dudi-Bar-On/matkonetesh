@@ -677,14 +677,25 @@ function occupancyDevHtml(o){
   const bay = (o.cap && o.cap.hooks>0) ? _occBayHtml(o) : '';
   return `<div class="occ2-dev">${_occHeaderHtml(o)}${bay}${body}${_occFitHtml(o)}${_occListHtml(o)}</div>`;
 }
+// i18n: the occupancy header's slot-count fact (e.g. "🗄️ 3 racks") drew its unit label from a raw
+// `he?cap.slotLabelHe:cap.slotLabelEn` ternary → English for every non-Hebrew language. cap.slotLabelHe is
+// a runtime value (EQUIP_CATS capHe), so route it through this static-literal L() map: the literals are
+// extractor-KNOWN → Guard A enforces them, and a genuine miss falls to t() (never a bare English fallback).
+function occSlotLabelL(he){
+  switch(he){
+    case 'מדפים/שבכות': return L('מדפים/שבכות','racks/grates');
+    case 'אזורי חום':   return L('אזורי חום','heat zones');
+    case 'מדפים':       return L('מדפים','racks');
+    default: return t(he);
+  }
+}
 function _occHeaderHtml(o){
-  const he=(typeof getLang!=='function'||getLang()==='he');
   const cap=o.cap, facts=[];
   if(o.compat && o.compat.commonWood) facts.push(`🪵 ${esc(t(o.compat.commonWood))}`);
   else if(o.compat && o.compat.woods && o.compat.woods.length>1) facts.push(`🪵 ${L('עצים שונים','different woods')}`);
   // A bath has no shelves — printing "1 מדפים / 1 racks" on a sous-vide is the same mislabel class H4 killed
   // on the kettle. The vessel's own capacity sentence carries its litres, so skip the slot fact entirely.
-  if(cap.slots && cap.slotKind!=='bath') facts.push(`🗄️ ${cap.slots} ${he?(cap.slotLabelHe||'מדפים'):(cap.slotLabelEn||'racks')}`);
+  if(cap.slots && cap.slotKind!=='bath') facts.push(`🗄️ ${cap.slots} ${occSlotLabelL(cap.slotLabelHe||'מדפים')}`);
   if(cap.hooks) facts.push(`🪝 ${o.hooksUsed}/${cap.hooks}`);
   const set = (o.compat && o.compat.setpoint!=null) ? `<span class="occ2-set" dir="ltr">${o.compat.setpoint}°</span>` : '';
   // The setpoint is the MAXIMUM of what the items need. Running the cooker there raises every cooler item
@@ -838,10 +849,11 @@ function _occFitHtml(o){
 // The accessible / printable layer: item · slot · cm² for every placed area item.
 function _occListHtml(o){
   if(o.mode==='volume') return '';
-  const he=(typeof getLang!=='function'||getLang()==='he');
-  const slotHe=(o.cap.slotKind==='zone')?'אזור':'מדף', slotEn=(o.cap.slotKind==='zone')?'zone':'shelf';
+  // i18n: the slot label must come from the dict (L), not an English fallback — the old `he?slotHe:slotEn`
+  // rendered "shelf"/"zone" in English for every non-Hebrew language (tnode cannot rescue English).
+  const slotLabel=(o.cap.slotKind==='zone')?L('אזור','zone'):L('מדף','shelf');
   const lis=(o.items||[]).filter(function(it){return it.mode==='area';}).map(function(it){
-    const where = (it.slot!=null) ? `${he?slotHe:slotEn} ${it.slot+1}` : L('לא משובץ','unplaced');
+    const where = (it.slot!=null) ? `${slotLabel} ${it.slot+1}` : L('לא משובץ','unplaced');
     const size = (it.cm2!=null) ? ` · ${it.cm2} ${L('סמ״ר', 'cm²')}` : ` · ${L('מידה לא ידועה','size unknown')}`;
     return `<li><b>${esc(it.name)}</b><span class="occ2-s">· ${where}${size}</span></li>`;
   });
@@ -1577,30 +1589,39 @@ function soSteps(c){
   if(c.rest) steps.push([L("מנוחה","Rest"),L(`מנוחה ${c.rest} דקות לפני הפריסה.${c.tgt>=90?` לנתחי קולגן — החזקה ארוכה בקופסת בידוד (cambro/צידנית) של שעה+ משפרת מאוד עסיסיות.`:''}`,`Rest ${c.rest} minutes before slicing.${c.tgt>=90?` For collagen cuts — a long hold in an insulated box (cambro/cooler) of an hour+ greatly improves juiciness.`:''}`),c.rest*60]);
   return steps;
 }
+// i18n: route each seasoning-prep line through a static-literal L(he,en) so a non-Hebrew language shows
+// its DICT value, not the English fallback. The old `(getLang()==='he'?he:en)[m]` emitted English for
+// every non-Hebrew language (tnode cannot rescue an English string). The map is rebuilt per call, so the
+// L() literals evaluate against the LIVE language; they are extractor-KNOWN keys → Guard A enforces them.
 function treatText(m){
-  const he={"צינון":"צנן/החזק את הנתח לפני שלב העישון.","צינון מלא":"צנן את הנתח לחלוטין (אפילו לילה) — מקל על קרום וצריבה.",
-   "ייבוש":"ייבש את פני הבשר/העור לקראת העישון.","ייבוש עור":"ייבש את העור היטב לעור פריך.",
-   "קילוף קרום":"קלף את הקרום החיצוני של הלשון לאחר הבישול.","דקירת עור+ניקוז":"נקב את העור ונקז שומן עודף.",
-   "חריטת עור":"חרוט את שכבת השומן בתבנית מעוינים.","ניקוז שומן":"נקז את השומן הנמס במהלך העישון.","הפיכת עור":"הפוך לצריבת העור בצד מטה."};
-  const en={"צינון":"Chill/hold the cut before the smoking step.","צינון מלא":"Chill the cut completely (even overnight) — helps bark and searing.",
-   "ייבוש":"Dry the surface of the meat/skin ahead of smoking.","ייבוש עור":"Dry the skin thoroughly for crisp skin.",
-   "קילוף קרום":"Peel the outer membrane of the tongue after cooking.","דקירת עור+ניקוז":"Prick the skin and drain excess fat.",
-   "חריטת עור":"Score the fat layer in a diamond pattern.","ניקוז שומן":"Drain the fat rendered during smoking.","הפיכת עור":"Flip to sear the skin side down."};
-  return (getLang()==='he'?he:en)[m]||t(m);
+  const map={
+   "צינון":L("צנן/החזק את הנתח לפני שלב העישון.","Chill/hold the cut before the smoking step."),
+   "צינון מלא":L("צנן את הנתח לחלוטין (אפילו לילה) — מקל על קרום וצריבה.","Chill the cut completely (even overnight) — helps bark and searing."),
+   "ייבוש":L("ייבש את פני הבשר/העור לקראת העישון.","Dry the surface of the meat/skin ahead of smoking."),
+   "ייבוש עור":L("ייבש את העור היטב לעור פריך.","Dry the skin thoroughly for crisp skin."),
+   "קילוף קרום":L("קלף את הקרום החיצוני של הלשון לאחר הבישול.","Peel the outer membrane of the tongue after cooking."),
+   "דקירת עור+ניקוז":L("נקב את העור ונקז שומן עודף.","Prick the skin and drain excess fat."),
+   "חריטת עור":L("חרוט את שכבת השומן בתבנית מעוינים.","Score the fat layer in a diamond pattern."),
+   "ניקוז שומן":L("נקז את השומן הנמס במהלך העישון.","Drain the fat rendered during smoking."),
+   "הפיכת עור":L("הפוך לצריבת העור בצד מטה.","Flip to sear the skin side down.")};
+  return map[m]||t(m);
 }
 function soTreatText(m){
   if(m.startsWith("עטיפה")) return L(`ב'סטָאל' עטוף בנייר כסף/קצבים (${m}) כדי לעבור מהר ולשמר לחות.`,`At the stall, wrap in foil/butcher paper (${t(m)}) to push through faster and hold moisture.`);
-  const he={"שיטת 3-2-1":"3 שעות עישון גלוי, 2 שעות עטוף עם נוזל, 1 שעה גלוי עם גלייז.",
-   "שיטת 2-2-1":"2 שעות גלוי, 2 שעות עטוף עם נוזל, 1 שעה גלוי עם גלייז (לצלעות דקות).",
-   "גלייז בסיום":"מרח גלייז דביק ב-30 הדקות האחרונות.","מריחה":"רסס/מרח נוזל לשמירת לחות וצבע.",
-   "הפיכה":"הפוך באמצע לעישון אחיד.","סיבוב שיפוד":"סובב את השיפוד לעישון אחיד מכל הצדדים.",
-   "עטיפת חזה":"עטוף את החזה בנייר כסף כשמגיע ליעד, להגן מייבוש.","דקירת עור+ניקוז":"נקב עור ונקז שומן.","דקירת עור":"נקב את העור לשחרור שומן."};
-  const en={"שיטת 3-2-1":"3 hours smoking uncovered, 2 hours wrapped with liquid, 1 hour uncovered with glaze.",
-   "שיטת 2-2-1":"2 hours uncovered, 2 hours wrapped with liquid, 1 hour uncovered with glaze (for thin ribs).",
-   "גלייז בסיום":"Brush on a sticky glaze in the last 30 minutes.","מריחה":"Spritz/brush liquid to keep moisture and color.",
-   "הפיכה":"Flip halfway for even smoking.","סיבוב שיפוד":"Rotate the skewer for even smoking on all sides.",
-   "עטיפת חזה":"Wrap the brisket in foil when it hits target, to protect from drying.","דקירת עור+ניקוז":"Prick the skin and drain fat.","דקירת עור":"Prick the skin to release fat."};
-  return (getLang()==='he'?he:en)[m]||t(m);
+  // i18n: static-literal L(he,en) per smoking-treatment line → dict-localized for non-Hebrew, never an
+  // English fallback (tnode cannot rescue English). Times ("3 שעות… 2 שעות… 1 שעה… 30 הדקות") are inside
+  // both args verbatim, so Guard B validates every number survives the translation (safety invariance).
+  const map={
+   "שיטת 3-2-1":L("3 שעות עישון גלוי, 2 שעות עטוף עם נוזל, 1 שעה גלוי עם גלייז.","3 hours smoking uncovered, 2 hours wrapped with liquid, 1 hour uncovered with glaze."),
+   "שיטת 2-2-1":L("2 שעות גלוי, 2 שעות עטוף עם נוזל, 1 שעה גלוי עם גלייז (לצלעות דקות).","2 hours uncovered, 2 hours wrapped with liquid, 1 hour uncovered with glaze (for thin ribs)."),
+   "גלייז בסיום":L("מרח גלייז דביק ב-30 הדקות האחרונות.","Brush on a sticky glaze in the last 30 minutes."),
+   "מריחה":L("רסס/מרח נוזל לשמירת לחות וצבע.","Spritz/brush liquid to keep moisture and color."),
+   "הפיכה":L("הפוך באמצע לעישון אחיד.","Flip halfway for even smoking."),
+   "סיבוב שיפוד":L("סובב את השיפוד לעישון אחיד מכל הצדדים.","Rotate the skewer for even smoking on all sides."),
+   "עטיפת חזה":L("עטוף את החזה בנייר כסף כשמגיע ליעד, להגן מייבוש.","Wrap the brisket in foil when it hits target, to protect from drying."),
+   "דקירת עור+ניקוז":L("נקב עור ונקז שומן.","Prick the skin and drain fat."),
+   "דקירת עור":L("נקב את העור לשחרור שומן.","Prick the skin to release fat.")};
+  return map[m]||t(m);
 }
 
 /* ---------- checklist + timer state ---------- */
@@ -2676,8 +2697,42 @@ const SERV_TYPES={
   veg:{heb:'🥦 ירקות (תוספת)',eng:'🥦 Vegetables (side)',light:120,reg:200,heavy:280,note:'ירקות על הגריל/בתנור כתוספת',noteEn:'Grilled/roasted vegetables as a side'},
   fruit:{heb:'🍑 פירות (קינוח)',eng:'🍑 Fruit (dessert)',light:100,reg:150,heavy:220,note:'פירות צלויים כקינוח/תוספת',noteEn:'Grilled fruit as dessert/side'}
 };
-function servTypeName(v){ return getLang()==='he'?v.heb:(v.eng||v.heb); }
-function servTypeNote(v){ return getLang()==='he'?v.note:(v.noteEn||v.note); }
+// i18n: SERV_TYPES is a module-level const (built ONCE) whose heb/eng/note/noteEn strings would freeze
+// the language at load time if L() were inlined into it. Localize at RENDER time instead — the static
+// L(he,en) literals below are what the extractor registers as KNOWN keys, so build.py Guard A enforces a
+// per-language translation for every dish-type name and note, and Guard B validates any numbers survive.
+// The old `getLang()==='he'?v.heb:(v.eng||v.heb)` shipped English for every non-Hebrew language (tnode
+// cannot rescue an English string) — exactly the leak class fixed at equipChip/servType's siblings.
+function servTypeNameL(heb){
+  switch(heb){
+    case '🥩 בשר עיקרי':          return L('🥩 בשר עיקרי','🥩 Main meat');
+    case '🌭 נקניקיות / טחון':     return L('🌭 נקניקיות / טחון','🌭 Sausages / ground');
+    case '🐟 דג':                 return L('🐟 דג','🐟 Fish');
+    case '🦐 פירות ים (עם קליפה)': return L('🦐 פירות ים (עם קליפה)','🦐 Seafood (in shell)');
+    case '🫀 איברים פנימיים':      return L('🫀 איברים פנימיים','🫀 Offal');
+    case '🍖 שרקוטרי / מיובש':     return L('🍖 שרקוטרי / מיובש','🍖 Charcuterie / cured');
+    case '🧀 גבינה / מנה ראשונה':  return L('🧀 גבינה / מנה ראשונה','🧀 Cheese / starter');
+    case '🥦 ירקות (תוספת)':       return L('🥦 ירקות (תוספת)','🥦 Vegetables (side)');
+    case '🍑 פירות (קינוח)':       return L('🍑 פירות (קינוח)','🍑 Fruit (dessert)');
+    default: return heb;
+  }
+}
+function servTypeNoteL(note){
+  switch(note){
+    case 'מנה עיקרית — סטייק, צלי, עוף':                          return L('מנה עיקרית — סטייק, צלי, עוף','Main course — steak, roast, chicken');
+    case 'נקניקיות, המבורגר, קבב':                                return L('נקניקיות, המבורגר, קבב','Sausages, burgers, kebab');
+    case 'פילה דג כמנה עיקרית':                                   return L('פילה דג כמנה עיקרית','Fish fillet as a main');
+    case 'שרימפס/סרטן/לובסטר — כולל פחת קליפה':                   return L('שרימפס/סרטן/לובסטר — כולל פחת קליפה','Shrimp/crab/lobster — includes shell loss');
+    case 'כבד, לב, שקדים — לרוב מנה עשירה וקטנה יותר':            return L('כבד, לב, שקדים — לרוב מנה עשירה וקטנה יותר','Liver, heart, sweetbreads — usually a rich, smaller portion');
+    case 'סלמי, פסטרמה, בשר מיובש, בייקון — כפרוסות דקות, בלי בישול': return L('סלמי, פסטרמה, בשר מיובש, בייקון — כפרוסות דקות, בלי בישול','Salami, pastrami, cured meat, bacon — thin slices, no cooking');
+    case 'קרש גבינות, פתיח':                                      return L('קרש גבינות, פתיח','Cheese board, appetizer');
+    case 'ירקות על הגריל/בתנור כתוספת':                           return L('ירקות על הגריל/בתנור כתוספת','Grilled/roasted vegetables as a side');
+    case 'פירות צלויים כקינוח/תוספת':                             return L('פירות צלויים כקינוח/תוספת','Grilled fruit as dessert/side');
+    default: return note;
+  }
+}
+function servTypeName(v){ return servTypeNameL(v.heb); }
+function servTypeNote(v){ return servTypeNoteL(v.note); }
 function servTypeFor(c){
   if(!c) return 'meat'; const cat=c.cat||'';
   if(cat==='פירות ים') return /טונה|הליבוט|סלמון|דג/.test(c.heb||'')?'fish':'seafood';
@@ -8807,8 +8862,25 @@ const UI_LEVELS={
   mid:{ name:'בינוני', nameEn:'Intermediate', desc:'האיזון הרגיל — כל המידע, בלי עומס יתר', descEn:'The usual balance — all the info, without overload' },
   pro:{ name:'מתקדם', nameEn:'Advanced', desc:'הכל גלוי: מספרים מדויקים, כל האפשרויות', descEn:'Everything visible: precise numbers, all options' }
 };
-function uiLevelName(k){ const o=UI_LEVELS[k]||{}; return getLang()==='he'?o.name:(o.nameEn||o.name); }
-function uiLevelDesc(k){ const o=UI_LEVELS[k]||{}; return getLang()==='he'?o.desc:(o.descEn||o.desc); }
+// i18n: UI_LEVELS is a module-level const → localize its name/desc at render time through static-literal
+// L() maps (keyed on the stable level id) so a non-Hebrew language shows its dict value, not the English
+// nameEn/descEn fallback. The literals are extractor-KNOWN → Guard A enforces a translation for each.
+function uiLevelName(k){
+  switch(k){
+    case 'beginner': return L('מתחיל','Beginner');
+    case 'mid':      return L('בינוני','Intermediate');
+    case 'pro':      return L('מתקדם','Advanced');
+    default: { const o=UI_LEVELS[k]||{}; return getLang()==='he'?o.name:(o.nameEn||o.name); }
+  }
+}
+function uiLevelDesc(k){
+  switch(k){
+    case 'beginner': return L('הדרכה צעד-אחר-צעד, פחות מספרים בבת אחת','Step-by-step guidance, fewer numbers at once');
+    case 'mid':      return L('האיזון הרגיל — כל המידע, בלי עומס יתר','The usual balance — all the info, without overload');
+    case 'pro':      return L('הכל גלוי: מספרים מדויקים, כל האפשרויות','Everything visible: precise numbers, all options');
+    default: { const o=UI_LEVELS[k]||{}; return getLang()==='he'?o.desc:(o.descEn||o.desc); }
+  }
+}
 const LEVEL_SHAPE={beginner:'5', mid:'1', pro:'3'};   // 5=צירים מתקפלים · 1=קו-זמן אנכי · 3=צעדים אופקי
 const SHAPE_NAMES={'5':'צירים מתקפלים','1':'קו-זמן אנכי','3':'צעדים אופקי'};
 // SHAPE_NAMES_EN deleted (v268 T4, spec §2 mech-4) — routed through t() (dict-driven; he byte-identical).
@@ -9394,6 +9466,23 @@ const HOME_LANES=[
   { m:'sv', ic:'💧', he:'סו-ויד', en:'Sous-vide',
     keys:['cut-6','cut-11','cut-20','cut-27','cut-23','cut-26'] },               // Picanha, Tomahawk, Tri-Tip, Tenderloin, Prime Rib, Striploin
 ];
+// i18n: HOME_LANES is a module-level const; its he/en/tip strings would freeze the language if L() were
+// inlined. Localize at render time via static-literal L() maps keyed on the (stable) method id → the
+// literals are extractor-KNOWN so Guard A enforces them, and the smoke tip's temps are inside both args
+// (Guard B). The old `he?ln.he:ln.en` / `he?ln.tip[0]:ln.tip[1]` shipped English for every non-Hebrew lang.
+function homeLaneHead(ln){
+  switch(ln.m){
+    case 'smoke': return L('מעשנה','Smoker');
+    case 'grill': return L('גריל','Grill');
+    case 'sv':    return L('סו-ויד','Sous-vide');
+    default: return L(ln.he, ln.en);
+  }
+}
+function homeLaneTip(ln){
+  if(!ln.tip) return '';
+  if(ln.m==='smoke') return L('נמוך ואיטי — 105-110°C, עשן אלון/היקורי','Low & slow — 105–110°C, oak/hickory smoke');
+  return L(ln.tip[0], ln.tip[1]);
+}
 function renderHomeLanes(){
   const host=$("#cHomeLanes"); if(!host) return;
   const he=(typeof getLang!=='function' || getLang()==='he');
@@ -9405,8 +9494,9 @@ function renderHomeLanes(){
       return `<button class="lane-chip" data-k="${k}">${nm}</button>`;
     }).filter(Boolean).join('');
     if(!chips) return;
-    const tip=ln.tip?`<div class="lane-tip">${he?ln.tip[0]:ln.tip[1]}</div>`:'';
-    html+=`<div class="lane lane-${ln.m}"><div class="lane-head"><span class="lane-ic">${ln.ic}</span>${he?ln.he:ln.en}</div><div class="lane-rail">${chips}</div>${tip}</div>`;
+    const tipTxt=homeLaneTip(ln);
+    const tip=tipTxt?`<div class="lane-tip">${tipTxt}</div>`:'';
+    html+=`<div class="lane lane-${ln.m}"><div class="lane-head"><span class="lane-ic">${ln.ic}</span>${homeLaneHead(ln)}</div><div class="lane-rail">${chips}</div>${tip}</div>`;
   });
   host.innerHTML=html;
   host.querySelectorAll('.lane-chip[data-k]').forEach(function(b){ b.addEventListener('click',function(){ const m=resolveItem(b.dataset.k); if(!m) return; m.kind==='cut'?openCut(m.obj):m.kind==='spec'?openSpec(m.obj):openMake(String(m.key).slice(5)); }); });

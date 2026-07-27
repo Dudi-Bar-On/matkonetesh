@@ -119,3 +119,76 @@ for (const lang of LANGS) {
     }
   });
 }
+
+// ── v277: the ADJACENT recipe/home render sites that leaked the same way ──────────────────────────────
+// Same leak CLASS as above (a `getLang()==='he'?he:en` ternary / `(he?heMap:enMap)[k]` that returned the
+// English fallback for every non-Hebrew language, bypassing the dict). Sites now routed through L():
+//   • servTypeName / servTypeNote — the recipe PORTION calculator's dish-type <select> + note
+//   • treatText / soTreatText      — seasoning-prep + smoking-treatment prose (soTreatText carries TIMES)
+//   • _occListHtml slot label      — occupancy printable list "shelf N"/"zone N"
+// The check derives everything from the RUNTIME (no hard-coded prose): it renders each site once in he
+// (which yields the Hebrew dict KEY) and once in the target language, then asserts the target rendering
+// (a) drops all raw Hebrew, (b) EQUALS the dict value for its Hebrew source whenever the dict holds a real
+// (differing) translation — i.e. it is genuinely dict-driven, not the English fallback — and (c) preserves
+// every number from the source verbatim (Guard-B / DoD-10 safety invariance for the timed treatments).
+const TREAT_KEYS = ["צינון","צינון מלא","ייבוש","ייבוש עור","קילוף קרום","דקירת עור+ניקוז","חריטת עור","ניקוז שומן","הפיכת עור"];
+const SOTREAT_KEYS = ["שיטת 3-2-1","שיטת 2-2-1","גלייז בסיום","מריחה","הפיכה","סיבוב שיפוד","עטיפת חזה","דקירת עור+ניקוז","דקירת עור"];
+
+for (const lang of LANGS) {
+  test(`i18n[${lang}] portion-calc + occupancy slot + treatment prose are dict-localized (no English fallback, no raw Hebrew, numbers preserved)`, async ({ page }) => {
+    await seedApp(page, { 'mk-lang': JSON.stringify(lang), 'mk-uilevel-asked': 'true' });
+
+    const res = await page.evaluate(({ lang, treatKeys, sotreatKeys }) => {
+      // render `fn` in he (→ Hebrew dict KEY) then in the target lang (→ what a real user sees)
+      const pair = (fn) => { store.set('mk-lang', 'he'); const he = fn(); store.set('mk-lang', lang); const tr = fn(); return { he, tr }; };
+
+      const serv = Object.values(SERV_TYPES).map((v) => ({
+        name: pair(() => servTypeName(v)),
+        note: pair(() => servTypeNote(v)),
+      }));
+      const treat = treatKeys.map((k) => pair(() => treatText(k)));
+      const sotreat = sotreatKeys.map((k) => pair(() => soTreatText(k)));
+      const occ = ['shelf', 'zone'].map((kind) => {
+        const o = { mode: 'area', cap: { slotKind: kind }, items: [{ mode: 'area', slot: 0, cm2: 100, name: 'x' }] };
+        const src = (kind === 'zone') ? 'אזור' : 'מדף';
+        const eng = (kind === 'zone') ? 'zone' : 'shelf';
+        return Object.assign({ kind, src, eng }, pair(() => _occListHtml(o)));
+      });
+
+      store.set('mk-lang', lang);
+      const dict = getDict() || {};
+      return { dict, serv, treat, sotreat, occ };
+    }, { lang, treatKeys: TREAT_KEYS, sotreatKeys: SOTREAT_KEYS });
+
+    const nums = (s) => (String(s).match(/\d+/g) || []);
+    const checkPair = (heVal, trVal, label) => {
+      expect(trVal, `${label}[${lang}]: raw Hebrew leaked → ${JSON.stringify(trVal)}`).not.toMatch(HEB);
+      const dv = res.dict[heVal];
+      if (dv != null && dv !== heVal) {
+        expect(trVal, `${label}[${lang}]: English fallback rendered instead of the dict value ${JSON.stringify(dv)} → ${JSON.stringify(trVal)}`).toBe(dv);
+      }
+      for (const n of nums(heVal)) {
+        expect(String(trVal), `${label}[${lang}]: number "${n}" dropped (src ${JSON.stringify(heVal)}) → ${JSON.stringify(trVal)}`).toContain(n);
+      }
+    };
+
+    // sanity: the live dict actually holds real (differing) translations to enforce (else the test is vacuous)
+    const realServ = res.serv.filter((s) => res.dict[s.name.he] && res.dict[s.name.he] !== s.name.he).length;
+    expect(realServ, 'expected the dict to hold real servType translations to enforce').toBeGreaterThan(0);
+    const realTreat = res.treat.concat(res.sotreat).filter((p) => res.dict[p.he] && res.dict[p.he] !== p.he).length;
+    expect(realTreat, 'expected the dict to hold real treatment-prose translations to enforce').toBeGreaterThan(0);
+
+    for (const s of res.serv) { checkPair(s.name.he, s.name.tr, 'servTypeName'); checkPair(s.note.he, s.note.tr, 'servTypeNote'); }
+    for (const p of res.treat) checkPair(p.he, p.tr, 'treatText');
+    for (const p of res.sotreat) checkPair(p.he, p.tr, 'soTreatText');
+    for (const o of res.occ) {
+      // the occupancy list HTML must carry the dict slot label, never raw Hebrew, never the English fallback
+      expect(o.tr, `occupancy[${o.kind}][${lang}]: raw Hebrew leaked in slot list → ${o.tr}`).not.toMatch(HEB);
+      const dv = res.dict[o.src];
+      if (dv != null && dv !== o.eng) {
+        expect(o.tr, `occupancy[${o.kind}][${lang}]: expected dict slot label ${JSON.stringify(dv)} in → ${o.tr}`).toContain(dv);
+        expect(o.tr, `occupancy[${o.kind}][${lang}]: English fallback "${o.eng}" leaked → ${o.tr}`).not.toContain(o.eng);
+      }
+    }
+  });
+}

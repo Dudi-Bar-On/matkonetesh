@@ -550,8 +550,13 @@ _GB_UNIT_CLASS = [
     # otherwise be grabbed by the bare-ч HOUR rule. cook_measure is self-coarse (not in _GB_COARSE), so a
     # measure↔measure pair passes while measure↔(°C/g-kg/min-hr) or measure→metric conversion FAILS.
     (_reB.compile('^(?:כפית|כפיות|כפות|כפ' + _GB_QM + r'|כף|כוסות|כוס|tbsps?\.?|tablespoons?|tsps?\.?|teaspoons?|cups?\b|ст\.?\s*л\.?|ч\.?\s*л\.?|столов|чайн|стакан|чашк|c\.?\s*à\.?\s*[sc]\b|cuill[eè]res?|tasses?\b|EL\b|TL\b|essl[öo]ffel|teel[öo]ffel|tassen?\b|cucharaditas?|cucharadas?|cdtas?\.?|cdas?\.?|tazas?\b|cucchiaini|cucchiaino|cucchiai|cucchiaio|tazz[ae]\b|κουταλ|φλιτζαν|colheres?|x[ií]caras?|ch[áa]venas?|copos?\b)', _reB.I), 'cook_measure'),
-    (_reB.compile('^(?:דק(?:ות|' + _GB_QM + r')?|minutes?|mins?\b|minutos?|minuti|minuten|minut|minuuttia|dakika|menit|perc\b|phút|phut|минут|мин(?![' + _GB_CYR + r'])|хвилин|хв(?![' + _GB_CYR + r'])|λεπτ|分钟|分|분|นาที|मिनट|دقيقة|دقائق)', _reB.I), 'timeMin'),
-    (_reB.compile('^(?:שעות|שע' + _GB_QM + r'?|ש\b|hours?|hrs?\b|h\b|horas?|ore\b|stunden|heures?|hodin|godzin|óra|órát|timmar|tuntia|saat\b|jam\b|giờ|uur|uren|timer|часов|часа|час(?![' + _GB_CYR + r'])|ч(?![' + _GB_CYR + r'])|годин|ώρες|ώρα|ωρών|時間|小时|时|시간|ชั่วโมง|घंटे|घंटा|ساعة|ساعات)', _reB.I), 'timeHr'),
+    # ה? = optional Hebrew definite article ("30 הדקות" = "the 30 minutes") — so a faithful Hebrew SOURCE with
+    # the article classifies as timeMin instead of falling through to '?' (2026-07-27; only affects new keys —
+    # verified the sole existing digit+ה+time-unit source key is the glaze-timing string this covers).
+    (_reB.compile('^(?:ה?דק(?:ות|' + _GB_QM + r')?|minutes?|mins?\b|minutos?|minuti|minuten|minut|minuuttia|dakika|menit|perc\b|phút|phut|минут|мин(?![' + _GB_CYR + r'])|хвилин|хв(?![' + _GB_CYR + r'])|λεπτ|分钟|分|분|นาที|मिनट|دقيقة|دقائق)', _reB.I), 'timeMin'),
+    # stunden? / or[ae] = German + Italian SINGULAR hour forms ("1 Stunde" / "1 ora"), siblings of the plural
+    # Stunden / ore already listed — a faithful "1 hour" translation was false-failing on the singular (2026-07-27).
+    (_reB.compile('^(?:שעות|שע' + _GB_QM + r'?|ש\b|hours?|hrs?\b|h\b|horas?|or[ae]\b|stunden?|heures?|hodin|godzin|óra|órát|timmar|tuntia|saat\b|jam\b|giờ|uur|uren|timer|часов|часа|час(?![' + _GB_CYR + r'])|ч(?![' + _GB_CYR + r'])|годин|ώρες|ώρα|ωρών|時間|小时|时|시간|ชั่วโมง|घंटे|घंटा|ساعة|ساعات)', _reB.I), 'timeHr'),
     (_reB.compile('^(?:ימים|יום|days?|d[ií]as?|giorni|tage|jours?|dni|dní|dny|dzień|den\\b|nap\\b|napot|dage|dagar|dager|dagen|päivää|gün|hari|ngày|zile|дней|дня|день(?![' + _GB_CYR + r'])|суток|днів|дні|μέρες|ημέρες|日|天|일|วัน|दिन|أيام|يوم)', _reB.I), 'timeDay'),
     (_reB.compile(r'^(?:ppm|частей\s*на\s*миллион)', _reB.I), 'ppm'),
     (_reB.compile(r'^(?:%|אחוז|percent|prozent|pour ?cent|por ?ciento|per ?cento|процент|τοις\s*εκατό)', _reB.I), 'pct'),
