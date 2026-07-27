@@ -33,6 +33,14 @@ async function driveStates(page: any, lang: string) {
     `(function(){var c=DATA.cuts.find(x=>x.n===1); if(c)openCut(c);})()`,                       // recipe under insufficient kit → cannot-cook panel + steps
     `openCart()`, `openSeasonings()`, `openWoods()`, `openAsk()`, `openTools()`, `openAppearance()`,
     `typeof openEventPlanner==='function'&&openEventPlanner()`,
+    // v268.1 — the data-driven SCREENS the v268 test never drove (catalog grid + category, event
+    // wizard all steps, projects/pantry). These render recipe/category/wood/origin DATA values +
+    // static-shell chrome; driving them arms __i18nTrace + the per-screen raw-Hebrew scan below.
+    `(function(){ if(typeof closePanel==='function') closePanel(); if(typeof cNavGo==='function') cNavGo('catalog'); if(typeof catView==='function') catView('landing'); })()`,
+    `(function(){ if(typeof setCatNav==='function') setCatNav('בשר אדום'); if(typeof buildChips==='function') buildChips(); if(typeof catView==='function') catView('cat'); })()`,
+    `(function(){ if(typeof setMenuCtx==='function') setMenuCtx('event'); if(typeof cNavGo==='function') cNavGo('wizard'); for(var i=0;i<6;i++){ try{ if(typeof cwGo==='function') cwGo(i); }catch(e){} } })()`,
+    `(function(){ if(typeof cNavGo==='function') cNavGo('projects'); })()`,
+    `(function(){ if(typeof cNavGo==='function') cNavGo('events'); })()`,
     `typeof toast==='function'&&toast('נשמר')`,                                                 // fire a TOAST
     `(function(){ if(typeof setLang==='function'){ setLang('he'); setLang(${JSON.stringify(lang)}); } })()`, // language-switch while a panel is open
   ];
@@ -72,6 +80,44 @@ for (const lang of LANGS) {
     });
     if (leaks.length) console.log(`[${lang}] raw-Hebrew leaks (${leaks.length}):`, JSON.stringify(leaks.slice(0, 15)));
     expect(leaks.length, `${lang}: raw Hebrew rendered in a non-Hebrew language — see log`).toBe(0);
+  });
+
+  // v268.1 — PER-SCREEN scan. Screens (catalog/wizard/projects/events) are mutually exclusive (.on
+  // toggling), so a single end-of-run scan only sees the last one. Navigate each screen (and each
+  // wizard step) and scan it WHILE VISIBLE, including placeholder/aria-label/title attributes (the
+  // owner-#3 leak). Skips [data-mt] async-prose (v269, Hebrew-until-hydrated) + the version stamp.
+  test(`i18n completeness — no raw-Hebrew per SCREEN in ${lang} (catalog grid/wizard/projects)`, async ({ page }) => {
+    await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
+    await page.evaluate(`(function(){
+      equipSave([{id:'sm1',cat:'smoker',type:'קטל (ככלי עישון)',name:'My Smoker',cap:{racks:1,areaCm2:2400}}]); equipSetConfigured();
+      saveMenu({guests:4,appetite:'reg',kosher:false,keys:['cut-1','cut-74'],sides:[],drinks:[],desserts:[],gpm:0});
+      if(typeof setMenuCtx==='function') setMenuCtx('event');
+      if(typeof setLang==='function') setLang(${JSON.stringify(lang)});
+    })()`);
+    const SCREENS: [string, string][] = [
+      ['catalog-landing', `if(typeof closePanel==='function')closePanel(); cNavGo('catalog'); catView('landing');`],
+      ['catalog-category', `setCatNav('בשר אדום'); if(typeof buildChips==='function')buildChips(); catView('cat');`],
+      ['projects', `cNavGo('projects');`],
+      ['events', `cNavGo('events');`],
+    ];
+    for (let i = 0; i < 6; i++) SCREENS.push([`wizard-step-${i}`, `cNavGo('wizard'); try{cwGo(${i});}catch(e){} if(typeof cwSyncFromMenu==='function'){try{cwSyncFromMenu();}catch(e){}}`]);
+    const scan = `(function(){
+      const HE=/[֐-׿]/; const out=[]; const seen=new Set();
+      const skip=el=>{ while(el){ if(el.getAttribute){ if(el.getAttribute('dir')==='ltr')return true; if(el.hasAttribute('data-mt'))return true; const c=(el.className||'').toString(); if(c.includes('lf-name')||c.includes('foot-stamp'))return true; } el=el.parentElement; } return false; };
+      const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT); let n;
+      while((n=w.nextNode())){ const t=(n.textContent||'').trim(); if(!t||!HE.test(t))continue; const el=n.parentElement; if(!el||!el.getClientRects().length)continue; if(skip(el))continue; const k=t.slice(0,60); if(!seen.has(k)){seen.add(k);out.push(k);} }
+      document.querySelectorAll('[placeholder],[aria-label],[title]').forEach(function(el){ if(!el.getClientRects().length||skip(el))return; ['placeholder','aria-label','title'].forEach(function(a){ const v=el.getAttribute(a); if(v&&HE.test(v)){ const k='@'+a+':'+v.slice(0,50); if(!seen.has(k)){seen.add(k);out.push(k);} } }); });
+      return out;
+    })()`;
+    const all: Record<string, string[]> = {};
+    for (const [name, drive] of SCREENS) {
+      try { await page.evaluate(drive); } catch {}
+      await page.waitForTimeout(80);
+      const leaks: string[] = await page.evaluate(scan);
+      if (leaks.length) all[name] = leaks;
+    }
+    if (Object.keys(all).length) console.log(`[${lang}] per-screen raw-Hebrew:`, JSON.stringify(all).slice(0, 1600));
+    expect(Object.keys(all).length, `${lang}: raw Hebrew on ${Object.keys(all).join(', ')} — see log`).toBe(0);
   });
 }
 

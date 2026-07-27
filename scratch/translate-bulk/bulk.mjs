@@ -353,6 +353,10 @@ async function main() {
       const tStart = Date.now();
       let mt = '', error = null;
       const extraClauses = args.retryFailed ? retryClausesFor(priorFailedMap.get(keyOf(entry))?.failedGates) : [];
+      // v268.1 §10.19 — 'names' are barbecue/butchery cut & dish names. translategemma:27b invents wrong
+      // cuts from the English pivot (Brisket→"Paleron"/chuck). Anchor it: keep international loanwords
+      // unchanged rather than substituting a different cut.
+      if (entry.section === 'names') extraClauses.push('The source is a barbecue/butchery meat-CUT or DISH NAME. Render it as the exact standard culinary term in the target language. If it is an internationally-used loanword with no common local term (e.g. Brisket, Pastrami, Chorizo, Tri-Tip, Pulled Pork, Jerky, Picanha), keep it UNCHANGED. NEVER substitute a different cut of meat or a different dish — naming the correct cut matters more than translating every word.');
       // ENGLISH-PIVOT: sourceText is entry.en (verified English) when pivot, else entry.he (unchanged
       // behavior). entry.en is guaranteed non-empty by buildWorkList's own iteration (it IS the value
       // being enumerated from en.json/en.data.json) — the nonEmpty() guard is defensive belt-and-braces,

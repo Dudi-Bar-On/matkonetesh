@@ -2499,8 +2499,8 @@ function buildSubChips(){
   if(activeGroup){ const g=CAT_GROUPS.find(x=>x.g===activeGroup); cats=(g?g.cats:[]).filter(c=>counts[c]>0); }
   else { wrap.innerHTML=''; wrap.style.display='none'; return; }
   wrap.style.display='';
-  wrap.innerHTML=`<span class="chip ${!activeCats.size?'on':''}" data-all>הכל בקבוצה</span>`+
-    cats.map(c=>`<span class="chip" data-cat="${c}">${catEmoji(c)} ${c} <b>${counts[c]}</b></span>`).join("");
+  wrap.innerHTML=`<span class="chip ${!activeCats.size?'on':''}" data-all>${L('הכל בקבוצה','All in group')}</span>`+
+    cats.map(c=>`<span class="chip" data-cat="${c}">${catEmoji(c)} ${t(c)} <b>${counts[c]}</b></span>`).join("");
   wrap.onclick=e=>{ const t=e.target.closest('.chip'); if(!t) return;
     if(t.hasAttribute('data-all')){ activeCats.clear(); }
     else { const c=t.dataset.cat; activeCats.has(c)?activeCats.delete(c):activeCats.add(c); }
@@ -2521,17 +2521,17 @@ function buildCatLanding(){
   const counts=allCatCounts();
   const gc=g=>g.cats.reduce((s,c)=>s+(counts[c]||0),0);
   const tiles=CAT_GROUPS.filter(g=>gc(g)>0).map(g=>
-    `<button class="cattile" data-tilegroup="${g.g}"><span class="ct-ic">${g.ic}</span><span class="ct-name">${g.g}</span><span class="ct-count">${gc(g)} פריטים</span></button>`).join('');
-  host.innerHTML=`<div class="cat-hero"><h3 data-i18n-html="home.what">מה <b>מדליקים</b> היום?</h3><p>בחר קטגוריה או חפש למעלה</p></div>
+    `<button class="cattile" data-tilegroup="${g.g}"><span class="ct-ic">${g.ic}</span><span class="ct-name">${t(g.g)}</span><span class="ct-count">${gc(g)} ${L('פריטים','items')}</span></button>`).join('');
+  host.innerHTML=`<div class="cat-hero"><h3 data-i18n-html="home.what">מה <b>מדליקים</b> היום?</h3><p>${L('בחר קטגוריה או חפש למעלה','Choose a category or search above')}</p></div>
     <div class="cat-tiles">
-      <button class="cattile tfav" data-tilefav><span class="ct-ic">⭐</span><span class="ct-name">מועדפים</span><span class="ct-count" id="favTileN">0 פריטים</span></button>
+      <button class="cattile tfav" data-tilefav><span class="ct-ic">⭐</span><span class="ct-name">${L('מועדפים','Favorites')}</span><span class="ct-count" id="favTileN">0 ${L('פריטים','items')}</span></button>
       ${tiles}
-      <button class="cattile tdict" data-tilegloss><span class="ct-ic">📖</span><span class="ct-name">מילון מונחים</span><span class="ct-count">שיטות, עצים ופחם</span></button>
+      <button class="cattile tdict" data-tilegloss><span class="ct-ic">📖</span><span class="ct-name">${L('מילון מונחים','Glossary')}</span><span class="ct-count">${L('שיטות, עצים ופחם','Methods, woods & charcoal')}</span></button>
     </div>`;
   host.querySelectorAll('[data-tilegroup]').forEach(b=>b.addEventListener('click',()=>{ filters.fav=false; setCatNav(b.dataset.tilegroup); buildChips(); catView('cat'); }));
   host.querySelectorAll('[data-tilefav]').forEach(b=>b.addEventListener('click',()=>{ filters.fav=true; setCatNav(null); const fb=$("#favBtn"); if(fb)fb.classList.add('on'); catView('fav'); }));
   host.querySelectorAll('[data-tilegloss]').forEach(b=>b.addEventListener('click',()=>catView('gloss')));
-  const ft=$("#favTileN"); if(ft) ft.textContent=(favs.size||0)+' פריטים';
+  const ft=$("#favTileN"); if(ft) ft.textContent=(favs.size||0)+' '+L('פריטים','items');
 }
 // ── catalog view controller: landing / category / gloss / fav / search ──
 function catView(mode){
@@ -2544,17 +2544,17 @@ function catView(mode){
     buildCatLanding();
     show(['catLanding']);
     hide(['catGroups','chips','filterBar','countRow','cutsWrap','makesH','makesSub','makeGrid','specialsH','specSub','specGrid','glossH','glossSub','gloss','glossBar']);
-    $("#catTitle").textContent='קטלוג';
+    $("#catTitle").textContent=L('קטלוג','Catalog');
   } else if(mode==='gloss'){
     hide(['catLanding','catGroups','chips','filterBar','countRow','cutsWrap','makesH','makesSub','makeGrid','specialsH','specSub','specGrid']);
     show(['glossH','glossSub','gloss','glossBar']);
-    $("#catTitle").textContent='מילון מונחים';
+    $("#catTitle").textContent=L('מילון מונחים','Glossary');
   } else {
     hide(['catLanding','glossH','glossSub','gloss','glossBar','catGroups']);
     show(['chips','countRow','cutsWrap']);
     $("#chips").style.display = activeGroup?'':'none';
     $("#filterBar").style.display='';
-    $("#catTitle").textContent = mode==='fav'?'מועדפים':(mode==='search'?'תוצאות חיפוש':(activeGroup||'קטלוג'));
+    $("#catTitle").textContent = mode==='fav'?L('מועדפים','Favorites'):(mode==='search'?L('תוצאות חיפוש','Search results'):(activeGroup?t(activeGroup):L('קטלוג','Catalog')));
     render();
   }
 }
@@ -6137,8 +6137,8 @@ function hebSpeechText(t){
   return s.replace(/\s+/g,' ').trim();
 }
 /* ── bilingual voice (v132): input(ASR) lang + answer(TTS) lang ── */
-function vcLang(){ return store.get('mk-vclang')||((typeof getLang==='function'&&getLang()!=='he')?'en':'he'); }        // recognition language — defaults to the UI language
-function vcAnsLang(){ return store.get('mk-vcanslang')||vcLang(); } // answer/TTS language
+function vcLang(){ return (typeof getLang==='function'&&getLang()!=='he')?'en':'he'; }   // v268.1 (#4): voice follows the UI language (he→he, else en); the manual picker was removed. Voice + the spoken-safety guard are he/en; a fr/de/es/it UI gets English voice (safe) until vcGuardSpoken covers those unit words.
+function vcAnsLang(){ return vcLang(); } // answer/TTS language = the voice language (follows the UI)
 function vcLocale(l){ return l==='en'?'en-US':'he-IL'; }
 function enSpeechText(t){ return stripEmoji(String(t)).replace(/·|•/g,', ').replace(/\s+/g,' ').trim(); }
 function speechText(t, lang){ return (lang==='en')?enSpeechText(t):hebSpeechText(t); }
@@ -6266,14 +6266,6 @@ function vcRender(){
     </div>
     ${vcTasks.length>2?`<div class="vc-jumprow"><label>🎯 ${L('קפוץ לשלב:','Jump to step:')}</label><select id="vcStepJump">${vcTasks.map((tk,i)=>`<option value="${i}" ${i===vcIdx?'selected':''}>${esc(fmtClock(tk.t)+' · '+stripEmoji(tk.label))}</option>`).join('')}</select></div>`:''}
     <p class="vc-hint">💡 ${L('מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: "הבא", "הקודם", "הקרא שוב", "פרטים".','Big screen, big buttons — meant to stand by the smoker. Commands: "next", "back", "read again", "details".')}</p>
-    <div class="vc-langrow">
-      <span class="vc-langlbl">🎙️ ${L('שפת דיבור:','Speech language:')}</span>
-      <button class="vc-langbtn ${vcLang()==='he'?'on':''}" data-vc="lang-he">עברית</button>
-      <button class="vc-langbtn ${vcLang()==='en'?'on':''}" data-vc="lang-en">English</button>
-      <span class="vc-langlbl">🔊 ${L('תשובה:','Answer:')}</span>
-      <button class="vc-langbtn ${vcAnsLang()==='he'?'on':''}" data-vc="anslang-he">עברית</button>
-      <button class="vc-langbtn ${vcAnsLang()==='en'?'on':''}" data-vc="anslang-en">English</button>
-    </div>
     <p class="vc-hint">${vcLang()==='en'?'🇬🇧 Voice commands: next · back · read · details · temperature · when.':'פקודות עבריות: הבא · הקודם · הקרא · פרטים · טמפרטורה · מתי.'} ${L('דיבור באנגלית מזוהה לרוב מדויק יותר.','English speech is usually recognized more accurately.')}</p>
     ${aiAvail()?`<p class="vc-hint">✨ ${L('אפשר לשאול שאלות חופשיות בקול (למשל "כמה עוד זמן לחזה?") — אפשר לשאול באנגלית ולקבל תשובה בעברית.','You can ask free questions by voice (e.g. "how much longer for the brisket?") — you can ask in English and get an answer in Hebrew.')}</p>
     <div class="vc-askrow"><input id="vcAskInput" placeholder="${vcAnsLang()==='en'?'Type a question…':'הקלד שאלה…'}"><button class="vc-askbtn" data-vc="asktext">${vcAnsLang()==='en'?'Ask ✨':'שאל ✨'}</button></div>
@@ -6320,10 +6312,7 @@ function vcAction(a){
   }
   else if(a==='mic') vcToggleMic();
   else if(a==='asktext'){ const inp=$("#vcAskInput"); const q=inp&&inp.value.trim(); if(q) vcAskFlow(q); }
-  else if(a==='lang-he'){ store.set('mk-vclang','he'); const wasOn=!!vcRec; if(wasOn){vcRec._stop=true;try{vcRec.stop();}catch(e){}vcRec=null;} vcRender(); if(wasOn) vcToggleMic(); }
-  else if(a==='lang-en'){ store.set('mk-vclang','en'); const wasOn=!!vcRec; if(wasOn){vcRec._stop=true;try{vcRec.stop();}catch(e){}vcRec=null;} vcRender(); if(wasOn) vcToggleMic(); }
-  else if(a==='anslang-he'){ store.set('mk-vcanslang','he'); vcRender(); vcSpeak('התשובות יהיו בעברית','he'); }
-  else if(a==='anslang-en'){ store.set('mk-vcanslang','en'); vcRender(); vcSpeak('Answers will be in English','en'); }
+  // v268.1 (#4): the speech/answer language picker was removed — voice follows the UI language (vcLang/vcAnsLang).
   else if(a==='gemsave'){
     const inp=$("#gemKeyInp"); const k=(inp&&inp.value||'').trim();
     if(k.length<20){ toast('מפתח לא תקין'); return; }
@@ -8889,7 +8878,7 @@ function cwGo(n){
   document.querySelectorAll('.cwstep').forEach(s=>s.classList.toggle('on',+s.dataset.cwstep===n));
   cwPaintProg();
   const visSteps=cook?[0,1,2,3,5]:[0,1,2,3,4,5];
-  const lbl=$("#cwLbl"); if(lbl) lbl.textContent='שלב '+(visSteps.indexOf(n)+1)+'/'+visSteps.length;
+  const lbl=$("#cwLbl"); if(lbl) lbl.textContent=L('שלב','Step')+' '+(visSteps.indexOf(n)+1)+'/'+visSteps.length;
   if(n===0) cwPaintBasics();
   if(n===1) cwPaintPicker();
   if(n===2) cwPaintMethodsFull();
