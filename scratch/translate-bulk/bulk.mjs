@@ -57,6 +57,7 @@ import { loadShippedGuard, mtSafeFolded, hebrewLeak, unitLiteralCheck, safetyLex
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..'); // scratch/translate-bulk -> repo root
+const PAUSE_FILE = join(HERE, 'PAUSE');    // owner 2026-07-27: pause/resume sentinel — checked at each chunk boundary (see queue-ctl.mjs)
 const LANG_DIR = join(REPO_ROOT, 'lang');
 
 const LANGNAME = {
@@ -391,6 +392,15 @@ async function main() {
     }
 
     saveStagedFailed(args.lang, staged, failed, args.stageSuffix);
+
+    // PAUSE sentinel (owner 2026-07-27) — a clean pause at the chunk boundary: the chunk just staged, so
+    // staging is intact and a later `resume` re-invoke picks up at the exact next chunk (zero lost work).
+    // Lets the controller free the GPU for the Playwright suite / verification / builds (§11a), then continue.
+    if (existsSync(PAUSE_FILE)) {
+      const remainingNow = totalToProcess - (staged.entries.length + failed.entries.length);
+      console.log(`[bulk] ⏸ PAUSED at chunk boundary — ${args.lang}: ${remainingNow} remaining, staging intact. \`node queue-ctl.mjs resume\` (or remove PAUSE) and re-invoke to continue.`);
+      break;
+    }
 
     const chunkMs = Date.now() - chunkStart;
     const rateSPerStr = chunkMs / 1000 / chunk.length;

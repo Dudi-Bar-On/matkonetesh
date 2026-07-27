@@ -49,6 +49,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
+const PAUSE_FILE = join(HERE, 'PAUSE');   // owner 2026-07-27: pause/resume sentinel (see queue-ctl.mjs) — stops between languages AND is honored mid-language by bulk.mjs at its chunk boundary
 const PROGRESS = join(HERE, 'PROGRESS.log');
 const BACKOFF_MS = 30_000;
 
@@ -145,6 +146,7 @@ async function main() {
 
   for (const lang of QUEUE) {
     if (stopping) break;
+    if (existsSync(PAUSE_FILE)) { console.log('[queue] ⏸ PAUSED — sentinel present; stopping cleanly between languages. `node queue-ctl.mjs resume` to continue.'); break; }
     if (done.has(lang)) {
       console.log(`[queue] ${lang}: already marked done in PROGRESS.log — skipping.`);
       continue;
@@ -160,6 +162,15 @@ async function main() {
       const t0 = Date.now();
       const { code, signal, stderr } = await runBulkForLang(lang, args.model);
       const elapsedMs = Date.now() - t0;
+
+      // bulk.mjs paused itself at a chunk boundary (sentinel present) → exit 0 but the language is NOT
+      // complete. Stop the queue cleanly rather than treating remaining>0 as a reason to retry.
+      if (existsSync(PAUSE_FILE)) {
+        appendProgress(`[queue] paused ${lang} ${new Date().toISOString()} (chunk boundary, ${elapsedMs}ms)`);
+        console.log(`[queue] ⏸ PAUSED mid-${lang} (bulk stopped at a chunk boundary); staging intact. \`node queue-ctl.mjs resume\` to continue.`);
+        stopping = true;
+        break;
+      }
 
       if (signal === 'SIGINT' || stopping) {
         appendProgress(`[queue] interrupted ${lang} ${new Date().toISOString()} (attempt ${attempt}, ${elapsedMs}ms)`);
