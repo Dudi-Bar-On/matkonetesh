@@ -2411,7 +2411,7 @@ function render(){
   $("#specialsH").style.display=showSpec?"":"none";
   $("#specGrid").style.display=showSpec?"":"none";
   $("#specSub").style.display=showSpec?"":"none";
-  $("#count").textContent=`${cuts.length} נתחים · ${makeEntries.length} מלאכה · ${specs.length} מיוחדים${anyGlobal?' · מסונן':''}`;
+  $("#count").textContent=`${cuts.length} ${L('נתחים','cuts')} · ${makeEntries.length} ${L('מלאכה','craft')} · ${specs.length} ${L('מיוחדים','specials')}${anyGlobal?' · '+L('מסונן','filtered'):''}`;
   const noneAtAll = cutsEmpty && !makeEntries.length && !specs.length;
   // hide the cuts section entirely when there are no cuts but other items exist; keep it (with empty msg) when nothing matches
   $("#cutsWrap").style.display=(cutsEmpty && !noneAtAll)?"none":"";
@@ -2479,7 +2479,7 @@ function buildCatGroups(){
   const counts=allCatCounts(filters.kosher);
   const groupCount=g=>g.cats.reduce((s,c)=>s+(counts[c]||0),0);
   const shown=CAT_GROUPS.filter(g=>groupCount(g)>0);
-  wrap.innerHTML=`<span class="cgroup ${!activeGroup?'on':''}" data-gall>הכל</span>`+
+  wrap.innerHTML=`<span class="cgroup ${!activeGroup?'on':''}" data-gall>${L('הכל','All')}</span>`+
     shown.map(g=>`<span class="cgroup ${activeGroup===g.g?'on':''}" data-group="${g.g}">${g.ic} ${g.g} <b>${groupCount(g)}</b></span>`).join("");
   wrap.onclick=e=>{ const t=e.target.closest('.cgroup'); if(!t) return;
     if(t.hasAttribute('data-gall')){ activeGroup=null; activeCats.clear(); buildCatGroups(); catView('landing'); return; }
@@ -3160,7 +3160,7 @@ function renderAlarm(){
   if(!el){ el=document.createElement('div'); el.id='mkAlarm'; el.className='mk-alarm'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label','טיימר הסתיים'); document.body.appendChild(el); }
   el.innerHTML=`<div class="mka-head">⏰ <b>${ring.length>1?ring.length+' טיימרים הסתיימו':'טיימר הסתיים'}</b></div>`+
     ring.map(function(r){ return `<div class="mka-row"><span class="mka-name">${esc(r.name)}${r.ev?` <small>· ${esc(r.ev)}</small>`:''}</span><button class="mka-stop" data-alarmstop="${encodeURIComponent(r.id)}">🔕 עצור</button></div>`; }).join('')+
-    (ring.length>1?`<button class="mka-stopall" data-alarmstopall>🔕 עצור הכל</button>`:'');
+    (ring.length>1?`<button class="mka-stopall" data-alarmstopall>🔕 ${L('עצור הכל','Stop all')}</button>`:'');
   el.querySelectorAll('[data-alarmstop]').forEach(function(b){ b.addEventListener('click',function(){ ackAlarm(decodeURIComponent(b.dataset.alarmstop)); }); });
   const sa=el.querySelector('[data-alarmstopall]'); if(sa) sa.addEventListener('click',function(){ ackAlarm(); });
 }
@@ -3621,7 +3621,7 @@ function kosherStatusRaw(key){
   return 'kosher';   // beef/lamb/veal, poultry, kosher fish, vegetables, fruit, parve
 }
 function kosherLabel(k){return k==='pork'?L('לא כשר (חזיר)','Non-kosher (pork)'):k==='shellfish'?L('לא כשר (פירות ים / דג ללא קשקשת)','Non-kosher (shellfish / finless fish)'):k==='treif'?L('לא כשר (דם)','Non-kosher (blood)'):k==='dairy'?L('כשר · חלבי','Kosher · dairy'):L('כשר','Kosher');}
-function kosherTag(key){const k=kosherStatus(key);if(k==='pork'||k==='shellfish'||k==='treif')return '<span class="ktag kp">לא כשר</span>';if(k==='dairy')return '<span class="ktag kd">כשר חלבי</span>';return '';}
+function kosherTag(key){const k=kosherStatus(key);if(k==='pork'||k==='shellfish'||k==='treif')return '<span class="ktag kp">'+L('לא כשר','Not kosher')+'</span>';if(k==='dairy')return '<span class="ktag kd">'+L('כשר חלבי','Kosher dairy')+'</span>';return '';}
 // kosher-filter OK = not pork, shellfish, or blood. Dairy is kosher (shown with a "כשר חלבי" tag).
 function isKosherOk(key){const k=kosherStatus(key);return k!=='pork'&&k!=='shellfish'&&k!=='treif';}
 /* v144: equipment-readiness tag — quiet unless gear is configured AND something's actually missing */
@@ -8963,7 +8963,7 @@ function cwPaintPickList(){
     const desc=(typeof itemRichDesc==='function')?itemRichDesc(i):'';
     const sub=[(org?(typeof t==='function'?t(org):org):(typeof t==='function'?t(i.cat):i.cat)), i.eng].filter(Boolean).join(' · ');   // i18n: translate the origin/category
     return `<div class="cmore-item" data-cwpick="${i.key}" style="align-items:flex-start;${on?'border-color:var(--ember);background:linear-gradient(135deg,#fff3e8,#ffe9db)':''}">
-      <span class="mi">${ico}</span><div style="flex:1"><div style="font-weight:700">${itemName(i)}</div><div style="font-size:11px;color:var(--smoke);font-weight:400">${sub}</div>${desc?`<div style="font-size:11px;color:var(--bone);opacity:.75;line-height:1.5;margin-top:3px">${desc}</div>`:''}</div>
+      <span class="mi">${ico}</span><div style="flex:1"><div style="font-weight:700">${itemName(i)}</div><div style="font-size:11px;color:var(--smoke);font-weight:400">${sub}</div>${desc?`<div data-mt style="font-size:11px;color:var(--bone);opacity:.75;line-height:1.5;margin-top:3px">${desc}</div>`:''}</div>
       <span class="mg" style="color:${on?'var(--ember)':'var(--smoke)'};font-size:20px">${on?'✓':'+'}</span></div>`;
   }).join('')||`<div style="color:var(--smoke);text-align:center;padding:20px">${L('לא נמצאו פריטים','No items found')}</div>`);
   host.querySelectorAll('[data-cwpick]').forEach(el=>el.addEventListener('click',()=>{
@@ -9128,7 +9128,7 @@ function cwPaintReview(){
 // wire wizard controls
 (function(){
   const p=$("#cServPlus"),mi=$("#cServMinus");
-  const upd=(d)=>{ const m=cwMenu(); m.guests=Math.max(1,(m.guests||8)+d); cwSave(m); const v=$("#cServVal"); if(v) v.innerHTML=m.guests+'<small>סועדים</small>'; };
+  const upd=(d)=>{ const m=cwMenu(); m.guests=Math.max(1,(m.guests||8)+d); cwSave(m); const v=$("#cServVal"); if(v) v.innerHTML=m.guests+'<small>'+L('סועדים','guests')+'</small>'; };
   if(p) p.addEventListener('click',()=>upd(1)); if(mi) mi.addEventListener('click',()=>upd(-1));
   document.querySelectorAll('#cwAppetite .cmethod').forEach(b=>b.addEventListener('click',()=>{
     const m=cwMenu(); m.appetite=b.dataset.app; cwSave(m);
@@ -9167,7 +9167,7 @@ function cwPaintReview(){
   const se=$("#cwSaveEvent"); if(se) se.addEventListener('click',async()=>{
     const m=cwMenu();
     let name=(m.evName||'').trim();
-    if(!name){ const v=await appPrompt('שם לאירוע:','',{placeholder:'למשל: שישי במשפחה',okLabel:'💾 שמור'}); if(v===null||v===false) return; name=v||'אירוע ללא שם'; const mm=cwMenu(); mm.evName=name; cwSave(mm); const nmf=$("#cwEvName"); if(nmf) nmf.value=name; }
+    if(!name){ const v=await appPrompt(L('שם לאירוע:','Event name:'),'',{placeholder:L('למשל: שישי במשפחה','e.g. Family Friday'),okLabel:'💾 '+L('שמור','Save')}); if(v===null||v===false) return; name=v||L('אירוע ללא שם','Untitled event'); const mm=cwMenu(); mm.evName=name; cwSave(mm); const nmf=$("#cwEvName"); if(nmf) nmf.value=name; }
     evSaveCurrent(name); if(typeof toast==='function') toast(L('האירוע נשמר ✓','Event saved ✓')); cNavGo('events');
   });
 })();

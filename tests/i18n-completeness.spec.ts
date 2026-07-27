@@ -41,7 +41,7 @@ async function driveStates(page: any, lang: string) {
     `(function(){ if(typeof setMenuCtx==='function') setMenuCtx('event'); if(typeof cNavGo==='function') cNavGo('wizard'); for(var i=0;i<6;i++){ try{ if(typeof cwGo==='function') cwGo(i); }catch(e){} } })()`,
     `(function(){ if(typeof cNavGo==='function') cNavGo('projects'); })()`,
     `(function(){ if(typeof cNavGo==='function') cNavGo('events'); })()`,
-    `typeof toast==='function'&&toast('נשמר')`,                                                 // fire a TOAST
+    `typeof toast==='function'&&toast(L('נשמר','Saved'))`,                                       // fire a TOAST (localized — a raw literal here would be a test artifact, not an app leak)
     `(function(){ if(typeof setLang==='function'){ setLang('he'); setLang(${JSON.stringify(lang)}); } })()`, // language-switch while a panel is open
   ];
   for (const code of steps) { try { await page.evaluate(code); await page.waitForTimeout(70); } catch {} }
@@ -67,12 +67,13 @@ for (const lang of LANGS) {
     await driveStates(page, lang);
     const leaks: string[] = await page.evaluate(() => {
       const HE = /[֐-׿]/; const out: string[] = []; const seen = new Set<string>();
-      const inLtr = (el: Element | null) => { while (el) { const d = (el as HTMLElement).getAttribute && (el as HTMLElement).getAttribute('dir'); if (d === 'ltr') return true; el = el.parentElement; } return false; };
+      // NOTE (v268.1): do NOT skip dir=ltr. That skip existed for numeric islands (≥/≤), but those are
+      // Latin/symbols and never match HE.test — so the only thing dir=ltr ever hid was Hebrew WORDS inside
+      // an ltr container (e.g. the catalog count row "N נתחים · N מלאכה"), which is always a real leak.
       const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT); let n: Node | null;
       while ((n = w.nextNode())) {
         const t = (n.textContent || '').trim(); if (!t || !HE.test(t)) continue;
         const el = n.parentElement as HTMLElement; if (!el || !el.getClientRects().length) continue;
-        if (inLtr(el)) continue;                                             // dir=ltr numeric island (L13) — Hebrew there is a mistake we don't make; skip legit
         if ((el.className || '').toString().includes('lf-name')) continue;   // language-picker native names (intentional, audit Finding 4)
         const k = t.slice(0, 60); if (seen.has(k)) continue; seen.add(k); out.push(k);
       }
@@ -103,7 +104,7 @@ for (const lang of LANGS) {
     for (let i = 0; i < 6; i++) SCREENS.push([`wizard-step-${i}`, `cNavGo('wizard'); try{cwGo(${i});}catch(e){} if(typeof cwSyncFromMenu==='function'){try{cwSyncFromMenu();}catch(e){}}`]);
     const scan = `(function(){
       const HE=/[֐-׿]/; const out=[]; const seen=new Set();
-      const skip=el=>{ while(el){ if(el.getAttribute){ if(el.getAttribute('dir')==='ltr')return true; if(el.hasAttribute('data-mt'))return true; const c=(el.className||'').toString(); if(c.includes('lf-name')||c.includes('foot-stamp'))return true; } el=el.parentElement; } return false; };
+      const skip=el=>{ while(el){ if(el.getAttribute){ if(el.hasAttribute('data-mt'))return true; const c=(el.className||'').toString(); if(c.includes('lf-name')||c.includes('foot-stamp'))return true; } el=el.parentElement; } return false; };
       const w=document.createTreeWalker(document.body,NodeFilter.SHOW_TEXT); let n;
       while((n=w.nextNode())){ const t=(n.textContent||'').trim(); if(!t||!HE.test(t))continue; const el=n.parentElement; if(!el||!el.getClientRects().length)continue; if(skip(el))continue; const k=t.slice(0,60); if(!seen.has(k)){seen.add(k);out.push(k);} }
       document.querySelectorAll('[placeholder],[aria-label],[title]').forEach(function(el){ if(!el.getClientRects().length||skip(el))return; ['placeholder','aria-label','title'].forEach(function(a){ const v=el.getAttribute(a); if(v&&HE.test(v)){ const k='@'+a+':'+v.slice(0,50); if(!seen.has(k)){seen.add(k);out.push(k);} } }); });
