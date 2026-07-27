@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: תוקנו שרידי עברית שנותרו בתבלינים (קבוצות ומתכונים) ובשמות כלי הפיטמאסטר בכל השפות המתורגמות; הגנת-הבטיחות הורחבה למידות מטבח (כף/כפית/כוס) כך שהמספרים והיחידות נשמרים מדויקים בכל שפה."
+WHATS_NEW = "מה חדש: נוקו טקסטים משובשים שנותרו מתהליך התרגום — בכמה מקומות בתפריט הופיע טקסט פנימי של מנוע-התרגום במקום התרגום עצמו. כל המקרים תוקנו בכל השפות, ונוספה בדיקת-בנייה אוטומטית שמונעת את חזרתם."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -337,7 +337,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 274 · 27.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 275 · 27.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
@@ -609,6 +609,35 @@ if _gb_fail:
     print("[i18n:Guard-B] %d numeric/unit drift(s) — a translated value changed a number or its unit (details: scratch/_guardB-fails.txt):" % len(_gb_fail))
     _sys.exit(1)
 print("[i18n:Guard-B] OK — numbers+units preserved across all active langs")
+# ── v275 — Guard C: no translator prompt-echo / refusal garbage in any shipped value (owner 2026-07-27) ─
+# A whole leak CLASS shipped once: the bulk translator stored its OWN system prompt / a model refusal /
+# a self-description ("I am Gemma…") / even a ```python block AS a dict value — rendering a wall of prompt
+# text on the home screen (owner-found in ru, then de/es/fr/it, 27 values across 19 keys, fixed in v275).
+# A real translation NEVER contains these markers; failing the build here keeps the class from recurring.
+_GC_GARBAGE = _reB.compile("|".join([
+    r"\bI am Gemma\b", r"open-weights AI assistant", r"large language model trained",
+    r"```python", r"\bdef translate", r"Please provide the (?:photo|English|free|text|recipe)",
+    r"Here is the translation", r"Hier ist die Übersetzung", r"Aqu[ií] tienes (?:la traducci|el c[oó]digo)",
+    r"Voici la traduction", r"Ecco la traduzione", r"Вот перевод",
+    r"Okay, I (?:understand|'m ready|am ready)", r"cannot fulfill that request",
+    r"no puedo responder a esa solicitud", r"je ne peux pas traduire ce texte",
+    r"Traducir texto de cocina", r"Mantener TODOS los n[uú]meros",
+    r"contient des informations personnelles", r"I(?:'m| am) sorry, I cannot",
+    r"Lo siento, pero no puedo", r"Je suis d[ée]sol[ée], je ne peux",
+    r"אתה (?:מומחה|מתרגם|עוזר)", r"תרגם את הטקסט", r"להלן התרגום",
+]), _reB.I)
+_GC_ALLOW = ["I cannot check capacity"]   # a REAL UI notice whose English genuinely reads this way
+_gc_fail = []
+for _code in sorted(_active_langs):
+    for _k, _v in _i18n.get(_code, {}).items():
+        if isinstance(_v, str) and _GC_GARBAGE.search(_v) and not any(_a in _v for _a in _GC_ALLOW):
+            _gc_fail.append((_code, _k, _v))
+if _gc_fail:
+    print("[i18n:Guard-C] %d prompt-echo/refusal garbage value(s) — a translator prompt or model refusal shipped AS a value:" % len(_gc_fail))
+    for _c, _k, _v in _gc_fail[:20]:
+        print("   [%s] %r -> %r" % (_c, _k[:40], _v[:80]))
+    _sys.exit(1)
+print("[i18n:Guard-C] OK — no prompt-echo/refusal garbage in any active-lang value")
 I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
 html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
 import os as _os, shutil as _shutil

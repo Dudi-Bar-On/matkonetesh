@@ -5,6 +5,20 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 275 · 27.7.26
+
+**Translator-garbage cleanup across every language, plus a build guard so it can't return:**
+- A whole class of bad values had shipped: for a handful of interface strings whose Hebrew reads like an
+  instruction (e.g. "Computing with AI…", "Tell me your setup", "paste your code here", the photo-analysis
+  prompt), the bulk translator had stored *its own* system prompt, a model refusal ("I'm sorry, I cannot…",
+  "I am Gemma, an open-weights AI assistant…"), or even a block of Python code **as the translated value** —
+  so those spots rendered a wall of engine text instead of the real string. **27 such values across 19 keys
+  in German, Spanish, French, Italian and Russian** were replaced with correct, hand-curated translations
+  of the English source (units preserved on the one safety string; the photo-analysis prompt translated
+  properly per language).
+- **A new build check (Guard C) now fails the build** if any shipped value contains translator-prompt,
+  refusal or self-description text — this class can no longer reach production in any language.
+
 ## מהדורה 274 · 27.7.26
 
 **Leftover-Hebrew cleanup found in Russian sanity testing — fixed for every translated language:**
