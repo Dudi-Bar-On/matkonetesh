@@ -5,6 +5,21 @@ earlier versions are summarized coarsely. Maintained as part of the release prot
 bump adds its entry here in the same commit, and the footer WHATS_NEW constant in build.py is
 updated in the same commit.
 
+## מהדורה 268 · 27.7.26
+
+**Full interface localization (French / German / Spanish / Italian) — no longer half-English:**
+- **Every screen now renders in the active language.** Previously ~half of each screen — recipe names, the
+  "can't cook this with your kit" panel, cooking-plan labels, buttons, toasts — fell back to English. Now the
+  entire chrome is translated: every button, label, panel, message, dialog, toast, and recipe/category name.
+- **Safety numbers cannot be mistranslated.** A build-time guard fails the build if any translated string
+  changes a number or its unit (°C↔°F, g↔kg, minutes↔hours) — a cure dose or doneness temperature can never
+  drift in translation.
+- **It stays fixed by construction.** A coverage guard fails the build if any user-facing string is left
+  untranslated for an active language, and a render test asserts zero fallback on every screen — the
+  "99%-but-half-English" gap this release closes cannot silently return.
+- Under the hood: the ~1,300 inline bilingual strings were unified into one translatable path fed by an
+  automatic extractor, and the nine parallel English lookup tables were removed.
+
 ## מהדורה 267 · 26.7.26
 
 **Equipment refinements + a fourth language — owner-driven from live v266 testing:**

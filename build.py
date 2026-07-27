@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: חיפוש דגם ציוד חכם יותר — שם מדויק מחזיר את כל המאפיינים כבר בפעם הראשונה; תזכורת לטעון את עץ העישון שהמתכון מבקש; שיבוץ ציוד מדויק יותר באירועים; ואיטלקית כשפה רביעית"
+WHATS_NEW = "מה חדש: הממשק מתורגם עכשיו במלואו לצרפתית, גרמנית, ספרדית ואיטלקית — כל כפתור, תווית, הודעה ושם מתכון, לא רק חלקם; ומספרי הבטיחות נשמרים מדויקים בכל שפה."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -337,7 +337,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 267 · 26.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 268 · 27.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
