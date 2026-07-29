@@ -1,0 +1,129 @@
+{
+ "headline": "Realtime multi-device sync is the one driver here that is a genuine functional requirement rather than fashion — and it is almost entirely orthogonal to React. The decisive finding is in our own code: every timer already persists an **absolute end timestamp** (`mk-timers` → `{end: epochMs}`, app.js:3125-3131), plan start is a `Date.now()`, and the whole schedule derives backward from `mk-tlserve`. So a PC watching a phone's live cook needs the *event that a timer started*, not a stream of ticks — which turns \"realtime\" into \"propagate a small change within a few seconds\" and puts it comfortably inside polling range. **We do not need Durable Objects or WebSockets to ship the owner's stated requirement.** The second decisive finding is the `store` seam (app.js:1628-1631): 120 `store.set` call sites already funnel through one 2-method object, so a sync layer is a wrapper, not a rewrite — but 04a's \"opaque LWW blob per user\" is wrong for our actual state and would throw away real work (a phone ticking checkboxes offline at a smoker vs a PC editing the menu), which is the owner's own fear reproduced at the data layer.",
+ "recommendation": "**Build sync now, on Cloudflare D1 + Workers, with polling. Do not wait for React, and do not build Durable Objects.**\n\nOrder, and each step is independently shippable:\n\n**0. P0-worker first — hard prerequisite, ~2 tasks.** `worker/index.js:56` still does `catch { rec = { active: true }; }` (fails OPEN on a corrupt KV record), CORS is `'*'` (line 21), the usage counter is a read-modify-write race, and there is no upstream timeout. Do not put a single byte of user data behind that server. The harness and RED test are already ready (BIG-STATUS §3.1 line 61). This is already on the roadmap as P0-worker; sync just makes it non-negotiable.\n\n**1. Smallest real auth: email magic-link → device-bound opaque token, ~3 tasks.** Today `mk-central-code` is a 72-bit shareable bearer (G-4). That is tolerable for metering an AI proxy; it is a data-leak the moment the same credential unlocks someone's journal. Minimum viable: `POST /auth/start {email}` → 15-min one-time token by transactional mail (Resend/Postmark, ~$0–15/mo; MailChannels is no longer free from Workers) → `POST /auth/claim` → row in `devices(user_id, device_id, token_hash, name, last_seen)`, revocable from settings. **The existing access code is not replaced — it is demoted from identity to entitlement**, attached to the user row, and exchanged once for a device token so current users are not disrupted. This also closes G-4 and lets CORS tighten to the app origin (E14/H-3).\n\n**2. Data shape: normalized per-key rows in D1, NOT a blob. ~1 task for the schema.**\n```sql\nCREATE TABLE kv (\n  user_id TEXT, k TEXT, v TEXT,          -- v NULL = tombstone; k/v are the localStorage key/JSON verbatim\n  rev INTEGER NOT NULL, dev TEXT, ts INTEGER NOT NULL,\n  PRIMARY KEY (user_id, k));\nCREATE INDEX kv_since ON kv(user_id, rev);\n```\nProtocol is two shapes: `POST /sync {since, dev, writes:[{k,v}]}` → `{rev, changes:[…]}`; pull is `WHERE user_id=? AND rev>?`. The monotonic per-user `rev` comes from `UPDATE users SET rev=rev+1 … RETURNING rev` inside the same D1 batch as the writes — **D1 gives us that atomicity where KV structurally cannot, which is a second independent argument for D1 over KV (it is also the correct fix for the meter TOCTOU, B21).**\n\n**3. `sync.js` — one new module, one narrow global `SYNC`, ~4 tasks.** This is exactly the registered modularization pattern (`docs/analysis/program/registered-2026-07-25-appjs-modularization.md`: inlined by build.py, one global, F5 single-definition build guard) — a new pillar that is born extracted rather than extracted later. Contents: write-behind outbox appended by `store.set`; push/pull; **LWW per key** plus **per-entry merge for the four map/list-shaped keys** (`mk-timers` by timer id, `mk-tlstate-<scope>` by item flag, `mk-item-cooker-<scope>` by item|kind, `mk-journal` by `e.id` with tombstones) — about 60 hand-written lines with a test each, not a CRDT library; and **exactly one `change` event**, never a fan-out of repaint calls (see the React note below).\n\n**4. Do not sync `mk-eqm-ledger` — re-derive it. ~1 task.** It is a derived index over saved events keyed by `holder.type+id` (equipment.js:297-420), and E2 already made re-saving idempotent via release-then-allocate. Syncing it invites two devices holding contradictory reservations on the same device-window with no arbiter. On receiving a changed `mk-events`/`mk-menu`, replay the local derivation. This is the single most important data-shape decision in the design and it falls straight out of what E2 already got right.\n\n**5. Photos → R2, ~2 tasks.** `downscale()` (app.js:4553) writes 360px/q0.6 base64 dataURLs *inline into `mk-journal`* — 15–40 KB each, and `mkStorageWarn`/the \"אין מקום אחסון לתמונה\" fallback exists precisely because that key approaches the 5 MB localStorage ceiling. Keep `photoId` in the entry, put bytes in R2 (10 GB free). Not polish: without it every sync payload is dominated by base64.\n\n**6. Polling cadence, ~1 task (MVP) + ~2 tasks (Phase 2 \"live\").** MVP: pull on app open, on `visibilitychange`, every 60s. Phase 2: drop to 3s while `anyTimerActive()` — **the predicate already exists at app.js:3178** — zero polling on hidden tabs, `If-None-Match`. Realistic traffic at ~100 subs × 2 cooks/mo × 8h × 2 devices ≈ 3.8M req/mo, inside the 10M included in the same $5 bill. That 2-task step *is* the entire \"realtime\" requirement.\n\n**On React, from this lens specifically: the server is 100% framework-independent and not one line of it changes.** The only thing React genuinely buys for sync is the repaint on a remote change — today that means a hand-maintained list of imperative calls (`render()`, `renderMenu()`, `cRefreshHome()`, `syncActiveFab()`; see the pattern at app.js:3197). So the one migration-proofing rule that matters: **`SYNC` emits one `change(keys)` event with exactly ONE subscriber.** That subscriber calls today's imperative repaints; in React it becomes `useSyncExternalStore` over the same `store` seam. That is a ~20-line discipline. Skip it and you will hand-write ~15 fan-out repaint calls and throw all 15 away.\n\n**Two documented deviations from 04a to raise with the owner (§4 Waiver Gate):** (a) reject the \"opaque blob per user\" — it forces a whole-state upload on every checkbox tick and loses concurrent edits; (b) defer \"client-side encrypted so even you can't read it\" — E2E is incompatible with any server-side merge and with passphrase-loss recovery, and it is a *trust* feature, not a *sync* feature. Ship TLS + at-rest, revisit E2E when someone asks.",
+ "survives": [
+  {
+   "asset": "The `store` seam — app.js:1628-1631, a 2-method object with 120 `set` and 104 `get` call sites",
+   "survivesHow": "It is already the single write chokepoint for user state, so the whole sync layer is a wrapper around it: `store.set` also appends to an outbox. Under React it becomes the backing store for `useSyncExternalStore` — the seam itself is unchanged. This one pre-existing property is why sync costs ~14 tasks here instead of ~40.",
+   "condition": "Stop the bleeding NOW: three migration/reset paths bypass it with raw `localStorage.setItem/removeItem` (app.js:8512, 11502, 11528-11529) and `importData` writes 100% raw (app.js:7537). Route them through `store` (or an explicit `store.setRaw`) as part of Wave 0, or those writes will silently never sync."
+  },
+  {
+   "asset": "The absolute-timestamp design of live state — `mk-timers` `{end: epochMs}` (app.js:3125-3131), `mk-plan-started-<scope>` = `Date.now()`, plan derived backward from `mk-tlserve`",
+   "survivesHow": "This is what makes the owner's headline requirement cheap. A PC renders a phone's running smoke timer identically with zero further communication, because both read the same wall clock from the same synced record. It is the reason we can answer \"no Durable Objects\" decisively rather than hedging.",
+   "condition": "Never let a future timer/copilot change store elapsed-seconds or tick counters instead of an absolute end. Write it into the spec as an invariant with a test, the same way E2 protected the ledger."
+  },
+  {
+   "asset": "The whole derived layer — rules engine, itemStages, effectiveSchedule, planSchedule, occupancy, the 279 cited safety constants",
+   "survivesHow": "All of it is a pure function of the catalog (build-time) plus the synced keys. The server therefore stores zero safety values and zero derivations — it moves opaque JSON strings. That honours the standing rule that safety stays client-side and cited, and it means the sync layer cannot introduce a safety regression by construction.",
+   "condition": "Keep the invariant explicit in the sync spec: the server never interprets `v`. The moment a Worker route parses a plan to \"help\", the boundary is gone."
+  },
+  {
+   "asset": "E2's idempotent release-then-allocate ledger derivation (equipment.js:393-420 + the app.js Task-5 wiring)",
+   "survivesHow": "It is exactly the operation a sync client needs on receiving a remote event change: replay locally instead of transporting reservations. E2's DoD already proved the allocate→release `itemStages` byte-identity, so the re-derive is verifiable against an existing gate.",
+   "condition": "Declare `mk-eqm-ledger` NON-SYNCED in the keyspace schema before anyone \"helpfully\" adds it to a blob."
+  },
+  {
+   "asset": "The existing Worker + `mk-central-url`/`mk-central-code` seam (app.js:6273-6274, `gemFetch` routing at 5324-5343)",
+   "survivesHow": "The transport, the KV code lookup, and the managed/BYOK fallback all stay. Auth is a promotion of this seam (code → entitlement on a user row; device token → identity), not a replacement, so existing managed users keep working through a one-time exchange.",
+   "condition": "Do the P0-worker hardening FIRST. Building accounts on a server that fails open (`worker/index.js:56`) with CORS `*` converts a metering bug into a personal-data breach."
+  },
+  {
+   "asset": "The 816-test Playwright suite and its hard-won stability (L18, the warm-page/loopback arc, workers:20)",
+   "survivesHow": "Untouched if `SYNC` is inert when no sync URL is configured — zero fetches, zero timers, byte-identical behaviour. Two-context tests (two browser contexts = two devices) then extend the suite rather than destabilising it.",
+   "condition": "Ship a test that asserts zero network requests originate from `SYNC` in the default fixture. Given this suite's flake history, an accidental background poller would be extremely expensive to diagnose."
+  },
+  {
+   "asset": "The existing export/import path (app.js:7521-7556)",
+   "survivesHow": "Becomes the first-sync safety net and the GDPR/PPL-13 data-export obligation, both for free.",
+   "condition": "Keep `mk-gemkey` excluded (already handled at line 7522) and add the same exclusion list to the sync allow-list — the API key and the access code must never leave the device."
+  }
+ ],
+ "dies": [
+  {
+   "asset": "04a §2(b)/§4 — the \"opaque LWW blob per user\" sync design",
+   "whyLost": "Verified against our actual state, it loses real work. Concrete: phone at the smoker with no signal ticks `mk-tlstate-cook` for two hours while the PC adds two items to `mk-menu` and edits `mk-events`. Blob-LWW on reconnect wipes one side entirely. It also forces a multi-MB upload on every checkbox tick, because `mk-journal` carries base64 photos inline. The *conclusion* it supports — \"no CRDTs, this is one user across devices\" — is correct and survives; only the blob granularity dies.",
+   "couldWeSaveIt": "Yes, and cheaply — per-key rows plus per-entry merge for the four map/list-shaped keys. ~60 lines. The doc's reasoning is 90% intact; only the unit of conflict changes. Raise it as a §4 deviation rather than silently reinterpreting it."
+  },
+  {
+   "asset": "04a §4.3 — \"client-side encrypted so even you can't read it\", advertised as end-to-end",
+   "whyLost": "Structurally incompatible with any server-side merge, with recovery when a user loses the passphrase, and with the 04a §5 strategy of gating premium data behind the proxy. It is a trust feature, not a sync feature; shipping it in v1 would make every later sync improvement harder.",
+   "couldWeSaveIt": "Partly. Keep it as a later opt-in toggle for the journal only (the one key with genuinely private content), where per-entry merge by `e.id` still works on ciphertext. But it must not be a v1 constraint, and the marketing line must not be written before the code."
+  },
+  {
+   "asset": "`mk-journal`'s inline base64 photo format (app.js:4547, `downscale()` at 4553)",
+   "whyLost": "Sync makes an existing latent problem acute: 15–40 KB dataURLs inline in a key that already triggers `mkStorageWarn` near the 5 MB localStorage ceiling, now uploaded and merged on every journal change.",
+   "couldWeSaveIt": "Migrate, don't discard — entries keep `photoId`, bytes move to R2, existing local dataURLs are lazily uploaded on first sync and replaced. Users lose nothing. ~2 tasks. Skipping it does not save the work, it just defers it at a worse moment."
+  },
+  {
+   "asset": "Any imperative repaint fan-out written for remote changes (the app.js:3197 pattern: `renderAlarm()` + `cRefreshHome()` + `syncActiveFab()` + …)",
+   "whyLost": "This is the one part of the sync layer React genuinely replaces. A hand-maintained list of \"which surfaces must repaint when key X arrives from the network\" is dead on migration day and is also the most bug-prone part of the design.",
+   "couldWeSaveIt": "Almost entirely — emit ONE `change(keys)` event with exactly ONE subscriber. The subscriber is the only thing thrown away (~20 lines), instead of a fan-out spread across 15 sites."
+  },
+  {
+   "asset": "The access code as an identity (`mk-central-code`, worker/index.js:50-54)",
+   "whyLost": "A shareable 72-bit bearer with no device binding (G-4) cannot be the credential that unlocks someone's cook journal and photos. Once sync stores personal data, this specific role for the code is gone.",
+   "couldWeSaveIt": "Yes — it is demoted, not deleted. It stays as the subscription entitlement and as the one-time bootstrap that existing managed users exchange for a device token. No user re-onboarding, no worker rewrite."
+  }
+ ],
+ "triggers": [
+  "The owner (or any beta user) actually opens the same cook on a second device — phone at the pit, PC in the kitchen. Until that has happened once for real, sync is a hypothesis; the moment it has, it is a defect.",
+  "P0-worker ships (fail-closed KV, debit-first, CORS tightened, upstream timeout). This is the gate that unblocks auth work — do not start accounts before it, and do not let sync work start before accounts.",
+  "The first PAYING subscriber. At that instant the shareable bearer code stops being a metering weakness and becomes a personal-data-exposure route; magic-link auth becomes mandatory, not optional.",
+  "A user reports \"I ticked it on my phone and the PC took a minute to notice\" → flip on the 3-second active-cook poll gated on `anyTimerActive()` (2 tasks, no new infrastructure). This is the ONLY trigger that should ever be read as \"we need realtime\".",
+  "Poll traffic passes ~7M requests/month on the Workers bill, OR a user asks to share one event with a second PERSON (a co-host). Either one — and only one of these — justifies opening the Durable Object conversation. Multi-user is also the only scenario where CRDTs would genuinely earn their keep.",
+  "The localStorage quota toast (`mkStorageWarn`) fires for any real user → the R2 photo migration jumps the queue ahead of everything else in this lens.",
+  "Any Wave-0/CP2 task is about to add a NEW localStorage key. That is the cheap moment to classify it (user-global / device-local / derived-never-synced) in the keyspace schema — retrofitting classification onto 60 keys later is the expensive version. `mk-item-path` (CP2) is the next one and it is user-global."
+ ],
+ "risks": [
+  {
+   "risk": "First-sync data loss: a user with months of local journal/events connects a second, empty device; the empty device's state tombstones everything on the server, and the first device then pulls the deletion. This is the owner's \"work thrown away\" fear at its most literal.",
+   "severity": "critical",
+   "mitigation": "First sync from any device is MERGE-ONLY — tombstones are never emitted by a device that has not completed at least one prior sync (track `mk-sync-lastrev`). Force an export (the path exists, app.js:7521) before enabling sync the first time, and keep a server-side 30-day soft-delete on tombstoned rows. Test it explicitly: seeded device + empty device, both directions."
+  },
+  {
+   "risk": "Sync destabilises the 816-test suite. This project has a documented, expensive flake history (L18 zombie servers, the Windows loopback serialization root cause, the certified workers:20 ceiling). A background poller in the default fixture would be extremely hard to attribute.",
+   "severity": "high",
+   "mitigation": "`SYNC` is INERT unless a sync URL is configured — no fetch, no setInterval, no visibilitychange handler. Add a test that counts network requests in the default fixture and asserts zero originate from SYNC. Two-device tests use two explicit browser contexts with an explicitly configured mock endpoint, never the ambient fixture."
+  },
+  {
+   "risk": "Building sync on the current Worker. It fails OPEN on a corrupt KV record (`worker/index.js:56`), CORS is `'*'`, there is no rate limit and no upstream timeout (B19–B22, H-3, E14).",
+   "severity": "critical",
+   "mitigation": "Hard-sequence P0-worker BEFORE auth and auth BEFORE sync. It is ~2 tasks with the harness and RED test already prepared. Treat any attempt to reorder this as a spec waiver requiring owner sign-off."
+  },
+  {
+   "risk": "Clock skew. A phone that has been off at a pit can be minutes wrong; its `mk-timers.end` then renders a wrong countdown on the PC, and naive client-timestamp LWW would let the wrong-clock device win every conflict.",
+   "severity": "medium",
+   "mitigation": "The merge NEVER reads client clocks — the server assigns `rev` and `ts`, and LWW is decided on `rev`. For the timer display, store the server `ts` alongside `end` at write time and apply the offset on read (~1 task), or accept a documented drift. Do not conflate the two problems: the merge fix is mandatory, the display fix is optional."
+  },
+  {
+   "risk": "Legal exposure. Storing a user's journal, photos and event history makes us a controller under Israeli PPL Amendment 13 and GDPR — already flagged in 04a §4.3 and unaddressed.",
+   "severity": "high",
+   "mitigation": "Ship `DELETE /account` (server-side hard delete, ~0.5 task), reuse the existing export for data portability, and write a privacy notice before the first non-owner user syncs. Also correct the still-stale \"בלי שרת / no server\" claims (G-1: app.js:4778-4779, README.md:4) in the same change — after sync those are false, not merely dated."
+  },
+  {
+   "risk": "Divergence looks like a bug. Without a visible sync state, a user cannot distinguish \"my PC hasn't pulled yet\" from \"the app lost my tick\".",
+   "severity": "medium",
+   "mitigation": "A status chip — synced / N pending / offline / error — with the last-sync time, in HE and EN via static `L(he,en)` literals so Guards A/B/C keep passing, and a numeric readout in a `dir=\"ltr\"` island per L13. Treat it as a required MVP surface, not polish."
+  },
+  {
+   "risk": "Scope creep into multi-user collaboration. \"Sync between devices\" and \"share an event with a co-host\" sound adjacent and are architecturally different problems — the second is where CRDTs and Durable Objects actually become necessary.",
+   "severity": "medium",
+   "mitigation": "Write the single-user assumption into the sync spec as an explicit boundary with the cost of crossing it stated (≈+6 tasks and a DO). Then any request to cross it is a visible owner decision instead of a silent design drift."
+  },
+  {
+   "risk": "Sync-triggered re-renders during a live cook corrupt in-progress UI state — e.g. a remote `mk-tlstate` arrives while the user has a form open or a timer mid-interaction.",
+   "severity": "medium",
+   "mitigation": "The single `change` subscriber defers repaint while a modal/panel has focus or a timer interval is mid-tick, and never repaints a surface the user is actively editing. This is exactly the class of bug React's reconciliation removes for free — one more reason the subscriber must be ONE function, not fifteen."
+  }
+ ],
+ "effort": "**Unit: one \\\"task like ours\\\" = one CP2-plan task (CP2 = 11 tasks / ~150 code blocks).**\n\n**MVP — \\\"my kit, my events and my plan are on all my devices\\\" (no live cook): ≈ 14 tasks.**\n- P0-worker hardening (fail-closed KV, debit-first, CORS to origin, upstream timeout, rate limit) — **2** *(already on the roadmap as P0-worker; harness + RED test ready, so this is arguably a sunk-cost prerequisite rather than sync's own bill)*\n- Magic-link auth + device tokens + D1 `users`/`devices` + code→entitlement demotion — **3**\n- D1 `kv` schema + `POST /sync` push/pull with atomic per-user `rev` — **1**\n- `sync.js` module: outbox on `store.set`, per-key LWW, per-entry merge for the 4 map/list keys, ONE `change` event, status chip (HE+EN, `dir=ltr` numerics) — **4**\n- Ledger re-derive on remote event change + keyspace classification of all ~60 `mk-*` keys — **1**\n- Photos → R2 with lazy migration of existing inline dataURLs — **2**\n- Tests: two-context device pair, offline→reconnect merge, first-sync merge-only, per-entry merges, ledger byte-identity, SYNC-inert network assertion — **2**\n- Bugfix/reserve at this project's observed rate (the loop, not the checklist) — **~1.5 folded into the above**\n\n**Phase 2 — \\\"live cook across devices\\\" (the actual realtime ask): ≈ 2 tasks.**\n3s poll gated on the existing `anyTimerActive()` (app.js:3178), zero poll on hidden tabs, `If-None-Match`/304. **No new infrastructure, no new bill.** It is 2 tasks and not 8 purely because the timers already store absolute end timestamps.\n\n**Phase 3 — Durable Objects + WebSocket, DEFERRED: ≈ 4 tasks.** Replaces the poll behind the identical `SYNC.on('change')` API, and absorbs the meter TOCTOU (B21). Buy it only on a measured trigger.\n\n**Migration-proofing surcharge for a later React move: ≈ 0.2 tasks** — the single-subscriber discipline. That is the whole cost of making this layer React-portable, which is why sync should NOT wait for a framework decision.\n\n**Comparison for the owner's fear:** the MVP is ~1.3× CP2. Of those ~14 tasks, **the ~6 server-side ones (worker, auth, D1, R2) are 100% framework-independent and survive a React migration untouched**, and the ~8 client-side ones are concentrated in one new module (`sync.js`) built to the already-registered extraction pattern. The genuinely React-discardable portion is measured in tens of lines, not tasks.\n\n**Running cost:** unchanged $5/mo Cloudflare (D1 + Workers + R2 all inside it) + ~$0–15/mo transactional email. Poll traffic at ~100 subs ≈ 3.8M req/mo against 10M included.",
+ "openQuestions": [
+  "Preferences: split or unified? Font scale and theme genuinely differ between a phone at a smoker and a desktop, while units/hold/autonomy/sharetol are the user's choices everywhere. Recommendation: appearance keys (`mk-theme`, `mk-fontscale`, `mk-fontpair`, `mk-uilevel`) stay device-local; `mk-pref-*`, `mk-lang`, `mk-gemvoice`, `mk-vclang` sync. Needs one owner ruling, then it goes in the keyspace schema.",
+  "Should \"which event am I looking at\" (`mk-active`, `mk-lastproj`, `mk-context`) sync? Device-local is the safe default and my recommendation. But \"open the cook I'm running on my phone\" is a plausible product feature and a different answer. Cheap either way; expensive to change after users form a habit.",
+  "Does the owner want a SHARED event with another person (a co-host at the same cookout), or strictly his own devices? The question as posed says \"same subscription\", which reads as one user. If co-hosting is ever wanted, that is the one scenario that genuinely needs Durable Objects and per-field CRDTs, and it changes the schema — worth answering once, now, even if the answer is \"not for years\".",
+  "Email delivery provider for magic links — MailChannels is no longer free from Workers. Resend vs Postmark vs Brevo, with Israeli-user deliverability in mind. Needs a ~1-hour research pass and a small recurring cost decision, and it is the only genuinely new vendor this design introduces.",
+  "Is a 60s idle / 3s active poll acceptable as \"realtime\" to the owner, or does he mean sub-second? The answer decides whether Phase 3 (Durable Objects, ~4 tasks) is deferred or scheduled. Show him a 3s two-device demo before he answers — my expectation is that watching a timer that is already correct on both screens makes the question dissolve.",
+  "Does the first-sync flow force an export? It is the strongest possible guard against the critical data-loss risk, and it costs one modal — but it is friction on the exact screen where a new subscriber is deciding whether this product is trustworthy.",
+  "Sequencing against the approved roadmap: this competes directly with CP2 → E4 → CP3 → CP4. My read is that sync should follow CP2 (which is already owner-approved and half-designed) and precede E4, because P0-worker is a prerequisite for monetisation regardless and the auth work is on the critical path to the first paying user. That is an owner call, not mine."
+ ]
+}
