@@ -1,0 +1,409 @@
+{
+ "headline": "Read as a concept demo, the document's real contribution is one idea in three layers: **make the OUTCOME the input**. Layer 1 — outcome axes as first-class parameters (texture, crust, chewiness, smoke level, speed) rather than a named path; Layer 2 — the intra-cook phase (wrap, spritz, glaze, flip, skin-score) as a *typed, triggered action* rather than prose; Layer 3 — a rule registry that may *add a stage, block, or defer an action* in response to those parameters. We are strong on the two ends the panel already measured (cited data, resource-constrained scheduling) and genuinely thin in the middle: `itemStages` emits one monolithic smoke block per method, `doneness` (our only outcome parameter, on 23/177 cuts) never reaches it, `somid`/`mid`/`sear` carry wrap-at-70°C and \"שיטת 3-2-1\" as untranslatable prose that never becomes a timeline event, and 106 cited direct-grill schedules (`grt`/`grh`/`grz`) are orphaned from the stage authority exactly like `order_svsmoke` was before BUG-3. The best news is that the parameter engine can be built **without inventing a single number**: 32 cuts already carry a cited sous-vide *range* whose low end we discard in `upperHours`, 106 carry cited grill schedules, `order_smokesv`/`order_svsmoke` already carry cited alternative orders, and the 12 distinct `somid` values are a closed set that parses to typed phases at build time. The parameter selects among cited values; it never mints one.",
+ "conceptsFound": [
+  {
+   "concept": "§1.1 Two-layer separation: hard physics (heat/moisture/time/space) vs flavor as a plugin layer",
+   "steelman": "Flavor choices can never alter a schedule or a safety value; physics choices can never be overridden by a taste preference. Enforced as an architectural invariant, this makes the flavor catalog infinitely extensible at zero safety risk.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "We already live this: seasonings are a separate data file injected by injectSeasoningSteps() and never touch itemStages. Worth writing down as a named invariant with a test."
+  },
+  {
+   "concept": "§1.3 Authoritative constants hardcoded; the logic layer is the only original part",
+   "steelman": "The engine's IP is the connective logic, not the numbers; the numbers are quoted facts that the logic routes between.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "279 citations in sources.py merged at build. The document states the principle and then violates it; we state it and enforce it."
+  },
+  {
+   "concept": "§1.1/§1.2 Master Recipe — one parametric recipe generating many outputs instead of N duplicated recipes",
+   "steelman": "Recipes are combinations of a small shared variable set; store the variables once, generate the combinations.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "itemProfile()/validCombo()/comboMethodEntry() enumerate up to 7 combos per cut from one CUTS record. This is exactly the master-recipe idea, already shipped."
+  },
+  {
+   "concept": "§2.1 Keeping more than one technique per cut is justified because technique changes the OUTCOME, not just the clock",
+   "steelman": "Paths are not redundancy — each is a different product. Therefore each path needs an outcome description, not just a duration.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adopt",
+   "value": "We keep multiple paths (itemPaths) but describe them with a hand-written blurb (comboNote, app.js:2955). No machine-readable outcome per path means nothing can rank, filter or search by outcome."
+  },
+  {
+   "concept": "§2.1 Smoke temperature band as an outcome dial (low&slow deep smoke ring vs hot&fast quick bark)",
+   "steelman": "Chamber temperature within a cut's safe band is a legitimate user-facing texture/speed control, not a fixed recipe fact.",
+   "doWeHaveIt": "do-it-differently",
+   "verdict": "adapt",
+   "value": "We hint at it in prose only (soSteps line 1585: 'אפשר גם חם ומהיר 120–135°C' when tgt≥88) and never reschedule for it. As a real parameter it gives a 'faster cook' lever bounded by cited values."
+  },
+  {
+   "concept": "§2.1 Wrap material as a typed parameter with outcome deltas (none → hard dark bark; paper → breathes, keeps moisture, preserves bark; foil/Texas crutch → steams, soft wet bark, fastest)",
+   "steelman": "Three named values, three predictable outcome vectors, one decision the user actually makes at 3am.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Our data literally encodes the wrap point (somid='עטיפה ב-70°C', 22 cuts) but not the material choice or its outcome, and soTreatText() renders it as a sentence. This is the single most-asked BBQ question and we answer it only in the glossary."
+  },
+  {
+   "concept": "§2.1 Moisture management split into two distinct parameters: injection (internal juiciness) and spritzing (external smoke adhesion)",
+   "steelman": "They are different mechanisms with different timing and different outcomes; treating them as one 'moisture' idea loses both.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "We own the equipment tokens ('injector', 'spritz' in EQUIP_OTHER_ITEMS) and the prose ('מריחה'/'ריסוס') but neither is a scheduled, repeating action with a cadence."
+  },
+  {
+   "concept": "§2.1 Cut orientation (fat-up vs fat-down) as a parameter tied to the device's heat-source geometry",
+   "steelman": "A device fact (bottom-fired vs offset) plus a cut fact (fat cap side) determines one instruction that materially changes the result.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adapt",
+   "value": "Cheap and concrete. We already know the device type; SMOKER_TIPS mentions it for offset only, as untyped advice, and it never enters the plan."
+  },
+  {
+   "concept": "§2.2 Cross-method outcome model with evaporation and crust presence as the discriminants (braise 100% wet/no crust, sous-vide 0% evaporation/pink retention, roast dry/fast Maillard, pressure >100°C/10x faster)",
+   "steelman": "A compact physical model that predicts what each method does to texture and colour, so switching methods can be explained rather than merely permitted.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adapt",
+   "value": "We permit method switching but explain it only in prose. A typed {moisture, crust, colorRetention, speed} vector per method is small and makes the CP2 path panel say something true."
+  },
+  {
+   "concept": "§2.3 / §3.1 The 7-parameter table (P_COOK_METHOD, P_CHAMBER_TEMP, P_TARGET_INT, P_TIME_LIMIT, P_MOIST_ENV, P_SURFACE, P_FINISH)",
+   "steelman": "A closed, named parameter vocabulary is the contract between UI, engine and data — every stage is a point in this space and every rule is a predicate over it.",
+   "doWeHaveIt": "do-it-differently",
+   "verdict": "adapt",
+   "value": "Our equivalent is a flat per-cut record (svt/svh/smt/smh/sot/soh/tgt/safe) with no shared parameter names, so nothing can be reasoned about generically. Naming the axes costs nothing and unlocks everything else in this list."
+  },
+  {
+   "concept": "§3.1 P_TIME_LIMIT — time at temperature as a texture dial independent of the target temperature",
+   "steelman": "At a fixed bath temp, 24h vs 48h is a real, controllable texture difference. It is a parameter, not a constant.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adopt",
+   "value": "THE cheapest big win: 32 of 130 cuts carry a cited svh RANGE ('2-4','24-48','24-36') and upperHours() (app.js:6) always takes the upper bound and throws the low end away. The dial already exists in cited data; we discard it."
+  },
+  {
+   "concept": "§3.1 P_MOIST_ENV (DRY | WET | VACUUM) as the single discriminant for whether a crust can form",
+   "steelman": "One enum answers 'will I get a bark?' and gates the whole finish-stage rule.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Currently implicit in stage.kind. Making it explicit is what lets the engine say 'you chose sous-vide and asked for crisp — I am adding a sear', deterministically."
+  },
+  {
+   "concept": "§3.2 / §8 Preference → PROCESS_FLOW routing: the USER supplies outcome parameters (with sensible defaults) and the system picks the path",
+   "steelman": "The user says 'pulled texture, crisp crust, sweetish' and the engine translates into an ordered stage list. Path selection becomes a consequence of stated goals, not a menu of jargon.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "THE headline gap, and the first panel missed it entirely. gearAwareDefault() (app.js:1028) routes by EQUIPMENT only, and its fallback sorts candidate combos by `a.length-b.length` — i.e. it silently optimises for 'fewest methods', an unstated preference the user never expressed and cannot change."
+  },
+  {
+   "concept": "§3.2 Per-stage config objects with an explicit TRIGGER_NEXT_STAGE_WHEN (elapsed time OR internal temp OR surface colour)",
+   "steelman": "A stage ends when a physical condition is met; the clock is only an estimate of when that will happen. Carrying both makes the plan schedulable AND live-correct.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Panel item #1, and correctly identified. Our stages carry `hours` only; the sole internal-temp gate is the final bcheck appended at the end of itemStages. This is the missing input to the live copilot."
+  },
+  {
+   "concept": "§3.2 The composition rule: IF SOUS_VIDE AND CRUST DESIRED → append a finish stage",
+   "steelman": "A rule that ADDS a stage (whose values come from data) rather than editing one. This is the safe shape for a rule engine.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adopt",
+   "value": "We approximate it as a nudge ('💡 flip the grill switch', svSteps line 1573) which requires the user to know what to do. The rule shape (add-stage, never rewrite) is also the invariant that protects DoD-10."
+  },
+  {
+   "concept": "§3.3 Universality across proteins / cheese / vegetables / charcuterie in one table, each row carrying an engine-note failure mode ('too long → pasty', 'albumin if too hot', 'casing bursts', 'sweats above 30°C')",
+   "steelman": "The per-row hazard note is the most valuable column: it is the outcome the engine must predict and warn about before the cook, not after.",
+   "doWeHaveIt": "do-it-differently",
+   "verdict": "adapt",
+   "value": "Our catalog beats the table on breadth (33 cheeses, 21 vegetables, 15 seafood, 12 offal vs 12 rows) but the hazard is embedded in prose (somid='גריל חזק ומהיר בלבד', 'לא לעישון ארוך'). Typed as a `risks[]` per cut it becomes a pre-cook warning and a chewiness forecast."
+  },
+  {
+   "concept": "§4 A named, enumerable RULE REGISTRY with ordered evaluation (blocking checks → equipment/fuel fit → pipeline build → optimisation → real-time)",
+   "steelman": "One list of rules, each with an id, a predicate, a verdict and a source — inspectable, testable, extendable without touching the pipeline.",
+   "doWeHaveIt": "do-it-differently",
+   "verdict": "adapt",
+   "value": "Our rules are real but scattered across methodRules(), validCombo(), eqmValidity(), aiSafetyNums, PREFS floors and inline prose. No id, no enumeration, no single evaluation order. A registry is what lets us say 'rule R7 fired' in a test and in a UI."
+  },
+  {
+   "concept": "§4.1 Rule 1 — chewiness protection: high-collagen cut + grill without a long-cook leg → block",
+   "steelman": "The engine predicts the eating experience and refuses a path that produces a bad one, before any time is wasted.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "methodRules() (app.js:989) returns `needsCookFor:'grill', invalid:[['grill']]` for collagen cuts — we implement rule 1 and the document's own §4.5 code does not."
+  },
+  {
+   "concept": "§4.1 Rule 2 — pasteurization as temp × time, gating the METHOD (not just the number): a sub-74°C poultry target is legal only under sous-vide",
+   "steelman": "Safety is a curve, and the method determines whether you can sit on the curve at all.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "We are strictly better here: our sources.py carries Baldwin temp×time×THICKNESS reasoning per cut. Ours is the cited version of their sketch."
+  },
+  {
+   "concept": "§4.1 Rule 3 — sugar-burn timing: high-sugar glaze + chamber >140°C + >30 min remaining → warn and defer the glaze",
+   "steelman": "A rule whose output is a rescheduled ACTION with a trigger offset, not a refusal. It changes when something happens, not what the values are.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adopt",
+   "value": "We schedule glaze at lastCook.end−15min for user-SELECTED glazes (app.js:7273) — good — but with no temperature gate and no link to the recipe's own `sear==='גלייז'`/`somid==='גלייז בסיום'`. The chamber-temp gate is the missing half."
+  },
+  {
+   "concept": "§4.1 Rules 4 & 7 — silently rewriting a user's target temperature (fish → 52°C, pork → 63°C) with a notification",
+   "steelman": "Even at its strongest this is 'clamp to a safe/quality band and say so loudly'.",
+   "doWeHaveIt": "do-it-differently",
+   "verdict": "reject",
+   "value": "Reject the mechanism, keep the intent as a warn-and-offer. Our doneness picker already lets a user pick 'well' and shows the safety floor beside it; silent mutation of a safety-relevant number is exactly what DoD-10 exists to prevent."
+  },
+  {
+   "concept": "§4.1 Rule 5 — a category temperature CEILING checked against what the equipment can actually hold (cheese must stay <30°C; an oven cannot)",
+   "steelman": "Equipment validation must check both ends of the envelope: can it get hot enough, and can it stay cool enough.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Real hole, confirmed: EQUIP_CATS carries `maxC` on every cooker and eqmDeviceMeetsRow (equipment.js:162) uses it only as a FLOOR. There is no `minC`. We ship 33 cheese recipes and cannot tell a user their kettle cannot cold-smoke."
+  },
+  {
+   "concept": "§4.1 Rule 6 — a rule that forces a PREP action and auto-appends a finish stage (score duck skin; if no sear stage exists, add pan-sear skin-down)",
+   "steelman": "One rule mutating two different points of the pipeline — prep and finish — from one animal fact.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "We have the prep text (treatText 'חריטת עור') on `mid`, but it is a prose step and it never forces the finish stage. The two-point mutation pattern is the interesting part."
+  },
+  {
+   "concept": "§4.2 Glaze/sauce engine emitting a DEFERRED ACTION with a trigger offset ('DELAY_GLAZE', trigger at end−20min)",
+   "steelman": "The engine's output includes future actions with their own triggers, not just a linear stage list.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adopt",
+   "value": "Our work plan does exactly this for selected glazes and marinades (t = start−2h, end−15min). Generalising it to a first-class `actions[]` with triggers is a small step from where we already are."
+  },
+  {
+   "concept": "§4.2 Sauce × vacuum rule: liquid sauce must leave the sous-vide bag and be reduced separately",
+   "steelman": "A flavour choice that is physically wrong under a method gets relocated, not rejected — the user still gets the sauce.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "injectSeasoningSteps() (app.js:1273) is entirely method-blind: it inserts a glaze step even on a sous-vide-only path with no dry-heat stage to set it on. First panel missed this whole class."
+  },
+  {
+   "concept": "§4.3 Equipment validation that RETURNS the available methods (intersection of required-alternatives × owned) rather than a boolean",
+   "steelman": "Tell me what I CAN do with what I own, not merely that I cannot do this.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "eqmValidity() returns {level, okPaths, gaps, fixes} including switch-path fixes — strictly richer than the proposal's throw/return."
+  },
+  {
+   "concept": "§4.3 Smoker type → smoke-intensity coefficient (offset 1.5, charcoal cabinet 1.2, pellet 0.8, electric/gas 0.6)",
+   "steelman": "The device changes the OUTCOME, not just the logistics. A coefficient lets the engine say 'on your pellet, use the smoke tube for the first 2h to reach the intended smoke level', and it also drives wood quantity.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adapt",
+   "value": "Missed by the first panel. Our equipPlan() (app.js:1147) is explicitly forbidden to change anything ('It may ENRICH a stage. It may never change one'). That invariant is right for temps and times — but it also means device→outcome is a dimension we have deliberately closed off, with nothing in its place."
+  },
+  {
+   "concept": "§4.3 Fuel and wood recommendation per device type and protein",
+   "steelman": "Fuel is a device fact crossed with a flavour fact; the pairing is one line of real advice per cook.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "We have per-recipe `wood`/`coal` and DEVICE_FUEL/REFUEL_MIN per device type, but they never cross. The device tells you what to feed it; the recipe tells you what wood; nobody reconciles them."
+  },
+  {
+   "concept": "§4.3 Accessory-gated pipeline branching (paper vs foil vs nothing; torch as the fallback caramelizer when there is no grill/oven)",
+   "steelman": "The pipeline degrades gracefully through what you actually own, naming the compromise each time.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "We own the richer accessory vocabulary (EQUIP_OTHER_ITEMS has paper, foil, torch, spritz, injector, cooler, chimney, gloves…) and gearMissingHelp() offers alternatives — but the STAGES never branch on accessory ownership."
+  },
+  {
+   "concept": "§4.3 A per-item capacity precondition derived from the item's own physics (weight_kg × 3 → litres of bath needed)",
+   "steelman": "Demand is computed from the object, not authored per recipe.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "Same idea, better executed: footprint_cm2 = kg × cm²/kg by shape class, plus authored min_bath_l, plus deviceOccupancy's max-not-sum bath rule."
+  },
+  {
+   "concept": "§4.5 Two severity levels: hard block (throw) vs advisory (systemWarnings) accumulated alongside a successful result",
+   "steelman": "A plan can succeed while carrying named caveats; the caveats travel with the plan instead of being lost.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "eqmValidity has three LEVELS but no per-plan warnings channel. A `warnings:[{code, params}]` riding on the computed plan is the natural home for sugar-burn, smoke-level, cold-smoke and chewiness advisories."
+  },
+  {
+   "concept": "§4.4 Method-conversion engine returning a time factor plus LOSS_OF_ATTR / GAIN_OF_ATTR vectors",
+   "steelman": "Switching methods has a stated price and a stated gain, expressed as attributes ('lose BARK, lose SMOKE_AROMA, gain JUICINESS').",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adapt",
+   "value": "Panel item #5, correctly picked, and it is the display half of the outcome-parameter idea. Reject the multiplicative time factors absolutely (a sous-vide duration is a pasteurization value); keep the attribute vector, sourced from our own citations."
+  },
+  {
+   "concept": "§5.1 Device entity extended with shelves_count / shelf_area_cm2 / hanging_capable",
+   "steelman": "Capacity is per-slot and multi-modal (shelf vs hook), not one number.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "EQUIP_CATS carries racks, areaCm2, canHang, hooks, waterPan, outer+shelf dimensions. Ours is richer."
+  },
+  {
+   "concept": "§5.1 Event entity: target_serve_time, guest_count, meals_schedule, allow_resting_time, has_cooler_box",
+   "steelman": "The event is the scheduling unit, and its parameters (guests, whether resting may be shortened, whether a cooler exists) are inputs to the solver.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "We have serve time, scope, portions and a `cooler` equipment token — but `allow_resting_time` (may the solver shorten a rest?) and has_cooler_box as a SOLVER input are not modelled. Phase 3a's approved 'cook-early-and-hold' move needs exactly these."
+  },
+  {
+   "concept": "§5.2 Spatial allocation: first-fit items onto shelves, hanging as a separate pool that frees shelf area",
+   "steelman": "Placement is a real constraint and hanging is itself an optimisation move.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "packDevice() (app.js:528) is a TIME-AWARE first-fit with release-on-end and deterministic ordering; the proposal's version has no time axis at all and permanently decrements shelf area."
+  },
+  {
+   "concept": "§5.2 Backward scheduling from serve time, per item, with rest subtracted",
+   "steelman": "Work backwards from the one fixed point everybody actually cares about.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "planSchedule() (app.js:3858) is the backward critical-path pass, plus slack and latestFinish, plus schedulePlacements. Strictly ahead."
+  },
+  {
+   "concept": "§5.3 Fleet allocation with load-balancing to a secondary device",
+   "steelman": "With N cookers the engine assigns items to devices, and overflow spills to the next-best device automatically.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adapt",
+   "value": "Real gap: cookerFor() (app.js:291) returns NULL when you own two devices of the same class — the item silently leaves contention until the user assigns it by hand. We detect clashes; we never place across a fleet."
+  },
+  {
+   "concept": "§5.3 Device-class substitution WITH a compensating instruction (a lidded grill stands in for a smoker, and the engine injects 'use a smoke tube / chip box')",
+   "steelman": "A substitution is only honest if the engine also tells you what to do differently on the substitute.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Missed by the first panel. gearMissingHelp() gives substitution advice at the CATALOG level; nothing injects a compensating step into the actual plan when a substitute device is used."
+  },
+  {
+   "concept": "§5.4 The insulated cooler (faux cambro) as a SCHEDULING BUFFER — an item that finishes early is moved to the cooler, freeing rack space and absorbing schedule slack",
+   "steelman": "A passive box becomes an active solver move with two distinct payoffs: capacity relief and timing relief.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adopt",
+   "value": "Panel item #3. Sharper than they put it: we already own the `cooler` equipment token and the copilot already ADVISES a cambro hold in prose (copilotAdviceLocal). What is missing is the cooler as a solver move that changes packDevice occupancy and the timeline."
+  },
+  {
+   "concept": "§5.5 / §6.2 Predictive ETA compared against serve time → a named crisis action (CRISIS_SPEED_UP: wrap now and raise chamber 15°C)",
+   "steelman": "The plan is not static; it continuously re-predicts and proposes a concrete, bounded recovery move.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "copilotPace() (app.js:6779) projects rate → ETA → ahead/on-pace/behind vs serve minus rest, and copilotAdviceLocal names the same recovery moves. Ours is honest about the stall (refuses to extrapolate through it); theirs is not."
+  },
+  {
+   "concept": "§5.5 Stall detection from telemetry with a numeric plateau band and a concrete escape move",
+   "steelman": "Detect the physical plateau, do not project through it, and offer the crutch.",
+   "doWeHaveIt": "have-it",
+   "verdict": "already-ours",
+   "value": "copilotStallInfo() (app.js:6755) with a 65–77°C band and the Texas-crutch guidance including 'wrapping too early softens the bark'. Ours is the better-grounded version."
+  },
+  {
+   "concept": "§5.5 Device failure as an EVENT that triggers re-planning down a ranked backup ladder (free oven → lidded grill → FAILED)",
+   "steelman": "Hardware dies mid-cook; the engine reassigns and states why the result is unharmed.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Panel item #4. Nothing in our code models a device going down. The ladder plus the reasoning line ('the meat already absorbed its smoke, moving to the oven costs nothing') is the whole value."
+  },
+  {
+   "concept": "§5.5 Per-item status machine (PENDING / COOKING / RESTING_HOLDING / SERVED / FAILED)",
+   "steelman": "Every item on the plan has an explicit lifecycle state that drives what the UI, the scheduler and the notifications each do next.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adapt",
+   "value": "Missed by the first panel. Our live session is scoped to the COOK, with one probe series and one target — not per item. A multi-item event has no per-item state, which is why the copilot cannot track two briskets."
+  },
+  {
+   "concept": "§5.5 Resolution logs that carry the culinary REASONING, not just the action",
+   "steelman": "Every automated decision is accompanied by why it is safe, in the user's language.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "Our best surfaces already do this (eqmValidity gaps/fixes, the occupancy honesty ladder). Making it the mandatory output shape of every engine decision is the generalisation worth adopting — as CODES, rendered in the view layer."
+  },
+  {
+   "concept": "§6.1 Three-strategy thermometer ingestion ladder (vendor cloud → exported log file → manual override) with a staleness watchdog that surfaces a floating manual-entry button after 5 minutes of no data",
+   "steelman": "Degrade deliberately through three named tiers rather than depending on one closed ecosystem; the watchdog is what makes the manual tier appear at the right moment.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "We have only the manual tier (copilotLogProbe), always-on, with no staleness watchdog. The watchdog is a few lines and is the part that actually changes behaviour."
+  },
+  {
+   "concept": "§6.2 Server-side ingestion so telemetry keeps running with the app closed, ending in a push notification",
+   "steelman": "An 8-hour cook is exactly the case where the phone is asleep; the alert has to originate off-device.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adapt",
+   "value": "The panel already logged this as the one capability we have no answer for. Restating it here only to confirm the mechanism inventory is complete."
+  },
+  {
+   "concept": "§6.4 Consumables predictor: burn rate per device type × adjusted hours × 1.2 safety buffer, plus wrap material derived from how many items will be wrapped",
+   "steelman": "Turn the plan into a shopping list before the user leaves the house — the one output that saves a cook from a mid-cook emergency.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Panel item #2. Zero coverage today. Note we ALREADY have the harder half: REFUEL_MIN gives per-device refuel cadence and equipment_map gives per-recipe accessory needs; only the quantity table is missing (and must be researched and cited, not copied)."
+  },
+  {
+   "concept": "§6.4 Every generated line carries its derivation ('18 chunks = 2 per hour for the first 4 hours + buffer')",
+   "steelman": "An engine output that shows its arithmetic is auditable by the user and by a reviewer, and it is the same discipline as a citation.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adopt",
+   "value": "This is our house style already (BUG-2's 3-model area derivation lives in a code comment). Making it a required FIELD of every engine output — {code, value, becauseCode, becauseParams, src} — is the adoptable generalisation."
+  },
+  {
+   "concept": "§7 Flavour profile as a NAMED COMPOSITE across four elements (salt / sweet / heat / acid) rather than N loose seasonings",
+   "steelman": "'Texas' or 'Asian' is one decision a user can make; 354 individual rubs is a decision they cannot.",
+   "doWeHaveIt": "do-it-differently",
+   "verdict": "adapt",
+   "value": "We have far more depth (354 seasonings tagged flavor/base/heat, 5 filter axes, house-rub defaults) but no top-level named profile. A thin profile layer OVER our tags gives the four-step funnel its step 2 without discarding anything."
+  },
+  {
+   "concept": "§7 RECOMMEND / BLOCK matrix per profile × protein — the explicit NEGATIVE",
+   "steelman": "Some pairings are wrong, and saying so is more useful than silently not recommending them.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "seasoningsFor() (app.js:1296) filters on `s.cats.includes(cat)` — recommend-only. There is no blockCats and therefore no negative case, which also means the pairing logic has no testable negative (DoD-6)."
+  },
+  {
+   "concept": "§7 Flavour × METHOD interaction rules (sous-vide: no oil/butter in the bag, reduce seasoning ~30% because vacuum concentrates; smoke: dry rub only at the start, no sugar above 120°C so myoglobin can bind smoke for the ring)",
+   "steelman": "The flavour plugin does not change physics, but physics changes how the plugin must be applied. Four or five rules cover almost every real mistake.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Entirely missed by the first panel, and the highest value-per-line item in the whole document. Today a user can pick a butter-based glaze on a sous-vide-only path and we will cheerfully print the step."
+  },
+  {
+   "concept": "§8 Four-step funnel: material → flavour (pre-filtered to what fits) → PROCESS ROUTE → dashboard",
+   "steelman": "Each step narrows the next, so the user never sees an option that cannot work with what they already chose.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "We have steps 1, 2 and 4 (catalog → seasoning picker → work plan). Step 3 is the missing one, and it is the step that turns the app from a catalog into an engine."
+  },
+  {
+   "concept": "§8 Routes labelled by OUTCOME in the user's own words ('I want it fast' / 'crisp and traditional' / 'especially tender and juicy'), with the equipment resolved silently behind each",
+   "steelman": "The user states a goal; the engine handles the jargon. Equipment becomes an implementation detail of a goal rather than a prerequisite the user must reason about.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "Missed entirely by the first panel and the thing the owner is pointing at. Our path labels are method names ('סו-ויד + עישון'); the outcome each produces is nowhere in the model, only in a hand-written blurb."
+  },
+  {
+   "concept": "§11-א Seasoning SPLIT across the pipeline: one flavour choice decomposed into salt-in-the-bag + sweet glaze on the last 2 minutes of the grill",
+   "steelman": "A flavour profile is not applied at one moment — the engine distributes its components to the stages where each works.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "This is the most sophisticated behaviour in the entire document and the first panel did not mention it. It is the payoff of the flavour×method rules: not 'blocked', but 'split and rescheduled'."
+  },
+  {
+   "concept": "§11-ב Blocked action returns a triple: verdict + physical reason + a purchasable remedy ('get a cold-smoke coil for an unlit grill')",
+   "steelman": "A refusal that ends in a concrete next action the user can take today.",
+   "doWeHaveIt": "have-partially",
+   "verdict": "adapt",
+   "value": "eqmValidity's `fixes` covers configure and switch-path; the third rung — 'buy this specific accessory to unlock this recipe' — is the E5 placeholder we have not built, and the cold-smoke generator is not even in the 27-token vocabulary."
+  },
+  {
+   "concept": "§11-ג Conversion output states a TEXTURE FORECAST, not just a time ('uniform and pâté-like, no external crust')",
+   "steelman": "The user is choosing an outcome, so the output must be phrased in outcomes.",
+   "doWeHaveIt": "lack-it",
+   "verdict": "adopt",
+   "value": "This is the user-facing face of the outcome vector, and it is what makes 'will it come out chewy?' answerable."
+  }
+ ],
+ "whereItBeatsUs": "Five places, stated plainly.\n\n**1. It has an outcome vocabulary; we have none.** Our only outcome parameter is `doneness` (app.js:3029-3037), it exists on 23 of 177 recipes, and it is decorative: `donenessTarget()` feeds `comboMethodEntry`'s LABEL (app.js:3789), the AI grounding, and a reference list — it never reaches `itemStages()`. Choose \"well done\" on a hanger steak and the sous-vide bath stays 54°C and the schedule does not move by one minute. We cannot express crispness, pull-apart-vs-sliceable, skin crispness, smoke level, or chewiness at all — so the owner's question \"will this come out chewy?\" has no representation anywhere in our model.\n\n**2. Path selection is equipment-driven with a hidden preference baked in.** `gearAwareDefault()` (app.js:1028-1041) picks a path purely from owned gear, and when several combos are possible it does `all.sort((a,b)=>a.length-b.length); return all[0]` — it silently prefers the fewest methods. That IS a preference; the user never stated it and cannot change it. The proposal makes preference the explicit input and equipment the constraint. That is the right way round.\n\n**3. Our own cited intra-cook phases never reach the stage authority.** `itemStages()` emits ONE smoke stage of `soh` hours. Meanwhile `somid` carries \"שיטת 3-2-1\" for spare ribs and `soTreatText()` (app.js:1615) renders it as the sentence \"3 hours uncovered, 2 hours wrapped with liquid, 1 hour uncovered with glaze\" — an entire three-phase timeline living inside a translated string. 22 cuts carry \"עטיפה ב-70/75/65°C\", a temperature-triggered action, and `soTreatText` detects it with `m.startsWith(\"עטיפה\")`. None of it becomes a stage, a timeline event, a timer, or a copilot trigger. The proposal's §3.2/§4.2 treats exactly these as typed, triggered stages. It is right and we are wrong, and the data is already ours.\n\n**4. A whole cooking method is orphaned from the engine.** 106 cuts carry a cited direct-grill schedule (`grt`/`grh`/`grz` in sources.py) and 25 carry a cited `grillable:false`. `itemStages()`' grill branch (app.js:4150) hardcodes `hours:0.3` with no temperature and never reads them, and `methodRules()` never reads `grillable` — a category heuristic decides instead. This is structurally identical to the `order_svsmoke` orphan fixed in BUG-3, one method over.\n\n**5. Flavour is completely method-blind.** `injectSeasoningSteps()` (app.js:1273-1291) splices a glaze step in before the rest step regardless of whether any dry-heat stage exists, and there is no rule against oil in a vacuum bag, no seasoning-dose adjustment for vacuum, no sugar-vs-smoke-ring timing rule, and no BLOCK list at all (`seasoningsFor` filters on `cats.includes` — recommend-only, so there is no negative case to test). The proposal's §7 plus the §11-א duck simulation — split the profile, salt to the bag, sweet to the last two minutes — is genuinely more intelligent than anything we do with flavour.\n\nTwo smaller ones: our equipment envelope checks only the top (`maxC` as a floor in equipment.js:162, no `minC`), so we ship 33 cheese recipes and cannot tell a user their kettle cannot hold below 30°C; and `cookerFor()` returns `null` when you own two devices of the same class, so a multi-device fleet gets no automatic allocation at all.",
+ "whereWeAreBetter": "Only where I can point at code.\n\n**Spatial packing.** `packDevice()` (app.js:528-560) is a time-aware first-fit: it releases a slot when an item's stage ends, orders events deterministically, distinguishes shelf area from hanging hooks from bath litres, and falls back to an empty shelf for an oversized single item and flags it. `deviceOccupancy()` adds a per-slot floor, a measured-vs-estimated tolerance ladder (`FIT_SLOT_TOL`/`FIT_HARD_FACTOR`), an explicit \"the % is a floor\" flag when any item's area is unknown, and the max-not-sum rule for bath volume. The proposal's §5.2/§5.3 allocation has no time axis whatsoever and permanently decrements `shelf_area_cm2`.\n\n**Scheduling.** `planSchedule()` is a proper backward critical-path pass carrying `latestFinishMs` and `slackMs`, feeding `schedulePlacements()`; `cookerContention()` evaluates conflicts at every load-change instant and judges by the honest per-slot verdict rather than a whole-device sum. There is also a device reachability check (app.js:3961-4086) that names a `temp-ceiling` conflict when a stage's cited temperature exceeds a device's `maxC` — the proposal never checks device temperature outside its cheese narrative.\n\n**Error objects.** `eqmValidity()` returns `{level: ok|blocked-default|uncookable, okPaths, gaps:[{kind,state}], fixes:[{type,pathId,label}]}` evaluated across ALL cited paths with a generation-stamped cache, including a separately-surfaced probe gap. The proposal's equivalent is `throw new Error(\"<Hebrew sentence>\")`. Ours is machine-readable, three-valued, and already renders in six languages; theirs is a string.\n\n**Path enumeration.** `itemProfile()` enumerates every valid combo through `validCombo()`/`methodRules()`, and `itemPaths()` additionally emits the reverse smoke→sv order gated on cited data (`comboHasSvSmoke`). The proposal's §4.5 makes the sous-vide branch and the smoker branch mutually exclusive `if/else if`, so its own headline pipeline (smoke → sous-vide → grill finish) cannot be produced by its engine. We ship both orders.\n\n**Breadth of the universality claim.** The proposal argues for universality with a 12-row table. Our catalog already IS universal: 33 cheeses, 30 beef, 21 vegetables, 15 seafood, 14 pork, 12 offal, 9 lamb, 6 fruit, plus dried/smoked sausage, bacon and biltong — 279 recipes, each with a citation.\n\n**Rule 1 and rule 2.** `methodRules()` already implements chewiness protection (`needsCookFor:'grill'` + `invalid:[['grill']]` for collagen cuts), and our pasteurization data carries Baldwin's temp × time × THICKNESS reasoning per cut rather than a single threshold.",
+ "proposedModel": "Build order is C2 → C1 → C3, because the parameter engine is unbuildable until phases are typed. Everything below obeys one hard invariant, written as a test: **a rule may block, may add a stage whose values come from data, or may select among cited values — it may never produce a temperature or a duration.**\n\n**Step 0 — the two orphan fixes (cheap, and they are our bugs).**\n- `itemStages()` grill branch: read cited `grt`/`grh`/`grz` instead of `hours:0.3` with no temp — same shape as the BUG-3 `order_svsmoke` fix, one method over. 106 cuts affected.\n- `methodRules(c)`: `if(c.grillable===false) return {…, invalid:[['grill']]}` so the cited flag outranks the category heuristic. 25 cuts affected. Expect visible path changes → treat as its own release with a full-suite gate.\n\n**Step 1 — typed phases (`phases[]`), derived at build time, never hand-maintained.**\n`somid`/`mid`/`sear` are a CLOSED set (I counted: 12 distinct `somid` values, 12 distinct `mid`). Add `gen_phases.py` in the `equipment_map.py` tradition — derived from what the recipe already encodes, with a build-time assertion that every value maps to exactly one record or an explicit `{op:'none'}`:\n```python\nphase = {\n  'op': 'wrap'|'glaze'|'spritz'|'flip'|'dry'|'chill'|'score'|'peel'|'skewer-turn'|'none',\n  'material': 'paper'|'foil'|None,\n  'trigger': {'internalC':70} | {'atFrac':0.6} | {'beforeEndMin':30} | {'everyMin':60},\n  'appliesTo': ['smoke-only','sv-smoke','smoke-sv','grill'],   # which cited paths\n  'src': '<citation id or \"derived-from:somid\">'\n}\n```\n\"שיטת 3-2-1\" expands to three phase records; \"עטיפה ב-70°C\" to one `{op:'wrap', trigger:{internalC:70}}`. No new numbers — every one of them is already in the string.\n\n**Step 2 — `itemStages` consumes `phases[]` and stages gain a dual trigger.**\n```js\nstage.advance = { hours: <schedulable estimate>, internalC?: <truth>, surface?: 'dark-set' }\n```\n`hours` stays the schedulable value so `planSchedule`/`packDevice`/`cookerContention` are untouched; `internalC` is what the live copilot waits on. New `kind:'action'` stages carry `{op, material, trigger}`. Because `itemStages` is the single stage authority, the card, the grid row, the work plan, the timeline, the timers and the AI grounding all get wrap/glaze/spritz events for free — no new render path, no new leak surface.\n\n**Step 3 — the outcome vocabulary (`OUTCOMES`) and the projection.**\nA closed axis registry, ordinal levels, Hebrew/English labels through `L()` with static literals:\n```js\nconst OUTCOMES = {\n  doneness:  {levels:['rare','mr','med','mw','well'],        control:true},\n  texture:   {levels:['sliceable','tender','pulled'],        control:true},\n  crust:     {levels:['none','soft','bark','crisp'],         control:true},\n  smokeLevel:{levels:['none','light','medium','heavy'],      control:true},\n  speed:     {levels:['fastest','balanced','best'],          control:true},\n  chew:      {levels:['tender','firm','chewy','pasty'],      control:false}   // FORECAST only\n};\n```\n`pathOutcomes(meta, path) -> {doneness, texture, crust, smokeLevel, chew, timeH, risks:[{code,params}], src}` — every field is either read from data or from a tiny enumerated derivation table with a `src`; **unknown is `null`, never guessed**. `chew` is the answer to \"will it come out chewy?\": derived from collagen class × total time above the gelatin window × whether a dry-heat leg exists, and from the cited hazard notes now typed as `risks[]` (`'גריל חזק ומהיר בלבד'` → `{code:'overcook-toughens'}`, `'בישול ארוך מדי → עיסתי'` → `{code:'over-tenderize'}`).\n\n**Step 4 — invert it. This is §8 step 3 and the answer to the owner's point 2.**\n```js\npathsForOutcome(meta, want) -> [{ path, score, meets:[axis…], unmet:[{axis, got, wanted}] }]   // ranked, cited paths ONLY\n```\nIt ranks the paths `itemPaths()` already returns; it never invents one. The UI shows three outcome-named presets whose parameter vectors are constants — \"מהר\" `{speed:'fastest'}`, \"פריכה ומסורתית\" `{crust:'bark', smokeLevel:'heavy'}`, \"נימוחה ועסיסית\" `{texture:'pulled', crust:'soft'}` — plus an \"advanced\" drawer exposing the axes directly. Each row shows `meets`/`unmet` as CODES rendered in the view layer, which is also the panel's loss/gain vector for CP2, for free.\n\n**Step 5 — `P_TIME` from the cited range (zero invented numbers).**\n`hoursRange(h) -> {lo, hi}` beside the existing `upperHours()`; `upperHours` remains the default so behaviour is byte-identical until a user moves the dial. 32 cuts have a cited svh range, 27 an smh range. **Gate:** for any sous-vide stage the low end must be re-checked against the cut's pasteurization citation before it is offered — if the citation does not establish the low end as pasteurizing for that thickness, the dial's floor is the pasteurizing value, not the cited low. This needs an owner ruling before a line is written (see open questions).\n\n**Step 6 — flavour × method rules.** Pure, code-only output:\n```js\nseasoningRules(sel, combo, stages) -> { drop:[], move:[{id, toStageIdx}], adjust:[{id, pct:-30}], warn:[{code, params}] }\n```\nInitial set: `sv-no-fat` (base ∈ {שמן, חמאה} on a bag stage → move to finish), `sv-dose-down` (−30% in vacuum), `sv-liquid-out` (sauce leaves the bag, reduce separately), `smoke-sugar-late` (flavor ∋ מתוק and stage.kind==='smoke' and stage.temp ≥ 120 → defer to the finish stage or last 20 min), `glaze-needs-dry-heat` (glaze selected, no dry-heat stage → warn + offer to add the cited finish). Add `blockCats:[]` to the seasoning records so the negative case exists and is testable.\n\n**Step 7 — envelope, registry, fleet, consumables (in that order of cheapness).**\n- Add `minC` to smoker/oven/grill `props` with per-type `def`, and `capability.minTempC` mirroring `maxTempC` in `eqmDeviceMeetsRow`. Add `smokegen` (cold-smoke tube/maze) to `EQUIP_OTHER_ITEMS` and to `equipment_map.py`'s 27-token vocabulary; any cited stage below ~40°C derives `need:['smokegen']`.\n- `RULES = [{id, when(ctx), verdict:'block'|'warn'|'add-stage'|'defer-action', code, params, remedyCodes, src}]` + `evaluateRules(meta, path, kit, flavor) -> {blocks, warns, added}`. Migrate the existing scattered rules into it rather than writing new ones first.\n- `allocateFleet(computed, scope) -> {assign, unplaced, substitutions:[{itemKey, fromKind, toDevId, compensateCode}]}` — `packDevice` generalised across devices; `cookerFor()` consults it before returning `null`. `compensateCode:'use-smoke-tube'` is the substitution-with-compensation mechanism. Present as a proposed move the user accepts (consistent with Phase 3a's `action_id` contract), not a silent assignment.\n- `consumables(computed, scope) -> [{code, qty, unit, becauseCode, becauseParams, src}]` — burn rates as a CITED table researched by us, `1.2` as a named constant, paper metres derived from the count of items whose `phases[]` contain `{op:'wrap', material:'paper'}`. Every line carries its derivation as data, not prose.\n- Live loop: key `probes` by `itemKey` so `copilotPace` runs per item; add `deviceFault(devId)` → re-run `allocateFleet` excluding it → emit `{moves, reasonCodes}`; make the cooler a solver move gated by Phase 3a's existing 60°C hold floor and 240-minute danger-zone accumulator; add a staleness watchdog that surfaces the manual-entry affordance after N minutes without a reading.\n\n**i18n discipline throughout:** every engine output is `{code, params}`. No sentence is ever built inside the engine, so `L()`'s static-literal extraction and Guards A/B/C stay in force — the same rule `eqmValidity`'s `gaps`/`fixes` already follow.",
+ "openQuestions": [
+  "Sourcing policy for OUTCOME claims. Every `safe` value traces to a primary source. What is the standard for a TEXTURE claim — 'foil wrap → softer bark', 'crust: none under vacuum', 'chew: pasty above N hours'? McGee and AmazingRibs are the document's sources and they are secondary. Owner ruling needed: is a named secondary source acceptable for a non-safety outcome axis, and does every `pathOutcomes` field need a `src` the way `safe` does?",
+  "Does exposing the LOW end of a cited sous-vide range (`svh='24-48'`) violate DoD-10? Pasteurization is temp × time × thickness, so the low end of a cited range may not be pasteurizing for a thick cut even though the citation prints it. Proposal: the dial's floor is max(cited low, pasteurizing value for that cut's thickness), enforced by a build guard. This is a spec-level safety decision and must be raised, not assumed.",
+  "What exactly does the owner mean by shrinking the card (his point 3)? The byte accounting says citations dominate and cannot shrink. But `svSteps`/`soSteps`/`composedSteps` generate ~40 lines of largely mechanical prose per recipe that a typed `phases[]` could render instead. Is *that* the shrink — replacing hand-authored step prose with generated steps over typed phases — or something else?",
+  "The `grillable:false` fix will change the visible path set for 25 cuts and the grill-schedule wiring will change stage temps/durations for 106. Both are corrections toward cited data, but both are user-visible changes to a shipped plan. One release or two, and does either need an owner sign-off before the RED test is written?",
+  "Fleet auto-allocation vs explicit control. Today `cookerFor()` returns null on ambiguity — a deliberate 'ask the user' choice. Phase 3a's approved contract says the AI ranks only among solver-emitted moves. Should `allocateFleet` assign silently with an undo, or always emit a proposed move the user accepts? The latter is consistent but costs a tap per item on a 6-item event.",
+  "Is `equipPlan`'s 'may enrich, may never change' invariant meant to hold against a device→outcome modifier? A smoke-intensity coefficient does not change a temperature or a duration, but it does change what the engine claims the RESULT will be, and it drives wood quantity. Does that count as enriching or as changing?",
+  "Where does the outcome-first funnel live in the IA? §8 puts it after cut selection. Our catalog is the entry point and is heavily invested in. Is the outcome selector a step inside the recipe card (safe, incremental), or a second entry point from Home ('tell me what you want tonight') that indexes across all 279 recipes? The second is far more valuable and far more work."
+ ]
+}
