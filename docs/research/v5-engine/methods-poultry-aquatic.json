@@ -1,0 +1,723 @@
+{
+ "headline": "Across my 37 items the three-method vocabulary (sv/smoke/grill) is not a \"cooking method\" vocabulary at all — it is a HEAT-SOURCE vocabulary, and it is missing the two heat sources that actually dominate this domain: a pot of water/steam (9 of 15 seafood items are primarily boiled or steamed) and a dry oven (every whole bird). It is also missing a whole cooking MEDIUM — fat — which is the defining constraint of both waterfowl categories and the literal name of two catalog items (שוק ברווז קונפי, שוק אווז קונפי) that today can only be offered sous-vide, smoke or grill. Beyond the vocabulary gap there is a live wrong answer: the six items with no `doneness` entry (n=3 שווארמה, 43 הודו שלם, 44 אווז שלם, 45 שוק אווז, 46 ברווז שלם, 47 שוק ברווז) fall through methodRules' final \"collagen/long cuts\" branch, so a 6 kg whole turkey DEFAULTS to sous-vide and roasting/grilling it alone is marked invalid — and five bivalve/crab items carry `svt=0` yet still default to `['sv','smoke']`. Finally the model has no pre-cook and no post-cook stage, so brine, dry-brine, cure, thaw, air-dry/pellicle, score, and tenderise — days of clock time in an orchestrator app — are all smuggled into the `rub`, `mid`, `sear` and `somid` prose fields where the engine cannot see them.",
+ "categories": [
+  {
+   "category": "עוף",
+   "itemCount": 6,
+   "notesOnOurModel": "All 6 chicken items carry a `doneness` entry so they land in the steak-like branch (allowed sv/smoke/grill, default sv+smoke, every combo legal). Two structural failures. (1) The bird's two-target problem is inexpressible: n=38 עוף שלם ספאצ'קוק has ONE tgt (74) and ONE doneness scale ('dark'), but a whole bird's breast wants ~62-65°C and its thigh wants 74-80°C — that divergence IS the reason spatchcocking exists, and the app cannot say it. (2) `mid:'ייבוש עור'` appears on 4 of the 6 items as a bare label; skin-drying is a real stage with a clock (uncovered fridge, hours) and equipment (wire rack + sheet pan), not a note. The single most common domestic method for a whole chicken — a 200-220°C dry oven — cannot be selected at all, even though `oven` is an owned equipment category with `fan` and `steam` props already modelled, and the grill already carries a `rotisserie` boolean prop (app.js:89) that nothing can consume.",
+   "methods": [
+    {
+     "method": "HOT_SMOKE",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Deep smoke penetration, mahogany colour, rendered but RUBBERY skin below ~150°C — the classic low-and-slow poultry skin complaint. Juicy dark meat; breast dries if held long.",
+     "equipment": "מעשנה (owned)",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled. What is lost is the temperature distinction: `smt:120-150` vs `sot:130-150` is a single number, so the app cannot express \"smoke at 110°C for flavour then blast to 200°C for skin\".",
+     "safetyNote": "USDA FSIS 74°C / 165°F instantaneous for all poultry — this is our existing `safe:74` and it is correctly sourced."
+    },
+    {
+     "method": "GRILL_DIRECT",
+     "hebrewName": "גריל ישיר",
+     "whatItProduces": "Hard char, Maillard crust, crisp rendered skin on wings/thighs; flare-ups from dripping fat; breast overcooks before skin crisps.",
+     "equipment": "גריל (owned)",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled, but conflated with indirect grilling under one token."
+    },
+    {
+     "method": "GRILL_INDIRECT",
+     "hebrewName": "גריל עקיף (דו-אזורי)",
+     "whatItProduces": "Convection-oven behaviour inside a kettle: even cooking, crisp skin at 180-200°C dome temp, no flare-up. This is how a spatchcock chicken is actually cooked on a kettle.",
+     "equipment": "גריל with lid + 2 heat zones — the grill `lid` bool and `zones` capKey ALREADY exist in app.js:80-86",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The most-used real technique for whole birds on a grill is unnameable. Worse: app.js:1168 already writes advice about \"עישון בגריל עקיף (2-zone)\" as free text — the concept is in the copy but not in the vocabulary.",
+     "safetyNote": "No new safety value; USDA FSIS 74°C endpoint unchanged."
+    },
+    {
+     "method": "OVEN_ROAST",
+     "hebrewName": "צלייה בתנור",
+     "whatItProduces": "Dry radiant+convective heat, 190-230°C. Even browning, crisp skin if the surface is dry, no smoke flavour. The default domestic method for a whole chicken and for parts.",
+     "equipment": "תנור (OWNED equipment category, app.js:91) — with `fan` (convection) and `maxC` props already modelled",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "We own the oven, model its area, max temp, fan and steam — and no cut can select it. A user with an oven and no smoker is told their gear cannot cook a chicken.",
+     "safetyNote": "USDA FSIS 74°C. Convection (`fan:true`) shortens time and typically drops set temp ~20°C — that relationship needs a citable source before we compute with it: requires research."
+    },
+    {
+     "method": "ROTISSERIE",
+     "hebrewName": "שיפוד מסתובב",
+     "whatItProduces": "Continuous rotation = continuous self-basting. The most even skin in the domain — uniform bronze, fully rendered, no flip, no dry side. Fat drips away rather than pooling. Whole birds only.",
+     "equipment": "ערכת רוטיסרי on the grill — the `rotisserie` bool prop ALREADY EXISTS at app.js:89, tier 'pro'. Plus a drip pan (`drippan` token exists).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "We ask the user whether they own a rotisserie, store the answer, and then never use it. That is inert-shipment: a captured capability with no consumer.",
+     "safetyNote": "USDA FSIS 74°C. Motor weight rating is a real spec (a 6 kg turkey overloads a light chicken motor) — no citable consumer figure: requires research."
+    },
+    {
+     "method": "VERTICAL_ROAST",
+     "hebrewName": "צלייה אנכית / 'ביר-קאן'",
+     "whatItProduces": "Bird upright: fat drains down the carcass, all skin surfaces face the heat, thighs sit closest to the fire (which is where you want them). Even skin, no soggy underside.",
+     "equipment": "מעמד עוף אנכי (~₪40-150) or a beer-can",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A cheap, common technique. Note the popular claim that the liquid steams the bird is disputed by AmazingRibs/Serious Eats — the real benefit is geometry and drainage. We should ship the geometry claim, not the steam claim.",
+     "safetyNote": "USDA FSIS 74°C; the cavity liquid never boils in most tests — do not imply it pasteurizes anything: requires research if we make any claim."
+    },
+    {
+     "method": "SOUS_VIDE",
+     "hebrewName": "סו-ויד",
+     "whatItProduces": "Absolute doneness control, edge-to-edge; breast at 62-65°C stays juicy where an oven would dry it. But produces FLABBY, unrenderable skin that must be removed or aggressively re-crisped.",
+     "equipment": "סו-ויד + ואקום (owned)",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled. The skin consequence is not — the app offers sv+grill without warning that a 2-minute sear cannot rescue sous-vide chicken skin."
+    },
+    {
+     "method": "BROIL_SALAMANDER",
+     "hebrewName": "גריל עליון / סלמנדרה",
+     "whatItProduces": "Top-down radiant blast. The dedicated skin-crisping FINISH after any gentle cook (sous-vide, low smoke, braise). 3-6 minutes, no interior effect.",
+     "equipment": "תנור with a top element, or a salamander; a `torch` (owned token) is the small-item substitute",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The specific answer to the skin-crisping problem across the whole poultry+waterfowl group, and we have no way to name it."
+    },
+    {
+     "method": "PRESSURE_COOK",
+     "hebrewName": "סיר לחץ",
+     "whatItProduces": "~120°C wet heat. Thighs/drumsticks/leg quarters to fall-apart shreddable in 12-20 min instead of 2 hours. Zero browning, zero skin — a texture route, not a flavour route.",
+     "equipment": "סיר לחץ / אינסטנט-פוט (~₪250-800) — NOT owned, standard consumer kit",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The fastest route to shredded chicken and to stock. Also the enabler for a pressure-then-char two-stage.",
+     "safetyNote": "USDA FSIS 74°C endpoint still applies. Pressure-vessel operating pressure/temp claims: requires research."
+    },
+    {
+     "method": "DEEP_FRY",
+     "hebrewName": "טיגון עמוק",
+     "whatItProduces": "170-190°C oil. Uniform shatter-crisp exterior in minutes; the canonical wing method and a real whole-bird method.",
+     "equipment": "מטגנת / סיר כבד + 2-3 ל' שמן + מדחום שמן (owned `probe` can serve)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Wings (n=39) are in the catalog and their single most common preparation is unavailable.",
+     "safetyNote": "Whole-bird deep frying is the highest-consequence operation in this whole report (oil displacement fire from a partially frozen bird). Do NOT ship it without USDA FSIS / NFPA turkey-frying guidance quoted verbatim: requires research."
+    },
+    {
+     "method": "AIR_FRY",
+     "hebrewName": "אייר-פריירlike",
+     "whatItProduces": "Small high-velocity convection oven. Wings and thighs crisp in 20-25 min with no oil bath; drier result than deep-fry, far less mess.",
+     "equipment": "אייר פרייר (~₪250-700)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Extremely common consumer kit; for wings and drumsticks it is the everyday method the app pretends does not exist."
+    },
+    {
+     "method": "PLANCHA_GRIDDLE",
+     "hebrewName": "פלנצ'ה / פלטה",
+     "whatItProduces": "Full-contact conduction on a flat surface. Boneless thigh skin-down under a weight → uniformly crisp, flat, glass-like skin — better than a grate, which only contacts in stripes.",
+     "equipment": "'פלנצ׳ה / פלטה' is ALREADY a grill `type` in app.js:80, or a cast-iron griddle (~₪150-600)",
+     "weHaveIt": "partially",
+     "whyItMatters": "We model the hardware as a grill type but the method behaves nothing like a grate: no flare-up, no char stripes, full contact. Treating it as 'grill' gives wrong advice."
+    },
+    {
+     "method": "BRINE_WET",
+     "hebrewName": "כבישה רטובה (מלח במים)",
+     "whatItProduces": "PROCESS STAGE, not a heat method. Salt+water 4-12h: adds water weight, raises the overcook tolerance, seasons throughout. Costs: diluted flavour and a WETTER skin that resists crisping.",
+     "equipment": "דלי/כלי כבישה + מקום במקרר (~₪30-100) + a scale for the salt %",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Currently hidden in `rub` as the word 'כבישה' with no duration, no salt ratio, no vessel, no fridge-space claim. The work plan cannot schedule a 12-hour stage it cannot see.",
+     "safetyNote": "Brining must happen at refrigeration temperature — a bucket on the counter is a time/temperature abuse. Cite USDA FSIS cold-holding: requires research for the verbatim clause."
+    },
+    {
+     "method": "BRINE_DRY",
+     "hebrewName": "כבישה יבשה (מלח בלבד)",
+     "whatItProduces": "PROCESS STAGE. Salt only, uncovered in the fridge 12-72h. Draws moisture out, it dissolves the salt, the brine reabsorbs — deep seasoning AND a dried surface, which is the single best predictor of crisp skin. Strictly better than wet brine for skin.",
+     "equipment": "רשת + תבנית + מקום פתוח במקרר (~₪50-150) + משקל",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The highest-leverage, lowest-cost technique in the entire poultry domain and it is not in our model at all."
+    }
+   ]
+  },
+  {
+   "category": "הודו",
+   "itemCount": 5,
+   "notesOnOurModel": "Four of the five carry `doneness` and behave like chicken. The fifth and largest, n=43 הודו שלם (6 kg), has NO doneness entry and therefore falls into methodRules' final collagen branch: default `['sv','smoke']`, `needsCookFor:'grill'`, `invalid:[['grill']]`. The app's out-of-the-box recommendation for a whole 6 kg turkey is to sous-vide it, and it forbids roasting it. Sous-vide of a 6 kg whole bird is not a real technique at consumer scale — no domestic bath or vacuum bag takes it. n=3 שווארמה is also doneness-less and lands in the same branch, yet its true method is a vertical rotisserie which MAKE_COOK already names for the MAKE ('תנור/רוטיסרי', app.js:3717) while the CUT cannot select it.",
+   "methods": [
+    {
+     "method": "OVEN_ROAST",
+     "hebrewName": "צלייה בתנור",
+     "whatItProduces": "The default whole-turkey method worldwide. 160-180°C dry heat, breast shielded, 3-4h. Even browning, crisp skin, no smoke.",
+     "equipment": "תנור (OWNED) — but a 6 kg bird tests the `areaCm2` spec we already model",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "For the single most iconic item in the catalog, the normal method is unavailable and the offered default is sous-vide.",
+     "safetyNote": "USDA FSIS 74°C in the thickest part of the thigh, not touching bone."
+    },
+    {
+     "method": "SPATCHCOCK_ROAST",
+     "hebrewName": "צלייה בפריסה (ספאצ'קוק)",
+     "whatItProduces": "Backbone out, bird flattened: roughly halves the cook time and collapses the breast/thigh endpoint gap because both now sit in one plane. Uniformly crisp skin over the whole top surface.",
+     "equipment": "מספרי עוף / סכין + תבנית רחבה; תנור או גריל עקיף",
+     "weHaveIt": "partially",
+     "whyItMatters": "We encode spatchcock as an item NAME for chicken (n=38) and not at all for turkey. It is a PREP TRANSFORM that changes geometry, cook time and target structure — modelling it as a distinct item cannot scale (every bird × every transform)."
+    },
+    {
+     "method": "BRINE_DRY",
+     "hebrewName": "כבישה יבשה 24-72 שעות",
+     "whatItProduces": "PROCESS STAGE. For a 6 kg bird this is a 2-3 DAY commitment that must be on the work plan. Deep seasoning + a bone-dry skin.",
+     "equipment": "רשת + תבנית + significant open fridge space; משקל for the salt %",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Our n=43 `rub` field literally reads 'כבישה+חמאת עשבים+מלח' — a multi-day stage compressed into a seasoning string. For an ORCHESTRATOR app this is the most schedule-distorting omission in my whole domain.",
+     "safetyNote": "Refrigerated throughout. Salt percentage by weight is the safety-adjacent number and we should cite one — requires research."
+    },
+    {
+     "method": "THAW_REFRIGERATED",
+     "hebrewName": "הפשרה במקרר",
+     "whatItProduces": "PROCESS STAGE with no culinary outcome and enormous schedule impact: a frozen 6 kg turkey needs multiple days in the fridge.",
+     "equipment": "מקרר with the space; nothing else",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "We already store `kg` on every item — the arithmetic is available and unused. A user who buys a frozen turkey two days before the cookout is going to fail, and the app will not warn them.",
+     "safetyNote": "USDA FSIS publishes refrigerator-thaw time per unit weight (commonly cited as ~24h per 2-2.3 kg) and prohibits counter thawing. Get the FSIS text verbatim: requires research."
+    },
+    {
+     "method": "ROTISSERIE",
+     "hebrewName": "שיפוד מסתובב",
+     "whatItProduces": "Even self-basting for a large bird; superb skin. But 6 kg on a spit needs a rated motor and counterweight.",
+     "equipment": "ערכת רוטיסרי (the `rotisserie` prop exists) + a heavy-duty motor",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Also the ONLY correct method for n=3 שווארמה תלויה — a vertical spit. That item's whole identity is a method we do not have."
+    },
+    {
+     "method": "OVEN_BRAISE",
+     "hebrewName": "בישול-רוטב בתנור (בְּרֶז)",
+     "whatItProduces": "Covered vessel, liquid, 150-160°C, 2-3h. Collagen to gelatin; falling-off-the-bone turkey legs and wings with a sauce as a by-product. No crust unless finished uncovered.",
+     "equipment": "סיר ברזל יצוק / תבנית מכוסה + תנור (OWNED)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "n=42 שוק הודו (tgt 85°C) and n=68 כנפי הודו are collagen cuts. Braising gets them there in a third the time of a 3h smoke and yields a sauce. This is the owner's named gap and turkey legs are its clearest case.",
+     "safetyNote": "USDA FSIS 74°C is the safety floor; 82-88°C is the TEXTURE target — the app already distinguishes `safe` from `tgt`, so the schema is ready."
+    },
+    {
+     "method": "PRESSURE_COOK",
+     "hebrewName": "סיר לחץ",
+     "whatItProduces": "Turkey legs/wings shreddable in ~25 min. No browning.",
+     "equipment": "סיר לחץ (~₪250-800), not owned",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The fast substitute for braise; also the route to turkey stock from the carcass."
+    },
+    {
+     "method": "HOT_SMOKE",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Smoked turkey — a genuinely great product; pink smoke ring under the skin, deep flavour, but soft skin unless finished hot.",
+     "equipment": "מעשנה (owned)",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled and appropriate.",
+     "safetyNote": "USDA FSIS 74°C. Large-bird low-temperature smoking has a slow-warming risk profile; the 4-hour 4-60°C rule is the relevant control — cite FSIS verbatim: requires research."
+    },
+    {
+     "method": "SEPARATE_AND_COOK_APART",
+     "hebrewName": "פירוק וטיפול נפרד",
+     "whatItProduces": "Breast and legs cooked as separate items to separate targets (breast 63-65°C, legs 82-85°C), then reassembled on the platter. The only technique that gets BOTH right on a large bird.",
+     "equipment": "סכין פריסה + קרש (both owned tokens) + two cooking positions",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "For a 6 kg bird this is what a professional actually does, and our one-item-one-target schema cannot represent it at all. It also has a scheduling shape (two parallel cooks) that the orchestrator would love."
+    },
+    {
+     "method": "DEEP_FRY",
+     "hebrewName": "טיגון עמוק (הודו מטוגן)",
+     "whatItProduces": "A whole turkey in ~45 min; extraordinarily crisp, moist breast.",
+     "equipment": "מטגנת הודו ייעודית 30-40 ל' + מבער גז (~₪600-1500)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A famous method the app cannot mention.",
+     "safetyNote": "HIGHEST-CONSEQUENCE item in this report. Oil-volume displacement, fully-thawed-only, outdoors-only, never on a deck. Do not ship without USDA FSIS and NFPA guidance quoted: requires research."
+    },
+    {
+     "method": "STUFFING_SECONDARY_MASS",
+     "hebrewName": "מילוי (מסה משנית)",
+     "whatItProduces": "Not a method — a second thermal mass inside the bird with its own, HIGHER, effective risk and a slower heating curve.",
+     "equipment": "none beyond the roast",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "If a user stuffs the bird, every time estimate we produce is wrong and the safety endpoint moves to the stuffing.",
+     "safetyNote": "USDA FSIS requires the STUFFING itself to reach 74°C / 165°F. This is a safety-relevant number with a named authority and we have no field to put it in: requires research to quote the FSIS clause verbatim."
+    }
+   ]
+  },
+  {
+   "category": "אווז",
+   "itemCount": 3,
+   "notesOnOurModel": "All three waterfowl problems in one category. n=9 חזה אווז has doneness (mr default 57°C) and behaves like a steak. n=44 אווז שלם (4.5 kg) and n=45 שוק אווז (קונפי) have NO doneness and fall to the collagen branch — so a whole goose defaults to sous-vide+smoke and cannot be roasted alone, and an item whose Hebrew name is literally 'קונפי' is offered sous-vide, smoke and grill but not confit. The `mid` field carries the real knowledge as prose — n=44 says 'ניקוז שומן' and `somid` says 'דקירת עור+ניקוז' — meaning the engine knows the words for fat-drainage and skin-piercing but has no stage to execute them. The saved-fat yield (a goose gives 0.5-1 kg of schmaltz) is a real product of the cook with nowhere to live.",
+   "methods": [
+    {
+     "method": "CONFIT",
+     "hebrewName": "קונפי (בישול בשומן)",
+     "whatItProduces": "Salt-cure 12-24h, rinse, fully submerge in rendered fat, hold 80-90°C for 2-4h. Meat becomes silky and falls off the bone WITHOUT drying, because fat cannot carry water away. Then chilled and stored under the fat cap; finished crisp in a hot pan or oven.",
+     "equipment": "סיר ברזל יצוק עמוק + 1.5-2 ק\"ג שומן אווז/ברווז + תנור that holds 80-90°C accurately (OWNED oven, if its low-end control is good)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "An item NAMED confit cannot be confited. Our `svt:80/svh:8-10` is a sous-vide APPROXIMATION of confit (bag + fat + 80°C) which is a legitimate modern technique — but the app never says so, cannot express the cure, the fat quantity, the fat as an input, or the store-under-fat preservation step which is the historical POINT of the dish.",
+     "safetyNote": "Confit's traditional preservation claim (months under fat) rests on the salt cure + fat seal + cold storage, not on the cook. I have NO primary source for a safe cure ratio, hold time, or refrigerated shelf life: requires research."
+    },
+    {
+     "method": "SCORE_AND_RENDER",
+     "hebrewName": "חריטה וזיקוק שומן",
+     "whatItProduces": "PREP + METHOD in one. Crosshatch the fat cap without cutting the meat; start SKIN-DOWN in a COLD dry pan; low heat 12-18 min; pour off the rendered fat repeatedly; flip for 1-2 min. Outcome: glass-thin crackling skin over MR meat, and 100-200 ml of pure fat as a by-product.",
+     "equipment": "מחבת ברזל יצוק / פלנצ'ה כבדה (~₪120-600) + a vessel for the fat",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "This is THE method for goose and duck breast, and the model cannot express any of its four defining features: start cold, one side only, pour off mid-cook, and a yield. We have it as `sear:'כן'` plus `mid:'ייבוש'`.",
+     "safetyNote": "No safety value changes. See the 57°C endpoint note under ברווז — it applies identically to n=9 חזה אווז (tgt 65, doneness mr 57, rare 54, safe 74)."
+    },
+    {
+     "method": "TWO_STAGE_RAMP",
+     "hebrewName": "בישול דו-שלבי (נמוך→גבוה)",
+     "whatItProduces": "Stage 1: 135-150°C until the subcutaneous fat has rendered out and the legs reach 82-85°C. Stage 2: 220-230°C or a broiler for 10-15 min to blister and crisp. This resolves the core waterfowl conflict — the meat's ideal endpoint is far BELOW the temperature at which fat renders well.",
+     "equipment": "תנור (OWNED) or a lidded grill; a deep drip pan (`drippan` token exists)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Our model has exactly ONE smoke temperature and one 'grill finish'. It has no concept of a temperature SCHEDULE inside a single method. For waterfowl that schedule is the whole technique.",
+     "safetyNote": "USDA FSIS 74°C applies to whole goose (poultry). Our n=44 tgt is 74 and safe is 74 — consistent."
+    },
+    {
+     "method": "AIR_DRY_UNCOVERED",
+     "hebrewName": "ייבוש עור במקרר (24-72 שעות)",
+     "whatItProduces": "PROCESS STAGE. Uncovered on a rack in the fridge, optionally scalded with boiling water first (Peking method) and/or glazed with maltose/vinegar. Dehydrates the skin so it can shatter rather than leather.",
+     "equipment": "רשת + תבנית + open fridge space; optionally a small fan",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The highest-leverage skin technique in the domain, and a MULTI-DAY schedule item invisible to the work plan. `mid:'ייבוש'` is a mid-cook note, not a pre-stage."
+    },
+    {
+     "method": "STEAM_THEN_ROAST",
+     "hebrewName": "אידוי ואז צלייה",
+     "whatItProduces": "Classic German/Chinese goose: steam or covered-with-liquid 45-60 min to render a large volume of fat and pre-tenderise, then roast dry at 200°C+ for colour. Reduces flare-up risk enormously and shortens the dry phase.",
+     "equipment": "סיר גדול + סל אידוי (~₪150-500), or a covered roasting pan with water; a steam oven if owned (the `steam` bool exists at app.js:98)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "For a 4.5 kg goose this is arguably the safest and most reliable route, and we model the hardware prop (`steam`) with no method to consume it."
+    },
+    {
+     "method": "ROTISSERIE",
+     "hebrewName": "שיפוד מסתובב",
+     "whatItProduces": "The best whole-waterfowl geometry: rotation drains fat continuously from every surface instead of pooling it on the underside, and self-bastes the skin.",
+     "equipment": "ערכת רוטיסרי + a heavy motor + a deep drip pan (mandatory — the fat volume is large)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Prop exists, method does not.",
+     "safetyNote": "The fire hazard here is real and specific: 0.5-1 kg of rendered fat dripping onto coals. `drippan` is already an equipment token — a fat-heavy method should be able to declare it a HARD requirement, which needs the method vocabulary to exist first."
+    },
+    {
+     "method": "HOT_SMOKE",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Smoked goose breast is excellent; whole goose in a smoker renders slowly and takes deep smoke, but skin stays soft.",
+     "equipment": "מעשנה (owned) + drip pan",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled, but with no way to require the drip pan or to add the high-heat finish the skin needs."
+    },
+    {
+     "method": "CURE_AND_AIR_DRY",
+     "hebrewName": "ריפוי וייבוש (מגרה/'פרושוטו' של אווז)",
+     "whatItProduces": "Salt-cure a breast 24-36h, rinse, wrap, hang 2-4 weeks. A dry-cured, sliceable charcuterie product — not a cook at all.",
+     "equipment": "תא ריפוי / ייבוש (`curechamber`, ALREADY an owned equipment token) + `humidity` + `scale` at 0.1g",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "We have a full charcuterie apparatus (curechamber, humidity, hooks, rh_pct and hang specs in equipment_map.py) and duck/goose breast is absent from SPECIALS entirely. The gear is modelled; the product is not.",
+     "safetyNote": "Whole-muscle dry curing of poultry has cure-salt, water-activity and weight-loss controls. I have no primary source that covers poultry (as opposed to pork) whole-muscle dry cure: requires research."
+    }
+   ]
+  },
+  {
+   "category": "ברווז",
+   "itemCount": 3,
+   "notesOnOurModel": "n=48 חזה ברווז has doneness with `mr:57` default and `rare:54`, against `safe:74`. That is a deliberate, culinary-standard deviation from the USDA poultry floor with no pasteurization argument behind it — a 2-minute sear does not deliver a time-temperature lethality. n=46 ברווז שלם and n=47 שוק ברווז (קונפי) have no doneness and fall to the collagen branch, so whole duck defaults to sous-vide+smoke and cannot be roasted; the confit leg cannot be confited. `mid:'חריטת עור'` and `somid:'דקירת עור'` show the engine knows the vocabulary of scoring and piercing but has no stage to run.",
+   "methods": [
+    {
+     "method": "SCORE_AND_RENDER",
+     "hebrewName": "חריטה וזיקוק שומן (מחבת קרה)",
+     "whatItProduces": "The canonical duck-breast method. Crosshatch, cold dry pan, skin-down, low, 12-15 min, pour off fat 2-3 times, flip 60-90s, rest. Crackling skin, MR (54-57°C) meat, ~100 ml rendered fat.",
+     "equipment": "מחבת ברזל יצוק / פלנצ'ה (~₪120-600) + fat vessel",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Our model produces the OPPOSITE ordering. The step composer runs prep → sv → smoke → grill-finish → rest, so it will sous-vide the breast to 57°C (leaving the fat entirely unrendered) and then offer a short grill finish that physically cannot render a 6-8 mm fat cap. The correct sequences are render-first-then-SV, or SV-then-long-cold-pan-render. We can express neither.",
+     "safetyNote": "Duck is a poultry species; USDA FSIS 74°C applies. Our 57°C default is the restaurant standard, not a sourced-safe value. I have NO primary source that legitimises a 57°C duck breast: requires research — and if none exists, this must render as a disclosed chef's deviation, not as a target."
+    },
+    {
+     "method": "CONFIT",
+     "hebrewName": "קונפי",
+     "whatItProduces": "See אווז. For n=47 specifically: cure 12-24h, submerge in duck fat, 80-85°C for 2-3h, chill under fat, crisp to serve.",
+     "equipment": "סיר עמוק + ~1 ק\"ג שומן ברווז + oven or bath at 80-85°C",
+     "weHaveIt": "partially",
+     "whyItMatters": "`svt:80/svh:8` is a sous-vide analogue and the honest description of what the app offers. The cure, the fat medium, the storage step and the crisp finish are all absent.",
+     "safetyNote": "See אווז/CONFIT — no primary source for cure ratio or shelf life: requires research."
+    },
+    {
+     "method": "AIR_DRY_UNCOVERED",
+     "hebrewName": "ייבוש עור במקרר / שיטת פקין",
+     "whatItProduces": "PROCESS STAGE, 24-72h. For whole duck the full Peking treatment adds a boiling-water scald and a maltose glaze before drying, which is what makes the skin puff and shatter.",
+     "equipment": "רשת + תבנית + fridge space; optionally a fan; a kettle for the scald",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Multi-day, schedule-critical, invisible to the orchestrator."
+    },
+    {
+     "method": "TWO_STAGE_RAMP",
+     "hebrewName": "בישול דו-שלבי",
+     "whatItProduces": "Whole duck: 150°C until legs reach ~82°C and fat has drained, then 220-230°C for 10-15 min. Crisp skin, cooked legs, no leathered breast.",
+     "equipment": "תנור (OWNED) + deep drip pan",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Same structural gap as goose: no temperature schedule inside one method."
+    },
+    {
+     "method": "OVEN_ROAST",
+     "hebrewName": "צלייה בתנור על רשת",
+     "whatItProduces": "Whole duck on a rack over a deep pan, fat drained off periodically. The domestic default.",
+     "equipment": "תנור (OWNED) + רשת + תבנית עמוקה",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "n=46 currently cannot be roasted at all — the branch marks a bare grill invalid and defaults to sous-vide a 2.2 kg whole bird."
+    },
+    {
+     "method": "SOUS_VIDE",
+     "hebrewName": "סו-ויד",
+     "whatItProduces": "Perfect edge-to-edge 57°C breast. Fat completely unrendered; skin flabby.",
+     "equipment": "סו-ויד + ואקום (owned)",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled — but the app presents it as complete when for duck it is only half the technique."
+    },
+    {
+     "method": "HOT_SMOKE",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Tea-smoked / cherry-smoked duck breast; excellent flavour, and at 100°C (our `smt`) the fat begins to render, so smoke here is doing real work.",
+     "equipment": "מעשנה (owned)",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled and genuinely apt for duck breast."
+    },
+    {
+     "method": "BROIL_SALAMANDER",
+     "hebrewName": "גריל עליון",
+     "whatItProduces": "The finish that rescues sous-vide or braised duck skin: 3-5 min of top-down radiant heat.",
+     "equipment": "תנור top element; `torch` (owned) is the small-scale substitute",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Named, bounded, one-sided high heat — the model has only 'grill', which implies a grate and two sides."
+    }
+   ]
+  },
+  {
+   "category": "דג",
+   "itemCount": 5,
+   "notesOnOurModel": "All 5 have doneness, so all sit in the steak-like branch where every combination including a bare grill is legal. Three structural gaps. (1) WHOLE vs FILLET does not exist: n=50 פורל is a 0.4 kg whole fish and n=49 סלמון is a 1 kg fillet, and the model cannot distinguish them — yet whole fish enables salt crust, stuffing, and clamp-grilling while fillets do not. (2) COLD SMOKE exists ONLY inside the MAKE profile 'דג מעושן' (app.js:3722, '≤25°C, 5h, ללא בישול') and is unreachable from any CUT. (3) n=49's `rub` reads 'מלח+סוכר חום (גרבלקס)' — a 2-3 day cure written into a seasoning string, with no ratio, no weight, no press and no yield. n=125 טונה has `somid:'סושי-גרייד; מרכז נא'` and tgt 45°C with no parasite-control stage anywhere.",
+   "methods": [
+    {
+     "method": "HOT_SMOKE",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Flaky, opaque, cooked, smoke-saturated fish. Requires a PELLICLE first — 2-4h of air-drying after the brine — or the smoke will not adhere and the surface weeps albumin.",
+     "equipment": "מעשנה (owned) at a LOW setting; our `smt:80` is at the bottom of most smokers' controllable range",
+     "weHaveIt": "partially",
+     "whyItMatters": "The heat method is modelled; the mandatory pellicle stage is not (the glossary at data.py:205 defines 'Pellicle' — the concept is documented and unexecutable).",
+     "safetyNote": "Fish held for hours between 4°C and 60°C in a low-oxygen smoke atmosphere is the classic Clostridium botulinum type E scenario — type E is cold-tolerant and aquatic in origin. The controlling document is the FDA Fish and Fishery Products Hazards and Controls Guidance (4th ed.), smoked-fish / C. botulinum chapter. The specific water-phase-salt %, nitrite ppm and time limits: requires research — do not ship numbers without the verbatim text."
+    },
+    {
+     "method": "COLD_SMOKE",
+     "hebrewName": "עישון קר",
+     "whatItProduces": "Smoke flavour and colour with NO cooking. Texture stays raw-silky and translucent; the product is lox/Nova, not smoked fish. Chamber must stay low (commonly cited ≤30°C) or the protein sets and the product is ruined.",
+     "equipment": "מחולל עישון קר — a maze or tube pellet smoker (~₪80-300) placed in an UNHEATED chamber; ambient temperature is the limiting factor in Israel, so this is a winter/night technique or needs ice",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The flagship gap of the fish domain. It is a genuinely different PROCESS — no lethality step, product is ready-to-eat — and it is the gateway to lox, smoked trout, and (for the גבינה category) smoked cheese.",
+     "safetyNote": "This is the highest-risk method in my domains. Cold-smoked fish receives no kill step and is a ready-to-eat food: the two named hazards are C. botulinum type E toxin formation and Listeria monocytogenes. The authority is the FDA Fish and Fishery Products Hazards and Controls Guidance (4th ed.). Every number — the ≤30°C ceiling, the required water-phase salt, the refrigerated shelf life — requires research and must be quoted, never inferred."
+    },
+    {
+     "method": "CURE_GRAVLAX",
+     "hebrewName": "ריפוי / גרבלקס",
+     "whatItProduces": "Salt+sugar (roughly equal parts by weight) + dill, pressed under weight, 24-72h in the fridge, liquid poured off. Firms and seasons the flesh, drops water activity, turns it translucent-jewel. Not cooked. Weight loss ~10-15%.",
+     "equipment": "משקל דיגיטלי (owned) + a non-reactive tray + a weight/press + fridge space",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "n=49's rub field names it and nothing executes it. It is also the PREREQUISITE stage for cold-smoked lox — cure first, then smoke — so shipping COLD_SMOKE without CURE would be shipping the dangerous half.",
+     "safetyNote": "Cure ratio and duration are safety-relevant here, not merely culinary — they are the hurdle. Also: FDA Food Code §3-402.11 requires a freezing step for parasite destruction in fish served raw or undercooked (commonly cited as -20°C/7 days or -35°C/15h), with named species exemptions. Both the schedule and the exemption list: requires research."
+    },
+    {
+     "method": "PLANK",
+     "hebrewName": "בישול על קרש עץ",
+     "whatItProduces": "Soaked untreated cedar/alder plank over indirect heat. The plank smoulders, giving gentle aromatic smoke and steam from below; the fish never touches metal so it cannot stick or break; no flipping; moist, faintly smoky, evenly cooked.",
+     "equipment": "קרשי ארז/אלמון לגריל (~₪20-60, semi-disposable) + a lidded grill or oven",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The classic salmon-fillet method and the answer to the delicate-fish-sticks-to-the-grate problem. Cheapest missing capability in the whole report."
+    },
+    {
+     "method": "EN_PAPILLOTE",
+     "hebrewName": "בנייר / חבילה סגורה",
+     "whatItProduces": "Parchment or foil parcel, oven 180-200°C, 12-18 min. Self-steaming in its own moisture plus aromatics. Zero browning, essentially impossible to dry out, sauce forms in the parcel.",
+     "equipment": "תנור (OWNED) + נייר אפייה או רדיד (`foil` is an owned token)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The most forgiving fish method there is — exactly what a beginner-level user (the app has a `lvl-beg` density mode) should be offered, and it is unavailable."
+    },
+    {
+     "method": "SALT_CRUST",
+     "hebrewName": "אפייה במעטה מלח",
+     "whatItProduces": "Whole fish encased in ~2 kg of coarse salt bound with egg white, oven 200°C. The crust becomes a sealed vessel: the fish steams in its own juices, cooks with unusual evenness, and is seasoned only at the skin. Dramatic tableside cracking.",
+     "equipment": "תנור (OWNED) + ~2 ק\"ג מלח גס + a tray; WHOLE fish only",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Requires the whole-vs-fillet distinction our data does not carry. Also a rare case where the DOSE of an ingredient (2 kg of salt) is an equipment-scale concern."
+    },
+    {
+     "method": "GRILL_WHOLE_IN_CLAMP",
+     "hebrewName": "גריל בסלסלה / מלחציים",
+     "whatItProduces": "Whole scored fish held in a hinged basket over embers: crisp blistered skin, smoky, flipped as one unit without disintegrating.",
+     "equipment": "סלסלת דג / מלחציים (~₪40-150) + גריל (owned)",
+     "weHaveIt": "partially",
+     "whyItMatters": "'grill' is modelled but the accessory that makes it POSSIBLE for delicate whole fish is not, so we offer an operation that will physically destroy a 400 g trout on a bare grate."
+    },
+    {
+     "method": "STEAM",
+     "hebrewName": "אידוי",
+     "whatItProduces": "Cantonese whole fish: 8-12 min over boiling water, then hot oil and soy poured over. Silky, clean-flavoured, absolutely moist; no colour.",
+     "equipment": "סיר + סל אידוי / ווק (~₪150-500), or a steam oven (the `steam` prop exists)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A dominant world method for whole fish, entirely absent."
+    },
+    {
+     "method": "OIL_POACH_CONFIT",
+     "hebrewName": "בישול בשמן (קונפי דג)",
+     "whatItProduces": "Submerged in olive oil at 45-55°C. Extraordinarily silky tuna or salmon; the classic 'confit tuna'. Very close in outcome to sous-vide but with fat-borne flavour.",
+     "equipment": "סיר + 1-2 ל' שמן זית + probe (owned); or the sous-vide bath with oil in the bag",
+     "weHaveIt": "partially",
+     "whyItMatters": "Achievable via our owned sous-vide, but the model has no way to say the MEDIUM is oil rather than water — and the medium is what distinguishes the result.",
+     "safetyNote": "Low-temperature oil holding is a low-oxygen environment; the same C. botulinum considerations as sous-vide apply and Baldwin's fish pasteurization table (55-60°C) is the reference we already carry in docs/sources/baldwin-backbone.md. Whether 45-55°C ever pasteurizes: it does not — this is a hold-and-serve-immediately technique. Needs an explicit sourced statement: requires research."
+    },
+    {
+     "method": "PAN_SEAR_SKIN_DOWN",
+     "hebrewName": "צריבה בעור למטה",
+     "whatItProduces": "Salmon/trout skin-down under light pressure in a hot pan, 80% of the cook on the skin side. Shatter-crisp skin, barely-set flesh. The restaurant default.",
+     "equipment": "מחבת כבדה / פלנצ'ה",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "`sear:'לא'` on both n=49 and n=50 — our data actively says do not sear these, which is wrong for the single most common preparation of salmon."
+    },
+    {
+     "method": "RAW_CRUDO",
+     "hebrewName": "נא / קרודו / סשימי",
+     "whatItProduces": "No cooking. n=125 טונה is already described in our own data as 'סושי-גרייד; מרכז נא' with tgt 45°C.",
+     "equipment": "סכין חדה + freezer capable of the parasite-control schedule",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "We already ship an item whose stated target (45°C) is below any cooking threshold, with no RAW method and no parasite-control stage attached.",
+     "safetyNote": "FDA Food Code §3-402.11 parasite-destruction freezing (temperature × time) plus the species exemptions (certain large tuna) is the controlling text. Numbers: requires research — quote, do not infer."
+    },
+    {
+     "method": "DEHYDRATE",
+     "hebrewName": "ייבוש",
+     "whatItProduces": "Fish jerky / dried fish. Low heat + airflow over many hours.",
+     "equipment": "מייבש — ALREADY an option of the `curechamber` prop (app.js:7655), or a low oven",
+     "weHaveIt": "partially",
+     "whyItMatters": "The hardware is in the equipment vocabulary; no fish method can reach it."
+    }
+   ]
+  },
+  {
+   "category": "פירות ים",
+   "itemCount": 15,
+   "notesOnOurModel": "Our third-largest category and the worst fit for the model. It is really FOUR groups flattened into one `cat`: shrimp/prawns (113,114,115,119), large crustaceans (117,118,120,121,122), bivalves (116,128,129,130) and cephalopods (123,124). Two concrete defects. (1) Five items — 120 סרטן כחול, 121 רגלי סרטן, 122 סרטן רך, 128 מולים, 129 קלאמס, 130 אויסטרים — carry `svt=0` yet all have `doneness`, so methodRules puts them in the steak-like branch with `def:['sv','smoke']`: the app's default recommendation for a blue crab is to sous-vide it at 0°C. (2) The truth is written into free-text fields the engine cannot act on: `sear` reads 'הרתחה/אידוי' (boil/steam), 'צריבה/טיגון' (sear/fry), 'הרתחה→גריל' (boil→grill) — three real methods stored as strings inside a boolean-ish field. Third, and deepest: FIVE of these items are done when the SHELL OPENS, not at a probe temperature. You cannot probe a mussel. Assigning n=128 מולים `doneness:{med:63, well:68}` describes a measurement nobody will ever take, and our whole doneness/probe architecture is inapplicable to a third of this category.",
+   "methods": [
+    {
+     "method": "BOIL",
+     "hebrewName": "הרתחה / בישול בנוזל",
+     "whatItProduces": "Rolling seasoned water or court-bouillon. THE primary method for blue crab, whole lobster, shrimp boils and langoustine. Even, fast, fully-cooked, seasoned through the shell; no browning at all. Doneness by shell colour and time, not by probe.",
+     "equipment": "סיר גדול 15-20 ל' (~₪150-500) + a burner that can hold a rolling boil",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "For n=118 לובסטר שלם and n=120 סרטן כחול this is the world-default preparation, and our data KNOWS it — `sear:'גריל/הרתחה'` and `sear:'הרתחה/אידוי'` — but stores it where nothing reads it. This is the single most-used missing method in the category.",
+     "safetyNote": "FDA guidance for crab/lobster is cook until the flesh is opaque and reaches 63°C/145°F — this is already correctly cited in sources.py ('FDA — cook crab until internal 145°F/63°C and flesh opaque'). The authority exists; only the METHOD is missing."
+    },
+    {
+     "method": "STEAM",
+     "hebrewName": "אידוי",
+     "whatItProduces": "Above the water, lid on. Primary method for mussels, clams, king crab legs and Maryland-style blue crab. Gentler than boiling, does not waterlog or leach flavour, and produces a concentrated liquor as a by-product. Doneness signal for bivalves is the shell opening (~5-7 min).",
+     "equipment": "סיר גדול + סל אידוי (~₪150-500); a lidded grill can substitute with a covered pan",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Covers 6 of the 15 items as their PRIMARY method. Currently they default to sous-vide at 0°C.",
+     "safetyNote": "FDA: cook shellfish until the shells open; discard any that do not open. Our sources.py already carries this ('cook shellfish until shells open'). We also need the pre-cook rule (live bivalves only; discard any that are gaping and do not close when tapped) — I do not have that clause verbatim: requires research."
+    },
+    {
+     "method": "PAN_SEAR_PLANCHA",
+     "hebrewName": "צריבה במחבת / פלנצ'ה",
+     "whatItProduces": "THE scallop method: patted bone-dry, ripping-hot pan, 90-120 s per side, do not move it. Deep hazelnut crust over a translucent barely-set centre. Full-contact conduction — a grate cannot do this because it only touches in stripes.",
+     "equipment": "מחבת ברזל יצוק / פלנצ'ה (~₪150-600). 'פלנצ׳ה / פלטה' already exists as a grill TYPE in app.js:80.",
+     "weHaveIt": "partially",
+     "whyItMatters": "n=116 סקלופס has `sear:'צריבה'` and `somid:'יבשים! 2-3 דק'/צד, אל תזיז'` — the technique is written out in full, in Hebrew, in a note field, and the engine offers 'grill' instead. Also the correct method for n=122 סרטן רך.",
+     "safetyNote": "FDA cooked seafood 63°C/145°F — already cited in sources.py for scallops. Scallops are conventionally served translucent below that; that deviation is disclosed by our doneness ladder (mr 52°C) and should stay disclosed."
+    },
+    {
+     "method": "TENDERISE_THEN_CHAR",
+     "hebrewName": "ריכוך ואז חריכה (דו-שלבי)",
+     "whatItProduces": "The entire culinary point of octopus. Stage 1: 45-90 min of gentle simmer, braise, pressure or sous-vide to hydrolyse a very high collagen load. Stage 2: 2-4 min of violent direct char. Outcome: yielding-tender interior with a blistered, smoky, crisp exterior. Skip stage 1 and you get a rubber eraser; skip stage 2 and you get boiled octopus.",
+     "equipment": "סיר / סיר לחץ / סו-ויד (owned) for stage 1 + גריל (owned) for stage 2",
+     "weHaveIt": "partially",
+     "whyItMatters": "n=123 תמנון encodes this three times in prose (`svt:77/5h`, `sear:'הרתחה→גריל'`, `somid:'בשל 45-60 דק' לריכוך ואז חריכה'`) and zero times in the engine. Worse: because n=123 has `doneness`, it lands in the steak-like branch where a BARE `['grill']` is a legal combination — the app will cheerfully offer grill-only for octopus, which is the one thing that cannot work. This is the clearest case in my domains for a MANDATORY-SEQUENCE construct (`require` exists in methodRules for gizzards; it needs an ordered-pair form)."
+    },
+    {
+     "method": "GRILL_IN_SHELL",
+     "hebrewName": "גריל בקליפה",
+     "whatItProduces": "Bivalves straight onto direct heat, cupped side down so the liquor is retained; they pop open when done (5-10 min) and self-baste in their own hot brine. The SHELL is the cooking vessel. Smoky, briny, minimal handling.",
+     "equipment": "גריל (owned) + מלקחיים (owned)",
+     "weHaveIt": "partially",
+     "whyItMatters": "Modelled only as generic 'grill'. The distinguishing feature — doneness signalled by a mechanical event rather than a temperature — has no representation, which is why n=130 אויסטרים carries a doneness ladder (63/68°C) that describes an impossible measurement. A DONENESS_SIGNAL field ('shell opens' | 'flesh opaque' | 'shell bright red' | 'probe °C') would fix this across 6 items.",
+     "safetyNote": "FDA: cook until shells open; discard unopened. Already cited in sources.py."
+    },
+    {
+     "method": "DEEP_FRY",
+     "hebrewName": "טיגון עמוק",
+     "whatItProduces": "180°C oil. THE method for soft-shell crab (eaten whole, shatter-crisp) and for calamari rings. 60-180 seconds. No other method produces that exterior.",
+     "equipment": "מטגנת / סיר כבד + 2-3 ל' שמן + מדחום (`probe` owned) (~₪200-700)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "n=122 סרטן רך's `rub` field literally reads 'קמח+פפריקה (טיגון)' — flour and paprika, FOR FRYING — and `sear:'צריבה/טיגון'`. Our own data specifies a dredge for a method we do not have.",
+     "safetyNote": "FDA cooked seafood 63°C/145°F applies. Oil-temperature control is a quality not safety matter here."
+    },
+    {
+     "method": "GRILL_DIRECT",
+     "hebrewName": "גריל ישיר",
+     "whatItProduces": "Hard fast char. Correct for shrimp (skewered so they cannot curl and can be turned as one unit), split lobster tail flesh-down first, and squid at 30-60 s per side.",
+     "equipment": "גריל (owned) + שיפודים",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled and dominant here. What is lost is the SKEWER and the shell-on/peeled decision, both of which change the outcome materially — shell-on shrimp stay far juicier, which our own n=114 note says ('בקליפה לעסיסיות')."
+    },
+    {
+     "method": "SOUS_VIDE_BUTTER_POACH",
+     "hebrewName": "סו-ויד בחמאה",
+     "whatItProduces": "Lobster tail at 54-57°C in butter: the texture that made this technique famous — silky, never rubbery, impossible to hit by boiling. Also excellent for octopus stage 1.",
+     "equipment": "סו-ויד + ואקום (owned)",
+     "weHaveIt": "partially",
+     "whyItMatters": "The bath is modelled; the butter medium is not — same medium-blindness as the fish oil-poach. And the default `['sv','smoke']` applies sous-vide indiscriminately to five items with `svt=0`, which discredits the recommendation where it is genuinely brilliant."
+    },
+    {
+     "method": "PRESSURE_COOK",
+     "hebrewName": "סיר לחץ",
+     "whatItProduces": "~120°C wet heat: octopus tender in 15-20 min instead of 60-90. Also the fastest crustacean-shell stock.",
+     "equipment": "סיר לחץ (~₪250-800), not owned",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Turns the octopus two-stage from a 2-hour project into a 30-minute one — a large orchestrator win."
+    },
+    {
+     "method": "HOT_SMOKE",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Genuinely good on oysters, mussels and shrimp (minutes, not hours). Marginal-to-wrong on crab and lobster, where the shell blocks smoke and the flesh dries.",
+     "equipment": "מעשנה (owned)",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled, but it is in the DEFAULT combination for all 15 items including whole crab, which is bad advice presented as the recommendation."
+    },
+    {
+     "method": "RAW_HALF_SHELL",
+     "hebrewName": "נא (על חצי קונכייה)",
+     "whatItProduces": "No cooking at all — the single most common way oysters are consumed. Shucked, served on ice with mignonette.",
+     "equipment": "סכין צדפות + כפפת הגנה (neither modelled)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "n=130 אויסטרים is in the catalog with only cooked routes.",
+     "safetyNote": "Raw oysters carry a Vibrio vulnificus / parahaemolyticus risk with a specific at-risk-population advisory (liver disease, immunocompromised, pregnancy). sources.py already flags 'raw oysters carry Vibrio risk'. The FDA advisory text and the at-risk list: requires research — this method must not ship without it."
+    },
+    {
+     "method": "WOK_STIR_FRY",
+     "hebrewName": "ווק / הקפצה",
+     "whatItProduces": "Very high heat, constant motion, 60-120 s. Squid and shrimp specifically: wok hei, slight char, still tender.",
+     "equipment": "ווק + a high-output burner (~₪150-600)",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A major world method for exactly the items in this category that overcook fastest."
+    }
+   ]
+  }
+ ],
+ "missingEquipment": [
+  {
+   "equipment": "Cold-smoke generator (maze / tube pellet smoker)",
+   "hebrewName": "מחולל עישון קר (מבוך / צינור פלטים)",
+   "unlocks": "COLD_SMOKE — lox/Nova from cured salmon, cold-smoked trout; and outside my domain, cold-smoked cheese for the 33-item גבינה category. Turns any unheated box into a cold smoker.",
+   "typicalCost": "₪80-300"
+  },
+  {
+   "equipment": "Pressure cooker / multicooker",
+   "hebrewName": "סיר לחץ / רב-סיר",
+   "unlocks": "PRESSURE_COOK — octopus stage 1 in 15-20 min instead of 60-90; turkey legs and wings to shreddable in ~25 min; crustacean stock.",
+   "typicalCost": "₪250-800"
+  },
+  {
+   "equipment": "Rotisserie kit + heavy-duty motor + counterweight",
+   "hebrewName": "ערכת שיפוד מסתובב + מנוע",
+   "unlocks": "ROTISSERIE for every whole bird and for hanging shawarma. NOTE: the grill `rotisserie` boolean prop ALREADY EXISTS at app.js:89 — we ask the user if they own it and never use the answer.",
+   "typicalCost": "₪250-900 (motor rating matters above ~4 kg)"
+  },
+  {
+   "equipment": "Large stockpot 15-20 L + steamer basket",
+   "hebrewName": "סיר גדול 15-20 ל' + סל אידוי",
+   "unlocks": "BOIL and STEAM — the primary method for 6 of the 15 seafood items (blue crab, whole lobster, king crab legs, mussels, clams, shrimp boil).",
+   "typicalCost": "₪150-500"
+  },
+  {
+   "equipment": "Deep fryer or heavy pot + oil thermometer",
+   "hebrewName": "מטגנת / סיר כבד + מדחום שמן",
+   "unlocks": "DEEP_FRY — soft-shell crab, calamari, chicken wings. A dedicated 30-40 L turkey fryer is a separate, higher-risk purchase.",
+   "typicalCost": "₪200-700 (turkey fryer ₪600-1500)"
+  },
+  {
+   "equipment": "Cast-iron skillet / plancha",
+   "hebrewName": "מחבת ברזל יצוק / פלנצ'ה",
+   "unlocks": "SCORE_AND_RENDER (cold-pan duck and goose breast) and PAN_SEAR (scallops, salmon skin-down, soft-shell crab). NOTE: 'פלנצ׳ה / פלטה' already exists as a grill TYPE at app.js:80, but it is modelled as a grill and behaves like a griddle.",
+   "typicalCost": "₪120-600"
+  },
+  {
+   "equipment": "Fish grilling basket / hinged clamp",
+   "hebrewName": "סלסלת דג / מלחציים לגריל",
+   "unlocks": "Whole-fish grilling without disintegration — makes an existing modelled method (grill) actually viable for a 400 g trout.",
+   "typicalCost": "₪40-150"
+  },
+  {
+   "equipment": "Cedar / alder grilling planks",
+   "hebrewName": "קרשי ארז או אלמון לגריל",
+   "unlocks": "PLANK — the classic salmon method: gentle indirect heat, aromatic smoke, no sticking, no flip. Cheapest capability in this list.",
+   "typicalCost": "₪20-60 (semi-disposable)"
+  },
+  {
+   "equipment": "Vertical poultry roaster stand",
+   "hebrewName": "מעמד עוף אנכי",
+   "unlocks": "VERTICAL_ROAST — upright geometry, fat drains down, all skin faces the heat.",
+   "typicalCost": "₪40-150"
+  },
+  {
+   "equipment": "Wire rack + rimmed sheet pan (dedicated to uncovered fridge drying)",
+   "hebrewName": "רשת + תבנית ייעודית לייבוש במקרר",
+   "unlocks": "BRINE_DRY and AIR_DRY_UNCOVERED — the highest-leverage skin technique across all four poultry/waterfowl categories, and the multi-day stage the orchestrator most needs to see.",
+   "typicalCost": "₪50-150"
+  },
+  {
+   "equipment": "Brining container / food-grade bucket with fridge space",
+   "hebrewName": "כלי כבישה / דלי מזון + מקום במקרר",
+   "unlocks": "BRINE_WET for turkey and chicken. The binding constraint is refrigerated volume, which is a real spec the equipment model could carry.",
+   "typicalCost": "₪30-100"
+  },
+  {
+   "equipment": "Heavy deep Dutch oven (fat-capable)",
+   "hebrewName": "סיר ברזל יצוק עמוק",
+   "unlocks": "CONFIT (duck and goose legs, plus ~1-2 kg of rendered fat as an input) and OVEN_BRAISE (turkey legs and wings).",
+   "typicalCost": "₪250-900"
+  },
+  {
+   "equipment": "Wok + high-output burner",
+   "hebrewName": "ווק + מבער עוצמתי",
+   "unlocks": "WOK_STIR_FRY — squid, shrimp, chicken breast strips.",
+   "typicalCost": "₪150-600"
+  },
+  {
+   "equipment": "Air fryer",
+   "hebrewName": "אייר פרייר",
+   "unlocks": "AIR_FRY — wings and drumsticks, the everyday consumer route the app cannot mention.",
+   "typicalCost": "₪250-700"
+  },
+  {
+   "equipment": "Dehydrator",
+   "hebrewName": "מייבש מזון",
+   "unlocks": "DEHYDRATE — fish jerky, turkey jerky. NOTE: 'מייבש' ALREADY exists as an option of the `curechamber` prop at app.js:7655 — hardware modelled, method absent.",
+   "typicalCost": "₪250-900"
+  },
+  {
+   "equipment": "Oyster/shucking knife + protective glove",
+   "hebrewName": "סכין צדפות + כפפת מגן",
+   "unlocks": "RAW_HALF_SHELL for oysters, and pre-shucking for grilled scallops.",
+   "typicalCost": "₪50-150"
+  },
+  {
+   "equipment": "Steam oven / combi oven",
+   "hebrewName": "תנור אדים / קומבי",
+   "unlocks": "STEAM_THEN_ROAST (goose), STEAM (whole fish), and controlled-humidity roasting. NOTE: the oven `steam` boolean prop ALREADY EXISTS at app.js:98 with no consumer.",
+   "typicalCost": "₪2500+ (prosumer)"
+  }
+ ],
+ "crossCuttingFindings": "SIX structural patterns, ordered by how much they should shape the vocabulary's SHAPE rather than its length.\n\n(1) A METHOD IS A POINT IN AN OUTCOME SPACE, NOT A NAME. Every method in my 37 items resolves to five independent axes: MEDIUM (dry air / steam / water / fat / vacuum-water / oil-bath / smoke), HEAT DIRECTION (all-round / one-sided / rotating / top-down / full-contact conduction), SURFACE RESULT (shatter-crisp / crackling / pellicle / opaque-no-colour / char), INTERIOR RESULT (silky / juicy / flaky / shreddable / rubbery-risk), and SMOKE LEVEL (none / cold / light / heavy). Model methods as points in that space and two things fall out for free: substitution advice (\"no rotisserie? indirect grill, flip every 20 min — you lose evenness, you keep the skin\") and honest warnings (\"sous-vide duck gives you the interior axis and costs you the surface axis\"). Model them as a flat list of names and you get another enum that will be wrong for the next 130 items.\n\n(2) THE MISSING HEAT SOURCES ARE THE COMMON ONES. Not exotic gear — a dry oven (owned, with `fan` and `steam` props already modelled) and a pot of water. Across my 37 items, boiling or steaming is the PRIMARY method for 6 seafood items, oven roasting for all 6 whole/large birds, and pan/plancha searing for scallops, soft-shell crab, salmon skin-down and both waterfowl breasts. The three-method model does not describe a subset of cooking; it describes a barbecue.\n\n(3) THE MODEL HAS NO PRE-COOK AND NO POST-COOK STAGE, AND THIS IS AN ORCHESTRATOR APP. Thaw (3 days for a turkey), wet brine (4-12h), dry brine (24-72h), cure (24-72h for gravlax), air-dry/pellicle (2-72h), score, spatchcock, purge, tenderise. All are real, all consume clock time, all are currently smuggled into `rub`, `mid`, `sear` and `somid` as Hebrew prose. The work plan cannot schedule what it cannot see. `kg` is already stored, so thaw time is arithmetic we are not doing.\n\n(4) DONENESS IS NOT ALWAYS A TEMPERATURE. Six of my items are done by a mechanical or visual SIGNAL: the shell opens (mussels, clams, oysters), the shell turns bright red (blue crab), the flesh turns opaque (crab, shrimp), 30-60 seconds a side (squid). Our architecture assumes a probe target everywhere, so n=128 מולים carries `doneness:{med:63,well:68}` — a measurement no one will ever take on a mussel. A `donenessSignal` discriminator alongside the temperature ladder fixes this for a fifth of my domain.\n\n(5) ONE ITEM CAN HAVE TWO TARGETS. A whole bird's breast wants ~63°C and its thigh wants 74-82°C. That divergence IS the technique — it is why spatchcocking, rotisserie, breast-shielding, ice-packing and cook-the-parts-separately all exist. Our one-item-one-`tgt` schema cannot state the central fact about the four whole birds in my domains, and consequently cannot explain why any of the techniques exist.\n\n(6) A METHOD CAN BE A SEQUENCE WITH A MANDATORY ORDER, OR A TEMPERATURE RAMP. Octopus is tenderise-THEN-char (reverse it and you get a rubber eraser; today a bare `['grill']` is a legal combination for it). Duck is render-THEN-cook or cook-THEN-render, and our composer's fixed order (prep → sv → smoke → grill → rest) is exactly wrong for it. Whole goose is 150°C-THEN-230°C. `methodRules` has `require` and `invalid` but no ordered-pair or ramp construct.\n\nTWO LIVE DEFECTS, not vocabulary gaps, that a reader should not lose in the above: (a) the six doneness-less items — n=3 שווארמה, 43 הודו שלם, 44 אווז שלם, 45 שוק אווז, 46 ברווז שלם, 47 שוק ברווז — fall through methodRules' final \"collagen/long cuts\" branch, so a 6 kg whole turkey defaults to sous-vide and roasting or grilling it alone is marked invalid; (b) five items with `svt=0` (120, 121, 122, 128, 129, 130) still receive `def:['sv','smoke']`, so the app recommends sous-vide at 0°C for a blue crab.\n\nAND A REPEATED INERT-SHIPMENT PATTERN: we already model `rotisserie` (app.js:89), oven `fan` and `steam` (app.js:97-98), the grill types 'פלנצ׳ה / פלטה' and 'לבה / אינפרא' (app.js:80), grill `lid` and `zones`, `drippan`, and 'מייבש' as a curechamber kind (app.js:7655). Every one of these is a capability we ask the user about, store, and can never consume — because no method exists that reads it. The hardware vocabulary is already ahead of the method vocabulary; the gap is not in the equipment model.",
+ "researchNeeded": [
+  "FDA Fish and Fishery Products Hazards and Controls Guidance, 4th ed. — the smoked-fish / Clostridium botulinum toxin-formation chapter, VERBATIM: required water-phase salt % in the finished product, nitrite ppm where used, maximum process temperature, refrigerated shelf life, and the distinct requirements for hot- vs cold-smoked. Blocks COLD_SMOKE and constrains our existing fish `smt:80`. Highest-risk item in this report.",
+  "FDA Fish and Fishery Products Hazards and Controls Guidance — the Listeria monocytogenes control expectations for cold-smoked (ready-to-eat, no-lethality-step) fish. COLD_SMOKE must not ship without this.",
+  "An authority for the cold-smoking ambient temperature ceiling (commonly cited as ≤30°C / ≤86°F). Our MAKE_COOK profile already prints '≤25°C' with no source behind it — either find the source or stop printing the number.",
+  "FDA Food Code §3-402.11 — the parasite-destruction freezing schedule for fish served raw or undercooked (temperature × time, e.g. the -20°C/7-day and -35°C/15h routes), PLUS the species exemption list (large tuna). Blocks RAW_CRUDO and gravlax; n=125 טונה already ships with tgt 45°C and 'סושי-גרייד' text and no control.",
+  "USDA FSIS — refrigerator thawing time per unit weight for whole poultry, and the prohibition on counter thawing. We store `kg`; this converts directly into a multi-day work-plan stage for n=43 הודו שלם.",
+  "USDA FSIS — the requirement that STUFFING inside a bird reach 74°C / 165°F, verbatim. We have no field for a secondary thermal mass.",
+  "USDA FSIS — whether the 74°C / 165°F poultry floor is stated to apply to duck and goose, and whether any FSIS or Baldwin time-temperature route legitimises a 57°C duck/goose breast. We ship `tgt:57, rare:54` against `safe:74` on n=48 and n=9. If no source blesses it, it must render as a disclosed chef's deviation, never as a recommended target.",
+  "Baldwin — poultry pasteurization time-at-temperature at 57-65°C indexed BY THICKNESS, applied to (a) duck/goose breast geometry and (b) a spatchcocked bird. We carry his backbone table in docs/sources/baldwin-backbone.md but not thickness-indexed values for these shapes.",
+  "Baldwin — fish pasteurization at 50-60°C by thickness, applied to our own stated values: does salmon at `svt:50 / svh:0.75` actually pasteurize a 1 kg fillet, or are we shipping a hold-and-serve-immediately technique labelled as a cook?",
+  "FDA / national shellfish sanitation guidance — live-bivalve acceptance rules BEFORE cooking (discard gaping shells that do not close when tapped) and the discard-unopened-after-cooking rule, verbatim. Our sources.py has the post-cook half only.",
+  "FDA raw-molluscan-shellfish advisory — the Vibrio vulnificus / parahaemolyticus statement and the at-risk population list. Blocks RAW_HALF_SHELL for n=130 אויסטרים.",
+  "USDA FSIS and/or NFPA turkey deep-frying safety guidance — oil-volume displacement, fully-thawed-only, outdoor-only siting. Blocks DEEP_FRY at whole-bird scale; this is the highest-consequence operation named anywhere in this report.",
+  "Confit: a primary source for the salt-cure ratio and duration, whether an 80-90°C fat hold constitutes a pasteurizing process for poultry legs, and the refrigerated shelf life of a product stored under a fat seal. I have NO source for any of these three and they are all safety-relevant. Blocks CONFIT for n=45 and n=47.",
+  "Whole-muscle DRY-CURED poultry (duck/goose breast 'prosciutto') — cure-salt type and dose, target water activity or weight-loss %, and drying conditions. All our existing charcuterie citations are pork; poultry is a different risk profile. Blocks adding cured duck breast to SPECIALS.",
+  "Convection (fan) roasting — a citable source for the temperature/time relationship versus conventional (commonly stated as -20°C and shorter). Needed only if OVEN_ROAST computes times rather than stating a range; we already model the oven `fan` prop.",
+  "A safety-relevant statement on brining temperature: brine and dry-brine stages must be held at refrigeration temperature for their full duration (12-72h). Cite the USDA FSIS cold-holding clause verbatim before shipping BRINE_WET or BRINE_DRY as scheduled stages."
+ ]
+}

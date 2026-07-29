@@ -1,0 +1,838 @@
+{
+ "headline": "The three-method model (`sv`/`smoke`/`grill`) does not merely under-serve my domains — it never reaches them at all. `methodRules()` (app.js:989) only runs for `kind==='cut'`; my ~107 items are `kind==='spec'` and `kind==='make'`, which get a hardcoded single-method profile in `itemProfile()` (app.js:3806) or literally render \"מוצר מוכן — ללא שיטת בישול\" (app.js:9134). Fixing `methodRules` would leave all 33 cheeses and every charcuterie item exactly as they are. The good news is that the real method vocabulary is ALREADY in the repo — as prose inside `build.phases` (cure, ferment, pellicle, cold-smoke, dry-to-weight, steam, ice-bath) — so this is a promotion of existing knowledge into typed keys, not a research-from-zero problem. The structural blocker is that charcuterie stages advance on non-time, non-temperature gates (pH ≤5.3, weight × 0.62, Aw ≤0.85, RH band), and our stage engine can only express duration and core temperature; and that one `smt` number is forced to carry three incompatible regimes (28°C cheese, 50°C fermentation smoke, 110°C hot smoke), which is exactly why app.js:4313 had to *suppress* the \"עישון קר\" label as a bugfix rather than model it.",
+ "categories": [
+  {
+   "category": "גבינה",
+   "itemCount": 33,
+   "notesOnOurModel": "Worst fit in the whole catalog. All 33 are `kind==='spec'`, so they never touch methodRules(); itemProfile()'s spec branch (app.js:3806-3811) hardcodes exactly ONE method — `{key:'smoke', tempC: s.smt}` — with no combos, and the cook-method card renders 'מוצר מוכן — ללא שיטת בישול' (app.js:9134). Consequence: 30 items at smt 25-30°C (cold smoke, no cooking) and 1 item at smt=110°C (smoked cream cheese, genuinely hot) are rendered by the SAME method key with only the number differing. That single-number conflation is what forced the BUG-1 fix at app.js:4313 to strip the 'עישון קר' label from every cheese — a correct patch given the data, but the real repair is a COLD_SMOKE method key with a temperature ceiling as a first-class property. Separately: halloumi is modelled TWICE and inconsistently — spec n=47 (smt empty, smh='גריל ישיר 2-3 דק׳/צד', reachable by no method) and cut n=105 'Grilled Halloumi' in ירקות (full sv/smoke/grill). Same food, two engines, two answers. cheeseBuild() (app.js:4304) synthesises decent prose phases (temper→cure→smoke→seal→age) but they are display-only, with no equipment binding and no method identity.",
+   "methods": [
+    {
+     "method": "COLD_SMOKE",
+     "hebrewName": "עישון קר",
+     "whatItProduces": "Amber-to-tan surface colour, phenolic/vanillin aroma absorbed 2-4 mm into the paste, ZERO structural change — no melt, no sweat, no rind. Fresh off the smoker the flavour is harsh and ashy; the 1-2 week sealed rest is what turns it into rounded nutty-smoke. Skipping the rest is the single most common failure.",
+     "equipment": "A smoke generator that makes smoke WITHOUT heat (pellet tube, maze/labyrinth, or a cold-smoke box) placed in an UNFIRED chamber — the smoker with no fire in it, a cardboard box, or a covered grill. Plus an ice tray/frozen bottles for warm days, vacuum or cheese paper for the seal, and a fridge for the mellowing. We own `smoker` and `vacuum`; we have NO vocabulary token for a cold-smoke generator, which is the one item that actually makes this method possible.",
+     "weHaveIt": "partially",
+     "whyItMatters": "This is the method for 30 of 33 items in our largest specials category. Today the app can show a number (smt=28) but cannot say what the method IS, cannot check whether the user owns the generator, and cannot warn that exceeding the ceiling destroys the product. The temperature ceiling is the entire craft and we model it as an ordinary cook temperature.",
+     "safetyNote": "The ≤25-30°C figure is a MELTING/quality ceiling, not a pathogen-control number — I found no USDA/FSIS/FDA primary source that sets a cold-smoking temperature limit for cheese, and we must not present it as a safety value. FDA Food Code 3-502.11 requires a variance only for smoking as a method of PRESERVATION; cheese smoking is flavour enhancement, so it does not trigger. The genuine open question is soft/mould-ripened cheese (brie n=45, camembert n=46, fior di latte n=44, scamorza n=17) held 0.5-1.5 h at 25-28°C, inside the growth range of L. monocytogenes (grows down to ~1°C) — requires research; no authority found."
+    },
+    {
+     "method": "HOT_SMOKE_BAKE",
+     "hebrewName": "עישון חם / אפייה בעשן",
+     "whatItProduces": "Softened, spreadable, browned-surface cheese — a dip, not a slice. Applies to smoked cream cheese (n=19, smt=110, its own note says HOT and it is scored with a rub). Outcome vector is the opposite of cold smoke: deliberate melt, surface Maillard, no ageing.",
+     "equipment": "Smoker or oven running at 100-120°C. Both owned.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "One item today, but it is the outlier that PROVES the vocabulary is broken: it renders through the same 'smoke' key as the 28°C cheeses. A user reading the card cannot tell that one of these 33 recipes is a fundamentally different operation.",
+     "safetyNote": "Cream cheese is a pasteurised dairy product cooked to a dip; no pathogen endpoint applies that I can cite. Requires research if we ever want to state a hold/serve-window."
+    },
+    {
+     "method": "GRILL_DIRECT_HIGHMELT",
+     "hebrewName": "גריל ישיר (גבינת גריל)",
+     "whatItProduces": "Deep golden-brown crust with grate marks, squeaky/resistant bite, molten-but-held interior. Works only on high-melting-point cheeses (halloumi, queso para freír, bread cheese, paneer) whose acid/rennet chemistry prevents flow.",
+     "equipment": "Grill (owned) or plancha/griddle plate (NOT owned as a token — 'פלנצ׳ה / פלטה' exists only as a grill TYPE, so a user with a griddle over a gas ring cannot express it).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Halloumi (n=47) carries `smh='גריל ישיר 2-3 דק׳/צד'` in its data — the recipe knows the method — yet the spec renderer offers only 'smoke' and the card says 'ready product, no cooking method'. The knowledge is present and unreachable.",
+     "safetyNote": "No pathogen endpoint; both are pasteurised-milk cheeses eaten hot. Not safety-relevant."
+    },
+    {
+     "method": "OVEN_BAKE_WHOLE",
+     "hebrewName": "אפייה שלמה (קממבר/ברי)",
+     "whatItProduces": "Intact rind holding a fully liquid interior — the baked-camembert outcome. Rind acts as the vessel; overshoot ruptures it and the cheese runs out. Timing is short and unforgiving.",
+     "equipment": "Oven — an OWNED COOKERS token that NO method in the entire engine routes to (the sole 'oven' method key anywhere is MAKE_COOK['שווארמה']).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Brie (n=45) and camembert (n=46) are in the catalog with cold-smoke data only. Their most common real-world preparation is unreachable, and it needs equipment we already own and already ask the user to configure.",
+     "safetyNote": "No pathogen endpoint for a pasteurised-milk cheese served hot. Raw-milk versions are a separate question — requires research."
+    },
+    {
+     "method": "PAN_FRY / DEEP_FRY",
+     "hebrewName": "טיגון במחבת / טיגון עמוק",
+     "whatItProduces": "Crisp shattering shell over a molten core — saganaki, queso frito, halloumi fries, fried camembert. Distinct from grilling: full-surface crust rather than bar marks, and the crust forms fast enough to contain a cheese that would otherwise flow.",
+     "equipment": "Skillet (unmodelled) or deep fryer / air fryer (not owned, not in VOCAB).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Covers halloumi, queso para freír, and the mould-ripened cheeses; also the natural fallback for a user with no grill. We currently offer them nothing.",
+     "safetyNote": "Not safety-relevant (pasteurised cheese, hot service). Oil-temperature guidance would be quality only."
+    },
+    {
+     "method": "MELT_RACLETTE_SALAMANDER",
+     "hebrewName": "המסה / רקלט / סלמנדר",
+     "whatItProduces": "Surface-only melt with a bubbled, lightly browned top and a still-firm base — scraped onto potatoes/pickles. Radiant heat from above, not through.",
+     "equipment": "Raclette grill or salamander/overhead broiler. Not owned, not in VOCAB. Many home ovens have a top-element grill mode, which our oven device does not expose.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Raclette (n=34) is literally in the catalog named after this method, and we offer it cold smoke. Fontina (n=35), gruyère (n=23), comté (n=24) and montery jack (n=29) all have 'melts beautifully' in their own note text — the data says what to do and the engine cannot.",
+     "safetyNote": "Not safety-relevant."
+    },
+    {
+     "method": "MELT_FONDUE",
+     "hebrewName": "פונדו",
+     "whatItProduces": "Homogeneous emulsified sauce — needs acid + starch + controlled low heat, or it breaks into a stringy mass in an oil pool. A chemistry outcome, not a fire outcome.",
+     "equipment": "Fondue pot / heavy pan over low controlled heat. Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Named in the notes of fontina (n=35) and gruyère (n=23). Lower priority than the others but it completes the melt axis.",
+     "safetyNote": "Not safety-relevant."
+    },
+    {
+     "method": "AGE_REST",
+     "hebrewName": "יישון / מנוחה אטומה",
+     "whatItProduces": "No cooking at all — a mandatory 1-2 week sealed hold in the fridge that converts harsh acrid smoke into integrated nutty-smoke. Also the pre-smoke overnight surface dry, without which smoke will not adhere.",
+     "equipment": "Fridge + vacuum sealer or cheese paper. Both effectively owned (`vacuum`).",
+     "weHaveIt": "partially",
+     "whyItMatters": "Present as the `age` data field and as a cheeseBuild() prose phase, but with no method identity it carries no timeline weight and no equipment claim. It is the difference between a good result and a bad one for all 30 cold-smoked cheeses, and the app currently presents it as a footnote.",
+     "safetyNote": "Not a safety stage. Refrigerated storage duration for smoked cheese — requires research."
+    }
+   ]
+  },
+  {
+   "category": "ירקות",
+   "itemCount": 21,
+   "notesOnOurModel": "The best-fitting of my categories, and still short. Produce IS `kind==='cut'`, so methodRules()/isProduce() gives it grill / smoke (capped at 120°C in produceSmokeSteps) / sv (the 83-90°C pectin route in produceSVSteps, which is genuinely good work), plus a correct `invalid:[['sv','smoke','grill']]` guard. But the data already describes methods the engine cannot name: artichoke (n=101) carries `sear='הרתחה/אידוי→גריל'` and `sot=100` — the recipe says BOIL-OR-STEAM then grill, and with no steam/boil key the engine will render 'grill at 100°C', which is meaningless. Garlic (n=102) and corn (n=81) carry `wrap` values ('עטוף בנייר כסף', 'קליפה אופ׳') that are a foil/husk-packet method half-expressed as a field. And `oven` — an owned cooker — is unreachable for produce entirely.",
+   "methods": [
+    {
+     "method": "GRILL_DIRECT",
+     "hebrewName": "גריל ישיר",
+     "whatItProduces": "Bar-mark char, blistered skin, crisp-tender bite, water driven off the surface. High char + short time = smoky bitterness on the surface only; too long = collapse.",
+     "equipment": "Grill (owned). Grill basket for small items (green beans n=96 already says 'בסלסלת גריל') — not in VOCAB.",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Correct default already. produceGrillSteps() even gets the 'oil the produce, not the grate' detail right.",
+     "safetyNote": "None — produce carries safe=0 in our data, which is correct; USDA lethality endpoints do not apply to vegetables."
+    },
+    {
+     "method": "GRILL_INDIRECT / ROAST_ON_FIRE",
+     "hebrewName": "צלייה עקיפה",
+     "whatItProduces": "Even through-cooking with light colour and no char — whole cauliflower head, whole cabbage, whole sweet potato. Dense items that would burn outside before softening inside.",
+     "equipment": "Grill with a lid and two zones (we model `zones` as a grill capability!) or the oven.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Cauliflower (n=92) and cabbage (n=94) both say 'ראש שלם' / 'סטייקים עבים' in somid — the whole-head route is what the data intends and only direct or low-smoke is offered. We already collect `zones` from the user and never use it to unlock a method.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "OVEN_ROAST",
+     "hebrewName": "צלייה בתנור",
+     "whatItProduces": "Dry convective browning, deep caramelisation across the whole surface, controlled and repeatable — no smoke, no char. The everyday route for roots and brassicas.",
+     "equipment": "Oven — OWNED and completely unreachable from any produce recipe.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "This is the single biggest 'we own the gear and refuse to use it' gap for produce. A user with an oven and no grill has 21 vegetables and no way to cook any of them.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "EMBER_ROAST",
+     "hebrewName": "בישול בגחלים (dirty)",
+     "whatItProduces": "Charred sacrificial outer skin that is peeled away, revealing a steamed, intensely smoky interior. The classic Israeli/Levantine route for eggplant, onions, peppers, beets. Completely different outcome from grate-grilling: no bar marks, far deeper smoke, wetter interior.",
+     "equipment": "Bare coals — a grill with charcoal, plus tongs and gloves (all owned or in VOCAB). Needs no new hardware, only a method key.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Culturally the most important missing produce method for a Hebrew-first live-fire app. Eggplant (n=83) is in the catalog and its canonical local preparation is ember-roasting for salatat/baba ganoush — we only offer grate grilling.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "SMOKE_LOW",
+     "hebrewName": "עישון איטי",
+     "whatItProduces": "Deep smoke penetration into porous produce, soft yielding texture, no char. The danger axis is unique to produce: with no fat or collagen to buffer phenols, over-smoking turns acrid/bitter fast — fruit woods and short exposure, never mesquite/hickory for long runs.",
+     "equipment": "Smoker (owned).",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Already implemented (produceSmokeSteps caps at 120°C and prefers fruit woods — good instincts) but the bitterness ceiling is prose advice, not a modelled constraint, so nothing stops a user picking hickory for 3 h on tomatoes.",
+     "safetyNote": "None for the smoke itself. See FOIL_PACKET below for the garlic exception."
+    },
+    {
+     "method": "SOUS_VIDE_PECTIN",
+     "hebrewName": "סו-ויד לריכוך",
+     "whatItProduces": "Precise pectin softening at 83-90°C with zero cell collapse — carrots and potatoes that are fully tender but hold their shape and their sugar. Then finished on fire for colour. Not pasteurisation; a texture tool.",
+     "equipment": "Sous-vide + vacuum (both owned).",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Well done already, and produceSVSteps() correctly explains that fat goes IN the bag for produce.",
+     "safetyNote": "Explicitly not a pasteurisation step and our step text says so — that is correct and should be preserved in any refactor."
+    },
+    {
+     "method": "STEAM / BOIL",
+     "hebrewName": "אידוי / הרתחה",
+     "whatItProduces": "Even hydration-preserving softening with no browning at all — the pre-stage that makes artichokes and dense roots grillable. Also corn, asparagus.",
+     "equipment": "Pot + steamer basket, or a steam-capable oven. Note: a `steam` key EXISTS in our codebase (app.js:99) but it is a boolean CAPABILITY PROPERTY of the oven device, not a method — nothing consumes it. It is a dead capability.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Artichoke (n=101) will currently render nonsense ('grill at 100°C') because the data says boil/steam and the engine has no such key. This is the clearest single bug this research turned up in my domains.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "FOIL_PACKET",
+     "hebrewName": "עטיפה בנייר כסף / בקליפה",
+     "whatItProduces": "A steam pocket over fire — the produce cooks in its own moisture with only ambient smoke reaching it. Soft, wet, sweet; no char, no crust. Garlic confit-in-foil, corn in husk, potato in foil.",
+     "equipment": "Foil (in VOCAB) + any heat source. No new gear.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Half-modelled as the `wrap` data field, which the engine treats as a brisket-style Texas-crutch note rather than a distinct cooking mode with a different outcome vector.",
+     "safetyNote": "⚠ The one real produce safety item. Item n=102 שום שלם מעושן is oil + foil + 2 h at 110°C and the note calls the result 'ממרח מדהים' — a garlic-in-oil preparation. FDA Food Code treats garlic-in-oil mixtures as TCS foods requiring temperature control, because of C. botulinum in an anaerobic low-acid environment. We give storage advice for it today: none. Requires research for the exact Food Code citation and the correct shelf-life wording."
+    },
+    {
+     "method": "PLANK",
+     "hebrewName": "צלייה על קרש עץ",
+     "whatItProduces": "Gentle indirect heat plus steam and smoke from the soaked board — no direct char, wood aroma carried by moisture rather than combustion. Mild, elegant; good for delicate items and for cheese-topped produce.",
+     "equipment": "Cedar/alder plank (~₪30-80, disposable). Not in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Cheapest missing method by far and it unlocks a genuinely different outcome axis on gear the user already has.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "WOK_HIGH_HEAT",
+     "hebrewName": "ווק / אש גבוהה בערבוב",
+     "whatItProduces": "Wok hei — very short contact at very high heat giving spot-charring plus crisp interior, with smoke aroma from combusting surface moisture and oil. Green beans, broccoli, asparagus, mushrooms.",
+     "equipment": "Wok + a burner that can actually deliver the heat (a wok ring on a gas grill side burner works). Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The 'lots of small pieces' problem — green beans (n=96) and broccoli (n=93) currently need a grill basket we do not model, and a wok is the better answer.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "DEEP_FRY / AIR_FRY",
+     "hebrewName": "טיגון עמוק / אייר-פרייר",
+     "whatItProduces": "Uniform crisp shell, fully gelatinised starch interior — the potato/sweet-potato route no fire method matches. Air fryer gives ~80% of it with no oil bath.",
+     "equipment": "Deep fryer or air fryer. Neither owned nor in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Potato (n=89) and sweet potato (n=90) are catalog items whose most-wanted outcome we cannot produce.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "DEHYDRATE",
+     "hebrewName": "ייבוש",
+     "whatItProduces": "Water removal to concentrate sugars and acid — semi-dried tomatoes, dried mushrooms, vegetable crisps. A preservation outcome, not a doneness outcome.",
+     "equipment": "Dehydrator, or the `curechamber` token (whose prop opts already include 'מייבש'!), or a low oven.",
+     "weHaveIt": "partially",
+     "whyItMatters": "We already have a curechamber concept with tempC/rhPct props and a 'dehydrator' type option, and no produce recipe can request it. Another inert capability.",
+     "safetyNote": "None for produce."
+    }
+   ]
+  },
+  {
+   "category": "פירות",
+   "itemCount": 6,
+   "notesOnOurModel": "Same engine as ירקות (isProduce covers both) and largely the same gaps, but with a different failure risk: fruit sugars caramelise and then BURN at temperatures far below where meat browns, so the direct-grill window is much narrower. Our data reflects this correctly with short soh values (0.08-0.1 h) and lower svt (70-73°C), and produceGrillSteps() branches on `fruit` for prep text — but the engine has no notion of a burn ceiling, so the same 'grill' method that is forgiving on cabbage is unforgiving on figs (n=107) and the app says nothing about it.",
+   "methods": [
+    {
+     "method": "GRILL_DIRECT_CARAMELISE",
+     "hebrewName": "גריל ישיר לקרמול",
+     "whatItProduces": "Sugar caramelisation on the cut face with a still-firm-to-juicy interior. Cut-side-down first is not optional. The narrow window between caramel and carbon is the whole skill.",
+     "equipment": "Grill (owned); a clean grate matters far more than for meat because sugar welds.",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Correctly the default (def:['grill']) and the times in data are appropriately short.",
+     "safetyNote": "None — safe=0 is correct for fruit."
+    },
+    {
+     "method": "SMOKE_LOW",
+     "hebrewName": "עישון עדין",
+     "whatItProduces": "Watermelon (n=106) is the interesting case: low smoke plus dehydration converts it to a 'meaty' textured slab. For softer fruit, smoke reads as bitter almost immediately — the tolerance is far lower than vegetables, which are already lower than meat.",
+     "equipment": "Smoker (owned).",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Works, but the bitterness ceiling is not modelled; peach (n=98) at the smoke defaults would be unpleasant.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "SOUS_VIDE_INFUSE",
+     "hebrewName": "סו-ויד להשריה",
+     "whatItProduces": "Pear (n=99) already has mid='חמאה+וניל' — sous-vide for fruit is really flavour infusion plus controlled softening, not doneness. 70-73°C holds structure while pectin relaxes.",
+     "equipment": "Sous-vide + vacuum (owned).",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Fine as-is; the outcome LABEL is wrong (we present it as cooking, it is infusing).",
+     "safetyNote": "None."
+    },
+    {
+     "method": "OVEN_ROAST / BROIL_GLAZE",
+     "hebrewName": "צלייה בתנור / גימור בגריל עליון",
+     "whatItProduces": "Roast for even softening and concentration; a 60-second overhead broil for a blistered sugar glaze (the crème-brûlée finish on figs, peaches, pineapple). Two different heat geometries.",
+     "equipment": "Oven (owned, unreachable) / salamander or top-element broil (not modelled). A `torch` IS in VOCAB and would do the glaze — and no recipe requests it.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "`torch` is another owned-but-inert token. Fruit glazing is exactly what it is for.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "EMBER_ROAST",
+     "hebrewName": "בישול בגחלים",
+     "whatItProduces": "Banana (n=100) already says 'גריל בקליפה' — the peel-on-in-the-coals route. Blackened peel discarded, interior steamed to a custard. Also pineapple whole in embers.",
+     "equipment": "Bare coals; no new gear.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The data literally names the technique in the `sear` field and there is no method to carry it.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "DEHYDRATE",
+     "hebrewName": "ייבוש",
+     "whatItProduces": "Dried fruit — concentrated sugar and acid, chewy texture, shelf-stable. A preservation outcome our catalog does not currently offer for any of the six.",
+     "equipment": "Dehydrator or low oven; `curechamber` kind='מייבש' would cover it.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Completes the fruit outcome space and reuses a token we already ship.",
+     "safetyNote": "None for fruit (high acid, high sugar)."
+    },
+    {
+     "method": "COLD_SMOKE",
+     "hebrewName": "עישון קר",
+     "whatItProduces": "Smoke aroma with no cooking and no sugar breakdown — smoked pineapple/peach for cocktails and desserts, and smoked fruit for pairing with the cold-smoked cheeses.",
+     "equipment": "The same cold-smoke generator the 33 cheeses need. Shares the exact gap.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Cheap to add once COLD_SMOKE exists for cheese — one method key serves both categories.",
+     "safetyNote": "None for fruit."
+    }
+   ]
+  },
+  {
+   "category": "נקניק מיובש",
+   "itemCount": 12,
+   "notesOnOurModel": "5 SPECIALS + 7 MAKES. This is the most severe modelling failure in the catalog. MAKE_COOK['נקניק מיובש'] is `methods:[{key:'serve', label:'הוצא ופרוס', hours:0.15}]` — a three-to-six WEEK, four-hurdle, safety-critical process is represented to the timeline engine as a nine-minute 'take it out and slice it'. `multiDay:true` is the only acknowledgement. Meanwhile sausages_dry() in data.py already contains an excellent, detailed, correct process — ferment at ~24°C/85% to pH ≤5.3, dry at 12-15°C/70-80% with cycled fan against case hardening, weigh to target = start × 0.62-0.65, Aw ≈ 0.85 — entirely as unstructured Hebrew prose with zero citations attached. The gating problem is structural: every one of those stages advances on a MEASUREMENT (pH, weight, Aw, RH) and our stage model can only express elapsed time and core temperature. A method vocabulary that cannot say 'advance when pH ≤ 5.3' cannot express fermented sausage at all.",
+   "methods": [
+    {
+     "method": "GRIND_COLD",
+     "hebrewName": "טחינה בקור",
+     "whatItProduces": "Clean fat definition — distinct white fat particles in a red matrix, not a smeared pink paste. Everything below 2°C, partially frozen meat and frozen grinder parts. Smear is irreversible and ruins both texture and drying behaviour.",
+     "equipment": "grinder (owned) + freezer. Plate size matters (4-6 mm for dry sausage) — equipment_map.py's own docstring notes 'grinder has no cap yet'.",
+     "weHaveIt": "partially",
+     "whyItMatters": "We own the token but model no plate capability, so we cannot tell a user whether their grinder can do the 4.5 mm fine plate a salami needs versus the 8 mm rustic plate."
+    },
+    {
+     "method": "CURE_NITRATE",
+     "hebrewName": "ריפוי בניטראט (Cure #2)",
+     "whatItProduces": "Cured colour and flavour, plus the slow-release nitrate reservoir that a weeks-long dry needs — Cure #1 (nitrite only) is exhausted long before a 6-week salami is done. Not interchangeable.",
+     "equipment": "scale at 0.1 g resolution (owned, and `res` prop already models exactly this) + Cure #2.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Our data correctly distinguishes Cure #1 vs Cure #2 per product, which is genuinely good — but with no method key, the app cannot enforce that the dried products get #2 and the cooked ones get #1.",
+     "safetyNote": "AUTHORITY: 9 CFR 424.22(c) governs ingoing nitrite/nitrate limits (156 ppm sodium nitrite for comminuted cured meats). Our sausage_dry() asserts 28-30 g/kg salt and 2.5 g/kg cure with no citation. The ppm conversion and the applicable regulatory ceiling for each product — requires research and citation."
+    },
+    {
+     "method": "FERMENT",
+     "hebrewName": "התססה",
+     "whatItProduces": "Tang, red colour set, and the FIRST safety hurdle: lactic acid bacteria drop pH to ≤5.3 (dry) or 4.6-5.2 (semi-dry), which both flavours the product and suppresses pathogens. Also produces the firm sliceable bind.",
+     "equipment": "A warm humid chamber (~24°C / 80-90% RH) — this is the `curechamber` token operated at fermentation setpoints, plus a pH METER, which is listed in sausage_dry()'s materials and does NOT exist in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The pH meter is not an accessory here; it is the instrument that reads the safety gate. We ask users to own a slicer and a spritz bottle and never ask about the one tool that tells them whether their salami is safe.",
+     "safetyNote": "AUTHORITY: FSIS 'Good Manufacturing Practices for Fermented Dry and Semi-Dry Sausage Products' establishes the DEGREE-HOURS concept — cumulative hours above 60°F until pH reaches 5.3 — as the control for Staphylococcus aureus toxin formation. FSIS Ready-To-Eat Fermented, Salt-Cured, and Dried Products Guideline (FSIS-GD-2023-0002) is the current consolidated document. Our '~24°C / 80-90% / until pH ≤5.3' is consistent with that guidance but carries NO citation and NO degree-hours limit. The degree-hours ceiling is the number CP3 must collect."
+    },
+    {
+     "method": "COLD_SMOKE_OPTIONAL",
+     "hebrewName": "עישון קר (אופציונלי)",
+     "whatItProduces": "Flavour and a mild antimicrobial surface effect, with NO cooking — must stay ≤25°C or the fat renders and the fermentation chamber conditions are lost. Applied in short cycles across the drying period, not in one run.",
+     "equipment": "Same cold-smoke generator as the cheeses. Shared gap.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Kabanos (smt=50) and landjäger (smt=50) in our data are actually WARM smoke, while salami/chorizo/pepperoni carry smt=None with the phrase 'עישון קר אופציונלי' stuffed into the smh string. Three different regimes, one field, no method.",
+     "safetyNote": "The ≤25°C ceiling here IS safety-relevant (unlike cheese) because the substrate is raw meat in the growth range. Requires research for a cited ceiling."
+    },
+    {
+     "method": "DRY_AGE_CHAMBER",
+     "hebrewName": "הבשלה וייבוש בתא",
+     "whatItProduces": "The finished product: firm through the whole cross-section, deep red, dense slice, white surface mould desirable. 12-15°C at 70-80% RH with CYCLED airflow. Too fast/dry = case hardening (a sealed shell over a wet raw core — both a texture failure and a safety failure); too slow/humid = spoilage mould.",
+     "equipment": "`curechamber` (OWNED token, with tempC and rhPct props already defined!), `humidity`, `hooks`, `blower` (cycled fan), `scale`. Almost everything needed is already in VOCAB.",
+     "weHaveIt": "partially",
+     "whyItMatters": "This is the sharpest 'inert capability' in the codebase: curechamber ships with a target temperature and a target RH that NO recipe ever compares against. The user configures 13°C/78% and nothing in the app reads it.",
+     "safetyNote": "AUTHORITIES: shelf-stability criteria — water activity ≤0.85, moisture-protein ratio, final pH — are set out in the FSIS RTE Fermented/Salt-Cured/Dried Products Guideline; FSIS requires shelf-stable dry sausage to be nitrite-cured, fermented, and to meet an MPR limit. Since the 1994 dry-salami E. coli O157:H7 outbreak, a validated 5-log lethality is the expectation for these products. Our 'weight × 0.62-0.65, Aw ≈ 0.85' matches the published range but is uncited — requires research to attach the source to each number."
+    },
+    {
+     "method": "WEIGH_TO_TARGET",
+     "hebrewName": "שקילה למשקל יעד",
+     "whatItProduces": "Not a texture — a READOUT. 30-40% weight loss is the readiness criterion; elapsed days are not. sausage_dry() phase 4 already says this in bold, correctly.",
+     "equipment": "scale (owned, with `res` and `maxKg` props).",
+     "weHaveIt": "partially",
+     "whyItMatters": "This is the shape of gate our stage engine cannot express. If the method vocabulary gains one new capability, it should be 'a stage may complete on a measured condition, not a clock'.",
+     "safetyNote": "Weight loss is a proxy for Aw. Whether a given % loss reliably reaches Aw ≤0.85 for a given diameter — requires research."
+    },
+    {
+     "method": "MOULD_RIPEN",
+     "hebrewName": "חיסון עובש אציל",
+     "whatItProduces": "An even white Penicillium nalgiovense bloom that regulates drying rate, blocks spoilage moulds, and adds mushroom/nut aroma. Our phase 8 correctly says white desirable / green-black reject.",
+     "equipment": "Culture + the same chamber. No new hardware.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Present as one clause in a prose phase; it is actually a distinct process stage with its own timing and its own failure mode."
+    }
+   ]
+  },
+  {
+   "category": "נקניק מעושן",
+   "itemCount": 10,
+   "notesOnOurModel": "4 SPECIALS + 6 MAKES. MAKE_COOK['נקניק מעושן'] gives exactly one method — smoke at 77°C for 3.2 h to 68-72°C internal. But the SPECIALS notes describe something the engine cannot represent: 'עישון מדורג 60→75°C' (kielbasa), 'עישון 50→60°C' (cervelat), 'עישון מדורג 50→75°C' (summer sausage). A STEPPED schedule is the defining craft of cooked-smoked sausage — start cool and dry to set the pellicle and avoid wrinkling, ramp to avoid fat smearing and case hardening, finish hot enough to reach the endpoint. Our `smt` is a scalar. Also missing: the water-bath finish, which is standard practice and which we own the perfect tool for (sous-vide) and never offer, because `spec` items cannot see the sous-vide method.",
+   "methods": [
+    {
+     "method": "PELLICLE_DRY",
+     "hebrewName": "ייצירת Pellicle",
+     "whatItProduces": "A tacky, matte, dry protein skin. Smoke will not adhere to a wet surface — this stage is the difference between smoke flavour and no smoke flavour, and it involves no heat and no smoke at all.",
+     "equipment": "Fridge with airflow, or the smoker running with no wood at low temperature. Owned.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Present as prose (sausage_smoked phase 6, 1-2 h) across sausage, bacon and pastrami builds. It is the same named stage in three families and has no key — the clearest candidate for promotion.",
+     "safetyNote": "Not a safety stage."
+    },
+    {
+     "method": "SMOKE_STEPPED",
+     "hebrewName": "עישון מדורג",
+     "whatItProduces": "Ramped 50→60→75°C. Low start = surface set without rendering; middle = smoke deposition while the emulsion is still stable; high finish = reach the endpoint. A single-temperature smoke at the finish value smears the fat (greasy, crumbly, fat pockets); at the start value it never cooks.",
+     "equipment": "Smoker with real temperature control (`smoker` owned; its `minC`/`maxC` props exist). Nothing new needed — only a method that can hold a SCHEDULE instead of a number.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Three of our four smoked-sausage specials state the schedule in their own note text and the engine flattens all of them to one number. This is the single most concrete case for methods carrying a temperature PROFILE rather than a scalar.",
+     "safetyNote": "AUTHORITY: the lethality endpoint is governed by FSIS Appendix A (Salmonella lethality time-temperature tables for meat and poultry). NOTE A GAP: our data sets tgt=68°C for cooked-smoked sausage. 68°C is below the instantaneous 71°C ground-meat figure, and is only defensible with a documented HOLD TIME under Appendix A — which we do not store anywhere in the data model. Requires research: confirm the Appendix A hold time for 68°C and decide whether the app may present a sub-71°C endpoint at all."
+    },
+    {
+     "method": "POACH_WATERBATH",
+     "hebrewName": "גימור באמבט מים",
+     "whatItProduces": "Reaching the 68-72°C core without over-rendering the fat or drying the casing — a controlled, gentle finish at 75-80°C water. The standard commercial finish for cooked-smoked sausage.",
+     "equipment": "SOUS-VIDE CIRCULATOR — which we own, and which is exactly the right instrument, and which `spec` items structurally cannot request.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The most galling gap of all: our best-modelled piece of equipment is the perfect tool for this stage and the item type cannot reach it. `methodRules` never runs for specs.",
+     "safetyNote": "Same Appendix A question as above."
+    },
+    {
+     "method": "ICE_BATH_CHILL",
+     "hebrewName": "קירור בהלם / אמבט קרח",
+     "whatItProduces": "Stops carry-over cooking, prevents wrinkling as the casing contracts, and crashes the product through the danger zone. Then a fridge rest before slicing.",
+     "equipment": "Ice / cold shower. `cooler` token exists (added for hot holding); a cold-crash is the mirror operation.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "sausage_smoked phase 8 names it. It has a real safety function (rapid cooling) and zero representation.",
+     "safetyNote": "Rapid-cooling parameters — FDA Food Code and FSIS Appendix B (stabilization / cooling) both address cooling rates for cooked meat. Requires research to cite the applicable rate."
+    },
+    {
+     "method": "FERMENT_SEMIDRY",
+     "hebrewName": "התססה חצי-יבשה",
+     "whatItProduces": "The tang in summer sausage (n=9, our note says exactly this) — a shorter, warmer fermentation to pH 4.6-5.2, then cooked rather than dried. Distinct from the dry-sausage fermentation: cooked-and-fermented, not dried-and-fermented.",
+     "equipment": "Warm chamber + pH meter (missing) + Cure #1 (not #2, correctly, because it is cooked not dried).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Summer sausage sits in נקניק מעושן with a `cure` field naming a starter culture and no fermentation stage anywhere in its profile.",
+     "safetyNote": "Degree-hours applies here too — FSIS GMP for Fermented Dry and Semi-Dry Sausage Products. Requires research for the semi-dry limits specifically."
+    },
+    {
+     "method": "GRILL_FINISH",
+     "hebrewName": "גימור בגריל",
+     "whatItProduces": "Snap and colour on an already-cooked sausage — reheating and skin crisping, not cooking. MAKE_COOK['נקניקיות'] models this correctly as a primary method for FRESH sausage; for cooked-smoked it is a different operation on a different substrate.",
+     "equipment": "Grill (owned).",
+     "weHaveIt": "partially",
+     "whyItMatters": "We conflate 'grill a raw sausage to 71°C' with 'reheat a cooked one for snap' — same key, different safety meaning.",
+     "safetyNote": "USDA/FSIS: 71°C (160°F) for raw ground meat, 74°C (165°F) for raw ground poultry. Applies to the fresh-sausage case, not the reheat case, and we do not distinguish."
+    }
+   ]
+  },
+  {
+   "category": "בשר מיובש",
+   "itemCount": 3,
+   "notesOnOurModel": "Only three items, and they are THREE GENUINELY DIFFERENT PROCESSES that our model treats as one. Beef jerky (spec-1) = marinate + smoke-dry at 70°C. Turkey jerky (spec-2) = marinate + heat to 74°C + dry. Biltong (spec-3) = acid cure + unheated air-dry at room temperature for days, smt=None, smh='ללא עישון'. MAKE_COOK['בשר מיובש'] gives all three `methods:[{key:'serve', hours:0.1}]`. The biltong entry in particular is a whole distinct preservation science (acid + salt + Aw, no heat step at all) filed under the same key as a smoked jerky.",
+   "methods": [
+    {
+     "method": "MARINATE",
+     "hebrewName": "מרינדה",
+     "whatItProduces": "Flavour plus, when Cure #1 is included, a nitrite hurdle for long storage. 6-24 h refrigerated. Our builds already offer it as optional-with-cure vs plain, which is a good distinction.",
+     "equipment": "Fridge, container or vacuum (owned).",
+     "weHaveIt": "partially",
+     "whyItMatters": "Prose-only.",
+     "safetyNote": "Cure #1 optionality is a real safety fork we present as a flavour note."
+    },
+    {
+     "method": "PRECOOK_LETHALITY",
+     "hebrewName": "חימום מקדים לבטיחות",
+     "whatItProduces": "No sensory outcome — a pure safety step. Heat the meat to temperature BEFORE drying, because bacteria become markedly more heat-resistant once dried, and evaporative cooling means a dehydrator never actually raises the meat to a lethal temperature until the moisture is already gone.",
+     "equipment": "Oven, steamer, or a pre-boil of the marinade with the strips in it. Oven is owned and unreachable.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "⚠ CONCRETE FINDING: this step is entirely absent from our beef jerky recipe. spec-1 goes straight from wiping the strips (phase 3) to 'smoke at 70°C for 4-6 h' (phase 4). Our turkey jerky DOES specify 74°C. The beef one does not, and 70°C is below the FSIS figure.",
+     "safetyNote": "AUTHORITY: USDA FSIS 'Jerky and Food Safety' — the USDA Meat and Poultry Hotline recommendation is to heat meat to 160°F (71°C) and poultry to 165°F (74°C) BEFORE dehydrating, then maintain 130-140°F (54-60°C) throughout drying. Our beef jerky's 70°C smoke with no pre-heat does not implement this. This should be raised with the owner as a safety finding, not just a method gap. https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/meat-fish/jerky"
+    },
+    {
+     "method": "DEHYDRATE",
+     "hebrewName": "ייבוש",
+     "whatItProduces": "Bend-and-crack, not snap: leathery-flexible. Water removed to shelf-stability with airflow doing most of the work. Distinct from smoking — no phenols, just moving air and gentle heat.",
+     "equipment": "DEHYDRATOR — not a cooker in our VOCAB; it exists only as an option value of the `curechamber` accessory's `kind` prop. A dehydrator is a cooking appliance, not a chamber type.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Jerky is the single most popular home charcuterie project and the appliance most people use for it is not in our cooker vocabulary.",
+     "safetyNote": "FSIS: maintain 130-140°F (54-60°C) throughout drying, after the pre-heat step. Requires research for our precise Hebrew wording."
+    },
+    {
+     "method": "SMOKE_DRY",
+     "hebrewName": "עישון-ייבוש",
+     "whatItProduces": "Jerky with smoke flavour — low smoker temperature doing double duty as dryer. Needs airflow, which is the opposite of the sealed-chamber setting most smokers default to (our spec-3 build correctly says 'שמור על זרימת אוויר').",
+     "equipment": "Smoker (owned) run low with the vents open.",
+     "weHaveIt": "partially",
+     "whyItMatters": "The knowledge is in the prose; there is no method key and no airflow concept."
+    },
+    {
+     "method": "ACID_CURE_AIR_DRY",
+     "hebrewName": "כבישת חומץ וייבוש אוויר (בילטונג)",
+     "whatItProduces": "A fundamentally different product from jerky: thicker cuts, no heat at any point, vinegar+salt+coriander doing the pathogen work, dried at pleasant room temperature over days to a firm-but-yielding interior. Sliced across, not torn. Our note already says the vinegar 'chemically cooks' it — correct instinct.",
+     "equipment": "A biltong box: a ventilated cabinet with a fan and a low-wattage bulb, ~₪150-600 to build or buy. Not in VOCAB. `curechamber` at 21-27°C / 50-60% is close but the token's tempC bound is [0,30] and default 13°C — it is shaped for salami, not biltong.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "One item, but it is a whole preservation paradigm (acid + Aw hurdle, no thermal lethality) that our vocabulary has no way to name, and it is the one where a user copying a 'jerky' mental model would get it wrong.",
+     "safetyNote": "AUTHORITY EXISTS AND IS PEER-REVIEWED, not USDA: Microorganisms 2020;8(5):791 demonstrated a USDA-FSIS-equivalent 5-log Salmonella reduction with NO heat lethality step, via marinade plus air-drying at 25.5°C / 80% RH to Aw <0.85; Microorganisms 2022;10(7):1308 showed >5-log reduction of E. coli O157:H7, L. monocytogenes and S. aureus over 6-8 days at 23.9°C (75°F) / 55% RH after a 30-min vacuum-tumble in vinegar/salt/coriander/pepper. Our data's 21-27°C / 50-60% / 4-7 days sits in that neighbourhood but is uncited and its RH floor is below the validated range. CP3 should cite these two papers and reconcile the numbers."
+    }
+   ]
+  },
+  {
+   "category": "בייקון",
+   "itemCount": 2,
+   "notesOnOurModel": "Two items and the cleanest illustration of a category-wide problem: bacon's `tgt=65` is NOT a safety endpoint. The product is smoked but deliberately not fully cooked — our own build phase 6 says 'טגן/אפה עד פריך לפני האכילה'. Our data model has no way to express 'this number is a process target and the consumer must cook it again later', so a 65°C reading sits in the same field that elsewhere means 'done and safe'. Also: bacon() names the cure as a DRY cure and cites 120 ppm as 'the USDA standard for bacon' — per 9 CFR 424.22(c) the 120 ppm figure is the IMMERSION-cured limit; dry-cured bacon is permitted up to 200 ppm. The number we use is conservative and fine; the citation attached to it is wrong.",
+   "methods": [
+    {
+     "method": "EQUILIBRIUM_DRY_CURE",
+     "hebrewName": "כבישה יבשה (equilibrium)",
+     "whatItProduces": "Firm, denser, seasoned-through belly with cured colour. Equilibrium (weigh the meat, apply a calculated % and let it fully distribute) cannot over-salt no matter how long it sits — that is its whole advantage over an overhaul/rinse cure, and our build correctly uses it.",
+     "equipment": "scale at 0.1 g (owned, `res` prop), vacuum bag or container (owned), fridge, ~7 days.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Excellent prose in bacon() phases 1-2, no method key, no equipment binding, no timeline weight.",
+     "safetyNote": "AUTHORITY: 9 CFR 424.22(c) — sodium nitrite ingoing limits: 120 ppm for immersion-cured bacon, 200 ppm for dry-cured bacon, 156 ppm for comminuted cured meats. Our build applies ~120 ppm to a DRY cure while calling 120 the bacon standard — the limit is right to use, the attribution is wrong. Requires the eCFR text pulled and quoted. https://www.ecfr.gov/current/title-9/chapter-III/subchapter-E/part-424/subpart-C/section-424.22"
+    },
+    {
+     "method": "RINSE_AND_PELLICLE",
+     "hebrewName": "שטיפה וייצירת Pellicle",
+     "whatItProduces": "Surface salt removed, then 12-24 h uncovered in the fridge to build the tacky skin. Same named stage as in smoked sausage and pastrami — three families, one operation, three prose paragraphs.",
+     "equipment": "Fridge with airflow.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Strongest evidence that the method vocabulary needs shared, reusable stage keys rather than per-recipe prose."
+    },
+    {
+     "method": "HOT_SMOKE_PARTIAL",
+     "hebrewName": "עישון חם (לא לבישול מלא)",
+     "whatItProduces": "Smoke flavour, cured colour set, firmed texture for slicing — deliberately stopping short of cooked. 90°C smoker to 65°C internal per our data.",
+     "equipment": "Smoker (owned).",
+     "weHaveIt": "partially",
+     "whyItMatters": "Rendered by the same 'smoke' key that elsewhere means 'this is now cooked and safe'. The distinction is carried only in a prose sentence in phase 6.",
+     "safetyNote": "⚠ The 65°C figure must never be presented as a `safe` value. It is a process target for a product that requires a subsequent consumer cook step. Requires research: FSIS guidance on the labelling/handling of 'cooked-before-eating' bacon."
+    },
+    {
+     "method": "COLD_SMOKE_TRADITIONAL",
+     "hebrewName": "עישון קר מסורתי",
+     "whatItProduces": "Traditional streaky/British bacon — smoked at ≤25°C for flavour only, remaining fully raw, sliced and fried. Different texture and much longer smoke exposure than the hot route.",
+     "equipment": "Cold-smoke generator. The same shared missing token.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A large fraction of world bacon is made this way and our catalog offers only the American hot-smoked route.",
+     "safetyNote": "Cold-smoking raw pork/beef IS a safety-relevant operation (unlike cheese) — nitrite cure is doing the work while the meat sits in the growth range. Requires research for a cited ceiling and duration."
+    },
+    {
+     "method": "SLICE_COLD",
+     "hebrewName": "פריסה בקור",
+     "whatItProduces": "Thin even rashers — only achievable when the slab is thoroughly chilled or partly frozen. Our note says exactly this.",
+     "equipment": "`slicer` (OWNED token, with a `maxMm` prop) or a sharp knife. One of the few places our accessory vocabulary genuinely matches the process.",
+     "weHaveIt": "partially",
+     "whyItMatters": "The slicer's maxMm prop is another target no recipe compares against.",
+     "safetyNote": "None."
+    },
+    {
+     "method": "COOK_BEFORE_EATING",
+     "hebrewName": "טיגון/אפייה לפני אכילה",
+     "whatItProduces": "The actual terminal method — crisp rashers. Pan, oven, or plancha. This is where the product finally becomes food and it is the one stage that has no equipment, no time, and no temperature anywhere in our model.",
+     "equipment": "Skillet / oven / plancha. Oven owned and unreachable; skillet and plancha not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Our timeline ends at 'chill and slice'. The user's actually ends two steps later.",
+     "safetyNote": "Requires research: whether a consumer-cook endpoint should be stated for cured pork/beef bacon."
+    }
+   ]
+  },
+  {
+   "category": "פסטרמה",
+   "itemCount": 6,
+   "notesOnOurModel": "6 MAKES plus cut-12 (Beef Pastrami) which is a `cut` and therefore DOES get sv/smoke/grill. The defining stage is STEAM, and the brief's hunch is confirmed with a twist: a `steam` key does exist in the codebase (app.js:99) but it is a boolean CAPABILITY PROPERTY of the oven device — 'does your oven have steam?' — and nothing in the recipe layer reads it. It is not a method and never was. The steam stage itself lives as prose (data.py cut-12 phase 7, and b_pastrami's `finish` tuple) and as a fragment of a NOTE STRING in MAKE_COOK ('עד ~74° ואידוי לרכות'), which mkNoteL() then dutifully translates into eleven languages. We translate the steam stage; we do not model it.",
+   "methods": [
+    {
+     "method": "BRINE_CURE",
+     "hebrewName": "כבישה בתמלחת",
+     "whatItProduces": "Cured colour to the centre, seasoned through, and the pickling-spice character. 5-7 days, roughly 24 h per cm of thickness, weighted under the surface, turned daily.",
+     "equipment": "Large non-reactive container + fridge space. `curechamber` is the wrong token; a brining vessel is not modelled at all.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Excellent prose in b_pastrami; the fridge-space requirement (a 2.5 kg brisket in brine) is a real planning constraint the app never surfaces.",
+     "safetyNote": "Our recipe expresses cure volumetrically — 50 g salt + ~12 g Cure #1 per litre of brine — and never converts to ingoing ppm in the MEAT, which is what 9 CFR 424.22(c) actually regulates (200 ppm for immersion-cured products). That conversion depends on pickup/uptake %. AUTHORITY for the method: FSIS Processing Inspectors' Calculations Handbook covers brine-concentration-to-ingoing-ppm arithmetic. Requires research to source and implement."
+    },
+    {
+     "method": "DESALINATE_SOAK",
+     "hebrewName": "השריה להפחתת מלח",
+     "whatItProduces": "Purely corrective — 2-6 h in changed cold water pulls surface salt back so the finished product is seasoned rather than briny. Skipping it is the classic first-pastrami failure.",
+     "equipment": "Cold water, fridge.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A mandatory stage with real elapsed time that carries zero weight in our timeline."
+    },
+    {
+     "method": "COAT_BARK",
+     "hebrewName": "ציפוי כוסברה-פלפל",
+     "whatItProduces": "The defining black-green crust. Coarse coriander and black pepper 1:1 pressed thick onto a tacky pellicle. It is a physical crust, not a rub that melts in — a different operation from our `rub` field.",
+     "equipment": "None new.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Our `rub` field and the seasoning picker treat this as a seasoning choice; it is structurally a coating stage that only works on a pellicle."
+    },
+    {
+     "method": "HOT_SMOKE",
+     "hebrewName": "עישון",
+     "whatItProduces": "105-120°C to ~70-75°C internal — smoke flavour and bark set. NOT to tenderness. Stopping here gives a fully-smoked, still-tough product, which is exactly right because the next stage does the tenderising.",
+     "equipment": "Smoker (owned).",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "The only stage of the seven our engine handles well.",
+     "safetyNote": "Whole-muscle beef; FSIS lethality endpoints per Appendix A. The 70-75°C figure here is a process milestone, not the safety floor (63°C for whole-muscle beef per USDA with rest). Requires research to state which is which."
+    },
+    {
+     "method": "STEAM",
+     "hebrewName": "אידוי לרכות",
+     "whatItProduces": "THE defining stage. 1-2 h of steam to ~95-96°C internal in a saturated environment: collagen melts to gelatin while the bark stays intact and the meat does not dry out. Dry-heat cooking to 96°C would destroy it; steam is what makes pastrami slice like butter instead of shredding like brisket. This is not a variant of braising — the bark must survive, so nothing may touch liquid.",
+     "equipment": "A large pot with a rack above boiling water, a steamer insert, or a steam/combi oven. Cheapest form is ~₪80. We model NONE of it — and we ship an oven `steam` capability flag that no recipe can request.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Six MAKES plus a catalog cut whose single most important stage is unmodelled, translated into eleven languages as a note fragment, and whose equipment flag already exists in our device schema as dead weight. If one method is added from this whole report, it should be this one.",
+     "safetyNote": "The ~95-96°C endpoint is a TEXTURE target (collagen conversion), not a pathogen target — it must be labelled as such so it can never be read as a `safe` value. Requires research to confirm no authority prescribes it."
+    },
+    {
+     "method": "CHILL_AND_RESTEAM",
+     "hebrewName": "קירור וחימום מחדש בקיטור",
+     "whatItProduces": "Full chill firms the meat for thin slicing; a second steam just before service restores moisture and warmth without further cooking. The deli method — pastrami is essentially always served re-steamed.",
+     "equipment": "Fridge + steamer again.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Phase 8 in our build. It means the 'cook' and the 'serve' are on different days, which our same-day timeline model cannot express at all (hence `multiDay:true` and nothing else)."
+    },
+    {
+     "method": "SOUS_VIDE_THEN_SMOKE",
+     "hebrewName": "סו-ויד ואז עישון",
+     "whatItProduces": "The shortcut route: 65°C for 12-24 h does the collagen work that steam would do, then a short smoke purely for bark. Different texture (more uniformly moist, less of the steam-softened bite) and far more controllable.",
+     "equipment": "sous-vide + vacuum + smoker — all owned.",
+     "weHaveIt": "partially",
+     "whyItMatters": "MAKE_COOK['פסטרמה'] has a `sv_smoke` compound key — one of the only compound method keys anywhere outside methodRules(). It shows the data layer already wants compound methods and got exactly one, hardcoded.",
+     "safetyNote": "65°C/12-24 h is a Baldwin-style pasteurisation regime; our sources corpus should already carry the backing. Requires verification that the cited time-temperature pair is in sources.py."
+    }
+   ]
+  },
+  {
+   "category": "סלומי",
+   "itemCount": 6,
+   "notesOnOurModel": "NOTE: the category key in MAKES and MAKE_COOK is 'סלומי' (salumi), not 'סלמי' as the brief lists — worth confirming which the UI shows. MAKE_COOK['סלומי'] is `methods:[{key:'serve', hours:0.15, note:'מוכן לאכילה, רק לפרוס'}]`. This family is whole-muscle dry-cured salumi (bresaola, coppa, lonzino, guanciale, speck, pancetta), which is a DIFFERENT safety architecture from fermented salami: there is no acidification hurdle at all. Safety rests entirely on salt penetration, nitrate/nitrite, and reaching a low water activity — and it is done on an intact muscle where surface contamination cannot be ground inward. Our model does not distinguish it from the ground fermented products in any way.",
+   "methods": [
+    {
+     "method": "DRY_CURE_EQUILIBRIUM",
+     "hebrewName": "כבישה יבשה מדודה",
+     "whatItProduces": "Salt and cure driven fully through an intact muscle over days to weeks, weight-calculated so it cannot over-salt. Firms and seasons; no acidification, no fermentation.",
+     "equipment": "0.1 g scale (owned), vacuum or container (owned), fridge.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Prose only.",
+     "safetyNote": "AUTHORITY: FSIS Ready-To-Eat Fermented, SALT-CURED, and Dried Products Guideline (FSIS-GD-2023-0002) is the document that covers this family specifically — the salt-cured branch, distinct from fermented. Per-product Aw and salt targets — requires research."
+    },
+    {
+     "method": "CASE_AND_TRUSS",
+     "hebrewName": "עיטוף בקרום וקשירה",
+     "whatItProduces": "Beef bung / collagen sheet / netting around the muscle to regulate moisture loss and hold shape. Without it a bare muscle case-hardens on the outside long before the centre dries.",
+     "equipment": "Casings, netting, twine, `hooks` (owned).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A physically necessary stage with real consumables, entirely absent."
+    },
+    {
+     "method": "DRY_AGE_CHAMBER",
+     "hebrewName": "הבשלה בתא",
+     "whatItProduces": "12-15°C, 70-80% RH, weeks to months, to a target weight loss around 30-40%. Firm, deep red, translucent when sliced thin. Same chamber discipline as dry sausage but longer and with a higher case-hardening risk because the piece is thicker and denser.",
+     "equipment": "`curechamber` + `humidity` + `hooks` + `blower` + `scale` — all in VOCAB, none read by any recipe.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Six items whose entire multi-month process is a 9-minute 'take out and slice' in the timeline engine.",
+     "safetyNote": "Aw ≤0.85 shelf-stability threshold and the FSIS RTE guideline apply. Uncited in our repo. Requires research."
+    },
+    {
+     "method": "COLD_SMOKE",
+     "hebrewName": "עישון קר",
+     "whatItProduces": "Speck is the case in point — it is defined by cold smoke over its dry-cure, and the smoke is applied in repeated short cycles at ≤20-25°C across the drying period, not in one session.",
+     "equipment": "Cold-smoke generator (missing, shared with cheese).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A named catalog product whose defining characteristic we cannot express.",
+     "safetyNote": "Raw meat in the growth range — genuinely safety-relevant. Requires research for a cited ceiling."
+    },
+    {
+     "method": "MOULD_RIPEN",
+     "hebrewName": "עובש אציל",
+     "whatItProduces": "White P. nalgiovense bloom on the casing regulating drying rate and blocking spoilage organisms. Same operation as for salami.",
+     "equipment": "Culture + chamber.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Shared with נקניק מיובש — one method key serves both."
+    },
+    {
+     "method": "SLICE_PAPER_THIN",
+     "hebrewName": "פריסה דקיקה",
+     "whatItProduces": "For dry-cured whole muscle the slice thickness IS the eating experience — bresaola at 1 mm versus 3 mm are different foods. Our `slicer` token has a `maxMm` prop that could express this and no recipe states a target.",
+     "equipment": "`slicer` (owned) with a genuine sub-mm capability, or a very sharp knife.",
+     "weHaveIt": "partially",
+     "whyItMatters": "equipment_map.py already defines a `slice_mm` SPEC KEY intended to join onto the slicer — the plumbing exists and the salumi recipes supply no value."
+    }
+   ]
+  },
+  {
+   "category": "שווארמה",
+   "itemCount": 5,
+   "notesOnOurModel": "MAKE_COOK['שווארמה'] uses `{key:'oven', label:'תנור/רוטיסרי', tempC:'180°', hours:1.1}` — the ONLY place the string 'oven' appears as a cook-method key anywhere in the engine, and it conflates a static oven with a turning spit, which are different heat geometries producing different products. Deeper problem: shawarma is not cooked once. It is cooked in successive outer layers over hours while the interior mass stays raw and is progressively exposed. Our entire stage model assumes one item reaching one core temperature. There is no way to express 'the surface is done and the core is still raw and that is correct'.",
+   "methods": [
+    {
+     "method": "BUILD_STACK",
+     "hebrewName": "בניית השיפוד",
+     "whatItProduces": "Alternating lean-meat and fat layers compressed into a dense cylinder with a fat cap on top that renders downward and bastes the whole cone continuously. The build IS the recipe — juiciness and the crisp shaved edges both come from it.",
+     "equipment": "Vertical spit or a horizontal rotisserie skewer, plus something to compress against.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "b_shawarma phase 3 describes it well; there is no method, no equipment token, and no time weight for what is a 30-45 minute assembly."
+    },
+    {
+     "method": "ROTISSERIE",
+     "hebrewName": "רוטיסרי / שיפוד מסתובב",
+     "whatItProduces": "Continuous rotation past a heat source: self-basting, even browning all round, rendered fat running down the surface instead of dripping away. Fundamentally different from grate cooking — no contact conduction, no bar marks, constant radiant exposure.",
+     "equipment": "A rotisserie kit — and note that `rotisserie` ALREADY EXISTS as a boolean property on our grill device (app.js:89, tier 'pro'). We ask the user whether they own it and then never offer a single recipe that uses it. A third inert capability.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Beyond shawarma this unlocks whole birds, porchetta, gyros and kebab — it is the highest-leverage missing method by breadth, and for a large fraction of users it costs nothing because the hardware is already on the grill.",
+     "safetyNote": "Poultry shawarma: USDA/FSIS 74°C (165°F). Our cut-3 data honours it (svt=74, safe=74) and b_shawarma phase 6 states it. Correct as far as it goes."
+    },
+    {
+     "method": "VERTICAL_SPIT_SHAVE",
+     "hebrewName": "שיפוד אנכי וגילוח מתגלגל",
+     "whatItProduces": "The real method: shave the crisped outer layer the moment it is ready, expose the next, repeat for hours. Output is a stream of servings over time, not a single finished item. Texture is deliberately heterogeneous — crisp edge, juicy interior, per slice.",
+     "equipment": "Dedicated vertical shawarma/gyro machine (₪600-2500) or an improvised vertical stack on a kettle.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "This is the one place where the missing method is not just a gap but a MODEL mismatch. A method vocabulary designed only around 'item reaches target temperature, then rests' cannot represent a cone. If the vocabulary is being redesigned, this is the case that should test it.",
+     "safetyNote": "⚠ REAL AND UNADDRESSED: the interior of the cone sits for hours at temperatures between fridge and cooked while the surface is repeatedly shaved. That is the actual hazard of the method and our app says nothing about it. Requires research — published regulatory guidance on gyro/shawarma cone handling exists (FDA Food Code / state retail guidance on 'cook-and-serve from a vertical rotisserie'); CP3 must locate and cite it."
+    },
+    {
+     "method": "SOUS_VIDE_THEN_FIRE",
+     "hebrewName": "סו-ויד ואז אש",
+     "whatItProduces": "Wrap the whole built cone, cook 74°C/12 h, then transfer to fire only for the crust. Maximum juiciness, removes the raw-interior problem entirely, and makes the fire stage purely a surface operation.",
+     "equipment": "sous-vide + vacuum + grill — all owned. Needs a bath big enough for a cone; our `min_bath_l` / `baths` capability plumbing already exists to check exactly this.",
+     "weHaveIt": "partially",
+     "whyItMatters": "b_shawarma phase 4 offers it as an optional route and MAKE_COOK does not carry it as a method. It is also the SAFE route given the cone-interior issue above, so surfacing it has real value."
+    },
+    {
+     "method": "PLANCHA_FINISH",
+     "hebrewName": "גימור על פלנצ׳ה",
+     "whatItProduces": "The Israeli street reality: shaved meat is finished on a flat-top for a second crisping and to catch the rendered fat. Distinct texture from straight-off-the-cone.",
+     "equipment": "Plancha / flat-top. Exists as a grill TYPE ('פלנצ׳ה / פלטה') but not as a surface a method can request.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Culturally the most familiar form of the dish to our Hebrew-first users and it is not in the model at all."
+    }
+   ]
+  },
+  {
+   "category": "צלייה טחונה",
+   "itemCount": 3,
+   "notesOnOurModel": "MAKE_COOK['צלייה טחונה'] is `{key:'grill', tempC:'200°+', hours:0.25, note:'מהיר, חם מאוד'}` — and it is the ONLY make profile in the entire const with no temperature target in its note. Every other category states an internal endpoint. This is the one category where the ground-meat rule is strictest and it is the one with no number. Kebab, mici and cevapi are also griddle/plancha foods as much as grate foods, and mici in particular are classically cooked on a flat-top.",
+   "methods": [
+    {
+     "method": "GRIND_AND_EMULSIFY",
+     "hebrewName": "טחינה ובניית תערובת",
+     "whatItProduces": "The bind. Ground meat plus salt worked to protein extraction, often with ice water or bicarbonate (mici) for a springy, snappy texture rather than a crumbly one. Under-worked = falls off the skewer; over-worked = rubbery.",
+     "equipment": "`grinder` (owned) — again with no plate-size capability modelled.",
+     "weHaveIt": "partially",
+     "whyItMatters": "The failure mode users actually hit (meat falling off the skewer) is a mix-technique problem and we give no stage for it."
+    },
+    {
+     "method": "GRILL_DIRECT_HOT",
+     "hebrewName": "גריל ישיר חם מאוד",
+     "whatItProduces": "Fast, very hot, heavy char on a thin section — the entire point is surface crust before the interior dries. Ground meat has no collagen buffer, so the window is minutes.",
+     "equipment": "Grill / mangal with skewers (owned).",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Reasonably handled as the default.",
+     "safetyNote": "⚠ AUTHORITY AND GAP: USDA/FSIS require 71°C (160°F) for raw ground meat and 74°C (165°F) for raw ground poultry — grinding distributes surface pathogens through the mass, which is precisely why ground meat has a higher endpoint than whole muscle. MAKE_COOK['צלייה טחונה'] carries NO target at all. That is the single most concrete safety-shaped omission in my domains after the beef-jerky pre-heat. Requires the FSIS citation attached."
+    },
+    {
+     "method": "PLANCHA_GRIDDLE",
+     "hebrewName": "פלנצ׳ה / פלטה",
+     "whatItProduces": "Full-contact crust across the whole surface rather than bar marks, with the rendered fat staying in the pan and re-frying the exterior. For mici and small kebab this is the traditional method, not the grate.",
+     "equipment": "Flat-top / plancha / heavy cast pan. Exists only as a grill TYPE, not as a requestable surface.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Also the answer for users with no outdoor grill — three catalog items become makeable on a stove."
+    },
+    {
+     "method": "SKEWER_OVER_COALS",
+     "hebrewName": "שיפודים על מנגל",
+     "whatItProduces": "Flat wide skewers, no grate at all, meat suspended over coals — radiant plus convective, drip goes to the fire and flares back as smoke. Distinct from grate grilling in both mechanism and flavour.",
+     "equipment": "Mangal + flat skewers. Not distinguished from a generic grill in our device model.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "For a Hebrew-first live-fire app the mangal is arguably the primary cooking device and we model it as an undifferentiated 'grill'."
+    },
+    {
+     "method": "OVEN_ROAST",
+     "hebrewName": "צלייה בתנור",
+     "whatItProduces": "The weekday fallback: even browning, no char, reliable endpoint. Less interesting, and it is what most users will actually do most of the time.",
+     "equipment": "Oven — owned, unreachable.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Same story as everywhere else in this report.",
+     "safetyNote": "Same 71°C / 74°C ground-meat endpoints apply."
+    }
+   ]
+  }
+ ],
+ "crossCuttingFindings": "**1. There are two disjoint engines and my domains are all in the wrong one.** `methodRules()` runs only for `kind==='cut'`. `spec` items get a hardcoded single-method profile (app.js:3806-3811); `make` items get a MAKE_COOK entry with 1-2 uncombinable methods; and `app.js:9134` explicitly renders \"מוצר מוכן — ללא שיטת בישול\" for specs. Of my ~107 items, only the 27 produce entries are `cut`. Expanding the three-method list would change nothing for the other 80. Any method-vocabulary work must first decide whether spec/make items enter the same engine or get a parallel one.\n\n**2. The vocabulary already exists — as prose.** `build.phases` in data.py already names, in order and with correct detail: dry-cure, brine-cure, desalinate, pellicle, ferment-to-pH, cold-smoke, stepped-smoke, dry-to-target-weight, mould-ripen, steam, ice-bath, chill-and-slice, cook-before-eating. The same named stage (`Pellicle`) appears verbatim in three different families' builds. This is a PROMOTION problem — turn recurring prose phases into shared typed stage keys with equipment bindings — not a research-from-zero problem. That also fixes a translation absurdity: `mkNoteL()` currently translates the pastrami steam stage into eleven languages as a note fragment while the engine has no steam concept.\n\n**3. Methods here are ordered pipelines with non-temporal GATES, not a set of checkboxes.** `sv`/`smoke`/`grill` is a SET with an implied order. Charcuterie is a sequence where each stage's exit condition is a MEASUREMENT: pH ≤5.3, weight = start × 0.62-0.65, Aw ≤0.85, RH within a band. Our stage model expresses only duration and core temperature. This is the single deepest structural finding: **a method vocabulary that cannot say \"advance when pH ≤ 5.3\" cannot represent fermented sausage, salumi, biltong or bacon curing at all** — and we already ask users to configure a `curechamber` with `tempC` and `rhPct` targets that nothing reads.\n\n**4. One `smt` field is carrying three incompatible regimes.** COLD (≤25-30°C, no cooking — 30 cheeses, salami, speck, lox), WARM (30-60°C — kabanos smt=50, landjäger smt=50, cervelat's 50→60 ramp), HOT (>60°C — cooking). Because they share a key, smoked gouda at 28°C and smoked cream cheese at 110°C render identically, and the BUG-1 fix at app.js:4313 had to *delete* the \"עישון קר\" label rather than model it. Three method keys with an explicit temperature-ceiling property would dissolve that whole class of bug. Related: `smt` is a SCALAR and three of our four smoked sausages state a stepped SCHEDULE (50→60→75°C) in their note text.\n\n**5. Owned equipment is inert — four separate cases.** `oven` is an owned COOKERS token that NO method routes to except MAKE_COOK['שווארמה'].key='oven'. `oven.steam` is a boolean capability with no consumer. `curechamber.tempC`/`rhPct` are targets no recipe compares against. `grill.rotisserie` is a boolean we ask about and never use. `slicer.maxMm` and the `slice_mm` spec key are plumbed and unsupplied. `torch` would do fruit glazing and salamander finishing and is requested by nothing. We are not only missing hardware — we are failing to use hardware we already model.\n\n**6. The outcome axes are family-specific and orthogonal to method.** Produce: char / tenderness (pectin) / caramelisation / smoke-bitterness (produce has no fat or collagen to buffer phenols, so it turns acrid far faster than meat) / structural collapse. Cheese: melt-resistance / smoke-uptake / crust-vs-rind / mellowing-time. Charcuterie: water activity / pH / firmness-through-section / mould coverage / case-hardening. A single `doneness` axis serves none of them, and neither does one shared \"well done ↔ rare\" scale.\n\n**7. Concrete inconsistencies worth fixing regardless of the vocabulary work.** (a) Halloumi is modelled twice and differently — spec n=47 (reachable by no method) and cut n=105 in ירקות (full sv/smoke/grill). (b) Artichoke n=101 has `sear='הרתחה/אידוי→גריל'` and `sot=100`, which with no steam/boil key renders as \"grill at 100°C\". (c) Beef jerky spec-1 has no pre-dehydration lethality step while turkey jerky spec-2 does. (d) MAKE_COOK['צלייה טחונה'] is the only make profile with no internal-temperature note, in the category with the strictest ground-meat rule. (e) bacon() cites the 120 ppm immersion-cure limit while describing a dry cure (9 CFR 424.22(c) allows 200 ppm dry-cured). (f) The MAKES category key is `'סלומי'`, not `'סלמי'`.\n\n**8. Three `tgt` values in my domains are texture targets that must never be readable as safety values:** bacon's 65°C (product is explicitly cooked again by the consumer), pastrami's 95-96°C steam endpoint (collagen conversion), and produce's 83-90°C sous-vide (pectin — our step text already says so, correctly). Our data model has one field for both meanings.",
+ "missingEquipment": [
+  {
+   "equipment": "Cold-smoke generator (pellet tube / maze / cold-smoke box)",
+   "hebrewName": "מחולל עשן קר (צינור / מבוך)",
+   "unlocks": "All 33 cheeses — the largest single specials category, currently unreachable. Plus optional cold smoke on salami, chorizo, pepperoni, speck, traditional bacon, lox/gravlax and cold-smoked fruit. Makes smoke with essentially no heat, so it works inside an unfired smoker, a grill, or a cardboard box.",
+   "typicalCost": "₪60-250 (a pellet tube is the cheapest transformative purchase in the whole catalog)"
+  },
+  {
+   "equipment": "Steamer insert / large pot with rack, or a steam-capable oven",
+   "hebrewName": "מאדה / סיר עם רשת, או תנור אדים",
+   "unlocks": "The pastrami steam stage (6 MAKES + cut-12) — the defining stage of the category and currently prose-only. Also artichoke and dense-vegetable pre-steaming, and pastrami re-steaming at service. Note we ALREADY ship an oven `steam` capability flag that nothing consumes.",
+   "typicalCost": "₪80 (pot + rack) · ₪250-600 (dedicated steamer) · ₪2000+ (steam/combi oven)"
+  },
+  {
+   "equipment": "Food dehydrator (as a COOKER, not a curechamber sub-type)",
+   "hebrewName": "מייבש מזון",
+   "unlocks": "Jerky (the single most popular home charcuterie project), biltong, dried produce, semi-dried tomatoes and mushrooms. Currently exists only as an option value inside the `curechamber` accessory's `kind` prop, which is the wrong shape — a dehydrator is an appliance you cook in.",
+   "typicalCost": "₪250-1200"
+  },
+  {
+   "equipment": "Rotisserie kit / vertical shawarma spit",
+   "hebrewName": "ערכת רוטיסרי / שיפוד שווארמה אנכי",
+   "unlocks": "All 5 shawarma MAKES, plus whole birds, porchetta, gyros, kebab. Highest-leverage missing method by breadth — and for many users it costs nothing, because `grill.rotisserie` is ALREADY a property we ask about and never use.",
+   "typicalCost": "₪200-1500 (grill rotisserie kit) · ₪600-2500 (dedicated vertical machine)"
+  },
+  {
+   "equipment": "Plancha / flat-top griddle plate (as a surface, not a grill type)",
+   "hebrewName": "פלנצ׳ה / פלטת ברזל",
+   "unlocks": "Halloumi and queso para freír, all 3 צלייה טחונה items (mici and small kebab are traditionally griddled), shaved-shawarma finishing, and produce searing. 'פלנצ׳ה / פלטה' exists today only as a grill TYPE, so a user with a griddle over a gas ring or an induction plate cannot express it.",
+   "typicalCost": "₪150-800"
+  },
+  {
+   "equipment": "pH meter",
+   "hebrewName": "מד pH",
+   "unlocks": "Every fermented product (12 נקניק מיובש + summer sausage + any semi-dry). This is not an accessory — it is the instrument that READS the primary safety gate (pH ≤5.3). sausage_dry()'s own materials list demands it and it is not in VOCAB, while a spritz bottle and a grill brush are.",
+   "typicalCost": "₪150-600"
+  },
+  {
+   "equipment": "Raclette grill / salamander (or an oven top-element broil mode)",
+   "hebrewName": "גריל רקלט / סלמנדר",
+   "unlocks": "Raclette (n=34 — a catalog item literally named after the method), fontina, gruyère, comté, monterey jack melts; gratin finishing; fruit glazing. Our oven device has a `fan` prop and no top-element concept.",
+   "typicalCost": "₪200-900 (raclette grill) · ₪0 if we expose an existing oven broil mode"
+  },
+  {
+   "equipment": "Deep fryer / air fryer",
+   "hebrewName": "סיר טיגון / אייר-פרייר",
+   "unlocks": "Queso frito, halloumi fries, fried camembert; potato and sweet-potato outcomes no fire method matches; bacon finishing. Air fryer is now near-ubiquitous consumer kit and is in no part of our vocabulary.",
+   "typicalCost": "₪200-700"
+  },
+  {
+   "equipment": "Biltong box / ventilated drying cabinet with fan",
+   "hebrewName": "ארון ייבוש עם מאוורר",
+   "unlocks": "Biltong (spec-3) and any room-temperature air-dry. `curechamber` is close but wrong-shaped: its tempC default is 13°C with bounds [0,30], tuned for salami, whereas biltong wants 21-27°C with strong airflow. Often DIY.",
+   "typicalCost": "₪150-600"
+  },
+  {
+   "equipment": "Wok + high-output burner or wok ring",
+   "hebrewName": "ווק + מבער עוצמתי",
+   "unlocks": "High-heat produce — green beans (n=96, which our own data says needs a grill basket we do not model), broccoli, asparagus, mushrooms. A genuinely different char/crisp outcome from grate grilling.",
+   "typicalCost": "₪150-600"
+  },
+  {
+   "equipment": "Grilling planks (cedar / alder), soaked",
+   "hebrewName": "קרשי צלייה (ארז / אלמון)",
+   "unlocks": "Planked produce, planked cheese, delicate items. Cheapest missing method in the report and it needs no other new hardware.",
+   "typicalCost": "₪30-80, disposable"
+  },
+  {
+   "equipment": "Grill basket / fine-mesh topper",
+   "hebrewName": "סלסלת גריל / רשת דקה",
+   "unlocks": "Small-piece produce that falls through a grate — green beans (n=96 says 'בסלסלת גריל' in its own data), broccoli florets, cherry tomatoes, mushrooms. Trivially cheap and already named in our recipe text.",
+   "typicalCost": "₪40-150"
+  },
+  {
+   "equipment": "Water-activity (Aw) meter",
+   "hebrewName": "מד פעילות מים (Aw)",
+   "unlocks": "Direct measurement of the shelf-stability gate for all dried products instead of the weight-loss proxy. Included for completeness — at prosumer prices this is a stretch and weight-loss % is the practical substitute, which is exactly what sausage_dry() already tells users to do.",
+   "typicalCost": "₪2000-8000 (borderline outside consumer scope — flag as optional/aspirational)"
+  },
+  {
+   "equipment": "Pressure cooker",
+   "hebrewName": "סיר לחץ",
+   "unlocks": "Marginal in MY domains (legumes, dense roots, stock) but named in the brief's scope. Its real value is in the meat categories other CP agents cover.",
+   "typicalCost": "₪250-900"
+  }
+ ],
+ "researchNeeded": [
+  "USDA FSIS 'Jerky and Food Safety' — pull and cite the exact pre-dehydration lethality instruction (heat meat to 160°F/71°C, poultry to 165°F/74°C BEFORE drying) and the 130-140°F (54-60°C) drying floor. Then reconcile against SPECIALS spec-1 (Beef Jerky, smt=70, no pre-heat step in its build phases) while spec-2 (Turkey Jerky) already states 74°C. This is a safety-shaped discrepancy in shipped data, not just a method gap. https://www.fsis.usda.gov/food-safety/safe-food-handling-and-preparation/meat-fish/jerky",
+  "9 CFR 424.22(c) — pull the eCFR text for ingoing sodium nitrite limits and attach the correct one to each product: 156 ppm comminuted cured meats, 120 ppm immersion-cured bacon, 200 ppm dry-cured bacon. Specifically fix bacon() in data.py, which describes a DRY cure and cites 120 ppm as 'the USDA standard for bacon' — conservative and safe to use, but wrongly attributed. https://www.ecfr.gov/current/title-9/chapter-III/subchapter-E/part-424/subpart-C/section-424.22",
+  "FSIS Ready-To-Eat Fermented, Salt-Cured, and Dried Products Guideline (FSIS-GD-2023-0002) — source every number sausage_dry() currently asserts uncited: salt 28-30 g/kg, Cure #2 2.5 g/kg, dextrose 3 g/kg, ferment ~24°C/80-90% RH to pH ≤5.3, dry 12-15°C/70-80% RH, target weight = start × 0.62-0.65, Aw ≈ 0.85. https://www.fsis.usda.gov/sites/default/files/media_file/documents/FSIS-GD-2023-0002.pdf",
+  "FSIS 'Good Manufacturing Practices for Fermented Dry and Semi-Dry Sausage Products' — collect the DEGREE-HOURS limits (cumulative hours above 60°F until pH reaches 5.3) that control Staphylococcus aureus toxin formation. We currently model fermentation with no degree-hours ceiling at all, and this is the number that makes a fermentation stage safe rather than merely described.",
+  "FSIS Appendix A (Salmonella lethality time-temperature tables) — determine whether our tgt=68°C endpoint for cooked-smoked sausage (kielbasa, andouille, cervelat, summer sausage) requires a documented HOLD TIME. Our data model stores no hold time anywhere. Decide with the owner whether the app may present a sub-71°C endpoint for a ground product at all.",
+  "FSIS Appendix B (stabilization/cooling) and/or FDA Food Code cooling rates — for the ice-bath / cold-crash stage after smoking sausage, which our build names ('קירור במקלחת קרה/אמבט קרח') with no rate or duration.",
+  "Biltong: cite Microorganisms 2020;8(5):791 (5-log Salmonella reduction with NO heat lethality step; marinade + air-dry at 25.5°C / 80% RH to Aw <0.85) and Microorganisms 2022;10(7):1308 (>5-log E. coli O157:H7, L. monocytogenes, S. aureus over 6-8 days at 23.9°C / 55% RH after a 30-min vacuum-tumble in vinegar/salt/coriander/pepper). Then reconcile with spec-3's uncited '21-27°C, 50-60% RH, 4-7 days' — our RH floor sits below the validated range. https://doi.org/10.3390/microorganisms8050791",
+  "Cold-smoked cheese temperature ceiling: I found NO USDA/FSIS/FDA primary source setting one. Confirm this negative result so the app can state ≤25-30°C explicitly as a MELTING/quality limit and never as a safety value. FDA Food Code 3-502.11 (variance required for smoking as PRESERVATION, not flavour enhancement) is the relevant reference for why it does not apply to cheese.",
+  "Listeria monocytogenes risk for cold-smoking SOFT and mould-ripened cheeses — brie (n=45), camembert (n=46), fior di latte (n=44), scamorza (n=17) — held 0.5-1.5 h at 25-28°C, inside L. monocytogenes' growth range (down to ~1°C). Is there published guidance distinguishing hard/aged from soft/high-moisture cheese for smoking? We smoke all 33 and say nothing.",
+  "Garlic-in-oil: FDA Food Code treatment of garlic-in-oil mixtures as TCS foods (C. botulinum, anaerobic low-acid). Needed for ירקות item n=102 שום שלם מעושן — oil + foil + 2 h at 110°C, whose note calls the result 'ממרח מדהים' with no storage guidance. Collect the exact Food Code citation and the correct Hebrew shelf-life/refrigeration wording.",
+  "Shawarma/gyro cone handling: locate published regulatory guidance (FDA Food Code / state retail food guidance on vertical rotisserie cook-and-serve) on the cone INTERIOR sitting between fridge and cooked temperatures for hours while the surface is shaved. This is the real hazard of the method and we address it nowhere.",
+  "USDA/FSIS ground-meat endpoints — 71°C (160°F) ground meat, 74°C (165°F) ground poultry — cited and attached to MAKE_COOK['צלייה טחונה'], which today is the ONLY make profile in the const with no internal-temperature note.",
+  "FSIS Processing Inspectors' Calculations Handbook — the arithmetic converting a brine concentration plus meat pickup/uptake % into ingoing nitrite ppm. Needed for פסטרמה, whose recipe expresses cure as ~12 g Cure #1 per litre of brine and never states the resulting ppm in the meat, which is what 424.22(c) actually regulates.",
+  "Stepped smoke schedules for cooked-smoked sausage (50→60→75°C): find a citable technical source for the schedule and its mechanism (pellicle set, avoiding fat smearing and case hardening). Three of our four smoked-sausage specials state a ramp in their note text with no provenance.",
+  "Pastrami steam endpoint (~95-96°C internal): confirm that no authority prescribes it and that it is purely a collagen-conversion TEXTURE target, so it can be labelled as such and never read as a `safe` value. Same question for bacon's tgt=65 (a process target on a cook-before-eating product) and for produce's 83-90°C sous-vide (pectin — our step text already gets this right).",
+  "Cold-smoking RAW cured meat (salami, chorizo, pepperoni, speck, traditional streaky bacon) — unlike cheese, this IS safety-relevant because raw meat sits in the growth range while nitrite does the work. Find a cited temperature ceiling and maximum cumulative exposure; our data currently carries ≤25°C as an uncited authored figure.",
+  "Smoke-bitterness thresholds for produce: is there any citable basis (phenol deposition rates, wood species) for a maximum smoke exposure on vegetables and fruit? produceSmokeSteps() already caps at 120°C and prefers fruit woods on good instinct, but nothing stops hickory for 3 h on tomatoes and the resulting acridity is the most common produce-smoking failure."
+ ]
+}

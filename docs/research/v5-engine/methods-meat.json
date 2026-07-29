@@ -1,0 +1,656 @@
+{
+ "headline": "Red meat and offal is exactly where the three-method model (`sv`/`smoke`/`grill`) breaks worst, because the single most common domestic route for the majority of these 65 items — a covered braise — is not expressible at all. I verified `methodRules` (app.js:989): all four branches return `allowed:['sv','smoke','grill']`, while `oven` is a real equipment category (equipment_map.py COOKERS, app.js:91) that can be scheduled and occupied (app.js:863/875/883) and can even be assigned to a `cook` stage (app.js:286) — so the app will happily book an oven that nothing in the 130-cut catalog can ever be cooked in. `MAKE_COOK` already uses an `oven` method key for שווארמה (app.js:3717), so the method vocabulary is already inconsistent between MAKES and CUTS. Offal is worse than merely under-served: `methodRules` defaults ALL offal to `def:['grill']`, which directly contradicts our own cited source note in sources.py for n=80 מוח עגל (\"NOT grillable\" — brains are poached then pan-fried) and is wrong for כבד אווז and שקדי עגל too. And several of our current `sv` values are not sous-vide at all but a stand-in for a missing method: קורקבני עוף at 90°C/4h is a confit, לשון בקר at 70°C/24-48h is a poach, אוזן/זנב חזיר at 75°C is a simmer — the engine is using the sous-vide bath as a universal adapter for wet cookery it cannot name.",
+ "categories": [
+  {
+   "category": "בקר",
+   "itemCount": 30,
+   "notesOnOurModel": "The 30 beef cuts split into four shapes that the one rule-set cannot serve. (1) Ten collagen cuts (בריסקט, אסאדו, לחי בקר, צוואר, אונטרייב, שריר/אוסובוקו, שפונדרה, כתף, זנב שור, צלעות דינו) fall into the `needsCookFor:'grill'` branch and are offered smoke or sous-vide — but the ordinary way a home cook makes אסאדו or אוסובוקו is a covered braise, and the fast way is a pressure cooker. Neither exists. (2) Fifteen fast/steak cuts get `def:['sv','smoke']` where a reverse-sear in the oven, a plancha, or a rotisserie is what a real cook reaches for; `grill` is a single undifferentiated token that silently conflates direct high-heat searing with indirect two-zone roasting even though meatGrillSteps() actually TELLS the user to build two zones — the distinction is in the prose but not in the model, so nothing can reason over it. (3) פסטרמה בקר (n=12) is modelled as sv+smoke, but the canonical finish is a STEAM to ~93-96°C — no steam method exists, so our pastrami can never be the deli article. (4) לשון בקר (n=22) carries `mid:'קילוף קרום'` (peel the membrane) — a step that only makes sense after a 3-4 h simmer that we cannot express, so we fake it with a 70°C/24-48h bath. Separately, עצמות מח עצם (n=57) is modelled at smt 110°C when every marrow recipe is a 200-230°C dry roast for 15-20 min; sot=150 is the closest we get and it is still labelled 'smoke'. Category boundaries also leak: לשון, זנב שור and מח עצם are filed under בקר rather than איברים פנימיים, so they escape offalPrep() entirely.",
+   "methods": [
+    {
+     "method": "SOUS_VIDE",
+     "hebrewName": "סו-ויד",
+     "whatItProduces": "Edge-to-edge uniform doneness, zero grey band, maximal juice retention; no crust, no bark, no browning of any kind until a separate finish.",
+     "equipment": "Sous-vide circulator + vacuum sealer + bags — both owned (`sousvide`, `vacuum` in COOKERS/PROCESSING).",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Already the backbone of the app (svt/svh on every cut). Its weakness is being used as an adapter for wet methods it is not — see POACH_SIMMER and CONFIT below.",
+     "safetyNote": "Baldwin, 'A Practical Guide to Sous Vide Cooking' — pasteurization time-at-temperature tables; whole-muscle beef floor 54.4°C/130°F. Already the cited authority throughout sources.py."
+    },
+    {
+     "method": "SMOKE_HOT",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Bark, smoke ring, rendered intramuscular fat, deep mahogany colour; long stall, high moisture loss without a wrap.",
+     "equipment": "Smoker, or a kettle/kamado/gas grill run indirect — owned (`smoker`, and canSmoke() already allows a charcoal/kettle/gas grill).",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled twice over (smt/smh after SV, and sot/soh/somid smoke-only). This is the app's strongest suit.",
+     "safetyNote": "USDA FSIS Safe Minimum Internal Temperature Chart — beef steaks/roasts 145°F/63°C + 3-minute rest; our `safe:63` matches. Collagen targets (tgt 95-96°C) are texture, not safety."
+    },
+    {
+     "method": "GRILL_DIRECT",
+     "hebrewName": "גריל ישיר",
+     "whatItProduces": "Aggressive Maillard crust, grate marks, char, smoke from dripping fat; steep thermal gradient — a grey band unless the cut is thin or pre-cooked.",
+     "equipment": "Grill — owned (`grill`).",
+     "weHaveIt": "partially",
+     "whyItMatters": "Modelled, but as half of an undifferentiated `grill` token. The user cannot say 'direct only' vs 'indirect only', which is exactly the distinction that decides whether סקירט (n=109, somid says 'גריל חזק ומהיר בלבד') or ספייריבס (n=7, source note says explicitly 'לא צלייה ישירה') is being cooked correctly.",
+     "safetyNote": "USDA FSIS — whole muscle 145°F/63°C + 3 min rest; ground (קבב n=17, המבורגר n=18) 160°F/71.1°C. Our data already carries safe=71 for both ground items — correct."
+    },
+    {
+     "method": "GRILL_INDIRECT_2ZONE",
+     "hebrewName": "גריל עקיף / דו-אזורי",
+     "whatItProduces": "Convection roasting inside a covered grill: even rise to target, light smoke, gentle crust; the route that makes a thick steak or a rack cook through without burning.",
+     "equipment": "Any lidded grill/kettle/kamado — owned. No new purchase.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Today it is invisible: meatGrillSteps() instructs the user to build two zones in prose, but the model has one `grill` token, so scheduling, occupancy and the equipment gate cannot tell a 250°C sear from a 120°C indirect roast. Every cut whose source note says 'two-zone / indirect only' is being represented by the same symbol as a hard direct sear.",
+     "safetyNote": "No separate safety value — the temperature target is unchanged from GRILL_DIRECT (USDA FSIS 145°F/63°C + 3 min rest for whole muscle)."
+    },
+    {
+     "method": "REVERSE_SEAR",
+     "hebrewName": "צריבה הפוכה",
+     "whatItProduces": "Low-temperature dry roast (~110-135°C oven or indirect grill) to just under target, then a violent short sear. Result: near-uniform interior like sous-vide, but with a genuinely dry surface and therefore a better, drier crust than a bag can give — plus a light roasted aroma sous-vide never produces.",
+     "equipment": "Oven (owned) or two-zone grill (owned) + probe (owned). Nothing to buy.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "This is the single most-used technique for thick beef among serious home cooks and we cannot express it. Applies directly to טומאהוק, אנטריקוט רוסט, סינטה רוסט, פילה בקר, מכסה אנטריקוט, שייטל, שפיץ צ'אך, טרי-טיפ, פיקאניה, דנוור, פלאט איירון — 11 of our 30 beef cuts. The user today is pushed to sous-vide instead, which needs a bag, a sealer and hours of lead time for an outcome they could have had in the oven they already own.",
+     "safetyNote": "For finishes at or above 63°C: USDA FSIS 145°F/63°C + 3 min rest. For deliberately LOW roasting held below 145°F, the governing authority is FSIS Appendix A (Compliance Guideline for Meeting Lethality Performance Standards for Certain Meat and Poultry Products) — time-at-temperature lethality tables — and FDA Food Code 3-401.11(B), the roast time/temperature table. Exact minute values per temperature: requires research (CP3 must pull the tables verbatim, not paraphrase them)."
+    },
+    {
+     "method": "OVEN_BRAISE",
+     "hebrewName": "קדרה בתנור / צלייה בנוזל",
+     "whatItProduces": "Covered vessel, liquid to a third or half the height, oven ~150-160°C for 3-5 h. Collagen fully gelatinised, meat fork-tender and shreddable, fibres moist because they sit in liquid rather than losing it; a concentrated sauce as a by-product. No bark, no smoke, no crust — a completely different eating experience from BBQ, not a lesser one.",
+     "equipment": "Oven (OWNED, category `oven`) + a heavy covered vessel — Dutch oven / קדרת יציקה, which we do NOT model at all. There is no `dutchoven` or `pot` token anywhere in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "This is the biggest single hole in the beef domain. It is the default route for אסאדו, שריר/אוסובוקו, לחי בקר, זנב שור, צוואר בקר, כתף בקר, אונטרייב, שפונדרה — 8-10 cuts — and the route that requires no smoker at all. A user with an oven and a pot (i.e. almost everyone) currently gets told their only options are sous-vide or smoke. It also produces the SAUCE, which BBQ does not, and which is half the point of osso buco or oxtail.",
+     "safetyNote": "Braise finishes far above any pathogen threshold; USDA FSIS 145°F/63°C is met with an enormous margin at the 90-96°C texture target. The real safety-relevant unknown is the COOLING/hold rule for a large braised mass (FDA Food Code 3-501.14 two-stage cooling, 135°F→70°F in 2 h, →41°F in 4 more) — applies because braises are commonly cooked a day ahead. Exact applicability to our cook-early-and-hold strategy: requires research."
+    },
+    {
+     "method": "STOVETOP_BRAISE_STEW",
+     "hebrewName": "בישול בסיר על הכיריים",
+     "whatItProduces": "Same gelatinisation as an oven braise but with bottom-only heat and more evaporation; needs stirring and a lower simmer. Produces a stew rather than a whole braised joint — cubes, not a roast.",
+     "equipment": "Hob + heavy pot. We model NEITHER a hob nor a pot — there is no stovetop token in COOKERS.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The genuinely equipment-free route: no smoker, no oven, no circulator. For a user with nothing but a kitchen, this is the only way to cook שריר בקר or זנב שור at all, and the app currently tells them the cut is uncookable.",
+     "safetyNote": "As OVEN_BRAISE. No new safety value; the danger-zone rule (USDA: 4-60°C / 40-140°F) governs the hold, not the cook."
+    },
+    {
+     "method": "PRESSURE_BRAISE",
+     "hebrewName": "סיר לחץ",
+     "whatItProduces": "Collagen→gelatin conversion at ~121°C instead of ~95°C, cutting a 4-hour braise to roughly 45-60 min. What you GAIN is time. What you LOSE is real and should be stated: no bark, no smoke ring, no surface browning during the cook (you must sear before and often reduce the sauce after), less flavour development from long slow Maillard, and a characteristic slightly stringy/washed texture on lean cuts because the fibres are driven harder. Fat-rich cuts (לחי בקר, זנב שור) survive it best; lean ones (שריר) come out drier than a low braise.",
+     "equipment": "Pressure cooker — NOT owned and NOT in VOCAB. Stovetop (~15 psi, ~121°C) or electric multicooker.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "It is the answer to 'I want אסאדו tonight and it is 18:00'. Today the app's honest answer for a collagen cut is 'start yesterday'. Adding it changes who the app is usable by on a weeknight, and it is the only method here that meaningfully compresses the timeline — which matters directly to the cookout-orchestrator scheduling work.",
+     "safetyNote": "~121°C at 15 psi gauge is a physical property of a standard stovetop cooker and is far above every USDA/FSIS threshold — there is no pathogen question. Electric multicookers run lower (commonly quoted ~10-12 psi): the exact operating temperature, and therefore the time-to-tender per cut, requires research. Per-cut pressure times: requires research — do not extrapolate from braise times."
+    },
+    {
+     "method": "OVEN_ROAST_LOW",
+     "hebrewName": "צלייה איטית בתנור",
+     "whatItProduces": "Uncovered dry roast at 100-135°C. Gentle, even rise; a dry, lightly-browned exterior; excellent slicing yield on large lean roasts. Distinct from braising because there is no liquid — the surface dehydrates and browns instead of stewing.",
+     "equipment": "Oven (owned) + probe (owned) + rack and tray. Nothing to buy.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The classic prime-rib / striploin-roast route (אנטריקוט רוסט n=23, סינטה רוסט n=26, שייטל n=54, שפיץ צ'אך n=55). Our model routes these to sous-vide, which cannot produce the roasted crust and the pan drippings that ARE the dish.",
+     "safetyNote": "Roasting below 145°F/63°C requires a time-at-temperature lethality justification, not an instantaneous target. Authorities: FSIS Appendix A lethality tables and FDA Food Code 3-401.11(B) roast table. Exact figures: requires research."
+    },
+    {
+     "method": "OVEN_ROAST_HIGH",
+     "hebrewName": "צלייה יבשה חמה",
+     "whatItProduces": "200-250°C uncovered. Fast, hard browning; deeply roasted surface, rendered surface fat, big drippings. On marrow bones it liquefies the marrow and browns the top in 15-20 min. Overshoots easily on anything thick.",
+     "equipment": "Oven (owned). Nothing to buy.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "עצמות מח עצם (n=57) is the clearest single miscoded item in the beef set: modelled at smt 110°C / sot 150°C, when the actual method universally used is a 200-230°C roast. The user following our card gets warm bones, not the dish. Also the correct route for a quick קבב tray and for finishing a braise uncovered to re-crisp.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest for whole muscle. Marrow is not muscle and has no USDA variety-meat entry I can cite — the applicable floor for beef marrow bones: requires research."
+    },
+    {
+     "method": "ROTISSERIE",
+     "hebrewName": "רוטיסרי / שיפוד מסתובב",
+     "whatItProduces": "Continuous rotation self-bastes: fat renders down the outside repeatedly instead of dripping away, giving an even, lacquered, all-round crust with no flat contact face and no need to flip. Superb on fat-capped roasts.",
+     "equipment": "Rotisserie kit for a kettle/kamado, or an oven rotisserie. NOT owned, NOT in VOCAB. The `hooks` token exists for hanging but rotation is a different mechanic.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "פיקאניה is a rotisserie/spit cut by tradition (Brazilian churrasco), and אנטריקוט רוסט and שייטל are natural spit roasts. Note MAKE_COOK already has an `oven`/'תנור/רוטיסרי' key for שווארמה — so the concept exists in the MAKES vocabulary and is simply absent from CUTS. That inconsistency is itself the bug.",
+     "safetyNote": "Same targets as OVEN_ROAST (USDA FSIS 145°F/63°C + 3 min rest). No method-specific safety value."
+    },
+    {
+     "method": "PLANCHA_GRIDDLE",
+     "hebrewName": "פלאנצ'ה / משטח יציקה",
+     "whatItProduces": "Full-surface contact browning instead of bar-marks: a continuous edge-to-edge crust, retained rendered fat that fries the surface, and no flare-ups. This is how a smash burger, a plancha-seared picanha slice and a Spanish-style skirt are actually made.",
+     "equipment": "Cast-iron plancha/griddle plate or a heavy skillet. NOT owned, NOT in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "המבורגר (n=18) is modelled with sv 55°C/2.5h + smoke — nobody makes a burger that way. The dominant modern method is a smash on a screaming griddle. Likewise סקירט and פלאט איירון benefit more from full contact than from bars.",
+     "safetyNote": "Ground beef: USDA FSIS 160°F/71.1°C, no rest credit. Our המבורגר and קבב already carry safe=71 — correct and must not be relaxed for a smash-burger method that cooks fast."
+    },
+    {
+     "method": "PAN_SEAR_BUTTER_BASTE",
+     "hebrewName": "מחבת + הזלפת חמאה",
+     "whatItProduces": "Hard skillet sear with butter, garlic and thyme spooned over: the fastest crust available, plus a browned-butter aromatic layer no grill can produce, and a pan sauce afterwards. The indoor answer.",
+     "equipment": "Skillet + hob. Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The default finish for a sous-vide steak when the user does not want to light charcoal for 90 seconds of searing. Today the app's only sanctioned finish is `grill`, which forces a fire.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest for whole-muscle beef."
+    },
+    {
+     "method": "TORCH_SEAR",
+     "hebrewName": "צריבה במבער",
+     "whatItProduces": "Directed flame browning with no thermal mass behind it — crusts the surface with essentially zero secondary cooking, so the sous-vide gradient stays perfect. Risk: off-flavours if the torch is run too close or with an unsuitable fuel.",
+     "equipment": "Blowtorch — WE ALREADY OWN THIS. `torch: 'מבער / לפיד'` is in equipment_map.py ACCESSORIES.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A rare case of owned equipment with no method attached. Cheapest possible win: the finish already assumed by the sous-vide workflow, using gear the user has registered, and the model cannot name it.",
+     "safetyNote": "No safety temperature of its own — it is a surface finish after the cook has met its target. Fuel/off-flavour guidance (propane vs MAPP, searing-torch attachments): requires research."
+    },
+    {
+     "method": "EMBERS_CAVEMAN",
+     "hebrewName": "על הגחלים (caveman)",
+     "whatItProduces": "Meat laid directly onto glowing coals. Extreme, uneven, blistered char with no grate contact; intense crust, smoky, dramatic. Ash brushes off. Works only on thick, fat-capped cuts.",
+     "equipment": "Charcoal and a chimney — both effectively owned (`chimney`, `grill`).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A live-fire technique in a live-fire app. Cheap to add, no purchase, and genuinely different from grate grilling. Applies to טומאהוק, אנטריקוט, פיקאניה.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest. Additional consideration: PAH/HCA formation is higher with direct flame and charring — the relevant authority is the US National Toxicology Program / NCI guidance on HCAs and PAHs in cooked meat. Exact wording and whether to surface it: requires research."
+    },
+    {
+     "method": "SALT_CRUST",
+     "hebrewName": "אפייה במעטה מלח",
+     "whatItProduces": "Encased in a coarse-salt-and-egg-white shell and roasted. The crust seals the joint: it steam-roasts in its own moisture at a very even temperature, comes out unbelievably juicy and evenly seasoned, with NO browning at all on the meat surface (the crust takes it). A showpiece, cracked open at the table.",
+     "equipment": "Oven (owned) + ~2-3 kg coarse salt. No new gear.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "A whole outcome class the model cannot describe — 'no crust, maximum juice, dramatic service' — for אנטריקוט רוסט, שייטל, פילה בקר. Also worth flagging because the salt crust does NOT over-salt, which is counter-intuitive and is exactly the kind of thing a guide should teach.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest; note the crust blocks probe insertion, so a leave-in probe must be placed BEFORE encasing. Time-per-kg for salt-crust roasting: requires research."
+    },
+    {
+     "method": "POACH_SIMMER",
+     "hebrewName": "בישול/הרתחה עדינה במים",
+     "whatItProduces": "Submerged in seasoned water/court-bouillon just below a simmer for hours. Fully gelatinised, uniformly moist, no crust; the outer membrane loosens so it can be PEELED — which is the whole point for tongue. Yields a broth.",
+     "equipment": "Pot + hob. Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "לשון בקר (n=22) carries `mid:'קילוף קרום'` — a peel step that presupposes a simmer. We instead model a 70°C/24-48h sous-vide bath, and sources.py candidly notes the tgt had to be corrected from 90 to 70 because 'a 70C bath equilibrates core to 70C — 90C internal impossible on SV path.' That correction is a symptom: the real method reaches 90°C+ trivially, and we forced the data to fit the bath because the method vocabulary had no simmer in it.",
+     "safetyNote": "USDA FSIS Safe Minimum Internal Temperature Chart — beef 145°F/63°C; our `safe:63` for tongue is correct and the simmer exceeds it by a wide margin. The membrane must be peeled hot; food-safety implications of the peel-and-chill step: requires research."
+    },
+    {
+     "method": "STEAM_FINISH",
+     "hebrewName": "אידוי (גמר)",
+     "whatItProduces": "Moist heat at 100°C in a covered steamer. Re-hydrates and finally tenderises an already-smoked cured joint without further drying it, and softens the bark into the yielding pastrami texture. Nothing else does this — smoking longer just dries it further.",
+     "equipment": "Steamer basket / covered pot with a rack. NOT owned, NOT in VOCAB. Trivially cheap.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "פסטרמה בקר (n=12) is modelled as sv 65°C/24-36h + smoke 105°C to tgt 72°C. Real deli pastrami is cured → smoked → STEAMED to ~93-96°C. Without steam, our pastrami is a smoked cured brisket, not pastrami — and the app has a whole פסטרמה MAKE profile built on the same missing step.",
+     "safetyNote": "Curing safety belongs to the cure, not the steam: nitrite/nitrate ingoing limits are governed by 9 CFR 424.21(c). The steam finish's internal target (~93-96°C) is texture-driven and far above the USDA FSIS 145°F/63°C floor. Exact nitrite ppm for a home brisket cure: requires research — must be cited, never estimated."
+    },
+    {
+     "method": "COLD_SMOKE",
+     "hebrewName": "עישון קר",
+     "whatItProduces": "Smoke below ~25-30°C with NO cooking. Deposits smoke compounds and colour on a raw or cured surface; the product stays raw. Used for cured beef before drying, for smoked bresaola-style products, and to add smoke to something that will be cooked later.",
+     "equipment": "Cold-smoke generator (maze/tube smoker) — NOT owned, NOT in VOCAB. Cheap. Also needs the `curechamber` and `hooks` we DO already own.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "MAKE_COOK already has a cold-smoke method ('עישון קר', ≤25°) but only for דג מעושן. For beef, the whole cured-and-cold-smoked family is unreachable from a cut. And critically, cold smoke is the one method where getting the model wrong is dangerous, because it looks like cooking and is not.",
+     "safetyNote": "THIS IS THE SAFETY-CRITICAL ONE. Cold smoke does not cook and holds product in the USDA danger zone (4-60°C / 40-140°F). Safety must come from the cure — salt, nitrite (9 CFR 424.21(c)) and water-activity control — not from the smoke. For any cold-smoked meat we ship, the governing lethality/stabilisation guidance is FSIS Appendix A and Appendix B (cooling/stabilisation). Specific cure formulations, times and Aw targets per cut: requires research, and must be cited to FSIS/9 CFR before shipping anything."
+    },
+    {
+     "method": "DEHYDRATE_JERKY",
+     "hebrewName": "ייבוש (ג'רקי / בילטונג)",
+     "whatItProduces": "Thin lean slices dried at low temperature to a chewy, shelf-stable strip. Concentrated beefy flavour, no juiciness by design. Biltong is air-dried with vinegar and no heat; jerky is heat-dried.",
+     "equipment": "Dehydrator (not owned, not in VOCAB) or a low oven (owned) or the `curechamber` we already model.",
+     "weHaveIt": "partially",
+     "whyItMatters": "בשר מיובש exists as a SPECIALS category (3 items) with a `serve` method, but no beef CUT can be routed into drying — so a user with שייטל cannot be told 'this is your jerky cut'. The cut→make bridge is missing precisely because the method vocabulary is missing.",
+     "safetyNote": "Jerky is a documented E. coli O157:H7 and Salmonella risk because drying alone does not achieve lethality. The governing authority is the USDA FSIS jerky guidance requiring the meat to be heated to 160°F/71.1°C (beef) BEFORE or after drying, and FSIS Appendix A. Exact heat-then-dry vs dry-then-heat protocol: requires research — this is a case where a plausible-sounding number would be actively dangerous."
+    }
+   ]
+  },
+  {
+   "category": "טלה",
+   "itemCount": 9,
+   "notesOnOurModel": "Lamb is the sharpest small case: 5 of the 9 cuts (שוק טלה, כתף טלה, צוואר טלה, חזה טלה, אסאדו טלה) are braise-first cuts, and braised lamb shank is arguably the single most-cooked lamb dish in this app's own cultural context. We cannot express it. Worse, שוק טלה (n=4) is modelled at svt 74°C/24h — a 24-hour bath to reproduce what a covered pot does in three hours in an oven the user already owns. The four fast cuts (ירך טלה, קארה, מותן טלה, and ירך again for grilling) are pushed to `def:['sv','smoke']` when the culturally and technically dominant routes are a spit/rotisserie for a whole leg and a pan-sear-then-oven for a rack. The category also has a regional gap our Hebrew-first framing makes conspicuous: whole lamb on an asador cross, and taboon/pit cooking, are live-fire methods central to this audience and entirely absent from the vocabulary.",
+   "methods": [
+    {
+     "method": "SOUS_VIDE",
+     "hebrewName": "סו-ויד",
+     "whatItProduces": "Uniform pink through a leg or rack, no grey band; collagen cuts held long enough become shreddable while staying pink. No crust.",
+     "equipment": "Circulator + vacuum — owned.",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled on all 9. Genuinely excellent for ירך טלה (56°C/6-8h) and קארה. Over-applied to the braise cuts.",
+     "safetyNote": "Baldwin pasteurization tables (lamb treated as whole-muscle red meat, floor 54.4°C). USDA FSIS lamb steaks/chops/roasts 145°F/63°C + 3 min rest — our safe=63 on all 9 is correct."
+    },
+    {
+     "method": "SMOKE_HOT",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Bark and smoke on lamb — but lamb takes smoke harder than beef; the data already reflects this by specifying gentler woods (דובדבן/פקאן/תפוח) rather than hickory-heavy profiles.",
+     "equipment": "Smoker or lidded grill — owned.",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Well covered. אסאדו טלה and צלעות טלה smoke beautifully.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest for whole-muscle lamb; the 90-95°C texture targets on the collagen cuts far exceed it."
+    },
+    {
+     "method": "GRILL_DIRECT",
+     "hebrewName": "גריל ישיר",
+     "whatItProduces": "Hard char on chops and loin; renders the fat cap fast, which on lamb means flare-ups — the fat is the flavour and also the fire risk.",
+     "equipment": "Grill — owned.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Modelled, but conflated with indirect as in beef. For קארה the correct pattern is sear-then-indirect, and the model cannot state the sequence as two methods.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest."
+    },
+    {
+     "method": "OVEN_BRAISE",
+     "hebrewName": "קדרה בתנור",
+     "whatItProduces": "Covered, ~150-160°C, 2.5-4 h in liquid. Lamb shank falling off the bone, gelatinous, glossy; the braising liquid becomes the sauce and carries the lamb fat's flavour, which is exactly what the dish is for. No bark, no smoke.",
+     "equipment": "Oven (OWNED) + heavy covered vessel (NOT modelled — no Dutch-oven token in VOCAB).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The single largest loss in the lamb category. שוק טלה, כתף טלה, צוואר טלה, חזה טלה, אסאדו טלה — 5 of 9 cuts — have braising as their canonical preparation, and a user with an oven and a pot is told to buy a vacuum sealer and wait 24 hours instead. It also loses the sauce entirely.",
+     "safetyNote": "Far exceeds USDA FSIS 145°F/63°C. Make-ahead cooling of a braised joint is governed by FDA Food Code 3-501.14 two-stage cooling; applicability to our hold strategy: requires research."
+    },
+    {
+     "method": "PRESSURE_BRAISE",
+     "hebrewName": "סיר לחץ",
+     "whatItProduces": "Shank or neck tender in ~45 min at ~121°C. Gains: the entire evening back. Loses: no browning during the cook (sear first), a thinner and less developed sauce unless reduced after, and on already-lean צוואר a slightly stringier fibre.",
+     "equipment": "Pressure cooker — NOT owned, NOT in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Lamb shank is the archetypal 'I wanted this tonight' dish. Without pressure, our shortest honest route is a 24-hour bath.",
+     "safetyNote": "~121°C at 15 psi is far above all USDA thresholds. Per-cut times to tender: requires research."
+    },
+    {
+     "method": "OVEN_ROAST_HIGH",
+     "hebrewName": "צלייה יבשה חמה",
+     "whatItProduces": "200-220°C uncovered: browned, crisp-edged fat cap, roasted aroma, pan juices. On a leg it gives the classic Sunday-roast exterior with a pink middle if pulled correctly.",
+     "equipment": "Oven — owned. Probe — owned.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "ירך טלה (n=35) is the classic roast lamb leg and our model routes it to sous-vide + smoke. The user loses the crust, the drippings, and the ability to do it in an oven they already have.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest for lamb roasts."
+    },
+    {
+     "method": "OVEN_ROAST_LOW_SLOW",
+     "hebrewName": "צלייה איטית (כבש נמס)",
+     "whatItProduces": "Uncovered or loosely covered at 120-150°C for 5-7 h. Distinct from braising because there is little or no added liquid: the shoulder renders in its own fat, so you get shreddable meat WITH a browned crusted exterior — the best of both. This is the 'slow-cooked lamb shoulder' outcome.",
+     "equipment": "Oven — owned. Foil — owned (`foil`).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "כתף טלה slow-roasted is a completely distinct outcome from either braised (no crust) or smoked (bark + smoke). We can express neither of the two things that make it special: crust WITHOUT smoke.",
+     "safetyNote": "Reaches 90-95°C internal, far above USDA FSIS 145°F/63°C. No new safety value needed."
+    },
+    {
+     "method": "ROTISSERIE_SPIT",
+     "hebrewName": "רוטיסרי / שיפוד מסתובב",
+     "whatItProduces": "Continuous self-basting rotation. On a boned leg the fat renders down over the meat repeatedly, producing an even lacquered crust all round and no flat face. On a whole lamb over an asador cross, the same effect at scale plus radiant fire flavour.",
+     "equipment": "Rotisserie kit (NOT owned) or asador cross / צלב אסאדור (NOT owned). Neither is in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Culturally central to this app's audience and completely absent. MAKE_COOK already knows the word ('תנור/רוטיסרי' for שווארמה) — the CUTS vocabulary simply never got it.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest for whole-muscle lamb. For a WHOLE animal, doneness must be probed at multiple sites (deep leg and shoulder) — the correct probe protocol for a whole carcass: requires research."
+    },
+    {
+     "method": "PAN_SEAR_THEN_OVEN",
+     "hebrewName": "צריבה במחבת → תנור",
+     "whatItProduces": "Hard sear on the fat cap in a skillet, then transferred to a hot oven to finish. Gives a crust the oven alone cannot and an interior gradient the pan alone cannot. The standard restaurant route for a rack.",
+     "equipment": "Skillet + oven (oven owned; skillet/hob not modelled).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "קארה (n=36) is a rack of lamb — this is how essentially every kitchen cooks it, and our model offers sous-vide + smoke. It is also the only route that does not require lighting a fire for a 700 g cut.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest."
+    },
+    {
+     "method": "EMBERS_TABOON_PIT",
+     "hebrewName": "טאבון / בור גחלים (זרב)",
+     "whatItProduces": "Buried or enclosed radiant-and-retained heat: very even, very long, extremely moist because the enclosure traps steam; a soft, deeply seasoned meat with a burnished rather than charred exterior. Regionally the definitive way to cook a whole lamb or a shoulder.",
+     "equipment": "Taboon oven or a dug pit with coals — NOT owned, NOT in VOCAB. A built taboon is a real purchase; a pit is free but is an event, not a weeknight.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "For a Hebrew-first live-fire app this is a conspicuous absence — it is the local tradition and it produces an outcome (enclosed, moist, unburnt, hours-long) that neither our smoker nor our grill model represents. Worth including in the vocabulary even if it is aspirational for most users.",
+     "safetyNote": "Enclosed pit cooking has genuine safety questions — a slow ramp through the danger zone for a large mass, and no probe access once sealed. USDA danger zone 4-60°C applies. Safe protocol (pre-heat mass, seal temperature, minimum pit temperature, probe strategy): requires research. Do NOT ship this method with invented numbers."
+    },
+    {
+     "method": "PLANCHA_GRIDDLE",
+     "hebrewName": "פלאנצ'ה",
+     "whatItProduces": "Full-contact browning on loin medallions and chops with the rendered lamb fat frying the surface; no flare-ups, which matters more for lamb than beef because lamb fat drips heavily.",
+     "equipment": "Cast-iron plancha — NOT owned, NOT in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "מותן טלה (n=60) is a small tender cut where flare-ups on a grate are the main failure mode. A plancha solves it and we cannot say so.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest."
+    }
+   ]
+  },
+  {
+   "category": "חזיר",
+   "itemCount": 14,
+   "notesOnOurModel": "Pork exposes a failure the other categories hide: CRACKLING. Six cuts (בטן חזיר, רגל חזיר, פרק חזיר, חזה חזיר עם עצם, כתף חזיר, אוזן חזיר) have crisp skin as a defining outcome, and neither sous-vide nor low-and-slow smoke can produce it — it needs a hard dry finish at 220°C+, a deep fry, or a salamander. Our model has none of the three, so every crackling cut in the catalog is currently un-finishable. Second, four cuts are being represented by sous-vide as a stand-in for a simmer or a confit: אוזן חזיר at 75°C/8h and זנב חזיר at 75°C/12h are simmers; פרק חזיר at 75°C/24h is a braise; and the traditional carnitas/rillettes route for כתף חזיר is a fat confit. Third — and this is the biggest strategic gap — three of our pork CUTS are the raw material for the app's own charcuterie ambitions using equipment we ALREADY MODEL: לחי חזיר → guanciale, בטן חזיר → pancetta/bacon, פילה חזיר → lonzino, all via `curechamber` + `hooks` + `humidity`, all already in VOCAB. There is no method to connect a cut to that chamber. The בייקון SPECIALS category exists as a finished product with no path from the belly we already list.",
+   "methods": [
+    {
+     "method": "SOUS_VIDE",
+     "hebrewName": "סו-ויד",
+     "whatItProduces": "Precisely controlled doneness on loin and chops (60°C keeps pork juicy where 71°C dries it); on belly and shoulder, long holds gelatinise collagen while keeping the shape intact. Never produces skin.",
+     "equipment": "Circulator + vacuum — owned.",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Genuinely the best route for פילה חזיר and קוטלט חזיר, where the margin between juicy and chalky is a few degrees. Correctly modelled at 60°C.",
+     "safetyNote": "USDA FSIS revised whole-muscle pork to 145°F/63°C + 3-minute rest (2011); our `safe:63` on all 14 pork cuts is correct. Ground pork is 160°F/71.1°C. Baldwin's tables give the time-at-temperature equivalence for sous-vide holds below 63°C. Trichinella destruction by heat/freezing/curing is separately prescribed in 9 CFR 318.10 — relevant to any pork we cure rather than cook."
+    },
+    {
+     "method": "SMOKE_HOT",
+     "hebrewName": "עישון חם",
+     "whatItProduces": "Bark, smoke ring, rendered fat. On ribs and shoulder this is the American canon and our strongest modelled path.",
+     "equipment": "Smoker or lidded grill — owned.",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Well covered for ספייריבס, ריבס אמריקאי, כתף חזיר, חזה חזיר עם עצם. Note sources.py for n=7 explicitly warns 'לא צלייה ישירה' — a constraint the `grill` token cannot carry.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest for whole muscle; the 92-95°C targets on ribs and shoulder are texture-driven and far above it."
+    },
+    {
+     "method": "GRILL_DIRECT",
+     "hebrewName": "גריל ישיר",
+     "whatItProduces": "Fast char on chops and tenderloin medallions. On fatty pork it flares hard.",
+     "equipment": "Grill — owned.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Modelled but conflated with indirect. For קוטלט חזיר the right pattern is a two-zone reverse sear, which we cannot state.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3-minute rest — the rest is not optional in the USDA formulation for pork and our card should say so explicitly."
+    },
+    {
+     "method": "OVEN_BRAISE",
+     "hebrewName": "קדרה בתנור",
+     "whatItProduces": "Covered, ~150-160°C in liquid. On hock, cheek and belly: unctuous, gelatinous, spoon-tender, with a rich braising liquid. On belly specifically, the Chinese red-braise (soy, sugar, spice) is a whole cuisine's worth of dishes. No skin crisp — the skin comes out soft and must be crisped separately.",
+     "equipment": "Oven (OWNED) + covered vessel (NOT modelled).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "פרק חזיר, לחי חזיר, בטן חזיר, אוזן חזיר, זנב חזיר — 5 of 14 — are braise-first. Currently all are pushed through the sous-vide bath, which costs the user a sealer, bags and 8-24 hours for something a pot does in three.",
+     "safetyNote": "Far exceeds USDA FSIS 145°F/63°C. Make-ahead cooling: FDA Food Code 3-501.14; applicability: requires research."
+    },
+    {
+     "method": "PRESSURE_BRAISE",
+     "hebrewName": "סיר לחץ",
+     "whatItProduces": "Hock or shoulder tender in ~50-60 min at ~121°C. Gains: time. Loses: no bark, no smoke, no browning during the cook, and — decisively for pork — the skin comes out completely soft and MUST then be dried and blasted or fried to crackle. Pressure is a first stage for pork, never the whole route on a skin-on cut.",
+     "equipment": "Pressure cooker — NOT owned, NOT in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Crispy pata and Schweinshaxe are both pressure-or-braise-then-fry. Pulled pork in an hour instead of twelve is the single most requested weeknight shortcut in this domain and we cannot offer it.",
+     "safetyNote": "~121°C at 15 psi far exceeds USDA thresholds. Per-cut times: requires research."
+    },
+    {
+     "method": "OVEN_ROAST_HIGH_CRACKLING",
+     "hebrewName": "צלייה חמה לקראמל עור (קראקלינג)",
+     "whatItProduces": "THE crackling method. Skin scored, dried (often salted and refrigerated uncovered overnight), then hit at 220-250°C either at the start or as a final blast. The skin puffs, blisters and shatters. Nothing else in our vocabulary produces this texture.",
+     "equipment": "Oven (OWNED). Nothing to buy. Optionally a broiler element (most ovens have one).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "This is the flagship gap for pork. בטן חזיר, רגל חזיר, חזה חזיר עם עצם, פרק חזיר all have crackling as their point. Our model can cook them tender and then has no way to finish them — the user is left with soft, wet skin and no instruction. It is also the cheapest gap to close: the equipment is already owned and already registered.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest for whole-muscle pork; the crackling blast is a surface finish after the target is met, so it introduces no new floor. The overnight uncovered salt-dry of the skin is a refrigerated dry-brine — USDA refrigeration guidance (≤4°C/40°F) applies; maximum safe uncovered fridge-dry duration: requires research."
+    },
+    {
+     "method": "PORCHETTA_ROLLED_ROAST",
+     "hebrewName": "פורקטה (רולדה צלויה)",
+     "whatItProduces": "Belly (or belly-wrapped loin) seasoned inside, rolled, tied, and roasted long and low then blasted: a spiral of moist meat and rendered fat inside a complete crackling shell. Structurally different from a flat roast — the geometry is the technique.",
+     "equipment": "Oven (owned), butcher's twine. Optionally rotisserie.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "בטן חזיר (n=8) and פילה חזיר (n=29) combine into the single most impressive pork centrepiece available to a home cook, and the model has no concept of a rolled/tied geometry at all — not as a method, not as a prep phase.",
+     "safetyNote": "A ROLLED roast is critical: rolling moves former surface (and its bacteria) to the interior, so the centre must reach the whole-muscle target rather than being treated as an intact cut. USDA FSIS treats mechanically tenderised and non-intact cuts differently from intact cuts. The correct floor for a rolled/stuffed pork roast: requires research — this is a genuine safety distinction, not a nicety, and must be cited before shipping."
+    },
+    {
+     "method": "CONFIT_FAT_POACH",
+     "hebrewName": "קונפי (בישול בשומן)",
+     "whatItProduces": "Submerged in fat at 85-95°C for hours. Meat becomes meltingly tender and is preserved by exclusion of air; the texture is distinctly different from a water braise — richer, less washed-out, because nothing leaches into the liquid. The route to rillettes and to classic carnitas.",
+     "equipment": "Oven or hob + a deep vessel + several kg of lard/duck fat. Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "כתף חזיר, לחי חזיר and זנב חזיר are all confit cuts. Our model reaches for a 74°C/24h sous-vide bath instead, which produces a similar tenderness but none of the fat-poached character, and cannot be finished by crisping in its own confit fat — which is the actual final step of carnitas.",
+     "safetyNote": "The cook exceeds USDA FSIS 145°F/63°C comfortably. The STORAGE of confit under fat is the safety question — traditional room-temperature storage is a Clostridium botulinum risk under anaerobic conditions. Modern guidance is refrigerate. Authoritative storage limits: requires research (FDA Food Code anaerobic-packaging provisions and USDA guidance are the places to look); ship refrigeration-only until cited."
+    },
+    {
+     "method": "DEEP_FRY",
+     "hebrewName": "טיגון עמוק",
+     "whatItProduces": "Immersion at 175-190°C. On pre-cooked hock, ear or tail: instant, uniform, all-over blistering — the crispiest possible skin, far beyond what an oven achieves, because oil contacts every surface simultaneously. Also the only practical way to crisp an irregular shape like an ear.",
+     "equipment": "Deep fryer or a heavy pot + oil + probe (probe owned). Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "אוזן חזיר (n=65) and זנב חזיר (n=66) are simmer-then-fry items by every tradition that cooks them. Our model gives them sv 75°C + grill, which produces a chewy, un-crisped result — the failure mode the dish is defined by avoiding.",
+     "safetyNote": "No pathogen concern at 175-190°C. The hazards are burns and oil fire — a hot-oil safety note (never water into oil, never overfill, lid nearby) is warranted and does not need a temperature citation. Oil smoke points per fat type: requires research."
+    },
+    {
+     "method": "AIR_FRY",
+     "hebrewName": "אייר פרייר",
+     "whatItProduces": "Small high-velocity convection oven. Crisps skin on chops, belly cubes and pre-cooked hock quickly and with no oil bath; capacity-limited, so it is a finishing tool, not a cooking one.",
+     "equipment": "Air fryer — NOT owned, NOT in VOCAB. Extremely common household kit.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "For a user with no smoker and no grill, an air fryer plus sous-vide covers a surprising amount of the pork catalog. It is also the low-effort crackling finish for a single portion.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest applies unchanged; an air fryer is a convection oven and introduces no new floor."
+    },
+    {
+     "method": "COLD_SMOKE_BACON",
+     "hebrewName": "עישון קר (בייקון)",
+     "whatItProduces": "Cured belly smoked below ~25-30°C for hours to days. Adds smoke and colour to a raw cured product without cooking it; the result is sliceable raw bacon that is fried later. Distinct from hot-smoked ('American') bacon, which is cooked through and is a ready-to-eat product.",
+     "equipment": "Cold-smoke generator (NOT owned) + `curechamber` and `hooks` (BOTH OWNED and already in VOCAB).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "בייקון exists as a 2-item SPECIALS category with no path from בטן חזיר, which we already list. The cure chamber is already modelled equipment sitting idle for every pork cut in the catalog.",
+     "safetyNote": "SAFETY-CRITICAL. Cold smoke does not cook and holds pork in the USDA danger zone (4-60°C). Safety rests entirely on the cure: nitrite/nitrate ingoing limits are prescribed by 9 CFR 424.21(c), and trichinella destruction in cured pork not cooked to temperature is prescribed by 9 CFR 318.10 (which specifies heating, freezing OR curing treatments). Exact cure formulation, salt %, nitrite ppm and freezing schedule: requires research and MUST be cited to 9 CFR before any of it ships."
+    },
+    {
+     "method": "DRY_CURE_HANG",
+     "hebrewName": "ריפוי יבש ותלייה (גואנצ'אלה / פנצ'טה / לונזינו)",
+     "whatItProduces": "Equilibrium-salted whole muscle hung at controlled temperature and humidity until it loses ~30-40% of its weight. Result: a dense, sliceable, ready-to-eat cured meat with concentrated flavour. No cooking at any point.",
+     "equipment": "`curechamber`, `hooks`, `humidity`, `scale`, `slicer` — ALL FIVE ALREADY IN VOCAB AND OWNED.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The most striking finding in the pork category: we own every piece of equipment this needs and model none of the method. לחי חזיר → guanciale, בטן חזיר → pancetta, פילה חזיר → lonzino. Three cuts already in the catalog, five owned equipment tokens, and zero connection between them.",
+     "safetyNote": "SAFETY-CRITICAL and the least forgiving item in this entire report. Governing authorities: 9 CFR 318.10 (prescribed trichinae treatment for pork — the freezing schedule is the practical home route), 9 CFR 424.21(c) (nitrite/nitrate limits), and FSIS Appendix A/B for stabilisation. Target water activity, salt percentage, cure #2 ppm, chamber temperature and humidity, and the weight-loss endpoint: ALL require research and must be quoted from a primary source. Under no circumstances should any of these numbers be generated."
+    },
+    {
+     "method": "PLANCHA_PAN_SEAR",
+     "hebrewName": "פלאנצ'ה / מחבת",
+     "whatItProduces": "Full-contact browning on chops, tenderloin medallions and belly cubes; renders and fries the surface fat in place. Yields a pan sauce.",
+     "equipment": "Skillet or cast-iron plancha — not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The indoor finish for sous-vide pork loin, and the correct method for קוטלט חזיר on a weeknight. Currently the only sanctioned finish is `grill`.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3-minute rest for whole-muscle pork."
+    },
+    {
+     "method": "ROTISSERIE",
+     "hebrewName": "רוטיסרי",
+     "whatItProduces": "Self-basting rotation on a boned shoulder or a tied porchetta: even all-round crackling with no flat face, fat continuously rendering over the surface.",
+     "equipment": "Rotisserie kit — NOT owned, NOT in VOCAB.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "The best crackling geometry available, and the traditional porchetta method. Also directly reusable from the שווארמה MAKE profile which already names 'תנור/רוטיסרי'.",
+     "safetyNote": "USDA FSIS 145°F/63°C + 3 min rest; for a ROLLED porchetta see the non-intact-cut caveat under PORCHETTA_ROLLED_ROAST — requires research."
+    }
+   ]
+  },
+  {
+   "category": "איברים פנימיים",
+   "itemCount": 12,
+   "notesOnOurModel": "This category is where the three-method model does not merely under-serve — it actively misdirects. `methodRules` gives ALL offal `def:['grill']` (with a `require:['sv']` special case for gizzards), and the app then generates meatGrillSteps() offal prose telling the user to grill 2-4 min per side. That default is wrong for at least four of the twelve: מוח עגל (our own sources.py note for n=80 says in terms 'NOT grillable — cervelle is poached then pan-fried'), כבד אווז (foie gras is torchon-poached, terrine-baked or hard pan-seared, never grilled), שקדי עגל and שקדי טלה (blanch → peel → press → chill → then fry). We have a runtime rule that contradicts our own cited source, which is the exact failure shape the ULTIMATE gap sweep warns about. Second, offal is defined by MANDATORY PREP PHASES that our vocabulary has no place for: soaking (kidney, brain), blanching (sweetbreads, brain, tripe), membrane peeling (liver, sweetbreads, gizzard, tongue), and pressing/chilling (sweetbreads). offalPrep() carries all of this as prose text — good text — but it lives in a step string, not in the method model, so nothing can schedule it, gate on it, or tell the user the prep starts the day before. Third, the timescale bimodality is extreme and unmodelled: liver and kidney are 60-90 SECOND cooks, gizzards and tripe are 3-5 HOUR cooks, and the same rule-set governs both. Fourth, the category has boundary leaks and an outright omission: לשון בקר, זנב שור and עצמות מח עצם are filed under בקר and so never see offalPrep(), and TRIPE (קיבה / מעי / שקטולה) — one of the most-cooked offals worldwide, requiring scrubbing, blanching and 3-5 h of simmering or pressure — is not in the catalog at all.",
+   "methods": [
+    {
+     "method": "SOAK_PURGE",
+     "hebrewName": "השריה (חלב / מי מלח / מים)",
+     "whatItProduces": "Not a cooking method — a mandatory pre-phase. Draws out blood and the ammoniac/metallic compounds that make kidney and liver taste 'off'. Milk for liver, salted or vinegared water for kidney, cold running water for brain. Takes 30 min to several hours and must happen the day before for a dinner service.",
+     "equipment": "None beyond a bowl and a fridge.",
+     "weHaveIt": "partially",
+     "whyItMatters": "It exists as prose in offalPrep() (`mid:'השריה בחלב'` on n=78/79) but is not a modelled phase, so it never appears on a timeline, never blocks a cook, and never warns the user that the item they picked at 18:00 needed to start at 15:00. For an app whose whole point is orchestrating a cookout, an unscheduled mandatory pre-phase is a real defect.",
+     "safetyNote": "Soaking must be refrigerated — USDA guidance keeps raw meat at ≤4°C/40°F. Maximum safe soak durations for offal specifically: requires research."
+    },
+    {
+     "method": "BLANCH_PEEL_PRESS",
+     "hebrewName": "חליטה, קילוף ולחיצה",
+     "whatItProduces": "Also a mandatory pre-phase, and for sweetbreads and brain the decisive one. Brief boil (a few minutes) → ice bath → the outer membrane peels away → for sweetbreads, weighted pressing in the fridge for an hour or more to compact them into a firm, sliceable lobe. Without it, sweetbreads cook into a loose, spongy, greyish mass that will not crisp.",
+     "equipment": "Pot, ice, a weight. Nothing to buy.",
+     "weHaveIt": "partially",
+     "whyItMatters": "offalPrep() describes it well for n=75/76/80 and calls it 'הסוד למרקם קריספי-קרמי' — and then the model routes the item straight to `grill` as if the prep were optional garnish. The prep is longer than the cook and determines the outcome; it deserves to be a first-class phase with its own duration.",
+     "safetyNote": "The blanch is not a lethality step and must not be presented as one. Post-blanch chilling is governed by the USDA danger zone rule (4-60°C). Whether the blanch counts toward any pathogen reduction: requires research — assume it does not."
+    },
+    {
+     "method": "PAN_SEAR_FAST",
+     "hebrewName": "צריבה מהירה במחבת",
+     "whatItProduces": "Screaming hot skillet, 45-90 seconds a side, usually in butter or rendered fat, often with onions. Liver: a browned exterior and a barely-set, tender, faintly pink centre — the entire difference between good liver and the grainy, chalky, bitter version everyone remembers hating. Kidney: springy and juicy rather than rubbery. Sweetbreads after pressing: golden, shatteringly crisp outside, creamy inside.",
+     "equipment": "Skillet + hob. NOT modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "This is the correct primary method for 7 of our 12 offal items (all four livers, both kidneys, both sweetbreads) and it does not exist. The model instead offers grill — which works for skewered chunks (anticuchos) but not for a whole thick liver slice or a pressed sweetbread lobe, both of which need full even contact and butter.",
+     "safetyNote": "USDA/AskUSDA — variety (organ) meats 160°F/71.1°C. Our data already respects this: n=72/73 כבד בקר/כבד טלה carry safe=72 and n=78/79 כליות carry safe=72, and sources.py cites the AskUSDA organ-meat article for exactly this. NOTE THE TENSION HONESTLY: the culinary ideal for liver is a pink centre, which is BELOW the USDA organ floor. Our engine correctly refuses to go below 71-72°C and must continue to. Any 'pink liver' method would need a Baldwin-style time-at-temperature justification that I do not have — requires research, and until then the floor stands."
+    },
+    {
+     "method": "GRILL_SKEWER",
+     "hebrewName": "גריל על שיפוד",
+     "whatItProduces": "Small uniform cubes on a skewer over hard direct heat: char on many faces, fast, smoky. The anticuchos / şiş / churrasco-de-coração idiom. Correct for heart, gizzard-after-tenderising, and cubed liver or kidney.",
+     "equipment": "Grill (owned) + skewers (not modelled, trivial).",
+     "weHaveIt": "partially",
+     "whyItMatters": "This is the one offal method our model DOES get right — לב בקר (n=69) and לבבות עוף (n=70) are properly grilled, and sources.py cites Hank Shaw's anticuchos for exactly this. The problem is that it is applied as the DEFAULT to all twelve, including brain and foie gras.",
+     "safetyNote": "Beef heart is whole muscle: USDA FSIS 145°F/63°C — our safe=63 for n=69 is right, and the med-rare tgt=55 with a seared surface is defensible for an intact muscle, as sources.py already argues. Chicken hearts are poultry: USDA FSIS 165°F/73.9°C — our safe=74 for n=70 is right. Liver/kidney on a skewer still owe the organ floor of 160°F/71.1°C (AskUSDA)."
+    },
+    {
+     "method": "POACH_GENTLE",
+     "hebrewName": "בישול עדין (פושה)",
+     "whatItProduces": "Held just below a simmer in seasoned water, court-bouillon or milk. Sets brain to a custardy, quivering texture; sets a foie torchon to a dense sliceable roll; softens tongue enough to peel. No colour, no crust — the point is a set, not a browning.",
+     "equipment": "Pot + hob + probe (probe owned). Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "מוח עגל (n=80) has no correct route in our model at all — sources.py names the method (poach then pan-fry meunière) and methodRules then hands the user a grill. This is a documented, in-repo contradiction between a cited source and the runtime rule.",
+     "safetyNote": "Our n=80 safe=65 traces to a culinary source (offallygoodcooking.com), NOT to a food-safety authority — sources.py is explicit that this is a 'documented served floor'. That is weaker than everything else in the app. The USDA organ-meat floor is 160°F/71.1°C; brain served at 65°C sits below it. Reconciling those two: requires research, and it is the single most safety-significant open question in my four categories."
+    },
+    {
+     "method": "CONFIT",
+     "hebrewName": "קונפי (בישול בשומן)",
+     "whatItProduces": "Submerged in fat at ~85-95°C for hours. Turns a tough, collagen-dense organ meltingly tender while keeping it rich rather than leached. The canonical route for gizzards (confit de gésiers) and excellent for hearts.",
+     "equipment": "Oven or hob + deep vessel + fat. Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "קורקבני עוף (n=77) is the clearest case of the sous-vide bath being used as a substitute for a missing method: we model svt=90°C/4h and hard-`require:['sv']` in methodRules, and sources.py itself names the real technique — 'confit ~250°F/121°C ~3h, or SV 90°C ~4h'. We wrote the workaround into the rule engine because the vocabulary had no word for confit. The user loses the fat-poached richness and the ability to store the gizzards under their own fat.",
+     "safetyNote": "Cook temperature far exceeds the USDA poultry floor of 165°F/73.9°C — our safe=74 for n=77 is correct and the 90°C texture target clears it easily. STORAGE under fat is the real hazard (anaerobic, C. botulinum): requires research; ship refrigeration-only until cited."
+    },
+    {
+     "method": "LONG_SIMMER_TRIPE",
+     "hebrewName": "בישול ארוך (קיבה / מעיים)",
+     "whatItProduces": "Scrub, blanch (often repeatedly, sometimes with vinegar or lime), then 3-5 hours at a bare simmer until the honeycomb goes from rubbery to yielding and gelatinous. Trippa alla romana, menudo, mondongo, ايشكمبة. Nothing about this resembles any of our three methods.",
+     "equipment": "Large pot + hob, or a pressure cooker to halve the time. Neither modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "TRIPE IS NOT IN THE CATALOG AT ALL — this is a missing ITEM, not just a missing method. Twelve offal entries and no stomach or intestine, despite it being among the most widely cooked offals in the world and firmly within this app's culinary territory. Worth flagging to the owner as a catalog gap alongside the method gap.",
+     "safetyNote": "Tripe requires thorough cleaning; 'green' (uncleaned) tripe is not food-safe. USDA variety-meat floor 160°F/71.1°C applies and a 3-5 h simmer clears it enormously. Cleaning protocol and any regulatory requirement on tripe sold for human consumption: requires research."
+    },
+    {
+     "method": "OVEN_BRAISE_OFFAL",
+     "hebrewName": "קדרה (איברים)",
+     "whatItProduces": "Covered, in liquid, ~150°C. Beef heart braised whole becomes sliceable and tender rather than steak-like; kidney braised in a pie filling goes soft and savoury; tongue braises to peeling tenderness. A completely different outcome axis from the fast sear — soft and sauced rather than crusted and springy.",
+     "equipment": "Oven (OWNED) + covered vessel (not modelled).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "Offal has TWO legitimate outcome poles — very fast or very slow — and our model can only express the fast one plus a sous-vide substitute for the slow one. Steak-and-kidney, braised heart, and every stew tradition that uses organ meat is unreachable.",
+     "safetyNote": "Far exceeds the USDA variety-meat floor of 160°F/71.1°C."
+    },
+    {
+     "method": "DEEP_FRY_OFFAL",
+     "hebrewName": "טיגון עמוק",
+     "whatItProduces": "175-190°C immersion. On floured brain (cervelle frite) or pressed sweetbreads: a thin brittle shell around a molten interior — the textural contrast that defines the dish. On gizzards after confit: crunchy all over.",
+     "equipment": "Deep fryer or heavy pot + oil + probe (probe owned). Not modelled.",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "For brain and sweetbreads the fry IS the dish; poaching or blanching is only the setup. Our model has neither stage.",
+     "safetyNote": "No pathogen concern at frying temperature. Hot-oil burn/fire warning warranted. Whether a brief fry reliably brings a poached brain's core to the USDA organ floor of 160°F/71.1°C: requires research."
+    },
+    {
+     "method": "TERRINE_BAINMARIE",
+     "hebrewName": "טרין באמבט מים (כבד אווז)",
+     "whatItProduces": "Deveined foie gras, seasoned and cured briefly, packed into a terrine and baked in a water bath at low oven temperature to a specific low core, then chilled and pressed under weight. Produces the dense, sliceable, pale-pink block. Fat renders and is reserved to seal the top.",
+     "equipment": "Oven (OWNED) + terrine mould + water bath + probe (OWNED).",
+     "weHaveIt": "no-missing",
+     "whyItMatters": "כבד אווז (n=74) is modelled with `sear:'עדין'`, wood 'ללא' and a 65°C sous-vide — the data author clearly knew it was delicate — and then methodRules hands it `def:['grill']`. Grilling a whole goose liver renders it into the fire. The two genuine methods (terrine and hard pan-sear of a thick slice) are both absent.",
+     "safetyNote": "Our n=74 safe=65 traces to culinary practice, not a food-safety authority — same weakness as the brain entry. Foie gras terrine core temperatures are conventionally well below the USDA organ floor of 160°F/71.1°C. Reconciling the classical technique with the USDA floor: requires research. Do not publish a foie core temperature without a cited authority."
+    },
+    {
+     "method": "TORCHON_POACH",
+     "hebrewName": "טורשון (כבד אווז מגולגל)",
+     "whatItProduces": "Deveined lobe rolled tightly in cloth or film into a cylinder, then poached briefly in a controlled bath and chilled. Gives a perfectly round, dense, evenly-set roll for clean slicing — geometrically and texturally distinct from a terrine.",
+     "equipment": "Circulator (OWNED — this is genuinely a sous-vide-adjacent technique) + cloth/film.",
+     "weHaveIt": "partially",
+     "whyItMatters": "Arguably our closest existing capability, since the bath is owned and modelled — but the rolling geometry, the brief poach-then-chill sequence and the deveining prep are all invisible to the model. It would be the cheapest correct foie method to add.",
+     "safetyNote": "As TERRINE_BAINMARIE — the classical core temperature sits below the USDA organ-meat floor of 160°F/71.1°C, and a Baldwin-style time-at-temperature justification would be needed. Requires research."
+    },
+    {
+     "method": "SMOKE_HOT_OFFAL",
+     "hebrewName": "עישון חם (איברים)",
+     "whatItProduces": "Light, brief smoke on heart, gizzard or tongue for aroma. Offal is small and lean; long smoke dries it out and the strong organ flavour clashes with heavy woods — which our data already reflects by specifying mild woods (תפוח, דובדבן) and 'ללא' for brain and foie.",
+     "equipment": "Smoker or lidded grill — owned.",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled for all twelve via smt/smh, and reasonable for heart and gizzard. Questionable for brain and foie, where the data itself specifies no wood — an implicit 'this method does not apply' that the model has no way to state, because `allowed` always includes all three.",
+     "safetyNote": "USDA variety-meat floor 160°F/71.1°C for organ meats; poultry offal 165°F/73.9°C. Our safe values (72/74/65) mostly comply, with the two culinary-sourced exceptions noted above."
+    },
+    {
+     "method": "SOUS_VIDE_OFFAL",
+     "hebrewName": "סו-ויד (איברים)",
+     "whatItProduces": "Precise low-temperature setting — genuinely good for foie torchon and for holding heart at medium-rare; a legitimate substitute for a confit on gizzards. Produces no crust and cannot perform any of the mandatory prep phases.",
+     "equipment": "Circulator + vacuum — owned.",
+     "weHaveIt": "yes-modelled",
+     "whyItMatters": "Modelled on all twelve, and it is doing too much work: on n=77 it stands in for confit, on n=22 (tongue, filed under בקר) it stands in for a simmer. It is being asked to be the app's only wet-cooking method.",
+     "safetyNote": "Baldwin's tables are the authority for any sub-71°C hold, but Baldwin covers whole muscle and poultry — I am not aware of published pasteurization tables for organ meats specifically. Whether Baldwin's beef tables may be applied to liver, kidney or sweetbread: requires research. This is a real gap, because several of our offal svt values sit below the USDA organ floor and are currently justified only by the bath time."
+    }
+   ]
+  }
+ ],
+ "missingEquipment": [
+  {
+   "equipment": "Dutch oven / heavy covered casserole",
+   "hebrewName": "קדרת יציקה / סיר כבד עם מכסה",
+   "unlocks": "OVEN_BRAISE and STOVETOP_BRAISE — the single largest missing method family. Unlocks the canonical route for roughly 20 of my 65 cuts (אסאדו, אוסובוקו, לחי בקר, זנב שור, all five braise-first lamb cuts, פרק/לחי/בטן חזיר, braised heart and kidney). Note the OVEN itself is already owned and modelled; the vessel is the missing token.",
+   "typicalCost": "₪150-600 (enamelled cast iron at the top of that range); many households already own one"
+  },
+  {
+   "equipment": "Pressure cooker (stovetop or electric multicooker)",
+   "hebrewName": "סיר לחץ",
+   "unlocks": "PRESSURE_BRAISE — collagen conversion at ~121°C, compressing a 4-hour braise to ~45-60 min. The only method in this report that materially shortens the timeline, which makes it directly relevant to the cookout-orchestrator scheduling work. Applies to every collagen cut in בקר, טלה and חזיר, plus tripe and gizzards.",
+   "typicalCost": "₪200-400 stovetop; ₪400-900 electric multicooker"
+  },
+  {
+   "equipment": "Rotisserie kit for kettle/kamado, or an oven rotisserie",
+   "hebrewName": "ערכת רוטיסרי לגריל / שיפוד מסתובב",
+   "unlocks": "ROTISSERIE — continuous self-basting, even all-round crust, no flat contact face. Canonical for פיקאניה, boned ירך טלה, porchetta and any fat-capped roast. MAKE_COOK already names 'תנור/רוטיסרי' for שווארמה, so the concept is half-present already.",
+   "typicalCost": "₪250-700 depending on grill fit; motorised oven spits are often built in"
+  },
+  {
+   "equipment": "Cold-smoke generator (maze or tube smoker)",
+   "hebrewName": "מחולל עשן קר (מבוך / צינור)",
+   "unlocks": "COLD_SMOKE — smoke deposition below ~25-30°C with no cooking. Required for bacon from our own בטן חזיר, for cold-smoked cured beef, and to add smoke to anything destined for the cure chamber we already own. Pairs with `curechamber`, `hooks` and `humidity`, all already in VOCAB.",
+   "typicalCost": "₪80-300 — the cheapest capability unlock in this list by a wide margin"
+  },
+  {
+   "equipment": "Cast-iron plancha / griddle plate",
+   "hebrewName": "פלאנצ'ה / משטח יציקה",
+   "unlocks": "PLANCHA_GRIDDLE — full-surface contact browning instead of bar marks, no flare-ups, retained rendered fat frying the surface. The correct method for המבורגר (smash), סקירט, פלאט איירון, מותן טלה and pork chops. Fits on the grill we already own.",
+   "typicalCost": "₪150-500"
+  },
+  {
+   "equipment": "Heavy skillet + a modelled stovetop",
+   "hebrewName": "מחבת ברזל כבדה + כיריים",
+   "unlocks": "PAN_SEAR_BUTTER_BASTE, PAN_SEAR_FAST, PAN_SEAR_THEN_OVEN — indoors, no fire, 90 seconds. This is the correct primary method for 7 of the 12 offal items and the default sous-vide finish for anyone who does not want to light charcoal. Note: we model no hob at all in COOKERS, which is why this is listed as missing despite every user owning one.",
+   "typicalCost": "₪100-400 for the pan; the hob is universal — the gap is in our model, not the user's kitchen"
+  },
+  {
+   "equipment": "Deep fryer, or a heavy pot dedicated to frying",
+   "hebrewName": "סיר / מכשיר טיגון עמוק",
+   "unlocks": "DEEP_FRY — the crispiest achievable skin on pre-cooked pork hock, ear and tail, and the defining finish for fried brain and sweetbreads. Uses the `probe` we already own for oil temperature.",
+   "typicalCost": "₪0 if using an existing heavy pot + owned probe; ₪250-700 for a dedicated fryer"
+  },
+  {
+   "equipment": "Steamer basket / covered steaming pot",
+   "hebrewName": "סיר אידוי / סלסלת אידוי",
+   "unlocks": "STEAM_FINISH — the missing final stage of real pastrami (smoked, then steamed to ~93-96°C), plus a moist reheat path for any smoked joint. פסטרמה בקר (n=12) and the whole פסטרמה MAKE profile currently stop one step short of the actual product.",
+   "typicalCost": "₪50-200"
+  },
+  {
+   "equipment": "Air fryer",
+   "hebrewName": "אייר פרייר",
+   "unlocks": "AIR_FRY — small high-velocity convection for crisping crackling, chops and pre-cooked pork on a single-portion scale. For a user with no smoker and no grill, air fryer + sous-vide covers a surprising share of the pork catalog.",
+   "typicalCost": "₪300-900; already in a very large share of households"
+  },
+  {
+   "equipment": "Food dehydrator",
+   "hebrewName": "מייבש מזון",
+   "unlocks": "DEHYDRATE_JERKY — connects lean beef cuts (שייטל, שפיץ צ'אך) to the בשר מיובש SPECIALS category, which today exists as a finished product with no path from any cut. A low oven (owned) or the `curechamber` (owned) partially substitutes.",
+   "typicalCost": "₪300-1,000"
+  },
+  {
+   "equipment": "Asador cross / whole-animal spit",
+   "hebrewName": "צלב אסאדור / שיפוד לטלה שלם",
+   "unlocks": "ROTISSERIE_SPIT at whole-animal scale — a whole lamb over open fire. Culturally central to this app's audience and completely absent from the vocabulary. An event-scale purchase, not a weeknight one, but it is the flagship live-fire method for טלה.",
+   "typicalCost": "₪600-2,500"
+  },
+  {
+   "equipment": "Taboon / clay or pit oven",
+   "hebrewName": "טאבון / תנור חימר",
+   "unlocks": "EMBERS_TABOON_PIT — enclosed radiant retained heat, hours long, extremely moist, burnished rather than charred. Regionally the definitive method for whole lamb and shoulder, and an outcome our smoker and grill models genuinely cannot represent. A pit dug in the ground costs nothing but is an event.",
+   "typicalCost": "₪1,000-3,500 for a built taboon; ₪0 for a dug pit"
+  },
+  {
+   "equipment": "Terrine mould (foie gras)",
+   "hebrewName": "תבנית טרין",
+   "unlocks": "TERRINE_BAINMARIE for כבד אווז, using the oven, water bath and probe we already own. Niche but it is the difference between having a correct foie method and defaulting a whole goose liver to the grill, which is what the engine does today.",
+   "typicalCost": "₪120-450"
+  }
+ ],
+ "crossCuttingFindings": "Five structural patterns emerge, and together they say the method vocabulary should not be a flat list of three tokens but a small set of independent AXES.\n\n**1. The missing axis is WET vs DRY, and it is the biggest one.** Every category I covered has a large sub-population whose canonical route is a covered wet cook — 8-10 beef cuts, 5 of 9 lamb cuts, 5 of 14 pork cuts, and the slow half of offal. Our three methods are all dry or vacuum. Braise, pressure-braise, poach, steam and confit are five distinct wet methods sharing one outcome family (gelatinised collagen, no crust, sauce as by-product) and differing on time, medium and pressure. Adding OVEN_BRAISE alone would close more of the gap than everything else in this report combined.\n\n**2. Cook and finish are two different things and the model conflates them.** `grill` is currently doing three unrelated jobs — a 250°C direct sear, a 120°C indirect roast, and a 90-second crust on an already-cooked item — which is why `methodRules` needs the awkward `needsCookFor:'grill'` and `invalid:[['grill']]` machinery to stop the user selecting a finish as a cook. A cleaner shape is two vectors: a COOK method (sv / smoke / braise / pressure / roast-low / roast-high / poach / confit / rotisserie / grill-indirect) and a FINISH method (grill-direct / pan / plancha / torch / broil / deep-fry / air-fry / steam / crackling-blast / none). That single split also makes crackling expressible, makes TORCH_SEAR usable with equipment we already own, and removes the need for the `require`/`invalid` special cases.\n\n**3. Mandatory PREP phases are a third vector, and offal proves it.** Soaking, blanching, membrane-peeling, pressing, chilling, scoring, drying-uncovered, rolling-and-tying and curing are not cooking methods, but they are mandatory, they have durations measured in hours or days, and they gate the cook. offalPrep() already writes them beautifully as prose and the model cannot schedule any of them. For an app whose value proposition is orchestrating a cookout, an unmodelled 12-hour prerequisite is a functional defect, not a cosmetic one.\n\n**4. The outcome vector is the thing worth modelling, not the appliance.** Across all four categories the methods separate cleanly along six axes: surface (bare / crust / bark / crackling / lacquer / none), interior gradient (uniform / graded / shreddable), moisture route (retained / rendered / leached-into-sauce), smoke level (none / light / heavy / cold-deposited), speed (minutes / hours / days), and by-product (sauce / drippings / rendered fat / broth / none). Two methods that share an appliance can sit at opposite ends of these — an oven does both a 150°C covered braise and a 240°C crackling blast — while two methods on different appliances converge (sous-vide and a low oven roast both produce a uniform interior). Keying the vocabulary to outcome rather than to device is what would let the engine answer 'what else gets me this result with the gear I own', which is the question the equipment model was built to answer.\n\n**5. We already own equipment with no method attached, and the sous-vide bath is papering over the gap.** `oven` is a schedulable, occupiable cooker that no cut can use. `torch` is owned with no sear method. `curechamber` + `hooks` + `humidity` + `scale` + `slicer` — five owned tokens — sit idle while three of our own pork cuts are the exact raw material for guanciale, pancetta and lonzino. Meanwhile the circulator is being used as a universal wet-cooking adapter: n=77 gizzards at 90°C/4h is a confit (sources.py says so in the same sentence), n=22 tongue at 70°C/24-48h is a poach (and sources.py records that we had to CORRECT tgt from 90 to 70 because 'a 70C bath equilibrates core to 70C' — the data was bent to fit the method), n=65/66 pork ear and tail at 75°C are simmers, n=4 lamb shank at 74°C/24h is a braise. Every one of those is a fingerprint of a missing word in the vocabulary. Finally, one contradiction to fix regardless of what else is decided: `methodRules` defaults ALL offal to `def:['grill']`, which directly contradicts our own cited source note for n=80 מוח עגל ('NOT grillable — cervelle is poached then pan-fried') and is equally wrong for n=74 כבד אווז.",
+ "researchNeeded": [
+  "FSIS Appendix A (Compliance Guideline for Meeting Lethality Performance Standards for Certain Meat and Poultry Products) — the full time-at-temperature lethality table, quoted verbatim. This is the load-bearing citation for every low-temperature dry-roast method (REVERSE_SEAR, OVEN_ROAST_LOW) where the meat is held below 145°F/63°C. Without it we cannot ship slow roasting at all.",
+  "FDA Food Code 3-401.11(B) roast time/temperature table — the alternate lower-temperature-longer-hold combinations for roasts. Second authority for the same low-roast question; needed verbatim, not paraphrased.",
+  "9 CFR 318.10 — prescribed treatment of pork to destroy trichinae. The full heating, freezing AND curing tables. Mandatory before any DRY_CURE_HANG or COLD_SMOKE pork method (guanciale, pancetta, lonzino, bacon) can ship. The freezing schedule is the practical home route and must be quoted exactly.",
+  "9 CFR 424.21(c) — nitrite and nitrate ingoing limits for curing. Required for pastrami, bacon, and every dry-cured pork product. Numbers here must never be estimated.",
+  "Resolution of the organ-meat floor conflict: USDA/AskUSDA specifies 160°F/71.1°C for variety meats, but our n=74 כבד אווז (safe=65) and n=80 מוח עגל (safe=65) trace only to culinary sources, and sources.py says so openly ('documented served floor'). Either find a food-safety authority that supports a lower foie/brain core, or raise the floors. This is the most safety-significant open question in my four categories.",
+  "Whether Baldwin's pasteurization tables may legitimately be applied to ORGAN meats (liver, kidney, sweetbread, brain) or only to whole muscle and poultry. Several of our offal svt values sit below the USDA organ floor and are currently justified only by bath time — an extrapolation nobody has verified.",
+  "9 CFR 310.22 — Specified Risk Materials. Confirms bovine brain and spinal cord from cattle 30 months and older are prohibited in the US food supply. Needed to determine whether מוח עגל (calf) is correctly scoped and whether any equivalent restriction exists under Israeli Ministry of Health / veterinary services rules — the Israeli position specifically requires research and is the one that matters for our users.",
+  "Per-cut PRESSURE COOKER times to tender, at both stovetop (~15 psi, ~121°C) and electric multicooker pressures. These cannot be extrapolated from braise times and there is no single authority — needs a survey of tested sources (America's Test Kitchen, Modernist Cuisine, manufacturer tables) with each figure attributed. Also confirm the actual operating pressure/temperature of common electric multicookers.",
+  "USDA FSIS jerky guidance — the required heat step (160°F/71.1°C for beef) and whether it must precede or follow drying. Jerky is a documented E. coli O157:H7 vector and drying alone is not lethality; this is a case where a plausible-sounding number would be actively dangerous.",
+  "Safe storage rules for CONFIT held under fat, and for any anaerobically packaged cooked meat — the C. botulinum question. FDA Food Code reduced-oxygen-packaging provisions plus USDA guidance. Until cited, confit must ship refrigeration-only.",
+  "The correct internal-temperature floor for a ROLLED or STUFFED roast (porchetta, rolled lamb shoulder), where former surface becomes interior. USDA FSIS treats non-intact cuts differently from intact ones; the applicable rule for a home-rolled roast needs a citation.",
+  "Cold-smoking safety envelope for MEAT (not fish): maximum time in the 4-60°C danger zone, required salt percentage, required nitrite ppm, and water-activity targets. FSIS Appendix A and Appendix B plus 9 CFR 424.21(c). Nothing cold-smoked should ship without this.",
+  "Dry-curing chamber parameters for guanciale / pancetta / lonzino: target water activity, salt %, cure #2 ppm, chamber temperature and RH, and the weight-loss endpoint. All from primary sources. We already own the chamber, the hooks, the humidity controller, the scale and the slicer — the only thing missing is cited numbers, and these are the numbers that must never be generated.",
+  "Safe maximum durations for refrigerated offal PRE-PHASES: milk/brine soaking of liver and kidney, uncovered fridge-drying of pork skin before a crackling blast, and post-blanch pressing of sweetbreads. All are multi-hour holds of raw meat at ≤4°C and none currently has a cited limit.",
+  "Beef marrow bone safety floor — marrow is not muscle and has no USDA variety-meat entry I could find. Also confirm the standard roasting temperature and time (the field evidence is 200-230°C for 15-20 min, but it needs an attributable source before it replaces our current smt=110/sot=150).",
+  "Catalog gap, not a method gap: TRIPE (קיבה / מעיים) is absent from איברים פנימיים entirely. If it is to be added, CP3 needs the cleaning protocol, the blanch regime, simmer and pressure times, and whether any regulatory requirement governs tripe sold for human consumption.",
+  "Enclosed pit / taboon cooking: the safe protocol for a large mass with no probe access — pre-heat mass, seal temperature, minimum sustained pit temperature, and a probe strategy. A slow ramp through the danger zone for a whole lamb is a real hazard and this method must not ship with invented numbers.",
+  "Confirmation of the exact USDA FSIS Safe Minimum Internal Temperature Chart figures as currently published, quoted verbatim with the retrieval date: whole-muscle beef/pork/veal/lamb 145°F/62.8°C plus 3-minute rest, ground meats 160°F/71.1°C, all poultry 165°F/73.9°C. These are the figures I relied on throughout; they are already implicitly the basis of our safe values and should be re-verified rather than assumed."
+ ]
+}
