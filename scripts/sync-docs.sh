@@ -55,6 +55,17 @@ fi
 git diff --cached --name-only | sed 's/^/   + /'
 
 echo "── 3/3 · commit${PUSH:+ and push} ───────────────────────────"
+# Phase 0 gate (§10.12 enforcement): a docs push may not ship a stale graph.
+# SYNC_ALLOW_STALE=1 is a LOUD, deliberate mid-arc override — never the default.
+if [ "$PUSH" = "1" ] && [ "${SYNC_ALLOW_STALE:-0}" != "1" ]; then
+  if ! node scripts/check-graph-fresh.mjs; then
+    echo "   ! GRAPH IS STALE — refusing to push docs. Run: /graphify docs --update --mode deep"
+    echo "   ! (mid-arc escape hatch, stated out loud: SYNC_ALLOW_STALE=1 scripts/sync-docs.sh ...)"
+    exit 1
+  fi
+elif [ "${SYNC_ALLOW_STALE:-0}" = "1" ]; then
+  echo "   ! SYNC_ALLOW_STALE=1 — pushing over a possibly-stale graph (deliberate override)"
+fi
 git commit -q -m "$MSG" || { echo "   ! commit failed"; exit 1; }
 echo "   · committed $(git rev-parse --short HEAD)"
 if [ "$PUSH" = "1" ]; then
