@@ -8666,8 +8666,9 @@ const THEME_SCHEME={cream:'light',charcoal:'dark',walnut:'light',slate:'light'};
 // ── i18n (Wave 5) — one dictionary file per language (lang/<code>.json, inlined by build.py) ──────
 // he is the SOURCE; each dict maps a Hebrew UI string → its translation. Adding a language = drop a
 // lang/<code>.json file. getLang() is host-pluggable (matkonet module seam).
-const I18N_DICTS = __I18N_DICTS__;
-const I18N_LANGS = (function(){ const o={he:'עברית'}; try{ Object.keys(I18N_DICTS).forEach(function(k){ o[k]=((I18N_DICTS[k]||{}).__meta__||{}).name||k; }); }catch(e){} return o; })();
+const I18N_META = __I18N_META__;   // {code:{name,dir}} — Dec-A1: only META ships in the bundle
+const I18N_DICTS = {};             // runtime cache: code -> dict, filled by loadLangDict (Task 2)
+const I18N_LANGS = (function(){ const o={he:'עברית'}; try{ Object.keys(I18N_META).forEach(function(k){ o[k]=(I18N_META[k]||{}).name||k; }); }catch(e){} return o; })();
 const LANG_FLAG = {he:'🇮🇱', en:'🇬🇧', fr:'🇫🇷', de:'🇩🇪', es:'🇪🇸', ar:'🇸🇦', ru:'🇷🇺', it:'🇮🇹'};
 const LANGNAME={en:'English',ar:'Arabic',ru:'Russian',es:'Spanish',fr:'French',de:'German',it:'Italian'};   // shared code→language-name map (aiJSON outLang + mtTranslate) — v268 T11: 'it' added (spec §10/M-1, all active langs en/fr/de/es/it covered)
 function langFlag(k){ return LANG_FLAG[k]||'🌐'; }

@@ -643,8 +643,18 @@ if _gc_fail:
         print("   [%s] %r -> %r" % (_c, _k[:40], _v[:80]))
     _sys.exit(1)
 print("[i18n:Guard-C] OK — no prompt-echo/refusal garbage in any active-lang value")
-I18N_DICTS_JSON = json.dumps(_i18n, ensure_ascii=False)
-html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_DICTS__", "JSON.parse(" + _js_str(I18N_DICTS_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
+# ── Dec-A1 (Phase 1): dictionaries are NOT inlined. Only a tiny META map ships in the bundle;
+# each language's merged dict is written to dist/lang-<code>.json and fetched on demand by app.js.
+# Guards A/B/C/D above still ran over the FULL merged _i18n — the split changes packaging, not gating.
+_i18n_meta = {}
+for _code in sorted(_active_langs):
+    _mm = (_i18n[_code].get("__meta__") or {})
+    _i18n_meta[_code] = {"name": _mm.get("name") or _code, "dir": _mm.get("dir") or "ltr"}
+I18N_META_JSON = json.dumps(_i18n_meta, ensure_ascii=False)
+html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_META__", "JSON.parse(" + _js_str(I18N_META_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
+# A1 bundle guard — the split may never silently regress (Dec-A1: 73% of 7.79MB was dictionaries).
+_html_bytes = len(html.encode("utf-8"))
+assert _html_bytes < 2_600_000, "A1: dist/index.html is %d bytes — dictionaries must stay OUT of the bundle (Dec-A1)" % _html_bytes
 import os as _os, shutil as _shutil
 _root = _os.path.dirname(_os.path.abspath(__file__))
 # 1) index.html at repo root — used by the dev server, tests, and manual upload
@@ -657,6 +667,10 @@ _dist = _os.path.join(_root, "dist")
 _os.makedirs(_dist, exist_ok=True)
 with open(_os.path.join(_dist, "index.html"), "w", encoding="utf-8") as f:
     f.write(html)
+# Dec-A1: one merged dictionary file per active language, beside index.html.
+for _code in sorted(_active_langs):
+    with open(_os.path.join(_dist, "lang-%s.json" % _code), "w", encoding="utf-8") as f:
+        json.dump(_i18n[_code], f, ensure_ascii=False, separators=(",", ":"))
 _site = _os.path.join(_root, "site")
 _copied = []
 if _os.path.isdir(_site):
@@ -694,6 +708,6 @@ with open(_os.path.join(_dist, "sw.js"), "w", encoding="utf-8") as f:
     f.write(_sw)
 # _headers (PWA #5 / perf #8): revalidate the single HTML + manifest + sw; long-cache immutable icons.
 with open(_os.path.join(_dist, "_headers"), "w", encoding="utf-8") as f:
-    f.write("/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/sw.js\n  Cache-Control: no-cache\n/*.png\n  Cache-Control: public, max-age=31536000, immutable\n")
+    f.write("/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/sw.js\n  Cache-Control: no-cache\n/lang-*.json\n  Cache-Control: no-cache\n/*.png\n  Cache-Control: public, max-age=31536000, immutable\n")
 print("written", len(html), "bytes;", len(CUTS), "cuts", len(SPECIALS), "specials", len(GLOSSARY), "glossary")
 print("dist/ ->", ["index.html"] + _copied)
