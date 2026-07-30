@@ -8688,10 +8688,17 @@ function getLang(){
   try{ if(typeof window!=='undefined' && window.__MATKONET_HOST__ && window.__MATKONET_HOST__.lang && I18N_LANGS[window.__MATKONET_HOST__.lang]) return window.__MATKONET_HOST__.lang; }catch(e){}
   const l=(typeof store!=='undefined')?store.get('mk-lang'):null; return I18N_LANGS[l]?l:'he';
 }
+// I-3 (review, Task 2 fix wave): request-token guard — two rapid setLang() calls race their async
+// dict fetches; without a guard, whichever resolves LAST wins, silently overriding the language the
+// user clicked MOST RECENTLY. Bump this on every setLang() call and only apply a response if it is
+// still the most recent request when its promise settles.
+let __setLangReqToken = 0;
+
 function setLang(l){ if(l!=='he' && !I18N_LANGS[l]) return;
-  if(l==='he' || I18N_DICTS[l]){ store.set('mk-lang',l); applyLang(); return; }
-  loadLangDict(l).then(function(){ store.set('mk-lang',l); applyLang(); })
-    .catch(function(){ if(typeof toast==='function') toast('⚠ '+L('טעינת השפה נכשלה — בדוק את החיבור ונסה שוב','Language download failed — check your connection and try again')); });
+  const myReqToken = ++__setLangReqToken;
+  if(l==='he' || I18N_DICTS[l]){ if(myReqToken!==__setLangReqToken) return; store.set('mk-lang',l); applyLang(); return; }
+  loadLangDict(l).then(function(){ if(myReqToken!==__setLangReqToken) return; store.set('mk-lang',l); applyLang(); })
+    .catch(function(){ if(myReqToken!==__setLangReqToken) return; if(typeof toast==='function') toast('⚠ '+L('טעינת השפה נכשלה — בדוק את החיבור ונסה שוב','Language download failed — check your connection and try again')); });
 }
 
 // Boot: if the stored language is non-Hebrew, fetch its dict then repaint. Hebrew paints instantly.

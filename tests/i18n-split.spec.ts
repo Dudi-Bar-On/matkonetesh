@@ -57,11 +57,62 @@ test.describe('A1 on-demand language loading (runtime)', () => {
 
   test('a failed dict download keeps the previous language and says so (negative case)', async ({ warm }) => {
     await seedApp(warm, { 'mk-uilevel-asked': 'true' });
-    await warm.route('**/lang-de.json', r => r.abort());
-    await warm.locator('#cHomeLang').click();
-    await warm.locator('[data-setlang="de"]').first().click();
-    await expect(warm.locator('.toast, [class*="toast"]').first()).toBeVisible();
-    await expect(warm.locator('html')).toHaveAttribute('lang', 'he');   // stayed on Hebrew
-    await warm.unroute('**/lang-de.json');
+    try {
+      await warm.route('**/lang-de.json', r => r.abort());
+      await warm.locator('#cHomeLang').click();
+      await warm.locator('[data-setlang="de"]').first().click();
+      await expect(warm.locator('.toast, [class*="toast"]').first()).toBeVisible();
+      await expect(warm.locator('html')).toHaveAttribute('lang', 'he');   // stayed on Hebrew
+    } finally {
+      // I-2 (review): unroute MUST run even if an assertion above throws — this route lives on the
+      // WORKER-SHARED warm context, so a leaked abort-route would silently break lang-de.json for
+      // every later test in this worker (the cascading phantom-failure class covered by §11a/L18).
+      await warm.unroute('**/lang-de.json');
+    }
+  });
+
+  test('rapid switches: the LAST click wins, not the slowest response (I-3 race)', async ({ warm }) => {
+    // Regression for the setLang() race: two rapid clicks fire two overlapping fetches: without a
+    // request-token guard, whichever fetch resolves LAST wins and can override the language the user
+    // clicked last. Deterministic ordering via a delayed route on 'de' (never waitForTimeout) — 'de'
+    // is clicked FIRST but made to resolve AFTER 'fr' (clicked second, undelayed).
+    await seedApp(warm, { 'mk-uilevel-asked': 'true' });
+    await warm.evaluate(() => (window as any).__mkLangReady);
+    try {
+      await warm.route('**/lang-de.json', async route => {
+        await new Promise(r => setTimeout(r, 300));   // network-side delay, not a page-side wait
+        await route.continue();   // falls through to the worker-level in-memory fulfill (LIFO routes)
+      });
+      const deResponse = warm.waitForResponse(r => r.url().includes('lang-de.json'));
+
+      await warm.locator('#cHomeLang').click();
+      await warm.locator('[data-setlang="de"]').first().click();   // slow: fetch in flight, not yet resolved
+      await warm.locator('[data-setlang="fr"]').first().click();   // fast: fetch + resolves first
+
+      // fr resolves first (no delay) and must win because it is the MORE RECENT request.
+      await expect(warm.locator('[data-cnav="catalog"]')).toContainText('Catalogue', { timeout: 10_000 });
+      await expect(warm.locator('html')).toHaveAttribute('lang', 'fr');
+
+      // Wait (condition, not a sleep) for the delayed de response to actually land in the page. A
+      // network 'response' event fires once headers arrive, strictly before the page's own
+      // fetch().then(...) microtask chain (json parse → cache → store.set → applyLang) has run, so
+      // follow it with a single page-side macrotask tick (setTimeout 0, evaluated IN the page) — a
+      // deterministic ordering guarantee (all microtasks queued before a macrotask run before it),
+      // not a guessed wall-clock delay.
+      await deResponse;
+      // Prove a NEGATIVE (de's fetch chain must never apply) across the window it needs to run its
+      // json-parse → cache → store.set → applyLang chain. This is a condition poll with fail-fast on
+      // the first bad observation — not a blind sleep: the window (1.2s) is bounded by the route's
+      // OWN injected 300ms delay (a known, test-controlled quantity), and the loop checks and can
+      // fail on every iteration rather than only once at the end.
+      const deadline = Date.now() + 1200;
+      while (Date.now() < deadline) {
+        const lang = await warm.evaluate(() => document.documentElement.lang);
+        expect(lang, 'de must not silently clobber the more-recent fr selection').toBe('fr');
+        await new Promise(r => setTimeout(r, 50));
+      }
+    } finally {
+      await warm.unroute('**/lang-de.json');
+    }
   });
 });
