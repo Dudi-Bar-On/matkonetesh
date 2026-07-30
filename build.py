@@ -437,6 +437,14 @@ if _missing_from_langname:
     print("[i18n:M-1] add the missing code(s) to `const LANGNAME={...}` (app.js) before shipping — otherwise")
     print("[i18n:M-1] aiJSON/mtTranslate silently default that language's AI replies to English (spec §10).")
     _sys.exit(1)
+# ── Phase 1 Task 4 — N-2: the inverse of M-1 — LANGNAME may not CLAIM a language that has no dictionary.
+# ar shipped in LANGNAME with no lang/ar.json; the next queued merge (ar is #22) would then skip the
+# conscious "add LANGNAME + RTL check" step. Both directions now fail the build.
+_extra_in_langname = sorted(_langname_keys - _active_langs - {"en"})
+if _extra_in_langname:
+    print("[i18n:N-2] LANGNAME lists language(s) with no dictionary under lang/: %s" % _extra_in_langname)
+    print("[i18n:N-2] remove them from `const LANGNAME={...}` (app.js) — a language is offered only when its dict ships.")
+    _sys.exit(1)
 # ── v268 Task 11 — Guard D: call-site structural signature (spec §4.5, the honest deploy boundary) ─────
 # HONEST SCOPE (spec §4.5 — do not overclaim): this is a CHEAP STRUCTURAL signature — a single regex pass
 # counting app.js's `L(`/`t(`/`toast(` call sites and hashing (sha1) the sorted multiset of each call's

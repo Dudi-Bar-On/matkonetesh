@@ -8691,7 +8691,7 @@ function loadLangDict(code){
   }).then(function(d){ I18N_DICTS[code]=d||{}; return I18N_DICTS[code]; });
 }
 const LANG_FLAG = {he:'🇮🇱', en:'🇬🇧', fr:'🇫🇷', de:'🇩🇪', es:'🇪🇸', ar:'🇸🇦', ru:'🇷🇺', it:'🇮🇹'};
-const LANGNAME={en:'English',ar:'Arabic',ru:'Russian',es:'Spanish',fr:'French',de:'German',it:'Italian'};   // shared code→language-name map (aiJSON outLang + mtTranslate) — v268 T11: 'it' added (spec §10/M-1, all active langs en/fr/de/es/it covered)
+const LANGNAME={en:'English',es:'Spanish',fr:'French',de:'German',it:'Italian',ru:'Russian'};   // code→language-name (aiJSON outLang + mtTranslate). N-2 (Phase 1): entries exist ONLY for shipped dictionaries — build guard M-1 (active⊆LANGNAME) + N-2 (LANGNAME⊆active∪{en}) enforce both directions; ar returns when its dict merges (Language Thread order fixed by owner; ru merged ahead of this task so it stays).
 function langFlag(k){ return LANG_FLAG[k]||'🌐'; }
 function langRowHtml(){ return `<div class="lang-row" role="group" aria-label="Language">`+Object.keys(I18N_LANGS).map(function(k){ return `<button class="lang-flag ${k===getLang()?'on':''}" data-setlang="${k}" title="${I18N_LANGS[k]}" aria-label="${I18N_LANGS[k]}" aria-pressed="${k===getLang()}"><span class="lf-emoji">${langFlag(k)}</span><span class="lf-name">${I18N_LANGS[k]}</span></button>`; }).join('')+`</div>`; }
 function wireLangRow(root){ (root||document).querySelectorAll('[data-setlang]').forEach(function(b){ b.addEventListener('click',function(){ setLang(b.dataset.setlang); }); }); }
