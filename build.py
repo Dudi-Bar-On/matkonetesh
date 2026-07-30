@@ -351,13 +351,21 @@ HTML = r"""<!DOCTYPE html>
 # equivalent 888KB JS object literal on the main thread. Wrap in SINGLE quotes so the JSON's own
 # double-quotes need no escaping (double-quote wrapping would ~2x the raw file size).
 def _js_str(s):
-    return "'" + s.replace("\\", "\\\\").replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r").replace(" ", "\\u2028").replace(" ", "\\u2029") + "'"
+    return "'" + s.replace("\\", "\\\\").replace("</", "<\/").replace("'", "\\'").replace("\n", "\\n").replace("\r", "\\r").replace(" ", "\\u2028").replace(" ", "\\u2029") + "'"
+# B24 self-test: a data value containing '</script>' must ship escaped, or the browser's HTML parser
+# terminates the inline <script> block mid-string (markup injection via CONTENT). '<\/' === '</' in JS.
+assert "<\/" in _js_str("</script>"), "B24: _js_str must escape '</' (got: %r)" % _js_str("</script>")
 import os as _os, glob as _glob
 with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.css"), encoding="utf-8") as _f: _css = _f.read()
 with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.js"), encoding="utf-8") as _f: _js = _f.read()
 # ── Equipment module (spec §3, ruling F5). equipment.js is inlined BEFORE app.js in __JS__ below: EQM is
 # a `const` and does NOT hoist, so it must be evaluated ahead of any app.js top-level path that reads it.
 with open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "equipment.js"), encoding="utf-8") as _f: _eqm = _f.read()
+# B24 guard: the JS/CSS payloads are substituted RAW into the HTML template (not via _js_str) —
+# a literal '</script'/'</style' inside them would truncate the document. None exists today; if one
+# ever appears, fail the build instead of shipping a broken page.
+assert "</script" not in (_eqm + _js).lower(), "B24: raw '</script' found in app.js/equipment.js — rewrite it (e.g. '<\\/script' in strings)"
+assert "</style" not in _css.lower(), "B24: raw '</style' found in app.css"
 # F5 single-definition guard (S1's "build.py has zero assertions" lesson — the anti-silent-drop check).
 # EQM is defined EXACTLY once, in equipment.js, with all five public methods; app.js defines it NOWHERE
 # (app.js only ever CALLS EQM.*). A broken inline now aborts the build loudly instead of shipping silently.
