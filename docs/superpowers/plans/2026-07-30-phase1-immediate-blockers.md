@@ -1386,6 +1386,19 @@ git commit -m "fix(voice-guard): R-2/R-3 — marker binds to the checked number;
 
 ### Task 14: Release — v278, suite ×2, live verification, H14 UX report, board update
 
+**🧑 שער בעלים לפני פריסת ה-Worker (החלטה 30.7):** משימה 7 הפכה `cap` לחובה — רשומה בלי `cap`
+חיובי נדחית ב-`403 code_uncapped`, והמוסכמה הישנה `cap: 0 = "ללא הגבלה"` בוטלה. לכן **לפני**
+פריסת ה-Worker חובה להריץ:
+
+```bash
+node scripts/central-code.mjs audit; ec=$?; echo "TRUE exit=$ec"
+```
+
+יוצא 0 → אפשר לפרוס. יוצא 1 → יש קודים חיים שיישברו: כל אחד מהם מונפק מחדש עם תקרה חיובית
+מפורשת (למשל 1000000000 עבור "בלתי-מוגבל" בפועל) או מבוטל — **ואז** מריצים audit שוב עד 0.
+הפלט ממסך קודים ואינו מדפיס מפתחות. הבעלים ביקש שהבדיקה תתבצע על-ידינו לפני הפריסה
+("לא בטוח — תבדוק אתה לפני הפריסה"). הפריסה ללא audit ירוק = הפרת שער.
+
 **Spec trace:** ROADMAP Phase 1 exit ("יציאה: vNNN — bundle ~2.1MB, worker fail-closed, גיבוי לא מדליף"); H7 (release = suite ×2); §10.10 (a push is not a release); discipline §17 H14 (release UX report); H10 (STATUS-BOARD updated).
 
 **Files:**
