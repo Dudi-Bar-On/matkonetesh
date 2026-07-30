@@ -576,6 +576,11 @@ git commit -m "fix(worker): fail-closed core — corrupt-KV 403, stream route cl
 - Produces: `withCodeLock(code, fn)` per-isolate serializer; debit-first metering (reserve `RESERVE_TOKENS=2000`, reconcile to actual); `429 {error:'rate_limited'}` + `Retry-After`; `403 {error:'code_uncapped'}` for records without positive numeric `cap`; CORS reflected only for allowlisted origins (`env.ALLOWED_ORIGINS` comma-list var, defaulting to the app origin + localhost:8123).
 - Consumes: Task 6 file state. **Honest scope note (goes verbatim into the worker comment):** the lock serializes within one isolate — cross-isolate concurrency still rides KV's eventual consistency; debit-first bounds that exposure to one reserve per isolate. The atomic cross-isolate fix is a Durable Object and lands with the Sync Thread (S1) — trigger-anchored, not silent (H8).
 
+**🧑 אישור בעלים (2026-07-30):** שתי ברירות-המחדל התפעוליות של המשימה **אושרו במפורש** — (1) רשומת
+קוד-גישה ללא `cap` חיובי **נדחית ב-403** (`code_uncapped`; אין "cap-by-omission"), (2) **rate-limit
+ברירת-מחדל: 20 בקשות/דקה פר קוד**. לשון הבעלים: "משימה 7 אין התנגדות מקובל". אין להחליף/לרכך אותן
+ללא פנייה חוזרת (§4).
+
 - [ ] **Step 1: Rewrite the D3 race test as the fixed contract + add the three new REDs**
 
 Replace the "D3 (bonus)" describe's final assertions (`expect(rec.used).toBe(TOKENS_PER_REQUEST)` etc.) with the PRE-3 acceptance:
