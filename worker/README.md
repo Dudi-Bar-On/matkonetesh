@@ -55,12 +55,20 @@ App › **Manage AI › Central access (dev)** → paste the **Server URL** (ste
 ```
 node scripts/central-code.mjs add alice            # mint a code, hand it to Alice
 node scripts/central-code.mjs add bob 500000       # mint with a 500k-token/month cap
-node scripts/central-code.mjs add carol 0          # uncapped
+node scripts/central-code.mjs add carol 1000000000 # effectively unlimited (an EXPLICIT high cap)
+node scripts/central-code.mjs audit                # pre-deploy: list records the Worker would refuse
 node scripts/central-code.mjs list                 # see all codes
 node scripts/central-code.mjs show <code>          # label / cap / tokens used
 node scripts/central-code.mjs revoke <code>        # instant lockout
 ```
 Each code carries a **token cap** (default 2,000,000/user) so one code can never run up your bill — over the cap the Worker returns 402 and that user's app falls back to their own key (or shows "quota reached").
+
+> **A cap is MANDATORY** (owner ruling, 2026-07-30 · Phase 1 Task 7). A record whose `cap` is missing,
+> zero, negative or non-numeric is refused with `403 code_uncapped` — the old `cap: 0 = uncapped`
+> convention is **gone**, and a code minted under it stops working the moment the hardened Worker is
+> deployed. Express "unlimited" as an explicit high number instead. **Before deploying, run
+> `node scripts/central-code.mjs audit`** — it lists every stored record the hardened Worker would
+> refuse (codes masked, nothing sensitive printed) and exits non-zero if any exist.
 
 ## What it costs (verify current pricing before you rely on it)
 - **Cloudflare Workers + KV:** free tier (100k req/day) is plenty for a dev cohort → **$0**. (The $5/mo Workers Paid plan only if you want more headroom later.)
