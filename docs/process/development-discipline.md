@@ -561,6 +561,56 @@ campaigns running the suite 5–7× each to tally a pass rate produced numbers, 
 systematic-debugging session with a purpose-built repro harness (the reload-storm arms) found root cause in
 hours. Measurement campaigns certify a stable system; they do not diagnose an unstable one.
 
+**L23 · A proxy metric is not the screen: "99% translated" shipped half-English screens (v267, 2026-07-26).**
+The v267 localization claim ("~99% translated", "ready to test") was measured on key coverage and bundle-string
+grep — while the real fr/de/es/it screens rendered roughly half English. The owner caught it on screen, and the
+sequel (v269/v270) exposed two more layers the proxy could not see: untranslated data-values behind translated
+keys, and shell-level leaks past the dictionary. This is the exact failure the project's own skill
+`verify-against-the-runtime-path` was written to prevent — violated a second time after the skill existed.
+Cost: three repair releases (v268–v270) plus an owner QA round, plus owner trust burned on a "done" that wasn't.
+Root cause: measuring at an intermediate (keys, bundle strings) instead of at the consumer's input (the rendered
+DOM, per language). Gate: any coverage/translation/localization claim is stated ONLY from a rendered-DOM
+measurement per language (§10.19); key-coverage and grep counts may be reported only as explicitly-labeled
+proxies, never as the claim.
+
+**L24 · Never cap AI output tokens low — a low cap plus think:'high' silently truncates the JSON (v269–v271, 2026-07-27).**
+The smoker device-lookup returned "not found": the model's thinking consumed the budget and the JSON payload was
+cut mid-stream — no error, just a confident wrong answer. Owner policy (shipped v271): every AI call uses
+maxTokens/maxOutputTokens 8192; the only exception is tiny health-probes. Billing is on actual tokens used, so a
+high cap is free headroom — a low cap buys nothing and risks truncation. Root cause: a "reasonable-looking"
+per-call cap treated as an optimization, interacting invisibly with thinking budgets. Gate: 8192 everywhere
+(probe exceptions named); any truncated/malformed AI response is checked against the token cap FIRST, before
+theorizing about prompts or models.
+
+**L25 · The agent fan-out wedge: ~50 agents / 25 concurrent wedged the machine and returned plausible partials (2026-07, relearned from §11a).**
+A mass dispatch (~50 agents, ~25 concurrent) wedged the workstation; the partial results that did come back
+looked complete and were unreliable — the same lesson §11a already teaches for suite workers ("the local worker
+count assumes an idle machine"), relearned at full price for agents. Prior API-529-killed audit runs are the
+same class. Gate (§10.5a): sequential by default; independent LIGHT work ≤3 concurrent; hard cap 5; at most ONE
+heavy agent while a suite run, build, or the translation GPU queue is active; on API 529, drop to
+one-at-a-time and send a small probe agent first. And ALWAYS reconcile the dispatch journal — agents started vs
+results received — before trusting any fan-out workflow's output.
+
+**L26 · Over-bundling: three independent bug fixes rode one long subagent, and the owner had to ask "why so long?" (2026-07).**
+Three unrelated fixes were bundled into a single long-running subagent (the bug1/bug2/bug3 wave reports). Each
+fix was fine; the bundling meant no fix could land before the slowest one, progress was invisible, and the
+owner's first signal was wall-clock pain. Root cause: §10.5 ("maximize subagent usage") read without
+`dispatching-parallel-agents` — independence is the dispatch boundary. Gate: independent fixes ship as
+independent dispatches (within the §10.5a ceiling) unless the owner explicitly chooses bundling; a brief that
+bundles unrelated deliverables is sent back at review.
+
+**L27 · Generated-plan truncation: an LLM asked for 10 full tasks emitted code for 1–5 and prose for 6–10; an LLM asked to concatenate ~237k chars silently truncated (CP2, 2026-07-27).**
+The first CP2 plan draft was produced by asking a model to emit a complete 10-task plan and then to concatenate
+~237k characters of task material: the draft carried real code in Tasks 1–5 and prose-only Tasks 6–10 (zero
+fenced blocks — the writing-plans "EXACT code in each step" requirement silently violated), and the
+concatenation lost content with no error. Caught one step before dispatching implementers against empty tasks;
+cost hours (the archived evidence: `scratch/cp2/draft-v1-REJECTED.md` vs the rebuilt, code-complete
+`docs/superpowers/plans/2026-07-27-cooking-paths-cp2.md`). Root cause: output-length limits fail silently, and
+"looks like a plan" was trusted without a mechanical check. Gate: `scripts/check-plan-complete.mjs` runs on
+every generated plan BEFORE review (per-task fenced-block count > 0, truncation-in-fence detector — discipline
+§2); and large documents are NEVER assembled by LLM concatenation — assemble mechanically (`cat`, file ops),
+then run the completeness gate on the result.
+
 **Adopted wins (2026-07-23) — patterns that worked, keep using them:** (1) **Baseline-first migration +
 a real preflight**: the eval baseline caught gemini-3.6's api-400 in minutes (v259→v260), and the
 ListModels+one-real-call-per-role preflight (through the app's own payload builders) is what proved the
