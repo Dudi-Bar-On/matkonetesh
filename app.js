@@ -8669,6 +8669,16 @@ const THEME_SCHEME={cream:'light',charcoal:'dark',walnut:'light',slate:'light'};
 const I18N_META = __I18N_META__;   // {code:{name,dir}} — Dec-A1: only META ships in the bundle
 const I18N_DICTS = {};             // runtime cache: code -> dict, filled by loadLangDict (Task 2)
 const I18N_LANGS = (function(){ const o={he:'עברית'}; try{ Object.keys(I18N_META).forEach(function(k){ o[k]=(I18N_META[k]||{}).name||k; }); }catch(e){} return o; })();
+// Dec-A1: fetch a language's dictionary on demand; cache per session. he needs no dict.
+function loadLangDict(code){
+  if(code==='he') return Promise.resolve(null);
+  if(I18N_DICTS[code]) return Promise.resolve(I18N_DICTS[code]);
+  if(!I18N_META[code]) return Promise.reject(new Error('unknown-lang:'+code));
+  return fetch('lang-'+code+'.json').then(function(r){
+    if(!r.ok) throw new Error('lang-http-'+r.status);
+    return r.json();
+  }).then(function(d){ I18N_DICTS[code]=d||{}; return I18N_DICTS[code]; });
+}
 const LANG_FLAG = {he:'🇮🇱', en:'🇬🇧', fr:'🇫🇷', de:'🇩🇪', es:'🇪🇸', ar:'🇸🇦', ru:'🇷🇺', it:'🇮🇹'};
 const LANGNAME={en:'English',ar:'Arabic',ru:'Russian',es:'Spanish',fr:'French',de:'German',it:'Italian'};   // shared code→language-name map (aiJSON outLang + mtTranslate) — v268 T11: 'it' added (spec §10/M-1, all active langs en/fr/de/es/it covered)
 function langFlag(k){ return LANG_FLAG[k]||'🌐'; }
@@ -8678,7 +8688,20 @@ function getLang(){
   try{ if(typeof window!=='undefined' && window.__MATKONET_HOST__ && window.__MATKONET_HOST__.lang && I18N_LANGS[window.__MATKONET_HOST__.lang]) return window.__MATKONET_HOST__.lang; }catch(e){}
   const l=(typeof store!=='undefined')?store.get('mk-lang'):null; return I18N_LANGS[l]?l:'he';
 }
-function setLang(l){ if(!I18N_LANGS[l]) return; store.set('mk-lang',l); applyLang(); }
+function setLang(l){ if(l!=='he' && !I18N_LANGS[l]) return;
+  if(l==='he' || I18N_DICTS[l]){ store.set('mk-lang',l); applyLang(); return; }
+  loadLangDict(l).then(function(){ store.set('mk-lang',l); applyLang(); })
+    .catch(function(){ if(typeof toast==='function') toast('⚠ '+L('טעינת השפה נכשלה — בדוק את החיבור ונסה שוב','Language download failed — check your connection and try again')); });
+}
+
+// Boot: if the stored language is non-Hebrew, fetch its dict then repaint. Hebrew paints instantly.
+// Tests await window.__mkLangReady instead of sleeping (DoD-11).
+window.__mkLangReady = (function(){
+  var l = getLang();
+  if(l==='he') return Promise.resolve();
+  return loadLangDict(l).then(function(){ try{ applyLang(); }catch(e){} })
+    .catch(function(e){ try{ console.warn('[i18n] boot dict load failed', e); }catch(_){} });
+})();
 function getDict(){ return (getLang()==='he')?null:(I18N_DICTS[getLang()]||{}); }
 // v268 T6 (spec §11/I-D — the ONE names scheme): recipe/category/cut/make display names live in a dict
 // `__names__` sub-map keyed by m.heb, resolved DIRECTLY here — no L/t call, no flat `he␟name` key

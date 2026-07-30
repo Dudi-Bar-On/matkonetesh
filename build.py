@@ -654,7 +654,8 @@ I18N_META_JSON = json.dumps(_i18n_meta, ensure_ascii=False)
 html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_META__", "JSON.parse(" + _js_str(I18N_META_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
 # A1 bundle guard — the split may never silently regress (Dec-A1: 73% of 7.79MB was dictionaries).
 _html_bytes = len(html.encode("utf-8"))
-assert _html_bytes < 2_600_000, "A1: dist/index.html is %d bytes — dictionaries must stay OUT of the bundle (Dec-A1)" % _html_bytes
+if _html_bytes >= 2_600_000:
+    raise SystemExit("A1: dist/index.html is %d bytes — dictionaries must stay OUT of the bundle (Dec-A1)" % _html_bytes)
 import os as _os, shutil as _shutil
 _root = _os.path.dirname(_os.path.abspath(__file__))
 # 1) index.html at repo root — used by the dev server, tests, and manual upload

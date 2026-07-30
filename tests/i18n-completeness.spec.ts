@@ -18,6 +18,7 @@ const LANGS = ['fr', 'de', 'es', 'it', 'ru'];
 
 async function driveStates(page: any, lang: string) {
   await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
+  await page.evaluate(() => (window as any).__mkLangReady);   // Task 2: dict fetch is async now (Dec-A1)
   await page.evaluate(`(function(){
     equipSave([{id:'sm1',cat:'smoker',type:'קטל (ככלי עישון)',name:'My Smoker',cap:{racks:1,areaCm2:2400}},{id:'sv1',cat:'sousvide',type:'טבילה (immersion)',name:'My SV',cap:{maxL:20}}]);
     equipSetConfigured();
@@ -89,6 +90,7 @@ for (const lang of LANGS) {
   // owner-#3 leak). Skips [data-mt] async-prose (v269, Hebrew-until-hydrated) + the version stamp.
   test(`i18n completeness — no raw-Hebrew per SCREEN in ${lang} (catalog grid/wizard/projects)`, async ({ page }) => {
     await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
+    await page.evaluate(() => (window as any).__mkLangReady);   // Task 2: dict fetch is async now (Dec-A1)
     await page.evaluate(`(function(){
       equipSave([{id:'sm1',cat:'smoker',type:'קטל (ככלי עישון)',name:'My Smoker',cap:{racks:1,areaCm2:2400}}]); equipSetConfigured();
       saveMenu({guests:4,appetite:'reg',kosher:false,keys:['cut-1','cut-74','make-m-brat'],sides:[],drinks:[],desserts:[],gpm:0});
@@ -133,6 +135,7 @@ for (const lang of LANGS) {
 for (const lang of LANGS) {
   test(`i18n — seasoning origin flags survive the build in ${lang}`, async ({ page }) => {
     await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
+    await page.evaluate(() => (window as any).__mkLangReady);   // Task 2: dict fetch is async now (Dec-A1)
     await page.waitForFunction(`typeof DATA!=='undefined' && DATA.seasonings && DATA.seasonings.length && typeof t==='function' && typeof setLang==='function'`);
     const bad = await page.evaluate(`(function(lg){
       if (typeof setLang === 'function') setLang(lg);
@@ -165,6 +168,7 @@ for (const lang of LANGS) {
       'mk-uilevel': JSON.stringify('pro'),
       'mk-lang': JSON.stringify(lang),
     });
+    await page.evaluate(() => (window as any).__mkLangReady);   // Task 2: dict fetch is async now (Dec-A1)
     await page.waitForFunction(`typeof DATA!=='undefined' && DATA.seasonings && DATA.seasonings.length && typeof t==='function' && typeof setLang==='function'`);
 
     // Seed a pro persona with a full kit + a menu, so the home dock renders.

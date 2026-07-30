@@ -7,6 +7,9 @@ import { resolve } from 'node:path';
 
 const boot = async (page: any) => {
   await seedApp(page, { 'mk-lang': JSON.stringify('en') });
+  // Task 2: mk-lang='en' triggers the async boot dict fetch (window.__mkLangReady) — wait for it before
+  // any setLang()/L() call below relies on I18N_DICTS.en already being populated.
+  await page.evaluate(() => (window as any).__mkLangReady);
   await page.waitForFunction(`typeof L==='function' && typeof getLang==='function' && typeof setLang==='function' && typeof I18N_DICTS==='object'`);
 };
 
@@ -48,7 +51,9 @@ test('L he-mode returns the he arg verbatim, with or without ctx (byte-identical
 
 test('__i18nTrace: a real fr dict-miss (non-en English-fallback branch) pushes exactly one record', async ({ page }) => {
   await boot(page);
-  await page.evaluate(`setLang('fr'); window.__i18nTrace = [];`);
+  await page.evaluate(`setLang('fr')`);
+  await page.waitForFunction(`getLang()==='fr'`);   // Task 2: first use of 'fr' here — setLang() fetches the dict on demand
+  await page.evaluate(`window.__i18nTrace = [];`);
   const result = await page.evaluate(`L('__no_such_key_xyz','FallbackEN')`);
   expect(result).toBe('FallbackEN');
   const trace = await page.evaluate(`window.__i18nTrace`);

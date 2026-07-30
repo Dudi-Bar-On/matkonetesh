@@ -11,6 +11,7 @@ test('t(): Hebrew source by default, translation when a language is set', async 
   await init(page);
   expect(await page.evaluate(`t('יש לי אירוע')`)).toBe('יש לי אירוע');
   await page.evaluate(`setLang('en')`);
+  await page.waitForFunction(`getLang()==='en'`);   // Task 2: setLang() now fetches the dict on demand
   expect(await page.evaluate(`t('יש לי אירוע')`)).toBe('I have an event');
   expect(await page.evaluate(`getLang()`)).toBe('en');
 });
@@ -18,6 +19,7 @@ test('t(): Hebrew source by default, translation when a language is set', async 
 test('setLang switches dir/lang, translates chrome, and restores Hebrew on switch-back', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('en')`);
+  await page.waitForFunction(`getLang()==='en'`);   // Task 2: setLang() now fetches the dict on demand
   expect(await page.evaluate(`document.documentElement.lang`)).toBe('en');
   expect(await page.evaluate(`document.documentElement.dir`)).toBe('ltr');
   expect(await page.evaluate(`document.querySelector('[data-i18n="path.project"]').textContent`)).toContain('Advanced project');
@@ -31,6 +33,7 @@ test('setLang switches dir/lang, translates chrome, and restores Hebrew on switc
 test('a second language (French) works from the same mechanism', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('fr')`);
+  await page.waitForFunction(`getLang()==='fr'`);   // Task 2: setLang() now fetches the dict on demand
   expect(await page.evaluate(`document.querySelector('[data-i18n="path.project"]').textContent`)).toContain('Projet avancé');
   expect(await page.evaluate(`t('בקר')`)).toBe('Bœuf');
 });
@@ -46,6 +49,7 @@ test('getLang honors a host-provided locale (matkonet module seam)', async ({ pa
 test('t() falls back to the Hebrew source (or explicit fallback) for unknown strings', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('en')`);
+  await page.waitForFunction(`getLang()==='en'`);   // Task 2: setLang() now fetches the dict on demand
   expect(await page.evaluate(`t('מחרוזת לא מוכרת')`)).toBe('מחרוזת לא מוכרת');
   expect(await page.evaluate(`t('x','fallback')`)).toBe('fallback');
 });

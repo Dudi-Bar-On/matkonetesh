@@ -24,6 +24,9 @@ test('picking a flag switches the language', async ({ page }) => {
   await page.evaluate(`openLangMenu()`);
   await page.waitForSelector('.lang-flag[data-setlang="fr"]');
   await page.evaluate(`document.querySelector('.lang-flag[data-setlang="fr"]').click()`);
+  // Task 2: setLang() now fetches lang-fr.json on demand before applying — wait on the condition
+  // (DoD-11), not a timeout. store.set('mk-lang', l) only runs once the dict fetch resolves.
+  await page.waitForFunction(`getLang()==='fr'`);
   expect(await page.evaluate(`getLang()`)).toBe('fr');
   expect(await page.evaluate(`document.documentElement.lang`)).toBe('fr');
 });

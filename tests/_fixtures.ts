@@ -66,6 +66,22 @@ let __appDoc: Buffer | null = null;
 function appDoc(): Buffer { return (__appDoc ??= readFileSync(resolve(process.cwd(), 'dist/index.html'))); }
 const APP_DOC_RE = /\/index\.html($|\?)/;
 
+// SAME ROOT CAUSE, NEW TRIGGER (Task 2, Dec-A1) — app.js's boot hydration (`window.__mkLangReady`)
+// now does a real `fetch('lang-'+code+'.json')` on every warm reload where the seeded/stored language
+// is non-Hebrew. Unlike the icon/manifest subresources the note above calls out (fetched once per
+// worker's COLD boot only), this fires on every seedApp reload across the whole i18n-heavy suite —
+// reintroducing the shared-loopback-gate serialization the APP_DOC_RE fulfill was built to cure, just
+// on a different URL. Same cure, same shape: fulfill known lang-<code>.json bodies from an in-memory
+// Buffer (dist/lang-<code>.json, already built) instead of a per-request loopback round trip. A later,
+// more-specific `page.route('**/lang-de.json', ...)` registered by an individual test (e.g. the
+// negative-download-failure case) still wins — Playwright resolves routes LIFO, and a page-level route
+// added during the test postdates this one-time worker-level context route.
+const __langDocs: Record<string, Buffer> = {};
+function langDoc(code: string): Buffer {
+  return (__langDocs[code] ??= readFileSync(resolve(process.cwd(), `dist/lang-${code}.json`)));
+}
+const LANG_JSON_RE = /\/lang-([a-z]{2})\.json($|\?)/;
+
 type WarmWorkerFixtures = { warmContext: BrowserContext; warmPage: Page };
 type WarmTestFixtures = { warm: Page; isolatedPage: Page };
 
@@ -98,6 +114,20 @@ export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
           headers: { 'content-type': 'text/html; charset=utf-8', 'x-mk-warm-fulfill': '1' },
           body,
         }));
+      // Task 2 addition — see the langDoc/LANG_JSON_RE note above.
+      await context.route(LANG_JSON_RE, route => {
+        const m = route.request().url().match(LANG_JSON_RE);
+        const code = m ? m[1] : '';
+        try {
+          route.fulfill({
+            status: 200,
+            headers: { 'content-type': 'application/json; charset=utf-8', 'x-mk-warm-fulfill': '1' },
+            body: langDoc(code),
+          });
+        } catch {
+          route.continue();   // unknown code (no dist/lang-<code>.json) — fall through to the real server
+        }
+      });
     }
     // DELIBERATELY no context.tracing.start() here (deviation from the plan's D2 sketch, root-caused
     // against the installed playwright 1.61.1 source, not guessed): with `trace` configured in

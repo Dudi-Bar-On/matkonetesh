@@ -12,6 +12,7 @@ const tn = (page: any, text: string) => page.evaluate(`(function(){ const d=docu
 test('tnode translates exact, emoji-prefixed, and interpolated Hebrew chrome', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('en')`);
+  await page.waitForFunction(`getLang()==='en'`);   // Task 2: setLang() now fetches the dict on demand
   expect(await tn(page, 'בקר')).toBe('Beef');                 // exact category
   expect(await tn(page, '🥩 בקר')).toBe('🥩 Beef');            // emoji-prefixed chip
   expect(await tn(page, '🔥 BBQ קלאסי')).toBe('🔥 Classic BBQ'); // prefix + latin-leading rest
@@ -23,6 +24,7 @@ test('tnode is a no-op in Hebrew, and leaves unknown strings alone', async ({ pa
   await init(page);   // Hebrew
   expect(await tn(page, 'בקר')).toBe('בקר');                   // no translation in Hebrew mode
   await page.evaluate(`setLang('en')`);
+  await page.waitForFunction(`getLang()==='en'`);   // Task 2: setLang() now fetches the dict on demand
   expect(await tn(page, 'מחרוזת לא מוכרת xyz')).toBe('מחרוזת לא מוכרת xyz');   // unknown → untouched
 });
 
@@ -30,6 +32,7 @@ test('itemName uses the English name in English mode, Hebrew otherwise', async (
   await init(page);
   expect(await page.evaluate(`itemName({heb:'בריסקט',eng:'Brisket'})`)).toBe('בריסקט');
   await page.evaluate(`setLang('en')`);
+  await page.waitForFunction(`getLang()==='en'`);   // Task 2: setLang() now fetches the dict on demand
   expect(await page.evaluate(`itemName({heb:'בריסקט',eng:'Brisket'})`)).toBe('Brisket');
   expect(await page.evaluate(`itemName({heb:'משהו',eng:''})`)).toBe('משהו');   // falls back to Hebrew when no eng
 });

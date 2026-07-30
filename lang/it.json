@@ -1,5 +1,8 @@
 {
- "__meta__": {"name": "Italiano", "dir": "ltr"},
+ "__meta__": {
+  "name": "Italiano",
+  "dir": "ltr"
+ },
  "__units__": {
   "פריטים": "ingredienti",
   "סועדים": "ospiti",
@@ -2484,5 +2487,6 @@
  "הדרכה צעד-אחר-צעד, פחות מספרים בבת אחת": "Guida passo passo, meno numeri alla volta",
  "האיזון הרגיל — כל המידע, בלי עומס יתר": "Il solito equilibrio — tutte le info, senza sovraccarico",
  "הכל גלוי: מספרים מדויקים, כל האפשרויות": "Tutto visibile: numeri precisi, tutte le opzioni",
- "נמוך ואיטי — 105-110°C, עשן אלון/היקורי": "Bassa e lenta — 105–110 °C, fumo di quercia/hickory"
+ "נמוך ואיטי — 105-110°C, עשן אלון/היקורי": "Bassa e lenta — 105–110 °C, fumo di quercia/hickory",
+ "טעינת השפה נכשלה — בדוק את החיבור ונסה שוב": "Il download della lingua non è riuscito — controlla la connessione e riprova"
 }

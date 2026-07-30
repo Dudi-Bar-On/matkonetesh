@@ -9,6 +9,7 @@ const init = async (page: any) => {
 test('wizard step buttons + review CTAs translate to English and restore on switch-back', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('en')`);
+  await page.waitForFunction(`getLang()==='en'`);   // Task 2: setLang() now fetches the dict on demand
   expect(await page.evaluate(`document.querySelector('[data-cwgo="1"]').textContent`)).toContain('Next');
   expect(await page.evaluate(`document.querySelector('#cwGenPlan').textContent`)).toContain('Generate');
   await page.evaluate(`setLang('he')`);
@@ -18,6 +19,7 @@ test('wizard step buttons + review CTAs translate to English and restore on swit
 test('showPanel auto-translates dictionary chrome inside dynamic panels', async ({ page }) => {
   await init(page);
   await page.evaluate(`setLang('en')`);
+  await page.waitForFunction(`getLang()==='en'`);   // Task 2: setLang() now fetches the dict on demand
   await page.evaluate(`showPanel('<div class="panel-body"><span id="t1">יש לי אירוע</span><input id="t2" placeholder="חפש הכל — נתח, נקניקייה, מתבל…"></div>')`);
   expect(await page.evaluate(`document.querySelector('#t1').textContent`)).toBe('I have an event');
   expect(await page.evaluate(`document.querySelector('#t2').getAttribute('placeholder')`)).toContain('Search');

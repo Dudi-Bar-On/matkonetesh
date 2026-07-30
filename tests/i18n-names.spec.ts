@@ -15,6 +15,9 @@ import { test, expect, seedApp } from './_fixtures';
 
 const bootLang = async (page: any, lang: string) => {
   await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
+  // Task 2: I18N_DICTS[lang] is populated by the async boot fetch (loadLangDict via __mkLangReady) —
+  // these tests write directly into I18N_DICTS[lang].__names__, so the dict object must exist first.
+  await page.evaluate(() => (window as any).__mkLangReady);
   await page.waitForFunction(`typeof itemName==='function' && typeof I18N_DICTS==='object'`);
 };
 

@@ -26,6 +26,8 @@ test('i18n-toast: he-mode — add-to-menu toast is byte-identical to the raw Heb
 
 test('i18n-toast: fr-mode — the SAME add-to-menu toast localizes from a seeded dict entry (proves the node is dict-driven, not baked Hebrew)', async ({ page }) => {
   await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('fr') });
+  // Task 2: mk-lang='fr' triggers the async boot dict fetch — wait so I18N_DICTS.fr exists before seeding into it.
+  await page.evaluate(() => (window as any).__mkLangReady);
   await page.evaluate(`I18N_DICTS.fr['✓ נוסף לתפריט']='✓ Ajouté au menu'`);
   await page.click('[data-cnav="catalog"]');
   await page.fill('#q', 'בקר');
@@ -51,6 +53,8 @@ test('i18n-attr: he-mode — a catalog card aria-label is itemName-routed, byte-
 
 test('i18n-attr: fr-mode — the SAME card aria-label localizes from a seeded __names__ entry (proves itemName(), not raw .heb)', async ({ page }) => {
   await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('fr') });
+  // Task 2: mk-lang='fr' triggers the async boot dict fetch — wait so I18N_DICTS.fr exists before seeding into it.
+  await page.evaluate(() => (window as any).__mkLangReady);
   const heb = await page.evaluate(`DATA.cuts[0].heb`);
   await page.evaluate(`(function(){ I18N_DICTS.fr.__names__=I18N_DICTS.fr.__names__||{}; I18N_DICTS.fr.__names__[${JSON.stringify(heb)}]='__TESTNAME__'; })()`);
   await page.click('[data-cnav="catalog"]');
@@ -62,6 +66,8 @@ test('i18n-attr: fr-mode — the SAME card aria-label localizes from a seeded __
 
 test('i18n-units: fr-mode — tnode() converts equipment-screen raw unit glyphs (ס״מ²/ל׳/מ״מ, and the ק״ג/דק׳ compound before the ק״ג prefix) via the real committed __units__ map', async ({ page }) => {
   await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('fr') });
+  // Task 2: this test relies on the REAL committed fr __units__ map — wait for the async boot fetch.
+  await page.evaluate(() => (window as any).__mkLangReady);
   const out = await page.evaluate(`(function(){
     var host=document.createElement('div'); host.style.display='none';
     host.innerHTML='<span id="u1">94 ס״מ²</span><span id="u2">12 ס״מ</span><span id="u3">5 ל׳</span><span id="u4">22 מ״מ</span><span id="u5">5 ק״ג/דק׳</span><span id="u6">3 ק״ג</span>';

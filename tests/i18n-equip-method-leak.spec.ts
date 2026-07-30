@@ -26,6 +26,8 @@ const HEB = /[֐-׿]/;
 for (const lang of LANGS) {
   test(`i18n[${lang}] equipment chips + phase labels are dict-localized (no English fallback, no raw Hebrew)`, async ({ page }) => {
     await seedApp(page, { 'mk-lang': JSON.stringify(lang), 'mk-uilevel-asked': 'true' });
+    // Task 2: mk-lang seeded non-he triggers the async boot dict fetch — wait for the real dict before reading it.
+    await page.evaluate(() => (window as any).__mkLangReady);
 
     const res = await page.evaluate(() => {
       // configure a kit so chips render (ownership marks are irrelevant to the label text under test)
@@ -98,6 +100,8 @@ for (const lang of LANGS) {
 for (const lang of LANGS) {
   test(`i18n[${lang}] MAKE method label + note render localized with temperatures preserved`, async ({ page }) => {
     await seedApp(page, { 'mk-lang': JSON.stringify(lang), 'mk-uilevel-asked': 'true' });
+    // Task 2: mk-lang seeded non-he triggers the async boot dict fetch — wait for the real dict before reading it.
+    await page.evaluate(() => (window as any).__mkLangReady);
     const res = await page.evaluate(() => {
       const meta = resolveItem('make-n-kielbasa');
       const prof = itemProfile(meta);
@@ -137,6 +141,8 @@ const SOTREAT_KEYS = ["שיטת 3-2-1","שיטת 2-2-1","גלייז בסיום",
 for (const lang of LANGS) {
   test(`i18n[${lang}] portion-calc + occupancy slot + treatment prose are dict-localized (no English fallback, no raw Hebrew, numbers preserved)`, async ({ page }) => {
     await seedApp(page, { 'mk-lang': JSON.stringify(lang), 'mk-uilevel-asked': 'true' });
+    // Task 2: mk-lang seeded non-he triggers the async boot dict fetch — wait for the real dict before reading it.
+    await page.evaluate(() => (window as any).__mkLangReady);
 
     const res = await page.evaluate(({ lang, treatKeys, sotreatKeys }) => {
       // render `fn` in he (→ Hebrew dict KEY) then in the target lang (→ what a real user sees)
