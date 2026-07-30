@@ -44,4 +44,6 @@ docs/graphify-out/
 # hand-written follow-up analysis doc) is tracked. See docs/research/measurements/RUNBOOK.md.
 docs/research/measurements/*.json
 docs/research/measurements/*.csv
+docs/research/measurements/evidence/
+docs/research/measurements/sweep-logs/
 .claude-focus
