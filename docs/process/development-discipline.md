@@ -433,6 +433,16 @@ a reasoning model applied where it adds nothing is cost with no evidence.** Skip
 
 ## 11a. Testing infrastructure (established 2026-07-21)
 
+> **🧑 owner ruling, 2026-07-30 — WRITING a test is governed by `tests/TEST-AUTHORING-CONTRACT.md`.**
+> Every agent that writes or edits a test reads that file FIRST; every task brief that touches tests
+> carries it (template §(ו)). It encodes the warm-page architecture this section documents — the arc that
+> took the suite from 3+ minutes to ~54s and cured the loopback flake — as an authoring contract:
+> `test`/`seedApp` from `./_fixtures` only · `addInitScript` forbidden on the warm page · `isolatedPage`
+> for clock/SW/`test.use` · every in-test `route` unrouted in `try/finally` · condition waits only
+> (`waitForResponse` does NOT prove the state was applied). **A test written outside the contract is
+> rewritten, even if it is green** — it is slow and flaky, and its flakiness gets misread as a product bug.
+> Trigger for the ruling: a Phase 1 implementer authored tests without knowing this existed.
+
 **How to run the suite:** `npx playwright test` — nothing else. The config is authoritative.
 
 - **Server:** `serve.js` is a **single in-memory process** — de-clustered 2026-07-23 (L18: the earlier clustered design's `cluster.on('exit', () => fork())` turned a killed worker into an unkillable respawning zombie) — with SIGINT/SIGTERM handlers for a clean shutdown; every `dist/` file is served from a Buffer (zero per-request disk I/O). Since the loopback fix (2026-07-24, see the Concurrency bullet below), the main `chromium` project's per-test navigation no longer opens a real HTTP connection to serve.js at all — `tests/_fixtures.ts` fulfills `/index.html` from an in-memory Buffer via `context.route`; serve.js still serves subresources and the dedicated `service-worker` project's real HTTP delivery (needed for genuine SW caching). Playwright starts and tears down this server itself (`webServer.command`); **do not** run `serve.js` by hand for a test run.
