@@ -79,6 +79,8 @@ Every phase of the refactoring plan runs this loop end to end. No step is skippe
 
 **Debugging is not a phase — it is an interrupt.** Any failure at any point suspends the pipeline into `systematic-debugging`'s four phases before anything else happens.
 
+**A generated plan is never submitted to review before `node scripts/check-plan-complete.mjs <plan.md>` exits 0** (per-task fenced-code count > 0, truncation detector — Phase 0 gate; lesson L27, the silent CP2 truncation). Large plans are assembled mechanically (file concatenation), never by LLM concatenation.
+
 ---
 
 ## 3. The DoD gate (the core of this proposal)
@@ -98,7 +100,7 @@ A task is **not done** until every box is checked with evidence pasted in. This 
 - [ ] **9 · Hebrew check.** Any user-facing string: rendered in Hebrew, no English leak, correct singular/plural on interpolated counts, correct domain term. Screenshot.
 - [ ] **10 · Safety invariance.** No `bcheck` stage, `temp`, `safe` value, or cook duration altered. Where the task touches the plan, the assertion that proves this is named.
 - [ ] **11 · No arbitrary waits.** Tests wait on conditions, not `setTimeout` guesses (`condition-based-waiting`).
-- [ ] **12 · Full suite green (once).** Run `npx playwright test` (config pins the reliable worker count + retries 0 — currently 6 workers, ~145s; see §11a). Output pasted. **Run once; if 100% green, the gate is met** (owner decision 2026-07-21, superseding ×2 — the clustered server made the suite fast and deterministic, so a second run adds cost without information). Any failure — including an intermittent one — is treated as a **bug**, debugged via `systematic-debugging`, **never** re-run to make it pass. Never pass `--retries` or `--workers=1`: retries mask flakes, `--workers=1` is the old 13-min serial path.
+- [ ] **12 · Full suite green (H7).** Run `npx playwright test` plain — the config is authoritative (pinned workers, `retries: 0`; see §11a). Output pasted, exit code shown. **Owner ruling H7 (2026-07-30): task gate = ONE clean run (×1); release/ship gate = TWO clean runs (×2)** — the second run happens at the release commit, not per task. Rationale (owner): the run infrastructure was hardened deliberately (warm-page fixtures, measured worker pin, `retries:0`) and is trusted; routine repetition adds cost without information, while a ship deserves the double check. This supersedes both the 2026-07-21 "×1" note and §9's old "×2 per task" row — H7 is now the single source. Any failure — including an intermittent one — is treated as a **bug**, debugged via `systematic-debugging`, **never** re-run to make it pass. Never pass `--retries` or `--workers=1`: retries mask flakes, `--workers=1` is the old serial path.
 
 ### Per-phase DoD gate
 
@@ -164,6 +166,10 @@ Each documented failure from the analysis, and the specific gate that now catche
 - Findings are handled via `receiving-code-review`: verify against the codebase before implementing; push back with technical reasoning where the reviewer is wrong; no performative agreement.
 - Reviewer findings that contradict the plan go to the **owner**, not resolved unilaterally.
 - Final whole-branch review runs on the most capable model, with the accumulated Minor list.
+- **External proposals get TWO passes by DIFFERENT agents (2026-07-30):** a CONCEPTS pass ("what real gaps
+  of ours does this expose?") and a NUMBERS pass (auditing its arithmetic/claims). One verdict = an
+  incomplete review. Born from the v5.0 first panel, which audited the messenger's illustrative numbers and
+  missed its central mechanism — the owner forced a re-run (`a2c8535`, "owner was right, we have real gaps").
 
 ---
 
@@ -182,10 +188,12 @@ Each documented failure from the analysis, and the specific gate that now catche
 
 | Question | Decision |
 |---|---|
-| Suite scope per task | **FULL suite ×2 per task.** Runtime cost accepted. No targeted-spec shortcut |
+| Suite scope | **H7 (owner, 2026-07-30): task gate = clean full-suite run ×1; release (ship) gate = ×2.** Supersedes this table's former "×2 per task" row, DoD-12's former "×1 always" note, and the memory-only "twice before shipping" instruction — one ruling, one place |
 | Isolation | **Work on `main`.** No worktrees |
 | Phase 0 ordering | **As proposed** — safety (cure guard) and correctness (cart math) first |
 | Brainstorming depth | **Only when required** — when something is unclear, not understood, or not well defined. Depth as required by the subject |
+| Selector contract (Dec-H4) | Tests select ONLY via the stable selectors listed in `tests/selector-contract.md` (data-testid / stable ids and classes). Every NEW storage key lives under the `mk-` prefix. The full contract file lands with the Phase 3 codemod (Dec-H3); the rule binds from Phase 0 |
+| Co-Authored-By trailer | **The model string the session itself declares, verbatim** — never guessed, never embellished (245 commits carry an invented "Opus 4.8 (1M context)"; the trailer is a factual claim in the permanent record). Optional hardening: a `commit-msg` hook with an exact-string allowlist |
 
 ---
 
@@ -215,6 +223,19 @@ Every failure, defect, or wrong turn gets recorded in §11 with its root cause a
 ### 10.5 Maximize subagent usage
 Delegate aggressively: implementers, reviewers, debuggers, analysts, verifiers. Parallelise wherever the work is independent. The controller coordinates and verifies; it does not do work a subagent could do.
 
+### 10.5a Agent-concurrency ceiling (Phase 0, 2026-07-30 — the fan-out-wedge lesson, L25)
+§10.5 is bounded by machine reality, exactly as suite workers are pinned in `playwright.config.ts`:
+- **Default: sequential.**
+- Independent LIGHT work (read/scan): up to **3 concurrent**; hard cap **5**.
+- While a suite run, a build, or the translation GPU queue is active: **at most ONE heavy agent**
+  (extends §11a's serialization rule from workers to agents).
+- Three independent bug fixes = three separate dispatches, never one super-agent (the over-bundling
+  lesson, L26).
+- On API 529 overload: drop to one-at-a-time and send a small probe agent first.
+- ALWAYS reconcile agents-started vs results-received before trusting a fan-out workflow's output.
+Every `dispatching-parallel-agents` brief quotes this ceiling (see the brief template,
+`docs/process/templates/task-brief.md`).
+
 ### 10.6 Summarize after every task or step — in three parts
 After each task or step completes, show the owner a summary. Not at the end of a phase — after each step.
 
@@ -224,8 +245,10 @@ After each task or step completes, show the owner a summary. Not at the end of a
    verified). Findings and surprises belong here, not buried.
 2. **NEXT** — the immediate next step, and anything that must be decided before it can start.
 3. **LEFT UNTIL THE GRAND FINAL** — the distance still to run on the *whole* programme, not just this
-   phase. Where a burn-down number exists (gaps closed of 141, tasks done of N, phases done of M), state
-   it. Where one does not, say so rather than implying progress that has not been measured.
+   phase. **This part IS the ledger line from `docs/ROADMAP-2026-07-30.md` §5** (a number — "N closed /
+   156, M to target", read via `docs/STATUS-BOARD.md`), not prose. A Phase-gate agent checks the ledger
+   was updated; an un-updated ledger fails the gate. Where a number genuinely does not exist yet, say so
+   rather than implying progress that has not been measured.
 
 **Why part 3 exists.** A per-task summary tells the owner a task finished; it does not tell them whether
 the programme is on course. Without the third part, a long programme reads as an unbounded sequence of
@@ -235,6 +258,21 @@ mistaken for "we are nearly there."
 **The honesty rule applies hardest here.** A burn-down that counts a gap as closed before its review is
 clean, or that omits gaps added along the way, is worse than no burn-down — it manufactures confidence.
 State work-in-progress as in-progress.
+
+**H9 — the mandatory task-summary table (owner ruling, 2026-07-30; the structured form of the three
+parts).** EVERY development task — in Main or in a subagent — ends with a fixed 5-row table:
+| # | Row | Content |
+|---|---|---|
+| 1 | **מה היה** (Before) | the state/problem before the task |
+| 2 | **מה נעשה** (Done) | what was actually done + evidence (commit, tests, files, per H10c: vNNN · date+time) |
+| 3 | **מה נשאר** (Remaining) | what stays open from the task/phase |
+| 4 | **איפה אנחנו** (Position) | "Phase X, task Y of Z" + ledger "N closed / M to target" — **read from `docs/STATUS-BOARD.md`** (H10) |
+| 5 | **הבא בתור** (Next) | the next tasks in line |
+For subagents this is part of the report contract (a brief without the table requirement is an invalid
+brief — see `docs/process/templates/task-brief.md`); Main verifies and relays. Every task close also
+UPDATES `docs/STATUS-BOARD.md` (H10) — enforced by the arc-close checklist and by Phase gates (a stale
+board fails the gate). **H10a (owner):** the table and board are MAINTAINED every task but SHOWN to the
+owner only at milestones (Phase gate · release · arc close) or on request — tight tracking without noise.
 
 ### 10.7 Read this file at the start of every task
 Non-negotiable. Memory is not a substitute for re-reading.
@@ -265,6 +303,13 @@ After every deploy, drive `https://matkonetesh.pages.dev` with Playwright and as
 **Deploys are not instant — poll, do not assume.** Cloudflare Pages rebuilds from source (`build.py` on a ~2.6 MB bundle) and this takes minutes. Re-check the live URL on an interval until the stamp matches, and only then report the release as done. **Never tell the owner a version is live before the live check passes** — on v255 I announced the ship immediately after `git push`, the owner looked before the build finished, saw the previous version, and I then mis-diagnosed it as their device cache. The build was simply still running.
 
 Also verify the delivery path itself, once, when it changes: `/` and `/index.html` should serve the new HTML with a revalidating `Cache-Control`, and `/sw.js` must be `no-cache` with a fresh content-hash `CACHE` name.
+
+**Fallback protocol when browser tooling is broken (Phase 0, 2026-07-30 — one release shipped with no
+live check at all when Playwright/MCP tooling failed):** if the Playwright live check cannot run, the
+MINIMUM bar for saying "live" is a curl probe of the live URL asserting BOTH (a) `.foot-stamp` contains
+the shipped `מהדורה NNN` and (b) a feature string from that release is present in the payload — output
+pasted into the report. The full browser verification is then COMPLETED THE SAME DAY, and its result
+reported. **Without one of the two, "live" is not said at all.**
 
 ---
 
@@ -749,6 +794,11 @@ next session inherits it.
 > the graphify global knowledgebase** so the next session — on any project sharing the global — starts
 > ahead. Untracked lessons get relearned at full price; undeposited finds get re-searched at full price.
 
+**Mechanical enforcement (Phase 0, 2026-07-30):** `scripts/gate-lessons.mjs` (inside `check-meta.mjs`)
+blocks a `release(v` commit when releases exist after the newest §11 lesson/declaration date, and the
+arc-close checklist (`docs/process/checklists/arc-close.md`) makes the lessons+deposit pass a gated step.
+The §11 log froze at L22 while five paid-for lessons lived only in private memory (audit §9) — never again.
+
 The mechanics already exist — this rule makes them a *closing checklist*, not a when-remembered habit:
 lessons → §11 log (numbered `L`-entries for failures, an "adopted wins" note for successes; owner-behavior
 feedback also goes to the assistant's persistent memory); docs → `graphify add <url>` →
@@ -913,6 +963,13 @@ graphify update, stage documents (plus a copy of `GRAPH_REPORT.md` into `docs/an
 push. Use it instead of remembering three separate steps. It warns loudly when the graph could not be
 updated, because a silent stale graph is the failure this rule exists to prevent.
 
+**Mechanical enforcement (Phase 0, 2026-07-30):** `scripts/check-graph-fresh.mjs` compares every
+`docs/**/*.md` mtime against the `graphify-out/graph.json` build stamp and fails on any stale doc.
+`sync-docs.sh` runs it before any docs push and refuses to ship a stale graph (loud override:
+`SYNC_ALLOW_STALE=1`); it also runs inside `node scripts/check-meta.mjs` (session start · release ·
+every Phase gate and arc close). This rule previously relied on remembering — it drifted 53 documents
+behind within five days (audit §10).
+
 **Honest note on how this rule came to be written properly (2026-07-22).** The rule was added, and then six
 agent reports were committed and pushed WITHOUT ever updating the graph — the owner had to point out that
 he could not see it happening. Writing a rule is not the same as having a mechanism. Hence the script.
@@ -921,4 +978,65 @@ he could not see it happening. Writing a rule is not the same as having a mechan
 were never reconciled; four outright contradictions and an entire unbuilt orchestrator specification were
 found only by exhaustive auditing. The graph exists to make that visible continuously instead of
 retrospectively — which only holds if it is current.
+
+---
+
+## 13. Operating Model — Main thread vs subagents (H6, adopted 2026-07-30)
+
+Authoritative form of METHODOLOGY-2026-07-30 §2, written here so every subagent inherits it.
+
+| What | Runs where | Why |
+|---|---|---|
+| Decisions, gates, owner communication, §4 rulings | **Main only — never delegated** | decision provenance lives in one conversation; the owner talks to one entity |
+| Accepting/rejecting a Phase-gate verdict; declaring "done" | **Main only** | "Being wrong is worse than being silent" — accountability is not inherited |
+| Ledger upkeep (ROADMAP §5) + §10.6/H9 summaries | **Main** | the one thing compaction must never squeeze out |
+| Spec/plan drafting | Subagent; approval in Main | heavy writing = heavy context; approval and owner-facing stay in Main |
+| Task implementation (SDD, fresh agent per task) | **Subagent** | the proven `.superpowers/sdd/` pattern |
+| Code-review + spec-audit (two verdicts, §7) | **Subagent** (fresh, no access to progress.md) | reviewer independence — the strongest artifact in the repo |
+| Heavy reading: research, synthesis, evidence sweeps | **Subagent** | Main receives conclusions + file paths, not dumps |
+| Graph refresh, suite runs, 390×844 screenshot sweeps | **Subagent** (serialized, §10.5a) | long mechanical work; Main verifies the artifact |
+
+**The brief/report contract (file-based handoffs):** a brief is a FILE (template:
+`docs/process/templates/task-brief.md`) carrying (a) the exact spec lines the task satisfies (DoD-1),
+(b) the exact code from the plan, (c) the relevant DoD checklist, (d) the report contract — report file
+name and what must be pasted in it (RED output, GREEN output, exit code, screenshot paths) **including
+the H9 5-row summary table**, and (e) a "primary tool" field: serena for symbol work, graphify for
+docs/relationship questions, grep only as a declared fallback. A missing field = an invalid brief.
+A report is a FILE under `.superpowers/sdd/`; the agent returns only a summary + path; Main verifies
+via diff, never on the report alone. **Main's context budget:** no full source files, no full suite
+logs, no long documents — anything projected over ~2k cumulative lines goes to a subagent that returns
+an extract; Main stays below the compaction zone so the ledger, decisions and the owner conversation
+are never squeezed out.
+
+## 14. H8 — The Full-Landing Rule ("nothing in the air"; owner ruling, 2026-07-30)
+
+The owner's ruling, verbatim (DECISION-REGISTER H8):
+
+> **כלל הנחיתה המלאה ("שום דבר באוויר"):** מעכשיו והלאה אף פריט אינו "לא מטופל" / "לא מעוגן" /
+> "נדחה בלי מועד". לכל פער, החלטה או רעיון יש בדיוק אחת מ: (א) פאזה נקובה ב-Roadmap; (ב) דחייה
+> מנומקת **עם טריגר מוגדר** לפתיחה מחדש; (ג) אם הנושא דורש דיון/סיעור מוחות — **המשימה הרשומה היא
+> הדיון עצמו**, בפאזה נקובה, והחלטותיו משולבות בתוכנית אחריו.
+
+Born from the 2026-07-30 coverage audit: 43 gaps had no landing, 9 of them dropped from the plan
+entirely. **Mechanical enforcement:** the no-unlanded-items check inside `scripts/check-meta.mjs`
+parses the ROADMAP §5 ledger — every ledger row must land in a named phase, every remainder item must
+carry a defined trigger; anything else exits nonzero. It runs at EVERY Phase gate and EVERY arc close,
+plus check-meta's routine runs (session start, before docs push, before any `release(v` commit).
+
+## 15. H9–H12 — task summaries, the live status board, capabilities, /status (owner rulings, 2026-07-30)
+
+- **H9 — mandatory task-summary table.** Defined in §10.6 (the structured form of the three parts):
+  every task, Main or subagent, ends with the fixed 5-row table; for subagents it is part of the report
+  contract; Main verifies and relays. Per **H10c**, evidence rows carry "vNNN · date+time".
+- **H10 — the live status board, `docs/STATUS-BOARD.md`.** THE source of truth for position against
+  the plan: one row per Phase (tasks done/total · status · gaps closed) + a project-total row; per
+  **H10b** it also carries the full project history since the PRD as ✅ rows. **Updated at every task
+  close**; checked (together with no-unlanded-items) at every Phase gate — a stale board fails the
+  gate. H9's "איפה אנחנו" row is READ from it. Per **H10a**, it is maintained every task but shown to
+  the owner only at milestones or on request.
+- **H11 — the capabilities table, `docs/CAPABILITIES.md`.** The living inventory of every product
+  capability, large and small; every shipped feature adds its row (with "since vNNN · D.M.YY" per
+  H10c) as part of the task-close routine, alongside the board. Future base for help/marketing docs.
+- **H12 — the `/status` command** (`.claude/commands/status.md`): `/status` = the board ·
+  `/status caps` = capabilities · `/status full` = both + the last task's H9 table.
 
