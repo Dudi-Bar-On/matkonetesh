@@ -11,13 +11,23 @@ inherit conversation memory** — without it, a dispatched agent starts with zer
 It carries inline only the two gates that get skipped when nobody is looking. **Everything else lives in
 the discipline document, which is authoritative wherever the two differ.**
 
+## Session start & arc close (Phase 0 — mechanical gates)
+
+**בכל פתיחת session** (המלא: `docs/process/checklists/session-start.md`): ‏(1) discipline §10→§3 ·
+(2) ה-Phase הפעיל ב-`docs/ROADMAP-2026-07-30.md` + ‏`docs/STATUS-BOARD.md` · (3) `node scripts/check-meta.mjs`
+— אדום מטופל לפני עבודה · (4) serena לסימבולי, graphify למסמכים/יחסים, grep=fallback מוצהר ·
+(5) §10.5a: סדרתי; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/GPU.
+**בכל סגירת קשת/Phase:** ‏`docs/process/checklists/arc-close.md` — לקחים→§11, הפקדות, גרף, לוח+לדג'ר,
+check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנת את `docs/STATUS-BOARD.md`** (H10; מוצג באבני-דרך — H10a).
+
 ## Where to find what — `docs/process/development-discipline.md`
 
 | § | Contents |
 |---|---|
 | 1 | The 14 superpowers skills and the moment each becomes **mandatory** |
 | 2 | The pipeline: brainstorm → spec → **owner approves** → plan → subagent-driven dev → review → finish |
-| **3** | **The 12-point DoD gate** — inlined below |
+| **3** | **The 12-point DoD gate** — inlined below (DoD-12 per H7: task ×1, release ×2) |
+| 13–15 | Operating Model (Main/subagent + brief contract) · **H8 full-landing** · H9–H12 (summary table, STATUS-BOARD, CAPABILITIES, /status) |
 | **4** | **The Waiver Gate** — inlined below |
 | 5 | Debugging protocol + the **3-fix rule** |
 | 6 | Failure-mode → gate map (every past failure and the gate that now catches it) |
