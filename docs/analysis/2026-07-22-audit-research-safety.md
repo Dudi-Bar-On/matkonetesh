@@ -10,7 +10,11 @@ analysis documents' own findings — those documents were written 2026-07-21 and
 findings from these exact documents. Verification = grep/read of `app.js`/`data.py`/`app.css` + running the
 relevant Playwright spec files live (not just reading test source).
 
----
+> **REFUTED — do not reopen (2026-07-30, Recovery Landing):** the **S3/S4** finding below ("0 of 177 items
+> carry a citation"; `grep -c '\bsrc\b' data.py` = 0) was **refuted by the 2026-07-22 sweep**: the 279
+> citation blocks live in **`sources.py`** and are merged into the data **at build time** — a grep of
+> `data.py` alone shows none by design (see CLAUDE.md "Safety values trace to primary sources" and
+> ULTIMATE §4). The order-effect data path (S4) later shipped as `order_svsmoke` (v264–265).
 
 ## SAFETY — harshest scrutiny, ADVISORY vs ENFORCED called out explicitly
 

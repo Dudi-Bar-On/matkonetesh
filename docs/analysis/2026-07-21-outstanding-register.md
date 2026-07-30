@@ -6,6 +6,12 @@
 
 Legend: **DONE** — implemented + has a behavioural test. **PARTIAL** — some of the requirement exists; the rest is named. **NOT DONE** — absent, or present-but-unread (computed-and-unread counts as NOT DONE per the project's own process rule).
 
+> **STALE-FLAG (2026-07-30, Recovery Landing):** the §0/§C claim **"`maxC` is never read" is out of date**
+> — `deviceCanReach` (`app.js:3961+`, temp-ceiling conflict) now reads it; verified live 30.7. Do not
+> reopen the maxC capability-gate item from this register. (Other still-live remnants of this register were
+> recovered as R-rows in `docs/ROADMAP-2026-07-30.md` §5a — see R-6 plan-depth and R-11 device-visualization
+> polish.)
+
 ---
 
 ## 0. SAFETY-bearing items (read this section first)

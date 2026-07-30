@@ -6,7 +6,7 @@ Synthesis of a 3-lens analyst panel (implementation auditor · product/monetizat
 
 ## TL;DR — the one-line strategy
 
-> Be the AI pitmaster that **stands watch over your cook and guards your cure** — *free & offline* for the vetted data, *paid & turnkey* for the confidence — and own it in **Hebrew first** before anyone notices the category exists.
+> Be the AI pitmaster that **stands watch over your cook and guards your cure** — *free* for the vetted data, *paid & turnkey* for the confidence — and own it in **Hebrew first** before anyone notices the category exists. *(Originally "free & offline" — the offline framing is stale: the product is **online-first with an AI key** per the owner's 2026-07-22 ruling; corrected 2026-07-30.)*
 
 Three moves get us there, in order:
 1. **Make the AI provably safe & trustworthy** (prerequisite to charging for it, and the moat).
@@ -93,13 +93,13 @@ Cookout Orchestrator (choreograph the whole day on 1 smoker + 1 grill) · Conver
 
 ## PART D — Monetization / going business
 
-**The central decision — BYOK vs Managed AI.** Today AI needs the user's own Gemini key: great privacy, but a **hard ceiling** — 95% of serious hobbyists won't create and paste an API key. **Recommendation: keep BYOK free forever, add a Managed ("turnkey") AI tier as the paid product.** Resolve the offline-first principle honestly: the app stays fully functional offline (data, calculators, timers, multi-event, journal, BYOK-AI all work with no network); Managed AI is an **opt-in online convenience** — a thin stateless proxy (a Cloudflare Worker fits the existing deploy) that injects our key, meters usage, and enforces the same grounding/validation. "Managed AI goes through our server; BYOK/offline stays private on your device" — that transparency is itself a trust asset.
+**The central decision — BYOK vs Managed AI.** Today AI needs the user's own Gemini key: great privacy, but a **hard ceiling** — 95% of serious hobbyists won't create and paste an API key. **Recommendation: keep BYOK free forever, add a Managed ("turnkey") AI tier as the paid product.** *(Stale premise corrected 2026-07-30: the paragraph originally leaned on "the app stays fully functional offline / offline-first" — that principle was superseded by the owner's 2026-07-22 ruling: the product is **online-first with an AI key**. The tier logic stands on its own without it.)* Managed AI is an **opt-in convenience** — a thin stateless proxy (a Cloudflare Worker fits the existing deploy) that injects our key, meters usage, and enforces the same grounding/validation. "Managed AI goes through our server; BYOK stays private on your device" — that transparency is itself a trust asset.
 
 | Tier | Contents | Price |
 |---|---|---|
 | **Free** — win the category on love | Full source-cited catalog, all calculators, timers, multi-event, journal, adaptive home, glossary/sources — **+ BYOK AI (all AI features free with your own key)** | ₪0 |
 | **Pit Pass** (subscription) | **Managed AI** (no key) · Live Copilot + voice · Photo analysis · Charcuterie Guardian · Personal Coach · **cloud sync/backup** (journal+projects, currently local-only) | ~**₪199–249/yr** (~$49–59; anchor just above AmazingRibs' $34.95) |
-| **Pro Tools** (one-time) | Offline/compute-free power features: advanced multi-event orchestration UI, full charcuterie calculator suite, pro export/print, extra themes — for the sub-averse | ~$29–39 |
+| **Pro Tools** (one-time) | Local/compute-free power features: advanced multi-event orchestration UI, full charcuterie calculator suite, pro export/print, extra themes — for the sub-averse | ~$29–39 |
 
 **Willingness-to-pay, ranked:** (1) turnkey AI without the key hassle · (2) rescue-my-cook confidence · (3) food-safety trust · (4) don't-lose-my-history (cloud sync) · (5) get-better-over-time (coach). **Annual is the hero price** (BBQ is seasonal). **B2B later:** Instructor Mode (class teachers, per-seat), Catering Mode (scale to 100+ covers), **white-label/OEM** (license the copilot+cited-data brain to grill/probe brands — the biggest long-term lever), ethical affiliate (cuts/wood/rubs/cure-salts/probes, kept clearly separate from the safety layer), giftable annual passes.
 

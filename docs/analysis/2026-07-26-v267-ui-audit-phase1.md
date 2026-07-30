@@ -1,5 +1,13 @@
 # v267 real-UI audit — Phase 1 findings (2026-07-26)
 
+> **STATUS (2026-07-30, Recovery Landing): findings CLOSED by the v268–v277 arc** — the translation drift
+> (~1,300 strings unified onto one translation path, ~740 data values translated, Guards A/B/C in the
+> build), the smoker-lookup "not found" (a token-ceiling bug, fixed v269 + the 8192-token policy), and the
+> E2/E3 rendering findings all closed across v268–277 with the 27.7 gates. **One unverified remnant:** the
+> `ס״מ²`/`ל׳` unit glyphs in non-Hebrew languages — probably closed by the v269 data-values pass but never
+> re-verified; a named sample check now rides the Language Thread's per-language §10.19 verification
+> (`docs/ROADMAP-2026-07-30.md`, Language Thread).
+
 Owner halted advancement: v267 was verified shallowly (build-present ≠ works in the UI). This is the
 real-render-path audit that should have preceded the "ready to test" claim. Method per the project's own
 skills: **verify-against-the-runtime-path** (measure at the consumer by *running* the feature) and

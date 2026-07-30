@@ -89,7 +89,7 @@ A task is **not done** until every box is checked with evidence pasted in. This 
 
 ### Per-task DoD checklist
 
-- [ ] **1 · Spec requirement traced.** The exact spec line(s) this task satisfies, quoted. If none → the task should not exist.
+- [ ] **1 · Spec requirement traced.** The exact spec line(s) this task satisfies, quoted. If none → the task should not exist. **For a recovered item (status ⚠️R in the ROADMAP Recovery Ledger), this line IS the Recovery Relevance Gate (§16/H13):** the trace starts from the item's source pointer; the relevance verdict (בצע/בטל) is a recommendation **decided together with the owner** (a §10.8 mandatory checkpoint) and recorded BEFORE any further work; a בצע verdict names the current-code evidence it was based on.
 - [ ] **2 · RED witnessed.** Test written first, run, and *observed failing for the intended reason*. Output pasted. A test that passed on first run is void — rewrite it.
 - [ ] **3 · GREEN.** Full test command run fresh, output pasted, exit code shown.
 - [ ] **4 · Behavioural assertion.** Every new test asserts an **observable effect** — rendered output, stored state, or a value a real consumer reads. *Asserting a computed field that nothing consumes is not a test.*
@@ -170,6 +170,11 @@ Each documented failure from the analysis, and the specific gate that now catche
   of ours does this expose?") and a NUMBERS pass (auditing its arithmetic/claims). One verdict = an
   incomplete review. Born from the v5.0 first panel, which audited the messenger's illustrative numbers and
   missed its central mechanism — the owner forced a re-run (`a2c8535`, "owner was right, we have real gaps").
+- **A regression test is never narrowed to fit the implementation (2026-07-30, coverage-audit S-3):** a test
+  written from a plan/spec scenario keeps asserting THAT scenario; rewriting it post-ship to assert what the
+  code happens to do is a silent DoD-narrowing (§4 Waiver Gate territory) and a review-blocking finding.
+  Born from the i18n-foundation test that was quietly rewritten after shipping to stop checking the planned
+  scenario (coverage audit 2026-07-30, `_agent-summaries.md` controller note on W1-B).
 
 ---
 
@@ -1053,4 +1058,38 @@ plus check-meta's routine runs (session start, before docs push, before any `rel
   H10c) as part of the task-close routine, alongside the board. Future base for help/marketing docs.
 - **H12 — the `/status` command** (`.claude/commands/status.md`): `/status` = the board ·
   `/status caps` = capabilities · `/status full` = both + the last task's H9 table.
+
+## 16. H13 — שער רלוונטיות לפריט משוחזר (Recovery Relevance Gate; owner ruling, 2026-07-30)
+
+Born from the 2026-07-30 recovery audit (two coverage-audit agents over all of `docs/analysis/`): 25 items
+the plan had lost were recovered into the ROADMAP as ledger rows `R-1..R-25`. The owner's ruling: recover
+everything, **but every recovered item may be stale** — done since, or invalidated by later
+architecture/decisions. Therefore:
+
+- **A recovered item (status ⚠️R "נדרש-אימות") is a *lead*, not a commitment.** Its ledger row carries a
+  **source pointer** (doc + section) so its original context can be reconstructed.
+- **On pickup — BEFORE any implementation work — the Relevance Gate runs, in order (owner flow, verbatim
+  intent, 2026-07-30):**
+  - **(a) Reconstruct & check — ALL of it first.** Read the source pointer and rebuild the original context
+    until the requirement is fully understood; then check what already exists NOW — in the current code
+    (serena for symbols, the live app for behavior) and in the current architecture/decision register. The
+    original evidence is history, not proof: what was true on the audit date may have been fixed,
+    superseded, or redesigned since.
+  - **(b) Form a RECOMMENDATION** — handle (בצע) or delete (בטל) — with the evidence that supports it.
+  - **(c) ASK THE OWNER — a mandatory checkpoint, never skipped.** Present the recommendation with its
+    evidence and **decide together**. This is one of the §10.8 "genuinely important decisions" where
+    interrupting the owner is **required, not optional** — the verdict on a recovered item is NOT the
+    developer's to make alone.
+  - **(d) Update the document** — the ledger row records the joint decision.
+  - **(e) Execute or cancel accordingly:**
+    - **בצע** — the item proceeds as a normal task (full DoD, normal pipeline);
+    - **בטל** — the ledger row is marked **`R-cancelled`** with the decision + a one-line reason.
+      **The row is never deleted** — a cancel is recorded, never silently dropped.
+- **The gate (through the joint verdict) is part of DoD line 1 (spec-trace)** — see §3. A recovered task
+  whose report has no recorded owner-approved verdict fails the DoD gate.
+- H13 does not weaken H8: an ⚠️R row still has exactly one landing (named phase / defined trigger /
+  registered discussion task). H13 only adds the validation step at pickup time.
+
+Recovery Ledger location: `docs/ROADMAP-2026-07-30.md` §5a. Task cards for recovered items
+(`docs/ROADMAP-task-cards.md`) name the Relevance Gate as their first requirement.
 

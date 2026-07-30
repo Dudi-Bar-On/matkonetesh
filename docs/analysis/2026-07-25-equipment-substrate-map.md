@@ -19,7 +19,12 @@ some 25 commits between 2026-07-21 and 2026-07-24, confirmed live in the code re
 important — the Waiver Gate exists because of it — but its *technical* referent is closed. This map treats
 L1 as a closed-and-superseded case study in §5, not as a live gap.
 
----
+> **STALE-FLAGS (2026-07-30, Recovery Landing — this map aged the same week it was written):**
+> - **§1.1 / D3 (two cooking-area fields): CLOSED** — verified CLOSED in v263 by BIG-STATUS (27.7),
+>   "no `#eqvArea` residue". Do not reopen from this map.
+> - **§0 "a persisted, queryable device-reservation ledger … is genuinely absent": BUILT** — the E2
+>   allocation ledger (`mk-eqm-ledger`, free/partial/busy, allocate/release) shipped and its gate closed
+>   27.7 (816/816). Read §0's "absent" list against the E2/E3 close-out, not literally.
 
 ## 0. The verdict
 

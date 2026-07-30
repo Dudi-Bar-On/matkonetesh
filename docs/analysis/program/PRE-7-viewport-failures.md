@@ -55,6 +55,10 @@ width those specs were written against. Nothing depended on a desktop-only eleme
 touched. It then **passed** in the 390 × 844 full run, and Task 1's suite run recorded 413/413 at Desktop
 Chrome. So: intermittent, and independent of viewport.
 
+> **RESOLVED (2026-07-30, Recovery Landing):** the P1 copilot W2-P3 flake was overtaken by the warm-page
+> arc (v252–v260) — the certified suite runs clean (7/7 clean certification runs, workers:20). No open
+> action remains from this register.
+
 **What the failure state proves** (from Playwright's own snapshot,
 `test-results/copilot-W2-P3-probe-check--4ec14-.../error-context.md`): the Copilot panel was open and
 correct, but still showed the **"Set target"** input row and the pace note *"Set a target internal temp to

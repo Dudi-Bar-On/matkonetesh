@@ -7,6 +7,17 @@ assistant can make").
 These were found by adversarial review *during* implementation, not by the original 2026-07-22 sweep, so
 they sit outside the 141. Each is recorded with its reproduction so nobody has to rediscover it.
 
+> **STATUS UPDATE (2026-07-30, Recovery Landing):**
+> - **G-T2 (unit invention) · G-T3 (chemical-term swap) · the ½-fraction blind spot — CLOSED in the
+>   translation harness**, a closure no base document had recorded until now: `scratch/translate-eval/gates.mjs`
+>   implements `unitLiteralCheck`, `safetyLexiconCheck` (nitrite/nitrate/pink-salt) and `foldFractions`,
+>   enforced by `bulk.mjs gateCheck` on every bulk run. **Caveat:** the harness lives under `scratch/`
+>   (untracked); adopting it as a managed, standing contract is now a named line in the ROADMAP's
+>   Language Thread.
+> - **G-T1 (content-fidelity/allergen gate) is still OPEN** — recovered as **R-1** 🔴 in
+>   `docs/ROADMAP-2026-07-30.md` §5a, a blocking entry condition on the Language Thread.
+> - **G-A1/G-A2 (spoken-marker redesign) are still OPEN** — recovered as **R-2/R-3** (Phase 1) in §5a.
+
 ---
 
 ## G-A1 · The spoken guard only inspects what the extractor tokenizes — and the marker claims the whole sentence

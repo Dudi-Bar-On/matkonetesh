@@ -18,6 +18,12 @@ Auditors and anyone about to re-run this exercise → §4 first, then §5.
 > does not exist in `docs/analysis/sweep/`. No knowledge-graph findings are incorporated. This document
 > therefore covers code, specs, the running app, domain science, non-functional properties and business —
 > not a document-graph analysis.
+>
+> **CORRECTION (2026-07-30, Recovery Landing / coverage-audit B, R-1):** the note above is **stale** — the
+> file EXISTS (`docs/analysis/sweep/W1-GRAPH-docs.md`, ~6,400 words, built 22–23.7 in three passes) and its
+> findings were never extracted into this ledger. That omission is the root cause of recovered items
+> **R-24** (claim-granularity re-extract commitment) and **R-25** (document-hygiene findings) — both now
+> landed in `docs/ROADMAP-2026-07-30.md` §5a.
 
 ---
 
