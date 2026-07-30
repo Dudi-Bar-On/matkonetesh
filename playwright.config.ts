@@ -71,10 +71,25 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, serviceWorkers: 'block' },
       testIgnore: '**/service-worker.spec.ts',
     },
-    // Dedicated project so the 2 service-worker tests run with the SW actually enabled
+    // Dedicated project so the service-worker tests run with the SW actually enabled
     // (serviceWorkers:'allow' is Playwright's own default; stated explicitly here for clarity).
+    //
+    // fullyParallel:false is LOAD-BEARING here (2026-07-30, Phase 1 Task 3). These tests each drive a
+    // real SW register/install/activate plus reload + context.setOffline cycles — measurably heavier
+    // than a warm-page test and NOT curable by the loopback fixture (this project deliberately gets no
+    // in-memory routes; its whole point is real HTTP + real SW caching). Measured: one test solo 2.4s,
+    // but 12.5s at just TWO concurrent workers. The file grew from 2 tests to 5, and because Playwright
+    // caps workers at the test count, that silently raised this project's own concurrency from 2-way to
+    // 5-way — which blows the 30s test timeout, and the timeout teardown then closes the page mid-call,
+    // surfacing as "Target page, context or browser has been closed" rather than a plain timeout.
+    // Reproduced in isolation 3/3 at 5-way; 5/5 pass at workers=1 (14.5s) and at 2. With fullyParallel
+    // off, this file's tests share ONE worker sequentially (~15s total) while the chromium project keeps
+    // its certified 20. Evidence: .superpowers/sdd/sw-failure-diagnosis.md.
+    // DO NOT "fix" a failure here by adding retries or raising the timeout — that hides the capacity
+    // signal this setting exists to keep honest (§11a, retries:0).
     {
       name: 'service-worker',
+      fullyParallel: false,
       use: { ...devices['Desktop Chrome'], viewport: { width: 390, height: 844 }, serviceWorkers: 'allow' },
       testMatch: '**/service-worker.spec.ts',
     },
