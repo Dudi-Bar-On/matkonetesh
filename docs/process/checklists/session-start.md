@@ -7,3 +7,5 @@
 3. הרץ `node scripts/check-meta.mjs` — טפל בכל אדום לפני עבודה.
 4. עבודה סימבולית → serena; שאלות מסמכים/יחסים → graphify; grep = fallback מוצהר.
 5. תקרת מקבילות (§10.5a): סדרתי כברירת מחדל; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/build/GPU.
+6. Kill-on-replace: לפני החלפה/נטישה של subagent — ‏`TaskStop` ל-id הישן תחילה; אם כבר מת —
+   רושמים אותו כ-REPLACED, וכל notification מאוחר ממנו מטופל כרעש.

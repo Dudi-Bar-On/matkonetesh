@@ -656,6 +656,14 @@ every generated plan BEFORE review (per-task fenced-block count > 0, truncation-
 §2); and large documents are NEVER assembled by LLM concatenation — assemble mechanically (`cat`, file ops),
 then run the completeness gate on the result.
 
+**L28 · 2026-07-30 · שחיקת כללי-כלים תחת קונטקסט ארוך — הבעלים תפס נטישה של serena/graphify לטובת grep ("אם אתה לא עושה — סימן שנמחקו לך הכללים").**
+הכלל, מעכשיו קבוע:
+1. כל עבודת קוד — קריאה ועריכה — דרך **serena** (find_symbol / find_referencing_symbols / get_symbols_overview / replace_symbol_body). לא רק חיפושים — העבודה עצמה.
+2. כל שאלת מסמכים/קשרים/provenance — **שאילתת graphify** (`query`/`path`/`explain`) לפני grep; grep = fallback מוצהר בלבד.
+3. **תמיד `graphify --help`** (ו-`initial_instructions` של serena) לפני שימוש — לנצל יכולות במלואן (`graphify watch` ישב ב-help כל הזמן ולא נוצל).
+4. עדכון גרף רציף: `graphify watch` לקוד; docs ברענון `--mode deep` תקופתי, נאכף ע"י `scripts/check-graph-fresh.mjs`.
+5. **מטא-כלל:** אם מזהים שהכללים האלה לא מיושמים — זה עצמו האות שהקונטקסט נשחק; עוצרים ומריצים מחדש את `docs/process/checklists/session-start.md`, לא ממשיכים.
+
 **Adopted wins (2026-07-23) — patterns that worked, keep using them:** (1) **Baseline-first migration +
 a real preflight**: the eval baseline caught gemini-3.6's api-400 in minutes (v259→v260), and the
 ListModels+one-real-call-per-role preflight (through the app's own payload builders) is what proved the
@@ -969,6 +977,12 @@ updated, because a silent stale graph is the failure this rule exists to prevent
 `SYNC_ALLOW_STALE=1`); it also runs inside `node scripts/check-meta.mjs` (session start · release ·
 every Phase gate and arc close). This rule previously relied on remembering — it drifted 53 documents
 behind within five days (audit §10).
+
+**`graphify watch` — the CODE-graph daemon (documented 2026-07-30, per L28).** `graphify watch <path>`
+rebuilds the CODE graph continuously as files change — this is the daemon that answers the owner's
+"עדכון שוטף" instruction for code. It does **not** cover semantic doc extraction: documents still need the
+periodic `--mode deep` refresh above, gated by `scripts/check-graph-fresh.mjs`. Deliberate choice, stated
+explicitly: start it **per work-session on the repo**, not as a system service.
 
 **Honest note on how this rule came to be written properly (2026-07-22).** The rule was added, and then six
 agent reports were committed and pushed WITHOUT ever updating the graph — the owner had to point out that

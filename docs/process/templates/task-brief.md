@@ -13,4 +13,6 @@ GREEN output + exit code, screenshot paths (UI); **ends with the H9 5-row table*
 **(ה) Primary tool:** <serena | graphify | אחר> ; grep = fallback מוצהר בלבד.
 **Concurrency ceiling (§10.5a, quoted):** סדרתי כברירת מחדל; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/build/GPU;
 על 529 — אחד-אחד עם probe קטן תחילה.
+**Kill-on-replace (subagent hygiene):** לפני החלפה/נטישה של subagent — ‏`TaskStop` ל-id הישן **תחילה**;
+אם כבר מת — רושמים את ה-id כ-REPLACED, וכל notification מאוחר ממנו מטופל כרעש.
 **Constraints:** <Global Constraints של התוכנית + גבולות המשימה>
