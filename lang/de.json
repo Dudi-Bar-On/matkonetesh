@@ -2487,5 +2487,8 @@
  "האיזון הרגיל — כל המידע, בלי עומס יתר": "Die übliche Balance — alle Infos, ohne Überladung",
  "הכל גלוי: מספרים מדויקים, כל האפשרויות": "Alles sichtbar: genaue Zahlen, alle Optionen",
  "נמוך ואיטי — 105-110°C, עשן אלון/היקורי": "Niedrig & langsam — 105–110 °C, Eichen-/Hickory-Rauch",
- "טעינת השפה נכשלה — בדוק את החיבור ונסה שוב": "Der Sprachdownload ist fehlgeschlagen — überprüfen Sie Ihre Verbindung und versuchen Sie es erneut"
+ "טעינת השפה נכשלה — בדוק את החיבור ונסה שוב": "Der Sprachdownload ist fehlgeschlagen — überprüfen Sie Ihre Verbindung und versuchen Sie es erneut",
+ "שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.": "Hinweis: Durch das Importieren werden die Daten aus der Datei zusammengeführt – vorhandene Schlüssel werden überschrieben, und alles, was nicht in der Datei enthalten ist, bleibt unverändert. Der KI-Schlüssel und die Zugangsdaten für den zentralen Zugriff sind nicht im Backup enthalten (aus Sicherheitsgründen) – verbinden Sie sie nach dem Wiederherstellen erneut.",
+ "קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב": "Diese Sicherungsdatei wurde mit einer neueren App-Version erstellt — aktualisieren Sie die App und versuchen Sie es erneut.",
+ "פריטים לא-מוכרים דולגו": "unbekannte Einträge übersprungen"
 }

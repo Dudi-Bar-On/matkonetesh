@@ -2488,5 +2488,8 @@
  "האיזון הרגיל — כל המידע, בלי עומס יתר": "L’équilibre habituel — toutes les infos, sans surcharge",
  "הכל גלוי: מספרים מדויקים, כל האפשרויות": "Tout est visible : chiffres précis, toutes les options",
  "נמוך ואיטי — 105-110°C, עשן אלון/היקורי": "Basse et lente — 105–110 °C, fumée de chêne/hickory",
- "טעינת השפה נכשלה — בדוק את החיבור ונסה שוב": "Le téléchargement de la langue a échoué — vérifiez votre connexion et réessayez"
+ "טעינת השפה נכשלה — בדוק את החיבור ונסה שוב": "Le téléchargement de la langue a échoué — vérifiez votre connexion et réessayez",
+ "שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.": "Remarque : la fonction d’importation fusionne les données du fichier ; les clés existantes sont remplacées et tout ce qui ne se trouve pas dans le fichier est conservé. La clé de l’IA et les identifiants d’accès central ne sont pas inclus dans la sauvegarde (pour des raisons de sécurité) ; reconnectez-les après avoir restauré la sauvegarde.",
+ "קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב": "Ce fichier de sauvegarde a été créé avec une version plus récente de l’application — mettez à jour l’application et réessayez.",
+ "פריטים לא-מוכרים דולגו": "éléments non reconnus ignorés"
 }

@@ -7564,12 +7564,13 @@ function syncableKey(k){
 /* ---- backup / restore (export-import) ---- */
 function exportData(){
   const o={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); if(!syncableKey(k)) continue; o[k]=localStorage.getItem(k);}   // N-1/N-4: SYNCABLE allowlist — credentials can never leak by omission again
-  const payload={app:'matkonet',ver:1,exported:new Date().toISOString(),data:o};
+  const payload={app:'matkonet',ver:2,exported:new Date().toISOString(),data:o};   // Dec-D6 (Task 9): explicit payload version — importData refuses an unknown/newer ver rather than partial-importing blind
   const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
   const url=URL.createObjectURL(blob), a=document.createElement('a');
   a.href=url; a.download='matkonet-backup-'+today()+'.json'; document.body.appendChild(a); a.click();
   a.remove(); URL.revokeObjectURL(url);
 }
+const IMPORT_KNOWN_VER=2;   // Dec-D6 (Task 9): the newest payload shape importData understands — see exportData's ver:2
 function importData(file){
   const r=new FileReader();
   r.onload=()=>{
@@ -7577,8 +7578,16 @@ function importData(file){
     const d=(o&&o.data)?o.data:o;
     if(!d||typeof d!=='object'||Array.isArray(d)){ if(typeof toast==='function')toast('❌ הקובץ אינו גיבוי תקין של מתכונת'); return; }
     if(o&&o.app&&o.app!=='matkonet'){ if(typeof toast==='function')toast('❌ הגיבוי שייך לאפליקציה אחרת'); return; }
-    const keys=Object.keys(d); let ok=0, fail=0;
-    keys.forEach(k=>{ try{ localStorage.setItem(k, typeof d[k]==='string'?d[k]:JSON.stringify(d[k])); ok++; }catch(e){ fail++; } });   // Wave C: count per-key failures instead of swallowing them
+    // Dec-D6: refuse a payload version NEWER than this build understands rather than partial-importing
+    // blind — a future ver may carry a shape this code has never seen. ver:1 (pre-Task-9) and an absent
+    // ver both still import: syncableKey() below filters every key regardless of declared version, so
+    // there is no safety reason to reject old/legacy backups — only unknown-newer ones.
+    if(o&&typeof o.ver==='number'&&o.ver>IMPORT_KNOWN_VER){ if(typeof toast==='function')toast('❌ '+L('קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב','This backup was made with a newer app version — update the app and try again')); return; }
+    const keys=Object.keys(d); let ok=0, fail=0, skipped=0;
+    keys.forEach(k=>{
+      if(!syncableKey(k)){ skipped++; return; }   // Dec-D6: import only SYNCABLE keys — a backup (any ver) can never implant credentials or foreign keys, no matter what the file contains
+      try{ localStorage.setItem(k, typeof d[k]==='string'?d[k]:JSON.stringify(d[k])); ok++; }catch(e){ fail++; }   // Wave C: count per-key failures instead of swallowing them
+    });
     // FIX WAVE 2 (2026-07-26, E3 Task 1 re-verification, "Important") — this loop mutates mk-equipment
     // via a dynamic key (k comes from the backup's own key set) — literal-grep-invisible; bump the kit
     // generation explicitly so any already-rendered card's cached ownership verdict (keyed on
@@ -7590,7 +7599,7 @@ function importData(file){
     applyAppearance(); updateFavBadge(); updateCartBadge(); render();
     if(typeof toast==='function'){
       if(fail>0) toast('⚠ '+L('שוחזרו','Restored')+' '+ok+' '+L('מתוך','of')+' '+keys.length+' '+L('פריטים','items')+' — '+fail+' '+L('נכשלו (ייתכן שהאחסון מלא). ייצא-מחדש אחרי פינוי מקום.','failed (storage may be full). Re-export after freeing space.'));
-      else toast('✓ '+L('הנתונים שוחזרו','Data restored')+' ('+ok+' '+L('פריטים','items')+')');
+      else toast('✓ '+L('הנתונים שוחזרו','Data restored')+' ('+ok+' '+L('פריטים','items')+(skipped?(' · '+skipped+' '+L('פריטים לא-מוכרים דולגו','unrecognized items skipped')):'')+')');
     }
   };
   r.onerror=()=>{ if(typeof toast==='function')toast('❌ שגיאה בקריאת הקובץ'); };
@@ -8525,7 +8534,7 @@ function openBackup(){
        <label class="exbtn-lbl" for="bkImp">⬆ ${L('ייבא מקובץ','Import from file')}</label>
        <input type="file" id="bkImp" accept="application/json,.json" hidden>
      </div>
-     <p class="section-sub" style="margin-top:12px">${L('שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI אינו נכלל בגיבוי (אבטחה) — חבר אותו מחדש לאחר שחזור.','Note: import merges the data from the file — existing keys are overwritten, and anything not in the file stays. The AI key isn’t included in the backup (security) — reconnect it after restoring.')}</p>
+     <p class="section-sub" style="margin-top:12px">${L('שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.','Note: import merges the data from the file — existing keys are overwritten, and anything not in the file stays. The AI key and central-access credentials aren’t included in the backup (security) — reconnect them after restoring.')}</p>
      <div id="bkStorage" class="bk-storage" style="margin-top:14px"></div>
      <div style="border-top:1px solid var(--line);margin:18px 0 0;padding-top:16px">
        <div class="kbox k-danger">${L('<b>אזור מסוכן</b> · איפוס-על מוחק את <b>כל</b> הנתונים שלך במכשיר הזה: מועדפים, דירוגים, הערות, יומן, מזווה, רשימת קניות, בחירות מידת-עשייה, תפריט ומתזמן. אין ביטול — כדאי לייצא גיבוי קודם.','<b>Danger zone</b> · a full reset erases <b>all</b> your data on this device: favorites, ratings, notes, journal, pantry, shopping list, doneness choices, menu and scheduler. No undo — best to export a backup first.')}</div>
@@ -8553,7 +8562,20 @@ function wipeAllData(){
   }
   const snapshot={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); snapshot[k]=localStorage.getItem(k);}
   const keys=Object.keys(snapshot);
-  keys.forEach(k=>{ if(k.startsWith('mk-')||k.startsWith('note:')||k.startsWith('rating:')||k.startsWith('shop:')||k.startsWith('done:')) localStorage.removeItem(k); });
+  // Dec-D6 controller addition (Task 9, 2026-07-27): this used to hand-type its own namespace list
+  // (mk-/note:/rating:/shop:/done:), which had already drifted from SYNCABLE by six namespaces the
+  // Task 8 key-space audit found (xshop:/shopmiss:/wpck:/method:/seas:/burgers:) — a user asking to
+  // "erase everything" silently kept those six categories of their own data. Derive the non-mk
+  // namespace list from SYNCABLE.prefixes (one source of truth, same manifest exportData/importData
+  // use) instead of hand-maintaining a second, divergent copy. `mk-` stays a separate blanket prefix
+  // (unchanged behaviour) — it deliberately ALSO wipes credentials/diagnostics (mk-gemkey,
+  // mk-central-url, mk-central-code, mk-mtcache, mk-sw-fail) that SYNCABLE excludes on purpose for
+  // backup/import; a full local reset is not the same operation as an export, and narrowing it to
+  // SYNCABLE would be a silent, undiscussed change to what "erase everything" erases. `done:` stays a
+  // hand-kept defensive target (vestigial — no confirmed writer, see the SYNCABLE comment above) since
+  // it was never part of the manifest and adding it there would misrepresent it as real user data.
+  const _wipeNonMkPrefixes=SYNCABLE.prefixes.filter(p=>p.indexOf('mk-')!==0);
+  keys.forEach(k=>{ if(k.startsWith('mk-')||_wipeNonMkPrefixes.some(p=>k.indexOf(p)===0)||k.startsWith('done:')) localStorage.removeItem(k); });
   // FIX WAVE 2 (2026-07-26, E3 Task 1 re-verification, "Important") — the 'mk-' prefix above removes
   // mk-equipment via a dynamic key (k) — literal-grep-invisible; bump the kit generation explicitly so
   // eqmValidity's gen-keyed cache doesn't keep serving the pre-wipe verdict after render() below.
