@@ -693,10 +693,19 @@ self.addEventListener('fetch',function(e){
   var req=e.request; if(req.method!=='GET') return;
   var url; try{ url=new URL(req.url); }catch(_){ return; }
   if(url.origin!==location.origin) return;                 // leave cross-origin (fonts/AI) alone
+  // Task 3 (A1c) fix: the cache write used to be fire-and-forget (caches.open().then(c=>c.put(...)) with
+  // its promise discarded) — a real race a Playwright test exposed: r.clone() is cheap but c.put() must
+  // still finish READING the response body, and nothing told the browser to keep this fetch event (and
+  // the worker) alive until that finished. Under load the worker could be recycled before the write
+  // landed, so a fetch moments later (e.g. the very next line of a test, or the phone going offline
+  // right after the first online fetch) found no cache entry — same-origin GETs, lang-<code>.json
+  // included, would then miss the runtime cache intermittently instead of reliably. e.waitUntil() here
+  // extends the event's lifetime for the write WITHOUT delaying respondWith's own resolution (the page
+  // still gets its response immediately) — the standard fix for this exact SW pattern.
   if(req.mode==='navigate' || url.pathname==='/' || url.pathname.slice(-11)==='/index.html'){
-    e.respondWith(fetch(req).then(function(r){ var cp=r.clone(); caches.open(CACHE).then(function(c){c.put(req,cp);}); return r; }).catch(function(){ return caches.match(req).then(function(m){return m||caches.match('index.html');}); }));
+    e.respondWith(fetch(req).then(function(r){ var cp=r.clone(); e.waitUntil(caches.open(CACHE).then(function(c){return c.put(req,cp);})); return r; }).catch(function(){ return caches.match(req).then(function(m){return m||caches.match('index.html');}); }));
   } else {
-    e.respondWith(caches.match(req).then(function(m){ return m||fetch(req).then(function(r){ var cp=r.clone(); caches.open(CACHE).then(function(c){c.put(req,cp);}); return r; }); }));
+    e.respondWith(caches.match(req).then(function(m){ return m||fetch(req).then(function(r){ var cp=r.clone(); e.waitUntil(caches.open(CACHE).then(function(c){return c.put(req,cp);})); return r; }); }));
   }
 });
 // Wave A: background-resilient alarms. The page shows notifications via registration.showNotification

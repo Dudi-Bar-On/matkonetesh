@@ -8669,6 +8669,17 @@ const THEME_SCHEME={cream:'light',charcoal:'dark',walnut:'light',slate:'light'};
 const I18N_META = __I18N_META__;   // {code:{name,dir}} — Dec-A1: only META ships in the bundle
 const I18N_DICTS = {};             // runtime cache: code -> dict, filled by loadLangDict (Task 2)
 const I18N_LANGS = (function(){ const o={he:'עברית'}; try{ Object.keys(I18N_META).forEach(function(k){ o[k]=(I18N_META[k]||{}).name||k; }); }catch(e){} return o; })();
+// I-1 (Task 3, controller-anchored review finding): true only once loadLangDict has actually populated
+// I18N_DICTS for `l` (loadLangDict always sets the key on success, even to {} — hasOwnProperty tells
+// "not loaded" apart from "loaded, genuinely empty"). 'he' needs no dict; 'en' needs none either — L()'s
+// 'en' branch returns its inline arg directly (zero-regression by design, see itemName below). Every
+// OTHER language must not render through L()/t()/itemName()/applyLang() until its dict has loaded —
+// otherwise those functions' English-literal FALLBACK (meant for a genuine per-key dict miss) fires for
+// EVERY key, silently painting an all-English UI while dir/lang could independently end up Hebrew (or
+// vice-versa): confirmed live via a diagnostic offline boot with mk-lang='fr' and no cached dict — dir
+// flipped to 'ltr' while the DOM-generated home greeting ("cRefreshHome" → L()) rendered "Good evening"
+// in English, incoherent either way.
+function _langDictReady(l){ return l==='he' || l==='en' || I18N_DICTS.hasOwnProperty(l); }
 // Dec-A1: fetch a language's dictionary on demand; cache per session. he needs no dict.
 function loadLangDict(code){
   if(code==='he') return Promise.resolve(null);
@@ -8707,7 +8718,24 @@ window.__mkLangReady = (function(){
   var l = getLang();
   if(l==='he') return Promise.resolve();
   return loadLangDict(l).then(function(){ try{ applyLang(); }catch(e){} })
-    .catch(function(e){ try{ console.warn('[i18n] boot dict load failed', e); }catch(_){} });
+    .catch(function(e){
+      // I-1 (Task 3, controller-anchored review finding): the stored language's dict could not be
+      // obtained at boot (offline + never cached, a 404, or any other fetch failure). Before this fix
+      // the failure was silent (console.warn only) and the SYNCHRONOUS boot-time applyLang() call further
+      // down (which ran before this promise even settled, on an unpopulated I18N_DICTS[l]) had already
+      // flipped dir/lang/class to the target language while every string stayed Hebrew — or, since
+      // L()/t()/itemName() don't gate on dict-readiness either, dynamic chrome could ALSO leak its
+      // hardcoded English fallback text, an independent incoherence. Recover on BOTH fronts: re-run
+      // applyLang() — now that _langDictReady(l) is false (I18N_DICTS never got the key), it renders 'he'
+      // throughout, restoring dir/lang/class to match the still-Hebrew text — and surface a Hebrew notice.
+      // The message is a LITERAL Hebrew string, not L(): getLang()/getDict() are exactly the unreliable
+      // machinery that just failed, so toast()'s own dict-translate lookup would only find the same
+      // missing dict and pass the literal argument through unchanged anyway — stating it directly here
+      // is clearer and doesn't depend on that lookup succeeding.
+      try{ console.warn('[i18n] boot dict load failed', e); }catch(_){}
+      try{ applyLang(); }catch(_){}
+      try{ if(typeof toast==='function') toast('⚠ '+'טעינת השפה נכשלה — בדוק את החיבור ונסה שוב'); }catch(_){}   // plain concat (not a single literal) — reuses the identical already-KNOWN/translated Hebrew sentence from the setLang() catch above instead of minting a brand-new untranslated extractor key
+    });
 })();
 function getDict(){ return (getLang()==='he')?null:(I18N_DICTS[getLang()]||{}); }
 // v268 T6 (spec §11/I-D — the ONE names scheme): recipe/category/cut/make display names live in a dict
@@ -8718,12 +8746,14 @@ function getDict(){ return (getLang()==='he')?null:(I18N_DICTS[getLang()]||{}); 
 function itemName(m){ if(!m) return '';
   const l=getLang(); if(l==='he') return m.heb||m.eng||'';
   if(l==='en') return m.eng||m.heb||'';                                          // en: shipped English, zero-regression
+  if(!_langDictReady(l)) return m.heb||m.eng||'';   // I-1: dict not loaded yet — Hebrew, not the m.eng fallback (would leak English into an otherwise-Hebrew boot)
   const nm=getDict().__names__||{}; return nm[m.heb] || m.eng || m.heb || '';    // fr/de/es/it: __names__, fallback m.eng (never blank)
 }
 // v268 T4 (spec §2 mech-4/§3.3 M-3): additive 3rd arg `ctx` — mirrors L's homograph disambiguator, so
 // a table-scoped nested-leaf lookup (e.g. doneLabel's DONE_SCALES) can key the dict by `heb+'␟'+ctx`
 // without colliding with an unrelated bare-keyed sense for the same Hebrew text elsewhere.
-function t(heb, fallback, ctx){ const d=getDict(); const key=ctx?(heb+'␟'+ctx):heb; if(d && d[key]!=null) return d[key]; return (fallback!=null?fallback:heb); }
+function t(heb, fallback, ctx){ if(!_langDictReady(getLang())) return heb;   // I-1: mirrors L()'s readiness guard — same leak (fallback is normally English) for the same not-yet-loaded-dict reason
+  const d=getDict(); const key=ctx?(heb+'␟'+ctx):heb; if(d && d[key]!=null) return d[key]; return (fallback!=null?fallback:heb); }
 // Generation-time i18n for dynamically-built recipe prose (steps/notes/tips): the Hebrew string is
 // authored inline with its English counterpart; the active language picks which one is emitted. Falls
 // back to `en` for any non-Hebrew language (French/German/Spanish get English until localized, and the
@@ -8737,6 +8767,7 @@ function t(heb, fallback, ctx){ const d=getDict(); const key=ctx?(heb+'␟'+ctx)
 function L(he, en, ctx){
   const l=getLang();
   if(l==='he') return he;
+  if(!_langDictReady(l)) return he;   // I-1: dict not loaded yet for this non-en language — Hebrew source, not the `en` fallback (the fallback exists for a genuine per-key dict MISS, not a wholesale not-yet-loaded dict; without this every L() call renders English the instant a stored language's dict fails to load)
   const key=ctx?(he+'␟'+ctx):he;
   if(l==='en'){ if(window.__i18nTrace) __i18nTrace.push({key, en, lang:'en', hit: !!(getDict()&&getDict()[key])}); return en!=null?en:he; }               // shipped English: inline arg wins → zero regression
   const d=getDict();                                 // fr/de/es: prefer the per-lang dict, keyed by the Hebrew source[␟ctx]
@@ -8776,7 +8807,15 @@ function restoreHe(root){ const r=root||document.body; if(!r) return;
 // must re-run the generator rather than rely on tnode/hydrateMT.
 let _mkMethodRepaint=null;
 function syncHomeLang(){ try{ const l=getLang(); const f=$("#cHomeLangFlag"); if(f) f.textContent=langFlag(l); const nm=$("#cHomeLangName"); if(nm) nm.textContent=(I18N_LANGS[l]||l); }catch(e){} }
-function applyLang(){ const l=getLang(); const d=(l==='he')?null:(I18N_DICTS[l]||{}); const dir=d?((d.__meta__||{}).dir||'ltr'):'rtl';
+function applyLang(){
+  const lRaw=getLang();
+  // I-1 (Task 3, controller-anchored review finding): render as Hebrew whenever the stored language's
+  // dict hasn't loaded (or failed to) — otherwise dir/lang/class flip to the target language while the
+  // dict-backed text (tnode/applyI18n, guarded above/below) — plus, previously, L()/t()/itemName() text
+  // (now fixed at the source via _langDictReady) — stays or falls back to Hebrew/English, an incoherent
+  // mix either way. hasOwnProperty distinguishes "not loaded" from "loaded, dict happens to be {}".
+  const l=_langDictReady(lRaw)?lRaw:'he';
+  const d=(l==='he')?null:(I18N_DICTS[l]||{}); const dir=d?((d.__meta__||{}).dir||'ltr'):'rtl';
   try{ const el=document.documentElement; el.lang=l; el.dir=dir; el.classList.toggle('lang-en', l!=='he'); }catch(e){}
   try{ syncHomeLang(); }catch(e){}
   try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){}   // home greeting + cooking/resume banners are painted by cRefreshHome (L()/getLang-based), not tnode — repaint them so a language switch updates them without a refresh
