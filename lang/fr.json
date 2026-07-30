@@ -2491,5 +2491,6 @@
  "טעינת השפה נכשלה — בדוק את החיבור ונסה שוב": "Le téléchargement de la langue a échoué — vérifiez votre connexion et réessayez",
  "שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.": "Remarque : la fonction d’importation fusionne les données du fichier ; les clés existantes sont remplacées et tout ce qui ne se trouve pas dans le fichier est conservé. La clé de l’IA et les identifiants d’accès central ne sont pas inclus dans la sauvegarde (pour des raisons de sécurité) ; reconnectez-les après avoir restauré la sauvegarde.",
  "קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב": "Ce fichier de sauvegarde a été créé avec une version plus récente de l’application — mettez à jour l’application et réessayez.",
- "פריטים לא-מוכרים דולגו": "éléments non reconnus ignorés"
+ "פריטים לא-מוכרים דולגו": "éléments non reconnus ignorés",
+ "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Échec de l'enregistrement des mises à jour en arrière-plan — l'application fonctionne toujours, mais les mises à jour automatiques de version n'arriveront pas"
 }

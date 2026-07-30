@@ -15,6 +15,25 @@ test.beforeEach(async ({ isolatedPage: page }) => {
   });
 });
 
+// B25 (Phase 1, Task 11): a failed SW registration used to be swallowed by an empty .catch(function(){}).
+// This asserts the replacement records the failure and reports it — never silent.
+test('a failed sw.js registration surfaces a toast and records mk-sw-fail', async ({ isolatedPage: page }) => {
+  // context().route, not page.route: the sw.js fetch is the browser's OWN registration request (not a
+  // page-attributed navigation/subresource), so only a context-level route observes/intercepts it
+  // (confirmed via a throwaway diagnostic: page.route never fired for this URL; context.route did).
+  await page.context().route('**/sw.js', (r) => r.abort());
+  const errors: string[] = [];
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  try {
+    await page.goto('/index.html');
+    await expect(page.locator('.toast, [class*="toast"]').first()).toBeVisible({ timeout: 15000 });
+    await expect.poll(() => page.evaluate(() => localStorage.getItem('mk-sw-fail'))).not.toBeNull();
+    expect(errors.some((e) => e.includes('[mk-sw]'))).toBe(true);
+  } finally {
+    await page.context().unroute('**/sw.js');
+  }
+});
+
 test('the app registers a service worker on http://localhost via its own gate, and it activates', async ({ isolatedPage: page }) => {
   await page.goto('/index.html');
 

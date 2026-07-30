@@ -1537,6 +1537,7 @@
   "הבישול הפעיל נעצר": "Active cook stopped",
   "גרסה חדשה זמינה": "A new version is available",
   "רענן עכשיו": "Refresh now",
+  "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Background update registration failed — the app still works, but automatic version updates will not arrive",
   "__names__": {
     "🥩 בשר עיקרי": "🥩 Main meat",
     "🌭 נקניקיות / טחון": "🌭 Sausages / ground",

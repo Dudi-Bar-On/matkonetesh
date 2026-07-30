@@ -2490,5 +2490,6 @@
  "טעינת השפה נכשלה — בדוק את החיבור ונסה שוב": "La descarga del idioma falló — verifica tu conexión e inténtalo de nuevo",
  "שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.": "Nota: la función de importar fusiona los datos del archivo; las claves existentes se sobrescriben y todo lo que no esté en el archivo permanece intacto. La clave de IA y las credenciales de acceso central no están incluidas en la copia de seguridad (por motivos de seguridad); vuelva a conectarlas después de restaurar.",
  "קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב": "Este archivo de copia de seguridad se creó con una versión más reciente de la aplicación — actualice la aplicación e inténtelo de nuevo.",
- "פריטים לא-מוכרים דולגו": "elementos no reconocidos omitidos"
+ "פריטים לא-מוכרים דולגו": "elementos no reconocidos omitidos",
+ "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Error al registrar las actualizaciones en segundo plano — la app sigue funcionando, pero las actualizaciones automáticas de versión no llegarán"
 }

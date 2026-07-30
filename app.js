@@ -11712,6 +11712,10 @@ if('serviceWorker' in navigator && self.isSecureContext){   // was location.prot
       const _swPoke=function(){ try{ reg.update(); }catch(e){} };
       _swPoke();
       document.addEventListener('visibilitychange',function(){ if(document.visibilityState==='visible') _swPoke(); });
-    }).catch(function(){});
+    }).catch(function(err){   // B25: a swallowed registration failure hid a dead update channel (v255-class incidents)
+      try{ console.error('[mk-sw] service-worker registration failed', err); }catch(e){}
+      try{ store.set('mk-sw-fail', String((err&&err.message)||err)); }catch(e){}
+      try{ if(typeof toast==='function') toast('⚠ '+L('רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו','Background update registration failed — the app still works, but automatic version updates will not arrive')); }catch(e){}
+    });
   });
 }

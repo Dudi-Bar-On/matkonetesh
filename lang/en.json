@@ -2490,5 +2490,6 @@
  "טעינת השפה נכשלה — בדוק את החיבור ונסה שוב": "Language download failed — check your connection and try again",
  "שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.": "Note: import merges the data from the file — existing keys are overwritten, and anything not in the file stays. The AI key and central-access credentials aren’t included in the backup (security) — reconnect them after restoring.",
  "קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב": "This backup was made with a newer app version — update the app and try again",
- "פריטים לא-מוכרים דולגו": "unrecognized items skipped"
+ "פריטים לא-מוכרים דולגו": "unrecognized items skipped",
+ "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Background update registration failed — the app still works, but automatic version updates will not arrive"
 }
