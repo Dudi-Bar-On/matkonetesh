@@ -28,6 +28,7 @@ check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנ
 | 2 | The pipeline: brainstorm → spec → **owner approves** → plan → subagent-driven dev → review → finish |
 | **3** | **The 12-point DoD gate** — inlined below (DoD-12 per H7: task ×1, release ×2) |
 | 13–15 | Operating Model (Main/subagent + brief contract) · **H8 full-landing** · H9–H12 (summary table, STATUS-BOARD, CAPABILITIES, /status) |
+| 16–17 | **H13** שער רלוונטיות לפריט משוחזר (⚠️R: בירור → המלצה → **החלטת בעלים** → עדכון → בצע/בטל) · **H14** דו"ח UX לכל גרסה |
 | **4** | **The Waiver Gate** — inlined below |
 | 5 | Debugging protocol + the **3-fix rule** |
 | 6 | Failure-mode → gate map (every past failure and the gate that now catches it) |
