@@ -8671,15 +8671,22 @@ const I18N_DICTS = {};             // runtime cache: code -> dict, filled by loa
 const I18N_LANGS = (function(){ const o={he:'עברית'}; try{ Object.keys(I18N_META).forEach(function(k){ o[k]=(I18N_META[k]||{}).name||k; }); }catch(e){} return o; })();
 // I-1 (Task 3, controller-anchored review finding): true only once loadLangDict has actually populated
 // I18N_DICTS for `l` (loadLangDict always sets the key on success, even to {} — hasOwnProperty tells
-// "not loaded" apart from "loaded, genuinely empty"). 'he' needs no dict; 'en' needs none either — L()'s
-// 'en' branch returns its inline arg directly (zero-regression by design, see itemName below). Every
-// OTHER language must not render through L()/t()/itemName()/applyLang() until its dict has loaded —
-// otherwise those functions' English-literal FALLBACK (meant for a genuine per-key dict miss) fires for
-// EVERY key, silently painting an all-English UI while dir/lang could independently end up Hebrew (or
-// vice-versa): confirmed live via a diagnostic offline boot with mk-lang='fr' and no cached dict — dir
-// flipped to 'ltr' while the DOM-generated home greeting ("cRefreshHome" → L()) rendered "Good evening"
-// in English, incoherent either way.
-function _langDictReady(l){ return l==='he' || l==='en' || I18N_DICTS.hasOwnProperty(l); }
+// "not loaded" apart from "loaded, genuinely empty"). 'he' needs no dict — it has no dict to load at all.
+// Every OTHER language, INCLUDING 'en', must not render until its dict has loaded. I-A (review finding
+// on this fix): an earlier version also exempted 'en', reasoned as "L()'s en branch returns its inline
+// English argument, no dict needed" — true for DYNAMIC strings only. The STATIC shell (applyI18n()/
+// tnode(), driven by lang-en.json's __html__/__units__/__pre__) is NOT exempt: with the 'en' exemption,
+// a never-cached English dict let applyLang() flip lang/dir/class to English while the static Hebrew
+// markup — never touched by applyI18n/tnode against an empty {} dict — stayed Hebrew, the same
+// incoherence this whole gate exists to prevent, surviving for exactly one language. Gating 'en' like
+// every other non-Hebrew language means its boot path may briefly paint Hebrew before the dict lands,
+// symmetric with fr/de/es/it/ru — an accepted, not a regression. Without this gate, L()/t()/itemName()/
+// applyLang() would render through a not-yet-loaded dict and those functions' English-literal FALLBACK
+// (meant for a genuine per-key dict miss) fires for EVERY key, silently painting an all-English UI while
+// dir/lang could independently end up Hebrew (or vice-versa): confirmed live via a diagnostic offline
+// boot with mk-lang='fr' and no cached dict — dir flipped to 'ltr' while the DOM-generated home greeting
+// ("cRefreshHome" → L()) rendered "Good evening" in English, incoherent either way.
+function _langDictReady(l){ return l==='he' || I18N_DICTS.hasOwnProperty(l); }
 // Dec-A1: fetch a language's dictionary on demand; cache per session. he needs no dict.
 function loadLangDict(code){
   if(code==='he') return Promise.resolve(null);
@@ -8767,9 +8774,19 @@ function t(heb, fallback, ctx){ if(!_langDictReady(getLang())) return heb;   // 
 function L(he, en, ctx){
   const l=getLang();
   if(l==='he') return he;
-  if(!_langDictReady(l)) return he;   // I-1: dict not loaded yet for this non-en language — Hebrew source, not the `en` fallback (the fallback exists for a genuine per-key dict MISS, not a wholesale not-yet-loaded dict; without this every L() call renders English the instant a stored language's dict fails to load)
   const key=ctx?(he+'␟'+ctx):he;
-  if(l==='en'){ if(window.__i18nTrace) __i18nTrace.push({key, en, lang:'en', hit: !!(getDict()&&getDict()[key])}); return en!=null?en:he; }               // shipped English: inline arg wins → zero regression
+  // I-A (review finding on this fix's own _langDictReady change): 'en' must be checked BEFORE the
+  // dict-readiness gate below, not after. This branch never consults the dict — it returns its own
+  // inline `en` argument, exactly like itemName()'s identically-ordered 'en' check above it in this
+  // file — so it has nothing to gate on and must not be blocked by a not-yet-loaded (or never-loaded)
+  // English dict. The previous ordering (gate, then this branch) only worked because _langDictReady()
+  // used to exempt 'en' unconditionally; now that the gate is real for 'en' too (I-A), leaving this
+  // branch AFTER the gate would make every L() call render Hebrew whenever I18N_DICTS.en isn't
+  // populated yet — a regression confirmed live by 3 suite failures (prefs P3/P4, cure-scale-guard G9)
+  // that all set mk-lang='en' directly (bypassing setLang()'s dict-fetch-then-apply sequencing) and
+  // expected the inline English text immediately, same as before this fix.
+  if(l==='en'){ if(window.__i18nTrace) __i18nTrace.push({key, en, lang:'en', hit: !!(getDict()&&getDict()[key])}); return en!=null?en:he; }               // shipped English: inline arg wins → zero regression, dict-independent
+  if(!_langDictReady(l)) return he;   // I-1: dict not loaded yet for this non-en/non-he language — Hebrew source, not the `en` fallback (the fallback exists for a genuine per-key dict MISS, not a wholesale not-yet-loaded dict; without this every L() call renders English the instant a stored language's dict fails to load)
   const d=getDict();                                 // fr/de/es: prefer the per-lang dict, keyed by the Hebrew source[␟ctx]
   if(d && d[key]!=null) return d[key];
   if(window.__i18nTrace) __i18nTrace.push({key, en, lang:l});   // real English-fallback event (I3)

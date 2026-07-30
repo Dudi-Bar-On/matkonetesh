@@ -238,3 +238,51 @@ test('I-1 leg (b): boot in a non-Hebrew language whose dict was never cached fal
 
   await page.context().setOffline(false);
 });
+
+// I-A (review finding on Task 3's I-1 fix): _langDictReady() exempted 'en' unconditionally, reasoned as
+// "L()'s en branch returns its inline English argument, no dict needed" — true for DYNAMIC strings only.
+// The STATIC shell (applyI18n()/tnode(), driven by lang-en.json's __html__/__units__/__pre__) is NOT
+// exempt: with a never-cached 'en' dict, the old code let _langDictReady('en') return true regardless,
+// so applyLang() set lang='en'/dir='ltr'/lang-en class ON while the static Hebrew markup — never touched
+// by applyI18n/tnode with an empty {} dict — stayed Hebrew. Same incoherence leg (b) above closes for
+// fr, but surviving for 'en' specifically because of the exemption. Fix: drop the 'en' exemption so
+// English is gated on its dictionary exactly like every other non-Hebrew language, for the STATIC shell
+// (dir/lang/class/h1, all driven directly by _langDictReady via applyLang()).
+//
+// NOT asserted here: the DOM-generated home greeting (#cGreet, via cRefreshHome() -> L()). L()'s own
+// 'en' branch returns its inline English literal unconditionally, by design, dict-independent — same as
+// itemName()'s pre-existing 'en' branch just above it in app.js. That is deliberately NOT part of this
+// fix (task brief: "Keep L()'s en branch exactly as it is ... not what this fix is about") — English
+// dynamic chrome legitimately keeps rendering English even while the static shell is still Hebrew. This
+// residual asymmetry is accepted, not a regression: it is the pre-existing "zero-regression" contract for
+// 'en' dynamic strings, unaffected by whether the static-shell gate before it is closed.
+test('I-A: boot in English whose dict was never cached falls back to a coherent Hebrew STATIC shell (not English lang/dir with Hebrew markup), offline', async ({ isolatedPage: page }) => {
+  await page.goto('/index.html');
+  await page.evaluate(() => navigator.serviceWorker.ready);   // SW registered + shell precached; lang-en.json is NEVER fetched in this test
+  await page.addInitScript(() => { localStorage.setItem('mk-lang', JSON.stringify('en')); });
+
+  await page.context().setOffline(true);
+  await page.reload();
+  await page.evaluate(() => (window as any).__mkLangReady);
+
+  const state = await page.evaluate(() => ({
+    lang: document.documentElement.lang,
+    dir: document.documentElement.dir,
+    hasLangEnClass: document.documentElement.classList.contains('lang-en'),
+    h1: document.querySelector('h1')?.textContent || '',
+    toastText: document.getElementById('toast')?.textContent || '',
+    toastVisible: document.getElementById('toast')?.classList.contains('show') || false,
+  }));
+  // Before the fix: _langDictReady('en') is unconditionally true, so these three stay at 'en'/'ltr'/true
+  // while h1 (static markup, applyI18n/tnode never touch it against an empty {} dict) remains Hebrew
+  // underneath — dir/lang/class disagreeing with the still-Hebrew static text, the exact incoherence I-1
+  // was raised to eliminate, surviving for exactly one language.
+  expect(state.lang).toBe('he');
+  expect(state.dir).toBe('rtl');
+  expect(state.hasLangEnClass).toBe(false);
+  expect(state.h1).toContain('מתכונת');
+  expect(state.toastVisible).toBe(true);
+  expect(state.toastText).toContain('טעינת השפה נכשלה');
+
+  await page.context().setOffline(false);
+});
