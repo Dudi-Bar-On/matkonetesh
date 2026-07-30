@@ -732,8 +732,44 @@ self.addEventListener('notificationclick',function(e){ e.notification.close(); e
 """ % _ver
 with open(_os.path.join(_dist, "sw.js"), "w", encoding="utf-8") as f:
     f.write(_sw)
-# _headers (PWA #5 / perf #8): revalidate the single HTML + manifest + sw; long-cache immutable icons.
+# _headers (PWA #5 / perf #8 / E15 Phase 1): security headers + cache policy for Cloudflare Pages.
+# CSP notes (Dec-A3 constraints — raise with the owner before tightening):
+#   'unsafe-inline' is REQUIRED: the whole app is one inline <script>/<style> (single-file PWA).
+#   connect-src 'self' https:  — the managed-AI worker URL (mk-central-url) is user-configured and
+#   BYOK talks to generativelanguage.googleapis.com; https: (never http:) covers both.
+#   media/img allow blob:/data: (TTS audio, photo analyze). Microphone stays allowed (voice-cook
+#   uses getUserMedia audio) — Permissions-Policy restricts only geolocation/payment.
+#   style-src/font-src include Google Fonts (fonts.googleapis.com serves the @font-face CSS, loaded via
+#   a <link> in the shell; fonts.gstatic.com serves the actual font files it references) — confirmed via
+#   the boot-under-CSP test (tests/security-headers.spec.ts), which caught the real violation on first run.
+_csp = "; ".join([
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob:",
+    "media-src 'self' data: blob:",
+    "connect-src 'self' https:",
+    "worker-src 'self'",
+    "manifest-src 'self'",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+])
 with open(_os.path.join(_dist, "_headers"), "w", encoding="utf-8") as f:
-    f.write("/index.html\n  Cache-Control: no-cache\n/manifest.webmanifest\n  Cache-Control: no-cache\n/sw.js\n  Cache-Control: no-cache\n/lang-*.json\n  Cache-Control: no-cache\n/*.png\n  Cache-Control: public, max-age=31536000, immutable\n")
+    f.write(
+        "/*\n"
+        "  X-Content-Type-Options: nosniff\n"
+        "  X-Frame-Options: DENY\n"
+        "  Referrer-Policy: no-referrer\n"
+        "  Permissions-Policy: geolocation=(), payment=()\n"
+        "  Content-Security-Policy: " + _csp + "\n"
+        "/index.html\n  Cache-Control: no-cache\n"
+        "/manifest.webmanifest\n  Cache-Control: no-cache\n"
+        "/sw.js\n  Cache-Control: no-cache\n"
+        "/lang-*.json\n  Cache-Control: no-cache\n"
+        "/*.png\n  Cache-Control: public, max-age=31536000, immutable\n"
+    )
 print("written", len(html), "bytes;", len(CUTS), "cuts", len(SPECIALS), "specials", len(GLOSSARY), "glossary")
 print("dist/ ->", ["index.html"] + _copied)
