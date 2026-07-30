@@ -16,6 +16,7 @@
    ──────────────────────────────────────────────────────────────────────── */
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com';
+const UPSTREAM_TIMEOUT_MS = 60_000; // B22: a hung Gemini call may not pin the request forever
 
 const CORS = {
   'Access-Control-Allow-Origin': '*',            // tighten to your app origin(s) for production
@@ -34,13 +35,15 @@ export default {
 
     const url = new URL(request.url);
 
-    // health check
+    // health check — E14: never reveal configuration state to an unauthenticated caller
     if (request.method === 'GET' && url.pathname === '/') {
-      return json({ ok: true, service: 'matkonet-ai', hasKey: !!env.GEMINI_KEY }, 200);
+      return json({ ok: true, service: 'matkonet-ai' }, 200);
     }
 
-    // only proxy generateContent (and streamGenerateContent) calls
-    if (request.method !== 'POST' || !/^\/v1beta\/models\/[^/]+:(generateContent|streamGenerateContent)$/.test(url.pathname)) {
+    // only proxy generateContent. B19 (Phase 1): the streaming route is CLOSED — the app has zero
+    // callers of :streamGenerateContent, and the metering below cannot parse a streamed body, so
+    // admitting it was an unmetered bypass. Re-opening requires stream-aware metering first.
+    if (request.method !== 'POST' || !/^\/v1beta\/models\/[^/]+:generateContent$/.test(url.pathname)) {
       return json({ error: 'not_found' }, 404);
     }
 
@@ -53,7 +56,10 @@ export default {
     const raw = await env.CODES.get('code:' + code);
     if (!raw) return json({ error: 'invalid_code' }, 403);
     let rec;
-    try { rec = JSON.parse(raw); } catch { rec = { active: true }; }
+    try { rec = JSON.parse(raw); } catch { rec = null; }
+    // B20/H-3 (Phase 1): FAIL CLOSED. A corrupt/unparseable/non-object KV record means the admin
+    // contract is broken — refuse, never synthesize `{active:true}` (the old fail-open).
+    if (!rec || typeof rec !== 'object') return json({ error: 'code_record_corrupt' }, 403);
     if (rec.active === false) return json({ error: 'code_disabled' }, 403);
     if (typeof rec.cap === 'number' && rec.cap > 0 && (rec.used || 0) >= rec.cap) {
       return json({ error: 'quota_reached', reason: 'cap', used: rec.used, cap: rec.cap }, 402);
@@ -67,8 +73,14 @@ export default {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_KEY },
         body,
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       });
     } catch (e) {
+      // B22 (Phase 1): a hung Gemini call must not pin the request forever — distinguish an
+      // upstream timeout/abort from a genuine connectivity failure.
+      if (e && (e.name === 'AbortError' || e.name === 'TimeoutError')) {
+        return json({ error: 'upstream_timeout' }, 504);
+      }
       return json({ error: 'upstream_unreachable', detail: String(e) }, 502);
     }
     const text = await gResp.text();

@@ -50,13 +50,8 @@ afterEach(async () => {
   await reset(); // isolate KV between tests — see fixtures/.../reset/test/reset.test.ts
 });
 
-describe('D1 — fail-open on a malformed KV record (worker/index.js:56-58)', () => {
-  // worker/index.js:55-56 — `let rec; try { rec = JSON.parse(raw); } catch { rec = { active: true }; }`
-  // worker/index.js:57  — `if (rec.active === false) return json(..., 403);`   → false, since rec.active is `true`
-  // worker/index.js:58  — `if (typeof rec.cap === 'number' && ...)`            → false, since `rec.cap` is `undefined`
-  // Net effect: a corrupted KV record is treated as unmetered, permanently-active access — the request
-  // is forwarded to Gemini and served, exactly as if the record had never been capped.
-  it.fails('RED (documents the fail-open defect; turns red when P0-worker fixes it): a non-JSON KV record must be rejected, not served', async () => {
+describe('D1 — fail-CLOSED on a malformed KV record (P0-worker fix)', () => {
+  it('a non-JSON KV record is rejected with 403, never served', async () => {
     await env.CODES.put('code:corrupt', 'not-valid-json{]');
 
     // NOTE: `mockImplementation`, not `mockResolvedValue` — a pre-built
@@ -65,18 +60,44 @@ describe('D1 — fail-open on a malformed KV record (worker/index.js:56-58)', ()
     // per-request I/O isolation ("Cannot perform I/O on behalf of a
     // different request"). The Response must be built lazily, at call time,
     // inside the request that will consume it. Discovered empirically.
-    vi.spyOn(globalThis, 'fetch').mockImplementation(() => geminiOkResponse(999));
+    const fetchSpy = vi.spyOn(globalThis, 'fetch').mockImplementation(() => geminiOkResponse(999));
 
     const response = await post(GENERATE_URL, 'corrupt');
 
-    // Eventual behaviour (P0-worker's fix): a malformed record must fail CLOSED —
-    // rejected or capped, never served as `{ active: true }`. TODAY the Worker fails
-    // OPEN and returns 200, so this assertion throws — and it.fails() records that
-    // throw as the documented, expected defect, keeping `npm test` (and CI) GREEN.
-    // When P0-worker makes it reject, this assertion PASSES, it.fails() then turns
-    // RED, and that red is the signal to delete `.fails` and assert the fixed value.
-    // SOLE assertion by design: a second assertion could throw post-fix and mask the flip.
-    expect(response.status).not.toBe(200);
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toBe('code_record_corrupt');
+    expect(fetchSpy).not.toHaveBeenCalled(); // never reaches Gemini
+  });
+});
+
+describe('B19 — streaming route is closed (app never calls it)', () => {
+  it('POST :streamGenerateContent returns 404 and no upstream call', async () => {
+    await env.CODES.put('code:streamer', JSON.stringify({ active: true, cap: 1000, used: 10 }));
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const response = await post(STREAM_URL, 'streamer');
+    expect(response.status).toBe(404);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('B22 — upstream timeout', () => {
+  it('an aborted upstream fetch maps to 504 upstream_timeout', async () => {
+    await env.CODES.put('code:slow', JSON.stringify({ active: true, cap: 1000, used: 0 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.reject(new DOMException('The operation was aborted', 'AbortError')));
+    const response = await post(GENERATE_URL, 'slow');
+    expect(response.status).toBe(504);
+    expect((await response.json()).error).toBe('upstream_timeout');
+  });
+});
+
+describe('E14 — health endpoint does not leak configuration', () => {
+  it('GET / carries no hasKey field', async () => {
+    const response = await exports.default.fetch(`${ORIGIN}/`, { method: 'GET' });
+    expect(response.status).toBe(200);
+    const body = await response.json();
+    expect(body.ok).toBe(true);
+    expect('hasKey' in body).toBe(false);
   });
 });
 
@@ -129,43 +150,6 @@ describe('CORS — current header value (worker/index.js:20-21)', () => {
     // shared access code works from any origin. P0-worker tightens this to
     // the app's own origin; once fixed, this exact assertion must change.
     expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
-  });
-});
-
-describe('D2 (bonus) — streamGenerateContent bypasses metering (worker/index.js:43, 77-87)', () => {
-  // worker/index.js:43 — the router regex admits `:streamGenerateContent` on
-  // the same code path as `:generateContent`.
-  // worker/index.js:79 — `const j = JSON.parse(text);` on a streamed/SSE body
-  //   throws; the catch at :86 silently "skip[s] metering" — `rec.used` is
-  //   never updated even though the upstream call happened and (in
-  //   production) consumed real tokens.
-  it('GREEN (characterises current bypass): a streamed response leaves KV usage unchanged', async () => {
-    await env.CODES.put(
-      'code:streamer',
-      JSON.stringify({ active: true, cap: 1000, used: 10 })
-    );
-    // A real streamGenerateContent response is SSE/newline-delimited JSON
-    // chunks, not one parseable JSON object — this is what defeats
-    // `JSON.parse(text)` at worker/index.js:79.
-    vi.spyOn(globalThis, 'fetch').mockImplementation(
-      () =>
-        new Response('data: {"candidates":[{"content":{"parts":[{"text":"chunk"}]}}]}\n\n', {
-          status: 200,
-          headers: { 'Content-Type': 'text/event-stream' },
-        })
-    );
-
-    const response = await post(STREAM_URL, 'streamer');
-
-    expect(response.status).toBe(200);
-    const rec = JSON.parse(await env.CODES.get('code:streamer'));
-    // Defect: usage silently stays at its pre-request value — unmetered access
-    // through the streaming endpoint. Not a RED assertion because there is no
-    // already-defined "correct" value to assert instead (P0-worker's fix is
-    // scoped to whether streaming is dropped or actually metered — see
-    // design doc D2); this test's job is only to make the current bypass
-    // visible so a future change to it is deliberate, not silent.
-    expect(rec.used).toBe(10);
   });
 });
 
