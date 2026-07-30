@@ -70,3 +70,11 @@ Each code carries a **token cap** (default 2,000,000/user) so one code can never
 - **Security:** the key lives only as a Worker secret. Codes live in KV; revoke instantly. For production you'd tighten `Access-Control-Allow-Origin` to your app's origin and swap codes for Paddle subscription entitlements.
 - **Wrangler is a local devDependency** (`worker/package.json`) — always call it via `npx wrangler …` from `worker/`. No global install / admin needed. (It uses `kv key …` syntax, wrangler ≥3.90 / v4.)
 - **This is the dev/beta form** of the managed tier from the architecture research (`docs/research/04a-architecture.md`); the production path adds subscription auth + a fair-use cap on top of the same Worker.
+
+## Phase 1 hardening contract (P0-worker)
+- Every code record REQUIRES `{"active":true,"cap":<positive tokens>,"used":<n>}` — a record without
+  a positive numeric cap is refused (`403 code_uncapped`). Set caps when issuing codes.
+- CORS allowlist: `https://matkonetesh.pages.dev` + `http://localhost:8123` by default; override with
+  the plain var `ALLOWED_ORIGINS` (comma-separated) in wrangler.toml `[vars]` — never a secret there.
+- `:streamGenerateContent` is closed (404). Rate limit: 20 req/min per code per isolate → 429+Retry-After.
+- Keys: `GEMINI_KEY` remains ONLY a Worker secret (`wrangler secret put GEMINI_KEY`). Never in the repo.

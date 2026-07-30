@@ -16,24 +16,72 @@
    ──────────────────────────────────────────────────────────────────────── */
 
 const GEMINI_BASE = 'https://generativelanguage.googleapis.com';
-const UPSTREAM_TIMEOUT_MS = 60_000; // B22: a hung Gemini call may not pin the request forever
+const UPSTREAM_TIMEOUT_MS = 60_000;      // B22
+const RESERVE_TOKENS = 2000;             // debit-first provisional charge, reconciled to actual usage
+const RATE_WINDOW_MS = 60_000;           // H-3: per-code fixed window (per isolate)
+const RATE_MAX_PER_WINDOW = 20;
 
-const CORS = {
-  'Access-Control-Allow-Origin': '*',            // tighten to your app origin(s) for production
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-  'Access-Control-Allow-Headers': 'content-type, x-access-code',
-  'Access-Control-Max-Age': '86400',
-};
+// E14: CORS is an allowlist. ALLOWED_ORIGINS is a plain wrangler var (comma-separated), NOT a secret.
+const DEFAULT_ALLOWED_ORIGINS = ['https://matkonetesh.pages.dev', 'http://localhost:8123'];
+function allowedOrigins(env) {
+  return env.ALLOWED_ORIGINS
+    ? String(env.ALLOWED_ORIGINS).split(',').map(s => s.trim()).filter(Boolean)
+    : DEFAULT_ALLOWED_ORIGINS;
+}
+function corsHeaders(request, env) {
+  const origin = request.headers.get('Origin') || '';
+  const h = {
+    'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
+    'Access-Control-Allow-Headers': 'content-type, x-access-code',
+    'Access-Control-Max-Age': '86400',
+    'Vary': 'Origin',
+  };
+  if (allowedOrigins(env).includes(origin)) h['Access-Control-Allow-Origin'] = origin;
+  return h;   // no ACAO header at all for a foreign origin — the browser blocks the read
+}
 
-function json(obj, status) {
-  return new Response(JSON.stringify(obj), { status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+// H-3: per-code serialization within this isolate. Fixes the B21 check-then-act race for all
+// concurrency a single isolate sees (which is what the PRE-3 harness measures). Cross-isolate
+// concurrency still rides KV eventual consistency; debit-first bounds that exposure to ~one
+// RESERVE per isolate. The atomic cross-isolate fix is a Durable Object — Sync Thread / S1
+// (trigger-anchored per H8; do not silently attempt it here).
+const LOCKS = new Map();   // code -> tail promise
+function withCodeLock(code, fn) {
+  const tail = (LOCKS.get(code) || Promise.resolve()).then(fn, fn);
+  LOCKS.set(code, tail.then(() => {}, () => {}));
+  return tail;
+}
+
+const RATE = new Map();    // code -> { reset:number, n:number }
+function retryAfterSeconds(code) {
+  const now = Date.now();
+  const e = RATE.get(code);
+  if (!e || now >= e.reset) { RATE.set(code, { reset: now + RATE_WINDOW_MS, n: 1 }); return 0; }
+  e.n += 1;
+  if (e.n > RATE_MAX_PER_WINDOW) return Math.max(1, Math.ceil((e.reset - now) / 1000));
+  return 0;
+}
+
+async function reconcile(env, code, key, actualTokens) {
+  await withCodeLock(code, async () => {
+    const raw = await env.CODES.get(key);
+    if (!raw) return;
+    let rec; try { rec = JSON.parse(raw); } catch { return; }
+    if (!rec || typeof rec !== 'object') return;
+    rec.used = Math.max(0, (rec.used || 0) - RESERVE_TOKENS + actualTokens);
+    rec.lastUsed = new Date().toISOString();
+    await env.CODES.put(key, JSON.stringify(rec));
+  });
 }
 
 export default {
   async fetch(request, env) {
-    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: CORS });
-
     const url = new URL(request.url);
+    const cors = corsHeaders(request, env);
+    const json = (obj, status, extra) =>
+      new Response(JSON.stringify(obj), { status, headers: { ...cors, 'Content-Type': 'application/json', ...(extra || {}) } });
+
+    if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: cors });
 
     // health check — E14: never reveal configuration state to an unauthenticated caller
     if (request.method === 'GET' && url.pathname === '/') {
@@ -49,25 +97,35 @@ export default {
 
     if (!env.GEMINI_KEY) return json({ error: 'server_misconfigured', detail: 'GEMINI_KEY secret not set' }, 500);
 
-    // ── access control ──
     const code = (request.headers.get('x-access-code') || '').trim();
     if (!code) return json({ error: 'missing_code' }, 401);
 
-    const raw = await env.CODES.get('code:' + code);
-    if (!raw) return json({ error: 'invalid_code' }, 403);
-    let rec;
-    try { rec = JSON.parse(raw); } catch { rec = null; }
-    // B20/H-3 (Phase 1): FAIL CLOSED. A corrupt/unparseable/non-object KV record means the admin
-    // contract is broken — refuse, never synthesize `{active:true}` (the old fail-open).
-    if (!rec || typeof rec !== 'object') return json({ error: 'code_record_corrupt' }, 403);
-    if (rec.active === false) return json({ error: 'code_disabled' }, 403);
-    if (typeof rec.cap === 'number' && rec.cap > 0 && (rec.used || 0) >= rec.cap) {
-      return json({ error: 'quota_reached', reason: 'cap', used: rec.used, cap: rec.cap }, 402);
-    }
+    const ra = retryAfterSeconds(code);
+    if (ra > 0) return json({ error: 'rate_limited' }, 429, { 'Retry-After': String(ra) });
 
-    // ── forward to Gemini with the server-side key ──
+    const key = 'code:' + code;
+
+    // ── debit-first admission, serialized per code (B21/H-3) ──
+    const admit = await withCodeLock(code, async () => {
+      const raw = await env.CODES.get(key);
+      if (!raw) return { err: json({ error: 'invalid_code' }, 403) };
+      let rec;
+      try { rec = JSON.parse(raw); } catch { rec = null; }
+      if (!rec || typeof rec !== 'object') return { err: json({ error: 'code_record_corrupt' }, 403) };   // B20
+      if (rec.active === false) return { err: json({ error: 'code_disabled' }, 403) };
+      if (typeof rec.cap !== 'number' || rec.cap <= 0) return { err: json({ error: 'code_uncapped' }, 403) };  // E14: cap-by-omission fails closed
+      if ((rec.used || 0) >= rec.cap) {
+        return { err: json({ error: 'quota_reached', reason: 'cap', used: rec.used, cap: rec.cap }, 402) };
+      }
+      rec.used = (rec.used || 0) + RESERVE_TOKENS;   // debit FIRST — a crash mid-flight leaves an over-debit, never a free ride
+      await env.CODES.put(key, JSON.stringify(rec));
+      return { ok: true };
+    });
+    if (admit.err) return admit.err;
+
+    // ── forward to Gemini (Task 6: timeout) ──
     const body = await request.text();
-    let gResp;
+    let gResp, text;
     try {
       gResp = await fetch(GEMINI_BASE + url.pathname + url.search, {
         method: 'POST',
@@ -75,29 +133,21 @@ export default {
         body,
         signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
       });
+      text = await gResp.text();
     } catch (e) {
-      // B22 (Phase 1): a hung Gemini call must not pin the request forever — distinguish an
-      // upstream timeout/abort from a genuine connectivity failure.
-      if (e && (e.name === 'AbortError' || e.name === 'TimeoutError')) {
-        return json({ error: 'upstream_timeout' }, 504);
-      }
+      await reconcile(env, code, key, 0);   // refund the reserve — the upstream call died
+      if (e && (e.name === 'AbortError' || e.name === 'TimeoutError')) return json({ error: 'upstream_timeout' }, 504);
       return json({ error: 'upstream_unreachable', detail: String(e) }, 502);
     }
-    const text = await gResp.text();
 
-    // ── best-effort token metering (KV is eventually consistent — fine for a small dev cohort) ──
-    if (gResp.ok && typeof rec.cap === 'number' && rec.cap > 0) {
-      try {
-        const j = JSON.parse(text);
-        const used = (j.usageMetadata && j.usageMetadata.totalTokenCount) || 0;
-        if (used > 0) {
-          rec.used = (rec.used || 0) + used;
-          rec.lastUsed = new Date().toISOString();
-          await env.CODES.put('code:' + code, JSON.stringify(rec));
-        }
-      } catch { /* non-JSON or streamed body — skip metering */ }
+    // ── reconcile the reserve to actual usage ──
+    let actual = 0;
+    if (gResp.ok) {
+      try { actual = (JSON.parse(text).usageMetadata || {}).totalTokenCount || 0; } catch { actual = RESERVE_TOKENS; }
+      // non-parseable 200 body: keep the full reserve as the debit — fail closed, never free
     }
+    await reconcile(env, code, key, actual);
 
-    return new Response(text, { status: gResp.status, headers: { ...CORS, 'Content-Type': 'application/json' } });
+    return new Response(text, { status: gResp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
   },
 };

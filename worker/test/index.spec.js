@@ -138,23 +138,46 @@ describe('Metering — valid JSON record (worker/index.js:58-60, 77-87)', () => 
   });
 });
 
-describe('CORS — current header value (worker/index.js:20-21)', () => {
-  it('characterises today\'s Access-Control-Allow-Origin as "*", not the app origin', async () => {
-    const response = await exports.default.fetch(`${ORIGIN}/`, {
-      method: 'OPTIONS',
-      headers: { Origin: 'https://an-arbitrary-origin.example' },
-    });
-
-    expect(response.status).toBe(204);
-    // worker/index.js:21 — 'Access-Control-Allow-Origin': '*' — a leaked or
-    // shared access code works from any origin. P0-worker tightens this to
-    // the app's own origin; once fixed, this exact assertion must change.
-    expect(response.headers.get('Access-Control-Allow-Origin')).toBe('*');
+describe('E14 — CORS is an allowlist, not *', () => {
+  it('an allowlisted origin is reflected; a foreign origin gets no ACAO', async () => {
+    const ok = await exports.default.fetch(`${ORIGIN}/`, {
+      method: 'OPTIONS', headers: { Origin: 'https://matkonetesh.pages.dev' } });
+    expect(ok.status).toBe(204);
+    expect(ok.headers.get('Access-Control-Allow-Origin')).toBe('https://matkonetesh.pages.dev');
+    const bad = await exports.default.fetch(`${ORIGIN}/`, {
+      method: 'OPTIONS', headers: { Origin: 'https://evil.example' } });
+    expect(bad.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 });
 
-describe('D3 (bonus) — metering is a check-then-act race (worker/index.js:53, 66, 84)', () => {
-  it('GREEN (characterises current race): N concurrent requests lose all but one update', async () => {
+describe('H-3 — rate limiting', () => {
+  it('requests beyond the per-code window get 429 with Retry-After', async () => {
+    await env.CODES.put('code:spammy', JSON.stringify({ active: true, cap: 10_000_000, used: 0 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => geminiOkResponse(1));
+    let limited = null;
+    for (let i = 0; i < 25; i++) {
+      const r = await post(GENERATE_URL, 'spammy');
+      if (r.status === 429) { limited = r; break; }
+    }
+    expect(limited).not.toBeNull();
+    expect((await limited.json()).error).toBe('rate_limited');
+    expect(Number(limited.headers.get('Retry-After'))).toBeGreaterThan(0);
+  });
+});
+
+describe('E14 — cap is mandatory (cap-by-omission fails closed)', () => {
+  it('a record without a positive numeric cap is refused with 403 code_uncapped', async () => {
+    await env.CODES.put('code:capless', JSON.stringify({ active: true }));
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const response = await post(GENERATE_URL, 'capless');
+    expect(response.status).toBe(403);
+    expect((await response.json()).error).toBe('code_uncapped');
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+});
+
+describe('B21/D3 — metering race is fixed: per-code lock + debit-first + reconcile', () => {
+  it('N concurrent requests: the final `used` reflects ALL N debits, none lost', async () => {
     const N = 5;
     const TOKENS_PER_REQUEST = 10;
     await env.CODES.put(
@@ -188,13 +211,7 @@ describe('D3 (bonus) — metering is a check-then-act race (worker/index.js:53, 
     expect(responses.every((r) => r.status === 200)).toBe(true);
 
     const rec = JSON.parse(await env.CODES.get('code:racer'));
-    const correctTotal = N * TOKENS_PER_REQUEST; // 50, if every debit landed
-    // Not a RED assertion of `correctTotal` (that would presume a specific
-    // fix — e.g. an atomic increment — that P0-worker hasn't chosen yet).
-    // Instead this documents the actual lost-update shape: every one of the
-    // N requests read `used: 0` before any of them wrote, so the last write
-    // wins and only one request's worth of usage survives.
-    expect(rec.used).toBe(TOKENS_PER_REQUEST);
-    expect(rec.used).not.toBe(correctTotal);
+    const correctTotal = N * TOKENS_PER_REQUEST; // 50 — every debit landed (PRE-3 design D3 acceptance)
+    expect(rec.used).toBe(correctTotal);
   });
 });
