@@ -11699,6 +11699,7 @@ try{ setTimeout(()=>{ if(typeof maybeAskUiLevel==='function') maybeAskUiLevel();
 if('serviceWorker' in navigator && self.isSecureContext){   // was location.protocol==='https:' — isSecureContext is browser-computed, agrees with https on every real user session, and additionally covers trusted localhost so the update-delivery channel is testable (2026-07-23, owner §4 sign-off)
   window.addEventListener('load',function(){
     navigator.serviceWorker.register('sw.js').then(function(reg){
+      if(!reg) return;   // defensive (surfaced by B25's now-real catch): a page torn down mid-registration (e.g. a reload racing register()) can fulfil with no registration object — nothing to wire up, not a genuine failure to report
       mkSWReg=reg; try{ navigator.serviceWorker.ready.then(function(r){ mkSWReg=r||reg; }); }catch(e){}   // Wave A: alarms show via the SW registration (fixes the mobile new Notification() no-op)
       reg.addEventListener('updatefound',function(){ const nw=reg.installing; if(!nw) return;
         nw.addEventListener('statechange',function(){ if(nw.state==='installed' && navigator.serviceWorker.controller && typeof toast==='function'){
