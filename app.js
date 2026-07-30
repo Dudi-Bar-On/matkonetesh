@@ -7517,9 +7517,53 @@ function renderTimelinePanel(){
   buildList();
 }
 
+/* ---- SYNCABLE manifest (N-4, Dec-A2) ----------------------------------------------------------
+   THE single allowlist of user-data localStorage keys. Backup/export reads it (N-1: allowlist
+   replaces the old one-key blocklist that leaked mk-central-url/mk-central-code into every backup);
+   import filters through it (Dec-D6, Task 9); the future Sync Thread S1 schema GROWS FROM this
+   object. A new persistent key is NOT backed up until it is added here — that is the point.
+   NEVER list: mk-gemkey, mk-central-url, mk-central-code (credentials), mk-mtcache (device cache),
+   mk-sw-fail (device diagnostic).
+   Task 8 key-space audit (2026-07-30, evidence in .superpowers/sdd/task-8-report.md): a full sweep
+   of store.set/store.get/localStorage.*Item call sites beyond the brief's `mk-` grep found SEVEN
+   more real, persisted, non-`mk-` user-data prefixes — note:/rating:/shop:/xshop:/shopmiss:/wpck:/
+   method:/seas:/burgers: (recipe notes, star ratings, pantry+event shopping checkboxes, workplan
+   task checks, per-recipe method choice, seasoning/cure customization, burger-builder state). The
+   openBackup() panel copy (app.js ~8478) already PROMISES "הערות, דירוגים, רשימות וצ'קליסטים" /
+   "notes, ratings, lists and checklists" are backed up — omitting these prefixes would silently
+   break that promise and lose real user data on every future backup, which the old blocklist did
+   NOT do. They are added below alongside the mk- set for that reason. `done:` was found ONLY as a
+   defensive removal target (resetRecipeProgress/wipeAllData) with no confirmed writer anywhere in
+   app.js/equipment.js — left OUT pending owner confirmation (see task-8-report.md open question). */
+const SYNCABLE = {
+  exact: [
+    // core user data
+    'mk-events','mk-fav','mk-menu','mk-inventory','mk-inv-ver','mk-pantry','mk-journal',
+    'mk-equipment','mk-eqm-ledger','mk-gear','mk-gear-set','mk-equip-set','mk-umakes',
+    'mk-reminders','mk-timers','mk-timer','mk-alarm','mk-active','mk-cook','mk-stage',
+    'mk-context','mk-cresume','mk-lastproj','mk-seas-migrated',
+    // preferences & UI state
+    'mk-lang','mk-theme','mk-fontpair','mk-fontscale','mk-uilevel','mk-uilevel-asked',
+    'mk-homecustom','mk-dock-tools','mk-recent-tools','mk-burger','mk-plan-strict',
+    'mk-tlalerts','mk-tlplandetail','mk-tlserve','mk-tlshape','mk-tlstate','mk-tlview',
+    'mk-vcanslang','mk-vclang','mk-vcvoice','mk-gemvoice','mk-askai','mk-probe-nudge-dismissed',
+    'mk-pref-airank','mk-pref-autonomy','mk-pref-hold','mk-pref-holdmax','mk-pref-sharetol',
+    'mk-pref-slots','mk-pref-units','mk-pref-woodswap',
+  ],
+  prefixes: [
+    'mk-cook-live-','mk-item-cooker-','mk-menuqty-','mk-plan-started-','mk-tlservedate-','mk-tlstate-',
+    // non-mk user-data namespaces found in the Task 8 key-space audit — see comment above
+    'note:','rating:','shop:','xshop:','shopmiss:','wpck:','method:','seas:','burgers:',
+  ],
+};
+function syncableKey(k){
+  if(SYNCABLE.exact.indexOf(k)>=0) return true;
+  for(let i=0;i<SYNCABLE.prefixes.length;i++){ if(k.indexOf(SYNCABLE.prefixes[i])===0) return true; }
+  return false;
+}
 /* ---- backup / restore (export-import) ---- */
 function exportData(){
-  const o={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); if(k==='mk-gemkey') continue; o[k]=localStorage.getItem(k);}   // Wave C: never export the paid AI key — a shared backup would leak it
+  const o={}; for(let i=0;i<localStorage.length;i++){const k=localStorage.key(i); if(!syncableKey(k)) continue; o[k]=localStorage.getItem(k);}   // N-1/N-4: SYNCABLE allowlist — credentials can never leak by omission again
   const payload={app:'matkonet',ver:1,exported:new Date().toISOString(),data:o};
   const blob=new Blob([JSON.stringify(payload)],{type:'application/json'});
   const url=URL.createObjectURL(blob), a=document.createElement('a');
