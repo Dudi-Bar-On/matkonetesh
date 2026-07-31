@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: עוד אזורים בממשק מתורגמים כעת בכל שפה — מחשבון הכמויות, הערות ההכנה והעישון, תוויות התפוסה של הציוד ורמזי מסך-הבית. קודם חלקם הופיעו באנגלית בתוך ממשק מתורגם."
+WHATS_NEW = "מהדורה 278 — האפליקציה נטענת מהר פי ~4 (פיצול מילוני השפות; שפה נטענת לפי בחירה), גיבוי/שחזור בטוחים (פרטי גישה לעולם לא בקובץ), הקשחת שרת ה-AI, וכותרות אבטחה."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -337,7 +337,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 277 · 27.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 278 · 31.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
