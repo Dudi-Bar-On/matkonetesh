@@ -71,37 +71,49 @@ test('vcChunkText: a safety readout with its verification marker is never split 
 // floor — the exact guard this test exists to protect.
 test('speaker token: a stale (slow) speaker can never kill its successor (drives the real gemSpeak pipeline)', async ({ page }) => {
   await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
-  const log = await page.evaluate(async () => {
-    const w = window as any;
-    const playLog: string[] = [];
-    let releaseAChunk1: () => void = () => {};
-    w.__gemTtsMock = (t: string) => ({ mock: true, t });                          // instant "synthesis"
-    w.__gemPlayMock = (buf: any) => {
-      const tag = String(buf && buf.t || '');
-      if (tag.startsWith('A1')) {
-        // A's FIRST chunk blocks here — simulating a slow/still-playing speaker — until the test
-        // explicitly releases it, by which point B has already taken the floor.
-        return new Promise<void>((res) => { releaseAChunk1 = () => { playLog.push('A1-played'); res(); }; });
-      }
-      playLog.push(tag + '-played');
-      return Promise.resolve();
-    };
-    const genA = w.vcNewSpeakGen();
-    // two real sentences -> vcChunkText really produces 2 chunks -> gemSpeak's real loop really iterates twice
-    const pA = w.gemSpeak('A1 first sentence here now. A2 second sentence follows after.', 'en', genA);
-    await Promise.resolve(); await Promise.resolve();   // let A reach its blocked first-chunk playback
-    const genB = w.vcNewSpeakGen();                       // B takes the floor — A is now stale
-    await w.gemSpeak('B1 only sentence.', 'en', genB);    // B completes fully first
-    releaseAChunk1();                                     // now let A's stale first-chunk playback resolve
-    await pA;                                              // A's own gemSpeak loop must bail out here
-    return playLog;
-  });
-  // B played (never blocked by the stale A). A's first (already-in-flight) chunk resolved once released,
-  // but the REAL vcGenCurrent(genA) check inside gemSpeak's loop (app.js) must have stopped it BEFORE
-  // synthesizing/playing its second chunk — "A2" never appears. Deleting that guard would add it back.
-  expect(log).toContain('B1 only sentence.-played');
-  expect(log).toContain('A1-played');
-  expect(log.some((l) => l.startsWith('A2'))).toBe(false);
+  // Metered-streaming (v281): gemSpeak now calls gemSpeakSeg per chunk, which tries the real
+  // streamGenerateContent endpoint FIRST and falls back to the mocked gemSynthChunk+gemPlayBuf pair
+  // below only on failure. Abort the stream request immediately (test-authoring contract: no live API
+  // calls from tests) so the fallback engages deterministically and fast, exactly as the blocking-only
+  // pipeline did before streaming existed — this test is about the generation-token guard, not transport.
+  await page.route('**/models/*:streamGenerateContent*', r => r.abort());
+  try {
+    const log = await page.evaluate(async () => {
+      const w = window as any;
+      const playLog: string[] = [];
+      let releaseAChunk1: () => void = () => {};
+      let a1Blocked = false;                                  // flips true once A1's play-mock is actually reached
+      w.__gemTtsMock = (t: string) => ({ mock: true, t });                          // instant "synthesis"
+      w.__gemPlayMock = (buf: any) => {
+        const tag = String(buf && buf.t || '');
+        if (tag.startsWith('A1')) {
+          // A's FIRST chunk blocks here — simulating a slow/still-playing speaker — until the test
+          // explicitly releases it, by which point B has already taken the floor.
+          return new Promise<void>((res) => { releaseAChunk1 = () => { playLog.push('A1-played'); res(); }; a1Blocked = true; });
+        }
+        playLog.push(tag + '-played');
+        return Promise.resolve();
+      };
+      const genA = w.vcNewSpeakGen();
+      // two real sentences -> vcChunkText really produces 2 chunks -> gemSpeak's real loop really iterates twice
+      const pA = w.gemSpeak('A1 first sentence here now. A2 second sentence follows after.', 'en', genA);
+      // A's first chunk goes through gemSpeakSeg's aborted-stream→fallback hop before reaching the mocked
+      // gemPlayBuf — wait on the OBSERVABLE state (A1's play-mock actually reached and blocked) instead of
+      // a fixed microtask-tick count, since the extra network round trip no longer resolves in exactly 2 ticks.
+      while (!a1Blocked) { await new Promise((res) => setTimeout(res, 0)); }
+      const genB = w.vcNewSpeakGen();                       // B takes the floor — A is now stale
+      await w.gemSpeak('B1 only sentence.', 'en', genB);    // B completes fully first
+      releaseAChunk1();                                     // now let A's stale first-chunk playback resolve
+      await pA;                                              // A's own gemSpeak loop must bail out here
+      return playLog;
+    });
+    // B played (never blocked by the stale A). A's first (already-in-flight) chunk resolved once released,
+    // but the REAL vcGenCurrent(genA) check inside gemSpeak's loop (app.js) must have stopped it BEFORE
+    // synthesizing/playing its second chunk — "A2" never appears. Deleting that guard would add it back.
+    expect(log).toContain('B1 only sentence.-played');
+    expect(log).toContain('A1-played');
+    expect(log.some((l) => l.startsWith('A2'))).toBe(false);
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
 });
 
 test('INV-T / R-33: ttsText preserves every digit and degree token from the guarded string', async ({ page }) => {
@@ -156,24 +168,37 @@ test('R-34: TTS generationConfig carries maxOutputTokens 8192', async ({ page })
 
 test('R-32: every TTS failure is VISIBLE — toast fires, nothing falls back to a browser voice', async ({ page }) => {
   await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
-  const r = await page.evaluate(async () => {
-    const w = window as any;
-    w.__gemTtsMock = () => { throw new Error('timeout'); };
-    w.__toastLog = []; const t0 = w.toast; w.toast = (m: string) => { w.__toastLog.push(m); t0(m); };
-    let sysSpoke = 0;
-    const orig = speechSynthesis.speak.bind(speechSynthesis);
-    (speechSynthesis as any).speak = () => { sysSpoke++; };
-    try { w.vcSpeak('בדיקת שגיאה קצרה.', 'he'); await new Promise(r => setTimeout(r, 50)); }
-    finally { w.toast = t0; (speechSynthesis as any).speak = orig; }
-    return { toasts: w.__toastLog, sysSpoke, dead: typeof w.sysSpeak };
-  });
-  expect(r.toasts.length).toBeGreaterThan(0);      // v278: timeout → SILENT downgrade → RED
-  // M4 (silent-failure-hunter audit): asserting length>0 alone would still pass if the toast text
-  // regressed to something generic/wrong (e.g. the H3 "no network" mislabel) — assert the actual content,
-  // the specific timeout message this failure shape must produce.
-  expect(r.toasts[0]).toContain('איטית מדי');
-  expect(r.sysSpoke).toBe(0);                       // and no browser voice fired
-  expect(r.dead).toBe('undefined');                 // sysSpeak is GONE, not bypassed
+  // Metered-streaming (v281): vcSpeak→gemSpeak now tries gemSpeakSeg's real streamGenerateContent
+  // endpoint before falling back to the mocked gemSynthChunk below. Abort the stream request (contract:
+  // no live API calls from tests) so the fallback — and its 'timeout' failure — engages deterministically.
+  await page.route('**/models/*:streamGenerateContent*', r => r.abort());
+  try {
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__gemTtsMock = () => { throw new Error('timeout'); };
+      w.__toastLog = []; const t0 = w.toast; w.toast = (m: string) => { w.__toastLog.push(m); t0(m); };
+      let sysSpoke = 0;
+      const orig = speechSynthesis.speak.bind(speechSynthesis);
+      (speechSynthesis as any).speak = () => { sysSpoke++; };
+      w.__r32restore = () => { w.toast = t0; (speechSynthesis as any).speak = orig; };
+      w.__r32sysSpoke = () => sysSpoke;
+      w.vcSpeak('בדיקת שגיאה קצרה.', 'he');
+    });
+    await page.waitForFunction(`window.__toastLog && window.__toastLog.length>0`);
+    const r = await page.evaluate(() => {
+      const w = window as any;
+      const out = { toasts: w.__toastLog, sysSpoke: w.__r32sysSpoke(), dead: typeof w.sysSpeak };
+      w.__r32restore();
+      return out;
+    });
+    expect(r.toasts.length).toBeGreaterThan(0);      // v278: timeout → SILENT downgrade → RED
+    // M4 (silent-failure-hunter audit): asserting length>0 alone would still pass if the toast text
+    // regressed to something generic/wrong (e.g. the H3 "no network" mislabel) — assert the actual content,
+    // the specific timeout message this failure shape must produce.
+    expect(r.toasts[0]).toContain('איטית מדי');
+    expect(r.sysSpoke).toBe(0);                       // and no browser voice fired
+    expect(r.dead).toBe('undefined');                 // sysSpeak is GONE, not bypassed
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
 });
 
 // H1 (silent-failure-hunter audit) — vcAskFlow's catch used to discard the error entirely and collapse

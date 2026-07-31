@@ -5494,15 +5494,31 @@ const VC_LAT={};
 function vcLatMark(k){ try{ VC_LAT[k]=performance.now(); window.__vcLat=VC_LAT; }catch(e){} }
 function vcLatReport(){ const t0=VC_LAT.ask||0, out={}; for(const k in VC_LAT) out[k]=Math.round(VC_LAT[k]-t0); return out; }
 
+// ── Metered-streaming arc (spec §5.1) · ONE transport builder for BOTH verbs and BOTH backends.
+// gemFetch and gemSpeakSeg consume this — managed vs BYOK can never fork, because the fork point is a
+// data structure, not two code paths. verb 'streamGenerateContent' pins alt=sse (the Worker and the
+// client parsers both speak SSE frames — spec §2.1).
+function gemTransport(mdl, verb, key){
+  verb=verb||'generateContent';
+  const mode = key ? 'byok' : gemMode();
+  if(mode==='off') throw new Error('no-key');
+  const q = (verb==='streamGenerateContent') ? '?alt=sse' : '';
+  const url = (mode==='managed')
+    ? (centralUrl()+'/v1beta/models/'+mdl+':'+verb+q)
+    : (GEM_HOST+mdl+':'+verb+q);
+  const headers = (mode==='managed')
+    ? {'Content-Type':'application/json','X-Access-Code':centralCode()}
+    : {'Content-Type':'application/json','x-goog-api-key':(key||gemKey())};
+  return {mode, url, headers};
+}
+
 async function gemFetch(model, body, opts){
   opts=opts||{};
   const mdl = GEM_MODELS[model] ? GEM_MODELS[model].id : (model||GEM_MODEL);   // role → concrete id; a literal id passes through
   // transport: MANAGED (central Worker holds the key, gated by a per-user access code) → BYOK (own key) → off.
   // opts.key forces BYOK (used by askValidateKey to test a raw key). A managed access/quota error falls back to BYOK if a key exists.
-  const mode = opts.key ? 'byok' : gemMode();
-  if(mode==='off') throw new Error('no-key');
-  const url = (mode==='managed') ? (centralUrl()+'/v1beta/models/'+mdl+':generateContent') : GEM_URL(mdl);
-  const headers = (mode==='managed') ? {'Content-Type':'application/json','X-Access-Code':centralCode()} : {'Content-Type':'application/json','x-goog-api-key':(opts.key||gemKey())};
+  const t = gemTransport(mdl, 'generateContent', opts.key);
+  const mode = t.mode, url = t.url, headers = t.headers;
   const timeout=opts.timeout||25000, tries=(opts.retries!=null?opts.retries:1)+1;
   let lastErr;
   for(let i=0;i<tries;i++){
@@ -6530,25 +6546,128 @@ function gemPlayBuf(buf, gen){
     (gemCtx.state==='suspended') ? gemCtx.resume().then(go, go) : go();
   });
 }
+// ── R-39 (measured 31.7: first audio frame 1,101ms vs 7,643ms blocking): TTS streams on the SAME
+// streamGenerateContent endpoint via responseModalities:['AUDIO'] — no Interactions API, no second
+// surface. gemSpeakSeg receives ONLY already-clean text (ttsText output — INV-T: this function never
+// transforms text, it only moves audio bytes). PCM chunks are scheduled on the WebAudio clock at a
+// running cursor; the first chunk IS the first sound. Falls back to the blocking gemSynthChunk+gemPlayBuf
+// path on stream-unsupported/any failure — a demo degrades, never dies.
+// WAVE-0 RESOLUTION NOTE: the brief anticipated a `gemAudioCtx()` accessor and a per-language
+// `gemVoiceFor(lang)`; neither exists in the merged Wave-0 code. `gemAudioCtx()` below lazily creates/
+// reuses the SAME module-level `gemCtx` that gemPlayBuf/pcmToBuffer already share (one AudioContext for
+// the whole page, unchanged). Voice selection reuses `gemVoice()` — Wave-0 has one configured voice, not
+// per-language — matching what gemSynthChunk itself already passes to gemTtsGen. `ttsAlreadyClean` is
+// dropped per the brief's own resolution rule: gemSynthChunk(clean) already takes pre-cleaned text
+// directly, so gemSpeakSeg's `text` argument (itself ttsText output, per its callers) passes straight through.
+function gemAudioCtx(){ gemCtx=gemCtx||new (window.AudioContext||window.webkitAudioContext)(); return gemCtx; }
+function gemPcm16ToF32(bytes){
+  const n=bytes.byteLength>>1, dv=new DataView(bytes.buffer, bytes.byteOffset, n<<1), out=new Float32Array(n);
+  for(let i=0;i<n;i++) out[i]=dv.getInt16(i<<1, true)/32768;
+  return out;
+}
+function gemB64Bytes(b64){
+  const s=atob(b64), a=new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++) a[i]=s.charCodeAt(i);
+  return a;
+}
+if(typeof window!=='undefined') window.__gemAudioChunks=0;   // test instrument (same discipline as __vcLat)
+async function gemSpeakSeg(text, lang, gen){
+  if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen);
+  try{
+    await gemSpeakSegStream(text, lang, gen);
+  }catch(e){
+    if(!vcGenCurrent(gen)) return;                   // barge-in during the attempt: stay silent
+    // fallback (spec §5.3): stale Worker (stream-unsupported), stream death, or no-audio → blocking path
+    const buf=await gemSynthChunk(text);
+    if(vcGenCurrent(gen)) await gemPlayBuf(buf, gen);
+  }
+}
+async function gemSpeakSegStream(text, lang, gen){
+  const mdl=GEM_MODELS.tts.id;
+  const t=gemTransport(mdl, 'streamGenerateContent');
+  const body={ contents:[{role:'user',parts:[{text:text}]}],
+    generationConfig:{ responseModalities:['AUDIO'],
+      speechConfig:{voiceConfig:{prebuiltVoiceConfig:{voiceName:gemVoice()}}},
+      maxOutputTokens:8192 } };
+  const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  const to=ctl?setTimeout(function(){ try{ctl.abort();}catch(e){} }, 30000):null;
+  try{
+    const r=await fetch(t.url,{method:'POST',headers:t.headers,body:JSON.stringify(body),signal:ctl?ctl.signal:undefined});
+    if(!r.ok){
+      if(t.mode==='managed'&&r.status===404) throw new Error('stream-unsupported');
+      if(t.mode==='managed'&&[401,402,403].indexOf(r.status)>=0&&gemKey()){
+        // BYOK retry mirrors gemFetch (spec §5.1) — rebuild the transport with the personal key
+        const b=gemTransport(mdl,'streamGenerateContent',gemKey());
+        const r2=await fetch(b.url,{method:'POST',headers:b.headers,body:JSON.stringify(body),signal:ctl?ctl.signal:undefined});
+        if(!r2.ok) throw new Error('api-'+r2.status);
+        return gemPlayPcmStream(r2.body, gen);
+      }
+      throw new Error('api-'+r.status);
+    }
+    return gemPlayPcmStream(r.body, gen);
+  }finally{ if(to) clearTimeout(to); }
+}
+async function gemPlayPcmStream(stream, gen){
+  const ctx=gemAudioCtx();
+  const reader=stream.getReader(); const dec=new TextDecoder();
+  let buf='', cursor=0, got=false;
+  function schedule(bytes){
+    if(!vcGenCurrent(gen)) return;
+    const f32=gemPcm16ToF32(bytes);
+    if(!f32.length) return;
+    const ab=ctx.createBuffer(1, f32.length, 24000);
+    ab.getChannelData(0).set(f32);
+    const src=ctx.createBufferSource(); src.buffer=ab; src.connect(ctx.destination);
+    const t0=Math.max(ctx.currentTime+0.05, cursor);   // a late chunk restarts the cursor: audible gap, degraded-but-working (spec §5.5)
+    src.start(t0); cursor=t0+ab.duration;
+    if(typeof window!=='undefined') window.__gemAudioChunks++;
+    if(!got){ got=true; vcLatMark('firstAudio'); }
+  }
+  for(;;){
+    const step=await reader.read();
+    if(step.done) break;
+    if(!vcGenCurrent(gen)){ try{reader.cancel();}catch(e){} return; }   // barge-in: stop the spend
+    buf+=dec.decode(step.value,{stream:true});
+    let i;
+    while((i=buf.indexOf('\n\n'))>=0){
+      const fr=buf.slice(0,i); buf=buf.slice(i+2);
+      for(const line of fr.split('\n')){
+        if(line.indexOf('data:')!==0) continue;
+        try{
+          const j=JSON.parse(line.slice(5).trim());
+          const c=j.candidates&&j.candidates[0];
+          if(c&&c.content&&Array.isArray(c.content.parts))
+            for(const p of c.content.parts)
+              if(p.inlineData&&p.inlineData.data) schedule(gemB64Bytes(p.inlineData.data));
+        }catch(e){}
+      }
+    }
+  }
+  if(!got) throw new Error('no-audio');
+  // resolve when the LAST scheduled chunk finishes on the audio clock (a playback deadline, not an
+  // arbitrary wait — DoD-11 governs tests, and the test asserts marks/counters, never this timer)
+  const waitMs=Math.max(0,(cursor-ctx.currentTime)*1000);
+  if(waitMs>0) await new Promise(function(res){ setTimeout(res, waitMs); });
+}
+
 async function gemSpeak(text, lang, gen){
   if(gen===undefined) gen=vcNewSpeakGen();
   if(!aiAvail()) throw new Error('no-key');            // defensive only — R-35: no keyless user exists
-  const chunks=vcChunkText(ttsText(text, lang||vcVoiceLang()));
+  const L2=lang||vcVoiceLang();
+  const chunks=vcChunkText(ttsText(text, L2));
   if(!chunks.length) return;
   vcLatMark('ttsReq1');
-  let next=gemSynthChunk(chunks[0]);
   for(let i=0;i<chunks.length;i++){
-    let buf; try{ buf=await next; }catch(err){ err.chunkIdx=i; throw err; }   // position → visible error (Task 6)
     if(!vcGenCurrent(gen)) return;
-    // M1 (silent-failure-hunter audit): the prefetched NEXT chunk was left un-awaited on every early return
-    // below (a stale generation, or the loop simply ending) — if it later rejects, that surfaces as an
-    // unhandled promise rejection, a decoy for the next debugging session. Arming a no-op .catch here does
-    // NOT change what `next` resolves/rejects to for the real `await next` above on the following
-    // iteration (multiple handlers can observe one promise) — it only prevents the abandoned case from
-    // going unhandled.
-    if(i+1<chunks.length){ next=gemSynthChunk(chunks[i+1]); next.catch(()=>{}); }   // prefetch during playback
+    // gemSpeakSeg streams+plays ONE chunk (R-39): synthesis+playback of chunk i+1 no longer overlaps
+    // chunk i's playback the way the old explicit prefetch did — each chunk now starts its own network
+    // request and begins playing on its OWN first audio frame (measured ~1.1s), which is the whole point
+    // of the streaming win; a chunk-level lookahead pipeline is not part of this task (plan: later task).
+    // firstSound is marked BEFORE the await (matches the old mark's meaning: "chunk 0's speech is
+    // starting now") — the finer-grained "sound actually scheduled" moment is gemPlayPcmStream's own
+    // 'firstAudio' mark, taken exactly when the first PCM frame is scheduled on the audio clock.
     if(i===0) vcLatMark('firstSound');
-    await gemPlayBuf(buf, gen);
+    try{ await gemSpeakSeg(chunks[i], L2, gen); }catch(err){ err.chunkIdx=i; throw err; }   // position → visible error (Task 6)
     if(!vcGenCurrent(gen)) return;
   }
   vcLatMark('done');
