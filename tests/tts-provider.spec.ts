@@ -260,3 +260,108 @@ test('R-45: vcSpeak threads the use case through to the decision point', async (
     await page.evaluate(`{ window.ttsSpeakSeg=window.__ttsSpeakSegReal; delete window.__ttsSpeakSegReal; }`);
   }
 });
+
+test('R-45 DoD-5: the safety guard cannot be bypassed by routing to the secondary', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof vcGuardSpoken==='function' && typeof ttsSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  await page.evaluate(COUNTING_FETCH);
+  const r = await page.evaluate(`(async()=>{
+    // An UNVERIFIED safety number: no tier evidence backs 71, so vcGuardSpoken must strip/redact it.
+    const raw='הוצא את העוף כשהליבה מגיעה ל-71 מעלות.';
+    const guarded=vcGuardSpoken(raw, {t1:[], t2:[]}, 'he');
+    window.__cloudSaw=[]; window.__geminiSaw=[];
+    window.__installFetch(async function(url,o){
+      const body=JSON.parse((o&&o.body)||'{}');
+      if(url.indexOf('/v1/tts:synthesize')>=0){ window.__cloudSaw.push(body.text); return new Response(window.__pcmBytes(0.2),{status:200}); }
+      window.__geminiSaw.push(JSON.stringify(body));
+      return window.__gemini429();                     // force the fallback so BOTH engines see this text
+    });
+    try{
+      const gen=vcNewSpeakGen();
+      await ttsSpeakSeg(guarded,'he',gen,0,'answer');  // gemini first (429) → cloud second
+      const gen2=vcNewSpeakGen();
+      await ttsSpeakSeg(guarded,'he',gen2,0,'alert');  // routed straight to cloud
+      return { raw, guarded, cloudSaw: window.__cloudSaw.slice(), geminiSaw: window.__geminiSaw.slice() };
+    } finally { window.__restoreFetch(); }
+  })()`);
+  // the guard actually did something — otherwise the rest of this test proves nothing
+  expect(r.guarded).not.toBe(r.raw);
+  expect(r.cloudSaw.length).toBe(2);                                   // fallback path + routed path
+  // NEITHER engine ever receives the unguarded text, on EITHER route into the secondary
+  for (const seen of r.cloudSaw) {
+    expect(seen).toBe(r.guarded);
+    expect(seen).not.toContain('71');
+  }
+  for (const seen of r.geminiSaw) expect(seen).not.toContain('71');
+});
+
+test('R-45 DoD-5: the guard runs upstream of provider selection — vcSpeak never hands raw text to any engine', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof ttsSpeakSeg==='function'`);
+  await page.evaluate(`window.__segSaw=[]; window.__realSeg=window.ttsSpeakSeg;
+    window.ttsSpeakSeg=async function(t,l,g,s,u){ window.__segSaw.push({t,u}); return (s||0)+0.1; };`);
+  await page.evaluate(`(function(){
+    const raw='טמפ׳ ליבה 71 מעלות.';
+    vcSpeak(vcGuardSpoken(raw, {t1:[],t2:[]}, 'he'), 'he', 'answer');
+  })()`);
+  await page.waitForFunction(`window.__segSaw.length>0`);
+  const saw = await page.evaluate(`window.__segSaw.map(function(x){return x.t;}).join(' ')`);
+  await page.evaluate(`window.ttsSpeakSeg=window.__realSeg;`);
+  expect(saw).not.toContain('71');
+});
+
+test('R-45 DoD-6: barge-in stops the secondary, including audio already SCHEDULED on the clock', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof cloudSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  const r = await page.evaluate(`(async()=>{
+    const realFetch=window.fetch;
+    window.fetch=async function(){ return new Response(window.__pcmBytes(3.0), {status:200}); };
+    try{
+      const gen=vcNewSpeakGen();
+      const ctx=gemAudioCtx();
+      // schedule 5 s in the FUTURE: start(t0) has fired but no sound has been produced yet — the exact
+      // hazard gemPlayBuf's "gemSrc assigned BEFORE start()" comment names.
+      const p=cloudSpeakSeg('טקסט ארוך','he',gen, ctx.currentTime+5.0);
+      await new Promise(function(res){ const t=setInterval(function(){ if(gemSrc){ clearInterval(t); res(); } }, 10); });
+      const hadSrc = !!gemSrc, wasSpeaking = vcSpeaking;
+      let stopped=false;
+      const src=gemSrc; src.addEventListener('ended', function(){ stopped=true; });
+      gemStop();                                        // the barge-in
+      const afterSrc = gemSrc, afterSpeaking = vcSpeaking;
+      await new Promise(function(res){ const t=setInterval(function(){ if(stopped){ clearInterval(t); res(); } }, 10); });
+      vcNewSpeakGen();                                  // a new speaker takes the floor
+      return { hadSrc, wasSpeaking, afterSrc, afterSpeaking, stopped, cursor: await p };
+    } finally { window.fetch=realFetch; }
+  })()`);
+  expect(r.hadSrc).toBe(true);                 // the queued source is REACHABLE before it plays
+  expect(r.wasSpeaking).toBe(true);
+  expect(r.afterSrc).toBeNull();               // gemStop() cleared it
+  expect(r.afterSpeaking).toBe(false);
+  expect(r.stopped).toBe(true);                // and the AudioBufferSourceNode actually stopped
+});
+
+test('R-45 DoD-6: a barge-in during cloud SYNTHESIS never schedules the audio at all', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof cloudSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  const r = await page.evaluate(`(async()=>{
+    const realFetch=window.fetch;
+    let release; const gate=new Promise(function(res){ release=res; });
+    window.fetch=async function(){ await gate; return new Response(window.__pcmBytes(1.0), {status:200}); };
+    try{
+      const gen=vcNewSpeakGen();
+      const startAt=gemAudioCtx().currentTime+1.0;
+      const before=window.__gemAudioChunks;
+      const p=cloudSpeakSeg('שלום','he',gen,startAt);
+      vcNewSpeakGen();                                  // barge-in WHILE the request is in flight
+      release();
+      const cursor=await p;
+      return { cursor, startAt, scheduled: window.__gemAudioChunks-before, src: gemSrc };
+    } finally { window.fetch=realFetch; }
+  })()`);
+  expect(r.cursor).toBe(r.startAt);            // the cursor is returned untouched — the contract holds
+  expect(r.scheduled).toBe(0);                 // nothing was ever put on the audio clock
+  expect(r.src).toBeNull();
+});
