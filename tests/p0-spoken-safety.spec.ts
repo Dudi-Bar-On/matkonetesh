@@ -643,3 +643,43 @@ test('DoD-8/9 — the inline verified marker renders correctly in the Hebrew voi
   await page.screenshot({ path: '.superpowers/sdd/task-13-inline-marker-390x844.png' });
 });
 
+// R-36a (owner-approved 31.7) — the voice-answer prompt now carries a length instruction (measured 4.4x
+// faster / 10x shorter, docs/analysis/2026-07-31-qa-latency-measured.md), but brevity must NEVER strip a
+// safety answer. No live API calls — vcBuildAskPrompt is pure string assembly, and the round-trip test
+// below mocks the model response (__vcAskMock), exactly like every other test in this file.
+test('R-36a: the voice-answer system prompt instructs brief spoken style AND exempts safety content (he/en/other)', async ({ page }) => {
+  await seedApp(page, {});
+  const r = await page.evaluate(`(function(){
+    var he = vcBuildAskPrompt('שאלה', 'he', '').sys;
+    var en = vcBuildAskPrompt('q', 'en', '').sys;
+    var fr = vcBuildAskPrompt('q', 'fr', '').sys;
+    return { he: he, en: en, fr: fr };
+  })()`) as { he: string; en: string; fr: string };
+  // spoken-style / no-markdown instruction present in every branch
+  for (const sys of [r.he, r.en, r.fr]) {
+    expect(sys).toMatch(/markdown/i);
+  }
+  expect(r.he).toContain('עוזר קולי');
+  // the safety exemption is explicit, non-negotiable, and names number+unit+caveat
+  expect(r.en).toMatch(/safety/i);
+  expect(r.en).toMatch(/number/i);
+  expect(r.en).toMatch(/unit/i);
+  expect(r.en).toMatch(/caveat/i);
+  expect(r.he).toMatch(/בטיחות/);
+  expect(r.he).toMatch(/היחידה/);
+});
+
+test('R-36a: a brief safety answer still carries the number, unit, and caveat through the guard (mocked model — no live API call)', async ({ page }) => {
+  await bootVC(page);
+  // simulate the SHORT, brevity-instructed answer shape the measured wording produces — a real verified
+  // figure (cut-1's own safe/tgt), not the ~106s-of-speech shape from before R-36a.
+  const safe = await page.evaluate(`(function(){var m=resolveItem('cut-1'); return Math.round(m.obj.safe!=null?m.obj.safe:m.obj.tgt);})()`) as number;
+  await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock='${safe}°C, ואז אפשר להוציא.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ הבטוחה')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).toContain(String(safe));      // the number
+  expect(spoken).toContain('°C');              // its unit
+  expect(spoken).toContain('לפי המדריך המאומת'); // the caveat/verification marker
+});
+

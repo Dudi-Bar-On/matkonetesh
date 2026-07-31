@@ -6731,13 +6731,29 @@ function vcStripAskPrefix(said){ return String(said||'').replace(/^(שאלה|ת�
 // separately-chosen "answer language" — he/en keep their tailored prompts; every other of the 7 live
 // languages gets a parameterized instruction naming the target language explicitly. Reuses LANGNAME
 // (app.js ~9092, code→language-name for aiJSON outLang/mtTranslate) rather than a second table.
+// R-36a (owner-approved 31.7, docs/analysis/2026-07-31-qa-latency-measured.md): a free-form answer with
+// no length instruction measured 5.7s / ~1,488 chars (~106s of speech) — the length instruction alone cut
+// it to 1.29s / 147 chars (4.4x faster, 10x shorter); lowering thinkingLevel did NOT help (answers got
+// LONGER). Voice-answer-path ONLY — the on-screen AI features are untouched, they have their own reasons
+// to be thorough. Hard rule, non-negotiable: brevity must never strip a safety answer — a safe temperature,
+// a cure ratio, or a time/temperature pair must still carry its number, unit, and caveat. This is belt AND
+// suspenders with vcGuardSpoken (P0-app item 1, above): the guard structurally strips any UNVERIFIED number
+// regardless of what the model does; this instruction is what keeps a VERIFIED number from being squeezed
+// out by brevity pressure in the first place.
+const VC_BREVITY_EN='You are a voice assistant being listened to, not read: answer briefly, in natural '
+  +'spoken style — no markdown, no bullet lists, no headings. Non-negotiable exception: if the answer '
+  +'touches safety (a safe temperature, a cure ratio, a time/temperature pair), the number, its unit, and '
+  +'the caveat must be preserved in full, even at the cost of less aggressive brevity elsewhere.';
+const VC_BREVITY_HE='אתה עוזר קולי שמאזינים לו, לא קוראים אותו: ענה בקצרה ובסגנון דיבור טבעי — בלי '
+  +'Markdown, בלי רשימות, בלי כותרות. חריג בל-יעבור: אם התשובה נוגעת לבטיחות (טמפרטורה בטוחה, יחס מלח/כבישה, '
+  +'זמן/טמפרטורה) — המספר, היחידה וההסתייגות חייבים להישמר במלואם, גם במחיר קיצור פחות אגרסיבי בשאר התשובה.';
 function vcBuildAskPrompt(question, ansLang, ctx){
   ctx=ctx||'';
   let sys;
   if(ansLang!=='he' && ansLang!=='en' && LANGNAME[ansLang]){
     sys='You are "The Fire" — a live-fire cooking assistant inside an app. '
       +'CRITICAL: You MUST reply in '+LANGNAME[ansLang]+' ONLY. '
-      +'Keep it brief (2-3 sentences max), suitable for text-to-speech while the user is actively cooking. '
+      +VC_BREVITY_EN+' '
       +'Do not invent safety temperatures — if unsure, say so.'
       +(ctx?(' Context (may be in Hebrew, translate as needed): '+ctx):'');
     return {sys, userText: question+'\n\n(Reply in '+LANGNAME[ansLang]+' only.)'};
@@ -6745,13 +6761,13 @@ function vcBuildAskPrompt(question, ansLang, ctx){
   if(ansLang==='en'){
     sys='You are "The Fire" — a live-fire cooking assistant inside an app. '
       +'CRITICAL: You MUST reply in ENGLISH ONLY, even though the question or context may be in Hebrew. '
-      +'Keep it brief (2-3 sentences max), suitable for text-to-speech while the user is actively cooking. '
+      +VC_BREVITY_EN+' '
       +'Do not invent safety temperatures — if unsure, say so.'
       +(ctx?(' Context (may be in Hebrew, translate as needed): '+ctx):'');
   } else {
     sys='אתה "האש" — עוזר בישול-אש חי בתוך אפליקציה. '
       +'חשוב: ענה אך ורק בעברית. '
-      +'בקצרה (2-3 משפטים לכל היותר), מתאים להקראה בזמן בישול פעיל. '
+      +VC_BREVITY_HE+' '
       +'אל תמציא טמפרטורות בטיחות — אם אינך בטוח, אמור זאת.'+((typeof pref==='function'&&pref('units')==='metric')?' השתמש ביחידות מטריות בלבד (°C, ס״מ, ק״ג).':'')+(ctx?(' '+ctx):'');
   }
   const userText = ansLang==='en' ? (question+'\n\n(Reply in English only.)') : (question+'\n\n(ענה בעברית בלבד.)');
