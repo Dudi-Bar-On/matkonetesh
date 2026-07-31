@@ -349,6 +349,58 @@ test('regression (d) hazard: a barge-in during the lookahead prefetch never lets
   expect(r.some((t) => t.startsWith('A2'))).toBe(false);   // A's SECOND (prefetched) chunk never plays after the barge-in
 });
 
+// Regression (commit 7172c42's lookahead-1 prefetch): `pending.promise` (the eagerly-started synthesis of
+// chunk i+1) is only ever awaited on the happy path. A barge-in like the hazard test above makes gemSpeak's
+// loop `return` at the top of the next iteration BEFORE it ever touches `pending.promise` — so if that
+// orphaned prefetch later rejects (a transient network failure arriving after the fact), NOTHING has a
+// handler attached to it, and a promise that rejects with zero handlers fires a global `unhandledrejection`
+// on `window`. That is real, user-visible console noise in a shipped product, not just an internal detail —
+// assert the OBSERVABLE effect (no unhandledrejection event), not an internal flag.
+test('regression: an orphaned lookahead-prefetch that rejects after a barge-in never fires window unhandledrejection', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  await page.route('**/models/*:streamGenerateContent*', r => r.abort());
+  try {
+    const r = await page.evaluate(async () => {
+      const w = window as any;
+      const unhandled: string[] = [];
+      const onUnhandled = (ev: any) => { unhandled.push(String((ev.reason && ev.reason.message) || ev.reason)); };
+      window.addEventListener('unhandledrejection', onUnhandled);
+      let rejectA2: (e: any) => void = () => {};
+      let chunk0Blocked = false;
+      let releasePlay0: () => void = () => {};
+      // A1 (chunk 0) synthesizes instantly and blocks in the play-mock (so the test can time the barge-in
+      // precisely, same pattern as the barge-in hazard test above). A2 (chunk 1, the prefetch) synthesizes
+      // into a promise the test controls directly, so it can be rejected AFTER the barge-in has already
+      // made gemSpeak's loop abandon it.
+      w.__gemTtsMock = (t: string) => {
+        if (t.startsWith('A2')) return new Promise((_res, rej) => { rejectA2 = rej; });
+        return { mock: true, t };
+      };
+      w.__gemPlayMock = (buf: any) => {
+        const tag = String(buf && buf.t || '');
+        if (tag.startsWith('A1')) {
+          return new Promise<void>((res) => { releasePlay0 = () => res(); chunk0Blocked = true; });
+        }
+        return Promise.resolve();
+      };
+      const genA = w.vcNewSpeakGen();
+      const pA = w.gemSpeak('A1 first sentence padded here now. A2 second sentence follows after that.', 'en', genA);
+      while (!chunk0Blocked) { await new Promise((res) => setTimeout(res, 0)); }
+      w.vcNewSpeakGen();          // barge-in: takes the floor while A1 is still (blocked-)playing, A2 prefetching
+      releasePlay0();              // let A1 finish -> loop reaches i=1, sees the stale gen, returns WITHOUT ever awaiting A2's promise
+      await pA;
+      // A2's prefetch is now orphaned (gemSpeak's own loop already returned without it) — reject it, exactly
+      // the "late network failure arrives after the fact" case the fix must cover.
+      rejectA2(new Error('prefetch-boom'));
+      // give the browser's microtask/task queue a real chance to fire unhandledrejection, if it will.
+      await new Promise((res) => setTimeout(res, 50));
+      window.removeEventListener('unhandledrejection', onUnhandled);
+      return unhandled;
+    });
+    expect(r).toEqual([]);    // no unhandledrejection reached window
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
+});
+
 test('R-34: TTS generationConfig carries maxOutputTokens 8192', async ({ page }) => {
   await seedApp(page, {});
   const gc = await page.evaluate(() => (window as any).gemTtsGen('Kore'));

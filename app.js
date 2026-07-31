@@ -6819,6 +6819,15 @@ async function gemSynthChunkRetrying(text, gen){
     return await gemSynthChunk(text);
   }
 }
+// gemSpeak's lookahead-1 prefetch (below) starts `pending.promise` eagerly but only awaits it on the
+// happy path — a chunk-i failure (throw), a barge-in (`vcGenCurrent` false at the top of the next
+// iteration), or plain loop end can all leave it un-awaited. A promise that later rejects with zero
+// attached handlers fires a global `unhandledrejection` on `window` — real console noise in a shipped
+// product. Attach a no-op handler at CREATION time so the promise is considered handled immediately;
+// this does NOT swallow the rejection for the real `await pending.promise` below — a promise can carry
+// any number of independent handlers, and `.catch()` here doesn't consume/replace what a later `await`
+// on the SAME promise observes.
+function gemTrackPending(p){ try{ p.catch(function(){}); }catch(e){} return p; }
 async function gemSpeak(text, lang, gen){
   if(gen===undefined) gen=vcNewSpeakGen();
   if(!aiAvail()) throw new Error('no-key');            // defensive only — R-35: no keyless user exists
@@ -6852,12 +6861,12 @@ async function gemSpeak(text, lang, gen){
       if(pending && pending.idx===i){
         const buf=await pending.promise;
         if(!vcGenCurrent(gen)) return;                  // barge-in while this chunk was prefetching: never schedule it
-        if(i+1<chunks.length) pending={idx:i+1, promise:gemSynthChunkRetrying(chunks[i+1], gen)};
+        if(i+1<chunks.length) pending={idx:i+1, promise:gemTrackPending(gemSynthChunkRetrying(chunks[i+1], gen))};
         cursor=await gemPlayBuf(buf, gen, cursor);
       } else {
         // chunk 0 (or any chunk reached with nothing pre-fetched): stream for the fastest first sound (R-39).
         const p=gemSpeakSeg(chunks[i], L2, gen, cursor);
-        if(i+1<chunks.length) pending={idx:i+1, promise:gemSynthChunkRetrying(chunks[i+1], gen)};
+        if(i+1<chunks.length) pending={idx:i+1, promise:gemTrackPending(gemSynthChunkRetrying(chunks[i+1], gen))};
         cursor=await p;
       }
     }catch(err){ err.chunkIdx=i; throw err; }           // position → visible error (Task 6)
