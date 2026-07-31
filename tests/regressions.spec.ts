@@ -63,22 +63,27 @@ test('AI recipe generator: mocked recipe → unverified badge → save → appea
   expect(savedCount).toBeGreaterThan(0);
 });
 
-test('bilingual voice: the answer follows the selected answer-language (text Q&A)', async ({ page }) => {
-  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-gemkey': JSON.stringify('TEST') });   // aiAvail() -> ask row shows
+// R-31 (Voice Wave 0 Task 8, spec §5): the answer-language buttons this test used to click
+// ([data-vc="anslang-he"]/[data-vc="anslang-en"]) are DELETED — the voice answer now follows the app's
+// own UI language (mk-lang), one source, no separate per-voice choice. Adapted to switch languages the
+// R-31 way: seed a fresh mk-lang and re-open Voice Cook, instead of clicking a removed control.
+test('bilingual voice: the answer follows the app\'s own UI language (R-31)', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-gemkey': JSON.stringify('TEST'), 'mk-lang': JSON.stringify('he') });
   await page.evaluate(`openVoiceCook([{t:new Date(), label:'עישון 105°', sub:'', kind:'smoke', det:''}])`);
   await expect(page.locator('#vcAskInput')).toBeVisible();
-  // mock the AI answer to echo the CURRENT answer-language (string form so bare vcAnsLang resolves in-page)
-  await page.evaluate(`window.__vcAskMock = function(q){ return vcAnsLang()==='en' ? 'ANSWER_IN_ENGLISH' : 'TESHUVA_BEIVRIT'; }`);
-
-  await page.click('[data-vc="anslang-en"]');
-  await page.fill('#vcAskInput', 'how long to rest the brisket?');
-  await page.click('[data-vc="asktext"]');
-  await expect(page.locator('#panel')).toContainText('ANSWER_IN_ENGLISH');
-
-  await page.click('[data-vc="anslang-he"]');
+  // mock the AI answer to echo the CURRENT voice language (string form so bare vcVoiceLang resolves in-page)
+  await page.evaluate(`window.__vcAskMock = function(q){ return vcVoiceLang()==='en' ? 'ANSWER_IN_ENGLISH' : 'TESHUVA_BEIVRIT'; }`);
   await page.fill('#vcAskInput', 'כמה זמן מנוחה?');
   await page.click('[data-vc="asktext"]');
   await expect(page.locator('#panel')).toContainText('TESHUVA_BEIVRIT');
+
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-gemkey': JSON.stringify('TEST'), 'mk-lang': JSON.stringify('en') });
+  await page.evaluate(`openVoiceCook([{t:new Date(), label:'Smoke at 105°', sub:'', kind:'smoke', det:''}])`);
+  await expect(page.locator('#vcAskInput')).toBeVisible();
+  await page.evaluate(`window.__vcAskMock = function(q){ return vcVoiceLang()==='en' ? 'ANSWER_IN_ENGLISH' : 'TESHUVA_BEIVRIT'; }`);
+  await page.fill('#vcAskInput', 'how long to rest the brisket?');
+  await page.click('[data-vc="asktext"]');
+  await expect(page.locator('#panel')).toContainText('ANSWER_IN_ENGLISH');
 });
 
 test('method sync: choosing sous-vide for an item puts a sous-vide step in the work plan', async ({ page }) => {
