@@ -1,9 +1,14 @@
-# Metered Streaming — design spec (R-36 streaming leg · R-37 · R-38 · R-36a) — v281
+# Metered Streaming — design spec (R-36 streaming leg · R-37 · R-38 · R-36a · R-39 · R-40) — v281
 
-**Date:** 2026-07-31 · **Status:** DRAFT — awaiting owner approval (pipeline §2: no code before approval)
+**Date:** 2026-07-31 · **Status:** APPROVED, **REVISED 31.7 (three owner rulings — R-39/R-40 + the
+demo-purpose ruling)** — the revision re-prioritizes the arc around measured audio streaming and the
+demo quality bar; see the rulings table at the end.
 **Owner rulings this spec lands:** R-37 GO (31.7): *"אפשר לטפל בהגנה בתוך הפרוקסי, וגם לכל משתמש יש טוקן כך
 שאפשר לחסום ברמת המשתמש ולא באופן גורף"* · R-36(ב) streaming GO · R-36(א) length instruction approved ·
-R-38 tier infrastructure (infrastructure ONLY).
+R-38 tier infrastructure (now MINIMAL per R-40) · **R-39: audio streaming works TODAY on the existing
+endpoint — measured, first audio frame 1,101 ms** · **R-40: no existing users — performance first,
+metering sophistication second** · **the arc's purpose is demos and marketing** (owner: *"חשוב בעיקר
+להדגמות ושיווק"*) — folded into the DoD as a quality bar, §10.
 **Measured basis:** `docs/analysis/2026-07-31-qa-latency-measured.md` + `docs/analysis/2026-07-31-voice-latency-baseline.md`.
 **Builds on:** Voice Wave 0 (`docs/superpowers/specs/2026-07-31-voice-wave0-design.md`) — the chunked TTS
 pipeline (`vcChunkText`/`gemSynthChunk`/`gemSpeak`), the speaker-generation token (`vcSpeakGen`), INV-T,
@@ -16,25 +21,39 @@ and the v278 spoken-safety guard (`vcGuardSpoken`, marker-binds-to-number, wrong
 
 | # | Goal | Measured basis |
 |---|---|---|
-| G1 | **~3.3 s to first sound** for a free-form voice answer (vs ~99 s today): stream the answer, synthesize the first complete sentence the moment it closes | first sentence ready at **1.24 s** (streaming) + TTS floor **~2 s** ≈ 3.3 s |
+| G1 | **First sound ≤ 3.0 s — an acceptance criterion, not an aspiration** (§10 DoD-D1) for a free-form voice answer (vs 7.6 s blocking-TTS floor / ~99 s worst-case today): stream the TEXT answer, hand the first gate-passed sentence to a **streaming TTS synthesis**, and play the first audio frame the moment it arrives | first sentence closes at **1.24 s** (text streaming) + first audio frame at **1,101 ms** on the SAME `streamGenerateContent` endpoint (R-39, measured 31.7) → expected ≈ **2.3 s**; 3.0 s is the pass bar with headroom |
 | G2 | **The streaming route returns to the Worker metered** — never as the unmetered passthrough B19 closed. Reserve up-front, count in-flight, reconcile at end, fail closed on every unknown | B19 (Phase 1 Task 6) was a deliberate security fix; the owner's GO explicitly requires protection *inside the proxy* |
 | G3 | **Per-user enforcement** — a user who exhausts their quota is blocked individually (402 on their code at the next admission); no global switch, nobody else affected | owner ruling R-37: "לחסום ברמת המשתמש ולא באופן גורף" |
-| G4 | **Tier infrastructure (R-38)** — `tier` on the code record; cap / rate limit / streaming allowance derive from a tier table; a record with no tier falls back to `default` with **zero behaviour change** for existing users; `central-code.mjs` mints/changes/audits tiers | owner ruling R-38: "תשתית עכשיו, מדיניות עסקית בהמשך" |
+| G4 | **Tier skeleton (R-38, narrowed by R-40 to MINIMAL)** — the `tier` field on the code record, the `TIERS` table, and a `default` row from which rate / streaming allowance / stream ceiling derive; a record with no (or an unknown) tier resolves to `default`. **Nothing more:** no second row, no tier-change CLI, no mint flag — those are one-line adds when business policy exists (band-H) | owner ruling R-38 ("תשתית עכשיו, מדיניות עסקית בהמשך") narrowed by R-40: "תשתית המדרגים יכולה להישאר מינימלית" |
 | G5 | **One client pipeline, two transports** — BYOK streams straight to Google, managed streams through the Worker, through the SAME code path (a shared transport builder); the code must not fork | gemFetch already has this shape (app.js:5497-5527); streaming reuses it |
 | G6 | **Length instruction for voice answers (R-36a)** with a hard safety-completeness override — a safety answer is never truncated into uselessness | length instruction measured: 5.7 s/1,488 chars → **1.29 s/147 chars** |
 | G7 | The v278 spoken-safety guarantees and INV-T **hold through streaming** — the guard never inspects a fragment | constraint; see §6 for exactly when the guard runs |
+| G8 | **Demo-grade (the arc's purpose ruling)** — the first 10 seconds decide a demo: pre-warmed connections so the FIRST question is not the slow one; degraded-but-working on a weak network (a stall is visible and recoverable, never silent-and-broken); a **fixed, repeatable demo scenario** verified end-to-end before anything is shown; verified on a real device at 390×844 | owner 31.7: "חשוב בעיקר להדגמות ושיווק" — folded into §5.4/§5.5 and DoD-D1..D4 |
 
 ### Non-goals (explicit out-of-scope)
-- **Pricing, commercial tier names, tier UI, billing** — band-H / Paddle (D8). The tier table's keys are
-  infrastructure identifiers (`default`, `extended`), not products.
-- **Streaming for any call site other than the voice ask** (`vcAskAI`). The text ask panel, recipe AI,
-  photo analyze etc. keep `generateContent`. (The Worker route is generic; adopting it elsewhere is a
-  later, separate decision.)
-- **TTS audio-output streaming** — supported by Google on the model we use but via a different API
-  surface (§8); v281 does not depend on it and only keeps the seam open.
+- **Pricing, commercial tier names, tier UI, billing** — band-H / Paddle (D8). The tier table's single
+  key (`default`) is an infrastructure identifier, not a product.
+- **Streaming for any call site other than the voice ask** (`vcAskAI`) and the voice TTS synthesis. The
+  text ask panel, recipe AI, photo analyze etc. keep `generateContent`. (The Worker route is generic;
+  adopting it elsewhere is a later, separate decision.)
 - **Durable Object cross-isolate atomicity** — stays trigger-anchored to Sync Thread / S1 exactly as the
   H-3 comment in `worker/index.js` records. Streaming rides the same per-isolate `withCodeLock` +
   debit-first bounds as `generateContent`.
+
+### Non-constraints (R-40 — say it explicitly so nobody re-imports them)
+**There are no existing users — the product is in development** (owner 31.7: *"כרגע אין משתמשים
+קיימים… זה גם הופך את הבעיה האלגוריתמית לפחות קריטית; הכי חשוב לי הביצועים המקסימליים"*). Therefore:
+- **Backward compatibility and storage migration are NOT constraints.** Data shapes (code records, KV
+  layout, client storage) may change freely; no migration task exists in the plan and none is owed.
+  "Zero behaviour change for existing users" phrasing elsewhere in older drafts is void — the only
+  compatibility kept is the trivial one (`tier` absent → `default`), kept because it is the simplest
+  code, not for anyone's sake.
+- **F5 (never cut mid-stream, §2.5) stands** — it is right on its merits (a truncated cooking
+  instruction can invert meaning) — but it is no longer a *blocking design question*; the algorithmic
+  problem it guards is less critical with no user base.
+- **What does NOT relax: Worker metering ships.** It protects the OWNER'S key and bill — an unmetered
+  proxy is an open account (the exact B19 lesson). It ships simple; §2.7 names the sophistication
+  deferred and why.
 
 ---
 
@@ -45,7 +64,11 @@ and the v278 spoken-safety guard (`vcGuardSpoken`, marker-binds-to-number, wrong
 `?alt=sse` — the client **always** sends `alt=sse` (the plan pins it in the transport builder), so the
 body is Server-Sent Events: `data: {json}\n\n` frames, each frame a `GenerateContentResponse` fragment
 carrying `candidates[0].content.parts[].text` deltas and (cumulatively, with the final frame
-authoritative) `usageMetadata.totalTokenCount`. The Worker forwards `url.search` verbatim.
+authoritative) `usageMetadata.totalTokenCount`. **The same route also carries the TTS audio stream
+(R-39):** a body with `responseModalities:['AUDIO']` on the TTS model returns frames whose parts carry
+`inlineData` (base64 PCM) instead of `text` — the metering machinery is modality-agnostic (usage
+metadata when present, fail-closed reserve when absent; the char estimator simply contributes 0 for
+audio-only frames). The Worker forwards `url.search` verbatim.
 Headers/auth/CORS identical to the existing route (`X-Access-Code`, allowlist CORS).
 
 The `fetch` handler signature gains its third parameter — `async fetch(request, env, ctx)` — because
@@ -122,6 +145,20 @@ sentence** — it lets the stream complete (F6 bounds it). Rationale, in order:
 - **The owner:** `central-code.mjs show/audit` displays `used`/`cap`/`tier`; revoke/disable stays
   per-code and instant.
 
+### 2.7 Kept simple — the sophistication R-40 defers, named
+The metering that ships is exactly what protects the key: **admission-before-byte, debit-first reserve,
+tee count, fail-closed reconcile, disconnect reconcile (`ctx.waitUntil`), per-stream ceiling.** Deferred
+deliberately, because there are no users to differentiate or migrate and performance ships first:
+- **A second tier row (`extended`) and any tier-management CLI** (`--tier` mint flag, `tier <code>
+  <name>` change command) — one-line adds when band-H decides policy; until then they are dead code.
+- **Pre-ceiling frame buffering** (holding back a trailing incomplete frame near the ceiling) — the
+  ceiling cut lands after the last complete scanned frame; good enough for an abuse guard.
+- **Cross-isolate atomicity (Durable Object)** — unchanged from the original non-goal.
+- **Any per-user fairness / anti-abuse analytics** — the meter exists for the owner's bill, not for a
+  user population that does not exist yet.
+Each deferral is re-openable by a one-line trigger in ROADMAP §5a when users exist (H8: nothing
+unlanded — this list is the trigger anchor).
+
 ---
 
 ## 3 · What stays true from B19
@@ -135,40 +172,36 @@ admission passes and the reserve is debited* (test names in the plan).
 
 ---
 
-## 4 · Tier infrastructure (G4 · R-38) — infrastructure ONLY
+## 4 · Tier skeleton (G4 · R-38 narrowed by R-40) — the field, the table, a default row, nothing more
 
 ### 4.1 The tier table (worker/index.js)
 ```
 const TIERS = {
-  default:  { ratePerMin: 20, streaming: true,  streamMaxTokens: 4096, mintCap: 2_000_000 },
-  extended: { ratePerMin: 60, streaming: true,  streamMaxTokens: 8192, mintCap: 20_000_000 },
+  default: { ratePerMin: 20, streaming: true, streamMaxTokens: 4096, mintCap: 2_000_000 },
 };
 function tierOf(rec) { return TIERS[rec && rec.tier] || TIERS.default; }
 ```
-- `ratePerMin` replaces the `RATE_MAX_PER_WINDOW` constant as the per-code limit (`default` = today's
-  20 — zero behaviour change).
-- `streaming` + `streamMaxTokens` are the streaming allowance (§2). `default` allows streaming — the
-  arc's purpose is to give managed users streaming; "no behaviour change" refers to everything that
-  exists today (caps, rate, non-streaming route), and streaming is strictly additive.
-- `mintCap` is used **only by `central-code.mjs` at mint time** — the Worker itself keeps refusing a
-  record without an explicit positive `cap` (the E14 fail-closed rule is untouched; tiers never make a
-  capless record valid).
-- The record keeps its explicit per-code `cap` as the quota of record. A tier does NOT override an
-  existing `cap` — so every existing record behaves byte-for-byte as today (`tier` absent → `default` →
-  rate 20, streaming allowed, cap = the record's own).
+- `ratePerMin` replaces the `RATE_MAX_PER_WINDOW` constant; `streaming` + `streamMaxTokens` are the
+  streaming allowance (§2); `mintCap` is consumed only by `central-code.mjs` at mint time — the Worker
+  itself keeps refusing a record without an explicit positive `cap` (the E14 fail-closed rule is
+  untouched; tiers never make a capless record valid).
+- The record keeps its explicit per-code `cap` as the quota of record; a tier never overrides it.
+  `tier` absent or unknown → `default`. That fallback is kept because it is the simplest possible code —
+  not as a compatibility promise (R-40: there are no existing users to be compatible with).
+- **Earlier tier ruling reconciled:** the owner approved `default`/`extended` names-and-numbers as a
+  proposal (rulings table below). R-40 then narrowed the *shipping* scope to the `default` row only —
+  the `extended` row (60/min, 8192, 20M) is recorded HERE as the agreed numbers and lands as a one-line
+  add when band-H opens. This is a scope narrowing by a later owner ruling, not a waiver.
 
 ### 4.2 `scripts/central-code.mjs`
-- `add <label> [capTokens] [--tier <name>]` — unknown tier name refuses at mint (dead-on-arrival guard,
-  same spirit as the cap guard); cap defaults to the tier's `mintCap` when omitted; the record gains
-  `tier: <name>` (omitted entirely for `default` — existing-shape records remain the canonical shape).
-- `tier <code> <name>` — read-modify-write the record's `tier` field (and only it).
-- `show` / `audit` display the tier (audit shows `tier=default (implicit)` for a record without one, and
-  flags an **unknown** tier name as a warning — it still works, as `default`, but the owner should know).
+`show` / `audit` display the tier (`default (implicit)` for a record without one; an unknown tier name
+is flagged as a warning — it still works, as `default`). **No mint flag, no tier-change command** —
+minted records simply have no `tier` field, which IS `default`. Deferred per §2.7.
 
 ### 4.3 Out of scope, stated to prevent drift
-No pricing, no commercial names, no per-tier UI, no billing hooks, no tier upsell copy, no Paddle. Those
-are band-H (D8) and are decided commercially. The only consumers of `tier` in v281 are the Worker's
-quota resolution and `central-code.mjs`.
+No pricing, no commercial names, no per-tier UI, no billing hooks, no tier upsell copy, no Paddle, and —
+per R-40 — no second tier row and no tier-management CLI. The only consumers of `tier` in v281 are the
+Worker's quota resolution and `central-code.mjs`'s display.
 
 ---
 
@@ -195,14 +228,51 @@ code**; only the URL/header pair differs — the code cannot fork because there 
 `vcAskFlow` (voice ask only) switches to `gemStreamFetch` with a **sentence assembler**: deltas
 accumulate in a buffer; a sentence closes on the SAME boundary rule as `vcChunkText` (terminator
 `[.!?…]` + whitespace — a decimal can never split), or on stream end. Each closed sentence is offered to
-the **stream gate** (§6). Gate-passed sentences go straight into the existing chunked pipeline —
-`gemSynthChunk` for synthesis, `gemPlayBuf` under the **speaker-generation token** (`vcSpeakGen`), so
-barge-in/stop semantics are exactly Voice Wave 0's. First sound ≈ first-sentence-close (1.24 s) + one
-short synthesis (~2 s) ≈ **3.3 s** (G1). When the stream completes, `vcGuardSpoken` runs on the **whole
+the **stream gate** (§6). Gate-passed sentences go straight into the synthesis pipeline — now the
+**streaming synthesizer** (§5.3) behind the same seam, under the **speaker-generation token**
+(`vcSpeakGen`), so barge-in/stop semantics are exactly Voice Wave 0's. First sound ≈
+first-sentence-close (1.24 s) + first audio frame (~1.1 s, R-39) ≈ **2.3 s expected**; the acceptance
+bar is **≤ 3.0 s** (G1/DoD-D1). When the stream completes, `vcGuardSpoken` runs on the **whole
 answer** (§6) and the remainder (guarded text minus the already-spoken prefix) is spoken through the
 same pipeline; `vcLastQA` is set to the full guarded string (transcript rule, §6).
 
 BYOK and managed both take this path (G5). Non-voice ask surfaces are untouched.
+
+### 5.3 Streaming TTS synthesis (R-39) — `gemSpeakStream`
+Measured 31.7 (`scratchpad/phonikud/tts-stream-probe.mjs`): `streamGenerateContent` with
+`responseModalities:['AUDIO']` on `gemini-3.1-flash-tts-preview` — **185 frames, first audio frame at
+1,101 ms, 4.36 s total for 7.4 s of audio**, vs **7,643 ms before any sound** from today's blocking
+call. No new API surface: the same endpoint, the same SSE framing, the same transport builder (§5.1)
+and the same Worker route (§2.1) carry it.
+- `gemSpeakStream(text, lang, gen)` streams the synthesis: parse SSE frames, base64-decode each
+  `inlineData` PCM chunk, convert to an AudioBuffer, and schedule it on the WebAudio clock at a running
+  cursor — first chunk = first sound. The generation token (`vcSpeakGen`) is checked per chunk;
+  barge-in cancels the fetch and silences the cursor exactly as `gemPlayBuf` does today.
+- **The blocking path stays as the fallback**, behind the same seam: a managed 404 (stale Worker), a
+  stream error, or a mid-utterance stall (§5.5) falls back to `gemSynthChunk`+`gemPlayBuf` for the
+  remaining text. The app never breaks against an undeployed route; a demo degrades, never dies.
+- **Safety position:** audio streaming is entirely DOWNSTREAM of the text safety pipeline. Only
+  gate-passed (§6.2) or guard-approved (§6.1) text ever reaches `gemSpeakStream`, and `ttsText` remains
+  the ONLY transform between guard-approved text and the engine (INV-T) — streaming changes how audio
+  *bytes* travel, never what text is synthesized or when the guard runs.
+
+### 5.4 Connection pre-warm (G8) — the first question must not be the slow one
+Cold start is exactly when the audience is watching. On voice-UI open (mic surface shown), `vcPrewarm()`
+fires once (throttled, ≥5 min between warms): a minimal request to the ACTIVE transport host (managed:
+`OPTIONS` to the Worker origin — warms TLS+H2 and the isolate; BYOK: a HEAD/no-op fetch to
+`generativelanguage.googleapis.com`) so the demo's first real question pays no TLS/cold-start tax.
+Fire-and-forget: a pre-warm failure is silent and costs nothing (it is not a request, carries no
+tokens, and is never metered as usage).
+
+### 5.5 Weak network — degraded-but-working (G8)
+The room Wi-Fi at a demo is not your desk. Named behaviours, no silent state:
+- **Slow first byte:** the UI already shows "…חושב" from ask-time; nothing new owed below 10 s.
+- **Mid-utterance stall** (no audio frame for **8 s** while playing): show a visible toast
+  ("החיבור איטי — ממשיך…"), keep the stream open up to the 30 s transport timeout; if the stream dies,
+  fall back to the blocking synthesizer for the not-yet-spoken remainder (§5.3). Playback resumes at
+  the cursor with an audible gap — degraded, working, visible.
+- **Total failure:** the existing honest-error path (R-32/R-35): a Hebrew error message, spoken and
+  rendered — never silence, never a hang.
 
 ---
 
@@ -234,8 +304,16 @@ denies. And a guard over half a sentence is worse than useless. Therefore:
    shows only gate-passed sentences plus an ellipsis; the final render replaces it with the full guarded
    string. No unguarded text ever reaches the screen or the speaker.
 5. **INV-T is untouched:** `ttsText` remains the ONLY transform between guard-approved text and the
-   engine, for early sentences and the guarded remainder alike. The existing INV-T test keeps pinning it;
-   a new test drives a streamed answer with numbers end-to-end (names in the plan).
+   engine, for early sentences and the guarded remainder alike — and this holds for the streaming
+   synthesizer too: `gemSpeakStream` (§5.3) receives `ttsText` output and streams audio *bytes*; it
+   never sees, buffers, or alters unguarded text. The existing INV-T test keeps pinning it; a new test
+   drives a streamed answer with numbers end-to-end (names in the plan).
+
+**In one sentence, for the reviewer:** with streamed text arriving in fragments, the guard runs
+**exactly once, after `asm.end()` — i.e., after the last delta has been assembled into the complete
+answer and before any post-guard text is spoken**; before that moment the only text that may reach the
+synthesizer is a fully-closed sentence that passed the digit-free gate, and a guard over half a
+sentence is therefore structurally impossible, not merely avoided.
 
 ---
 
@@ -260,27 +338,20 @@ pasted as evidence — stated openly as a measurement, not a suite test.
 
 ---
 
-## 8 · Research answer: does Gemini TTS stream audio output?
+## 8 · TTS audio streaming — MEASURED, in scope (R-39)
 
-**Yes — for exactly the model this app uses.** Google's speech-generation docs state: *"Streaming is
-supported for Text-to-Speech (TTS) models starting with version 3.1 (including
-`gemini-3.1-flash-tts-preview`)"* — and the app's TTS role is `gemini-3.1-flash-tts-preview` (model
-registry, migrated 2026). The 2.5-generation TTS models do **not** stream.
-**But:** TTS streaming is exposed through the **Interactions API** (`stream: true`; audio arrives as
-base64 PCM chunks in delta events), a different API surface from the `generateContent` contract the
-whole app (and the Worker proxy) speaks. Sources:
-[ai.google.dev/gemini-api/docs/speech-generation](https://ai.google.dev/gemini-api/docs/speech-generation) ·
-[Interactions API speech generation](https://ai.google.dev/gemini-api/docs/interactions/speech-generation) ·
-[Google AI dev forum: Gemini 2.5 Flash TTS streaming](https://discuss.ai.google.dev/t/gemini-2-5-flash-tts-streaming/88608).
+**Audio streaming works TODAY on the endpoint we already use — measured, not researched.** The owner's
+probe (`scratchpad/phonikud/tts-stream-probe.mjs`, 31.7): `streamGenerateContent` with
+`responseModalities:['AUDIO']` on `gemini-3.1-flash-tts-preview` returned **185 frames with the first
+audio frame at 1,101 ms**, total **4.36 s for 7.4 s of audio** — versus **7,643 ms before any sound**
+from today's blocking call. **The separate Interactions API is NOT needed.** The earlier research
+framing ("future adoption, different surface") is superseded by this measurement: same endpoint, same
+SSE contract, same transport builder, same Worker route.
 
-**Design consequence for v281:** do not depend on it. Adopting a second API surface mid-arc would widen
-the Worker's metered surface and the client transport in one step too many. The design *accommodates*
-it: (a) the Worker's admission/metering machinery is written against "a streamed SSE body with usage
-metadata", not against the `streamGenerateContent` path shape specifically — a future
-`/interactions`-style route reuses admission, tee-metering and reconcile as-is; (b) on the client,
-`gemSynthChunk` returns an AudioBuffer behind a stable seam — a future streaming synthesizer replaces
-its internals without touching the chunker, the guard, or the generation token. When adopted, first
-sound drops below the ~2 s TTS floor; that is the named next latency step after v281, not part of it.
+**Design consequence for v281:** audio streaming is the arc's **first task and headline win** (§5.3).
+The Worker's metering is modality-agnostic (§2.1) and covers the audio stream with zero extra
+machinery. `gemSynthChunk`+`gemPlayBuf` remain behind the seam as the fallback path only (stale Worker
+/ stream failure / stall), not as the primary path.
 
 ---
 
@@ -297,21 +368,23 @@ sound drops below the ~2 s TTS floor; that is the named next latency step after 
    `cd worker && npm test` (vitest, real workerd) — both suites are release gates.
 5. **B19 must not regress:** no unmetered byte ever flows upstream; admission precedes the first
    upstream byte on every path.
-6. **No behaviour change for existing users:** records without `tier` behave exactly as today on the
-   non-streaming route (rate 20/min, their own cap, same errors).
+6. **No migration work (R-40):** there are no existing users; backward compatibility and storage
+   migration are NOT constraints and no task may be justified by them. The `tier`-absent → `default`
+   fallback exists because it is the simplest code, not as a compatibility promise.
 7. **Out of scope:** pricing/product tiers/UI/billing (band-H, D8); streaming for non-voice call sites;
-   TTS audio streaming (seam only).
+   second tier row + tier-management CLI (§2.7 deferrals).
 
 ## 10 · DoD — the arc gate (each line checkable with evidence)
 1. Worker vitest: admission-before-byte on the streaming route (all refusal paths; zero upstream calls);
    reserve debited before upstream; reconcile-to-actual from streamed `usageMetadata`; fail-closed charge
    when usage is absent (F7); refund on pre-byte upstream failure (F1/F2); disconnect reconcile via
-   `waitUntil` (F4); ceiling cut at frame boundary (F6); `streaming:false` tier → 403 with no debit.
-   RED witnessed for each.
-2. Worker vitest: tier resolution — no-tier record = `default` = today's numbers (regression pin);
-   `extended` rate honoured; unknown tier name = `default`.
-3. `central-code.mjs`: `--tier` mint, `tier` change command, `show`/`audit` display; unknown tier refused
-   at mint. (Verified by direct invocation output — pasted.)
+   `waitUntil` (F4); ceiling cut at frame boundary (F6). (The `streaming:false` refusal branch exists in
+   code but has no production tier row — asserted honestly as "default tier streams", not via a
+   fabricated row.) RED witnessed for each.
+2. Worker vitest: tier resolution — no-tier record = `default`; unknown tier name = `default` (no
+   crash). (No compatibility pin owed — R-40.)
+3. `central-code.mjs`: `show`/`audit` display the tier (implicit `default`, unknown-tier warning).
+   (Verified by direct invocation output — pasted.)
 4. Playwright: `gemStreamFetch` parses SSE deltas (mocked route per the contract's route rules);
    managed 404 → non-streaming fallback; managed 402 + BYOK key → BYOK retry.
 5. Playwright: sentence assembler closes on the vcChunkText boundary rule; decimal never splits.
@@ -322,11 +395,27 @@ sound drops below the ~2 s TTS floor; that is the named next latency step after 
 7. `'R-36a: the voice brevity instruction carries the safety-completeness override'` green; the panel
    prompt unchanged (negative case).
 8. INV-T test still green; no new transform between guard and engine.
-9. Latency: `window.__vcLat` gains `firstSentence`; live-key measurement pasted at the release gate
-   showing first sound ≤ ~3.5 s on the standard brisket question (target 3.3 s; the miss, if any,
-   stated loudly with its breakdown).
+9. Latency instrument: `window.__vcLat` gains `firstSentence` and `firstAudio`; the D1 measurement
+   below is read from these marks, not from ad-hoc stopwatches.
 10. Hebrew/visual: any new user-facing string rendered in Hebrew at 390×844, screenshot looked at
     (DoD-8/9); numeric readouts in `dir="ltr"` islands (L13).
+
+**Demo-grade gate (the arc's purpose ruling — these four are release-blocking, same rank as the rest):**
+- **D1 — the headline number: first sound ≤ 3.0 s.** Measured on the fixed demo question (D3) via
+  `__vcLat` (`firstAudio − ask`), **median of 5 consecutive live runs ≤ 3,000 ms and no run > 5,000 ms**,
+  after a pre-warmed voice-UI open (§5.4 — the demo's own condition). Measured basis ≈ 2.3 s (R-39);
+  a miss is stated loudly with its per-leg breakdown, never rounded away.
+- **D2 — no visible failure on a weak network.** The §5.5 behaviours demonstrated: a throttled-network
+  Playwright run (routed slow SSE) shows the stall toast, the blocking-synth fallback, and a completed
+  answer — degraded-but-working, never silent-and-broken.
+- **D3 — the repeatable demo scenario, verified end-to-end.** Fixed question: **"אני מעשן בריסקט 5 ק"ג
+  ב-110 מעלות — איך אדע מתי לעטוף?"**. Fixed expected shape: a Hebrew answer of 1–3 sentences naming
+  wrap indicators (bark set / color / stall), any temperature carried per the guard's rules (grounded
+  marker or redaction), spoken end-to-end through the streaming pipeline. The suite runs it mocked on
+  every run; the release gate runs it LIVE and pastes the transcript + latency marks. Nothing is shown
+  to an audience before this scenario passes.
+- **D4 — a real device at 390×844**, not only the desktop suite: the demo scenario run once on a real
+  phone (or the owner's device), first sound heard, screenshot of the transcript attached and looked at.
 11. Both suites green at the release commit: `cd worker && npm test` ×1 task-gate / and with the full
     `npx playwright test` ×2 at release (H7), serialized per §11a. Live URL verified per §10.10 before
     "v281 is live" is uttered.
@@ -353,3 +442,13 @@ sound drops below the ~2 s TTS floor; that is the named next latency step after 
 | **מדרגים** | שמות ומספרים לפתיחה | ✅ **מאושר כהצעה:** `default` — 20 בקשות/דקה · `extended` — 60 בקשות/דקה. **תשתית בלבד**: השמות והמספרים ניתנים לשינוי כשתוכרע המדיניות העסקית (band-H/Paddle), והמנגנון לא ייגע שוב. |
 
 **נגזרת:** אין יותר שאלות פתוחות במפרט — הביצוע רשאי להתחיל (שער §2 עבר).
+
+## 🧑 שלושה פסקי בעלים מאוחרים (31.7.2026, R-39/R-40 + ייעוד הקשת) — המפרט תוקן לפיהם
+
+| # | הפסק | מה השתנה במפרט |
+|---|---|---|
+| **R-39** | **הזרמת אודיו עובדת כבר היום ב-endpoint הקיים — נמדד**: ‏`streamGenerateContent` עם `responseModalities:['AUDIO']` על `gemini-3.1-flash-tts-preview` — **185 פריימים, פריים ראשון ב-1,101ms**, ‏4.36 שנ' ל-7.4 שנ' אודיו, מול **7,643ms** עד הצליל הראשון בקריאה החוסמת. **ה-Interactions API אינו נדרש.** סקריפט: `scratchpad/phonikud/tts-stream-probe.mjs` | §8 שוכתב סביב העובדה הנמדדת; §5.3 (`gemSpeakStream`) הופך את הזרמת האודיו למשימה הראשונה של הקשת; היעד ב-G1 ירד מ-3.3 שנ' ל-**≤3.0 שנ' (בסיס נמדד ~2.3)** |
+| **R-40** | **אין משתמשים קיימים — המוצר בפיתוח** (*"כרגע אין משתמשים קיימים… הכי חשוב לי הביצועים המקסימליים"*): תאימות-לאחור ומיגרציה אינן אילוצים; F5 נשאר לגופו אך אינו חוסם; המדרגים מינימליים; **המדידה ב-Worker נשארת — היא מגינה על המפתח והחשבון של הבעלים** | "Non-constraints" חדש ב-§1; ‏§4 צומצם לשורת `default` בלבד (‏`extended` + CLI — דחייה מתועדת ב-§2.7); אילוץ 6 ב-§9 הוחלף; אין משימת מיגרציה בתוכנית |
+| **ייעוד** | **הקשת נועדה להדגמות ושיווק** (*"חשוב בעיקר להדגמות ושיווק"*) — רף איכות, לא הערת שוליים | G8 חדש; ‏§5.4 (pre-warm) + §5.5 (רשת חלשה — degraded-but-working); שער D1–D4 ב-§10: ‏**D1 צליל ראשון ≤3,000ms (חציון 5 ריצות, אף ריצה >5,000ms)**, ‏D2 רשת חלשה, ‏D3 תרחיש-הדגמה קבוע מאומת מקצה-לקצה, ‏D4 מכשיר אמיתי 390×844 |
+
+**נגזרת:** סדר הביצוע החדש — (1) הזרמת אודיו → (2) הזרמת טקסט + מסירת המשפט הראשון → (3) מדידה מינימלית ב-Worker → (4) שלד מדרגים → (5) אימות ברמת הדגמה. התוכנית שוכתבה בהתאם (9 משימות).
