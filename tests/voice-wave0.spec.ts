@@ -502,15 +502,28 @@ for (const lg of ['fr', 'de', 'es', 'it', 'ru']) {
     try {
       await page.evaluate(() => (window as any).__mkLangReady);
       await page.evaluate(`(function(){ closePanel(); vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; openVoiceCook(vcTasks); })()`);
-      // Single atomic read (element existence + both attributes) inside one waitForFunction, rather than a
-      // waitForSelector followed by a separate evaluate — a re-render between those two round-trips
-      // (vcRender() replaces host.innerHTML) can otherwise null out the element mid-read on a loaded
-      // machine, an environment-timing flake unrelated to the assertion itself.
+      // Root cause (askrow-hang investigation, v280/v281 hotfix gate): confirmed by runtime instrumentation
+      // (a plain page.evaluate() read immediately after the open call, dumped for the two languages that
+      // failed in the reproducing run) that #vcAskInput/.vc-askbtn were ALREADY IN THE DOM the instant
+      // openVoiceCook() returned — the render/state path (aiAvail, dict-readiness, vcTasks/vcIdx) is correct
+      // every time. The hang is purely in HOW this test re-checked that DOM, not in what the app did:
+      // page.waitForFunction defaults to `polling:'raf'`, which re-runs its predicate only inside a
+      // requestAnimationFrame callback — i.e. it depends on the tab's compositor actually producing a new
+      // frame. Under full-suite load (workers:20 on far fewer physical cores), the compositor/paint pipeline
+      // can starve for many seconds while the JS main thread — and plain Runtime.evaluate calls like the one
+      // above — keep executing fine (proven directly: the plain evaluate above never hung in any repro run).
+      // A raf-polled wait can therefore sit past the 30s test timeout even though the exact condition it is
+      // polling for became true immediately. Reproduced 2/2 full-suite runs (fr+it, then it+es — a different
+      // language each time, matching "which language hangs varies" — pure scheduling luck, not app logic);
+      // 0/3 in isolation (no contention to starve the compositor). VERDICT: TEST bug, not a product bug —
+      // the app's render path is proven correct at the exact moment of the hang. Fix: poll on a timer
+      // (`polling: 100`, i.e. setTimeout-driven, independent of frame production) instead of `raf` — still a
+      // condition-based wait (DoD-11), just checked via a mechanism that isn't starvable by paint contention.
       const r = await page.waitForFunction(`(function(){
         var i=document.querySelector('#vcAskInput'), b=document.querySelector('.vc-askbtn');
         if(!i||!b) return null;
         return { placeholder: i.getAttribute('placeholder'), btn: b.textContent };
-      })()`).then(h => h.jsonValue()) as { placeholder: string; btn: string };
+      })()`, undefined, { polling: 100 }).then(h => h.jsonValue()) as { placeholder: string; btn: string };
       expect(r.placeholder).not.toContain('הקלד שאלה');   // no Hebrew leak
       expect(r.btn).not.toContain('שאל');
       expect(r.placeholder.length).toBeGreaterThan(2);
