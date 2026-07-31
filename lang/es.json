@@ -2512,5 +2512,6 @@
   "ההקראה נעצרה באמצע. ": "La lectura en voz alta se detuvo a mitad de camino. ",
   "…חושב": "…pensando",
   "מצטער, ה-AI לא זמין כרגע.": "Lo siento, la IA no está disponible en este momento.",
-  "חריגת מכסה — נסה שוב בעוד רגע.": "Cuota superada — inténtalo de nuevo en un momento."
+  "חריגת מכסה — נסה שוב בעוד רגע.": "Cuota superada — inténtalo de nuevo en un momento.",
+  "חריגת קצב מול Gemini — המתן רגע ונסה שוב.": "Límite de frecuencia de Gemini alcanzado — espera un momento e inténtalo de nuevo."
 }

@@ -2512,5 +2512,6 @@
   "ההקראה נעצרה באמצע. ": "Die Sprachausgabe wurde mittendrin abgebrochen. ",
   "…חושב": "…ich überlege",
   "מצטער, ה-AI לא זמין כרגע.": "Entschuldigung, die KI ist gerade nicht verfügbar.",
-  "חריגת מכסה — נסה שוב בעוד רגע.": "Kontingent überschritten — versuchen Sie es gleich noch einmal."
+  "חריגת מכסה — נסה שוב בעוד רגע.": "Kontingent überschritten — versuchen Sie es gleich noch einmal.",
+  "חריגת קצב מול Gemini — המתן רגע ונסה שוב.": "Gemini-Ratenlimit erreicht — einen Moment warten und erneut versuchen."
 }

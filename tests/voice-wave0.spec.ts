@@ -143,7 +143,13 @@ test('INV-T / R-33: ttsText preserves every digit and degree token from the guar
   expect(r.en).toBe('Rest 10 min , then slice.');
 });
 
-test('chunk pipeline: long answer synthesized as ordered chunks, first chunk first', async ({ page }) => {
+// hotfix v281 (owner-reported live regression, ~1h after v280 shipped): v280 sent ONE Gemini TTS request
+// per vcChunkText sentence-chunk — this exact 12-sentence fixture used to synthesize 12 separate chunks
+// (asserted `n > 3` before this fix). Live probe measured chunk 1 succeeding and chunks 2-12 all 429
+// ("You exceeded your current quota") — the count itself IS the regression, not the audio content. The
+// fix coalesces everything after a small opening chunk into as few requests as fit inside the TTS
+// timeout (see vcCoalesceTtsChunks / the VC_TTS_* arithmetic above gemSpeak in app.js).
+test('chunk pipeline (hotfix v281): long answer synthesized as a SMALL, bounded number of requests, first chunk first', async ({ page }) => {
   // aiAvail() gates gemSpeak (R-35: no keyless user exists) — seed a key so the mocked pipeline runs;
   // __gemTtsMock/__gemPlayMock below ensure no real network call is made.
   await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
@@ -153,11 +159,49 @@ test('chunk pipeline: long answer synthesized as ordered chunks, first chunk fir
     w.__gemPlayMock = async () => {};                                                    // no real audio in CI
     const long = Array.from({length: 12}, (_, i) => `משפט מספר ${i} עם עוד כמה מילים כדי שלא יתמזג.`).join(' ');
     await w.gemSpeak(long, 'he', w.vcNewSpeakGen());
-    return { n: w.__gemTtsLog.length, first: w.__gemTtsLog[0], lat: w.vcLatReport() };
+    return { n: w.__gemTtsLog.length, all: w.__gemTtsLog, first: w.__gemTtsLog[0], lat: w.vcLatReport(),
+             joined: w.__gemTtsLog.join(' ').replace(/\s+/g, ' ').trim() };
   });
-  expect(r.n).toBeGreaterThan(3);                       // long text = many chunks, all synthesized
-  expect(r.first).toContain('משפט מספר 0');             // ordered
-  expect(r.lat).toHaveProperty('firstSound');           // stamped when chunk 1 starts playing
+  // THE regression: v280 made 12 requests (one per sentence) for this fixture; a per-minute rate limit
+  // survives exactly 1 of those. The fix must make a SMALL, bounded number of requests — never anywhere
+  // close to one-per-sentence — while still preserving every sentence's content, in order.
+  expect(r.n).toBeGreaterThanOrEqual(2);                 // at least an opening + one remainder request
+  expect(r.n).toBeLessThanOrEqual(5);                    // drastically fewer than the old 12 (one per sentence)
+  expect(r.first).toBe('משפט מספר 0 עם עוד כמה מילים כדי שלא יתמזג.');  // opening chunk = exactly the first sentence (short, fast first sound), not pre-merged with more
+  expect(r.joined).toContain('משפט מספר 0');
+  expect(r.joined).toContain('משפט מספר 11');            // nothing lost across the coalescing
+  expect(r.lat).toHaveProperty('firstSound');            // stamped when chunk 1 starts playing
+});
+
+// hotfix v281 — the request COUNT is the actual regression (content is unchanged either way), so this
+// asserts it directly against vcCoalesceTtsChunks (the pure coalescing function), independent of network
+// mocking, for a range of realistic answer lengths.
+test('vcCoalesceTtsChunks (hotfix v281): coalesces sentence chunks into a small, bounded request count', async ({ page }) => {
+  await seedApp(page, {});
+  const r = await page.evaluate(() => {
+    const w = window as any;
+    const mkSentences = (n: number) => w.vcChunkText(
+      Array.from({ length: n }, (_, i) => `משפט מספר ${i} עם עוד כמה מילים כדי שלא יתמזג.`).join(' '),
+      { min: 0, max: 9999 }
+    );
+    const short = w.vcCoalesceTtsChunks(mkSentences(1));     // a one-sentence answer
+    const typical = w.vcCoalesceTtsChunks(mkSentences(12));  // the realistic fixture used elsewhere
+    const long = w.vcCoalesceTtsChunks(mkSentences(40));     // a genuinely long answer
+    return {
+      short: short.length,
+      typical: typical.length, typicalMax: Math.max(...typical.map((c: string) => c.length)),
+      long: long.length, longMax: Math.max(...long.map((c: string) => c.length)),
+    };
+  });
+  expect(r.short).toBe(1);                        // one sentence → one request, no pointless split
+  expect(r.typical).toBeGreaterThanOrEqual(2);
+  expect(r.typical).toBeLessThanOrEqual(5);        // was 12 requests pre-fix (one per sentence)
+  expect(r.long).toBeLessThan(40);                 // still drastically fewer than one-per-sentence
+  // every remainder group stays inside the timeout-safe character budget computed from the measured
+  // request-time arithmetic (see the VC_TTS_* comment block above gemSpeak in app.js)
+  const budget = await page.evaluate(() => (window as any).vcTtsRemainderBudget());
+  expect(r.typicalMax).toBeLessThanOrEqual(budget);
+  expect(r.longMax).toBeLessThanOrEqual(budget);
 });
 
 test('R-34: TTS generationConfig carries maxOutputTokens 8192', async ({ page }) => {
@@ -198,6 +242,72 @@ test('R-32: every TTS failure is VISIBLE — toast fires, nothing falls back to 
     expect(r.toasts[0]).toContain('איטית מדי');
     expect(r.sysSpoke).toBe(0);                       // and no browser voice fired
     expect(r.dead).toBe('undefined');                 // sysSpeak is GONE, not bypassed
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
+});
+
+// hotfix v281 — a 429 toast used to blame the free tier / suggest billing, which was WRONG for an owner
+// who already has billing (that's what "stopped working an hour after shipping" traced back to). A 429
+// is a transient per-minute rate limit; the new copy says so and does not mention billing. Mocked with a
+// PERSISTENT 429 (both the initial attempt and the one retry fail) so the final toast is reached.
+test('hotfix v281: a persistent 429 toasts the honest rate-limit message, never the old billing suggestion', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  await page.route('**/models/*:streamGenerateContent*', r => r.abort());
+  try {
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__gemTtsMock = () => { const e = new Error('api-429: RESOURCE_EXHAUSTED'); e.retryAfterMs = 5; throw e; };   // tiny delay: keep the test fast, still exercises the real retry path
+      w.__toastLog = []; w.toast = (m: string) => { w.__toastLog.push(m); };
+      w.vcSpeak('בדיקת חריגת קצב.', 'he');
+    });
+    await page.waitForFunction(`window.__toastLog && window.__toastLog.length>0`);
+    const toast = await page.evaluate(`window.__toastLog[window.__toastLog.length-1]`) as string;
+    expect(toast).toMatch(/חריגת קצב|rate limit/i);
+    expect(toast).not.toMatch(/חיוב|billing|free tier|שכבה החינמית/i);   // the old, wrong diagnosis must be gone
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
+});
+
+// hotfix v281 — a rate-limited chunk gets exactly ONE retry, backed off by the API's own retryDelay
+// (attached as err.retryAfterMs, honored by gemRetryDelayMs) rather than a slow generic default — the
+// whole point being that a transient 429 self-resolves and the user hears the answer instead of an error.
+test('hotfix v281: a 429 that clears on the retry plays successfully (no toast) after exactly one retry, honoring retryAfterMs', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  await page.route('**/models/*:streamGenerateContent*', r => r.abort());
+  try {
+    const r = await page.evaluate(async () => {
+      const w = window as any;
+      let calls = 0;
+      w.__gemTtsMock = () => { calls++; if (calls === 1) { const e = new Error('api-429: RESOURCE_EXHAUSTED'); e.retryAfterMs = 30; throw e; } return { mock: true }; };
+      let played = 0;
+      w.__gemPlayMock = async () => { played++; };
+      w.__toastLog = []; w.toast = (m: string) => { w.__toastLog.push(m); };
+      const t0 = performance.now();
+      await w.gemSpeak('משפט יחיד לבדיקה.', 'he', w.vcNewSpeakGen());
+      return { calls, played, elapsedMs: performance.now() - t0, toasts: w.__toastLog.length };
+    });
+    expect(r.calls).toBe(2);            // the ONE allowed retry — never more
+    expect(r.played).toBe(1);           // the retried attempt actually played
+    expect(r.toasts).toBe(0);           // no error surfaced — the transient failure self-resolved
+    expect(r.elapsedMs).toBeGreaterThanOrEqual(25);   // honored the API's own ~30ms retryAfterMs (not the 1500ms generic default)
+    expect(r.elapsedMs).toBeLessThan(1000);           // and did NOT fall back to the slow generic default either
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
+});
+
+// hotfix v281 — a 403 (real permission/billing problem) must NEVER be retried; spec: "never retry a 403".
+test('hotfix v281: a 403 is never retried (spec: never retry a 403) and keeps its existing billing message', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  await page.route('**/models/*:streamGenerateContent*', r => r.abort());
+  try {
+    await page.evaluate(() => {
+      const w = window as any;
+      w.__gemTtsCalls = 0;
+      w.__gemTtsMock = () => { w.__gemTtsCalls++; throw new Error('api-403: PERMISSION_DENIED'); };
+      w.__toastLog = []; w.toast = (m: string) => { w.__toastLog.push(m); };
+      w.vcSpeak('בדיקת הרשאה.', 'he');
+    });
+    await page.waitForFunction(`window.__toastLog && window.__toastLog.length>0`);
+    const r = await page.evaluate(() => ({ calls: (window as any).__gemTtsCalls, toast: (window as any).__toastLog[0] }));
+    expect(r.calls).toBe(1);                        // no retry on 403
+    expect(r.toast).toMatch(/חיוב|billing/i);        // unchanged existing billing message
   } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
 });
 

@@ -5512,6 +5512,29 @@ function gemTransport(mdl, verb, key){
   return {mode, url, headers};
 }
 
+// hotfix v281 (owner-reported TTS quota outage): a 429 body from Gemini often carries a structured
+// RetryInfo (`error.details[].retryDelay`, e.g. "34s") — the caller's OWN retry (gemSpeakSeg, TTS-chunk
+// level) needs that number to back off politely instead of hammering a per-minute rate limit with a
+// generic short delay. gemParseErrBody reads it once, on the failure path only (never touches the hot
+// success path). gemMakeErr keeps the existing 'api-<status>[: reason]' message shape (every `s.includes
+// ('api-429')` / `s.includes('api-403')` check elsewhere keeps working unchanged) and adds `.retryAfterMs`
+// only when the API actually sent one.
+async function gemParseErrBody(r){
+  let reason='', retryAfterMs;
+  try{
+    const eb=await r.json();
+    reason=(eb.error&&eb.error.message)||'';
+    const details=(eb.error&&eb.error.details)||[];
+    const ri=details.find(function(d){ return /RetryInfo/i.test((d&&d['@type'])||''); });
+    if(ri&&ri.retryDelay){ const m=/(\d+(?:\.\d+)?)/.exec(ri.retryDelay); if(m) retryAfterMs=Math.round(parseFloat(m[1])*1000); }
+  }catch(_){}
+  return {reason, retryAfterMs};
+}
+function gemMakeErr(status, reason, retryAfterMs){
+  const err=new Error('api-'+status+(reason?': '+reason:''));
+  if(retryAfterMs!=null) err.retryAfterMs=retryAfterMs;
+  return err;
+}
 async function gemFetch(model, body, opts){
   opts=opts||{};
   const mdl = GEM_MODELS[model] ? GEM_MODELS[model].id : (model||GEM_MODEL);   // role → concrete id; a literal id passes through
@@ -5532,7 +5555,7 @@ async function gemFetch(model, body, opts){
       if(r.ok){ gemNoteUsage(model, r, performance.now()-_t0); return r; }   // P0-app item 7 — read-only, never alters the Response
       if(mode==='managed' && [401,402,403].indexOf(r.status)>=0 && gemKey()){ return gemFetch(model, body, Object.assign({}, opts, {key:gemKey()})); }   // central code invalid/over-cap → use the user's own key
       if(i<tries-1 && [429,500,502,503,504].indexOf(r.status)>=0){ lastErr=new Error('api-'+r.status); continue; }   // retry only transient statuses
-      throw new Error('api-'+r.status);
+      { const info=await gemParseErrBody(r); throw gemMakeErr(r.status, info.reason, info.retryAfterMs); }
     }catch(e){ if(to) clearTimeout(to);
       const transient=(e&&e.name==='AbortError')||/networkerror|failed to fetch|load failed/i.test((e&&e.message)||'');
       if(i<tries-1 && transient){ lastErr=e; continue; }
@@ -6528,7 +6551,10 @@ async function gemSynthChunk(clean){
   const key=clean+gemVoice();
   if(gemCache.has(key)) return gemCache.get(key);
   if(typeof window!=='undefined' && window.__gemTtsMock){ const b=window.__gemTtsMock(clean); gemCache.set(key,b); return b; }
-  const r=await gemFetch('tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000});
+  // hotfix v281: retries:0 — gemFetch's own generic retry (500ms/1s backoff) is disabled here because
+  // gemSpeakSeg now owns the ONE allowed retry per chunk, backed off using the API's actual retryDelay
+  // (a per-minute rate limit does not clear in 500ms; a naive double-attempt just burns the quota twice).
+  const r=await gemFetch('tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000, retries:0});
   if(!r.ok){ let reason=''; try{const eb=await r.json(); reason=(eb.error&&eb.error.message)||'';}catch(_){}
     console.warn('Gemini TTS error', r.status, reason); throw new Error('api-'+r.status+(reason?': '+reason:'')); }
   const buf=gemReadAudio(await r.json()).buf;
@@ -6571,8 +6597,7 @@ function gemB64Bytes(b64){
   return a;
 }
 if(typeof window!=='undefined') window.__gemAudioChunks=0;   // test instrument (same discipline as __vcLat)
-async function gemSpeakSeg(text, lang, gen){
-  if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen);
+async function gemSpeakSegAttempt(text, lang, gen){
   try{
     await gemSpeakSegStream(text, lang, gen);
   }catch(e){
@@ -6580,6 +6605,31 @@ async function gemSpeakSeg(text, lang, gen){
     // fallback (spec §5.3): stale Worker (stream-unsupported), stream death, or no-audio → blocking path
     const buf=await gemSynthChunk(text);
     if(vcGenCurrent(gen)) await gemPlayBuf(buf, gen);
+  }
+}
+// hotfix v281: a 429/rate-limit failure gets exactly ONE retry, after a polite backoff — honoring the
+// API's own retryDelay when gemParseErrBody found one (err.retryAfterMs), a short 1.5s default otherwise.
+// 403/permission failures are NEVER retried (a real access/billing problem, not a transient rate limit —
+// matches the spec: "never retry a 403"). A second failure (or a non-rate-limit error) propagates as-is,
+// unwrapped, so err.chunkIdx / the existing toast classification in vcSpeak keep working unchanged.
+function gemIsRateLimited(err){
+  const s=String((err&&err.message)||'');
+  return /api-429|quota|RESOURCE_EXHAUSTED/i.test(s) && !/api-403/.test(s);
+}
+function gemRetryDelayMs(err){
+  const ms=err&&err.retryAfterMs;
+  return (typeof ms==='number' && ms>=0) ? Math.min(10000, ms) : 1500;   // cap a server-requested delay at 10s — bounded UX wait, still the API's own number when it's short
+}
+async function gemSpeakSeg(text, lang, gen){
+  if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen);
+  try{
+    await gemSpeakSegAttempt(text, lang, gen);
+  }catch(e){
+    if(!vcGenCurrent(gen)) return;
+    if(!gemIsRateLimited(e)) throw e;
+    await new Promise(function(res){ setTimeout(res, gemRetryDelayMs(e)); });
+    if(!vcGenCurrent(gen)) return;                    // barge-in during the backoff wait: stay silent
+    await gemSpeakSegAttempt(text, lang, gen);         // the ONE allowed retry — a second failure propagates
   }
 }
 async function gemSpeakSegStream(text, lang, gen){
@@ -6599,10 +6649,12 @@ async function gemSpeakSegStream(text, lang, gen){
         // BYOK retry mirrors gemFetch (spec §5.1) — rebuild the transport with the personal key
         const b=gemTransport(mdl,'streamGenerateContent',gemKey());
         const r2=await fetch(b.url,{method:'POST',headers:b.headers,body:JSON.stringify(body),signal:ctl?ctl.signal:undefined});
-        if(!r2.ok) throw new Error('api-'+r2.status);
+        if(!r2.ok){ const info=await gemParseErrBody(r2); throw gemMakeErr(r2.status, info.reason, info.retryAfterMs); }
         return gemPlayPcmStream(r2.body, gen);
       }
-      throw new Error('api-'+r.status);
+      // hotfix v281: enrich with retryAfterMs (via gemParseErrBody) so gemSpeakSeg's single retry can
+      // honor the API's own backoff hint instead of guessing — same helper gemFetch itself now uses.
+      { const info=await gemParseErrBody(r); throw gemMakeErr(r.status, info.reason, info.retryAfterMs); }
     }
     return gemPlayPcmStream(r.body, gen);
   }finally{ if(to) clearTimeout(to); }
@@ -6650,11 +6702,64 @@ async function gemPlayPcmStream(stream, gen){
   if(waitMs>0) await new Promise(function(res){ setTimeout(res, waitMs); });
 }
 
+// ── Hotfix v281 (owner-reported live regression, ~1h after v280 shipped): v280 sent ONE Gemini TTS
+// request per vcChunkText sentence-chunk — measured 10-15 requests for a realistic answer. Live probe:
+// chunk 1 succeeded, chunks 2-12 all came back HTTP 429 ("You exceeded your current quota") — the
+// per-minute rate limit on gemini-3.1-flash-tts-preview is low enough that a second request inside the
+// same minute already trips it. Chunking itself (vcChunkText, spec §2.1) is untouched and still well
+// tested; only the CALL SITE'S shape changes: one short OPENING chunk (keeps the whole reason chunking
+// exists — fast first sound) then the rest of the answer coalesced into as few requests as safely fit
+// inside gemSynthChunk's own 20s timeout (app.js, gemFetch call inside gemSynthChunk).
+//   Arithmetic (measured): request_time_ms ≈ VC_TTS_REQ_OVERHEAD_MS + chars·VC_TTS_CHAR_MS
+//     13 chars → 2.1s ; 204 chars → 12.6s request (for 19.7s of audio, i.e. ~0.64x-realtime generation)
+//     slope = (12.6-2.1)/(204-13) = 10.5/191 = 0.055026 s/char = 55.026 ms/char
+//     intercept = 2.1 - 13·0.055026 = 1.3847 s
+//   A remainder GROUP is capped so its own request time stays under 80% of the 20s timeout (16s):
+//     (16000 - 1384.7) / 55.026 ≈ 265 chars/request — comfortable headroom below the wall.
+//   A realistic ~540-char answer (the 12-sentence fixture in tests/voice-wave0.spec.ts) becomes
+//   1 opening + a handful of coalesced remainder requests instead of 12 — measured and asserted in the
+//   'hotfix v281' tests below (request COUNT is the regression; content is unchanged).
+const VC_TTS_TIMEOUT_MS=20000;              // must match gemSynthChunk's gemFetch timeout
+const VC_TTS_REQ_OVERHEAD_MS=1385;          // measured fixed per-request overhead (rounded from 1.3847s)
+const VC_TTS_CHAR_MS=55.026;                // measured ms/char of request time
+const VC_TTS_OPEN_MAX=60;                   // opening chunk cap — small, so the first sound stays fast
+function vcTtsRemainderBudget(){
+  const safeMs=VC_TTS_TIMEOUT_MS*0.8;
+  return Math.max(80, Math.floor((safeMs-VC_TTS_REQ_OVERHEAD_MS)/VC_TTS_CHAR_MS));
+}
+// Coalesces vcChunkText's fine-grained sentence chunks into [opening(small), remainder…] — each
+// remainder group greedily packed as full as the timeout budget allows, so a typical answer needs a
+// small, bounded number of requests instead of one per sentence. Pure function, unit-tested directly
+// (vcCoalesceTtsChunks below is exposed the same way vcChunkText already is — a plain top-level
+// function declaration on a classic script is a `window.*` global).
+function vcCoalesceTtsChunks(sentenceChunks, openMax, remainderBudget){
+  if(!sentenceChunks || !sentenceChunks.length) return [];
+  openMax=openMax||VC_TTS_OPEN_MAX; remainderBudget=remainderBudget||vcTtsRemainderBudget();
+  const openPieces=vcChunkText(sentenceChunks[0], {min:0, max:openMax});
+  const opening=openPieces[0];
+  const pool=openPieces.slice(1).concat(sentenceChunks.slice(1));
+  const groups=[]; let buf='';
+  for(let raw of pool){
+    // a single sentence longer than the budget must itself be hard-split (rare: one giant sentence)
+    const pieces=(raw.length>remainderBudget) ? vcChunkText(raw, {min:0, max:remainderBudget}) : [raw];
+    for(const p of pieces){
+      const cand=buf?(buf+' '+p):p;
+      if(cand.length<=remainderBudget) buf=cand;
+      else { if(buf) groups.push(buf); buf=p; }
+    }
+  }
+  if(buf) groups.push(buf);
+  return opening ? [opening].concat(groups) : groups;
+}
 async function gemSpeak(text, lang, gen){
   if(gen===undefined) gen=vcNewSpeakGen();
   if(!aiAvail()) throw new Error('no-key');            // defensive only — R-35: no keyless user exists
   const L2=lang||vcVoiceLang();
-  const chunks=vcChunkText(ttsText(text, L2));
+  // sentence-level split only (min:0 → vcChunkText never merges, so this is the same sentence
+  // boundaries the old per-sentence request bug was already using) — vcCoalesceTtsChunks does the
+  // actual request-economy coalescing below.
+  const sentences=vcChunkText(ttsText(text, L2), {min:0, max:9999});
+  const chunks=vcCoalesceTtsChunks(sentences);
   if(!chunks.length) return;
   vcLatMark('ttsReq1');
   for(let i=0;i<chunks.length;i++){
@@ -6691,7 +6796,7 @@ function vcSpeak(text, lang){
     if(!vcGenCurrent(gen)){ console.warn('[vcSpeak] stale-generation error suppressed (a newer request already took the floor):', err); return; }
     const s=String(err.message||err);
     let m='';
-    if(s.includes('api-429')||/quota|RESOURCE_EXHAUSTED/i.test(s)) m=L('חריגת מכסה — הקראה קולית (TTS) מוגבלת מאוד בשכבה החינמית של Gemini וייתכן שדורשת חשבון עם חיוב.','Quota exceeded — Gemini TTS is heavily limited on the free tier and may require billing.');
+    if(s.includes('api-429')||/quota|RESOURCE_EXHAUSTED/i.test(s)) m=VC_TTS_RATE_LIMIT[vcVoiceLang()]||VC_TTS_RATE_LIMIT.en;   // hotfix v281: honest transient-rate-limit copy, not the old billing misdirect
     else if(s.includes('api-403')||/permission|billing|PERMISSION/i.test(s)) m=L('מודל ההקראה (TTS) אינו זמין למפתח זה — לרוב דורש הפעלת חיוב (Billing). ה-AI הטקסטואלי ימשיך לעבוד.','The TTS model is unavailable for this key — usually requires billing. Text AI keeps working.');
     else if(s.includes('api-404')||/not found|NOT_FOUND/i.test(s)) m=L('מודל ההקראה לא נמצא — ייתכן שהשם השתנה בצד Google.','TTS model not found — the name may have changed on Google\'s side.');
     else if(s.includes('api-4')) m=L('מפתח שגוי או בעיה בהרשאה.','Bad key or a permission problem.');
@@ -7153,6 +7258,20 @@ const VC_AI_QUOTA={he:'חריגת מכסה — נסה שוב בעוד רגע.', 
               es:'Cuota superada — inténtalo de nuevo en un momento.',
               it:'Quota superata — riprova tra un momento.',
               ru:'Превышена квота — повторите попытку через минуту.'};
+// hotfix v281 (owner-reported live regression): the OLD TTS-429 toast told the owner (who HAS billing)
+// that free-tier billing might be the problem — wrong diagnosis, sent him chasing something that wasn't
+// broken. A 429 is a transient per-minute rate limit, not a billing wall (that's 403, handled separately
+// below and left untouched) — and gemSpeakSeg now retries it once anyway (see gemIsRateLimited). This is
+// the honest, all-7-language message for when even the retry didn't clear it.
+const VC_TTS_RATE_LIMIT={
+  he:'חריגת קצב מול Gemini — המתן רגע ונסה שוב.',
+  en:'Gemini rate limit — wait a moment and try again.',
+  fr:'Limite de fréquence Gemini dépassée — attendez un instant et réessayez.',
+  de:'Gemini-Ratenlimit erreicht — einen Moment warten und erneut versuchen.',
+  es:'Límite de frecuencia de Gemini alcanzado — espera un momento e inténtalo de nuevo.',
+  it:'Limite di frequenza di Gemini superato — attendi un momento e riprova.',
+  ru:'Превышен лимит частоты запросов Gemini — подождите немного и попробуйте снова.'
+};
 function vcAckText(){ return VC_ACK[vcVoiceLang()]||VC_ACK.en; }
 function vcWarmAck(){ if(aiAvail()) gemSynthChunk(ttsText(vcAckText(), vcVoiceLang())).catch(function(){}); }
 function vcAck(gen){
