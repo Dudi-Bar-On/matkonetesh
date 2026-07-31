@@ -2501,5 +2501,6 @@
  "ההקראה בענן איטית מדי כרגע — נסה שוב.": "Die Cloud-Vorlesefunktion ist gerade zu langsam — versuche es erneut.",
  "שגיאת הקראה — נסה שוב.": "Fehler beim Vorlesen — versuche es erneut.",
  "אין רשת להקראה.": "Keine Netzwerkverbindung für die Vorlesefunktion.",
- "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini getrennt — die Vorlesefunktion kehrt zurück, sobald die KI wieder verbunden ist"
+ "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini getrennt — die Vorlesefunktion kehrt zurück, sobald die KI wieder verbunden ist",
+ "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "Die Stimme spricht die Sprache der App — ein Sprachwechsel in den Einstellungen wechselt auch die Stimme."
 }

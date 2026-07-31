@@ -145,6 +145,36 @@ test('R-32: every TTS failure is VISIBLE — toast fires, nothing falls back to 
   expect(r.dead).toBe('undefined');                 // sysSpeak is GONE, not bypassed
 });
 
+test('R-31: voice language derives from the UI language — one source', async ({ page }) => {
+  // stale v278 state seeded (mk-vclang/mk-vcanslang) — R-31 must not read it: the language comes from
+  // ONE source, the app's own UI language (mk-lang), not from the deleted per-voice choices.
+  await seedApp(page, { 'mk-lang': JSON.stringify('fr'), 'mk-vclang': JSON.stringify('en'), 'mk-vcanslang': JSON.stringify('he') });
+  const r = await page.evaluate(() => {
+    const w = window as any;
+    return { lang: w.vcVoiceLang(), locale: w.vcLocale(w.vcVoiceLang()) };
+  });
+  expect(r.lang).toBe('fr');
+  expect(r.locale).toBe('fr-FR');
+});
+
+test('R-29: the HE/EN button pairs are gone and stored state is deleted on first render', async ({ page }) => {
+  await seedApp(page, { 'mk-vclang': JSON.stringify('en'), 'mk-vcanslang': JSON.stringify('he') });
+  // `store` is a top-level `const` in app.js (classic, non-module script) — visible to a bare-identifier
+  // reference evaluated in the page's own global scope (a STRING body), but NOT as a `window.store`
+  // property (const never attaches to window) — hence the string-template form, not an arrow function.
+  const r = await page.evaluate(`(function(){
+    vcTasks=[{ t:new Date(), label:'משימה', kind:'cook' }]; vcIdx=0;
+    var host=document.createElement('div'); host.id='vcBody'; document.body.appendChild(host);
+    try{ vcRender();
+      return { btns: host.querySelectorAll('[data-vc^="lang-"],[data-vc^="anslang-"]').length,
+               vc: store.get('mk-vclang'), ans: store.get('mk-vcanslang') };
+    } finally { host.remove(); }
+  })()`) as { btns: number; vc: unknown; ans: unknown };
+  expect(r.btns).toBe(0);
+  expect(r.vc ?? null).toBeNull();          // migrated — no stranded state
+  expect(r.ans ?? null).toBeNull();
+});
+
 test('ack is instant and network-free on the cold path', async ({ page }) => {
   await seedApp(page, {});
   let ttsCalls = 0;

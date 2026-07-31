@@ -3724,7 +3724,7 @@ document.addEventListener('click',function(e){ const b=e.target&&e.target.closes
    (Cards carry tabindex/role in their own template — the high-count path — so they stay out of this observer.) */
 (function(){
   const BTN='.cpath,.cnext,[data-cgo],[data-cwm],[data-app],.chip,.cmethod,[data-cwpick]';
-  const PRESS='.chip,.cmethod,[data-app],.tab,.vc-langbtn';
+  const PRESS='.chip,.cmethod,[data-app],.tab';
   function enh(el){
     if(el.matches(BTN)){ if(!el.hasAttribute('tabindex')) el.setAttribute('tabindex','0'); if(!el.hasAttribute('role')) el.setAttribute('role','button'); }
     if(el.matches(PRESS)) el.setAttribute('aria-pressed', el.classList.contains('on')?'true':'false');
@@ -6470,10 +6470,12 @@ function vcChunkText(text, opts){
   }
   return out;
 }
-/* ── bilingual voice (v132): input(ASR) lang + answer(TTS) lang ── */
-function vcLang(){ return store.get('mk-vclang')||((typeof getLang==='function'&&getLang()!=='he')?'en':'he'); }        // recognition language — defaults to the UI language
-function vcAnsLang(){ return store.get('mk-vcanslang')||vcLang(); } // answer/TTS language
-function vcLocale(l){ return l==='en'?'en-US':'he-IL'; }
+/* ── Voice Wave 0 · ONE language source (R-31, owner ruling 31.7.2026): the voice speaks the app's
+   current UI language. Answer language, TTS locale and recognition locale all derive from getLang() —
+   the mk-vclang/mk-vcanslang stores are DELETED (migration in vcRender), the HE/EN button pairs removed (R-29). */
+const VC_LOCALES={he:'he-IL', en:'en-US', fr:'fr-FR', de:'de-DE', es:'es-ES', it:'it-IT', ru:'ru-RU'};
+function vcVoiceLang(){ const l=(typeof getLang==='function')?getLang():'he'; return VC_LOCALES[l]?l:'he'; }
+function vcLocale(l){ return VC_LOCALES[l||vcVoiceLang()]||'en-US'; }
 /* ── Gemini TTS (איכות פרימיום, אופציונלי — מפתח אישי) ── */
 const GEM_VOICES=['Kore','Aoede','Puck','Charon','Fenrir','Leda'];
 const gemCache=new Map();           // text → AudioBuffer (מטמון להקראות חוזרות)
@@ -6506,7 +6508,6 @@ function pcmToBuffer(pcm, rate){
 // ── Voice Wave 0 · chunked cloud TTS (spec §2.2). One short request per sentence-chunk; chunk i+1 is
 // prefetched WHILE chunk i plays (lookahead 1). First sound after ONE short synthesis, not the whole answer.
 // GOOGLE-ONLY (R-32): a failure stops this utterance and rethrows with err.chunkIdx — no fallback voice exists.
-function vcVoiceLangSafe(){ return (typeof vcVoiceLang==='function')?vcVoiceLang():vcAnsLang(); }   // alias until Task 8 replaces the language source
 async function gemSynthChunk(clean){
   const key=clean+gemVoice();
   if(gemCache.has(key)) return gemCache.get(key);
@@ -6532,7 +6533,7 @@ function gemPlayBuf(buf, gen){
 async function gemSpeak(text, lang, gen){
   if(gen===undefined) gen=vcNewSpeakGen();
   if(!aiAvail()) throw new Error('no-key');            // defensive only — R-35: no keyless user exists
-  const chunks=vcChunkText(ttsText(text, lang||vcVoiceLangSafe()));
+  const chunks=vcChunkText(ttsText(text, lang||vcVoiceLang()));
   if(!chunks.length) return;
   vcLatMark('ttsReq1');
   let next=gemSynthChunk(chunks[0]);
@@ -6551,7 +6552,7 @@ async function gemSpeak(text, lang, gen){
 // screen; a retry (same button) reuses every cached chunk. R-35: there is no keyless user — the
 // !aiAvail() branch is a defensive no-op, not a product path (the other 26 branches: Phase 9).
 function vcSpeak(text, lang){
-  const L2=lang||vcVoiceLangSafe();
+  const L2=lang||vcVoiceLang();
   const gen=vcNewSpeakGen();                       // taking the floor invalidates every in-flight speaker
   gemStop();
   if(!aiAvail()) return;                           // R-35 defensive no-op
@@ -6578,6 +6579,11 @@ function vcCurrentText(full){
 }
 function vcRender(){
   const host=$("#vcBody"); if(!host) return;
+  // R-31 migration (one-time, idempotent): mk-vclang/mk-vcanslang are v278-era stored HE/EN choices —
+  // dead now that the voice derives from the app's own language (R-29 removed their buttons). Clear
+  // them so no device is stranded holding a stale choice the UI can no longer offer to change.
+  if(store.get('mk-vclang')!==undefined&&store.get('mk-vclang')!==null){ store.set('mk-vclang', null); }
+  if(store.get('mk-vcanslang')!==undefined&&store.get('mk-vcanslang')!==null){ store.set('mk-vcanslang', null); }
   if(typeof clearTimers==='function') clearTimers();   // stop stale intervals; timers restore from mk-timers
   const t=vcTasks[vcIdx];
   host.innerHTML=t?`
@@ -6612,17 +6618,9 @@ function vcRender(){
     </div>
     ${vcTasks.length>2?`<div class="vc-jumprow"><label>🎯 ${L('קפוץ לשלב:','Jump to step:')}</label><select id="vcStepJump">${vcTasks.map((tk,i)=>`<option value="${i}" ${i===vcIdx?'selected':''}>${esc(fmtClock(tk.t)+' · '+stripEmoji(tk.label))}</option>`).join('')}</select></div>`:''}
     <p class="vc-hint">💡 ${L('מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: "הבא", "הקודם", "הקרא שוב", "פרטים".','Big screen, big buttons — meant to stand by the smoker. Commands: "next", "back", "read again", "details".')}</p>
-    <div class="vc-langrow">
-      <span class="vc-langlbl">🎙️ ${L('שפת דיבור:','Speech language:')}</span>
-      <button class="vc-langbtn ${vcLang()==='he'?'on':''}" data-vc="lang-he">${L('עברית','Hebrew')}</button>
-      <button class="vc-langbtn ${vcLang()==='en'?'on':''}" data-vc="lang-en">English</button>
-      <span class="vc-langlbl">🔊 ${L('תשובה:','Answer:')}</span>
-      <button class="vc-langbtn ${vcAnsLang()==='he'?'on':''}" data-vc="anslang-he">${L('עברית','Hebrew')}</button>
-      <button class="vc-langbtn ${vcAnsLang()==='en'?'on':''}" data-vc="anslang-en">English</button>
-    </div>
-    <p class="vc-hint">${vcLang()==='en'?'🇬🇧 Voice commands: next · back · read · details · temperature · when.':'פקודות עבריות: הבא · הקודם · הקרא · פרטים · טמפרטורה · מתי.'} ${L('דיבור באנגלית מזוהה לרוב מדויק יותר.','English speech is usually recognized more accurately.')}</p>
+    <p class="vc-hint">🗣 ${L('הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.','The voice speaks the app\'s language — switching the app language switches the voice too.')}</p>
     ${aiAvail()?`<p class="vc-hint">✨ ${L('אפשר לשאול שאלות חופשיות בקול (למשל "כמה עוד זמן לחזה?") — אפשר לשאול באנגלית ולקבל תשובה בעברית.','You can ask free questions by voice (e.g. "how much longer for the brisket?") — you can ask in English and get an answer in Hebrew.')}</p>
-    <div class="vc-askrow"><input id="vcAskInput" placeholder="${vcAnsLang()==='en'?'Type a question…':'הקלד שאלה…'}"><button class="vc-askbtn" data-vc="asktext">${vcAnsLang()==='en'?'Ask ✨':'שאל ✨'}</button></div>
+    <div class="vc-askrow"><input id="vcAskInput" placeholder="${vcVoiceLang()==='en'?'Type a question…':'הקלד שאלה…'}"><button class="vc-askbtn" data-vc="asktext">${vcVoiceLang()==='en'?'Ask ✨':'שאל ✨'}</button></div>
     ${vcLastQA?`<div class="vc-qa"><div class="vc-qa-q">❓ ${esc(vcLastQA.q)}</div><div class="vc-qa-a">${vcLtrNums(esc(vcLastQA.a))}</div></div>`:''}`:''}
     ${gemKey()?`<div class="vc-voicerow">✨ ${L('Gemini TTS פעיל','Gemini TTS active')} · <label>${L('קול:','Voice:')}</label><select id="gemVoiceSel">${GEM_VOICES.map(v=>`<option ${v===gemVoice()?'selected':''}>${v}</option>`).join('')}</select> <button class="vc-keybtn" data-vc="gemoff">${L('נתק','Disconnect')}</button></div>`
       :`<details class="vc-gem"><summary>✨ ${L('שדרוג איכות קול — Gemini TTS (מפתח אישי · דורש Billing)','Upgrade voice quality — Gemini TTS (personal key · requires Billing)')}</summary>
@@ -6636,15 +6634,15 @@ function vcRender(){
   // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
   { const tm=host.querySelector('.vc-timerwrap .timer'); if(tm){ const total=+tm.dataset.sec; const warnAt=total>150?120:(total>60?30:0);
       wireTimer(tm, { warnSec:warnAt,
-        onWarn:function(left){ const min=Math.round(left/60); vcSpeak(vcAnsLang()==='en'?(left>=60?min+' minutes left':'less than a minute left'):(left>=60?'עוד כ-'+min+' דקות':'עוד פחות מדקה')); },
-        onEnd:function(){ vcSpeak(vcAnsLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.'); } }); } }
+        onWarn:function(left){ const min=Math.round(left/60); vcSpeak(vcVoiceLang()==='en'?(left>=60?min+' minutes left':'less than a minute left'):(left>=60?'עוד כ-'+min+' דקות':'עוד פחות מדקה')); },
+        onEnd:function(){ vcSpeak(vcVoiceLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.'); } }); } }
   { const ai=host.querySelector('#vcAskInput'); if(ai) ai.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const q=ai.value.trim(); if(q) vcAskFlow(q); } }); }
   { const gs=host.querySelector('#gemVoiceSel'); if(gs) gs.addEventListener('change',()=>{ store.set('mk-gemvoice',gs.value); vcSpeak('שלום! זה הקול החדש של ההקראה. נשמע טוב?'); }); }
   if(t) vcWarmAck();   // fire-and-forget panel-open pre-warm — makes the *spoken* ack the common case
 }
 function vcAction(a){
   const t=vcTasks[vcIdx];
-  const en=vcAnsLang()==='en';
+  const en=vcVoiceLang()==='en';
   if(a==='next'&&vcIdx<vcTasks.length-1){vcIdx++;vcRender();vcSpeakContent(vcCurrentText(false));}
   else if(a==='prev'&&vcIdx>0){vcIdx--;vcRender();vcSpeakContent(vcCurrentText(false));}
   else if(a==='read') vcSpeakContent(vcCurrentText(false));
@@ -6660,14 +6658,10 @@ function vcAction(a){
     const nx=vcTasks[vcIdx+1];
     const say=en?(nx?`Next task at ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'That was the last task.')
                :(nx?`המשימה הבאה בשעה ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'זו המשימה האחרונה');
-    vcSpeak(say, vcAnsLang());   // build in the answer language, speak directly (same voice as the other buttons)
+    vcSpeak(say, vcVoiceLang());   // build in the answer language, speak directly (same voice as the other buttons)
   }
   else if(a==='mic') vcToggleMic();
   else if(a==='asktext'){ const inp=$("#vcAskInput"); const q=inp&&inp.value.trim(); if(q) vcAskFlow(q); }
-  else if(a==='lang-he'){ store.set('mk-vclang','he'); const wasOn=!!vcRec; if(wasOn){vcRec._stop=true;try{vcRec.stop();}catch(e){}vcRec=null;} vcRender(); if(wasOn) vcToggleMic(); }
-  else if(a==='lang-en'){ store.set('mk-vclang','en'); const wasOn=!!vcRec; if(wasOn){vcRec._stop=true;try{vcRec.stop();}catch(e){}vcRec=null;} vcRender(); if(wasOn) vcToggleMic(); }
-  else if(a==='anslang-he'){ store.set('mk-vcanslang','he'); vcRender(); vcSpeak('התשובות יהיו בעברית','he'); }
-  else if(a==='anslang-en'){ store.set('mk-vcanslang','en'); vcRender(); vcSpeak('Answers will be in English','en'); }
   else if(a==='gemsave'){
     const inp=$("#gemKeyInp"); const k=(inp&&inp.value||'').trim();
     if(k.length<20){ toast('מפתח לא תקין'); return; }
@@ -6695,31 +6689,8 @@ async function vcTranslateToEn(text){
   const out=(cand&&cand.content&&(cand.content.parts||[]).map(p=>p.text||'').join('').trim())||src;
   vcTransCache.set(src,out); return out;
 }
-// speak app CONTENT (task steps), translating to English when the answer language is English
-async function vcSpeakContent(text){
-  const ansL=vcAnsLang();
-  const contentHe=(typeof getLang!=='function')||getLang()==='he';   // vcTasks content is built in the UI language
-  if(ansL!=='en'){ vcSpeak(text, ansL); return; }                    // Hebrew answers → speak as-is
-  if(!contentHe){ vcSpeak(text, 'en'); return; }                     // content is already English → speak directly (no translation, no key needed) — keeps every button on the same voice
-  if(!aiAvail()){ // Hebrew content + English answers, but no key to translate — read the Hebrew, flag it
-    if(typeof toast==='function') toast(L('תרגום לאנגלית דורש מפתח AI — מקריא בעברית','English translation needs an AI key — reading in Hebrew'));
-    vcSpeak(text, 'he'); return;
-  }
-  try{
-    const en=await vcTranslateToEn(text);
-    // P0-app item 1b (A2): a translation's ground truth IS its source. vcTransSafe pairs each number in
-    // `text`/`en` with its unit-class (vcNumPairs) and compares the pairs as an UNORDERED set — a faithful
-    // clause-fronted translation reorders the sentence but not the (value, class) pairs, so it still passes.
-    // A transposed temperature and time changes which value carries which class, so the pair set itself
-    // changes and the swap is still caught. Any number with an unrecognised unit is left unclassified,
-    // which forces a strict positional compare instead — an incomplete lexicon fails closed, not open.
-    // Fail → never speak the mistranslation; read the correct Hebrew, with a spoken cue.
-    // ONE vcSpeak call: a second would cancel the first (vcSpeak calls gemStop + speechSynthesis.cancel).
-    if(typeof vcTransSafe!=='function' || vcTransSafe(text, en)){ vcSpeak(en, 'en'); }
-    else{ vcSpeak('מספר לא מאומת בתרגום — מקריא בעברית. '+text, 'he'); }
-  }
-  catch(e){ vcSpeak(text, 'he'); }
-}
+// speak app CONTENT (task steps) — the content is already in the UI language (R-31); no translation leg.
+function vcSpeakContent(text){ vcSpeak(text, vcVoiceLang()); }
 // W2-P5: the live-session state as grounding for the voice Ask (so "how much longer?" uses the real ETA).
 function copilotVoiceContext(){
   const s=(typeof liveSession==='function')?liveSession():null;
@@ -6756,9 +6727,21 @@ function vcLooksLikeQuestion(said){
 }
 function vcStripAskPrefix(said){ return String(said||'').replace(/^(שאלה|תשאל|תשאלי|ask|question)[:,\s]+/i,'').trim(); }
 // pure prompt builder (testable) — fully language-matched to force the answer language
+// R-31 (spec §5.1, owner Q2 default): the AI answer follows the app's own UI language, not a
+// separately-chosen "answer language" — he/en keep their tailored prompts; every other of the 7 live
+// languages gets a parameterized instruction naming the target language explicitly. Reuses LANGNAME
+// (app.js ~9092, code→language-name for aiJSON outLang/mtTranslate) rather than a second table.
 function vcBuildAskPrompt(question, ansLang, ctx){
   ctx=ctx||'';
   let sys;
+  if(ansLang!=='he' && ansLang!=='en' && LANGNAME[ansLang]){
+    sys='You are "The Fire" — a live-fire cooking assistant inside an app. '
+      +'CRITICAL: You MUST reply in '+LANGNAME[ansLang]+' ONLY. '
+      +'Keep it brief (2-3 sentences max), suitable for text-to-speech while the user is actively cooking. '
+      +'Do not invent safety temperatures — if unsure, say so.'
+      +(ctx?(' Context (may be in Hebrew, translate as needed): '+ctx):'');
+    return {sys, userText: question+'\n\n(Reply in '+LANGNAME[ansLang]+' only.)'};
+  }
   if(ansLang==='en'){
     sys='You are "The Fire" — a live-fire cooking assistant inside an app. '
       +'CRITICAL: You MUST reply in ENGLISH ONLY, even though the question or context may be in Hebrew. '
@@ -6930,7 +6913,7 @@ function vcGuardSpoken(text, tiers, lang){
             // tokenizer can't see, e.g.) no longer inherits authority it never earned — closes G-A1 hole 2
             // ("...seventy-four degrees" riding "63°C"'s verified claim under the old sentence-suffix).
             return UNITS.fmt(c,'temp',{role:'safeFloor'})+(/\.$/.test(String(unit).trim())?'.':'')+' '
-              +(lang==='he'?'לפי המדריך המאומת.':'per the app\'s verified guide.');
+              +(lang==='he'?'לפי המדריך המאומת.':L('לפי המדריך המאומת.','per the app\'s verified guide.'));
           }
         }
         redacted++; return VC_REDACT;
@@ -6950,18 +6933,19 @@ function vcGuardSpoken(text, tiers, lang){
   // fixed and known, so this is a targeted cleanup, not a general punctuation rewrite.
   out=out.replace(/(לפי המדריך המאומת\.|per the app's verified guide\.)\.+/g,'$1');
   out=out.replace(/\s{2,}/g,' ').trim();
-  // NOTE: the spoken reply follows the VOICE language `lang` (a param), NOT the UI getLang() — the voice is
-  // he/en only (TTS-locale beyond he/en is follow-up T-GuardB-runtime's sibling). v268 T3 wrongly folded
-  // these into getLang()-based L(); restored to the `lang`-param ternary so the spoken marker matches the
-  // spoken language (regression fix — tests/p0-spoken-safety).
+  // NOTE: the spoken reply follows the VOICE language `lang` (a param) — R-31 (Task 8) makes this
+  // param equal to vcVoiceLang()/getLang() by construction (ONE language source; the voice is no
+  // longer he/en-only), so the non-he branch is now routed THROUGH L() — the dictionary translates it
+  // per UI language for fr/de/es/it/ru, while `lang==='he'` still short-circuits to the literal Hebrew
+  // (no dict lookup needed; matches L()'s own he-mode behaviour exactly).
   // R-2 (H13-approved 2026-07-31): the old unconditional "...per the app's verified guide." SENTENCE
   // SUFFIX is gone — a verified number already carries its own inline marker above. Only the redaction
   // NOTICE remains sentence-final: it is a warning, not an authority claim, so summarising it once
   // (singular/plural, count-aware) is still correct.
   return redacted
     ? out+' '+(redacted===1
-        ? (lang==='he'?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':'This number isn\'t verified — check the item card.')
-        : (lang==='he'?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':'These numbers aren\'t verified — check the item card.'))
+        ? (lang==='he'?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':L('מספר זה אינו מאומת — בדוק בכרטיס הפריט.','This number isn\'t verified — check the item card.'))
+        : (lang==='he'?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':L('המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.','These numbers aren\'t verified — check the item card.')))
     : out;
 }
 
@@ -6971,7 +6955,7 @@ async function vcAskAI(question, ent){
   }
   if(!aiAvail()) throw new Error('no-key');   // managed central access OR a personal key
   if(ent===undefined){ const t=vcResolveTiers(question); ent=t.t1||t.t2; }   // standalone callers keep working; vcAskFlow already resolves once and passes it in
-  const ans=vcAnsLang();
+  const ans=vcVoiceLang();
   const {sys, userText}=vcBuildAskPrompt(question, ans, vcCookContext());
   const body={ system_instruction:{parts:[{text:sys}]},
     contents:[{role:'user',parts:[{text:userText}]}],
@@ -6990,8 +6974,8 @@ async function vcAskAI(question, ent){
 const VC_ACK={he:'רגע, בודק.', en:'One moment, checking.', fr:'Un instant, je vérifie.',
               de:'Einen Moment, ich prüfe.', es:'Un momento, comprobando.', it:'Un attimo, controllo.',
               ru:'Секунду, проверяю.'};
-function vcAckText(){ return VC_ACK[vcVoiceLangSafe()]||VC_ACK.en; }
-function vcWarmAck(){ if(aiAvail()) gemSynthChunk(ttsText(vcAckText(), vcVoiceLangSafe())).catch(function(){}); }
+function vcAckText(){ return VC_ACK[vcVoiceLang()]||VC_ACK.en; }
+function vcWarmAck(){ if(aiAvail()) gemSynthChunk(ttsText(vcAckText(), vcVoiceLang())).catch(function(){}); }
 function vcEarcon(){
   if(window.__earconMock) return window.__earconMock();
   try{ gemCtx=gemCtx||new (window.AudioContext||window.webkitAudioContext)();
@@ -7001,7 +6985,7 @@ function vcEarcon(){
   }catch(e){}
 }
 function vcAck(gen){
-  const clean=ttsText(vcAckText(), vcVoiceLangSafe()), key=clean+gemVoice();
+  const clean=ttsText(vcAckText(), vcVoiceLang()), key=clean+gemVoice();
   if(gemCache.has(key)) gemPlayBuf(gemCache.get(key), gen);          // warm: the Google voice, zero network
   else vcEarcon();                                                   // cold: local chime — instant by construction
   vcLatMark('ackSound');
@@ -7010,7 +6994,7 @@ async function vcAskFlow(rawSaid){
   vcLatMark('ask');
   const question=vcStripAskPrefix(rawSaid);
   if(!question){ return; }
-  const ansL=vcAnsLang();
+  const ansL=vcVoiceLang();
   vcAck(vcNewSpeakGen());                          // instant, zero-network — never a cloud round-trip
   vcLastQA={q:question, a:(ansL==='en'?'…thinking':'…חושב')}; vcRender();
   try{
@@ -7036,7 +7020,7 @@ function vcToggleMic(){
   // בקשת הרשאת מיקרופון מפורשת — מפעילה את חלון האישור באמינות
   const startRec=()=>{ try{
     const rec=new SR(); vcRec=rec;
-    rec.lang=vcLocale(vcLang()); rec.continuous=false; rec.interimResults=false; rec.maxAlternatives=3;   // one-shot: אמין יותר באנדרואיד
+    rec.lang=vcLocale(vcVoiceLang()); rec.continuous=false; rec.interimResults=false; rec.maxAlternatives=3;   // one-shot: אמין יותר באנדרואיד
     rec.onresult=(ev)=>{
       if(speechSynthesis.speaking||vcSpeaking) return;    // אל תקלוט את ההקראה של עצמנו
       const alts=[...ev.results[0]].map(r=>r.transcript.trim());
@@ -7051,7 +7035,7 @@ function vcToggleMic(){
       else if(hit(/מתי|הבאה|when|next step/i)) vcAction('qwhen');
       else if(aiAvail() && vcLooksLikeQuestion(alts[0])){ vcAskFlow(alts[0]); toast('❓ '+alts[0]); return; }
       else acted=false;
-      toast((acted?'✓ ':(vcLang()==='en'?'Command not recognized: ':'לא זוהתה פקודה: '))+`"${alts[0]}"`);
+      toast((acted?'✓ ':(vcVoiceLang()==='en'?'Command not recognized: ':'לא זוהתה פקודה: '))+`"${alts[0]}"`);
     };
     rec.onerror=(e)=>{
       if(e.error==='no-speech'||e.error==='aborted') return;          // שקט — פשוט ממשיכים
@@ -7060,7 +7044,7 @@ function vcToggleMic(){
     };
     rec.onend=()=>{ if(vcRec===rec && !rec._stop){ setTimeout(()=>{ try{rec.start();}catch(err){} },250); } };  // לולאת one-shot
     rec.start(); vcRender();
-    vcSpeak(vcLang()==='en'?'Listening. Say: next, back, read again, details, temperature — or ask a question.':'מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.', vcAnsLang());
+    vcSpeak(vcVoiceLang()==='en'?'Listening. Say: next, back, read again, details, temperature — or ask a question.':'מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.', vcVoiceLang());
   }catch(e){ vcRec=null; toast(L('לא ניתן להפעיל מיקרופון: ','Could not start the microphone: ')+e.message); } };
   if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{

@@ -215,56 +215,42 @@ test('a cross-tier range is redacted — two real figures from DIFFERENT items a
   expect(spoken).not.toContain('לפי המדריך המאומת');
 });
 
-test('A2 — a translation that drops or invents a number is never spoken; the Hebrew source is read instead', async ({ page }) => {
+// R-31 world (Task 8, spec §5): vcSpeakContent no longer translates — content is already built in the
+// UI language (the HE/EN "answer language" choice, and the translate-then-verify leg it drove, are
+// GONE). vcTranslateToEn/vcTransCache stay defined (still directly exercised by
+// tests/ai-trust.spec.ts's "no core AI feature throws no-key in managed mode" audit — a live caller
+// outside this file, left untouched) and vcTransSafe/vcNumPairs stay defined for a future translation
+// surface to reuse (per the Task 8 brief). These four tests used to drive that guard THROUGH
+// vcSpeakContent's now-deleted translation leg (window.__vcTransMock + store.set('mk-vclang','en'));
+// adapted here to call vcTransSafe directly — same guard logic, same fixtures, no dead integration path.
+test('A2 (adapted, R-31) — vcTransSafe rejects a translation that drops or invents a number', async ({ page }) => {
   await bootVC(page);
-  // The translation silently changes 74 → 165: mtNumSig differs, so mtSafe is false.
-  await page.evaluate(`window.__vcTransMock='pull the chicken at 165 degrees'; store.set('mk-vclang','en');`);
-  await page.evaluate(`vcSpeakContent('משוך את העוף ב-74 מעלות')`);
-  await page.waitForFunction(`window.__spoke.length>0`);
-  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as { t: string; l: string };
-  expect(spoken.t).not.toContain('165');
-  expect(spoken.t).toContain('74');                    // the correct Hebrew source is what gets read
-  expect(spoken.t).toContain('מספר לא מאומת בתרגום');
-  expect(spoken.l).toBe('he');
+  const r = await page.evaluate(`vcTransSafe('משוך את העוף ב-74 מעלות', 'pull the chicken at 165 degrees')`);
+  expect(r).toBe(false);   // the translation silently changes 74 → 165
 });
 
-test('A2 negative case — a faithful translation still speaks in English (DoD-6)', async ({ page }) => {
+test('A2 (adapted, R-31) — vcTransSafe accepts a faithful translation (DoD-6 negative case)', async ({ page }) => {
   await bootVC(page);
-  await page.evaluate(`window.__vcTransMock='pull the chicken at 74 degrees'; store.set('mk-vclang','en');`);
-  await page.evaluate(`vcSpeakContent('משוך את העוף ב-74 מעלות')`);
-  await page.waitForFunction(`window.__spoke.length>0`);
-  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as { t: string; l: string };
-  expect(spoken.t).toBe('pull the chicken at 74 degrees');
-  expect(spoken.l).toBe('en');
+  const r = await page.evaluate(`vcTransSafe('משוך את העוף ב-74 מעלות', 'pull the chicken at 74 degrees')`);
+  expect(r).toBe(true);
 });
 
-test('A2 transposition — a translation that SWAPS a temperature and a time is never spoken', async ({ page }) => {
+test('A2 (adapted, R-31) — vcTransSafe rejects a translation that SWAPS a temperature and a time', async ({ page }) => {
   await bootVC(page);
-  // mtSafe's sorted multiset cannot see this: {74,165} === {165,74}. Ordered comparison can.
-  await page.evaluate(`window.__vcTransMock='pull at 165 degrees for 74 minutes'; store.set('mk-vclang','en');`);
-  await page.evaluate(`vcSpeakContent('משוך ב-74 מעלות למשך 165 דקות')`);
-  await page.waitForFunction(`window.__spoke.length>0`);
-  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as {t:string;l:string};
-  expect(spoken.l).toBe('he');                       // fell back to the Hebrew source
-  expect(spoken.t).toContain('מספר לא מאומת בתרגום');
-  expect(spoken.t).not.toContain('165 degrees');
+  // an unordered set alone cannot see this ({74,165} === {165,74}); the (value,unit-class) pairing can.
+  const r = await page.evaluate(`vcTransSafe('משוך ב-74 מעלות למשך 165 דקות', 'pull at 165 degrees for 74 minutes')`);
+  expect(r).toBe(false);
 });
 
-test('A2 real input shape — the clock prefix every production caller sends is handled (L8)', async ({ page }) => {
+test('A2 (adapted, R-31) — the clock prefix every production caller sends is handled (L8)', async ({ page }) => {
   await bootVC(page);
   // Every real caller passes vcCurrentText, which ALWAYS prepends a 24h he-IL clock. The shipped tests
   // used hand-crafted strings with no clock, so this shape was never exercised.
-  await page.evaluate(`window.__vcTransMock='14:30. Put it in the oven at 74 degrees.'; store.set('mk-vclang','en');`);
-  await page.evaluate(`vcSpeakContent('14:30. הכנס לתנור ל-74 מעלות.')`);
-  await page.waitForFunction(`window.__spoke.length>0`);
-  const ok = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as {t:string;l:string};
-  expect(ok.l).toBe('en');                           // numbers preserved → English spoken
-  // and the AM/PM conversion the hardened prompt now forbids must still fail CLOSED if it happens
-  await page.evaluate(`window.__spoke=[]; vcTransCache.clear(); window.__vcTransMock='2:30 PM. Put it in the oven at 74 degrees.';`);
-  await page.evaluate(`vcSpeakContent('14:30. הכנס לתנור ל-74 מעלות.')`);
-  await page.waitForFunction(`window.__spoke.length>0`);
-  const bad = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as {t:string;l:string};
-  expect(bad.l).toBe('he');
+  const ok = await page.evaluate(`vcTransSafe('14:30. הכנס לתנור ל-74 מעלות.', '14:30. Put it in the oven at 74 degrees.')`);
+  expect(ok).toBe(true);                              // numbers preserved
+  // and an AM/PM conversion must still fail CLOSED if a translation ever attempted one
+  const bad = await page.evaluate(`vcTransSafe('14:30. הכנס לתנור ל-74 מעלות.', '2:30 PM. Put it in the oven at 74 degrees.')`);
+  expect(bad).toBe(false);
 });
 
 test('vcResolveTiers smoke test — Tier 1 (active-cook item) wins when it resolves; the catalog (Tier 2) is a genuine fallback', async ({ page }) => {
@@ -429,22 +415,18 @@ test('a comma-grouped number is never rewritten into a corrupted "verified" valu
 // ruling: compare (value, unit-CLASS) pairs, UNORDERED — a transposition still changes the pairs, but a
 // clause reorder does not. An unrecognised unit leaves a number unclassified and forces strict positional
 // comparison, so an incomplete lexicon fails CLOSED, never open.
-test('A2 — a faithful translation that fronts a clause is now accepted', async ({ page }) => {
+// (adapted, R-31, Task 8) — vcSpeakContent's translation leg is gone (see the block above); these two
+// call vcTransSafe directly, same fixtures as before.
+test('A2 (adapted, R-31) — vcTransSafe accepts a faithful translation that fronts a clause', async ({ page }) => {
   await bootVC(page);
-  await page.evaluate(`window.__vcTransMock='After about 165 minutes, pull the chicken once it reaches 74 degrees'; store.set('mk-vclang','en');`);
-  await page.evaluate(`vcSpeakContent('משוך את העוף כאשר הטמפ מגיעה ל-74 מעלות, אחרי כ-165 דקות')`);
-  await page.waitForFunction(`window.__spoke.length>0`);
-  expect(await page.evaluate(`window.__spoke[window.__spoke.length-1].l`)).toBe('en');
+  const r = await page.evaluate(`vcTransSafe('משוך את העוף כאשר הטמפ מגיעה ל-74 מעלות, אחרי כ-165 דקות', 'After about 165 minutes, pull the chicken once it reaches 74 degrees')`);
+  expect(r).toBe(true);
 });
 
-test('A2 — a TRANSPOSED translation is still rejected (the reorder tolerance must not reopen the swap)', async ({ page }) => {
+test('A2 (adapted, R-31) — vcTransSafe still rejects a TRANSPOSED translation (the reorder tolerance must not reopen the swap)', async ({ page }) => {
   await bootVC(page);
-  await page.evaluate(`window.__vcTransMock='pull at 165 degrees for 74 minutes'; store.set('mk-vclang','en');`);
-  await page.evaluate(`vcSpeakContent('משוך ב-74 מעלות למשך 165 דקות')`);
-  await page.waitForFunction(`window.__spoke.length>0`);
-  const s = await page.evaluate(`window.__spoke[window.__spoke.length-1]`) as {t:string;l:string};
-  expect(s.l).toBe('he');
-  expect(s.t).toContain('מספר לא מאומת בתרגום');
+  const r = await page.evaluate(`vcTransSafe('משוך ב-74 מעלות למשך 165 דקות', 'pull at 165 degrees for 74 minutes')`);
+  expect(r).toBe(false);
 });
 
 // Phase A gate close — FIX A: vcGuardSpoken's eligibility test was a PRIVATE, stale unit pattern
@@ -462,7 +444,7 @@ const fixAPhrasings: [string, (safe: number) => string][] = [
 for (const [label, phrase] of fixAPhrasings) {
   test(`FIX A — "${label}" speaks the app's verified figure with the marker, never a redaction`, async ({ page }) => {
     await bootVC(page);
-    await page.evaluate(`store.set('mk-vclang','en')`);
+    await page.evaluate(`store.set('mk-lang','en')`);
     const safe = await page.evaluate(`(function(){var m=resolveItem('cut-1'); return Math.round(m.obj.safe!=null?m.obj.safe:m.obj.tgt);})()`) as number;
     const mock = phrase(safe);
     await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
@@ -483,7 +465,7 @@ for (const [label, phrase] of fixAPhrasings) {
 // full stop simply gone. Not a safety leak (no number/unit changes), but a readability defect.
 test('cosmetic — the verified substitution preserves the unit token\'s own trailing period (not swallowed)', async ({ page }) => {
   await bootVC(page);
-  await page.evaluate(`store.set('mk-vclang','en')`);
+  await page.evaluate(`store.set('mk-lang','en')`);
   const safe = await page.evaluate(`(function(){var m=resolveItem('cut-1'); return Math.round(m.obj.safe!=null?m.obj.safe:m.obj.tgt);})()`) as number;
   const mock = `the safe temperature is ${safe} deg.`;
   await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);

@@ -92,6 +92,14 @@ export const DENY_TABLES = new Set([
   // shape-matched them and collided with genuine L('ליטר','liter') / L('גרם','grams') call sites
   // elsewhere in app.js (same failure shape as the LANG_FLAG case above).
   'UNITS_TABLE',
+  // VC_ACK (Voice Wave 0 Task 7, app.js) is a code→localized-acknowledgement-phrase map keyed by the 7
+  // live voice-locale codes ({he:'רגע, בודק.', en:'One moment, checking.', fr:…, de:…, es:…, it:…,
+  // ru:…}) — its `he`/`en` properties are two of those SEVEN direct language entries, already fully
+  // localized inline, never routed through L()/t()/the translation dict (vcAckText() reads
+  // VC_ACK[vcVoiceLang()] directly). Same false-positive shape as LANG_FLAG/UNITS_TABLE above: undenied,
+  // mode-2's generic {he,en} sibling-literal walk would harvest the he/en pair as if it were a
+  // dict-backed UI string, demanding a redundant, never-consulted translation entry in every dict.
+  'VC_ACK',
 ]);
 
 // THEME_NAMES_EN / FONT_NAMES_EN don't follow the `_EN`-suffix-stripped sibling-identifier

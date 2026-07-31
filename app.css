@@ -1235,10 +1235,6 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .vc-jumprow{display:flex;align-items:center;gap:8px;justify-content:center;margin-top:12px;flex-wrap:wrap}
 .vc-jumprow label{font-size:calc(13px * var(--fscale));font-weight:700;color:var(--ash)}
 .vc-jumprow select{flex:1;min-width:160px;max-width:280px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:11px 12px;font-family:var(--font-body);font-size:calc(15px * var(--fscale));color:var(--bone);min-height:44px}
-.vc-langrow{display:flex;flex-wrap:wrap;align-items:center;gap:6px;justify-content:center;margin-top:14px}
-.vc-langlbl{font-size:calc(12px * var(--fscale));color:var(--smoke);font-weight:700}
-.vc-langbtn{background:var(--char);border:1.5px solid var(--line2);border-radius:9px;padding:6px 12px;font-family:var(--font-body);font-size:calc(13px * var(--fscale));color:var(--bone);cursor:pointer}
-.vc-langbtn.on{background:var(--fresh-l);border-color:var(--fresh);color:var(--fresh);font-weight:800}
 .vc-qa{background:var(--char2);border:1.5px solid var(--line2);border-radius:14px;padding:12px 14px;margin-top:14px}
 .vc-askrow{display:flex;gap:8px;margin-top:12px}
 .vc-askrow input{flex:1;background:var(--char);border:1.5px solid var(--line2);border-radius:12px;padding:11px 13px;color:var(--bone);font-family:var(--font-body);font-size:calc(15px * var(--fscale))}

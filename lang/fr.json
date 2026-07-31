@@ -2502,5 +2502,6 @@
  "ההקראה בענן איטית מדי כרגע — נסה שוב.": "La lecture à voix haute dans le cloud est trop lente en ce moment — réessayez.",
  "שגיאת הקראה — נסה שוב.": "Erreur de lecture à voix haute — réessayez.",
  "אין רשת להקראה.": "Pas de réseau pour la lecture à voix haute.",
- "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini déconnecté — la lecture à voix haute reviendra une fois l'IA reconnectée"
+ "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini déconnecté — la lecture à voix haute reviendra une fois l'IA reconnectée",
+ "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "La voix parle la langue de l'application — changer la langue dans les paramètres change aussi la voix."
 }

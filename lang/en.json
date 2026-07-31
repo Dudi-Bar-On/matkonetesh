@@ -2501,5 +2501,6 @@
  "ההקראה בענן איטית מדי כרגע — נסה שוב.": "Cloud read-aloud is too slow right now — try again.",
  "שגיאת הקראה — נסה שוב.": "Read-aloud error — try again.",
  "אין רשת להקראה.": "No network for read-aloud.",
- "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini disconnected — read-aloud returns once AI is reconnected"
+ "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini disconnected — read-aloud returns once AI is reconnected",
+ "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "The voice speaks the app's language — switching the app language switches the voice too."
 }
