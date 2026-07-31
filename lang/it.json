@@ -2494,5 +2494,13 @@
  "שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.": "Nota bene: la funzione di importazione unisce i dati del file; le chiavi esistenti vengono sovrascritte e tutto ciò che non è presente nel file rimane invariato. La chiave AI e le credenziali di accesso centrale non sono incluse nel backup (per motivi di sicurezza); ricollegatele dopo aver ripristinato il sistema.",
  "קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב": "Questo file di backup è stato creato con una versione più recente dell’app — aggiorna l’app e riprova.",
  "פריטים לא-מוכרים דולגו": "elementi non riconosciuti ignorati",
- "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Registrazione degli aggiornamenti in background non riuscita — l'app continua a funzionare, ma gli aggiornamenti automatici di versione non arriveranno"
+ "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Registrazione degli aggiornamenti in background non riuscita — l'app continua a funzionare, ma gli aggiornamenti automatici di versione non arriveranno",
+ "חריגת מכסה — הקראה קולית (TTS) מוגבלת מאוד בשכבה החינמית של Gemini וייתכן שדורשת חשבון עם חיוב.": "Quota superata — la lettura vocale (TTS) di Gemini è molto limitata nel livello gratuito e potrebbe richiedere un account con fatturazione.",
+ "מודל ההקראה (TTS) אינו זמין למפתח זה — לרוב דורש הפעלת חיוב (Billing). ה-AI הטקסטואלי ימשיך לעבוד.": "Il modello TTS non è disponibile per questa chiave — di solito richiede la fatturazione. L'IA testuale continua a funzionare.",
+ "מודל ההקראה לא נמצא — ייתכן שהשם השתנה בצד Google.": "Modello TTS non trovato — il nome potrebbe essere cambiato lato Google.",
+ "מפתח שגוי או בעיה בהרשאה.": "Chiave errata o un problema di autorizzazione.",
+ "ההקראה בענן איטית מדי כרגע — נסה שוב.": "La lettura vocale cloud è troppo lenta in questo momento — riprova.",
+ "שגיאת הקראה — נסה שוב.": "Errore di lettura vocale — riprova.",
+ "אין רשת להקראה.": "Nessuna rete per la lettura vocale.",
+ "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini disconnesso — la lettura vocale tornerà una volta ricollegata l'IA"
 }

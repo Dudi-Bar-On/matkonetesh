@@ -6416,7 +6416,7 @@ function _tlMarkSelected(){
   if(target) target.classList.add('tl-sel');
 }
 /* ---------- voice cook mode (TTS + closed voice commands) ---------- */
-let vcTasks=[], vcIdx=0, vcRec=null, vcVoices=[];
+let vcTasks=[], vcIdx=0, vcRec=null;
 let tlTimers=[]; // in-session timeline notification timers
 function stripEmoji(t){return String(t).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
 // נרמול טקסט להגייה עברית טובה: קיצורים, סמלים ומספרים
@@ -6474,18 +6474,6 @@ function vcChunkText(text, opts){
 function vcLang(){ return store.get('mk-vclang')||((typeof getLang==='function'&&getLang()!=='he')?'en':'he'); }        // recognition language — defaults to the UI language
 function vcAnsLang(){ return store.get('mk-vcanslang')||vcLang(); } // answer/TTS language
 function vcLocale(l){ return l==='en'?'en-US':'he-IL'; }
-function vcPickVoice(lang){
-  const want=(lang||vcAnsLang());
-  const rx = want==='en' ? /en[-_]/i : /he|iw/i;
-  const list=(speechSynthesis.getVoices()||[]).filter(v=>rx.test(v.lang));
-  if(want!=='en') vcVoices=list;    // keep he list for the picker UI
-  const savedName=(want!=='en')?store.get('mk-vcvoice'):null;
-  let v=savedName&&list.find(x=>x.name===savedName);
-  if(!v) v=list.find(x=>/google/i.test(x.name));
-  if(!v) v=list[0];
-  return v||null;
-}
-if(window.speechSynthesis) speechSynthesis.onvoiceschanged=()=>{ vcPickVoice(); const s=$("#vcVoiceSel"); if(s&&$("#vcBody")) vcRender(); };
 /* ── Gemini TTS (איכות פרימיום, אופציונלי — מפתח אישי) ── */
 const GEM_VOICES=['Kore','Aoede','Puck','Charon','Fenrir','Leda'];
 const gemCache=new Map();           // text → AudioBuffer (מטמון להקראות חוזרות)
@@ -6558,33 +6546,28 @@ async function gemSpeak(text, lang, gen){
   }
   vcLatMark('done');
 }
-function sysSpeak(text, lang){
-  try{
-    const L=lang||vcAnsLang();
-    speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(ttsText(text, L));
-    u.lang=vcLocale(L); u.rate=0.92; u.pitch=1;
-    const v=vcPickVoice(L); if(v) u.voice=v;
-    speechSynthesis.speak(u);
-  }catch(e){ toast('הקראה אינה נתמכת בדפדפן זה'); }
-}
+// ── Voice Wave 0 · GOOGLE-ONLY speech (R-32, owner 31.7: "אך ורק דרך גוגל"). No browser voice, no
+// silent downgrade: a failure stops speech and shows an actionable toast; the answer text stays on
+// screen; a retry (same button) reuses every cached chunk. R-35: there is no keyless user — the
+// !aiAvail() branch is a defensive no-op, not a product path (the other 26 branches: Phase 9).
 function vcSpeak(text, lang){
-  const L=lang||vcAnsLang();
-  const gen=vcNewSpeakGen();   // this call takes the floor — the only place gemStop() is called to preempt an OLDER speaker
-  gemStop(); try{speechSynthesis.cancel();}catch(e){}
-  if(aiAvail()){   // P0-app item 4: a managed-only user must reach Gemini TTS, not the weaker system voice
-    gemSpeak(text, L, gen).catch(err=>{
-      if(!vcGenCurrent(gen)) return;   // a stale flow never toasts or falls back over its successor
-      const s=String(err.message||err);
-      let m='';
-      if(s.includes('api-429')||/quota|RESOURCE_EXHAUSTED/i.test(s)) m='חריגת מכסה — הקראה קולית (TTS) מוגבלת מאוד בשכבה החינמית של Gemini וייתכן שדורשת חשבון עם חיוב.';
-      else if(s.includes('api-403')||/permission|billing|PERMISSION/i.test(s)) m='מודל ההקראה (TTS) אינו זמין למפתח זה — לרוב דורש הפעלת חיוב (Billing) בפרויקט. ה-AI הטקסטואלי ימשיך לעבוד.';
-      else if(s.includes('api-404')||/not found|NOT_FOUND/i.test(s)) m='מודל ההקראה לא נמצא — ייתכן שהשם השתנה בצד Google.';
-      else if(s.includes('api-4')) m='מפתח שגוי או בעיה בהרשאה.';
-      if(m) toast(L('קול Gemini: ','Gemini voice: ')+m+L(' עובר לקול המערכת.',' — switching to the system voice.'));
-      sysSpeak(text, L);
-    });
-  } else sysSpeak(text, L);
+  const L2=lang||vcVoiceLangSafe();
+  const gen=vcNewSpeakGen();                       // taking the floor invalidates every in-flight speaker
+  gemStop();
+  if(!aiAvail()) return;                           // R-35 defensive no-op
+  gemSpeak(text, L2, gen).catch(err=>{
+    if(!vcGenCurrent(gen)) return;                 // stale flows never toast over their successor
+    const s=String(err.message||err);
+    let m='';
+    if(s.includes('api-429')||/quota|RESOURCE_EXHAUSTED/i.test(s)) m=L('חריגת מכסה — הקראה קולית (TTS) מוגבלת מאוד בשכבה החינמית של Gemini וייתכן שדורשת חשבון עם חיוב.','Quota exceeded — Gemini TTS is heavily limited on the free tier and may require billing.');
+    else if(s.includes('api-403')||/permission|billing|PERMISSION/i.test(s)) m=L('מודל ההקראה (TTS) אינו זמין למפתח זה — לרוב דורש הפעלת חיוב (Billing). ה-AI הטקסטואלי ימשיך לעבוד.','The TTS model is unavailable for this key — usually requires billing. Text AI keeps working.');
+    else if(s.includes('api-404')||/not found|NOT_FOUND/i.test(s)) m=L('מודל ההקראה לא נמצא — ייתכן שהשם השתנה בצד Google.','TTS model not found — the name may have changed on Google\'s side.');
+    else if(s.includes('api-4')) m=L('מפתח שגוי או בעיה בהרשאה.','Bad key or a permission problem.');
+    else if(s.includes('timeout')) m=L('ההקראה בענן איטית מדי כרגע — נסה שוב.','Cloud read-aloud is too slow right now — try again.');
+    else if(s.includes('no-audio')) m=L('שגיאת הקראה — נסה שוב.','Read-aloud error — try again.');
+    else m=L('אין רשת להקראה.','No network for read-aloud.');
+    toast(m);                                      // ALWAYS a message — zero silent branches (no downgrade suffix: nothing to downgrade to)
+  });
 }
 function vcCurrentText(full){
   const t=vcTasks[vcIdx]; if(!t) return L('אין משימות','No tasks');
@@ -6645,9 +6628,7 @@ function vcRender(){
       :`<details class="vc-gem"><summary>✨ ${L('שדרוג איכות קול — Gemini TTS (מפתח אישי · דורש Billing)','Upgrade voice quality — Gemini TTS (personal key · requires Billing)')}</summary>
         <p>${L('קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת יישאר קול המערכת.','Neural voices with natural speech. Create a key at <b>aistudio.google.com</b> → Get API Key, and paste it here. Stored only in your browser, requires network. ⚠ Gemini read-aloud is a paid model — it requires enabling <b>Billing</b> on the project (a generous free quota even then); otherwise the system voice stays.')}</p>
         <div class="vc-keyrow"><input type="password" id="gemKeyInp" placeholder="${L('הדבק מפתח API...','Paste API key...')}"><button class="vc-keybtn" data-vc="gemsave">${L('שמור','Save')}</button></div>
-      </details>`}
-    ${vcVoices.length>1&&!gemKey()?`<div class="vc-voicerow"><label>${L('קול מערכת:','System voice:')}</label><select id="vcVoiceSel">${vcVoices.map(v=>`<option value="${v.name}" ${v===vcPickVoice()?'selected':''}>${v.name} (${v.lang})</option>`).join('')}</select></div>`
-      :(vcVoices.length===0&&!gemKey()?`<p class="vc-hint">${L('⚠ לא נמצא קול עברי במכשיר — באנדרואיד: הגדרות ← ניהול כללי ← המרת טקסט לדיבור ← התקן/בחר "שירותי הדיבור של Google" עם עברית.','⚠ No Hebrew voice found on the device — on Android: Settings → General management → Text-to-speech → install/select "Google speech services" with Hebrew.')}</p>`:'')}`
+      </details>`}`
    :`<div class="shop-empty">${L('אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.','No tasks — build a work plan in the scheduler, then come back.')}</div>`;
   host.querySelectorAll('[data-vc]').forEach(b=>b.addEventListener('click',()=>vcAction(b.dataset.vc)));
   host.querySelectorAll('[data-vcjump]').forEach(b=>b.addEventListener('click',()=>{ vcIdx=+b.dataset.vcjump; vcRender(); vcSpeakContent(vcCurrentText(false)); }));   // jump to a parallel running timer
@@ -6658,7 +6639,6 @@ function vcRender(){
         onWarn:function(left){ const min=Math.round(left/60); vcSpeak(vcAnsLang()==='en'?(left>=60?min+' minutes left':'less than a minute left'):(left>=60?'עוד כ-'+min+' דקות':'עוד פחות מדקה')); },
         onEnd:function(){ vcSpeak(vcAnsLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.'); } }); } }
   { const ai=host.querySelector('#vcAskInput'); if(ai) ai.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const q=ai.value.trim(); if(q) vcAskFlow(q); } }); }
-  { const vs=host.querySelector('#vcVoiceSel'); if(vs) vs.addEventListener('change',()=>{ store.set('mk-vcvoice',vs.value); vcSpeak('זה הקול הנבחר. נשמע טוב?'); }); }
   { const gs=host.querySelector('#gemVoiceSel'); if(gs) gs.addEventListener('change',()=>{ store.set('mk-gemvoice',gs.value); vcSpeak('שלום! זה הקול החדש של ההקראה. נשמע טוב?'); }); }
 }
 function vcAction(a){
@@ -6693,7 +6673,7 @@ function vcAction(a){
     store.set('mk-gemkey',k); vcRender();
     vcSpeak('מעולה! Gemini מחובר. ככה אני נשמע עכשיו.');
   }
-  else if(a==='gemoff'){ store.set('mk-gemkey',''); gemCache.clear(); vcRender(); toast('Gemini נותק — חוזרים לקול המערכת'); }
+  else if(a==='gemoff'){ store.set('mk-gemkey',''); gemCache.clear(); vcRender(); toast(L('Gemini נותק — הקראה תחזור עם חיבור AI','Gemini disconnected — read-aloud returns once AI is reconnected')); }
 }
 /* ── voice AI Q&A (v132) — free-form questions during cooking, bilingual ── */
 let vcLastQA=null;   // {q, a} for on-screen transcript

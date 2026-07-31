@@ -2493,5 +2493,13 @@
  "שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.": "Nota: la función de importar fusiona los datos del archivo; las claves existentes se sobrescriben y todo lo que no esté en el archivo permanece intacto. La clave de IA y las credenciales de acceso central no están incluidas en la copia de seguridad (por motivos de seguridad); vuelva a conectarlas después de restaurar.",
  "קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב": "Este archivo de copia de seguridad se creó con una versión más reciente de la aplicación — actualice la aplicación e inténtelo de nuevo.",
  "פריטים לא-מוכרים דולגו": "elementos no reconocidos omitidos",
- "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Error al registrar las actualizaciones en segundo plano — la app sigue funcionando, pero las actualizaciones automáticas de versión no llegarán"
+ "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Error al registrar las actualizaciones en segundo plano — la app sigue funcionando, pero las actualizaciones automáticas de versión no llegarán",
+ "חריגת מכסה — הקראה קולית (TTS) מוגבלת מאוד בשכבה החינמית של Gemini וייתכן שדורשת חשבון עם חיוב.": "Cuota excedida — la lectura en voz alta (TTS) de Gemini está muy limitada en el nivel gratuito y puede requerir una cuenta con facturación.",
+ "מודל ההקראה (TTS) אינו זמין למפתח זה — לרוב דורש הפעלת חיוב (Billing). ה-AI הטקסטואלי ימשיך לעבוד.": "El modelo de TTS no está disponible para esta clave — normalmente requiere facturación. La IA de texto sigue funcionando.",
+ "מודל ההקראה לא נמצא — ייתכן שהשם השתנה בצד Google.": "Modelo de TTS no encontrado — es posible que el nombre haya cambiado en Google.",
+ "מפתח שגוי או בעיה בהרשאה.": "Clave incorrecta o un problema de permisos.",
+ "ההקראה בענן איטית מדי כרגע — נסה שוב.": "La lectura en voz alta en la nube es demasiado lenta ahora mismo — inténtalo de nuevo.",
+ "שגיאת הקראה — נסה שוב.": "Error de lectura en voz alta — inténtalo de nuevo.",
+ "אין רשת להקראה.": "Sin red para la lectura en voz alta.",
+ "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini desconectado — la lectura en voz alta volverá cuando la IA se reconecte"
 }

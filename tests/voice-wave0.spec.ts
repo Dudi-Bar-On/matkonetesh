@@ -126,3 +126,21 @@ test('R-34: TTS generationConfig carries maxOutputTokens 8192', async ({ page })
   const gc = await page.evaluate(() => (window as any).gemTtsGen('Kore'));
   expect(gc.maxOutputTokens).toBe(8192);
 });
+
+test('R-32: every TTS failure is VISIBLE — toast fires, nothing falls back to a browser voice', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  const r = await page.evaluate(async () => {
+    const w = window as any;
+    w.__gemTtsMock = () => { throw new Error('timeout'); };
+    w.__toastLog = []; const t0 = w.toast; w.toast = (m: string) => { w.__toastLog.push(m); t0(m); };
+    let sysSpoke = 0;
+    const orig = speechSynthesis.speak.bind(speechSynthesis);
+    (speechSynthesis as any).speak = () => { sysSpoke++; };
+    try { w.vcSpeak('בדיקת שגיאה קצרה.', 'he'); await new Promise(r => setTimeout(r, 50)); }
+    finally { w.toast = t0; (speechSynthesis as any).speak = orig; }
+    return { toasts: w.__toastLog, sysSpoke, dead: typeof w.sysSpeak };
+  });
+  expect(r.toasts.length).toBeGreaterThan(0);      // v278: timeout → SILENT downgrade → RED
+  expect(r.sysSpoke).toBe(0);                       // and no browser voice fired
+  expect(r.dead).toBe('undefined');                 // sysSpeak is GONE, not bypassed
+});

@@ -2493,5 +2493,13 @@
  "שים לב: ייבוא ממזג את הנתונים מהקובץ — מפתחות קיימים יידרסו, ומה שאין בקובץ יישאר. מפתח ה-AI ופרטי הגישה המרכזית אינם נכללים בגיבוי (אבטחה) — חבר אותם מחדש לאחר שחזור.": "Hinweis: Durch das Importieren werden die Daten aus der Datei zusammengeführt – vorhandene Schlüssel werden überschrieben, und alles, was nicht in der Datei enthalten ist, bleibt unverändert. Der KI-Schlüssel und die Zugangsdaten für den zentralen Zugriff sind nicht im Backup enthalten (aus Sicherheitsgründen) – verbinden Sie sie nach dem Wiederherstellen erneut.",
  "קובץ הגיבוי נוצר בגרסה חדשה יותר של האפליקציה — עדכן את האפליקציה ונסה שוב": "Diese Sicherungsdatei wurde mit einer neueren App-Version erstellt — aktualisieren Sie die App und versuchen Sie es erneut.",
  "פריטים לא-מוכרים דולגו": "unbekannte Einträge übersprungen",
- "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Registrierung für Hintergrund-Updates fehlgeschlagen — die App funktioniert weiterhin, aber automatische Versions-Updates kommen nicht an"
+ "רישום העדכונים ברקע נכשל — האפליקציה פועלת, אך עדכוני גרסה אוטומטיים לא יגיעו": "Registrierung für Hintergrund-Updates fehlgeschlagen — die App funktioniert weiterhin, aber automatische Versions-Updates kommen nicht an",
+ "חריגת מכסה — הקראה קולית (TTS) מוגבלת מאוד בשכבה החינמית של Gemini וייתכן שדורשת חשבון עם חיוב.": "Kontingent überschritten — Gemini-Sprachausgabe (TTS) ist im kostenlosen Tarif stark limitiert und benötigt eventuell ein Konto mit Abrechnung.",
+ "מודל ההקראה (TTS) אינו זמין למפתח זה — לרוב דורש הפעלת חיוב (Billing). ה-AI הטקסטואלי ימשיך לעבוד.": "Das TTS-Modell ist für diesen Schlüssel nicht verfügbar — erfordert meist eine Abrechnung. Die Text-KI funktioniert weiterhin.",
+ "מודל ההקראה לא נמצא — ייתכן שהשם השתנה בצד Google.": "TTS-Modell nicht gefunden — der Name könnte sich bei Google geändert haben.",
+ "מפתח שגוי או בעיה בהרשאה.": "Ungültiger Schlüssel oder ein Berechtigungsproblem.",
+ "ההקראה בענן איטית מדי כרגע — נסה שוב.": "Die Cloud-Vorlesefunktion ist gerade zu langsam — versuche es erneut.",
+ "שגיאת הקראה — נסה שוב.": "Fehler beim Vorlesen — versuche es erneut.",
+ "אין רשת להקראה.": "Keine Netzwerkverbindung für die Vorlesefunktion.",
+ "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini getrennt — die Vorlesefunktion kehrt zurück, sobald die KI wieder verbunden ist"
 }
