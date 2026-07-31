@@ -380,7 +380,17 @@ for (const lg of ['fr', 'de', 'es', 'it', 'ru']) {
     // fake test key never races a real fetch under full-suite parallel load (matches the R-32/DoD-8 tests'
     // established page.route pattern for this same panel).
     await page.route(/generativelanguage|gemini/i, r => r.abort());
+    // Task 2 (Dec-A1): the placeholder/button below render through L(), which is gated on the async
+    // boot dict fetch (window.__mkLangReady) — every other L()-dependent test in this suite awaits it
+    // first (tests/i18n-Lcontract.spec.ts, i18n-completeness.spec.ts, i18n-names.spec.ts, etc.); this
+    // loop test omitted it and read the DOM immediately after seedApp's reload instead. Under light load
+    // the in-memory-fulfilled lang-<lg>.json round trip reliably beat the follow-on evaluate(), masking
+    // the gap; under full-suite worker contention it sometimes doesn't, and L() falls back to its
+    // not-yet-loaded-dict guard (app.js L(), ~9361) — Hebrew, not the target language. Reproduced by
+    // deliberately slowing the lang-ru.json route: dictReady=false at render time reliably reproduces
+    // the exact Hebrew leak this test exists to catch. Fix: wait on the same gate every sibling test does.
     try {
+      await page.evaluate(() => (window as any).__mkLangReady);
       await page.evaluate(`(function(){ closePanel(); vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; openVoiceCook(vcTasks); })()`);
       // Single atomic read (element existence + both attributes) inside one waitForFunction, rather than a
       // waitForSelector followed by a separate evaluate — a re-render between those two round-trips
