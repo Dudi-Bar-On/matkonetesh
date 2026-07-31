@@ -6827,6 +6827,56 @@ async function gemPlayPcmStream(stream, gen){
                     // chunk (streamed or buffered) can be scheduled back-to-back instead of starting "now"
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════════════════════════
+   R-45 · TWO-PROVIDER TTS LAYER — Gemini primary, Cloud TTS (Chirp3-HD) secondary.
+   Design: docs/superpowers/specs/2026-08-01-tts-provider-layer-design.md (owner instruction 1.8.2026).
+   Everything below is ONE decision point. gemSpeakSeg / gemSpeakSegAttempt / gemSpeakSegStream /
+   gemPlayBuf / gemPlayPcmStream are deliberately UNCHANGED — the seam sits above them, so the shipped
+   v281 cursor contract (text, lang, gen, startAt) → cursor is preserved by construction rather than by
+   promise. A provider that returns anything else re-opens owner-reported regressions (b) long silence
+   between lines and (d) audible jitter DURING playback.
+   ═══════════════════════════════════════════════════════════════════════════════════════════════ */
+
+// §4.2 · THE routing table. DATA, in one place — adding a voice surface is adding a row, never an `if`
+// at a call site. The table states PREFERENCE; availability is applied separately, in ttsProviderFor,
+// because "is the secondary reachable" is a runtime fact (managed vs BYOK) and not an owner-editable one.
+const TTS_ROUTE = {
+  answer: 'gemini',   // §4.2 — תשובת AI חופשית: pronunciation quality is the core of the product
+  step:   'gemini',   // §4.2 — הקראת שלב/משימה: same timbre as answers, for consistency
+  alert:  'cloud',    // §4.2 — התראות קצרות/חוזרות: speed and quota beat timbre
+};
+const TTS_ROUTE_DEFAULT = 'gemini';   // an unlisted use case gets the PRIMARY — never silence
+
+// Session latch. Set (once) when the Worker answers "the secondary is not configured here" — after that
+// the secondary simply is not in routing for this session. Not persisted: a redeployed Worker should be
+// discovered on the next load, not stay disabled forever.
+let ttsCloudOff = false;
+
+// §2 — a BYOK user CANNOT reach Cloud TTS: it authenticates only with a service account, which lives in
+// the Worker and can never be handed to a browser. So the secondary exists exactly when the managed
+// Worker is the transport. This is stated, not hidden (design §2, DoD 4).
+function ttsCloudAvail(){ return !ttsCloudOff && gemMode()==='managed'; }
+
+// The ONE resolution function. Table lookup, then availability.
+function ttsProviderFor(useCase){
+  const want = TTS_ROUTE[useCase] || TTS_ROUTE_DEFAULT;
+  if(want==='cloud' && !ttsCloudAvail()) return 'gemini';   // clean skip — no error, no silence
+  return want;
+}
+
+// Chirp3-HD voice names verified against Google's own voice list (docs/research/2026-07-31-cloud-tts-
+// evaluation.md §1 — 30 he-IL-Chirp3-HD-* voices, same voice names as Gemini TTS). 'Kore' matches the
+// app's own gemVoice() default, so the two engines sound as close as two engines can.
+const CLOUD_TTS_VOICE = {
+  'he-IL':'he-IL-Chirp3-HD-Kore', 'en-US':'en-US-Chirp3-HD-Kore', 'fr-FR':'fr-FR-Chirp3-HD-Kore',
+  'de-DE':'de-DE-Chirp3-HD-Kore', 'es-ES':'es-ES-Chirp3-HD-Kore', 'it-IT':'it-IT-Chirp3-HD-Kore',
+  'ru-RU':'ru-RU-Chirp3-HD-Kore',
+};
+function cloudVoiceFor(lang){
+  const lc = (VC_LOCALES[lang] && CLOUD_TTS_VOICE[VC_LOCALES[lang]]) ? VC_LOCALES[lang] : 'he-IL';
+  return { languageCode: lc, voice: CLOUD_TTS_VOICE[lc] };
+}
+
 // ── Hotfix v281 (owner-reported live regression, ~1h after v280 shipped): v280 sent ONE Gemini TTS
 // request per vcChunkText sentence-chunk — measured 10-15 requests for a realistic answer. Live probe:
 // chunk 1 succeeded, chunks 2-12 all came back HTTP 429 ("You exceeded your current quota") — the
