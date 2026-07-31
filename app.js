@@ -6723,6 +6723,17 @@ const VC_TTS_TIMEOUT_MS=20000;              // must match gemSynthChunk's gemFet
 const VC_TTS_REQ_OVERHEAD_MS=1385;          // measured fixed per-request overhead (rounded from 1.3847s)
 const VC_TTS_CHAR_MS=55.026;                // measured ms/char of request time
 const VC_TTS_OPEN_MAX=60;                   // opening chunk cap — small, so the first sound stays fast
+// Regression fix (owner-reported live bug (a) on v280: "no clock reading like before" — the task's
+// leading "HH:MM." clock prefix (vcCurrentText, app.js) stopped being spoken). Root cause: vcChunkText's
+// own MAXC cutoff (not the min-merge rule — a short "14:30." never clears MAXC when concatenated with the
+// long instruction that follows it) meant the re-split at openMax below could leave the clock stamp as
+// its OWN opening piece — a bare "14:30." with zero surrounding context, sent to Gemini TTS as a
+// standalone request. Measured: an isolated fragment like that does not read back as a spoken time at
+// all. Floor: an opening piece under VC_TTS_OPEN_MIN chars is never sent alone when more text exists —
+// it is merged forward into the next piece (bounded by remainderBudget so the merged opening still stays
+// well inside the TTS timeout), even if that puts it slightly over VC_TTS_OPEN_MAX. A few hundred extra ms
+// of first-sound latency is a fair trade for the sentence actually being audible.
+const VC_TTS_OPEN_MIN=16;                   // floor below which an opening piece must never be spoken alone
 function vcTtsRemainderBudget(){
   const safeMs=VC_TTS_TIMEOUT_MS*0.8;
   return Math.max(80, Math.floor((safeMs-VC_TTS_REQ_OVERHEAD_MS)/VC_TTS_CHAR_MS));
@@ -6732,12 +6743,26 @@ function vcTtsRemainderBudget(){
 // small, bounded number of requests instead of one per sentence. Pure function, unit-tested directly
 // (vcCoalesceTtsChunks below is exposed the same way vcChunkText already is — a plain top-level
 // function declaration on a classic script is a `window.*` global).
-function vcCoalesceTtsChunks(sentenceChunks, openMax, remainderBudget){
+function vcCoalesceTtsChunks(sentenceChunks, openMax, remainderBudget, openMin){
   if(!sentenceChunks || !sentenceChunks.length) return [];
   openMax=openMax||VC_TTS_OPEN_MAX; remainderBudget=remainderBudget||vcTtsRemainderBudget();
+  openMin=(openMin==null)?VC_TTS_OPEN_MIN:openMin;
   const openPieces=vcChunkText(sentenceChunks[0], {min:0, max:openMax});
-  const opening=openPieces[0];
-  const pool=openPieces.slice(1).concat(sentenceChunks.slice(1));
+  // one flat ordered list of every piece still available after the opening split, so the merge-forward
+  // floor below (and the final pool) always index the SAME sequence — never two independently-tracked
+  // slices that can drift out of sync.
+  const flat=openPieces.concat(sentenceChunks.slice(1));
+  let opening=flat[0];
+  let consumed=1;
+  // merge-forward floor: a fragment shorter than openMin (e.g. a bare "14:30." clock stamp) is never the
+  // whole opening request by itself — absorb following pieces until the floor clears or the pool is gone.
+  while(opening!=null && opening.length<openMin){
+    const next=flat[consumed];
+    if(next===undefined || (opening.length+1+next.length)>remainderBudget) break;
+    opening=opening+' '+next;
+    consumed++;
+  }
+  const pool=flat.slice(consumed);
   const groups=[]; let buf='';
   for(let raw of pool){
     // a single sentence longer than the budget must itself be hard-split (rare: one giant sentence)
@@ -6750,6 +6775,19 @@ function vcCoalesceTtsChunks(sentenceChunks, openMax, remainderBudget){
   }
   if(buf) groups.push(buf);
   return opening ? [opening].concat(groups) : groups;
+}
+// Regression fix (b)+(d) helper: the SAME 429-retry-once policy gemSpeakSeg already applies to the
+// streamed/fallback path, applied here to a plain lookahead-prefetch synthesis (gemSynthChunk alone,
+// no playback) — a prefetched chunk that hits a transient rate limit must still get its one retry
+// instead of silently failing the whole answer when the loop below finally awaits it.
+async function gemSynthChunkRetrying(text, gen){
+  try{ return await gemSynthChunk(text); }
+  catch(e){
+    if(!vcGenCurrent(gen)) throw e;
+    if(!gemIsRateLimited(e)) throw e;
+    await new Promise(function(res){ setTimeout(res, gemRetryDelayMs(e)); });
+    return await gemSynthChunk(text);
+  }
 }
 async function gemSpeak(text, lang, gen){
   if(gen===undefined) gen=vcNewSpeakGen();

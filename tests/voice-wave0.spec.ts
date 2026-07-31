@@ -204,6 +204,40 @@ test('vcCoalesceTtsChunks (hotfix v281): coalesces sentence chunks into a small,
   expect(r.longMax).toBeLessThanOrEqual(budget);
 });
 
+// ═══ v280 LIVE REGRESSION (a) — owner-reported: "לא הייתה הקראת שעה כמו בעבר" (the task's time is no
+// longer spoken). Root cause: vcCoalesceTtsChunks's opening-chunk split (re-running vcChunkText at
+// openMax=60) could leave the leading "HH:MM." clock stamp — vcCurrentText ALWAYS prepends one, per the
+// existing "clock prefix" contract already pinned in tests/p0-spoken-safety.spec.ts — as its OWN isolated
+// opening chunk once the following sentence pushed the pair over 60 chars: a bare "14:30." with no
+// surrounding words, sent to Gemini TTS as a standalone request. Fixed by VC_TTS_OPEN_MIN in
+// vcCoalesceTtsChunks (app.js): an opening piece under the floor is merged forward instead of spoken alone.
+test('regression (a): the clock-time opening chunk is never isolated from its instruction', async ({ page }) => {
+  await seedApp(page, {});
+  const r = await page.evaluate(() => {
+    const w = window as any;
+    // realistic vcCurrentText(false) shape: "HH:MM. <label>. <sub>." — long enough that the old openMax=60
+    // cutoff isolated the clock stamp on its own.
+    const text = '14:30. הכן את הבשר על הגריל וודא חום גבוה מאוד לפני ההנחה, ואז סגור את המכסה למשך כ-40 דקות.';
+    const sentences = w.vcChunkText(w.ttsText(text, 'he'), { min: 0, max: 9999 });
+    const chunks = w.vcCoalesceTtsChunks(sentences);
+    return { chunks, opening: chunks[0] };
+  });
+  expect(r.opening).toContain('14:30');           // the clock is still IN the opening chunk...
+  expect(r.opening.length).toBeGreaterThan(10);    // ...never alone (a bare "14:30." is 6 chars)
+  expect(r.opening).not.toBe('14:30.');
+});
+
+test('regression (a) negative case: an opening sentence that already clears the floor is left alone, not merged', async ({ page }) => {
+  await seedApp(page, {});
+  const r = await page.evaluate(() => {
+    const w = window as any;
+    const sentences = w.vcChunkText('בדוק את הבשר עכשיו בקפידה. סגור את המכסה.', { min: 0, max: 9999 });
+    return w.vcCoalesceTtsChunks(sentences);
+  });
+  expect(r[0]).toBe('בדוק את הבשר עכשיו בקפידה.');   // 26 chars — already clears VC_TTS_OPEN_MIN(16), stays its own opening
+  expect(r.length).toBe(2);                            // second sentence is its own remainder group, untouched
+});
+
 test('R-34: TTS generationConfig carries maxOutputTokens 8192', async ({ page }) => {
   await seedApp(page, {});
   const gc = await page.evaluate(() => (window as any).gemTtsGen('Kore'));
