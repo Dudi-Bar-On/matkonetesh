@@ -218,6 +218,120 @@ async function handleStream(request, env, ctx, url, code, key, json, cors) {
   });
 }
 
+// ── R-45 · Cloud TTS (secondary provider) ─────────────────────────────────────────────────────────
+// Design: docs/superpowers/specs/2026-08-01-tts-provider-layer-design.md §2. Cloud TTS accepts NO API
+// keys (empirically verified 401 CREDENTIALS_MISSING — docs/research/2026-07-31-cloud-tts-evaluation.md
+// §4); it requires a service-account OAuth principal. A service-account private key in the PWA bundle is
+// a published key, so this route exists precisely so the browser never sees one. The secret is
+// GCP_SA_JSON (`wrangler secret put GCP_SA_JSON`) — never in wrangler.toml, never in the repo.
+const TTS_BASE = 'https://texttospeech.googleapis.com';
+const TTS_MAX_CHARS = 1200;   // the API's own limit is 5000 BYTES; our largest chunk is ~265 chars
+                              // (vcTtsRemainderBudget) — this is a generous ceiling, not a constraint.
+
+// Cached access token. Keyed by `iss` as well as expiry: a rotated secret must never be served a token
+// minted from the previous one (and it makes the worker test suite deterministic per client_email).
+let SA_TOKEN = { value: '', exp: 0, iss: '' };
+
+function b64url(bytes) {
+  const a = new Uint8Array(bytes);
+  let s = '';
+  for (let i = 0; i < a.length; i++) s += String.fromCharCode(a[i]);
+  return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+function pemToPkcs8(pem) {
+  const b64 = String(pem).replace(/-----BEGIN PRIVATE KEY-----/, '').replace(/-----END PRIVATE KEY-----/, '').replace(/\s+/g, '');
+  const bin = atob(b64);
+  const out = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
+  return out.buffer;
+}
+// Self-signed RS256 JWT → OAuth2 access token (the jwt-bearer grant). Cloudflare WebCrypto signs it;
+// the token is reused for ~an hour. Throws a MESSAGE ONLY — never the key, never the assertion.
+async function saAccessToken(env) {
+  let sa;
+  try { sa = JSON.parse(env.GCP_SA_JSON); } catch { throw new Error('sa_json_invalid'); }
+  if (!sa || !sa.client_email || !sa.private_key) throw new Error('sa_json_invalid');
+  const now = Math.floor(Date.now() / 1000);
+  if (SA_TOKEN.value && SA_TOKEN.iss === sa.client_email && SA_TOKEN.exp - 60 > now) return SA_TOKEN.value;
+  const aud = sa.token_uri || 'https://oauth2.googleapis.com/token';
+  const enc = new TextEncoder();
+  const header = b64url(enc.encode(JSON.stringify({ alg: 'RS256', typ: 'JWT' })));
+  const claim = b64url(enc.encode(JSON.stringify({
+    iss: sa.client_email,
+    scope: 'https://www.googleapis.com/auth/cloud-platform',
+    aud, iat: now, exp: now + 3600,
+  })));
+  const key = await crypto.subtle.importKey('pkcs8', pemToPkcs8(sa.private_key),
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, enc.encode(header + '.' + claim));
+  const jwt = header + '.' + claim + '.' + b64url(sig);
+  const r = await fetch(aud, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: 'grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=' + encodeURIComponent(jwt),
+    signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+  });
+  if (!r.ok) throw new Error('sa_token_' + r.status);       // status only — the body can echo the assertion
+  const j = await r.json();
+  if (!j.access_token) throw new Error('sa_token_empty');
+  SA_TOKEN = { value: j.access_token, exp: now + (j.expires_in || 3600), iss: sa.client_email };
+  return SA_TOKEN.value;
+}
+
+// Metering (design/research §3.2): Cloud TTS bills per INPUT CHARACTER, so the charge is known BEFORE
+// the call — no usage envelope to parse. It is converted through the same estimateTokens() the streaming
+// route already fails closed with, so `used`/`cap` keep meaning one thing across all three routes.
+// Admission (debit-first, per-code lock, fail-closed on corrupt KV) already ran in `fetch` before we get
+// here — exactly like handleStream.
+async function handleCloudTts(request, env, code, key, json, cors) {
+  let req = null;
+  try { req = JSON.parse(await request.text()); } catch { req = null; }
+  const text = req && typeof req.text === 'string' ? req.text : '';
+  if (!text.trim()) { await reconcile(env, code, key, 0); return json({ error: 'empty_text' }, 400); }
+  if (text.length > TTS_MAX_CHARS) {
+    await reconcile(env, code, key, 0);
+    return json({ error: 'text_too_long', max: TTS_MAX_CHARS }, 413);
+  }
+  let token;
+  try { token = await saAccessToken(env); }
+  catch { await reconcile(env, code, key, 0); return json({ error: 'tts_auth_failed' }, 502); }  // never echo the cause
+  let g;
+  try {
+    g = await fetch(TTS_BASE + '/v1/text:synthesize', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+      body: JSON.stringify({
+        input: { text },
+        voice: { languageCode: req.languageCode || 'he-IL', name: req.voice || 'he-IL-Chirp3-HD-Kore' },
+        // LINEAR16 @24 kHz mono is what the CLIENT's audio path already speaks end to end
+        // (gemPcm16ToF32 + a 24000 Hz AudioBuffer, app.js) — no decoding step, no format negotiation.
+        audioConfig: { audioEncoding: 'LINEAR16', sampleRateHertz: 24000 },
+      }),
+      signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+    });
+  } catch (e) {
+    await reconcile(env, code, key, 0);
+    if (e && (e.name === 'AbortError' || e.name === 'TimeoutError')) return json({ error: 'upstream_timeout' }, 504);
+    return json({ error: 'upstream_unreachable' }, 502);
+  }
+  if (!g.ok) {
+    const t = await g.text();
+    await reconcile(env, code, key, 0);
+    return new Response(t, { status: g.status, headers: { ...cors, 'Content-Type': 'application/json' } });
+  }
+  const j = await g.json();
+  const b64 = j.audioContent || '';
+  if (!b64) {
+    await reconcile(env, code, key, Math.max(RESERVE_TOKENS, estimateTokens(text.length)));   // fail closed
+    return json({ error: 'no_audio' }, 502);
+  }
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  await reconcile(env, code, key, estimateTokens(text.length));
+  return new Response(bytes, { status: 200, headers: { ...cors, 'Content-Type': 'audio/l16; rate=24000; channels=1' } });
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -239,12 +353,18 @@ export default {
     // modality-agnostic (spec §2.1): text and AUDIO (responseModalities) streams meter identically.
     const GEN_RE = /^\/v1beta\/models\/[^/]+:generateContent$/;
     const STREAM_RE = /^\/v1beta\/models\/[^/]+:streamGenerateContent$/;
+    const TTS_RE = /^\/v1\/tts:synthesize$/;                 // R-45 secondary provider
     const isStream = STREAM_RE.test(url.pathname);
-    if (request.method !== 'POST' || (!GEN_RE.test(url.pathname) && !isStream)) {
+    const isTts = TTS_RE.test(url.pathname);
+    if (request.method !== 'POST' || (!GEN_RE.test(url.pathname) && !isStream && !isTts)) {
       return json({ error: 'not_found' }, 404);
     }
 
-    if (!env.GEMINI_KEY) return json({ error: 'server_misconfigured', detail: 'GEMINI_KEY secret not set' }, 500);
+    // The TTS route does not use GEMINI_KEY; the Gemini routes do not use GCP_SA_JSON. Each checks only
+    // its own secret. 501 (not 500) on a missing GCP_SA_JSON is the CLIENT'S clean-skip signal (design
+    // §2 / DoD 4): "the secondary is not configured here", not "the server is broken".
+    if (!isTts && !env.GEMINI_KEY) return json({ error: 'server_misconfigured', detail: 'GEMINI_KEY secret not set' }, 500);
+    if (isTts && !env.GCP_SA_JSON) return json({ error: 'tts_secondary_unconfigured' }, 501);
 
     const code = (request.headers.get('x-access-code') || '').trim();
     if (!code) return json({ error: 'missing_code' }, 401);
@@ -256,6 +376,7 @@ export default {
 
     const admit = await admitCode(env, code, key, json);
     if (admit.err) return admit.err;
+    if (isTts) return handleCloudTts(request, env, code, key, json, cors);
     if (isStream) return handleStream(request, env, ctx, url, code, key, json, cors);
 
     // ── forward to Gemini (Task 6: timeout) ──

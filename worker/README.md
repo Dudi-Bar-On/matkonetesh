@@ -86,3 +86,22 @@ Each code carries a **token cap** (default 2,000,000/user) so one code can never
   the plain var `ALLOWED_ORIGINS` (comma-separated) in wrangler.toml `[vars]` — never a secret there.
 - `:streamGenerateContent` is closed (404). Rate limit: 20 req/min per code per isolate → 429+Retry-After.
 - Keys: `GEMINI_KEY` remains ONLY a Worker secret (`wrangler secret put GEMINI_KEY`). Never in the repo.
+
+## R-45 · Cloud TTS secondary provider
+
+`POST /v1/tts:synthesize` (header `X-Access-Code`) synthesizes speech through Google Cloud
+Text-to-Speech and returns raw PCM16LE mono @24 kHz.
+
+It requires one more secret — a **service account** JSON, because Cloud TTS refuses API keys outright
+(`CREDENTIALS_MISSING`):
+
+    wrangler secret put GCP_SA_JSON     # paste the whole service-account JSON file
+
+Never put it in `wrangler.toml` and never commit it. The service account needs the Cloud Text-to-Speech
+API enabled on the project and the `roles/serviceusage.serviceUsageConsumer` + TTS user permissions.
+
+Without the secret the route answers `501 {"error":"tts_secondary_unconfigured"}` — that is the client's
+signal to skip the secondary provider cleanly, not an error to show a user.
+
+Metering is identical in unit to the other routes: Cloud TTS bills per input character, so the charge is
+known before the call and is converted with the same `estimateTokens()` (chars/3, fail-closed).

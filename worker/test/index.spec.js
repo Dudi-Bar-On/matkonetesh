@@ -339,3 +339,172 @@ describe('B21/D3 — metering race is fixed: per-code lock + debit-first + recon
     expect(rec.used).toBe(correctTotal);
   });
 });
+
+// ── R-45 · Cloud TTS secondary provider (design §2, §6.7) ──────────────────
+// The service-account material used here is an EPHEMERAL RSA key pair generated inside this test
+// process. It is not a credential, it authenticates nothing, and it never leaves the isolate.
+const TTS_URL = `${ORIGIN}/v1/tts:synthesize`;
+
+async function fakeServiceAccountJson(clientEmail) {
+  const kp = await crypto.subtle.generateKey(
+    { name: 'RSASSA-PKCS1-v1_5', modulusLength: 2048, publicExponent: new Uint8Array([1, 0, 1]), hash: 'SHA-256' },
+    true, ['sign', 'verify']);
+  const pkcs8 = new Uint8Array(await crypto.subtle.exportKey('pkcs8', kp.privateKey));
+  let s = ''; for (const b of pkcs8) s += String.fromCharCode(b);
+  const b64 = btoa(s).replace(/(.{64})/g, '$1\n');
+  return JSON.stringify({
+    client_email: clientEmail,
+    private_key: '-----BEGIN PRIVATE KEY-----\n' + b64 + '\n-----END PRIVATE KEY-----\n',
+    token_uri: 'https://oauth2.googleapis.com/token',
+  });
+}
+
+async function postTts(code, body) {
+  return exports.default.fetch(TTS_URL, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', 'x-access-code': code },
+    body: JSON.stringify(body),
+  });
+}
+
+// LINEAR16 @24k: 12 samples of silence is enough to prove bytes round-trip.
+function ttsOkUpstream() {
+  const pcm = new Uint8Array(24);
+  let s = ''; for (const b of pcm) s += String.fromCharCode(b);
+  return new Response(JSON.stringify({ audioContent: btoa(s) }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } });
+}
+function oauthOkUpstream() {
+  return new Response(JSON.stringify({ access_token: 'test-only-not-a-real-token', expires_in: 3600 }),
+    { status: 200, headers: { 'Content-Type': 'application/json' } });
+}
+// Routes the two distinct upstreams the route talks to. `calls` records which were hit.
+function mockTtsUpstreams(calls, synthResponse) {
+  vi.spyOn(globalThis, 'fetch').mockImplementation(async (input) => {
+    const u = String(input && input.url ? input.url : input);
+    calls.push(u);
+    if (u.includes('oauth2.googleapis.com')) return oauthOkUpstream();
+    if (u.includes('texttospeech.googleapis.com')) return synthResponse ? synthResponse() : ttsOkUpstream();
+    throw new Error('unexpected upstream: ' + u);
+  });
+}
+
+describe('R-45 — Cloud TTS route protections', () => {
+  it('with no GCP_SA_JSON secret the route answers 501 tts_secondary_unconfigured and calls nothing upstream', async () => {
+    await env.CODES.put('code:tts1', JSON.stringify({ cap: 100000, used: 0 }));
+    const calls = [];
+    mockTtsUpstreams(calls);
+    const prev = env.GCP_SA_JSON; delete env.GCP_SA_JSON;
+    try {
+      const r = await postTts('tts1', { text: 'שלום' });
+      expect(r.status).toBe(501);
+      expect((await r.json()).error).toBe('tts_secondary_unconfigured');
+      expect(calls).toEqual([]);
+    } finally { if (prev !== undefined) env.GCP_SA_JSON = prev; }
+  });
+
+  it('an over-cap code gets 402 and no upstream call — admission precedes synthesis', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('over-cap@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts2', JSON.stringify({ cap: 10, used: 10 }));
+    const calls = [];
+    mockTtsUpstreams(calls);
+    const r = await postTts('tts2', { text: 'שלום' });
+    expect(r.status).toBe(402);
+    expect(calls).toEqual([]);
+  });
+
+  it('a corrupt KV record fails CLOSED with 403 on the TTS route too', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('corrupt@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts3', 'not-valid-json{]');
+    const calls = [];
+    mockTtsUpstreams(calls);
+    const r = await postTts('tts3', { text: 'שלום' });
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toBe('code_record_corrupt');
+    expect(calls).toEqual([]);
+  });
+
+  it('a record without a positive numeric cap is refused 403 code_uncapped', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('uncapped@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts4', JSON.stringify({ used: 0 }));
+    const calls = [];
+    mockTtsUpstreams(calls);
+    const r = await postTts('tts4', { text: 'שלום' });
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toBe('code_uncapped');
+  });
+
+  it('happy path: audio bytes come back and `used` reconciles to the CHARACTER estimate', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('happy@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts5', JSON.stringify({ cap: 100000, used: 0 }));
+    const calls = [];
+    mockTtsUpstreams(calls);
+    const text = 'עשן את הבריסקט.';                       // 15 chars → ceil(15/3) = 5
+    const r = await postTts('tts5', { text });
+    expect(r.status).toBe(200);
+    expect(r.headers.get('Content-Type')).toContain('audio/l16');
+    expect((await r.arrayBuffer()).byteLength).toBe(24);
+    expect(calls.some((u) => u.includes('texttospeech.googleapis.com/v1/text:synthesize'))).toBe(true);
+    const rec = JSON.parse(await env.CODES.get('code:tts5'));
+    expect(rec.used).toBe(Math.ceil(text.length / 3));      // reserve debited then reconciled away
+  });
+
+  it('an upstream synthesis error refunds the reserve and passes the status through', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('upstream-err@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts6', JSON.stringify({ cap: 100000, used: 0 }));
+    const calls = [];
+    mockTtsUpstreams(calls, () => new Response(JSON.stringify({ error: { code: 429 } }),
+      { status: 429, headers: { 'Content-Type': 'application/json' } }));
+    const r = await postTts('tts6', { text: 'שלום' });
+    expect(r.status).toBe(429);
+    const rec = JSON.parse(await env.CODES.get('code:tts6'));
+    expect(rec.used).toBe(0);                               // refunded
+  });
+
+  it('text past the per-request ceiling is refused 413 and refunded, with no upstream call', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('too-long@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts7', JSON.stringify({ cap: 100000, used: 0 }));
+    const calls = [];
+    mockTtsUpstreams(calls);
+    const r = await postTts('tts7', { text: 'א'.repeat(5000) });
+    expect(r.status).toBe(413);
+    expect(calls).toEqual([]);
+    expect(JSON.parse(await env.CODES.get('code:tts7')).used).toBe(0);
+  });
+
+  it('rate limiting applies: past the window the TTS route returns 429 with Retry-After', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('rate@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts8', JSON.stringify({ cap: 1000000, used: 0 }));
+    mockTtsUpstreams([]);
+    let last;
+    for (let i = 0; i < 22; i++) last = await postTts('tts8', { text: 'שלום' });
+    expect(last.status).toBe(429);
+    expect(Number(last.headers.get('Retry-After'))).toBeGreaterThan(0);
+  });
+
+  it('CORS stays an allowlist on the TTS route', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('cors@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts9', JSON.stringify({ cap: 100000, used: 0 }));
+    mockTtsUpstreams([]);
+    const foreign = await exports.default.fetch(TTS_URL, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json', 'x-access-code': 'tts9', Origin: 'https://evil.example' },
+      body: JSON.stringify({ text: 'שלום' }),
+    });
+    expect(foreign.headers.get('Access-Control-Allow-Origin')).toBeNull();
+  });
+
+  it('no service-account material ever appears in a response body or header', async () => {
+    env.GCP_SA_JSON = await fakeServiceAccountJson('leak@example.iam.gserviceaccount.com');
+    await env.CODES.put('code:tts10', JSON.stringify({ cap: 100000, used: 0 }));
+    mockTtsUpstreams([], () => new Response('{"error":{"message":"boom"}}',
+      { status: 500, headers: { 'Content-Type': 'application/json' } }));
+    const r = await postTts('tts10', { text: 'שלום' });
+    const body = await r.text();
+    const headers = JSON.stringify([...r.headers]);
+    for (const needle of ['BEGIN PRIVATE KEY', 'private_key', 'client_email', 'iam.gserviceaccount.com', 'assertion=']) {
+      expect(body).not.toContain(needle);
+      expect(headers).not.toContain(needle);
+    }
+  });
+});
