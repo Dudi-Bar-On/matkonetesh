@@ -5512,6 +5512,66 @@ function gemTransport(mdl, verb, key){
   return {mode, url, headers};
 }
 
+// Incremental SSE → text-delta parser. Frames are acted on ONLY when complete (\n\n seen) — a torn
+// frame carries over; half a frame is never parsed (mirror of the Worker's scanner, spec §2.3).
+function gemSseParse(){
+  let buf='', finished=false;
+  function drain(){
+    const out=[]; let idx;
+    while((idx=buf.indexOf('\n\n'))>=0){
+      const frame=buf.slice(0,idx); buf=buf.slice(idx+2);
+      for(const line of frame.split('\n')){
+        if(line.indexOf('data:')!==0) continue;
+        try{
+          const j=JSON.parse(line.slice(5).trim());
+          const c=j.candidates&&j.candidates[0];
+          if(c&&c.finishReason) finished=true;
+          if(c&&c.content&&Array.isArray(c.content.parts))
+            for(const p of c.content.parts) if(typeof p.text==='string'&&p.text) out.push(p.text);
+        }catch(e){}
+      }
+    }
+    return out;
+  }
+  return { push(s){ buf+=String(s); return drain(); },
+           end(){ const out=drain(); buf=''; return out; },
+           get finished(){ return finished; } };
+}
+// Streaming fetch: same admission errors as gemFetch (they arrive as plain JSON BEFORE any SSE byte —
+// spec §2.2), same managed→BYOK fallback on 401/402/403. Distinct errors: 'stream-unsupported'
+// (managed 404 = stale Worker; caller falls back to non-streaming) and 'stream-truncated' (the stream
+// ended with no finishReason — F3's client half). No mid-stream auto-retry: a retry would replay the
+// whole generation (double cost, double debit).
+async function gemStreamFetch(role, body, opts, onDelta){
+  opts=opts||{};
+  const mdl = GEM_MODELS[role] ? GEM_MODELS[role].id : (role||GEM_MODEL);
+  const t = gemTransport(mdl, 'streamGenerateContent', opts.key);
+  const timeout=opts.timeout||30000;
+  const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  const to=ctl?setTimeout(function(){ try{ctl.abort();}catch(e){} }, timeout):null;
+  try{
+    const r=await fetch(t.url, {method:'POST', headers:t.headers, body:JSON.stringify(body), signal:ctl?ctl.signal:undefined});
+    if(!r.ok){
+      if(t.mode==='managed' && r.status===404) throw new Error('stream-unsupported');
+      if(t.mode==='managed' && [401,402,403].indexOf(r.status)>=0 && gemKey())
+        return gemStreamFetch(role, body, Object.assign({}, opts, {key:gemKey()}), onDelta);
+      throw new Error('api-'+r.status);
+    }
+    const parser=gemSseParse(); const reader=r.body.getReader(); const dec=new TextDecoder();
+    let full='';
+    for(;;){
+      const step=await reader.read();
+      if(step.done) break;
+      for(const d of parser.push(dec.decode(step.value,{stream:true}))){ full+=d; if(onDelta) try{onDelta(d);}catch(e){} }
+    }
+    for(const d of parser.end()){ full+=d; if(onDelta) try{onDelta(d);}catch(e){} }
+    if(!parser.finished) throw new Error('stream-truncated');
+    if(!full.trim()) throw new Error('empty');
+    return full;
+  }catch(e){ throw (e&&e.name==='AbortError') ? new Error('timeout') : e; }
+  finally{ if(to) clearTimeout(to); }
+}
+
 // hotfix v281 (owner-reported TTS quota outage): a 429 body from Gemini often carries a structured
 // RetryInfo (`error.details[].retryDelay`, e.g. "34s") — the caller's OWN retry (gemSpeakSeg, TTS-chunk
 // level) needs that number to back off politely instead of hammering a per-minute rate limit with a

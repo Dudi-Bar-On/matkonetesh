@@ -51,3 +51,46 @@ test('gemSpeakSeg falls back to the blocking synth on managed 404 (stale Worker)
     expect(usedFallback).toBe(1);                     // blocking path carried the segment
   } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
 });
+
+test('gemSseParse yields text deltas incrementally and survives a frame split across pushes', async ({ page }) => {
+  await seedApp(page, {});
+  const out = await page.evaluate(() => {
+    const p = (window as any).gemSseParse();
+    const f = (t: string) => 'data: ' + JSON.stringify({ candidates: [{ content: { parts: [{ text: t }] } }] }) + '\n\n';
+    const a = p.push(f('שלום, '));
+    const whole = f('עולם. 63.5');
+    const b = p.push(whole.slice(0, 10));          // frame torn mid-JSON —
+    const c = p.push(whole.slice(10));             // — must NOT emit a fragment
+    return { a, b, c };
+  });
+  expect(out.a).toEqual(['שלום, ']);
+  expect(out.b).toEqual([]);                       // half a frame is never parsed (spec §2.3 mirror)
+  expect(out.c).toEqual(['עולם. 63.5']);
+});
+
+test('managed streaming 404 (stale Worker) throws stream-unsupported; managed 402 with a BYOK key retries BYOK', async ({ page }) => {
+  await seedApp(page, { 'mk-central-url': JSON.stringify('https://w.example'), 'mk-central-code': JSON.stringify('abc123') });
+  await page.route('**/models/*:streamGenerateContent*', r => r.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"not_found"}' }));
+  try {
+    const err = await page.evaluate(async () => {
+      try { await (window as any).gemStreamFetch('text', { contents: [] }, {}, () => {}); return ''; }
+      catch (e: any) { return String(e.message || e); }
+    });
+    expect(err).toBe('stream-unsupported');
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
+
+  await seedApp(page, { 'mk-central-url': JSON.stringify('https://w.example'), 'mk-central-code': JSON.stringify('abc123'), 'mk-gemkey': JSON.stringify('k-test') });
+  const seen: string[] = [];
+  await page.route('**/models/*:streamGenerateContent*', r => {
+    const u = r.request().url();
+    seen.push(u);
+    if (u.startsWith('https://w.example')) return r.fulfill({ status: 402, contentType: 'application/json', body: '{"error":"quota_reached"}' });
+    return r.fulfill({ status: 200, contentType: 'text/event-stream',
+      body: 'data: ' + JSON.stringify({ candidates: [{ content: { parts: [{ text: 'תשובה.' }], role: 'model' }, finishReason: 'STOP' }] }) + '\n\n' });
+  });
+  try {
+    const txt = await page.evaluate(() => (window as any).gemStreamFetch('text', { contents: [] }, {}, () => {}));
+    expect(txt).toBe('תשובה.');
+    expect(seen.some(u => u.includes('generativelanguage.googleapis.com'))).toBe(true);   // fell back to BYOK
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
+});
