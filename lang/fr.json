@@ -2505,5 +2505,12 @@
   "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini déconnecté — la lecture à voix haute reviendra une fois l'IA reconnectée",
   "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "La voix parle la langue de l'application — changer la langue dans les paramètres change aussi la voix.",
   "הקלד שאלה…": "Tapez une question…",
-  "שאל ✨": "Demander ✨"
+  "שאל ✨": "Demander ✨",
+  "<b>שאל את האש (AI)</b> עובד חינם. <b>הקראה קולית (TTS)</b> היא מודל בתשלום אצל Google — דורש הפעלת <b>Billing</b> בפרויקט (יש מכסה חינמית נדיבה גם אז). בלי חיוב, ההקראה הקולית לא תהיה זמינה.": "<b>Ask the Fire (IA)</b> est gratuit. Le <b>service de lecture vocale (TTS)</b> est un service payant proposé par Google ; il nécessite l'activation de la <b>facturation</b> pour le projet (un quota généreux est tout de même disponible). Sans facturation, la lecture vocale ne sera pas disponible.",
+  "קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת ההקראה הקולית לא תהיה זמינה.": "Des voix synthétiques avec un rendu vocal naturel. Créez une clé sur <b>aistudio.google.com</b> → Obtenez la clé API, puis collez-la ici. Elle est stockée uniquement dans votre navigateur et nécessite une connexion réseau. ⚠ La fonction de lecture à haute voix Gemini est un modèle payant ; elle nécessite l'activation de la <b>facturation</b> pour le projet (une généreuse quantité gratuite est tout de même disponible) ; sinon, la lecture vocale ne sera pas disponible.",
+  "אין מפתח AI מחובר — התחבר כדי להשתמש בהקראה קולית.": "Aucune clé IA connectée — connectez-en une pour utiliser la lecture vocale.",
+  "ההקראה נעצרה באמצע. ": "La lecture vocale s'est arrêtée en cours de route. ",
+  "…חושב": "…je réfléchis",
+  "מצטער, ה-AI לא זמין כרגע.": "Désolé, l'IA n'est pas disponible pour le moment.",
+  "חריגת מכסה — נסה שוב בעוד רגע.": "Quota dépassé — réessayez dans un instant."
 }

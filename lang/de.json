@@ -2504,5 +2504,12 @@
   "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini getrennt — die Vorlesefunktion kehrt zurück, sobald die KI wieder verbunden ist",
   "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "Die Stimme spricht die Sprache der App — ein Sprachwechsel in den Einstellungen wechselt auch die Stimme.",
   "הקלד שאלה…": "Frage eingeben…",
-  "שאל ✨": "Fragen ✨"
+  "שאל ✨": "Fragen ✨",
+  "<b>שאל את האש (AI)</b> עובד חינם. <b>הקראה קולית (TTS)</b> היא מודל בתשלום אצל Google — דורש הפעלת <b>Billing</b> בפרויקט (יש מכסה חינמית נדיבה גם אז). בלי חיוב, ההקראה הקולית לא תהיה זמינה.": "<b>Ask the Fire (KI)</b> ist kostenlos. <b>Sprachausgabe (TTS)</b> ist ein kostenpflichtiges Modell bei Google – es erfordert die Aktivierung der <b>Abrechnung</b> für das Projekt (auch dann gibt es ein großzügiges kostenloses Kontingent). Ohne Abrechnung ist die Sprachausgabe nicht verfügbar.",
+  "קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת ההקראה הקולית לא תהיה זמינה.": "Neurale Stimmen mit natürlicher Sprachausgabe. Erstellen Sie einen Schlüssel unter <b>aistudio.google.com</b> → API-Schlüssel abrufen und fügen Sie ihn hier ein. Er wird nur in Ihrem Browser gespeichert und benötigt eine Internetverbindung. ⚠ Gemini-Vorlesefunktion ist ein kostenpflichtiges Modell – es erfordert die Aktivierung der <b>Abrechnung</b> für das Projekt (auch dann gibt es ein großzügiges kostenloses Kontingent); andernfalls ist die Sprachausgabe nicht verfügbar.",
+  "אין מפתח AI מחובר — התחבר כדי להשתמש בהקראה קולית.": "Kein KI-Schlüssel verbunden — verbinden Sie einen, um die Sprachausgabe zu nutzen.",
+  "ההקראה נעצרה באמצע. ": "Die Sprachausgabe wurde mittendrin abgebrochen. ",
+  "…חושב": "…ich überlege",
+  "מצטער, ה-AI לא זמין כרגע.": "Entschuldigung, die KI ist gerade nicht verfügbar.",
+  "חריגת מכסה — נסה שוב בעוד רגע.": "Kontingent überschritten — versuchen Sie es gleich noch einmal."
 }

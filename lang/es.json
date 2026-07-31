@@ -2504,5 +2504,12 @@
   "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini desconectado — la lectura en voz alta volverá cuando la IA se reconecte",
   "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "La voz habla el idioma de la aplicación — cambiar el idioma en los ajustes también cambia la voz.",
   "הקלד שאלה…": "Escribe una pregunta…",
-  "שאל ✨": "Preguntar ✨"
+  "שאל ✨": "Preguntar ✨",
+  "<b>שאל את האש (AI)</b> עובד חינם. <b>הקראה קולית (TTS)</b> היא מודל בתשלום אצל Google — דורש הפעלת <b>Billing</b> בפרויקט (יש מכסה חינמית נדיבה גם אז). בלי חיוב, ההקראה הקולית לא תהיה זמינה.": "<b>Ask the Fire (IA)</b> es gratuito. <b>La función de lectura en voz alta (TTS)</b> es un modelo de pago en Google; requiere activar la opción <b>Facturación</b> en el proyecto (incluso así, hay una cuota gratuita generosa). Sin facturación, la lectura en voz alta no estará disponible.",
+  "קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת ההקראה הקולית לא תהיה זמינה.": "Voces neuronales con un habla natural. Cree una clave en <b>aistudio.google.com</b> → Obtenga la clave de API y péguela aquí. Se almacena solo en su navegador y requiere conexión a Internet. ⚠ Gemini para lectura en voz alta es un modelo de pago; requiere habilitar la opción <b>Facturación</b> en el proyecto (incluso así, ofrece una cuota gratuita generosa); de lo contrario, la lectura en voz alta no estará disponible.",
+  "אין מפתח AI מחובר — התחבר כדי להשתמש בהקראה קולית.": "No hay ninguna clave de IA conectada — conecta una para usar la lectura en voz alta.",
+  "ההקראה נעצרה באמצע. ": "La lectura en voz alta se detuvo a mitad de camino. ",
+  "…חושב": "…pensando",
+  "מצטער, ה-AI לא זמין כרגע.": "Lo siento, la IA no está disponible en este momento.",
+  "חריגת מכסה — נסה שוב בעוד רגע.": "Cuota superada — inténtalo de nuevo en un momento."
 }

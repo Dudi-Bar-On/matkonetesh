@@ -2504,5 +2504,12 @@
   "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini disconnected — read-aloud returns once AI is reconnected",
   "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "The voice speaks the app's language — switching the app language switches the voice too.",
   "הקלד שאלה…": "Type a question…",
-  "שאל ✨": "Ask ✨"
+  "שאל ✨": "Ask ✨",
+  "<b>שאל את האש (AI)</b> עובד חינם. <b>הקראה קולית (TTS)</b> היא מודל בתשלום אצל Google — דורש הפעלת <b>Billing</b> בפרויקט (יש מכסה חינמית נדיבה גם אז). בלי חיוב, ההקראה הקולית לא תהיה זמינה.": "<b>Ask the Fire (AI)</b> is free. <b>Voice read-aloud (TTS)</b> is a paid model at Google — it requires enabling <b>Billing</b> on the project (there is a generous free quota even then). Without billing, voice read-aloud will not be available.",
+  "קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת ההקראה הקולית לא תהיה זמינה.": "Neural voices with natural speech. Create a key at <b>aistudio.google.com</b> → Get API Key, and paste it here. Stored only in your browser, requires network. ⚠ Gemini read-aloud is a paid model — it requires enabling <b>Billing</b> on the project (a generous free quota even then); otherwise voice read-aloud will not be available.",
+  "אין מפתח AI מחובר — התחבר כדי להשתמש בהקראה קולית.": "No AI key connected — connect one to use voice read-aloud.",
+  "ההקראה נעצרה באמצע. ": "Read-aloud stopped partway through. ",
+  "…חושב": "…thinking",
+  "מצטער, ה-AI לא זמין כרגע.": "Sorry, AI is not available right now.",
+  "חריגת מכסה — נסה שוב בעוד רגע.": "Quota exceeded — try again in a moment."
 }

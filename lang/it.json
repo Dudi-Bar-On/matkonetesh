@@ -2505,5 +2505,12 @@
   "Gemini נותק — הקראה תחזור עם חיבור AI": "Gemini disconnesso — la lettura vocale tornerà una volta ricollegata l'IA",
   "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "La voce parla la lingua dell'app — cambiare la lingua nelle impostazioni cambia anche la voce.",
   "הקלד שאלה…": "Scrivi una domanda…",
-  "שאל ✨": "Chiedi ✨"
+  "שאל ✨": "Chiedi ✨",
+  "<b>שאל את האש (AI)</b> עובד חינם. <b>הקראה קולית (TTS)</b> היא מודל בתשלום אצל Google — דורש הפעלת <b>Billing</b> בפרויקט (יש מכסה חינמית נדיבה גם אז). בלי חיוב, ההקראה הקולית לא תהיה זמינה.": "<b>Ask the Fire (AI)</b> è gratuito. <b>La funzione di lettura ad alta voce (TTS)</b> è un servizio a pagamento offerto da Google; richiede l'attivazione della <b>fatturazione</b> per il progetto (anche in questo caso, è disponibile una quota gratuita generosa). In assenza di fatturazione, la lettura ad alta voce non sarà disponibile.",
+  "קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת ההקראה הקולית לא תהיה זמינה.": "Voci neurali con linguaggio naturale. Crea una chiave su <b>aistudio.google.com</b> → Ottieni la chiave API e incollala qui. Salvata solo nel tuo browser, richiede una connessione di rete. ⚠ La funzione di lettura ad alta voce di Gemini è un modello a pagamento: richiede l'attivazione della sezione <b>Fatturazione</b> nel progetto (anche se viene comunque offerta una generosa quota gratuita); altrimenti la lettura ad alta voce non sarà disponibile.",
+  "אין מפתח AI מחובר — התחבר כדי להשתמש בהקראה קולית.": "Nessuna chiave IA collegata — collegane una per usare la lettura ad alta voce.",
+  "ההקראה נעצרה באמצע. ": "La lettura ad alta voce si è interrotta a metà. ",
+  "…חושב": "…sto pensando",
+  "מצטער, ה-AI לא זמין כרגע.": "Siamo spiacenti, l'IA non è disponibile al momento.",
+  "חריגת מכסה — נסה שוב בעוד רגע.": "Quota superata — riprova tra un momento."
 }

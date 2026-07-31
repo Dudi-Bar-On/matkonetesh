@@ -5926,7 +5926,7 @@ function askConnect(){
         <div class="akc-keyrow"><input type="password" id="akcKey" placeholder="${L('הדבק מפתח API…','Paste API key…')}" autocomplete="off"><button id="akcSave">${L('חבר','Connect')}</button></div>
         <div id="akcMsg" class="akc-msg"></div>
      </div></div>
-     <p class="akc-note">🔒 ${L('המפתח נשמר <b>רק במכשיר שלך</b> ונשלח ישירות ל-Google בלבד. אפשר לנתק בכל רגע.','The key is stored <b>only on your device</b> and sent directly to Google only. You can disconnect anytime.')}</p><p class="akc-note" style="margin-top:8px">💡 ${L('<b>שאל את האש (AI)</b> עובד חינם. <b>הקראה קולית (TTS)</b> היא מודל בתשלום אצל Google — דורש הפעלת <b>Billing</b> בפרויקט (יש מכסה חינמית נדיבה גם אז). בלי חיוב, ההקראה תשתמש בקול המערכת.','<b>Ask the Fire (AI)</b> is free. <b>Voice read-aloud (TTS)</b> is a paid model at Google — it requires enabling <b>Billing</b> on the project (there is a generous free quota even then). Without billing, read-aloud uses the system voice.')}</p>
+     <p class="akc-note">🔒 ${L('המפתח נשמר <b>רק במכשיר שלך</b> ונשלח ישירות ל-Google בלבד. אפשר לנתק בכל רגע.','The key is stored <b>only on your device</b> and sent directly to Google only. You can disconnect anytime.')}</p><p class="akc-note" style="margin-top:8px">💡 ${L('<b>שאל את האש (AI)</b> עובד חינם. <b>הקראה קולית (TTS)</b> היא מודל בתשלום אצל Google — דורש הפעלת <b>Billing</b> בפרויקט (יש מכסה חינמית נדיבה גם אז). בלי חיוב, ההקראה הקולית לא תהיה זמינה.','<b>Ask the Fire (AI)</b> is free. <b>Voice read-aloud (TTS)</b> is a paid model at Google — it requires enabling <b>Billing</b> on the project (there is a generous free quota even then). Without billing, voice read-aloud will not be available.')}</p>
      <button class="akc-back" id="akcCentral" style="margin-top:10px">🛰️ ${L('יש לך קוד גישה מרכזי? הגדר גישה מרכזית','Have an access code? Set up central access')}</button>
      <button class="akc-back" id="akcBack">→ ${L('חזרה ל"שאל את האש"','Back to "Ask the Fire"')}</button>
    </div>`);
@@ -6540,7 +6540,13 @@ async function gemSpeak(text, lang, gen){
   for(let i=0;i<chunks.length;i++){
     let buf; try{ buf=await next; }catch(err){ err.chunkIdx=i; throw err; }   // position → visible error (Task 6)
     if(!vcGenCurrent(gen)) return;
-    if(i+1<chunks.length) next=gemSynthChunk(chunks[i+1]);   // prefetch during playback
+    // M1 (silent-failure-hunter audit): the prefetched NEXT chunk was left un-awaited on every early return
+    // below (a stale generation, or the loop simply ending) — if it later rejects, that surfaces as an
+    // unhandled promise rejection, a decoy for the next debugging session. Arming a no-op .catch here does
+    // NOT change what `next` resolves/rejects to for the real `await next` above on the following
+    // iteration (multiple handlers can observe one promise) — it only prevents the abandoned case from
+    // going unhandled.
+    if(i+1<chunks.length){ next=gemSynthChunk(chunks[i+1]); next.catch(()=>{}); }   // prefetch during playback
     if(i===0) vcLatMark('firstSound');
     await gemPlayBuf(buf, gen);
     if(!vcGenCurrent(gen)) return;
@@ -6555,9 +6561,15 @@ function vcSpeak(text, lang){
   const L2=lang||vcVoiceLang();
   const gen=vcNewSpeakGen();                       // taking the floor invalidates every in-flight speaker
   gemStop();
-  if(!aiAvail()) return;                           // R-35 defensive no-op
+  // M5 (silent-failure-hunter audit): !aiAvail() used to be a bare return — if the key drops mid-session
+  // (revoked, network config change, disconnect), every subsequent "הקרא" press became a silent no-op
+  // forever, with no way for the user to learn why. Toast the reconnect hint instead.
+  if(!aiAvail()){ toast(L('אין מפתח AI מחובר — התחבר כדי להשתמש בהקראה קולית.','No AI key connected — connect one to use voice read-aloud.')); return; }
   gemSpeak(text, L2, gen).catch(err=>{
-    if(!vcGenCurrent(gen)) return;                 // stale flows never toast over their successor
+    // Accepted as correctly silent (owner-reviewed): a superseded speaker must never toast over its
+    // successor. But an error racing a stale generation was previously swallowed with zero trace — log it
+    // so a REAL bug hiding behind a race still leaves evidence, even though it never surfaces to the user.
+    if(!vcGenCurrent(gen)){ console.warn('[vcSpeak] stale-generation error suppressed (a newer request already took the floor):', err); return; }
     const s=String(err.message||err);
     let m='';
     if(s.includes('api-429')||/quota|RESOURCE_EXHAUSTED/i.test(s)) m=L('חריגת מכסה — הקראה קולית (TTS) מוגבלת מאוד בשכבה החינמית של Gemini וייתכן שדורשת חשבון עם חיוב.','Quota exceeded — Gemini TTS is heavily limited on the free tier and may require billing.');
@@ -6566,7 +6578,14 @@ function vcSpeak(text, lang){
     else if(s.includes('api-4')) m=L('מפתח שגוי או בעיה בהרשאה.','Bad key or a permission problem.');
     else if(s.includes('timeout')) m=L('ההקראה בענן איטית מדי כרגע — נסה שוב.','Cloud read-aloud is too slow right now — try again.');
     else if(s.includes('no-audio')) m=L('שגיאת הקראה — נסה שוב.','Read-aloud error — try again.');
-    else m=L('אין רשת להקראה.','No network for read-aloud.');
+    // H3 (silent-failure-hunter audit): the old fallback claimed "no network for read-aloud" for EVERY
+    // unclassified failure — a Google 503 told a user with full signal to go debug their WiFi. Honest and
+    // generic instead; the real string is logged so a genuinely new failure shape is still diagnosable.
+    else { console.warn('[vcSpeak] unclassified read-aloud failure:', s); m=L('שגיאת הקראה — נסה שוב.','Read-aloud error — try again.'); }
+    // M2 (silent-failure-hunter audit): err.chunkIdx (set by gemSpeak, app.js ~6541) was captured but never
+    // read — a failure after several chunks already played (a partial, mid-answer stop) got the exact same
+    // toast as one that never started at all. Now it does something different with the information.
+    if(err.chunkIdx>0) m=L('ההקראה נעצרה באמצע. ','Read-aloud stopped partway through. ')+m;
     toast(m);                                      // ALWAYS a message — zero silent branches (no downgrade suffix: nothing to downgrade to)
   });
 }
@@ -6624,7 +6643,7 @@ function vcRender(){
     ${vcLastQA?`<div class="vc-qa"><div class="vc-qa-q">❓ ${esc(vcLastQA.q)}</div><div class="vc-qa-a">${vcLtrNums(esc(vcLastQA.a))}</div></div>`:''}`:''}
     ${gemKey()?`<div class="vc-voicerow">✨ ${L('Gemini TTS פעיל','Gemini TTS active')} · <label>${L('קול:','Voice:')}</label><select id="gemVoiceSel">${GEM_VOICES.map(v=>`<option ${v===gemVoice()?'selected':''}>${v}</option>`).join('')}</select> <button class="vc-keybtn" data-vc="gemoff">${L('נתק','Disconnect')}</button></div>`
       :`<details class="vc-gem"><summary>✨ ${L('שדרוג איכות קול — Gemini TTS (מפתח אישי · דורש Billing)','Upgrade voice quality — Gemini TTS (personal key · requires Billing)')}</summary>
-        <p>${L('קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת יישאר קול המערכת.','Neural voices with natural speech. Create a key at <b>aistudio.google.com</b> → Get API Key, and paste it here. Stored only in your browser, requires network. ⚠ Gemini read-aloud is a paid model — it requires enabling <b>Billing</b> on the project (a generous free quota even then); otherwise the system voice stays.')}</p>
+        <p>${L('קולות ניורליים עם עברית טבעית. צור מפתח ב-<b>aistudio.google.com</b> → Get API Key, והדבק כאן. נשמר רק בדפדפן שלך, דורש רשת. ⚠ הקראת Gemini היא מודל בתשלום — דורש הפעלת <b>Billing</b> בפרויקט (מכסה חינמית נדיבה גם אז); אחרת ההקראה הקולית לא תהיה זמינה.','Neural voices with natural speech. Create a key at <b>aistudio.google.com</b> → Get API Key, and paste it here. Stored only in your browser, requires network. ⚠ Gemini read-aloud is a paid model — it requires enabling <b>Billing</b> on the project (a generous free quota even then); otherwise voice read-aloud will not be available.')}</p>
         <div class="vc-keyrow"><input type="password" id="gemKeyInp" placeholder="${L('הדבק מפתח API...','Paste API key...')}"><button class="vc-keybtn" data-vc="gemsave">${L('שמור','Save')}</button></div>
       </details>`}`
    :`<div class="shop-empty">${L('אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.','No tasks — build a work plan in the scheduler, then come back.')}</div>`;
@@ -6995,11 +7014,31 @@ async function vcAskAI(question, ent){
 const VC_ACK={he:'רגע, בודק.', en:'One moment, checking.', fr:'Un instant, je vérifie.',
               de:'Einen Moment, ich prüfe.', es:'Un momento, comprobando.', it:'Un attimo, controllo.',
               ru:'Секунду, проверяю.'};
+// M3 (silent-failure-hunter audit): the "…thinking" placeholder and the "AI unavailable" error message
+// were he/en-only on a surface that now serves 7 languages — a Russian-UI user read/heard Hebrew for
+// both. Same fixed-phrase pattern as VC_ACK above (never model output, plain per-language table).
+const VC_THINKING={he:'…חושב', en:'…thinking', fr:'…je réfléchis', de:'…ich überlege', es:'…pensando',
+                    it:'…sto pensando', ru:'…думаю'};
+const VC_AI_UNAVAILABLE={he:'מצטער, ה-AI לא זמין כרגע.', en:'Sorry, AI is not available right now.',
+              fr:'Désolé, l\'IA n\'est pas disponible pour le moment.',
+              de:'Entschuldigung, die KI ist gerade nicht verfügbar.',
+              es:'Lo siento, la IA no está disponible en este momento.',
+              it:'Siamo spiacenti, l\'IA non è disponibile al momento.',
+              ru:'Извините, ИИ сейчас недоступен.'};
+// H1 (silent-failure-hunter audit): distinguishes a QUOTA failure (transient, retry-worthy) from a
+// genuine outage/bug — the two used to collapse into the same "AI unavailable" message forever, with the
+// underlying error discarded entirely (see the catch block below).
+const VC_AI_QUOTA={he:'חריגת מכסה — נסה שוב בעוד רגע.', en:'Quota exceeded — try again in a moment.',
+              fr:'Quota dépassé — réessayez dans un instant.',
+              de:'Kontingent überschritten — versuchen Sie es gleich noch einmal.',
+              es:'Cuota superada — inténtalo de nuevo en un momento.',
+              it:'Quota superata — riprova tra un momento.',
+              ru:'Превышена квота — повторите попытку через минуту.'};
 function vcAckText(){ return VC_ACK[vcVoiceLang()]||VC_ACK.en; }
 function vcWarmAck(){ if(aiAvail()) gemSynthChunk(ttsText(vcAckText(), vcVoiceLang())).catch(function(){}); }
 function vcAck(gen){
   const clean=ttsText(vcAckText(), vcVoiceLang()), key=clean+gemVoice();
-  if(gemCache.has(key)) gemPlayBuf(gemCache.get(key), gen);          // warm: the Google voice, zero network
+  if(gemCache.has(key)) gemPlayBuf(gemCache.get(key), gen).catch(()=>{});          // warm: the Google voice, zero network. M1: not awaited by design (fire-and-forget ack) — armed with a no-op catch so a future rejection never surfaces as unhandled (gemPlayBuf itself never rejects today, but this is defense-in-depth, not a behavior change)
   // cold: no sound of any kind — the visual "…thinking" state (painted by vcAskFlow, below) IS the ack.
   vcLatMark('ackSound');
 }
@@ -7009,7 +7048,7 @@ async function vcAskFlow(rawSaid){
   if(!question){ return; }
   const ansL=vcVoiceLang();
   vcAck(vcNewSpeakGen());                          // instant, zero-network — never a cloud round-trip
-  vcLastQA={q:question, a:(ansL==='en'?'…thinking':'…חושב')}; vcRender();
+  vcLastQA={q:question, a:(VC_THINKING[ansL]||VC_THINKING.en)}; vcRender();
   try{
     const tiers=vcResolveTiers(question);                  // resolved ONCE — both tiers
     vcLatMark('textReq');
@@ -7021,7 +7060,16 @@ async function vcAskFlow(rawSaid){
     vcLastQA={q:question, a:guarded}; vcRender();
     vcSpeak(guarded, ansL);
   }catch(e){
-    const msg=ansL==='en'?'Sorry, AI is not available right now.':'מצטער, ה-AI לא זמין כרגע.';
+    // H1 (silent-failure-hunter audit): this catch wraps vcResolveTiers, vcAskAI AND vcGuardSpoken — a
+    // TypeError inside the safety guard would silently answer "AI unavailable" forever while the AI is
+    // healthy, with nothing recorded anywhere. Structurally the same defect class as the 20s-timeout bug
+    // that cost weeks (docs/analysis/2026-07-31-voice-latency-baseline.md). Log every failure, and
+    // distinguish a quota failure (transient, worth retrying) from a genuine outage/bug — a user who hits
+    // a quota wall needs different guidance than one hitting a real error.
+    console.warn('[vcAsk]', e);
+    const s=String(e&&e.message||e||'');
+    const quota=s.includes('api-429')||/quota|RESOURCE_EXHAUSTED/i.test(s);
+    const msg=quota?(VC_AI_QUOTA[ansL]||VC_AI_QUOTA.en):(VC_AI_UNAVAILABLE[ansL]||VC_AI_UNAVAILABLE.en);
     vcLastQA={q:question, a:msg}; vcRender(); vcSpeak(msg, ansL);
   }
 }
