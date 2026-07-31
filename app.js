@@ -5472,7 +5472,17 @@ const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';
 // unit becomes bare `°`, the `F` is left loose in the prose, isFahrenheitUnit("°")===false, and the number
 // is STILL spoken unconverted — same leak, different mechanism. The °-branch's wider `\s*` is deliberate;
 // widening the classifier (isFahrenheitUnit) is the correct fix, narrowing the matcher (°-branch) is not.
-const SAFETY_UNIT='(?:°\\s*[CF]?|[CF]\\b|ppm|%|מעלות|deg(?:rees?)?(?:[^\\S\\r\\n]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|\\.?(?![A-Za-z]))|celsius|fahrenheit)';
+// UNICODE BOUNDARY WIDENING (Task 13, H13-approved 2026-07-31, G-A1 addendum) — two widenings folded in
+// here, riding with the R-2/R-3 marker redesign (vcGuardSpoken/vcNormalizeSafetyText):
+// (1) º (U+00BA MASCULINE ORDINAL INDICATOR) and ˚ (U+02DA RING ABOVE) are visually near-identical to °
+//     (U+00B0) but NOT folded into it by NFKC normalization (unlike ℃/℉/full-width digits, which ARE
+//     folded — see vcNormalizeSafetyText) — so they must be recognised here directly, alongside °.
+// (2) the bare Hebrew "מעלות" branch now optionally captures a trailing "פרנהייט"/"צלזיוס"/"צלסיוס"
+//     qualifier as PART of the matched unit, so isFahrenheitUnit (below) can see "מעלות פרנהייט" as one
+//     token and classify it correctly — previously "מעלות" matched alone, "פרנהייט" was left as inert
+//     trailing prose, and the number was silently treated as Celsius (G-A1 addendum's "read as Celsius"
+//     leak, the product-defect asymmetry the addendum names first).
+const SAFETY_UNIT='(?:[°º˚]\\s*[CF]?|[CF]\\b|ppm|%|מעלות(?:\\s*(?:פרנהייט|צלזיוס|צלסיוס))?|deg(?:rees?)?(?:[^\\S\\r\\n]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|\\.?(?![A-Za-z]))|celsius|fahrenheit)';
 const SAFETY_TOKEN_SRC=
     '('+SAFETY_NUM+')\\s*[-–]\\s*('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
   + '|('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'                               // 4 number  · 5 its unit
@@ -5508,8 +5518,12 @@ function isFahrenheitUnit(u){
   // This can only WIDEN which strings classify as Fahrenheit-true over what SAFETY_UNIT already emits —
   // it cannot introduce a false positive on a Celsius/generic unit (verified: tests/p0-safety-nums.spec.ts
   // "isFahrenheitUnit classifies every emittable unit correctly" + the whitespace-class test both pass).
+  // Task 13 (H13-approved 2026-07-31, G-A1 addendum): °?F widened to [°º˚]?F to match SAFETY_UNIT's own
+  // widened degree branch (º/˚ now recognised alongside °), and מעלותפרנהייט (whitespace-stripped "מעלות
+  // פרנהייט") added so the Hebrew word-form is classified Fahrenheit instead of silently defaulting to
+  // Celsius (closes the G-A1 addendum's "read as Celsius" leak).
   const s=String(u||'').replace(/\s+/g,'');
-  return /^(?:°?F|deg(?:rees?)?(?:F|fahrenheit)|fahrenheit)$/i.test(s);
+  return /^(?:[°º˚]?F|deg(?:rees?)?(?:F|fahrenheit)|fahrenheit|מעלותפרנהייט)$/i.test(s);
 }
 // Fresh instance per call — /g regexes carry lastIndex.
 function safetyNumRe(){ return new RegExp(SAFETY_NUM, 'g'); }
@@ -6564,6 +6578,18 @@ function vcVerifiedNums(meta){
     .filter(function(v){ return v!=null && !isNaN(Number(v)); })
     .map(function(v){ return Math.round(Number(v)); });
 }
+
+// R-3 field-narrowing helper (Task 13, H13-approved 2026-07-31, ROADMAP §5a) — see the comment at its call
+// site in vcGuardSpoken for the full reasoning. Deliberately narrower than vcVerifiedNums above (left
+// UNCHANGED — several existing tests call vcVerifiedNums directly, pooling all five fields, to build range
+// fixtures from ANY of them; that usage is orthogonal to marker-eligibility and must keep working
+// unmodified). Only safe/tgt are eligible for the spoken-verified marker; svt/smt/sot never are.
+function vcVerifiedSafeNums(meta){
+  const o=meta&&meta.obj; if(!o) return [];
+  return ['safe','tgt'].map(function(k){ return o[k]; })
+    .filter(function(v){ return v!=null && !isNaN(Number(v)); })
+    .map(function(v){ return Math.round(Number(v)); });
+}
 // The ONE tokenizer shared by every rewrite path AND by aiSafetyNums (via SAFETY_TOKEN_SRC / safetyTokenRe,
 // defined above aiSafetyToC) — so a number the extractor can see is never a number the guard fails to
 // rewrite. The callback receives the whole token (a range is ONE token, not two numbers) and returns its
@@ -6596,12 +6622,58 @@ function vcLtrNums(escaped){
 // own 74°C, never the model's phrasing). Unmatched → redact the token (VC_REDACT), keep the qualitative
 // advice, append the spoken redirect. Returns the ONE string that both vcSpeak and vcLastQA receive.
 
+// SEAM for R-26 (Task 13, H13-approved 2026-07-31) — the generic unit-conversion component ordered by the
+// owner for the whole app (ROADMAP ledger row R-26) is a SEPARATE investigation, not built here. This is
+// the ONE place spoken-safety text is normalized/unit-widened before any safety-number logic runs; when
+// the generic converter lands it should be able to delegate FROM here rather than this file growing a
+// second, parallel unit-recognition path. Do not duplicate NFKC/degree-symbol/Fahrenheit-word handling
+// elsewhere in the voice path — extend THIS function instead.
+function vcNormalizeSafetyText(s){
+  // NFKC folds compatibility characters into their canonical form BEFORE any safety-number regex runs:
+  // ℃ (U+2103) -> °C, ℉ (U+2109) -> °F, full-width Ｆ/digits -> ASCII (G-A1 addendum — closes the "Ｆ read
+  // as Celsius, marked verified" leak structurally, rather than by enumerating every compatibility form).
+  // Does NOT fold º (U+00BA MASCULINE ORDINAL INDICATOR) or ˚ (U+02DA RING ABOVE) — Unicode has no NFKC
+  // decomposition for either into ° (U+00B0); those are handled instead by SAFETY_UNIT's own degree
+  // branch recognising them alongside ° directly (see SAFETY_UNIT's definition).
+  return String(s||'').normalize('NFKC');
+}
+
 function vcGuardSpoken(text, tiers, lang){
-  const src=String(text||'');
-  if(!aiSafetyNums(src).length) return src;          // no safety numbers at all → untouched
+  // R-2/R-3 marker redesign (Task 13, H13-approved 2026-07-31, ROADMAP §5a rows R-2/R-3; spec-change §3.1
+  // D2-A+D3-A folded as ONE change — docs/analysis/program/new-gaps-2026-07-24-p0-app.md §G-A1/§G-A2/the
+  // G-A1 addendum) + three tokenizer widenings ride together in this task. vcNormalizeSafetyText is the
+  // seam: NFKC first (closes ℃/℉/Ｆ/full-width digits structurally), then the widened SAFETY_UNIT (º/˚,
+  // Hebrew "פרנהייט") recognises what NFKC alone cannot fold. It is also the seam a future generic
+  // unit-conversion component (R-26, separate investigation) should delegate to.
+  const src=vcNormalizeSafetyText(text);
+  const nAiNums=aiSafetyNums(src).length;
+  const digitRuns=(src.match(safetyNumRe())||[]).length;
+  // G-A1 hole 1 — a lone bare number with NO recognised unit anywhere in the answer ("pull it at 165
+  // internal") used to slip past this gate entirely: nAiNums===0 (aiSafetyNums only sees unit-bearing
+  // tokens) triggered the OLD unconditional early return, so the number reached speech completely
+  // unguarded — no marker, but also no inspection. digitRuns is built on the SAME "a number" definition
+  // (SAFETY_NUM, comma-aware) and DOES see it. Widen the gate narrowly: also enter the guard when the
+  // whole answer carries exactly ONE bare digit run — the existing eligibility rule below already treats
+  // "exactly one number total" as inherently about ONE quantity, so this is the natural, narrowly-scoped
+  // place to close the leak. Ordinary multi-number text with no recognised unit anywhere (cook-time
+  // instructions, step counts, "wait 20 minutes then 10 more") is UNCHANGED — nAiNums===0 with
+  // digitRuns!==1 still returns untouched exactly as before; this does not turn every stray digit
+  // app-wide into a redaction, only the specific "one uninspectable number" shape.
+  if(!nAiNums && digitRuns!==1) return src;
   const ok={};
-  vcVerifiedNums(tiers && tiers.t1).forEach(function(n){ ok[n]=true; });
-  vcVerifiedNums(tiers && tiers.t2).forEach(function(n){ ok[n]=true; });
+  // R-3 (H13-approved 2026-07-31) — the marker-eligible field set is narrowed from the previous flat
+  // safe/tgt/svt/smt/sot pool (vcVerifiedNums) to safe/tgt only (vcVerifiedSafeNums, above). svt/smt/sot
+  // are process-CONTROL setpoints (sous-vide bath / smoker-set / sear-final), semantically different from
+  // "the temperature this sentence is asserting" — deciding WHICH field a sentence like "X is the safe
+  // internal temperature" is actually claiming is exactly the claim-classification problem G-A2 names
+  // "materially harder", and is not attempted here. Fail closed instead: only safe/tgt (the two fields
+  // that answer "what temperature do I pull this at") are ever eligible for the verified marker via this
+  // path — a genuine svt/smt/sot figure is still spoken (if the sentence carries no OTHER competing
+  // number), just never wrapped in the "verified" claim. Trade accepted by the owner: the marker becomes
+  // rarer, but a wrong-field number (a sous-vide BATH figure asserted as the safe INTERNAL temperature —
+  // the exact G-A2/R-3 proof case) can no longer borrow the guide's authority.
+  vcVerifiedSafeNums(tiers && tiers.t1).forEach(function(n){ ok[n]=true; });
+  vcVerifiedSafeNums(tiers && tiers.t2).forEach(function(n){ ok[n]=true; });
   // SYNTAX-INDEPENDENT ELIGIBILITY (owner ruling 2026-07-24). Three previous fixes keyed on how a range
   // was *written* and each was defeated by a different phrasing — "63°C-74°C", "between 63 and 74",
   // "בין 63 ל-74°C" all slipped through, and the unit-less bound in "63 to 74°C" was never even
@@ -6616,19 +6688,33 @@ function vcGuardSpoken(text, tiers, lang){
   // as ONE run, take the eligible branch, and have the tokenizer match only its tail "063°C" — corrupting a
   // value the model never said into a fake "verified" one. Never write a second number pattern (see
   // SAFETY_NUM above).
-  const digitRuns=(src.match(safetyNumRe())||[]).length;
   let redacted=0, out;
   if(digitRuns===1){
-    out=vcMapSafetyNums(src, function(vals, unit, kind){
-      if(kind==='single' && isTempUnit(unit)){
-        const c=Math.round(aiSafetyToC(vals[0], unit));
-        // COSMETIC (2026-07-24): the matched unit token can itself carry a trailing period ("deg.",
-        // "degrees.") — replacing the WHOLE token with c+'°C' silently ate that period. Re-append it when
-        // present so the sentence's own full stop survives the substitution.
-        if(ok[c]) return c+'°C'+(/\.$/.test(String(unit).trim())?'.':'');   // the app's OWN figure, in its own unit
-      }
-      redacted++; return VC_REDACT;
-    });
+    if(!nAiNums){
+      // G-A1 hole 1, continued — the lone number truly has no unit anywhere (vcMapSafetyNums cannot even
+      // see it: SAFETY_TOKEN_SRC requires a unit or a pH prefix). Provenance is undecidable for a number
+      // the app cannot classify at all, so it fails closed: redacted, never voiced raw.
+      out=src.replace(safetyNumRe(), function(){ redacted++; return VC_REDACT; });
+    }else{
+      out=vcMapSafetyNums(src, function(vals, unit, kind){
+        if(kind==='single' && isTempUnit(unit)){
+          const c=Math.round(aiSafetyToC(vals[0], unit));
+          if(ok[c]){
+            // COSMETIC (2026-07-24): the matched unit token can itself carry a trailing period ("deg.",
+            // "degrees.") — replacing the WHOLE token with c+'°C' silently ate that period. Re-append it
+            // when present so the sentence's own full stop survives the substitution.
+            // R-2 (H13-approved 2026-07-31): the verification claim attaches to the NUMBER, inline,
+            // immediately after the substituted figure — never appended once to the whole sentence. An
+            // answer containing an unverified/uninspected number elsewhere (a spelled-out word-number the
+            // tokenizer can't see, e.g.) no longer inherits authority it never earned — closes G-A1 hole 2
+            // ("...seventy-four degrees" riding "63°C"'s verified claim under the old sentence-suffix).
+            return c+'°C'+(/\.$/.test(String(unit).trim())?'.':'')+' '
+              +(lang==='he'?'לפי המדריך המאומת.':'per the app\'s verified guide.');
+          }
+        }
+        redacted++; return VC_REDACT;
+      });
+    }
   }else{
     // Two or more numbers → nothing is spoken as verified. Redact the recognised safety tokens FIRST
     // (that also removes their unit), then sweep any remaining bare digits — because a number the
@@ -6636,16 +6722,26 @@ function vcGuardSpoken(text, tiers, lang){
     out=vcMapSafetyNums(src, function(){ redacted++; return VC_REDACT; })
           .replace(safetyNumRe(), function(){ redacted++; return VC_REDACT; });
   }
+  // COSMETIC (Task 13, R-2 follow-on) — the inline marker can now land directly before the sentence's OWN
+  // trailing period when the matched unit token itself carried no dot of its own (e.g. plain "63°C."
+  // where only "63°C" is consumed, leaving the source sentence's real "." un-swallowed right after the
+  // inserted marker's own "."). Collapse "marker." + a leftover lone "." into one — the marker text is
+  // fixed and known, so this is a targeted cleanup, not a general punctuation rewrite.
+  out=out.replace(/(לפי המדריך המאומת\.|per the app's verified guide\.)\.+/g,'$1');
   out=out.replace(/\s{2,}/g,' ').trim();
   // NOTE: the spoken reply follows the VOICE language `lang` (a param), NOT the UI getLang() — the voice is
   // he/en only (TTS-locale beyond he/en is follow-up T-GuardB-runtime's sibling). v268 T3 wrongly folded
   // these into getLang()-based L(); restored to the `lang`-param ternary so the spoken marker matches the
   // spoken language (regression fix — tests/p0-spoken-safety).
-  return out+' '+(redacted
-    ? (redacted===1
+  // R-2 (H13-approved 2026-07-31): the old unconditional "...per the app's verified guide." SENTENCE
+  // SUFFIX is gone — a verified number already carries its own inline marker above. Only the redaction
+  // NOTICE remains sentence-final: it is a warning, not an authority claim, so summarising it once
+  // (singular/plural, count-aware) is still correct.
+  return redacted
+    ? out+' '+(redacted===1
         ? (lang==='he'?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':'This number isn\'t verified — check the item card.')
         : (lang==='he'?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':'These numbers aren\'t verified — check the item card.'))
-    : (lang==='he'?'לפי המדריך המאומת.':'per the app\'s verified guide.'));
+    : out;
 }
 
 async function vcAskAI(question, ent){

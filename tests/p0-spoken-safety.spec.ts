@@ -602,3 +602,62 @@ for (const [label, code] of leakSeps) {
   });
 }
 
+// Task 13 · R-2/R-3 (H13-approved 2026-07-31, ROADMAP §5a rows R-2/R-3; spec-change §3.1 D2-A+D3-A folded
+// as ONE change) — the spoken-"verified"-marker redesign. Source: .superpowers/sdd/task-13-gate-memo.md,
+// each of these five holes reproduced live on today's code (v277-era app.js) by direct execution before
+// this task. Calling vcGuardSpoken directly (not via vcAskFlow/window.__spoke) matches the brief's own
+// Step-3 test shapes — bootVC still boots the app and waits for vcGuardSpoken to exist as a real function.
+test('G-A1 hole 1 — a unit-less safety number is never voiced unguarded', async ({ page }) => {
+  await bootVC(page);
+  const out = await page.evaluate(`vcGuardSpoken('pull it at 165 internal', { t1: { obj: { safe: 74 } } }, 'en')`) as string;
+  expect(out).not.toContain('165');
+});
+
+test('G-A1 hole 2 — a spelled-out number cannot ride a verified sentence anymore', async ({ page }) => {
+  await bootVC(page);
+  const out = await page.evaluate(`vcGuardSpoken('63°C, or in some references seventy-four degrees', { t1: { obj: { safe: 63 } } }, 'en')`) as string;
+  // R-2: the marker is now attached to "63°C" alone, never to the whole sentence — nothing AFTER the
+  // uninspected word-number "seventy-four degrees" may carry the verified claim.
+  expect(out.slice(out.indexOf('seventy-four'))).not.toMatch(/verified/i);
+});
+
+test('G-A1 addendum — non-canonical Unicode degree/unit variants are inspected, not voiced raw', async ({ page }) => {
+  await bootVC(page);
+  for (const s of ['74ºC is fine', '74℃ is fine', '74℉ is fine']) {
+    const out = await page.evaluate(`vcGuardSpoken(${JSON.stringify(s)}, { t1: { obj: { safe: 74 } } }, 'en')`) as string;
+    expect(out, s).not.toMatch(/74[º℃℉]/);   // raw pass-through of the non-canonical form is closed
+  }
+});
+
+test('G-A1 addendum — Hebrew "מעלות פרנהייט" is never converted/spoken as Celsius', async ({ page }) => {
+  await bootVC(page);
+  const out = await page.evaluate(`vcGuardSpoken('משוך ב-74 מעלות פרנהייט', { t1: { obj: { safe: 74 } } }, 'he')`) as string;
+  expect(out).not.toContain('74°C');
+});
+
+test('G-A2 / R-3 — a wrong-field match (sous-vide bath figure) is never spoken as the verified safe temperature', async ({ page }) => {
+  await bootVC(page);
+  const out = await page.evaluate(`vcGuardSpoken('63°C is the safe internal temperature', { t1: { obj: { safe: 74, svt: 63 } } }, 'en')`) as string;
+  expect(out).not.toMatch(/63°C.*verified/);
+});
+
+// DoD-8/9 visual evidence — the inline marker (R-2) rendered in the real Hebrew on-screen transcript, at
+// 390x844: the number carries "לפי המדריך המאומת" immediately after it, not as a trailing sentence suffix.
+test('DoD-8/9 — the inline verified marker renders correctly in the Hebrew voice-panel transcript', async ({ page }) => {
+  await bootVC(page);
+  const f = await page.evaluate(`(function(){var c=DATA.cuts.find(function(x){return x.safe!=null;}); return {ikey:'cut-'+c.n, safe:Math.round(c.safe)};})()`) as {ikey:string; safe:number};
+  await page.evaluate(`(function(){ closePanel(); openVoiceCook([{ikey:'${f.ikey}',label:'x',t:new Date()}]); })()`);
+  await page.waitForSelector('#vcBody');
+  await page.evaluate(`window.__vcAskMock='הטמפ׳ הבטוחה היא ${f.safe}°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפ הבטוחה')`);
+  await page.waitForFunction(`window.__spoke.length>1`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).toBe(`הטמפ׳ הבטוחה היא ${f.safe}°C לפי המדריך המאומת.`);   // inline marker, no sentence-suffix, single trailing period
+  await page.waitForFunction(`(function(){ var a=document.querySelector('.vc-qa-a'); return a && a.textContent.indexOf('${f.safe}')>=0; })()`);
+  await page.waitForFunction(`document.querySelector('#panel').getBoundingClientRect().left===0`);
+  await page.evaluate(`document.querySelector('.vc-qa').scrollIntoView({block:'center'})`);
+  await page.waitForFunction(`(function(){ const r=document.querySelector('.vc-qa').getBoundingClientRect();
+    return r.top>=0 && r.bottom<=window.innerHeight; })()`);
+  await page.screenshot({ path: '.superpowers/sdd/task-13-inline-marker-390x844.png' });
+});
+
