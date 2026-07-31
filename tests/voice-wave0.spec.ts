@@ -175,19 +175,41 @@ test('R-29: the HE/EN button pairs are gone and stored state is deleted on first
   expect(r.ans ?? null).toBeNull();
 });
 
-test('ack is instant and network-free on the cold path', async ({ page }) => {
+// Owner correction (post-dispatch review): the acknowledgement is VISUAL ONLY — no earcon. app.js
+// already uses an 880 Hz three-pulse oscillator as the TIMER ALERT (~line 3267); a chime here would be
+// mistaken for "the cook is done" at a smoker, not "the voice answered" — safety-adjacent, not style.
+test('ack cold path: no earcon exists anywhere, and it costs zero network', async ({ page }) => {
   await seedApp(page, {});
   let ttsCalls = 0;
   await page.route(/generativelanguage|gemini/i, r => { ttsCalls++; r.abort(); });
   try {
     const r = await page.evaluate(async () => {
-      const w = window as any; w.__earconLog = 0;
-      w.__earconMock = () => { w.__earconLog++; };            // no real audio in CI
+      const w = window as any;
       w.vcAck(w.vcNewSpeakGen());
-      return { earcon: w.__earconLog, lat: w.vcLatReport() };
+      return { lat: w.vcLatReport(), vcEarconType: typeof w.vcEarcon };
     });
-    expect(r.earcon).toBeGreaterThan(0);   // cold path acknowledged locally (earcon — no browser voice exists, R-32)
-    expect(r.lat).toHaveProperty('ackSound');
-    expect(ttsCalls).toBe(0);              // and cost ZERO network (v278: the ack IS a cloud round-trip)
+    expect(r.vcEarconType).toBe('undefined');   // vcEarcon is GONE — no chime anywhere
+    expect(r.lat).toHaveProperty('ackSound');   // the ack still stamps its latency mark (visual path)
+    expect(ttsCalls).toBe(0);                   // and costs ZERO network on the cold path
   } finally { await page.unroute(/generativelanguage|gemini/i); }
+});
+
+test('ack is visual and instant: vcAskFlow paints the "…thinking" state synchronously, before the AI call resolves', async ({ page }) => {
+  await seedApp(page, {});
+  // vcTasks/vcIdx/vcLastQA are top-level `let` bindings in app.js (classic, non-module script) — visible
+  // to a bare-identifier reference evaluated in the page's own global scope (a STRING body), but NOT as
+  // `window.*` properties (let/const never attach to window) — string-template form, not an arrow function.
+  const r = await page.evaluate(`(async function(){
+    var releaseAI = function(){};
+    window.__vcAskMock = function(){ return new Promise(function(res){ releaseAI = res; }); };   // held open — never resolves yet
+    vcTasks = []; vcIdx = 0;
+    var flow = vcAskFlow('שאלה: מה קורה');
+    // vcAskFlow runs synchronously up to its first await (inside vcAskAI) — the visual ack is already
+    // painted by the time control returns here, well before any network round-trip could complete.
+    var during = vcLastQA ? vcLastQA.a : null;
+    releaseAI('done');
+    await flow;
+    return { during: during };
+  })()`) as { during: string | null };
+  expect(r.during).toBe('…חושב');
 });

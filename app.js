@@ -6970,24 +6970,21 @@ async function vcAskAI(question, ent){
 }
 // ── Voice Wave 0 · instant acknowledgement (spec §3). Fixed per-language phrases — never model output,
 // never awaited over the network. Warm path: cached Google buffer from panel-open pre-warm. Cold path:
-// instant visual state + a local WebAudio earcon (R-32: no browser voice exists; a chime is not a voice).
+// VISUAL ONLY (owner correction, post-dispatch review) — no earcon/chime of any kind. app.js already
+// uses an 880 Hz three-pulse oscillator as the TIMER ALERT (~line 3267); a chime here at the ack's
+// original 880/1174.7 Hz would read to a cook at the smoker as "the cook is done", not "the voice
+// answered" — a safety-adjacent confusion, not a style choice. The instant acknowledgement IS the
+// vcLastQA "…thinking" placeholder + vcRender() that vcAskFlow paints synchronously, before any network
+// call is even issued — no substitute sound plays if the pre-warmed buffer isn't ready in time.
 const VC_ACK={he:'רגע, בודק.', en:'One moment, checking.', fr:'Un instant, je vérifie.',
               de:'Einen Moment, ich prüfe.', es:'Un momento, comprobando.', it:'Un attimo, controllo.',
               ru:'Секунду, проверяю.'};
 function vcAckText(){ return VC_ACK[vcVoiceLang()]||VC_ACK.en; }
 function vcWarmAck(){ if(aiAvail()) gemSynthChunk(ttsText(vcAckText(), vcVoiceLang())).catch(function(){}); }
-function vcEarcon(){
-  if(window.__earconMock) return window.__earconMock();
-  try{ gemCtx=gemCtx||new (window.AudioContext||window.webkitAudioContext)();
-    [880,1174.7].forEach(function(f,i){ const o=gemCtx.createOscillator(), g=gemCtx.createGain();
-      o.frequency.value=f; g.gain.value=0.08; o.connect(g); g.connect(gemCtx.destination);
-      o.start(gemCtx.currentTime+i*0.09); o.stop(gemCtx.currentTime+i*0.09+0.08); });
-  }catch(e){}
-}
 function vcAck(gen){
   const clean=ttsText(vcAckText(), vcVoiceLang()), key=clean+gemVoice();
   if(gemCache.has(key)) gemPlayBuf(gemCache.get(key), gen);          // warm: the Google voice, zero network
-  else vcEarcon();                                                   // cold: local chime — instant by construction
+  // cold: no sound of any kind — the visual "…thinking" state (painted by vcAskFlow, below) IS the ack.
   vcLatMark('ackSound');
 }
 async function vcAskFlow(rawSaid){
