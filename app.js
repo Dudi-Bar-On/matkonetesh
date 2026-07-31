@@ -295,8 +295,46 @@ const UNITS=(function(){
       return {re:_prefixRe(toks), cls:row.cls};
     });
   }
+  // U-2 — the ONE exit door. Canonical target = IDENTITY on the number (String(v) verbatim) so every
+  // migrated `${x}°C` site is byte-identical while display stays metric. Directional rounding applies
+  // ONLY to non-canonical derivation: a safety floor may round UP only, a safety ceiling DOWN only
+  // (spec §5 — the danger zone widens, never narrows). A cited original is shown VERBATIM, never re-derived.
+  function displayUnit(kind){ const k=T.kinds[kind]; return k ? k.canon : null; }   // pref-aware from U-6 ONLY
+  function convert(value, kind, toUnit, role){
+    const k=T.kinds[kind]; if(!k || value==null || isNaN(value)) return null;
+    if(toUnit===k.canon) return value;
+    const u=k.units[toUnit]; const cv=u && u.conv && T.conv[u.conv]; if(!cv) return null;
+    const raw=value*cv.den/cv.num - cv.pre;             // exact inverse of canonical=(v+pre)*num/den
+    const EPS=1e-9;                                      // guards float dust like 130.00000000000003 → 130
+    if(role==='safeFloor') return Math.ceil(raw-EPS);
+    if(role==='safeCeil')  return Math.floor(raw+EPS);
+    return Math.round(raw);
+  }
+  function _label(kind, unit, lang, voice){
+    const u=T.kinds[kind] && T.kinds[kind].units[unit]; if(!u) return {text:'', space:false};
+    const set=(voice && u.voice) ? u.voice : (u.label||{});
+    const text=set[lang]!=null ? set[lang] : (set.he!=null ? set.he : unit);
+    return {text:text, space:voice ? true : !!u.space};
+  }
+  function _lang(){ return (typeof getLang==='function') ? getLang() : 'he'; }        // marked app-state read (spec §3)
+  function fmt(value, kind, opts){
+    opts=opts||{};
+    const k=T.kinds[kind]; if(!k || value==null || isNaN(value)) return value==null?'':String(value);
+    const target=opts.unit||displayUnit(kind);
+    let v;
+    if(opts.cited && opts.cited.unit===target){ v=opts.cited.v; }                    // cited passthrough — NEVER re-derived
+    else if(target===k.canon){ v=value; }                                            // identity — byte-identity guarantee
+    else { v=convert(value, kind, target, opts.role||'comfort'); if(v==null) return String(value)+_label(kind,k.canon,opts.lang||_lang(),!!opts.voice).text; }
+    const lb=_label(kind, target, opts.lang||_lang(), !!opts.voice);
+    return String(v)+(lb.space?' ':'')+lb.text;
+  }
+  function fmtHtml(value, kind, opts){
+    const esc=function(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); };
+    return '<span dir="ltr" data-units-final>'+esc(fmt(value, kind, opts))+'</span>';
+  }
   return {TABLE:T, KINDS:T.kinds, normalize:normalize, classify:classify, toCanonical:toCanonical,
-          tokenizerUnitSrc:tokenizerUnitSrc, vcClasses:vcClasses, legacyConv:legacyConv, _key:_key};
+          tokenizerUnitSrc:tokenizerUnitSrc, vcClasses:vcClasses, legacyConv:legacyConv, _key:_key,
+          fmt:fmt, fmtHtml:fmtHtml, convert:convert, displayUnit:displayUnit};
 })();
 // `const` bindings never become `window` properties in a classic script (only `var`/function
 // declarations do — see app.js:9377's cWiz precedent) — expose explicitly so tests can reach it.
@@ -3062,7 +3100,7 @@ function openCut(c){
         <tr><td>${L("טמפ' / זמן עישון (סו-ויד+עישון)",'Smoke temp / time (sous-vide+smoke)')}</td><td>${smtV}°C · ${smhV} ${L('שעות','hours')}</td></tr>
         <tr><td>${L("טמפ' / זמן עישון בלבד",'Smoke-only temp / time')}</td><td>${c.sot}°C · ${c.soh} ${L('שעות','hours')}</td></tr>
         ${grillLine(c)?`<tr><td>${L("גריל (טמפ' / זמן / אזור)",'Grill (temp / time / zone)')}</td><td>${grillLine(c)}</td></tr>`:''}
-        <tr><td>${L("טמפ' יעד (מרקם) / בטיחות",'Target temp (texture) / safety')}</td><td>${c.tgt}°C${c.safe?` / ${c.safe}°C`:''}</td></tr>
+        <tr><td>${L("טמפ' יעד (מרקם) / בטיחות",'Target temp (texture) / safety')}</td><td>${UNITS.fmt(c.tgt,'temp')}${c.safe?` / ${UNITS.fmt(c.safe,'temp',{role:'safeFloor'})}`:''}</td></tr>
         <tr><td>${L('צריבה','Sear')}</td><td>${c.sear}</td></tr>
         <tr><td>${L('טיפול באמצע (סו-ויד+עישון)','Mid-cook treatment (sous-vide+smoke)')}</td><td>${c.mid}</td></tr>
         <tr><td>${L('טיפול / עטיפה (עישון בלבד)','Treatment / wrap (smoke-only)')}</td><td>${c.somid}</td></tr>
@@ -6839,7 +6877,7 @@ function vcGuardSpoken(text, tiers, lang){
             // answer containing an unverified/uninspected number elsewhere (a spelled-out word-number the
             // tokenizer can't see, e.g.) no longer inherits authority it never earned — closes G-A1 hole 2
             // ("...seventy-four degrees" riding "63°C"'s verified claim under the old sentence-suffix).
-            return c+'°C'+(/\.$/.test(String(unit).trim())?'.':'')+' '
+            return UNITS.fmt(c,'temp',{role:'safeFloor'})+(/\.$/.test(String(unit).trim())?'.':'')+' '
               +(lang==='he'?'לפי המדריך המאומת.':'per the app\'s verified guide.');
           }
         }
@@ -9095,7 +9133,8 @@ function tnode(root){ const d=getDict(); if(!d) return; const U=d.__units__||{},
     for(var p in P){ if(p.indexOf('__')===0) continue; nv=nv.replace(new RegExp(_reEsc(p)+'\\s+(?=\\d)','g'), P[p]+' '); }
     return nv; };
   const set=function(node, val){ if(node._mkO===undefined) node._mkO=node.nodeValue; node.nodeValue=val; };   // non-destructive: keep the Hebrew original
-  try{ const w=document.createTreeWalker(r, NodeFilter.SHOW_TEXT, null); const list=[]; let n; while((n=w.nextNode())) list.push(n);
+  try{ const w=document.createTreeWalker(r, NodeFilter.SHOW_TEXT, null); const list=[]; let n;
+    while((n=w.nextNode())){ if(n.parentElement && n.parentElement.closest && n.parentElement.closest('[data-units-final]')) continue; list.push(n); }   // U-2: formatter output is atomic — the word layer never touches it
     list.forEach(function(node){ if(node.parentElement && node.parentElement.closest && node.parentElement.closest('[data-mt]')) return;   // leave data-mt prose to the guarded MT
       const raw=(node._mkO!==undefined)?node._mkO:node.nodeValue; if(!raw) return; const k=raw.trim(); if(!k) return;   // always translate FROM the Hebrew original
       const v=d[k]; if(v!=null && v!==k){ set(node, raw.replace(k, v)); return; }
