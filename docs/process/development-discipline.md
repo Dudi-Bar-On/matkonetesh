@@ -687,6 +687,74 @@ then run the completeness gate on the result.
 4. עדכון גרף רציף: `graphify watch` לקוד; docs ברענון `--mode deep` תקופתי, נאכף ע"י `scripts/check-graph-fresh.mjs`.
 5. **מטא-כלל:** אם מזהים שהכללים האלה לא מיושמים — זה עצמו האות שהקונטקסט נשחק; עוצרים ומריצים מחדש את `docs/process/checklists/session-start.md`, לא ממשיכים.
 
+**L29 · A release gate that ran on the wrong state: the suite went green twice before the copy that shipped even existed (v278, 2026-07-31).**
+v278's task ran the full suite ×2 and reported green, but the what's-new string was added to the tree AFTER
+both of those runs — so the state that was tested and the state that shipped were two different trees. The
+`foot-news` tests caught the mismatch only after release, live on the site, because they never ran against
+the final tree at all. Root cause: "run the suite" was treated as satisfied by any recent green run, not by
+a run against the exact tree about to ship. Gate: the release suite runs on the FINAL tree — after the
+version stamp and all copy changes are in — and no run taken before that point counts toward the release
+gate, however green.
+
+**L30 · "Green for me" is not green: a test file's own size silently changed the suite's concurrency (2026-07-31).**
+A Task-3 implementer reported "825 passed, exit 0"; the controller's own run on the same code gave 821
+passed / 4 failed, and the failure reproduced in isolation. Root cause was capacity, not the code under
+test: the spec file had grown from 2 tests to 5, and Playwright caps workers at the test count per file —
+so the project's own concurrency rose past what real service-worker registration cycles could reliably
+survive. Nothing in the diff looked like a concurrency change; the file just got bigger. Gate: a single
+green run from an implementer is a sample, not proof — the controller reruns the full suite independently
+before accepting a "done" claim (§11a); and a growing spec file is itself worth eyeballing for a
+worker-count side effect, not just for content.
+
+**L31 · Agents left waiting on a background suite run burn real time for no signal (2026-07-31).**
+Across three tasks this session, subagents polled a backgrounded full-suite run and reported "still
+waiting" repeatedly, costing roughly an hour combined with nothing to show for it. The cure was already
+adopted in §11a — the controller owns the full-suite gate, not a dispatched subagent — but it was not
+applied consistently this session. Gate: never hand a subagent a background suite run to wait on; the
+controller runs it (or waits on it) directly and hands the subagent a verdict, not a polling loop.
+
+**L32 · The pipe-vs-exit-code mistake, made twice more — including by the controller, minutes after writing
+the rule down (2026-07-31).** `cmd | head; ec=$?` (or the equivalent through any pipe) captures the exit
+code of the LAST command in the pipeline, not the one whose output was being inspected — so `ec=$?` after
+piping into `head`/`tail`/`grep` measures `head`, always 0, never the real command. This has now recurred
+enough times that documenting the rule once has proven insufficient. Gate: capture `$?` (or run
+`; ec=$?`) IMMEDIATELY after the command whose exit code matters, with no pipe in between — redirect to a
+file first if the output also needs trimming for display.
+
+**L33 · A stale plan snippet instructed deleting something that had since shipped (2026-07-31).**
+The Phase 1 plan told an implementer to delete `ru` from `LANGNAME`; Russian had shipped to the language
+queue since the plan was written, and following the instruction literally would have regressed a live
+language. The implementer caught the mismatch, refused to comply, and reported back instead — the correct
+behavior. Root cause: a plan is evidence of intent at the time it was written, not of current truth, and
+nothing re-validated the plan's assumptions against the tree before execution. Gate: an implementer treats
+every plan instruction that deletes or reverts existing behavior as a claim to verify against the current
+tree first, not an order to execute blind; when the tree has moved on, stop and report rather than comply.
+
+**L34 · Research that never landed: the pre-answer to the owner's next complaint sat un-surfaced in a
+research doc (2026-07-31).** `docs/research/03-tts.md` (§15.7) already contained the Hebrew-pronunciation
+analysis, the local-engine option, AND latency tactics that directly pre-answered the owner's later (§31.7)
+TTS complaints — but only the top-level provider decision from that document ever reached the decision
+register; the rest sat orphaned in the research file. This is the H8 "orphan class" of unlanded item, and
+it was found by the owner's own memory of having written it, not by any gate — the Total Landing Rule
+checks that ledger rows land in named phases, but nothing today checks that a research document's
+sub-findings each get a landing, only its headline conclusion. Gate: when a research document informs a
+decision, walk its full section list for landing, not just the section that answered the question being
+asked at the time; an unlanded subsection is a debt exactly like an unlanded ledger row.
+
+**Adopted wins (2026-07-31) — patterns that worked this session, keep using them:** (7) **The controller
+verifies everything independently** — every subagent claim this session was checked by diff or by the
+controller's own suite run rather than trusted as reported, and that independent check is what caught
+L29, L30, and L33 above; a claim that "passed" or "done" is a hypothesis until re-verified, not a fact.
+(8) **Byte-identity as a migration proof** — U-1/U-2 (units foundation work) proved the regenerated
+`SAFETY_UNIT` and the migrated render sites were byte-identical to the originals before deleting anything,
+which is what makes the coming ~150-site unit migration safe to execute incrementally. (9) **The
+anti-drift bolt found real latent gaps on its first honest run** — U-3's check surfaced 9 unit tokens that
+Guard B never covered, immediately, the first time it ran; a gate that fails loudly the first time it is
+exercised for real is doing exactly its job, not misbehaving. (10) **H13 (the recovery relevance gate)
+paid for itself immediately** — its first use proved all five claimed voice-guard holes from a week-old
+audit were still live in today's code, turning a stale-sounding finding into a verified, actionable
+decision rather than a discarded one.
+
 **Adopted wins (2026-07-23) — patterns that worked, keep using them:** (1) **Baseline-first migration +
 a real preflight**: the eval baseline caught gemini-3.6's api-400 in minutes (v259→v260), and the
 ListModels+one-real-call-per-role preflight (through the app's own payload builders) is what proved the
