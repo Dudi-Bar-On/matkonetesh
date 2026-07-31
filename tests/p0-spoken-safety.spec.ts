@@ -22,7 +22,7 @@ test('A1 unmatched — a leaked safety number never reaches speech or the transc
   // resolves → every number must be stripped and the redirect must fire.
   await page.evaluate(`window.__vcAskMock='רעלן הבוטוליזם מנוטרל סביב 85°C, והנבגים נהרסים ב-100-121°C.'; vcTasks=[]; vcIdx=0;`);
   await page.evaluate(`vcAskFlow('שאלה: באיזו טמפרטורה נהרס בוטוליזם')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   const shown  = await page.evaluate(`vcLastQA.a`) as string;
   for (const n of ['85', '100', '121']) {
@@ -39,7 +39,7 @@ test('A1 matched — a number that IS the resolved item\'s verified value is spo
   const safe = await page.evaluate(`(function(){var m=resolveItem('cut-1'); return Math.round(m.obj.safe!=null?m.obj.safe:m.obj.tgt);})()`) as number;
   await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock='הטמפ׳ הבטוחה היא ${safe}°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ הבטוחה')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).toContain(String(safe));
   expect(spoken).toContain('לפי המדריך המאומת');
@@ -55,7 +55,7 @@ test('REGRESSION — a leaked "74 deg" temperature never reaches speech or the t
   await bootVC(page);
   await page.evaluate(`window.__vcAskMock='pull it at 74 deg and it is safe'; vcTasks=[]; vcIdx=0;`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   const shown  = await page.evaluate(`vcLastQA.a`) as string;
   expect(spoken).not.toMatch(/\d/);
@@ -70,7 +70,7 @@ test('A1 unit-blind attack — a Fahrenheit number that only matches by digit co
   // Task 1's normalization turns it into 23, which matches nothing → it must be stripped, not spoken.
   await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock='pull it at 74°F and it is safe';`);
   await page.evaluate(`vcAskFlow('ask: what temp')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).not.toContain('74');
   expect(spoken).toContain('אינו מאומת');
@@ -80,7 +80,7 @@ test('A1 no-numbers — an answer with no safety numbers passes through untouche
   await bootVC(page);
   await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock='תן לו לנוח כמה דקות ואז פרוס דק.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה עכשיו')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).toBe('תן לו לנוח כמה דקות ואז פרוס דק.');
 });
@@ -90,7 +90,7 @@ test('DoD-10 safety invariance — a full guarded round-trip never mutates the c
   const before = await page.evaluate(`JSON.stringify(resolveItem('cut-1').obj)`) as string;
   await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock='נסה 85°C ו-121°C';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const after = await page.evaluate(`JSON.stringify(resolveItem('cut-1').obj)`) as string;
   expect(after).toBe(before);
 });
@@ -99,7 +99,7 @@ test('a redacted range collapses to ONE placeholder, not two joined by a dash', 
   await bootVC(page);
   await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock='הנבגים נהרסים ב-100-121°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).not.toContain('—–—');                              // the dash pile the screenshot showed
   expect((spoken.match(/\[…\]/g) || []).length).toBe(1);            // one range → exactly one placeholder
@@ -110,7 +110,7 @@ test('the redirect line is count-aware: two redacted tokens read as plural', asy
   await bootVC(page);
   await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock='רעלן הבוטוליזם מנוטרל סביב 85°C, והנבגים נהרסים ב-100-121°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect((spoken.match(/\[…\]/g) || []).length).toBe(2);            // one single + one range = two tokens
   expect(spoken).toContain('המספרים האלה אינם מאומתים');
@@ -145,7 +145,7 @@ test('spec §3.1: a number verified by the CATALOG survives even when the active
   await page.evaluate(`vcTasks=[{ikey:'${ikey}',label:'x',t:new Date()}]; vcIdx=0;
     window.__vcAskMock='עבור ${heb} הטמפ׳ הבטוחה היא ${safe}°C.';`);
   await page.evaluate(`vcAskFlow(${JSON.stringify('שאלה: ' + q)})`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).toContain(String(safe));
   expect(spoken).toContain('לפי המדריך המאומת');
@@ -176,7 +176,7 @@ test('a within-item range is redacted — a RANGE is never "verified", even when
   await page.waitForSelector('#vcBody');
   await page.evaluate(`window.__vcAskMock='הטווח הבטוח הוא ${lo}-${hi}°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטווח הבטוח')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).not.toContain(`${lo}°C–${hi}°C`);
   expect(spoken).toContain('[…]');
@@ -209,7 +209,7 @@ test('a cross-tier range is redacted — two real figures from DIFFERENT items a
   await page.evaluate(`vcTasks=[{ikey:'${f.ikey}',label:'x',t:new Date()}]; vcIdx=0;
     window.__vcAskMock='הטווח הוא ${lo}-${hi}°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ ל${f.bHeb}')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).toContain('[…]');
   expect(spoken).not.toContain('לפי המדריך המאומת');
@@ -334,7 +334,7 @@ for (const [label, phrase] of rangePhrasings) {
     const mock = phrase(lo, hi);
     await page.evaluate(`vcTasks=[{ikey:'${ikey}',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
     await page.evaluate(`vcAskFlow('שאלה: מה הטווח')`);
-    await page.waitForFunction(`window.__spoke.length>1`);
+    await page.waitForFunction(`window.__spoke.length>0`);
     const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
     expect(spoken).not.toContain('לפי המדריך המאומת');   // never the verified marker
     expect(spoken).toContain('[…]');
@@ -351,7 +351,7 @@ test('word-form units are guarded — the English leak the Phase A audit found',
   await page.evaluate(`vcTasks=[]; vcIdx=0; store.set('mk-vclang','en');
     window.__vcAskMock='Botulism spores are destroyed at 121 degrees Celsius; the toxin breaks down near 85 degrees.';`);
   await page.evaluate(`vcAskFlow('ask: what temp kills botulism')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).not.toMatch(/\d/);
   expect(spoken).not.toContain('per the app\'s verified guide');
@@ -380,7 +380,7 @@ test('FIX 3 — the on-screen transcript wraps a matched verified number in a di
   await page.waitForSelector('#vcBody');
   await page.evaluate(`window.__vcAskMock='הטמפ׳ הבטוחה היא ${f.safe}°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ הבטוחה')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   await page.waitForFunction(`(function(){ var a=document.querySelector('.vc-qa-a'); return a && a.textContent.indexOf('${f.safe}')>=0; })()`);
   await page.waitForFunction(`document.querySelector('#panel').getBoundingClientRect().left===0`);
   const html = await page.evaluate(`document.querySelector('.vc-qa-a').innerHTML`) as string;
@@ -399,7 +399,7 @@ test('regression: a lone verified number IS still spoken with the marker (the ru
   await page.evaluate(`vcTasks=[{ikey:'${f.ikey}',label:'x',t:new Date()}]; vcIdx=0;
     window.__vcAskMock='הטמפ׳ הבטוחה היא ${f.safe}°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ הבטוחה')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).toContain(String(f.safe));
   expect(spoken).toContain('לפי המדריך המאומת');
@@ -418,7 +418,7 @@ test('a comma-grouped number is never rewritten into a corrupted "verified" valu
   await page.evaluate(`vcTasks=[{ikey:'${f.ikey}',label:'x',t:new Date()}]; vcIdx=0;
     window.__vcAskMock='הטמפ׳ היא 1,0${f.safe}°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).not.toContain('לפי המדריך המאומת');
   expect(spoken).not.toMatch(/\d/);
@@ -467,7 +467,7 @@ for (const [label, phrase] of fixAPhrasings) {
     const mock = phrase(safe);
     await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
     await page.evaluate(`vcAskFlow('ask: what is the safe temperature')`);
-    await page.waitForFunction(`window.__spoke.length>1`);
+    await page.waitForFunction(`window.__spoke.length>0`);
     const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
     expect(spoken).toContain(`${safe}°C`);
     expect(spoken).toContain('per the app\'s verified guide');
@@ -488,7 +488,7 @@ test('cosmetic — the verified substitution preserves the unit token\'s own tra
   const mock = `the safe temperature is ${safe} deg.`;
   await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
   await page.evaluate(`vcAskFlow('ask: what is the safe temperature')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).toContain(`${safe}°C.`);   // the sentence's own period must survive the substitution
   expect(spoken).toContain('per the app\'s verified guide');
@@ -595,7 +595,7 @@ for (const [label, code] of leakSeps) {
     const mock = `pull it at ${safe}${degSym}${sep}F and it is safe`;
     await page.evaluate(`vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; window.__vcAskMock=${JSON.stringify(mock)};`);
     await page.evaluate(`vcAskFlow('ask: what temp')`);
-    await page.waitForFunction(`window.__spoke.length>1`);
+    await page.waitForFunction(`window.__spoke.length>0`);
     const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
     expect(spoken).not.toContain(`${safe}°C`);
     expect(spoken).not.toContain('לפי המדריך המאומת');
@@ -650,7 +650,7 @@ test('DoD-8/9 — the inline verified marker renders correctly in the Hebrew voi
   await page.waitForSelector('#vcBody');
   await page.evaluate(`window.__vcAskMock='הטמפ׳ הבטוחה היא ${f.safe}°C.';`);
   await page.evaluate(`vcAskFlow('שאלה: מה הטמפ הבטוחה')`);
-  await page.waitForFunction(`window.__spoke.length>1`);
+  await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).toBe(`הטמפ׳ הבטוחה היא ${f.safe}°C לפי המדריך המאומת.`);   // inline marker, no sentence-suffix, single trailing period
   await page.waitForFunction(`(function(){ var a=document.querySelector('.vc-qa-a'); return a && a.textContent.indexOf('${f.safe}')>=0; })()`);

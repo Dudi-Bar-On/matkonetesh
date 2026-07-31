@@ -144,3 +144,20 @@ test('R-32: every TTS failure is VISIBLE — toast fires, nothing falls back to 
   expect(r.sysSpoke).toBe(0);                       // and no browser voice fired
   expect(r.dead).toBe('undefined');                 // sysSpeak is GONE, not bypassed
 });
+
+test('ack is instant and network-free on the cold path', async ({ page }) => {
+  await seedApp(page, {});
+  let ttsCalls = 0;
+  await page.route(/generativelanguage|gemini/i, r => { ttsCalls++; r.abort(); });
+  try {
+    const r = await page.evaluate(async () => {
+      const w = window as any; w.__earconLog = 0;
+      w.__earconMock = () => { w.__earconLog++; };            // no real audio in CI
+      w.vcAck(w.vcNewSpeakGen());
+      return { earcon: w.__earconLog, lat: w.vcLatReport() };
+    });
+    expect(r.earcon).toBeGreaterThan(0);   // cold path acknowledged locally (earcon — no browser voice exists, R-32)
+    expect(r.lat).toHaveProperty('ackSound');
+    expect(ttsCalls).toBe(0);              // and cost ZERO network (v278: the ack IS a cloud round-trip)
+  } finally { await page.unroute(/generativelanguage|gemini/i); }
+});

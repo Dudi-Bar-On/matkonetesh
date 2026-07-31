@@ -6640,6 +6640,7 @@ function vcRender(){
         onEnd:function(){ vcSpeak(vcAnsLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.'); } }); } }
   { const ai=host.querySelector('#vcAskInput'); if(ai) ai.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const q=ai.value.trim(); if(q) vcAskFlow(q); } }); }
   { const gs=host.querySelector('#gemVoiceSel'); if(gs) gs.addEventListener('change',()=>{ store.set('mk-gemvoice',gs.value); vcSpeak('שלום! זה הקול החדש של ההקראה. נשמע טוב?'); }); }
+  if(t) vcWarmAck();   // fire-and-forget panel-open pre-warm — makes the *spoken* ack the common case
 }
 function vcAction(a){
   const t=vcTasks[vcIdx];
@@ -6983,13 +6984,34 @@ async function vcAskAI(question, ent){
   if(!txt) throw new Error('empty');
   return txt;
 }
+// ── Voice Wave 0 · instant acknowledgement (spec §3). Fixed per-language phrases — never model output,
+// never awaited over the network. Warm path: cached Google buffer from panel-open pre-warm. Cold path:
+// instant visual state + a local WebAudio earcon (R-32: no browser voice exists; a chime is not a voice).
+const VC_ACK={he:'רגע, בודק.', en:'One moment, checking.', fr:'Un instant, je vérifie.',
+              de:'Einen Moment, ich prüfe.', es:'Un momento, comprobando.', it:'Un attimo, controllo.',
+              ru:'Секунду, проверяю.'};
+function vcAckText(){ return VC_ACK[vcVoiceLangSafe()]||VC_ACK.en; }
+function vcWarmAck(){ if(aiAvail()) gemSynthChunk(ttsText(vcAckText(), vcVoiceLangSafe())).catch(function(){}); }
+function vcEarcon(){
+  if(window.__earconMock) return window.__earconMock();
+  try{ gemCtx=gemCtx||new (window.AudioContext||window.webkitAudioContext)();
+    [880,1174.7].forEach(function(f,i){ const o=gemCtx.createOscillator(), g=gemCtx.createGain();
+      o.frequency.value=f; g.gain.value=0.08; o.connect(g); g.connect(gemCtx.destination);
+      o.start(gemCtx.currentTime+i*0.09); o.stop(gemCtx.currentTime+i*0.09+0.08); });
+  }catch(e){}
+}
+function vcAck(gen){
+  const clean=ttsText(vcAckText(), vcVoiceLangSafe()), key=clean+gemVoice();
+  if(gemCache.has(key)) gemPlayBuf(gemCache.get(key), gen);          // warm: the Google voice, zero network
+  else vcEarcon();                                                   // cold: local chime — instant by construction
+  vcLatMark('ackSound');
+}
 async function vcAskFlow(rawSaid){
   vcLatMark('ask');
   const question=vcStripAskPrefix(rawSaid);
   if(!question){ return; }
   const ansL=vcAnsLang();
-  vcSpeak(ansL==='en'?'One moment, checking.':'רגע, בודק.', ansL);
-  vcLatMark('ackSound');
+  vcAck(vcNewSpeakGen());                          // instant, zero-network — never a cloud round-trip
   vcLastQA={q:question, a:(ansL==='en'?'…thinking':'…חושב')}; vcRender();
   try{
     const tiers=vcResolveTiers(question);                  // resolved ONCE — both tiers
