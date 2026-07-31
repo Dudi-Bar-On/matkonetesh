@@ -554,31 +554,73 @@ _GB_QM = "[\"״׳']"
 # gated by the post-edit build (Guard B runs over the shipped he/en/fr/de/es/it dict only) + a gates.mjs
 # staged-pool regression pass; any real flip there gets the word removed, per the it-finisher's chili precedent.
 _GB_CYR = r'а-яёіїєґА-ЯЁІЇЄҐ'  # Cyrillic-letter class for bare-abbreviation negative-lookaheads
-_GB_UNIT_CLASS = [
-    (_reB.compile(r'^(?:°\s*C|C\b|celsius|צלזיוס)', _reB.I), 'tempC'),
-    (_reB.compile(r'^(?:°\s*F|F\b|fahrenheit|פרנהייט)', _reB.I), 'tempF'),
-    (_reB.compile(r'^(?:°|מעלות|degrees?|grad|grados?|gradi|degr[ée]s?|graus|astetta|stopni|stupňů|fok\b|derajat|derece|градус|βαθμ|度|도|องศา|डिग्री|độ|درجة)', _reB.I), 'temp'),
-    (_reB.compile('^(?:ק' + _GB_QM + r'?ג|kg\b|kilos?|quilos?|ki-lô|килограмм|килограм|кг|κιλ|千克|公斤|キログラム|キロ|킬로그램|킬로|กิโลกรัม|กก|किलोग्राम|किलो|كيلوغرام|كيلو)', _reB.I), 'massKg'),
-    (_reB.compile('^(?:ג' + _GB_QM + r'?|גרם|grams?|g\b|gramm|grammes?|gramos?|grammi|gam|грамм|грамма|граммов|грам|грамів|г(?![' + _GB_CYR + r'])|γραμμάρια|γρ|グラム|그램|克|กรัม|ग्राम|غرام|جرام)', _reB.I), 'massG'),
-    (_reB.compile(r'^(?:lbs?\b|pounds?)', _reB.I), 'mass'),
-    # cooking measures (tbsp/tsp/cup) — non-safety kitchen units, own coarse family (2026-07-27, LEAK-2).
-    # Mirrors gates.mjs UNIT_FAMILY_RULES. MUST precede the time rules: ru "ч.л." (teaspoon) would
-    # otherwise be grabbed by the bare-ч HOUR rule. cook_measure is self-coarse (not in _GB_COARSE), so a
-    # measure↔measure pair passes while measure↔(°C/g-kg/min-hr) or measure→metric conversion FAILS.
-    (_reB.compile('^(?:כפית|כפיות|כפות|כפ' + _GB_QM + r'|כף|כוסות|כוס|tbsps?\.?|tablespoons?|tsps?\.?|teaspoons?|cups?\b|ст\.?\s*л\.?|ч\.?\s*л\.?|столов|чайн|стакан|чашк|c\.?\s*à\.?\s*[sc]\b|cuill[eè]res?|tasses?\b|EL\b|TL\b|essl[öo]ffel|teel[öo]ffel|tassen?\b|cucharaditas?|cucharadas?|cdtas?\.?|cdas?\.?|tazas?\b|cucchiaini|cucchiaino|cucchiai|cucchiaio|tazz[ae]\b|κουταλ|φλιτζαν|colheres?|x[ií]caras?|ch[áa]venas?|copos?\b)', _reB.I), 'cook_measure'),
-    # ה? = optional Hebrew definite article ("30 הדקות" = "the 30 minutes") — so a faithful Hebrew SOURCE with
-    # the article classifies as timeMin instead of falling through to '?' (2026-07-27; only affects new keys —
-    # verified the sole existing digit+ה+time-unit source key is the glaze-timing string this covers).
-    (_reB.compile('^(?:ה?דק(?:ות|' + _GB_QM + r')?|minutes?|mins?\b|minutos?|minuti|minuten|minut|minuuttia|dakika|menit|perc\b|phút|phut|минут|мин(?![' + _GB_CYR + r'])|хвилин|хв(?![' + _GB_CYR + r'])|λεπτ|分钟|分|분|นาที|मिनट|دقيقة|دقائق)', _reB.I), 'timeMin'),
-    # stunden? / or[ae] = German + Italian SINGULAR hour forms ("1 Stunde" / "1 ora"), siblings of the plural
-    # Stunden / ore already listed — a faithful "1 hour" translation was false-failing on the singular (2026-07-27).
-    (_reB.compile('^(?:שעות|שע' + _GB_QM + r'?|ש\b|hours?|hrs?\b|h\b|horas?|or[ae]\b|stunden?|heures?|hodin|godzin|óra|órát|timmar|tuntia|saat\b|jam\b|giờ|uur|uren|timer|часов|часа|час(?![' + _GB_CYR + r'])|ч(?![' + _GB_CYR + r'])|годин|ώρες|ώρα|ωρών|時間|小时|时|시간|ชั่วโมง|घंटे|घंटा|ساعة|ساعات)', _reB.I), 'timeHr'),
-    (_reB.compile('^(?:ימים|יום|days?|d[ií]as?|giorni|tage|jours?|dni|dní|dny|dzień|den\\b|nap\\b|napot|dage|dagar|dager|dagen|päivää|gün|hari|ngày|zile|дней|дня|день(?![' + _GB_CYR + r'])|суток|днів|дні|μέρες|ημέρες|日|天|일|วัน|दिन|أيام|يوم)', _reB.I), 'timeDay'),
-    (_reB.compile(r'^(?:ppm|частей\s*на\s*миллион)', _reB.I), 'ppm'),
-    (_reB.compile(r'^(?:%|אחוז|percent|prozent|pour ?cent|por ?ciento|per ?cento|процент|τοις\s*εκατό)', _reB.I), 'pct'),
-    (_reB.compile('^(?:ס' + _GB_QM + r'?מ\s*(?:²|2)|cm\s*(?:²|2)|см\s*(?:²|2))', _reB.I), 'area'),
-    (_reB.compile('^(?:ס' + _GB_QM + r'?מ|cm\b|mm\b|см(?![' + _GB_CYR + r'])|мм(?![' + _GB_CYR + r'])|厘米|毫米|センチ|ミリ|센티미터|밀리미터|เซนติเมตร|มิลลิเมตร|εκατοστά|χιλιοστά)', _reB.I), 'len'),
-]
+# ── R-26 U-3: Guard B derives from THE one units table (app.js UNITS_TABLE markers) ──────────────────
+import json as _jsonU
+_app_src_u = open(_os.path.join(_os.path.dirname(_os.path.abspath(__file__)), "app.js"), encoding="utf-8").read()
+_ut_m = _reB.search(r'/\*__UNITS_TABLE__\*/(.*?)/\*__UNITS_TABLE_END__\*/', _app_src_u, _reB.S)
+if not _ut_m:
+    print("[units:Guard-B] FATAL - UNITS_TABLE markers not found in app.js (U-1 must land first)")
+    _sys.exit(1)
+_UNITS_TABLE = _jsonU.loads(_ut_m.group(1))
+# Per-family 23-language word-form spellings — Guard-B-LOCAL data (the runtime never needs them), keyed by
+# the SAME family ids the table's gbOrder declares. The he/en/glyph CORE of every row comes from the
+# table's own runtime tokens, so the two layers cannot drift structurally; the anti-drift loop below
+# proves every runtime token still classifies to its declared family. All the ordering lore (cook_measure
+# before time; temp before massG's bare-г; Cyrillic homoglyph notes above) is preserved verbatim: gbOrder
+# in the table carries the order, these strings carry the multilingual spellings unchanged.
+_GB_LANG_WORDS = {
+    # º (U+00BA masc. ordinal) / ˚ (U+02DA ring above) are alternate degree glyphs the runtime table
+    # tokenizes alongside ° (U+00B0); degc/degf/degcelsius/degfahrenheit are the runtime's no-space
+    # word forms; צלסיוס is the alternate Hebrew spelling of Celsius — all four gaps found by the
+    # anti-drift loop against UNITS_TABLE tokens (U-3, R-26).
+    'tempC': r'°\s*C|º\s*C|˚\s*C|C\b|celsius|צלזיוס|צלסיוס|degc\b|degreec\b|degreesc\b|degcelsius\b|degreecelsius\b|degreescelsius\b',
+    'tempF': r'°\s*F|º\s*F|˚\s*F|F\b|fahrenheit|פרנהייט|degf\b|degreef\b|degreesf\b|degfahrenheit\b|degreefahrenheit\b|degreesfahrenheit\b',
+    'temp': r'°|º|˚|מעלות|degrees?|deg\.?\b|grad|grados?|gradi|degr[ée]s?|graus|astetta|stopni|stupňů|fok\b|derajat|derece|градус|βαθμ|度|도|องศา|डिग्री|độ|درجة',
+    'massKg': 'ק' + _GB_QM + r'?ג|kg\b|kilos?|quilos?|ki-lô|килограмм|килограм|кг|κιλ|千克|公斤|キログラム|キロ|킬로그램|킬로|กิโลกรัม|กก|किलोग्राम|किलो|كيلوغرام|كيلو',
+    'massG': 'ג' + _GB_QM + r'?|גרם|grams?|g\b|gramm|grammes?|gramos?|grammi|gam|грамм|грамма|граммов|грам|грамів|г(?![' + _GB_CYR + r'])|γραμμάρια|γρ|グラム|그램|克|กรัม|ग्राम|غرام|جرام',
+    # פאונד = Hebrew "pound" (runtime UNITS_TABLE mass.lb token; U-3 anti-drift gap).
+    'mass': r'lbs?\b|pounds?|פאונד',
+    'cook_measure': 'כפית|כפיות|כפות|כפ' + _GB_QM + r'|כף|כוסות|כוס|tbsps?\.?|tablespoons?|tsps?\.?|teaspoons?|cups?\b|ст\.?\s*л\.?|ч\.?\s*л\.?|столов|чайн|стакан|чашк|c\.?\s*à\.?\s*[sc]\b|cuill[eè]res?|tasses?\b|EL\b|TL\b|essl[öo]ffel|teel[öo]ffel|tassen?\b|cucharaditas?|cucharadas?|cdtas?\.?|cdas?\.?|tazas?\b|cucchiaini|cucchiaino|cucchiai|cucchiaio|tazz[ae]\b|κουταλ|φλιτζαν|colheres?|x[ií]caras?|ch[áa]venas?|copos?\b',
+    'timeMin': 'ה?דק(?:ות|' + _GB_QM + r')?|minutes?|mins?\b|minutos?|minuti|minuten|minut|minuuttia|dakika|menit|perc\b|phút|phut|минут|мин(?![' + _GB_CYR + r'])|хвилин|хв(?![' + _GB_CYR + r'])|λεπτ|分钟|分|분|นาที|मिनट|دقيقة|دقائق',
+    'timeHr': 'שעות|שע' + _GB_QM + r'?|ש\b|hours?|hrs?\b|h\b|horas?|or[ae]\b|stunden?|heures?|hodin|godzin|óra|órát|timmar|tuntia|saat\b|jam\b|giờ|uur|uren|timer|часов|часа|час(?![' + _GB_CYR + r'])|ч(?![' + _GB_CYR + r'])|годин|ώρες|ώρα|ωρών|時間|小时|时|시간|ชั่วโมง|घंटे|घंटा|ساعة|ساعات',
+    'timeDay': r'ימים|יום|days?|d[ií]as?|giorni|tage|jours?|dni|dní|dny|dzień|den\b|nap\b|napot|dage|dagar|dager|dagen|päivää|gün|hari|ngày|zile|дней|дня|день(?![' + _GB_CYR + r'])|суток|днів|дні|μέρες|ημέρες|日|天|일|วัน|दिन|أيام|يوم',
+    'ppm': r'ppm|частей\s*на\s*миллион',
+    'pct': r'%|אחוז|percent|prozent|pour ?cent|por ?ciento|per ?cento|процент|τοις\s*εκατό',
+    # in2/m2/ft2 (+ ² glyph forms) = runtime UNITS_TABLE area.in2/m2/ft2 tokens — imperial/metric
+    # area conversion units the guard never needed spellings for; gap found by the anti-drift loop
+    # against UNITS_TABLE tokens (U-3, R-26).
+    'area': 'ס' + _GB_QM + r'?מ\s*(?:²|2)|cm\s*(?:²|2)|см\s*(?:²|2)|in\s*(?:²|2)|m\s*(?:²|2)|ft\s*(?:²|2)',
+    # 'מ' + quote? + 'מ' = Hebrew מ"מ/מ״מ/ממ (mm); in/inch(es)/אינץ׳ = runtime UNITS_TABLE len.in tokens —
+    # all gaps found by the anti-drift loop against UNITS_TABLE tokens (U-3, R-26).
+    'len': 'ס' + _GB_QM + r'?מ|מ' + _GB_QM + r'?מ|cm\b|mm\b|inch(?:es)?\b|in\b|אינץ' + _GB_QM + r'?|см(?![' + _GB_CYR + r'])|мм(?![' + _GB_CYR + r'])|厘米|毫米|センチ|ミリ|센티미터|밀리미터|เซนติเมตร|มิลลิเมตร|εκατοστά|χιλιοστά',
+}
+_GB_UNIT_CLASS = []
+for _row in _UNITS_TABLE['gbOrder']:
+    _cls = _row['cls']
+    _pat = _GB_LANG_WORDS.get(_cls)
+    if _pat is None:
+        print("[units:Guard-B] FATAL - gbOrder family %r has no _GB_LANG_WORDS entry" % _cls); _sys.exit(1)
+    _GB_UNIT_CLASS.append((_reB.compile(r'^(?:' + _pat + r')', _reB.I), _cls))
+# ── anti-drift bolt: EVERY runtime token must classify to the family the table declares for it ───────
+_GB_COARSE_PROBE = {'tempC':'temp','tempF':'temp','massG':'mass','massKg':'mass','timeMin':'time','timeHr':'time','timeDay':'time'}
+def _gb_coarse_probe(c): return _GB_COARSE_PROBE.get(c, c)
+_GB_KIND_TO_COARSE = {'temp': 'temp', 'mass': 'mass', 'time': 'time', 'pct': 'pct', 'ppm': 'ppm', 'area': 'area', 'len': 'len'}
+_drift = []
+for _kind, _kd in _UNITS_TABLE['kinds'].items():
+    _want = _GB_KIND_TO_COARSE.get(_kind)
+    if _want is None: continue                       # tempD/vol have no Guard-B families — not classified there
+    for _unit, _ud in _kd.get('units', {}).items():
+        for _tok in _ud.get('tokens', []):
+            _got = '?'
+            for _rx, _c in _GB_UNIT_CLASS:
+                if _rx.match(_tok): _got = _c; break
+            if _got == '?' or _gb_coarse_probe(_got) != _want:
+                _drift.append((_kind, _unit, _tok, _got))
+if _drift:
+    print("[units:Guard-B] FATAL - %d runtime token(s) drift from the build classifier:" % len(_drift))
+    for _k, _u, _t, _g in _drift[:20]: print("  kind=%s unit=%s token=%r -> %s" % (_k, _u, _t, _g))
+    _sys.exit(1)
+print("[units:Guard-B] OK - _GB_UNIT_CLASS derived from UNITS_TABLE (%d rows); %s runtime tokens verified" % (len(_GB_UNIT_CLASS), "all"))
 _GB_COARSE = {'tempC':'temp','tempF':'temp','massG':'mass','massKg':'mass','timeMin':'time','timeHr':'time','timeDay':'time'}
 def _gb_coarse(c): return _GB_COARSE.get(c, c)
 def _gb_val(s):
