@@ -33,6 +33,14 @@ test('the app boots cleanly with its own CSP enforced', async ({ isolatedPage })
       (window as any).__cspViolations = [];
       document.addEventListener('securitypolicyviolation', (e: any) =>
         (window as any).__cspViolations.push(e.violatedDirective + ' ' + e.blockedURI));
+      // This test asserts CSP-clean boot, not the onboarding flow. On a genuinely fresh
+      // context (isolatedPage never seeds storage) app.js fires the "how much experience"
+      // panel 400ms after boot (unconditional unless mk-uilevel-asked is set) and that panel
+      // covers the bottom nav. Under CPU contention (e.g. right after a prior full suite run)
+      // boot+first-check can land past that 400ms mark, so the home button is observed
+      // "hidden" for the rest of the 5s timeout — an unrelated-feature race, not a CSP defect.
+      // Seed the flag so this test is deterministic regardless of machine load.
+      try { localStorage.setItem('mk-uilevel-asked', 'true'); } catch (e) {}
     });
     await isolatedPage.goto('/index.html');
     await expect(isolatedPage.locator('[data-cnav="home"]')).toBeVisible();   // app painted
