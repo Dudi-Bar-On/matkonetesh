@@ -85,6 +85,13 @@ export const DENY_TABLES = new Set([
   // {"🇮🇱":"🇬🇧"} (review finding C3). Denied here; also caught defense-in-depth by the Hebrew-
   // codepoint semantic guard below (any future LANG_FLAG-shaped table is skipped even if unlisted).
   'LANG_FLAG',
+  // UNITS_TABLE (R-26 U-1, app.js — the UNITS component) carries its own baked-in {he,en} unit
+  // labels/voice strings per kind/unit (e.g. "label":{"he":"ליטר","en":"L"}) — these are looked up
+  // directly by kind+unit at format time (U-2's fmt), never routed through L()/t()/the translation
+  // dict, so they must never be harvested as if they were a dict-backed UI-text pair. Undenied, mode-2
+  // shape-matched them and collided with genuine L('ליטר','liter') / L('גרם','grams') call sites
+  // elsewhere in app.js (same failure shape as the LANG_FLAG case above).
+  'UNITS_TABLE',
 ]);
 
 // THEME_NAMES_EN / FONT_NAMES_EN don't follow the `_EN`-suffix-stripped sibling-identifier

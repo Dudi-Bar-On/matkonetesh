@@ -158,24 +158,153 @@ function propOf(dev, key){
   if(v!==undefined && v!=='' && v!==null) return v;
   return propDef(dev.cat, key, dev.type);
 }
+// ═════════════ UNITS — R-26 generic unit component (U-1; spec docs/superpowers/specs/2026-07-31-units-architecture-design.md) ═════════════
+// ONE table. Everything unit-shaped — classifiers, conversions, (from U-2) the formatter, and build.py's
+// Guard B — derives from UNITS_TABLE. The table body is STRICT JSON between the two markers: build.py
+// extracts it with a regex + json.loads (fail-closed), so the runtime and the build guard can never drift.
+// Extraction-ready (Phase 3 / H1): one namespace object, no app-state reads in the core (fmt reads
+// getLang/pref at its own marked points only, from U-2/U-6).
+// conv semantics: canonical = (v + pre) * num / den  — integer num/den keep results BIT-IDENTICAL to the
+// legacy UNIT_CONV formulas ((145-32)*5/9 ≡ (145+(-32))*5/9). Inverse (display derivation, U-2):
+// foreign = v*den/num - pre. 'Fdeg->Cdeg' is a DELTA (tolerance) — NEVER the -32 branch.
+const UNITS_TABLE=/*__UNITS_TABLE__*/{
+  "conv":{
+    "F->C":{"pre":-32,"num":5,"den":9}, "Fdeg->Cdeg":{"pre":0,"num":5,"den":9},
+    "mm->cm":{"pre":0,"num":1,"den":10}, "in->cm":{"pre":0,"num":2.54,"den":1},
+    "cm->mm":{"pre":0,"num":10,"den":1}, "in->mm":{"pre":0,"num":25.4,"den":1},
+    "lb->kg":{"pre":0,"num":0.45359,"den":1}, "g->kg":{"pre":0,"num":1,"den":1000},
+    "qt->L":{"pre":0,"num":0.94635,"den":1}, "gal->L":{"pre":0,"num":3.78541,"den":1},
+    "in2->cm2":{"pre":0,"num":6.4516,"den":1}, "m2->cm2":{"pre":0,"num":10000,"den":1},
+    "ft2->cm2":{"pre":0,"num":929.03,"den":1}
+  },
+  "kinds":{
+    "temp":{"canon":"C","safety":true,"imperial":"F","units":{
+      "C":{"tokens":["c","°c","ºc","˚c","celsius","צלזיוס","צלסיוס","מעלותצלזיוס","מעלותצלסיוס","degc","degreec","degreesc","degcelsius","degreecelsius","degreescelsius"],
+           "label":{"he":"°C","en":"°C"},"voice":{"he":"מעלות צלזיוס","en":"degrees Celsius"},"space":false},
+      "F":{"conv":"F->C",
+           "tokens":["f","°f","ºf","˚f","fahrenheit","מעלותפרנהייט","degf","degreef","degreesf","degfahrenheit","degreefahrenheit","degreesfahrenheit"],
+           "label":{"he":"°F","en":"°F"},"voice":{"he":"מעלות פרנהייט","en":"degrees Fahrenheit"},"space":false},
+      "":{"tokens":["°","º","˚","מעלות","deg","deg.","degree","degree.","degrees","degrees."]}
+    }},
+    "tempD":{"canon":"Cdeg","units":{"Cdeg":{"tokens":[],"label":{"he":"±°C","en":"±°C"},"space":false},"Fdeg":{"conv":"Fdeg->Cdeg","tokens":[]}}},
+    "mass":{"canon":"kg","imperial":"lb","units":{
+      "kg":{"tokens":["kg","kilo","kilos","ק\"ג","ק״ג","ק׳ג","ק'ג","קג"],"label":{"he":"ק״ג","en":"kg"},"voice":{"he":"קילוגרם","en":"kilograms"},"space":true},
+      "g":{"conv":"g->kg","tokens":["g","gram","grams","גרם"],"label":{"he":"גרם","en":"g"},"space":true},
+      "lb":{"conv":"lb->kg","tokens":["lb","lbs","pound","pounds","פאונד"],"label":{"he":"lb","en":"lb"},"voice":{"he":"פאונד","en":"pounds"},"space":true}
+    }},
+    "vol":{"canon":"L","imperial":"qt","units":{
+      "L":{"tokens":["l","liter","liters","litre","litres","ליטר","ל׳","ל'"],"label":{"he":"ליטר","en":"L"},"space":true},
+      "qt":{"conv":"qt->L","tokens":["qt","quart","quarts"],"label":{"he":"qt","en":"qt"},"space":true},
+      "gal":{"conv":"gal->L","tokens":["gal","gallon","gallons"],"label":{"he":"gal","en":"gal"},"space":true}
+    }},
+    "len":{"canon":"cm","imperial":"in","units":{
+      "cm":{"tokens":["cm","ס\"מ","ס״מ","סמ"],"label":{"he":"ס״מ","en":"cm"},"space":true},
+      "mm":{"conv":"mm->cm","tokens":["mm","מ\"מ","מ״מ","ממ"],"label":{"he":"מ״מ","en":"mm"},"space":true},
+      "in":{"conv":"in->cm","tokens":["in","inch","inches","אינץ׳","אינץ'"],"label":{"he":"אינץ׳","en":"in"},"space":true}
+    }},
+    "area":{"canon":"cm2","units":{
+      "cm2":{"tokens":["cm2","cm²","ס\"מ2","ס״מ2","ס\"מ²","ס״מ²"],"label":{"he":"ס״מ²","en":"cm²"},"space":true},
+      "in2":{"conv":"in2->cm2","tokens":["in2","in²"]},
+      "m2":{"conv":"m2->cm2","tokens":["m2","m²"]},
+      "ft2":{"conv":"ft2->cm2","tokens":["ft2","ft²"]}
+    }},
+    "time":{"canon":"hr","units":{
+      "min":{"tokens":["min","mins","minute","minutes","דקות","דק","דק׳","דק'"],"label":{"he":"דק'","en":"min"},"space":true},
+      "hr":{"tokens":["h","hr","hrs","hour","hours","שעות","שעה","שע׳","ש"],"label":{"he":"שעות","en":"hours"},"space":true},
+      "day":{"tokens":["day","days","יום","ימים"],"label":{"he":"ימים","en":"days"},"space":true}
+    }},
+    "pct":{"canon":"pct","units":{"pct":{"tokens":["%","percent","אחוז"],"label":{"he":"%","en":"%"},"space":false}}},
+    "ppm":{"canon":"ppm","units":{"ppm":{"tokens":["ppm"],"label":{"he":"ppm","en":"ppm"},"space":true}}}
+  },
+  "fieldKinds":{"svt":"temp","smt":"temp","tgt":"temp","safe":"temp","sot":"temp","kg":"mass","svh":"time","smh":"time","soh":"time"},
+  "vcOrder":[
+    {"cls":"temp","kinds":["temp"]},
+    {"cls":"time","kinds":["time"]},
+    {"cls":"pct","kinds":["pct"]},
+    {"cls":"ppm","kinds":["ppm"]},
+    {"cls":"mass","kinds":["mass"]}
+  ],
+  "tokenizerFragments":[
+    "[°º˚]\\s*[CF]?", "[CF]\\b", "ppm", "%",
+    "מעלות(?:\\s*(?:פרנהייט|צלזיוס|צלסיוס))?",
+    "deg(?:rees?)(?:[^\\S\\r\\n]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|\\.?(?![A-Za-z]))",
+    "celsius", "fahrenheit"
+  ],
+  "gbOrder":[
+    {"cls":"tempC","kind":"temp","unit":"C"}, {"cls":"tempF","kind":"temp","unit":"F"},
+    {"cls":"temp","kind":"temp","unit":""},
+    {"cls":"massKg","kind":"mass","unit":"kg"}, {"cls":"massG","kind":"mass","unit":"g"},
+    {"cls":"mass","kind":"mass","unit":"lb"},
+    {"cls":"cook_measure","gbOnly":true},
+    {"cls":"timeMin","kind":"time","unit":"min"}, {"cls":"timeHr","kind":"time","unit":"hr"},
+    {"cls":"timeDay","kind":"time","unit":"day"},
+    {"cls":"ppm","kind":"ppm","unit":"ppm"}, {"cls":"pct","kind":"pct","unit":"pct"},
+    {"cls":"area","kind":"area","unit":"cm2"}, {"cls":"len","kind":"len","unit":"cm"}
+  ]
+}/*__UNITS_TABLE_END__*/;
+// NOTE on tokenizerFragments[5]: the legacy literal writes deg(?:rees?)? with the group OPTIONAL and a
+// separate bare-"deg" behavior; the fragment list reproduces the exact original via composition below.
+const UNITS=(function(){
+  const T=UNITS_TABLE;
+  function normalize(s){ return String(s||'').normalize('NFKC'); }
+  function _key(u){ return normalize(u).toLowerCase().replace(/\s+/g,''); }
+  // token → {kind, unit} exact-match map (whitespace-stripped, NFKC, lowercased — the 1b248a1 lesson
+  // "strip ALL whitespace before classifying" holds by construction for every classifier at once).
+  const _CLASS={};
+  Object.keys(T.kinds).forEach(function(kind){
+    const ku=T.kinds[kind].units;
+    Object.keys(ku).forEach(function(unit){
+      (ku[unit].tokens||[]).forEach(function(t){ _CLASS[_key(t)]={kind:kind, unit:unit}; });
+    });
+  });
+  function classify(u){ const s=_key(u); if(!s) return null; return _CLASS[s]||null; }
+  function _fwd(c){ return function(v){ return (v+c.pre)*c.num/c.den; }; }
+  function legacyConv(){ const o={}; Object.keys(T.conv).forEach(function(k){ o[k]=_fwd(T.conv[k]); }); return o; }
+  function toCanonical(value, unit, kind){
+    if(value==null || isNaN(value)) return null;
+    const k=T.kinds[kind]; if(!k) return null;
+    const c=classify(unit); if(!c || c.kind!==kind) return null;
+    const src={v:value, unit:String(unit)};
+    if(c.unit==='' || c.unit===k.canon) return {v:value, unit:k.canon, src:src};   // canonical / scale-unspecified → passthrough
+    const convKey=k.units[c.unit] && k.units[c.unit].conv;
+    const cv=convKey && T.conv[convKey]; if(!cv) return null;                       // fail-closed
+    return {v:_fwd(cv)(value), unit:k.canon, src:src};
+  }
+  function tokenizerUnitSrc(){ return '(?:'+[
+    T.tokenizerFragments[0], T.tokenizerFragments[1], T.tokenizerFragments[2], T.tokenizerFragments[3],
+    T.tokenizerFragments[4],
+    // recompose the legacy deg-branch EXACTLY: deg(?:rees?)? — optional plural/singular tail —
+    'deg(?:rees?)?(?:[^\\S\\r\\n]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|\\.?(?![A-Za-z]))',
+    T.tokenizerFragments[6], T.tokenizerFragments[7]
+  ].join('|')+')'; }
+  function _reEscU(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+  function _prefixRe(tokens){
+    const alts=tokens.slice().sort(function(a,b){ return b.length-a.length; }).map(function(t){
+      const esc=_reEscU(t);
+      return /^[a-z]+$/i.test(t) ? esc+'\\b' : esc;      // bare Latin words need a boundary; glyph/Hebrew forms do not
+    });
+    return new RegExp('^(?:'+alts.join('|')+')','i');
+  }
+  function vcClasses(){
+    return T.vcOrder.map(function(row){
+      let toks=[];
+      row.kinds.forEach(function(kind){
+        const ku=T.kinds[kind].units;
+        Object.keys(ku).forEach(function(unit){ toks=toks.concat(ku[unit].tokens||[]); });
+      });
+      return {re:_prefixRe(toks), cls:row.cls};
+    });
+  }
+  return {TABLE:T, KINDS:T.kinds, normalize:normalize, classify:classify, toCanonical:toCanonical,
+          tokenizerUnitSrc:tokenizerUnitSrc, vcClasses:vcClasses, legacyConv:legacyConv, _key:_key};
+})();
+// `const` bindings never become `window` properties in a classic script (only `var`/function
+// declarations do — see app.js:9377's cWiz precedent) — expose explicitly so tests can reach it.
+try{ window.UNITS=UNITS; }catch(e){}
 // Unit conversions for values that arrive in the wrong scale — a US spec page gives °F, a seal width is
 // quoted in mm, a capacity in lb. These are CORRECT values in another unit, not garbage, so they must be
 // converted rather than discarded.
-const UNIT_CONV={
-  'F->C':     function(v){ return (v-32)*5/9; },
-  'Fdeg->Cdeg':function(v){ return v*5/9; },      // a DELTA (tolerance), not a temperature
-  'mm->cm':   function(v){ return v/10; },
-  'in->cm':   function(v){ return v*2.54; },
-  'cm->mm':   function(v){ return v*10; },
-  'in->mm':   function(v){ return v*25.4; },
-  'lb->kg':   function(v){ return v*0.45359; },
-  'g->kg':    function(v){ return v/1000; },
-  'qt->L':    function(v){ return v*0.94635; },
-  'gal->L':   function(v){ return v*3.78541; },
-  'in2->cm2': function(v){ return v*6.4516; },
-  'm2->cm2':  function(v){ return v*10000; },
-  'ft2->cm2': function(v){ return v*929.03; },
-};
+const UNIT_CONV=UNITS.legacyConv();   // generated from UNITS_TABLE.conv — identical math, one source (R-26 U-1)
 // Canonical FIRST: only convert when the value is implausible as-is. 500 stays 500°C (a lava grill really
 // reaches it); 900 is impossible in °C, so it becomes 482°C. Returns null when NO interpretation is
 // plausible — the caller must then leave it unset and let the user type it, never store a guess.
@@ -5482,7 +5611,8 @@ const SAFETY_NUM='(?:\\d{1,3}(?:,\\d{3})+(?:\\.\\d+)?|\\d+(?:\\.\\d+)?)';
 //     token and classify it correctly — previously "מעלות" matched alone, "פרנהייט" was left as inert
 //     trailing prose, and the number was silently treated as Celsius (G-A1 addendum's "read as Celsius"
 //     leak, the product-defect asymmetry the addendum names first).
-const SAFETY_UNIT='(?:[°º˚]\\s*[CF]?|[CF]\\b|ppm|%|מעלות(?:\\s*(?:פרנהייט|צלזיוס|צלסיוס))?|deg(?:rees?)?(?:[^\\S\\r\\n]*(?:C\\b|F\\b|celsius\\b|fahrenheit\\b)|\\.?(?![A-Za-z]))|celsius|fahrenheit)';
+const SAFETY_UNIT=UNITS.tokenizerUnitSrc();   // composed from UNITS_TABLE.tokenizerFragments — golden-tested byte-identical to the pre-collapse literal (tests/units-core.spec.ts)
+try{ window.SAFETY_UNIT=SAFETY_UNIT; }catch(e){}   // const → not a window property by default; exposed for the golden test
 const SAFETY_TOKEN_SRC=
     '('+SAFETY_NUM+')\\s*[-–]\\s*('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'   // 1,2 bounds · 3 shared unit
   + '|('+SAFETY_NUM+')\\s*('+SAFETY_UNIT+')'                               // 4 number  · 5 its unit
@@ -5495,7 +5625,7 @@ function safetyTokenRe(){ return new RegExp(SAFETY_TOKEN_SRC, 'gi'); }
 // Derived from SAFETY_UNIT so it can never drift from what the tokenizer recognises — a private copy of
 // this test (vcGuardSpoken used to carry /°|C\b|F\b|מעלות/i, hand-written and never updated when
 // SAFETY_UNIT gained word forms) is exactly how word-form units reached the tokenizer but not the guard.
-function isTempUnit(u){ return new RegExp('^(?:'+SAFETY_UNIT+')$','i').test(String(u||'').trim()) && !/^(?:ppm|%)$/i.test(String(u||'').trim()); }
+function isTempUnit(u){ const c=UNITS.classify(u); return !!c && c.kind==='temp'; }
 // REGRESSION FIX (2026-07-24) — the last hand-written predicate over SAFETY_UNIT's output. aiSafetyToC
 // used to decide Fahrenheit with a bare /F/i test on the unit string: correct today only because an audit
 // enumerated every unit SAFETY_UNIT can emit (40 forms — see scratch/verify-isFahrenheitUnit-v1.mjs; the
@@ -5522,8 +5652,7 @@ function isFahrenheitUnit(u){
   // widened degree branch (º/˚ now recognised alongside °), and מעלותפרנהייט (whitespace-stripped "מעלות
   // פרנהייט") added so the Hebrew word-form is classified Fahrenheit instead of silently defaulting to
   // Celsius (closes the G-A1 addendum's "read as Celsius" leak).
-  const s=String(u||'').replace(/\s+/g,'');
-  return /^(?:[°º˚]?F|deg(?:rees?)?(?:F|fahrenheit)|fahrenheit|מעלותפרנהייט)$/i.test(s);
+  const c=UNITS.classify(u); return !!c && c.kind==='temp' && c.unit==='F';
 }
 // Fresh instance per call — /g regexes carry lastIndex.
 function safetyNumRe(){ return new RegExp(SAFETY_NUM, 'g'); }
@@ -5541,7 +5670,8 @@ function safetyNumVal(s){ return parseFloat(String(s).replace(/,/g,'')); }
 // spelling happens to contain "f" can never be silently misconverted.
 function aiSafetyToC(n, unit){
   if(isNaN(n)) return NaN;
-  return isFahrenheitUnit(unit) ? Math.round(UNIT_CONV['F->C'](n)) : n;
+  const r=UNITS.toCanonical(n, unit, 'temp');   // non-temp (ppm/%/pH) or unclassifiable → null → pass through untouched, exactly as before
+  return r ? Math.round(r.v) : n;               // 'match' rounding — grounding-comparison against the data layer's integer °C floors, NOT display
 }
 
 function aiSafetyNums(s){
@@ -6635,7 +6765,8 @@ function vcNormalizeSafetyText(s){
   // Does NOT fold º (U+00BA MASCULINE ORDINAL INDICATOR) or ˚ (U+02DA RING ABOVE) — Unicode has no NFKC
   // decomposition for either into ° (U+00B0); those are handled instead by SAFETY_UNIT's own degree
   // branch recognising them alongside ° directly (see SAFETY_UNIT's definition).
-  return String(s||'').normalize('NFKC');
+  // U-1 landed: delegates to UNITS.normalize (R-26) — same NFKC behavior, one source.
+  return UNITS.normalize(s);
 }
 
 function vcGuardSpoken(text, tiers, lang){
@@ -9023,13 +9154,7 @@ function mtSafe(src, translated){ return mtNumSig(src)===mtNumSig(translated); }
 // (the SET is unchanged). Any number whose unit is unrecognised falls back to strict POSITIONAL comparison,
 // so an incomplete lexicon fails CLOSED. Siblings of mtNumSig/mtSafe by design: those also guard
 // mtTranslate (the DATA path, tests/wave5-mt-safety.spec.ts), outside this spec's scope.
-const VC_UNIT_CLASS=[
-  { re:/^(?:°\s*[CF]?|C\b|F\b|מעלות|degrees?|celsius|fahrenheit)/i, cls:'temp' },
-  { re:/^(?:דק(?:ות|׳|')?|minutes?|mins?\b|שעות|שע׳|hours?|hrs?\b|ימים|יום|days?)/i, cls:'time' },
-  { re:/^(?:%|אחוז|percent)/i, cls:'pct' },
-  { re:/^(?:ppm)/i, cls:'ppm' },
-  { re:/^(?:ק["׳']?ג|kg\b|kilos?|גרם|grams?|g\b|lbs?\b|pounds?)/i, cls:'mass' },
-];
+const VC_UNIT_CLASS=UNITS.vcClasses();   // generated from UNITS_TABLE (vcOrder) — one classifier table (R-26 U-1)
 function vcNumPairs(text){
   const s=String(text||''); const out=[]; const re=safetyNumRe(); let m;
   while((m=re.exec(s))!==null){
