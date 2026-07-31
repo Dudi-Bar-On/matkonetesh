@@ -117,8 +117,10 @@ test('seam: gemGen applies the role thinking knob (default minimal) and never ad
 test('seam: gemTtsGen builds the audio generationConfig with the given voice or the tts default', async ({ page }) => {
   await init(page);
   const r = await page.evaluate(`({ withVoice: gemTtsGen('Puck'), fallback: gemTtsGen() })`) as any;
-  expect(r.withVoice).toEqual({ responseModalities:['AUDIO'], speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName:'Puck' } } } });
+  expect(r.withVoice).toEqual({ responseModalities:['AUDIO'], maxOutputTokens:8192, speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName:'Puck' } } } });
   expect(r.fallback.speechConfig.voiceConfig.prebuiltVoiceConfig.voiceName).toBe('Kore');   // gemModel('tts').voiceDefault
+  expect(r.withVoice.maxOutputTokens).toBe(8192);      // R-34: owner's 8192 policy applied to TTS, closes model-side truncation
+  expect(r.fallback.maxOutputTokens).toBe(8192);
 });
 
 test('seam: gemReadText joins text parts, throws with the finishReason when empty, guards its kind', async ({ page }) => {

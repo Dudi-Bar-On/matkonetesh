@@ -103,3 +103,26 @@ test('INV-T / R-33: ttsText preserves every digit and degree token from the guar
   expect(r.min).toBe(true);
   expect(r.en).toBe('Rest 10 min , then slice.');
 });
+
+test('chunk pipeline: long answer synthesized as ordered chunks, first chunk first', async ({ page }) => {
+  // aiAvail() gates gemSpeak (R-35: no keyless user exists) — seed a key so the mocked pipeline runs;
+  // __gemTtsMock/__gemPlayMock below ensure no real network call is made.
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  const r = await page.evaluate(async () => {
+    const w = window as any; w.__gemTtsLog = [];
+    w.__gemTtsMock = (t: string) => { w.__gemTtsLog.push(t); return { mock: true }; };  // buffer stand-in
+    w.__gemPlayMock = async () => {};                                                    // no real audio in CI
+    const long = Array.from({length: 12}, (_, i) => `משפט מספר ${i} עם עוד כמה מילים כדי שלא יתמזג.`).join(' ');
+    await w.gemSpeak(long, 'he', w.vcNewSpeakGen());
+    return { n: w.__gemTtsLog.length, first: w.__gemTtsLog[0], lat: w.vcLatReport() };
+  });
+  expect(r.n).toBeGreaterThan(3);                       // long text = many chunks, all synthesized
+  expect(r.first).toContain('משפט מספר 0');             // ordered
+  expect(r.lat).toHaveProperty('firstSound');           // stamped when chunk 1 starts playing
+});
+
+test('R-34: TTS generationConfig carries maxOutputTokens 8192', async ({ page }) => {
+  await seedApp(page, {});
+  const gc = await page.evaluate(() => (window as any).gemTtsGen('Kore'));
+  expect(gc.maxOutputTokens).toBe(8192);
+});

@@ -5447,7 +5447,7 @@ function gemGen(role, gen, opts){
 }
 // REQUEST — audio role: the TTS-shaped generationConfig, in ONE builder.
 function gemTtsGen(voice){
-  return { responseModalities:['AUDIO'],
+  return { responseModalities:['AUDIO'], maxOutputTokens:8192,
            speechConfig:{ voiceConfig:{ prebuiltVoiceConfig:{ voiceName: voice || gemModel('tts').voiceDefault } } } };
 }
 // RESPONSE — kind:'text' reader (dedups the hand-rolled extractors; guards its kind).
@@ -6515,29 +6515,48 @@ function pcmToBuffer(pcm, rate){
   for(let i=0;i<pcm.length;i++) ch[i]=pcm[i]/32768;
   return buf;
 }
+// ── Voice Wave 0 · chunked cloud TTS (spec §2.2). One short request per sentence-chunk; chunk i+1 is
+// prefetched WHILE chunk i plays (lookahead 1). First sound after ONE short synthesis, not the whole answer.
+// GOOGLE-ONLY (R-32): a failure stops this utterance and rethrows with err.chunkIdx — no fallback voice exists.
+function vcVoiceLangSafe(){ return (typeof vcVoiceLang==='function')?vcVoiceLang():vcAnsLang(); }   // alias until Task 8 replaces the language source
+async function gemSynthChunk(clean){
+  const key=clean+gemVoice();
+  if(gemCache.has(key)) return gemCache.get(key);
+  if(typeof window!=='undefined' && window.__gemTtsMock){ const b=window.__gemTtsMock(clean); gemCache.set(key,b); return b; }
+  const r=await gemFetch('tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000});
+  if(!r.ok){ let reason=''; try{const eb=await r.json(); reason=(eb.error&&eb.error.message)||'';}catch(_){}
+    console.warn('Gemini TTS error', r.status, reason); throw new Error('api-'+r.status+(reason?': '+reason:'')); }
+  const buf=gemReadAudio(await r.json()).buf;
+  if(gemCache.size>40) gemCache.clear();
+  gemCache.set(key, buf);
+  return buf;
+}
+function gemPlayBuf(buf, gen){
+  if(typeof window!=='undefined' && window.__gemPlayMock) return window.__gemPlayMock(buf, gen);
+  return new Promise(function(res){
+    gemCtx=gemCtx||new (window.AudioContext||window.webkitAudioContext)();
+    const go=function(){ if(!vcGenCurrent(gen)){ res(); return; }
+      gemSrc=gemCtx.createBufferSource(); gemSrc.buffer=buf; gemSrc.connect(gemCtx.destination);
+      vcSpeaking=true; gemSrc.onended=function(){ vcSpeaking=false; res(); }; gemSrc.start(); };
+    (gemCtx.state==='suspended') ? gemCtx.resume().then(go, go) : go();
+  });
+}
 async function gemSpeak(text, lang, gen){
-  if(gen===undefined) gen=vcNewSpeakGen();   // no caller-supplied gen (e.g. a direct/legacy call) — this call is its own generation
-  if(!aiAvail()) throw new Error('no-key');   // P0-app item 4: managed OR BYOK — gemFetch routes it (4325)
-  const clean=ttsText(text, lang||vcAnsLang());
-  let buf=gemCache.get(clean+gemVoice());
-  if(!buf){
-    const r=await gemFetch('tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000});
-    if(!vcGenCurrent(gen)) return;   // a newer speaker took the floor while this fetch was in flight — self-silence
-    if(!r.ok){ let reason=''; try{const eb=await r.json(); reason=(eb.error&&eb.error.message)||'';}catch(_){}
-      console.warn('Gemini TTS error',r.status,reason); throw new Error('api-'+r.status+(reason?': '+reason:'')); }
-    const j=await r.json();
-    if(!vcGenCurrent(gen)) return;   // stale after r.json() too
-    buf=gemReadAudio(j).buf;
-    if(gemCache.size>40) gemCache.clear();
-    gemCache.set(clean+gemVoice(), buf);
+  if(gen===undefined) gen=vcNewSpeakGen();
+  if(!aiAvail()) throw new Error('no-key');            // defensive only — R-35: no keyless user exists
+  const chunks=vcChunkText(ttsText(text, lang||vcVoiceLangSafe()));
+  if(!chunks.length) return;
+  vcLatMark('ttsReq1');
+  let next=gemSynthChunk(chunks[0]);
+  for(let i=0;i<chunks.length;i++){
+    let buf; try{ buf=await next; }catch(err){ err.chunkIdx=i; throw err; }   // position → visible error (Task 6)
+    if(!vcGenCurrent(gen)) return;
+    if(i+1<chunks.length) next=gemSynthChunk(chunks[i+1]);   // prefetch during playback
+    if(i===0) vcLatMark('firstSound');
+    await gemPlayBuf(buf, gen);
+    if(!vcGenCurrent(gen)) return;
   }
-  if(!vcGenCurrent(gen)) return;   // stale before touching playback state — never call gemStop() on a newer speaker's behalf
-  gemCtx=gemCtx||new (window.AudioContext||window.webkitAudioContext)();
-  if(gemCtx.state==='suspended') await gemCtx.resume();
-  if(!vcGenCurrent(gen)) return;   // stale after the resume() await
-  gemSrc=gemCtx.createBufferSource(); gemSrc.buffer=buf; gemSrc.connect(gemCtx.destination);
-  vcSpeaking=true; gemSrc.onended=()=>{vcSpeaking=false;};
-  gemSrc.start();
+  vcLatMark('done');
 }
 function sysSpeak(text, lang){
   try{
