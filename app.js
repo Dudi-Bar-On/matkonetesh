@@ -6495,6 +6495,12 @@ function centralUrl(){ const u=store.get('mk-central-url')||''; return u?String(
 function centralCode(){ return (store.get('mk-central-code')||'').trim(); }
 function gemMode(){ return (centralUrl() && centralCode()) ? 'managed' : (gemKey() ? 'byok' : 'off'); }
 function gemVoice(){return store.get('mk-gemvoice')||'Kore';}
+// ── Voice Wave 0 · speaker generation token (spec §2.3). Every speak flow takes gen=vcNewSpeakGen();
+// after EVERY await it checks vcGenCurrent(gen) and self-silences if stale. gemStop() is only ever
+// called by a NEWER generation taking the floor — the v278 late-ack-kills-answer race is structurally gone.
+let vcSpeakGen=0;
+function vcNewSpeakGen(){ return ++vcSpeakGen; }
+function vcGenCurrent(g){ return g===vcSpeakGen; }
 function gemStop(){ if(gemSrc){try{gemSrc.stop();}catch(e){} gemSrc=null;} vcSpeaking=false; }
 function b64ToPcm16(b64){
   const bin=atob(b64), len=bin.length, bytes=new Uint8Array(len);
@@ -6508,22 +6514,26 @@ function pcmToBuffer(pcm, rate){
   for(let i=0;i<pcm.length;i++) ch[i]=pcm[i]/32768;
   return buf;
 }
-async function gemSpeak(text, lang){
+async function gemSpeak(text, lang, gen){
+  if(gen===undefined) gen=vcNewSpeakGen();   // no caller-supplied gen (e.g. a direct/legacy call) — this call is its own generation
   if(!aiAvail()) throw new Error('no-key');   // P0-app item 4: managed OR BYOK — gemFetch routes it (4325)
   const clean=speechText(text, lang||vcAnsLang());
   let buf=gemCache.get(clean+gemVoice());
   if(!buf){
     const r=await gemFetch('tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000});
+    if(!vcGenCurrent(gen)) return;   // a newer speaker took the floor while this fetch was in flight — self-silence
     if(!r.ok){ let reason=''; try{const eb=await r.json(); reason=(eb.error&&eb.error.message)||'';}catch(_){}
       console.warn('Gemini TTS error',r.status,reason); throw new Error('api-'+r.status+(reason?': '+reason:'')); }
     const j=await r.json();
+    if(!vcGenCurrent(gen)) return;   // stale after r.json() too
     buf=gemReadAudio(j).buf;
     if(gemCache.size>40) gemCache.clear();
     gemCache.set(clean+gemVoice(), buf);
   }
-  gemStop();
+  if(!vcGenCurrent(gen)) return;   // stale before touching playback state — never call gemStop() on a newer speaker's behalf
   gemCtx=gemCtx||new (window.AudioContext||window.webkitAudioContext)();
   if(gemCtx.state==='suspended') await gemCtx.resume();
+  if(!vcGenCurrent(gen)) return;   // stale after the resume() await
   gemSrc=gemCtx.createBufferSource(); gemSrc.buffer=buf; gemSrc.connect(gemCtx.destination);
   vcSpeaking=true; gemSrc.onended=()=>{vcSpeaking=false;};
   gemSrc.start();
@@ -6540,9 +6550,11 @@ function sysSpeak(text, lang){
 }
 function vcSpeak(text, lang){
   const L=lang||vcAnsLang();
+  const gen=vcNewSpeakGen();   // this call takes the floor — the only place gemStop() is called to preempt an OLDER speaker
   gemStop(); try{speechSynthesis.cancel();}catch(e){}
   if(aiAvail()){   // P0-app item 4: a managed-only user must reach Gemini TTS, not the weaker system voice
-    gemSpeak(text, L).catch(err=>{
+    gemSpeak(text, L, gen).catch(err=>{
+      if(!vcGenCurrent(gen)) return;   // a stale flow never toasts or falls back over its successor
       const s=String(err.message||err);
       let m='';
       if(s.includes('api-429')||/quota|RESOURCE_EXHAUSTED/i.test(s)) m='חריגת מכסה — הקראה קולית (TTS) מוגבלת מאוד בשכבה החינמית של Gemini וייתכן שדורשת חשבון עם חיוב.';

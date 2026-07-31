@@ -61,3 +61,18 @@ test('vcChunkText: a safety readout with its verification marker is never split 
   const withNumber = r.find((c: string) => c.includes('63°C'));
   expect(withNumber).toContain('לפי המדריך המאומת');   // number and its verification marker stay in the same chunk
 });
+
+test('speaker token: a stale (slow) speaker can never kill its successor', async ({ page }) => {
+  await seedApp(page, {});
+  const log = await page.evaluate(async () => {
+    const w = window as any; w.__vcSpeakLog = [];
+    // simulate v278's race shape: speaker A (the ack) awaits slowly; speaker B (the answer) starts meanwhile.
+    const genA = w.vcNewSpeakGen();
+    const genB = w.vcNewSpeakGen();                 // B took the floor after A
+    await Promise.resolve();                        // A returns from its await, stale
+    if (w.vcGenCurrent(genA)) w.__vcSpeakLog.push('A-killed-B'); // v278 behavior: A calls gemStop()
+    if (w.vcGenCurrent(genB)) w.__vcSpeakLog.push('B-plays');
+    return w.__vcSpeakLog;
+  });
+  expect(log).toEqual(['B-plays']);
+});
