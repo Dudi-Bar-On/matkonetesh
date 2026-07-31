@@ -149,25 +149,37 @@ test('INV-T / R-33: ttsText preserves every digit and degree token from the guar
 // ("You exceeded your current quota") — the count itself IS the regression, not the audio content. The
 // fix coalesces everything after a small opening chunk into as few requests as fit inside the TTS
 // timeout (see vcCoalesceTtsChunks / the VC_TTS_* arithmetic above gemSpeak in app.js).
-test('chunk pipeline (hotfix v281): long answer synthesized as a SMALL, bounded number of requests, first chunk first', async ({ page }) => {
+test('chunk pipeline (hotfix v281 + gap/jitter fix): long answer synthesized as a SMALL, bounded number of requests, PLAYED first chunk first', async ({ page }) => {
   // aiAvail() gates gemSpeak (R-35: no keyless user exists) — seed a key so the mocked pipeline runs;
   // __gemTtsMock/__gemPlayMock below ensure no real network call is made.
   await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
   const r = await page.evaluate(async () => {
-    const w = window as any; w.__gemTtsLog = [];
-    w.__gemTtsMock = (t: string) => { w.__gemTtsLog.push(t); return { mock: true }; };  // buffer stand-in
-    w.__gemPlayMock = async () => {};                                                    // no real audio in CI
+    const w = window as any;
+    // gap/jitter fix (regressions b+d): gemSpeak now PREFETCHES chunk i+1's synthesis while chunk i is
+    // still playing (lookahead-1), so SYNTHESIS order (__gemTtsMock call order) no longer mirrors logical
+    // chunk order — that is the whole point of the fix (chunk i+1's network round trip starts earlier).
+    // What must still hold in strict order is PLAYBACK — gemSpeak's loop still awaits chunk i's own
+    // playback before moving to i+1 — so this test tracks __gemPlayMock's call order for content/order
+    // assertions, and __gemTtsLog only for the (unordered) request COUNT the quota hotfix protects.
+    w.__gemTtsLog = []; w.__gemPlayLog = [];
+    w.__gemTtsMock = (t: string) => { w.__gemTtsLog.push(t); return { mock: true, t }; };
+    w.__gemPlayMock = async (buf: any) => { w.__gemPlayLog.push(buf && buf.t); };
     const long = Array.from({length: 12}, (_, i) => `משפט מספר ${i} עם עוד כמה מילים כדי שלא יתמזג.`).join(' ');
     await w.gemSpeak(long, 'he', w.vcNewSpeakGen());
-    return { n: w.__gemTtsLog.length, all: w.__gemTtsLog, first: w.__gemTtsLog[0], lat: w.vcLatReport(),
-             joined: w.__gemTtsLog.join(' ').replace(/\s+/g, ' ').trim() };
+    return { n: w.__gemTtsLog.length, playOrder: w.__gemPlayLog, first: w.__gemPlayLog[0], lat: w.vcLatReport(),
+             joined: w.__gemPlayLog.join(' ').replace(/\s+/g, ' ').trim() };
   });
   // THE regression: v280 made 12 requests (one per sentence) for this fixture; a per-minute rate limit
   // survives exactly 1 of those. The fix must make a SMALL, bounded number of requests — never anywhere
   // close to one-per-sentence — while still preserving every sentence's content, in order.
   expect(r.n).toBeGreaterThanOrEqual(2);                 // at least an opening + one remainder request
   expect(r.n).toBeLessThanOrEqual(5);                    // drastically fewer than the old 12 (one per sentence)
-  expect(r.first).toBe('משפט מספר 0 עם עוד כמה מילים כדי שלא יתמזג.');  // opening chunk = exactly the first sentence (short, fast first sound), not pre-merged with more
+  expect(r.first).toBe('משפט מספר 0 עם עוד כמה מילים כדי שלא יתמזג.');  // PLAYED first chunk = exactly the first sentence (short, fast first sound), not pre-merged with more
+  expect(r.playOrder).toEqual([...r.playOrder].sort((a: string, b: string) => {
+    const na = parseInt((a.match(/מספר (\d+)/) || [])[1] || '999', 10);
+    const nb = parseInt((b.match(/מספר (\d+)/) || [])[1] || '999', 10);
+    return na - nb;
+  }));                                                    // played strictly in ascending sentence order
   expect(r.joined).toContain('משפט מספר 0');
   expect(r.joined).toContain('משפט מספר 11');            // nothing lost across the coalescing
   expect(r.lat).toHaveProperty('firstSound');            // stamped when chunk 1 starts playing
@@ -236,6 +248,105 @@ test('regression (a) negative case: an opening sentence that already clears the 
   });
   expect(r[0]).toBe('בדוק את הבשר עכשיו בקפידה.');   // 26 chars — already clears VC_TTS_OPEN_MIN(16), stays its own opening
   expect(r.length).toBe(2);                            // second sentence is its own remainder group, untouched
+});
+
+// ═══ v280 LIVE REGRESSIONS (b)+(d) — owner-reported: "הייתה הפסקה ארוכה בין שתי שורות סמוכות" (long gap
+// between adjacent lines) and (added mid-task) "jitter בזמן ההשמעה" (audible jitter during playback).
+// Controller-verified single root cause in gemPlayBuf (app.js): start() with no argument (= "now") and
+// resolving on the `onended` DOM event meant EVERY chunk boundary paid a full synthesis round-trip
+// (measured ~2.4s minimum/request) plus event-loop stitching imprecision. Fixed by threading one running
+// audio-clock cursor through gemSpeak's whole loop (gemPlayBuf's new `startAt` param, gemPlayPcmStream now
+// returns its own cursor) PLUS restoring lookahead-1 prefetch (gemSynthChunkRetrying) — chunk i+1's
+// synthesis starts as soon as chunk i's own request is dispatched, not after chunk i finishes playing.
+test('regression (b): chunk i+1 synthesis starts WHILE chunk i is still playing (lookahead restored)', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  const r = await page.evaluate(async () => {
+    const w = window as any;
+    const events: string[] = [];
+    let releasePlay0: () => void = () => {};
+    let synthCount = 0;
+    w.__gemTtsMock = (t: string) => { synthCount++; events.push('synth:' + synthCount); return { mock: true, t }; };
+    w.__gemPlayMock = (buf: any) => {
+      const tag = String(buf && buf.t || '');
+      events.push('play-start:' + tag.slice(0, 8));
+      if (synthCount === 1) {
+        // block chunk 0's OWN playback so we can observe whether chunk 1's synthesis fires DURING it
+        return new Promise<void>((res) => { releasePlay0 = () => { events.push('play-end:0'); res(); }; });
+      }
+      events.push('play-end:' + tag.slice(0, 8));
+      return Promise.resolve();
+    };
+    const twoSentences = 'A1 first sentence padded out a fair bit here now. A2 second sentence also padded out a fair bit here.';
+    const p = w.gemSpeak(twoSentences, 'en', w.vcNewSpeakGen());
+    // wait until chunk 0's playback has started (blocked) AND chunk 1 has already been synthesized —
+    // the observable proof of lookahead: synthCount reaches 2 BEFORE chunk 0's playback is released.
+    const deadline = Date.now() + 3000;
+    while (synthCount < 2 && Date.now() < deadline) { await new Promise((res) => setTimeout(res, 5)); }
+    const prefetchedWhilePlaying = synthCount >= 2;   // chunk 1 already synthesized, chunk 0 still blocked on its play mock
+    releasePlay0();
+    await p;
+    return { prefetchedWhilePlaying, events };
+  });
+  expect(r.prefetchedWhilePlaying).toBe(true);
+});
+
+test('regression (d): gemSpeak threads ONE running cursor across chunk boundaries (each chunk\'s startAt === the previous chunk\'s own returned end time)', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  // __gemPlayMock now receives (buf, gen, startAt) — the real gemPlayBuf passes startAt straight through
+  // (app.js) so a test can observe the cursor contract gemSpeak relies on without touching real WebAudio.
+  // Each mocked chunk "ends" at a distinct, deterministic fake clock value; the NEXT chunk's startAt must
+  // equal exactly that value — proof the loop chains gemPlayBuf's return into the next call's startAt
+  // instead of always starting fresh at "now" (the old, per-chunk `onended`-driven contract).
+  const r = await page.evaluate(async () => {
+    const w = window as any;
+    const seenStartAt: any[] = [];
+    let n = 0;
+    w.__gemTtsMock = (t: string) => ({ mock: true, t });
+    w.__gemPlayMock = async (_buf: any, _gen: any, startAt: any) => {
+      seenStartAt.push(startAt);
+      n++;
+      return 100 * n;   // chunk 1 "ends" at 100, chunk 2 at 200, etc — deterministic, distinguishable fake clock values
+    };
+    const twoSentences = 'First sentence padded out a fair bit here now. Second sentence also padded out a fair bit here.';
+    await w.gemSpeak(twoSentences, 'en', w.vcNewSpeakGen());
+    return seenStartAt;
+  });
+  expect(r.length).toBe(2);
+  expect(r[0]).toBeUndefined();     // chunk 0: no prior cursor, starts fresh
+  expect(r[1]).toBe(100);           // chunk 1's startAt === chunk 0's own returned end time (100) — chained, not "now"
+});
+
+// Hazard the controller flagged explicitly: a chunk queued ahead of its own start time (startAt in the
+// future relative to when it was scheduled) must still be cancellable by a barge-in (a newer speaker
+// taking the floor) — gemStop() must be able to reach and stop it even though it "hasn't played yet".
+test('regression (d) hazard: a barge-in during the lookahead prefetch never lets the stale chunk play', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
+  const r = await page.evaluate(async () => {
+    const w = window as any;
+    const played: string[] = [];
+    let releasePlay0: () => void = () => {};
+    let chunk0Blocked = false;
+    w.__gemTtsMock = (t: string) => ({ mock: true, t });
+    w.__gemPlayMock = (buf: any) => {
+      const tag = String(buf && buf.t || '');
+      if (tag.startsWith('A1')) {
+        return new Promise<void>((res) => { releasePlay0 = () => { played.push('A1'); res(); }; chunk0Blocked = true; });
+      }
+      played.push(tag.slice(0, 2));
+      return Promise.resolve();
+    };
+    const genA = w.vcNewSpeakGen();
+    const pA = w.gemSpeak('A1 first sentence padded here now. A2 second sentence follows after that.', 'en', genA);
+    while (!chunk0Blocked) { await new Promise((res) => setTimeout(res, 0)); }
+    const genB = w.vcNewSpeakGen();   // barge-in: takes the floor while A1 is still (blocked-)playing and A2 is prefetching
+    await w.gemSpeak('B1 only sentence here.', 'en', genB);
+    releasePlay0();
+    await pA;
+    return played;
+  });
+  expect(r).toContain('A1');            // A's already-in-flight first chunk still resolves (it was already committed)
+  expect(r).toContain('B1'.slice(0, 2)); // B played
+  expect(r.some((t) => t.startsWith('A2'))).toBe(false);   // A's SECOND (prefetched) chunk never plays after the barge-in
 });
 
 test('R-34: TTS generationConfig carries maxOutputTokens 8192', async ({ page }) => {
@@ -414,8 +525,11 @@ test('M2: a mid-answer TTS failure (chunkIdx>0) reads as "stopped partway"', asy
   await seedApp(page, { 'mk-gemkey': JSON.stringify('test-key') });
   await page.evaluate(() => {
     const w = window as any;
-    let call = 0;
-    w.__gemTtsMock = () => { call++; if (call === 2) throw new Error('boom'); return { mock: true }; };
+    // gap/jitter fix (b+d): gemSpeak prefetches chunk i+1's synthesis while chunk i still plays, so
+    // synthesis CALL ORDER no longer matches chunk order — key the failure on CONTENT (the second
+    // sentence) instead of "the 2nd call", so this test still targets the intended chunk regardless of
+    // when its prefetch actually fires.
+    w.__gemTtsMock = (t: string) => { if (t.indexOf('Second sentence') === 0) throw new Error('boom'); return { mock: true }; };
     w.__gemPlayMock = async () => {};
     w.__toastLog = []; w.toast = (m: string) => { w.__toastLog.push(m); };
     w.vcSpeak('First sentence here now. Second sentence follows next.', 'en');

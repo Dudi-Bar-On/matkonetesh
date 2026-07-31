@@ -6562,13 +6562,36 @@ async function gemSynthChunk(clean){
   gemCache.set(key, buf);
   return buf;
 }
-function gemPlayBuf(buf, gen){
-  if(typeof window!=='undefined' && window.__gemPlayMock) return window.__gemPlayMock(buf, gen);
+// Gap/jitter fix (owner-reported live regressions (b) long silence between adjacent lines + (d) audible
+// jitter DURING playback — one root cause, per the controller's own diagnosis against this function). The
+// OLD contract: start() with no argument (= "now") and resolve on the `onended` DOM event — every chunk
+// boundary paid a full synthesis round-trip (measured ~2.4s minimum per request, ~0.64x-realtime for
+// longer text) PLUS event-loop stitching imprecision, repeated ~10-15 times per answer. gemPlayPcmStream
+// (R-39, below) already solved exactly this WITHIN one stream's own PCM sub-frames via a running
+// audio-clock cursor + start(cursor); this gives gemPlayBuf the SAME cursor contract so the caller
+// (gemSpeak) can thread ONE cursor across every chunk boundary, streamed or buffered alike — buffers
+// queue back-to-back on the audio clock instead of the JS event loop, and resolving on the computed
+// deadline (not `onended`) lets the caller start the NEXT chunk's synthesis while this one still plays
+// (gemSpeak's lookahead-1 prefetch) instead of waiting for the DOM event round trip.
+// Hazard (owner-must-not-break): a buffer can be start()-ed with a FUTURE t0 (queued, not yet audible) —
+// `gemSrc` is assigned BEFORE start() so gemStop() (called by every new speaker before anything else,
+// vcSpeak/vcNewSpeakGen) can still reach and cancel it via gemSrc.stop() even if it hasn't begun playing
+// yet; `vcSpeaking` is only cleared by the specific timeout that scheduled it (guarded by `gemSrc===src`)
+// so a stale chunk's deadline can never clobber a NEWER speaker's already-true vcSpeaking flag.
+function gemPlayBuf(buf, gen, startAt){
+  if(typeof window!=='undefined' && window.__gemPlayMock) return window.__gemPlayMock(buf, gen, startAt);
   return new Promise(function(res){
     gemCtx=gemCtx||new (window.AudioContext||window.webkitAudioContext)();
-    const go=function(){ if(!vcGenCurrent(gen)){ res(); return; }
-      gemSrc=gemCtx.createBufferSource(); gemSrc.buffer=buf; gemSrc.connect(gemCtx.destination);
-      vcSpeaking=true; gemSrc.onended=function(){ vcSpeaking=false; res(); }; gemSrc.start(); };
+    const go=function(){
+      if(!vcGenCurrent(gen)){ res(startAt||0); return; }
+      const ctx=gemCtx;
+      const t0=Math.max(ctx.currentTime+0.05, startAt||0);
+      const src=ctx.createBufferSource(); src.buffer=buf; src.connect(ctx.destination);
+      gemSrc=src; vcSpeaking=true; src.start(t0);
+      const endAt=t0+buf.duration;
+      const waitMs=Math.max(0,(endAt-ctx.currentTime)*1000);
+      setTimeout(function(){ if(gemSrc===src) vcSpeaking=false; res(endAt); }, waitMs);
+    };
     (gemCtx.state==='suspended') ? gemCtx.resume().then(go, go) : go();
   });
 }
@@ -6597,14 +6620,19 @@ function gemB64Bytes(b64){
   return a;
 }
 if(typeof window!=='undefined') window.__gemAudioChunks=0;   // test instrument (same discipline as __vcLat)
-async function gemSpeakSegAttempt(text, lang, gen){
+// `startAt`/return value: the shared audio-clock cursor (gap/jitter fix, regressions b+d) — every
+// speaking function in this chain accepts where the PREVIOUS chunk left off and returns where THIS one
+// ends, so gemSpeak (below) can thread one cursor across the whole answer, streamed or buffered chunks
+// alike, instead of resolving on `onended`/the DOM event loop.
+async function gemSpeakSegAttempt(text, lang, gen, startAt){
   try{
-    await gemSpeakSegStream(text, lang, gen);
+    return await gemSpeakSegStream(text, lang, gen);
   }catch(e){
-    if(!vcGenCurrent(gen)) return;                   // barge-in during the attempt: stay silent
+    if(!vcGenCurrent(gen)) return startAt;            // barge-in during the attempt: stay silent
     // fallback (spec §5.3): stale Worker (stream-unsupported), stream death, or no-audio → blocking path
     const buf=await gemSynthChunk(text);
-    if(vcGenCurrent(gen)) await gemPlayBuf(buf, gen);
+    if(vcGenCurrent(gen)) return await gemPlayBuf(buf, gen, startAt);
+    return startAt;
   }
 }
 // hotfix v281: a 429/rate-limit failure gets exactly ONE retry, after a polite backoff — honoring the
@@ -6620,16 +6648,16 @@ function gemRetryDelayMs(err){
   const ms=err&&err.retryAfterMs;
   return (typeof ms==='number' && ms>=0) ? Math.min(10000, ms) : 1500;   // cap a server-requested delay at 10s — bounded UX wait, still the API's own number when it's short
 }
-async function gemSpeakSeg(text, lang, gen){
+async function gemSpeakSeg(text, lang, gen, startAt){
   if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen);
   try{
-    await gemSpeakSegAttempt(text, lang, gen);
+    return await gemSpeakSegAttempt(text, lang, gen, startAt);
   }catch(e){
-    if(!vcGenCurrent(gen)) return;
+    if(!vcGenCurrent(gen)) return startAt;
     if(!gemIsRateLimited(e)) throw e;
     await new Promise(function(res){ setTimeout(res, gemRetryDelayMs(e)); });
-    if(!vcGenCurrent(gen)) return;                    // barge-in during the backoff wait: stay silent
-    await gemSpeakSegAttempt(text, lang, gen);         // the ONE allowed retry — a second failure propagates
+    if(!vcGenCurrent(gen)) return startAt;             // barge-in during the backoff wait: stay silent
+    return await gemSpeakSegAttempt(text, lang, gen, startAt);   // the ONE allowed retry — a second failure propagates
   }
 }
 async function gemSpeakSegStream(text, lang, gen){
@@ -6700,6 +6728,8 @@ async function gemPlayPcmStream(stream, gen){
   // arbitrary wait — DoD-11 governs tests, and the test asserts marks/counters, never this timer)
   const waitMs=Math.max(0,(cursor-ctx.currentTime)*1000);
   if(waitMs>0) await new Promise(function(res){ setTimeout(res, waitMs); });
+  return cursor;   // gap/jitter fix (b+d): hands the audio-clock end time to the caller so the NEXT
+                    // chunk (streamed or buffered) can be scheduled back-to-back instead of starting "now"
 }
 
 // ── Hotfix v281 (owner-reported live regression, ~1h after v280 shipped): v280 sent ONE Gemini TTS
@@ -6800,17 +6830,37 @@ async function gemSpeak(text, lang, gen){
   const chunks=vcCoalesceTtsChunks(sentences);
   if(!chunks.length) return;
   vcLatMark('ttsReq1');
+  // Regression fix (b)+(d), owner-reported live bugs on v280: a long silence between adjacent lines, and
+  // audible jitter DURING playback — one root cause (controller-verified against gemPlayBuf/
+  // gemPlayPcmStream directly). `cursor` is the running audio-clock time threaded across EVERY chunk
+  // boundary (streamed chunk 0 via gemPlayPcmStream's own cursor, buffered chunks 1..n via gemPlayBuf's
+  // new startAt param) — buffers now queue back-to-back on the WebAudio clock the same way
+  // gemPlayPcmStream already schedules its OWN PCM sub-frames, instead of starting "now" and resolving on
+  // the `onended` DOM event. `pending` restores lookahead-1 (chunk i+1's synthesis, gemSynthChunk alone —
+  // no playback — starts as soon as chunk i's OWN request is dispatched, so it has chunk i's whole
+  // playback duration to finish) WITHOUT reverting the quota hotfix (0bee32f): the request COUNT is
+  // unchanged, only WHEN each request starts moves earlier.
+  let cursor;
+  let pending=null;
   for(let i=0;i<chunks.length;i++){
     if(!vcGenCurrent(gen)) return;
-    // gemSpeakSeg streams+plays ONE chunk (R-39): synthesis+playback of chunk i+1 no longer overlaps
-    // chunk i's playback the way the old explicit prefetch did — each chunk now starts its own network
-    // request and begins playing on its OWN first audio frame (measured ~1.1s), which is the whole point
-    // of the streaming win; a chunk-level lookahead pipeline is not part of this task (plan: later task).
     // firstSound is marked BEFORE the await (matches the old mark's meaning: "chunk 0's speech is
     // starting now") — the finer-grained "sound actually scheduled" moment is gemPlayPcmStream's own
     // 'firstAudio' mark, taken exactly when the first PCM frame is scheduled on the audio clock.
     if(i===0) vcLatMark('firstSound');
-    try{ await gemSpeakSeg(chunks[i], L2, gen); }catch(err){ err.chunkIdx=i; throw err; }   // position → visible error (Task 6)
+    try{
+      if(pending && pending.idx===i){
+        const buf=await pending.promise;
+        if(!vcGenCurrent(gen)) return;                  // barge-in while this chunk was prefetching: never schedule it
+        if(i+1<chunks.length) pending={idx:i+1, promise:gemSynthChunkRetrying(chunks[i+1], gen)};
+        cursor=await gemPlayBuf(buf, gen, cursor);
+      } else {
+        // chunk 0 (or any chunk reached with nothing pre-fetched): stream for the fastest first sound (R-39).
+        const p=gemSpeakSeg(chunks[i], L2, gen, cursor);
+        if(i+1<chunks.length) pending={idx:i+1, promise:gemSynthChunkRetrying(chunks[i+1], gen)};
+        cursor=await p;
+      }
+    }catch(err){ err.chunkIdx=i; throw err; }           // position → visible error (Task 6)
     if(!vcGenCurrent(gen)) return;
   }
   vcLatMark('done');
