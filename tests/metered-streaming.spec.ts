@@ -122,3 +122,28 @@ test('vcStreamSafe: digit-free passes; ANY digit or unit-bearing token fails (fa
   expect(r.temp).toBe(false);
   expect(r.fw).toBe(false);
 });
+
+test('R-36a: the voice brevity instruction carries the safety-completeness override', async ({ page }) => {
+  await seedApp(page, {});
+  const r = await page.evaluate(() => {
+    const w = window as any;
+    return {
+      he: w.vcBuildAskPrompt('מה הטמפ׳ הבטוחה לעוף?', 'he', '').sys,
+      en: w.vcBuildAskPrompt('safe temp for chicken?', 'en', '').sys,
+      fr: w.vcBuildAskPrompt('température?', 'fr', '').sys,
+    };
+  });
+  // brevity clause present in every voice branch:
+  expect(r.he).toContain('עד 60 מילים');
+  expect(r.en).toContain('60 words');
+  expect(r.fr).toContain('60 words');
+  // the hard safety override — number, unit and caveat survive brevity — present in every branch:
+  expect(r.he).toContain('המספר, היחידה וההסתייגות');
+  expect(r.en).toContain('the number, its unit and the caveat');
+  expect(r.fr).toContain('the number, its unit and the caveat');
+  // negative case (fixture minimality/DoD-6): the PANEL ask prompt is UNCHANGED — full-length
+  // instruction kept, NO brevity clause. Asserted via the factored const the probe returns:
+  const panelSys = await page.evaluate(() => (window as any).__askPanelSys());
+  expect(panelSys).toContain('בצורה מלאה ומועילה');
+  expect(panelSys).not.toContain('עד 60 מילים');
+});

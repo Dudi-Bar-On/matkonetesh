@@ -5624,11 +5624,15 @@ async function gemFetch(model, body, opts){
   }
   throw lastErr||new Error('gem-failed');
 }
+// R-36a (test probe + shared prefix): the panel (on-screen) Ask-the-Fire prompt is a DIFFERENT surface
+// from the voice prompt above — it is read, not heard, so it keeps its full-length instruction and gets
+// NO brevity clause. Factored out so window.__askPanelSys() below returns the REAL literal, never a copy.
+const ASK_PANEL_SYS_PREFIX='אתה "האש" — עוזר בישול מומחה לאש, עישון, גריל, סו-ויד ושרקוטרי, בתוך אפליקציה ישראלית בשם "מתכונת · מדריך האש". ';
 async function askGemini(qRaw, history){
   if(!aiAvail()) throw new Error('no-key');   // available via a personal key OR managed central access; gemFetch routes the transport
   const q=(qRaw||'').trim();
   const {ctx,ents}=askContextFor(q);
-  const sys='אתה "האש" — עוזר בישול מומחה לאש, עישון, גריל, סו-ויד ושרקוטרי, בתוך אפליקציה ישראלית בשם "מתכונת · מדריך האש". '+(L('ענה תמיד בעברית', 'Reply ALWAYS in English (the app UI language is English)'))+', בצורה מלאה ומועילה — אורך התשובה לפי הצורך, כולל רשימות, המלצות ופירוט כשזה עוזר. יש לך חיפוש באינטרנט: השתמש בו לשאלות על מידע עדכני/מקומי — עסקים, חנויות, ספקים, מחירים, זמינות, כתובות (למשל "היכן לקנות פחם איכותי בשרון" — תן רשימת עסקים אמיתית עם פרטים). כשסופקו נתונים מהקטלוג של האפליקציה והם רלוונטיים — התבסס עליהם וצטט טמפ׳/זמנים משם. אתה יכול לענות גם על שאלות מעשיות סביב עולם הבישול על אש (ציוד, קניות, מקומות) ולא רק על מתכונים. אל תמציא מספרי בטיחות קריטיים — אם אינך בטוח, אמור זאת והפנה לאימות.'+((typeof pref==='function'&&pref('units')==='metric')?(L(' השתמש תמיד ביחידות מטריות (°C, ס״מ, ק״ג, ליטר, מ״מ) — לא פרנהייט/אינץ׳/פאונד.', ' Always use metric units (°C, cm, kg, litres, mm) — never Fahrenheit/inches/pounds.')):'');
+  const sys=ASK_PANEL_SYS_PREFIX+(L('ענה תמיד בעברית', 'Reply ALWAYS in English (the app UI language is English)'))+', בצורה מלאה ומועילה — אורך התשובה לפי הצורך, כולל רשימות, המלצות ופירוט כשזה עוזר. יש לך חיפוש באינטרנט: השתמש בו לשאלות על מידע עדכני/מקומי — עסקים, חנויות, ספקים, מחירים, זמינות, כתובות (למשל "היכן לקנות פחם איכותי בשרון" — תן רשימת עסקים אמיתית עם פרטים). כשסופקו נתונים מהקטלוג של האפליקציה והם רלוונטיים — התבסס עליהם וצטט טמפ׳/זמנים משם. אתה יכול לענות גם על שאלות מעשיות סביב עולם הבישול על אש (ציוד, קניות, מקומות) ולא רק על מתכונים. אל תמציא מספרי בטיחות קריטיים — אם אינך בטוח, אמור זאת והפנה לאימות.'+((typeof pref==='function'&&pref('units')==='metric')?(L(' השתמש תמיד ביחידות מטריות (°C, ס״מ, ק״ג, ליטר, מ״מ) — לא פרנהייט/אינץ׳/פאונד.', ' Always use metric units (°C, cm, kg, litres, mm) — never Fahrenheit/inches/pounds.')):'');
   const turns=[];
   (history||[]).slice(-4).forEach(h=>turns.push({role:h.role==='ai'?'model':'user',parts:[{text:h.text}]}));
   turns.push({role:'user',parts:[{text:(ctx?ctx+'\n\n':'')+'שאלה: '+q}]});
@@ -5644,6 +5648,11 @@ async function askGemini(qRaw, history){
   const txt=gemReadText(j);
   return {txt,chips:ents,ctx};   // W1-P3: return the grounding so the render can verify the answer's safety numbers against it
 }
+// R-36a test probe: rebuilds the panel sys EXACTLY as askGemini does, minus the dynamic units/context
+// riders — the assertion targets the instruction clauses, which live in the static part.
+if(typeof window!=='undefined') window.__askPanelSys=function(){
+  return ASK_PANEL_SYS_PREFIX+L('ענה תמיד בעברית','Reply ALWAYS in English (the app UI language is English)')+', בצורה מלאה ומועילה';
+};
 async function askValidateKey(key){
   try{ await gemFetch('text', {contents:[{parts:[{text:'שלום'}]}], generationConfig: gemGen('text', {maxOutputTokens:20}, {think: thinkFor('keyProbe')})}, {key, retries:0, timeout:12000}); return true; }catch(e){ return false; }
 }
@@ -7167,12 +7176,13 @@ function vcStripAskPrefix(said){ return String(said||'').replace(/^(שאלה|ת�
 // regardless of what the model does; this instruction is what keeps a VERIFIED number from being squeezed
 // out by brevity pressure in the first place.
 const VC_BREVITY_EN='You are a voice assistant being listened to, not read: answer briefly, in natural '
-  +'spoken style — no markdown, no bullet lists, no headings. Non-negotiable exception: if the answer '
-  +'touches safety (a safe temperature, a cure ratio, a time/temperature pair), the number, its unit, and '
-  +'the caveat must be preserved in full, even at the cost of less aggressive brevity elsewhere.';
-const VC_BREVITY_HE='אתה עוזר קולי שמאזינים לו, לא קוראים אותו: ענה בקצרה ובסגנון דיבור טבעי — בלי '
+  +'spoken style, at most 60 words — no markdown, no bullet lists, no headings. Non-negotiable exception: '
+  +'if the answer touches safety (a safe temperature, a cure ratio, a time/temperature pair), the number, '
+  +'its unit and the caveat must be preserved in full, even at the cost of less aggressive brevity elsewhere '
+  +'and going past the word limit.';
+const VC_BREVITY_HE='אתה עוזר קולי שמאזינים לו, לא קוראים אותו: ענה בקצרה ובסגנון דיבור טבעי, עד 60 מילים — בלי '
   +'Markdown, בלי רשימות, בלי כותרות. חריג בל-יעבור: אם התשובה נוגעת לבטיחות (טמפרטורה בטוחה, יחס מלח/כבישה, '
-  +'זמן/טמפרטורה) — המספר, היחידה וההסתייגות חייבים להישמר במלואם, גם במחיר קיצור פחות אגרסיבי בשאר התשובה.';
+  +'זמן/טמפרטורה) — המספר, היחידה וההסתייגות חייבים להישמר במלואם, גם במחיר קיצור פחות אגרסיבי בשאר התשובה וחריגה ממגבלת המילים.';
 function vcBuildAskPrompt(question, ansLang, ctx){
   ctx=ctx||'';
   let sys;
