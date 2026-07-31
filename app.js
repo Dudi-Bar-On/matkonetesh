@@ -6420,19 +6420,22 @@ let vcTasks=[], vcIdx=0, vcRec=null, vcVoices=[];
 let tlTimers=[]; // in-session timeline notification timers
 function stripEmoji(t){return String(t).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
 // נרמול טקסט להגייה עברית טובה: קיצורים, סמלים ומספרים
-function hebSpeechText(t){
-  let s=stripEmoji(t);
-  s=s.replace(/(\d+(?:\.\d+)?)\s*°C?/g,'$1 מעלות');
-  s=s.replace(/~\s*/g,'בערך ');
-  s=s.replace(/ק["״]ג/g,'קילו').replace(/ק"ג/g,'קילו');
-  s=s.replace(/דק['׳]/g,'דקות').replace(/\bדק\b/g,'דקות');
-  s=s.replace(/(\d+)\s*ש\b/g,'$1 שעות');
-  s=s.replace(/שעה\/שעתיים/g,'שעה או שעתיים');
-  s=s.replace(/(\d+)-(\d+)/g,'$1 עד $2');
-  s=s.replace(/\bMR\b/gi,'מדיום רייר').replace(/\bmw\b/gi,'מדיום ול');
-  s=s.replace(/·|•/g,', ').replace(/\s*\/\s*/g,' או ');
-  s=s.replace(/\bכפ['׳]\b/g,'כפות').replace(/\bכפית\b/g,'כפית');
-  s=s.replace(/\(([^)]*)\)/g,', $1,');
+/* ── Voice Wave 0 · ttsText (R-33, spec §7): the ONLY transform between vcGuardSpoken and the engine.
+   The browser-era rewrites (degrees→words, parentheses→commas, ranges→"עד", tilde/slash rewording) are
+   GONE — measured A/B 31.7: raw text is markedly more natural on Gemini, injected commas chop delivery.
+   What survives: sanitation (emoji/HTML), the silent `·` list separator, and a fixed Hebrew abbreviation
+   whitelist (expansion to the SAME canonical word — never a value, never a conversion).
+   INV-T: no digit and no degree token may change — tests/voice-wave0.spec.ts pins it. */
+function ttsText(t, lang){
+  let s=stripEmoji(t);                       // sanitation, all languages
+  s=s.replace(/·|•/g,', ');                  // separator with no spoken form, all languages
+  if(lang==='he'){                           // abbreviation whitelist — he only (spec §7 rows 3-7)
+    s=s.replace(/ק["״]ג/g,'קילו');
+    s=s.replace(/דק['׳]/g,'דקות').replace(/\bדק\b/g,'דקות');
+    s=s.replace(/(\d+)\s*ש\b/g,'$1 שעות');
+    s=s.replace(/\bכפ['׳]\b/g,'כפות');
+    s=s.replace(/\bMR\b/gi,'מדיום רייר').replace(/\bmw\b/gi,'מדיום ול');
+  }
   return s.replace(/\s+/g,' ').trim();
 }
 // ── Voice Wave 0 · sentence chunker (spec §2.1). ONE rule for all 7 live languages: split at
@@ -6471,8 +6474,6 @@ function vcChunkText(text, opts){
 function vcLang(){ return store.get('mk-vclang')||((typeof getLang==='function'&&getLang()!=='he')?'en':'he'); }        // recognition language — defaults to the UI language
 function vcAnsLang(){ return store.get('mk-vcanslang')||vcLang(); } // answer/TTS language
 function vcLocale(l){ return l==='en'?'en-US':'he-IL'; }
-function enSpeechText(t){ return stripEmoji(String(t)).replace(/·|•/g,', ').replace(/\s+/g,' ').trim(); }
-function speechText(t, lang){ return (lang==='en')?enSpeechText(t):hebSpeechText(t); }
 function vcPickVoice(lang){
   const want=(lang||vcAnsLang());
   const rx = want==='en' ? /en[-_]/i : /he|iw/i;
@@ -6517,7 +6518,7 @@ function pcmToBuffer(pcm, rate){
 async function gemSpeak(text, lang, gen){
   if(gen===undefined) gen=vcNewSpeakGen();   // no caller-supplied gen (e.g. a direct/legacy call) — this call is its own generation
   if(!aiAvail()) throw new Error('no-key');   // P0-app item 4: managed OR BYOK — gemFetch routes it (4325)
-  const clean=speechText(text, lang||vcAnsLang());
+  const clean=ttsText(text, lang||vcAnsLang());
   let buf=gemCache.get(clean+gemVoice());
   if(!buf){
     const r=await gemFetch('tts', {contents:[{parts:[{text:clean}]}], generationConfig: gemTtsGen(gemVoice())}, {timeout:20000});
@@ -6542,7 +6543,7 @@ function sysSpeak(text, lang){
   try{
     const L=lang||vcAnsLang();
     speechSynthesis.cancel();
-    const u=new SpeechSynthesisUtterance(speechText(text, L));
+    const u=new SpeechSynthesisUtterance(ttsText(text, L));
     u.lang=vcLocale(L); u.rate=0.92; u.pitch=1;
     const v=vcPickVoice(L); if(v) u.voice=v;
     speechSynthesis.speak(u);

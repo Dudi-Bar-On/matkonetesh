@@ -76,3 +76,30 @@ test('speaker token: a stale (slow) speaker can never kill its successor', async
   });
   expect(log).toEqual(['B-plays']);
 });
+
+test('INV-T / R-33: ttsText preserves every digit and degree token from the guarded string', async ({ page }) => {
+  await seedApp(page, {});
+  const r = await page.evaluate(() => {
+    const f = (window as any).ttsText;
+    const digits = (s: string) => (s.match(/\d+(?:\.\d+)?/g) || []);
+    const src = 'חמם ל-63.5°C (בערך 8-10 שעות · תלוי בעובי). המשקל 2 ק"ג, עוד 20 דק\' בערך.';
+    const out = f(src, 'he');
+    return {
+      out,
+      sameDigits: JSON.stringify(digits(out)) === JSON.stringify(digits(src)),
+      degreeKept: out.includes('63.5°C'),                       // rule 8 DROPPED: the unit symbol survives
+      noParenCommas: !out.includes(', בערך'),                    // rule 9 DROPPED: no ", … ," injection
+      rangeKept: out.includes('8-10'),                           // rule 10 DROPPED: ranges untouched
+      kg: out.includes('קילו') && !out.includes('ק"ג'),          // rule 3 KEPT: abbreviation whitelist
+      min: out.includes('דקות'),                                 // rule 4 KEPT
+      en: f('Rest 10 min · then slice.', 'en'),                  // rows 1-2 only for non-he
+    };
+  });
+  expect(r.sameDigits).toBe(true);
+  expect(r.degreeKept).toBe(true);
+  expect(r.noParenCommas).toBe(true);
+  expect(r.rangeKept).toBe(true);
+  expect(r.kg).toBe(true);
+  expect(r.min).toBe(true);
+  expect(r.en).toBe('Rest 10 min , then slice.');
+});
