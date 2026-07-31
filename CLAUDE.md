@@ -17,7 +17,7 @@ the discipline document, which is authoritative wherever the two differ.**
 (2) ה-Phase הפעיל ב-`docs/ROADMAP-2026-07-30.md` + ‏`docs/STATUS-BOARD.md` · (3) `node scripts/check-meta.mjs`
 — אדום מטופל לפני עבודה · (4) serena לסימבולי, graphify למסמכים/יחסים, grep=fallback מוצהר ·
 (5) §10.5a: סדרתי; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/GPU.
-**בכל סגירת קשת/Phase:** ‏`docs/process/checklists/arc-close.md` — לקחים→§11, הפקדות, גרף, לוח+לדג'ר,
+**בכל סגירת קשת/Phase:** ‏`docs/process/checklists/arc-close.md` — לקחים→§11, הפקדות, גרף, לוח+מרשם,
 check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנת את `docs/STATUS-BOARD.md`** (H10; מוצג באבני-דרך — H10a).
 
 ## Where to find what — `docs/process/development-discipline.md`
@@ -56,7 +56,7 @@ check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנ
 11. **No arbitrary waits.** Tests wait on conditions (`waitForFunction`), never `waitForTimeout`.
 12. **Full suite green.** Run `npx playwright test` — plain, nothing else. Output pasted. **Never** pass `--retries` or `--workers=1`. Any failure, **including an intermittent one, is a bug** — debugged via `systematic-debugging`, never re-run until it passes.
 
-**Per-phase gate:** every DoD line in the governing spec quoted and marked MET with evidence; any unmet line → phase incomplete, escalate; independent re-audit by a fresh agent **against the spec, not against the ledger**.
+**Per-phase gate:** every DoD line in the governing spec quoted and marked MET with evidence; any unmet line → phase incomplete, escalate; independent re-audit by a fresh agent **against the spec, not against the register**.
 
 ## §4 · The Waiver Gate — the single most important rule
 

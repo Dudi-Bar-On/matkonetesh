@@ -106,7 +106,7 @@ A task is **not done** until every box is checked with evidence pasted in. This 
 
 - [ ] Every DoD line in the governing spec's "Definition of Done" section quoted and marked MET, with the evidence
 - [ ] Any line **not** met → phase is not complete; escalate to owner (see §4)
-- [ ] Independent conformance re-audit by a fresh agent against the spec, not against the ledger
+- [ ] Independent conformance re-audit by a fresh agent against the spec, not against the register
 
 ---
 

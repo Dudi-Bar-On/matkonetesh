@@ -11,7 +11,7 @@
 **Spec inputs (מקורות המפרט — כל משימה מצטטת מהם):**
 - `docs/process/METHODOLOGY-2026-07-30.md` — §3.1–§3.6 (המנגנונים), §4 (טבלת התוצרים), §5 (13 עריכות ה-discipline), §2.2–§2.3 (חוזה ה-brief + תקרת המקבילות).
 - `docs/process/COMPLIANCE-AUDIT-2026-07-30.md` — "The five fixes" + סעיפים 1, 3, 7, 9, 10, 12.
-- `docs/ROADMAP-2026-07-30.md` — שורת Phase 0 (§1) + פרוטוקול הניהול (§0) + הלדג'ר (§5).
+- `docs/ROADMAP-2026-07-30.md` — שורת Phase 0 (§1) + פרוטוקול הניהול (§0) + המרשם (§5).
 - `docs/research/v5-engine/DECISION-REGISTER.md` — נוסחי H7..H12 המדויקים (בלוק H).
 
 ---
@@ -22,7 +22,7 @@
 2. **כל סקריפט = Node ללא תלויות.** ‏ESM ‏(`.mjs`), ‏`node:`-builtins בלבד, רץ עם `node scripts/<name>.mjs` על Node שכבר בשימוש בפרויקט. שום `npm install`.
 3. **מוסכמת שמות (הוראת בעלים, ROADMAP כותרת):** מזהים ומספור באנגלית — Task 1, Phase 0, H7, DoD-12; גוף טקסט עברית במסמכים העבריים; `development-discipline.md` ו-`§11` נכתבים באנגלית (שפת המסמך הקיים).
 4. **DoD מלא חל (discipline §3), בהתאמות ל-docs/scripts:** ‏RED לסקריפטים = ריצה שנצפית **נכשלת** על fixture/מצב-רפו אמיתי לפני שהתיקון קיים (פלט מודבק בדוח); עריכות-מסמך מאומתות ב-**grep-back** (המחרוזת החדשה נמצאת, הישנה איננה); DoD-8/9 (צילומים) לא רלוונטיים — אין UI; DoD-10 (Safety invariance) מתקיים טריוויאלית — אין נגיעה בקוד, וכל משימה מצהירה זאת.
-5. **H9 — חוזה דוח לכל implementer (חובה, פסיקת בעלים 30.7):** כל דוח משימה (`.superpowers/sdd/phase0-task-N-report.md`) מסתיים בטבלה בת 5 שורות — **מה היה · מה נעשה (+ראיות: קומיט/פלט/קבצים) · מה נשאר · איפה אנחנו (Phase 0, משימה N/6 + לדג'ר 17/156→) · הבא בתור**. דוח בלי הטבלה = דוח פסול, המשימה לא נסגרת. ה-Main מאמת ב-diff עצמאי.
+5. **H9 — חוזה דוח לכל implementer (חובה, פסיקת בעלים 30.7):** כל דוח משימה (`.superpowers/sdd/phase0-task-N-report.md`) מסתיים בטבלה בת 5 שורות — **מה היה · מה נעשה (+ראיות: קומיט/פלט/קבצים) · מה נשאר · איפה אנחנו (Phase 0, משימה N/6 + מרשם 17/156→) · הבא בתור**. דוח בלי הטבלה = דוח פסול, המשימה לא נסגרת. ה-Main מאמת ב-diff עצמאי.
 6. **תקרת מקבילות (METHODOLOGY §2.3):** ברירת מחדל סדרתית; ≤3 סוכנים קלים; תקרה קשיחה 5; **סוכן כבד אחד לכל היותר** בזמן ריצת סוויטה או רענון גרף. משימות תוכנית זו רצות **סדרתית** (יש ביניהן תלות: 1→2, 1→5, 1..5→6).
 7. **סוויטה פעם אחת בלבד, בסגירת ה-Phase (H7):** אין קוד אפליקציה שהשתנה — ריצת `npx playwright test` יחידה ב-Task 6 מְאַשְׁרֶרֶת שהרפו נשאר ירוק. לא מריצים סוויטה באף משימה אחרת, ולא במקביל לרענון הגרף (§11a).
 8. **סודות:** אף מפתח לא נכנס לרפו, לדוחות או לפלטי סקריפטים.
@@ -39,7 +39,7 @@
 | `scripts/check-plan-complete.mjs` | Create (Task 1) | שער שלמות-תוכנית: בלוקי-קוד פר-`## Task` > 0, גלאי קטיעה בתוך fence |
 | `scripts/check-graph-fresh.mjs` | Create (Task 1) | ‏mtime של `docs/**/*.md` מול חותמת `graphify-out/graph.json` |
 | `scripts/gate-lessons.mjs` | Create (Task 1) | ‏L אחרון ב-§11 מול קומיטי `release(v` מאז; חוסם release ללא לקח/הצהרה |
-| `scripts/check-meta.mjs` | Create (Task 1) | עוטף את השלושה + בדיקת no-unlanded-items ‏(H8) על לדג'ר ה-ROADMAP |
+| `scripts/check-meta.mjs` | Create (Task 1) | עוטף את השלושה + בדיקת no-unlanded-items ‏(H8) על מרשם ה-ROADMAP |
 | `package.json` | Modify (Task 1) | סקריפט `"meta"` |
 | `scripts/sync-docs.sh` | Modify (Task 1) | מריץ `check-graph-fresh` לפני push של docs |
 | `docs/process/development-discipline.md` | Modify (Tasks 2–3) | ‏L23–L27 ל-§11; ‏11 עריכות H7..H12 + §10.5a + §7 + §10.10 + Operating Model |
@@ -50,13 +50,13 @@
 | `CLAUDE.md` | Modify (Task 4) | בלוק session-start קומפקטי + שורת arc-close |
 | `docs/ai-strategy.md` | Modify (Task 4) | תיקון H-9 (שורה ~77, "Nobody owns") |
 | `graphify-out/graph.json` (+מניפסט) | Regenerate (Task 5) | רענון `--mode deep`, ‏53 מסמכים + קשת v5-engine |
-| `docs/STATUS-BOARD.md` | Modify (Task 6) | ‏Phase 0 → ✅ ‏"v277 · docs-only · תאריך+שעה" ‏(H10c), לדג'ר 19/156 |
+| `docs/STATUS-BOARD.md` | Modify (Task 6) | ‏Phase 0 → ✅ ‏"v277 · docs-only · תאריך+שעה" ‏(H10c), מרשם 19/156 |
 
 ---
 
 ## Task 1 — ארבעת סקריפטי האכיפה + החיווט (audit fix #5 + #2 + #1 + H8)
 
-**Spec lines (DoD-1):** METHODOLOGY §3.1 שורות 1–2, 5: *"`scripts/gate-lessons.mjs`: מדפיס את ה-L האחרון + תאריכו, סופר קומיטי `release(v` מאז; חוסם"* · *"`scripts/check-graph-fresh.mjs`: משווה mtime של `docs/**/*.md` מול חותמת בניית `graphify-out/graph.json` ... נכשל אם יש; מחווט ל-`sync-docs.sh`"* · *"`scripts/check-plan-complete.mjs <plan.md>`: מפרק לפי כותרות `## Task`, סופר בלוקי-קוד מגודרים פר-משימה, נכשל על 0 או על קובץ שמסתיים בתוך fence"* · §3.3: *"`scripts/check-meta.mjs` — עוטף ... + בדיקת no-unlanded-items (H8, סעיף 3.4)"* · §3.4: *"כל מזהה פער בלדג'ר חייב למפות לפאזה נקובה או לדחייה מעוגנת-טריגר; כל מצב אחר — exit nonzero."*
+**Spec lines (DoD-1):** METHODOLOGY §3.1 שורות 1–2, 5: *"`scripts/gate-lessons.mjs`: מדפיס את ה-L האחרון + תאריכו, סופר קומיטי `release(v` מאז; חוסם"* · *"`scripts/check-graph-fresh.mjs`: משווה mtime של `docs/**/*.md` מול חותמת בניית `graphify-out/graph.json` ... נכשל אם יש; מחווט ל-`sync-docs.sh`"* · *"`scripts/check-plan-complete.mjs <plan.md>`: מפרק לפי כותרות `## Task`, סופר בלוקי-קוד מגודרים פר-משימה, נכשל על 0 או על קובץ שמסתיים בתוך fence"* · §3.3: *"`scripts/check-meta.mjs` — עוטף ... + בדיקת no-unlanded-items (H8, סעיף 3.4)"* · §3.4: *"כל מזהה פער במרשם חייב למפות לפאזה נקובה או לדחייה מעוגנת-טריגר; כל מצב אחר — exit nonzero."*
 
 **Files:**
 - Create: `scripts/check-plan-complete.mjs`, `scripts/check-graph-fresh.mjs`, `scripts/gate-lessons.mjs`, `scripts/check-meta.mjs`
@@ -500,7 +500,7 @@ git commit -m "docs(discipline): Phase 0 Task 2 — backfill L23-L27 (proxy-metr
 
 ## Task 3 — עריכות מסמך המשמעת: H7..H12, ‏§10.5a, ‏§7, ‏§10.10, ‏§2, ‏Operating Model
 
-**Spec lines (DoD-1):** METHODOLOGY §5 סעיפים 1–8, 10–13 (סעיף 9 = Task 2): *"§3 DoD-12 — נוסח H7 ... §9 — מחיקת 'FULL suite ×2 per task' ... §7 — כלל שני-המעברים ... §10.5a חדש ... §10.6 — שורת הלדג'ר + הרחבת H9 ... §10.10 — פרוטוקול ה-fallback ... §10.12/§10.16 — הפניות אכיפה ... §2 — שורת check-plan-complete ... נספח Operating Model ... H8 ... H9 + H10"* + נוסחי H7..H12 המדויקים מ-`DECISION-REGISTER.md` בלוק H.
+**Spec lines (DoD-1):** METHODOLOGY §5 סעיפים 1–8, 10–13 (סעיף 9 = Task 2): *"§3 DoD-12 — נוסח H7 ... §9 — מחיקת 'FULL suite ×2 per task' ... §7 — כלל שני-המעברים ... §10.5a חדש ... §10.6 — שורת המרשם + הרחבת H9 ... §10.10 — פרוטוקול ה-fallback ... §10.12/§10.16 — הפניות אכיפה ... §2 — שורת check-plan-complete ... נספח Operating Model ... H8 ... H9 + H10"* + נוסחי H7..H12 המדויקים מ-`DECISION-REGISTER.md` בלוק H.
 
 **Files:**
 - Modify: `docs/process/development-discipline.md` — ‏10 עריכות כירורגיות (Edit A–J), old→new מדויקים להלן. **אין שכתוב של המסמך** (METHODOLOGY §5: "Phase 0 מחיל; לא כותבים מחדש").
@@ -593,7 +593,7 @@ Every `dispatching-parallel-agents` brief quotes this ceiling (see the brief tem
 `docs/process/templates/task-brief.md`).
 ```
 
-- [ ] **Step 6: Edit E — §10.6 (שורת הלדג'ר + הרחבת H9 המוּבנית).** old (שתי הפסקאות הקיימות):
+- [ ] **Step 6: Edit E — §10.6 (שורת המרשם + הרחבת H9 המוּבנית).** old (שתי הפסקאות הקיימות):
 
 ```markdown
 3. **LEFT UNTIL THE GRAND FINAL** — the distance still to run on the *whole* programme, not just this
@@ -833,7 +833,7 @@ ls docs/process/checklists tests/selector-contract.md docs/process/templates 2>&
 חמשת הצעדים, בסדר, בכל פתיחת session:
 
 1. קרא `docs/process/development-discipline.md` — §10 ואז §3 (הכלל הקיים, נשאר ראשון).
-2. קרא את ה-Phase הפעיל ב-`docs/ROADMAP-2026-07-30.md` + מצב הלדג'ר (§5) + `docs/STATUS-BOARD.md`.
+2. קרא את ה-Phase הפעיל ב-`docs/ROADMAP-2026-07-30.md` + מצב המרשם (§5) + `docs/STATUS-BOARD.md`.
 3. הרץ `node scripts/check-meta.mjs` — טפל בכל אדום לפני עבודה.
 4. עבודה סימבולית → serena; שאלות מסמכים/יחסים → graphify; grep = fallback מוצהר.
 5. תקרת מקבילות (§10.5a): סדרתי כברירת מחדל; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/build/GPU.
@@ -852,7 +852,7 @@ ls docs/process/checklists tests/selector-contract.md docs/process/templates 2>&
       המפקידים הופקדו (`graphify global list` מודבק) או "אין מועמדים" נאמר במפורש.
 - [ ] **רענון הגרף המקומי** (§10.12): `/graphify docs --update --mode deep`; אימות:
       `node scripts/check-graph-fresh.mjs` ירוק.
-- [ ] **לדג'ר + לוח:** שורת ה-Phase ב-`docs/ROADMAP-2026-07-30.md` §5 נכונה; `docs/STATUS-BOARD.md`
+- [ ] **מרשם + לוח:** שורת ה-Phase ב-`docs/ROADMAP-2026-07-30.md` §5 נכונה; `docs/STATUS-BOARD.md`
       עודכן עם "vNNN · תאריך+שעה" (H10c); `docs/CAPABILITIES.md` קיבל את פיצ'רי הקשת (H11).
 - [ ] **no-unlanded-items (H8) ירוק:** `node scripts/check-meta.mjs` — כל הסעיפים OK.
 - [ ] **סיכום §10.6 + טבלת H9** נמסרו לבעלים (זו אבן-דרך — H10a מציג).
@@ -912,7 +912,7 @@ new (הבלוק החדש נכנס לפניה):
 (2) ה-Phase הפעיל ב-`docs/ROADMAP-2026-07-30.md` + ‏`docs/STATUS-BOARD.md` · (3) `node scripts/check-meta.mjs`
 — אדום מטופל לפני עבודה · (4) serena לסימבולי, graphify למסמכים/יחסים, grep=fallback מוצהר ·
 (5) §10.5a: סדרתי; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/GPU.
-**בכל סגירת קשת/Phase:** ‏`docs/process/checklists/arc-close.md` — לקחים→§11, הפקדות, גרף, לוח+לדג'ר,
+**בכל סגירת קשת/Phase:** ‏`docs/process/checklists/arc-close.md` — לקחים→§11, הפקדות, גרף, לוח+מרשם,
 check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנת את `docs/STATUS-BOARD.md`** (H10; מוצג באבני-דרך — H10a).
 
 ## Where to find what — `docs/process/development-discipline.md`
@@ -1065,9 +1065,9 @@ new:
 
 ועדכון שורת "עודכן לאחרונה" בתחתית עם תאריך+שעה+גרסה (H10c). ‏(H11: אין פיצ'ר-מוצר חדש — ‏`docs/CAPABILITIES.md` ללא שינוי, מוצהר.)
 
-- [ ] **Step 4: שער-Phase עצמאי — סוכן טרי, מול המפרט ולא מול הלדג'ר.** ‏dispatch של סוכן שער (brief לפי התבנית החדשה `docs/process/templates/task-brief.md`, בלי גישה ל-progress/דוחות המשימות): מקבל את ארבעת מסמכי המפרט (METHODOLOGY ‏§3–§5, ‏AUDIT ‏fixes 1–5, ‏ROADMAP ‏Phase 0, ‏DECISION-REGISTER ‏H) ומאמת כל שורת-מפרט מול הרפו עצמו (קבצים, גרפים, פלטי סקריפטים שהוא מריץ בעצמו). התוצר: `.superpowers/sdd/phase0-gate-verdict.md` עם כל שורה MET/UNMET + ראיות. **שורת UNMET אחת = ה-Phase לא נסגר** — חוזרים ללולאה (§10.1), לא מדווחים "כמעט".
+- [ ] **Step 4: שער-Phase עצמאי — סוכן טרי, מול המפרט ולא מול המרשם.** ‏dispatch של סוכן שער (brief לפי התבנית החדשה `docs/process/templates/task-brief.md`, בלי גישה ל-progress/דוחות המשימות): מקבל את ארבעת מסמכי המפרט (METHODOLOGY ‏§3–§5, ‏AUDIT ‏fixes 1–5, ‏ROADMAP ‏Phase 0, ‏DECISION-REGISTER ‏H) ומאמת כל שורת-מפרט מול הרפו עצמו (קבצים, גרפים, פלטי סקריפטים שהוא מריץ בעצמו). התוצר: `.superpowers/sdd/phase0-gate-verdict.md` עם כל שורה MET/UNMET + ראיות. **שורת UNMET אחת = ה-Phase לא נסגר** — חוזרים ללולאה (§10.1), לא מדווחים "כמעט".
 
-- [ ] **Step 5: סיכום תלת-חלקי + טבלת H9 לבעלים (אבן-דרך — H10a מציג):** ‏DONE (המנגנונים + הראיות) · NEXT ‏(Phase 1 — חוסמים מיידיים; ‏Phase 2 מותר במקביל) · LEFT — שורת הלדג'ר: **19/156 סגורים, יעד 146/156**. כולל דיווח אשרור-החילוצים (Task 3 Step 12) והערות ה-routine שנרשמו (SYNC_ALLOW_STALE, הסרת "offline" מ-ai-strategy).
+- [ ] **Step 5: סיכום תלת-חלקי + טבלת H9 לבעלים (אבן-דרך — H10a מציג):** ‏DONE (המנגנונים + הראיות) · NEXT ‏(Phase 1 — חוסמים מיידיים; ‏Phase 2 מותר במקביל) · LEFT — שורת המרשם: **19/156 סגורים, יעד 146/156**. כולל דיווח אשרור-החילוצים (Task 3 Step 12) והערות ה-routine שנרשמו (SYNC_ALLOW_STALE, הסרת "offline" מ-ai-strategy).
 
 - [ ] **Step 6: Commit + push דרך הצינור החדש (השער אוכף את עצמו):**
 

@@ -8,7 +8,7 @@
       המפקידים הופקדו (`graphify global list` מודבק) או "אין מועמדים" נאמר במפורש.
 - [ ] **רענון הגרף המקומי** (§10.12): `/graphify docs --update --mode deep`; אימות:
       `node scripts/check-graph-fresh.mjs` ירוק.
-- [ ] **לדג'ר + לוח:** שורת ה-Phase ב-`docs/ROADMAP-2026-07-30.md` §5 נכונה; `docs/STATUS-BOARD.md`
+- [ ] **מרשם + לוח:** שורת ה-Phase ב-`docs/ROADMAP-2026-07-30.md` §5 נכונה; `docs/STATUS-BOARD.md`
       עודכן עם "vNNN · תאריך+שעה" (H10c); `docs/CAPABILITIES.md` קיבל את פיצ'רי הקשת (H11).
 - [ ] **no-unlanded-items (H8) ירוק:** `node scripts/check-meta.mjs` — כל הסעיפים OK.
 - [ ] **סיכום §10.6 + טבלת H9** נמסרו לבעלים (זו אבן-דרך — H10a מציג).
