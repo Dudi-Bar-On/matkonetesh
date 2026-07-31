@@ -5473,20 +5473,26 @@ function GEM_URL(model){ return GEM_HOST+(model||GEM_MODEL)+':generateContent'; 
 // Captured here, at the ONE chokepoint every text/JSON call passes through. No UI, no persistence, no
 // stored value: this reads a field of the API envelope and writes nothing the app relies on.
 const GEM_USAGE=[];                       // in-memory ring buffer, dev surface only
-function gemNoteUsage(role, r){
+function gemNoteUsage(role, r, ms){
   // MUST clone: gemFetch's contract is to return the raw Response for its caller to .json(). Reading the
   // body here would consume it and break every AI call in the app.
   try{
     r.clone().json().then(function(j){
       const u=j&&j.usageMetadata; if(!u) return;
-      GEM_USAGE.push({ role:String(role||''), at:Date.now(),
+      const rec={ role:String(role||''), at:Date.now(),
         prompt:u.promptTokenCount|0, out:u.candidatesTokenCount|0,
-        think:u.thoughtsTokenCount|0, total:u.totalTokenCount|0 });
+        think:u.thoughtsTokenCount|0, total:u.totalTokenCount|0 };
+      rec.ms = (typeof ms==='number') ? Math.round(ms) : undefined;
+      GEM_USAGE.push(rec);
       if(GEM_USAGE.length>50) GEM_USAGE.shift();
       try{ console.debug('[AI usage]', role, u); }catch(e){}
     }).catch(function(){});
   }catch(e){}
 }
+// ── Voice Wave 0 · latency instrumentation (spec §8). Dev/test surface only — no UI, no persistence.
+const VC_LAT={};
+function vcLatMark(k){ try{ VC_LAT[k]=performance.now(); window.__vcLat=VC_LAT; }catch(e){} }
+function vcLatReport(){ const t0=VC_LAT.ask||0, out={}; for(const k in VC_LAT) out[k]=Math.round(VC_LAT[k]-t0); return out; }
 
 async function gemFetch(model, body, opts){
   opts=opts||{};
@@ -5503,10 +5509,11 @@ async function gemFetch(model, body, opts){
     if(i){ await new Promise(res=>setTimeout(res, 500*Math.pow(2,i-1))); }   // backoff: 500ms, 1s, ...
     const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
     const to=ctl?setTimeout(function(){ try{ctl.abort();}catch(e){} }, timeout):null;
+    const _t0=performance.now();
     try{
       const r=await fetch(url, {method:'POST', headers, body:JSON.stringify(body), signal:ctl?ctl.signal:undefined});
       if(to) clearTimeout(to);
-      if(r.ok){ gemNoteUsage(model, r); return r; }   // P0-app item 7 — read-only, never alters the Response
+      if(r.ok){ gemNoteUsage(model, r, performance.now()-_t0); return r; }   // P0-app item 7 — read-only, never alters the Response
       if(mode==='managed' && [401,402,403].indexOf(r.status)>=0 && gemKey()){ return gemFetch(model, body, Object.assign({}, opts, {key:gemKey()})); }   // central code invalid/over-cap → use the user's own key
       if(i<tries-1 && [429,500,502,503,504].indexOf(r.status)>=0){ lastErr=new Error('api-'+r.status); continue; }   // retry only transient statuses
       throw new Error('api-'+r.status);
@@ -6933,14 +6940,18 @@ async function vcAskAI(question, ent){
   return txt;
 }
 async function vcAskFlow(rawSaid){
+  vcLatMark('ask');
   const question=vcStripAskPrefix(rawSaid);
   if(!question){ return; }
   const ansL=vcAnsLang();
   vcSpeak(ansL==='en'?'One moment, checking.':'רגע, בודק.', ansL);
+  vcLatMark('ackSound');
   vcLastQA={q:question, a:(ansL==='en'?'…thinking':'…חושב')}; vcRender();
   try{
     const tiers=vcResolveTiers(question);                  // resolved ONCE — both tiers
+    vcLatMark('textReq');
     const answer=await vcAskAI(question, tiers.t1||tiers.t2);
+    vcLatMark('textResp');
     // P0-app item 1: nothing reaches speech OR the transcript un-guarded. One guarded string, both
     // surfaces — a sighted user must never read something different from what a hands-busy user hears.
     const guarded=vcGuardSpoken(answer, tiers, ansL);
