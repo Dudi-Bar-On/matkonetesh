@@ -6435,6 +6435,38 @@ function hebSpeechText(t){
   s=s.replace(/\(([^)]*)\)/g,', $1,');
   return s.replace(/\s+/g,' ').trim();
 }
+// ── Voice Wave 0 · sentence chunker (spec §2.1). ONE rule for all 7 live languages: split at
+// sentence-ending punctuation FOLLOWED BY WHITESPACE — so "63.5" (and a marker phrase glued to its
+// number in the same sentence, e.g. "63°C לפי המדריך המאומת") can never be torn apart. A chunk carries
+// forward (accumulates) while it is still SHORTER than `min` — a bare "כן." absorbs whatever follows
+// until the running buffer clears the floor — so a one-word ack never costs its own round-trip; once a
+// chunk clears `min` it is flushed as-is (a plain, already-complete short sentence like "חכה שעתיים!"
+// stays its own chunk — it is not "too short", it is just short). An overlong sentence hard-splits at
+// the last comma/space before `max`, keeping every request inside the 20s TTS timeout and far from any
+// model-side output limit. Bare default (no opts, as unit-tested here) is deliberately conservative
+// (min:10) so ordinary short sentences are never merged away; Task 5's production pipeline passes an
+// explicit {min:25,max:220} tuned for TTS request economics (spec §2.1).
+function vcChunkText(text, opts){
+  opts=opts||{}; const MINC=opts.min||10, MAXC=opts.max||220;
+  const s=String(text||'').replace(/\s+/g,' ').trim(); if(!s) return [];
+  const parts=s.split(/(?<=[.!?…])\s+/);
+  const merged=[]; let buf=null;
+  for(const p of parts){
+    if(buf===null){ buf=p; continue; }
+    if(buf.length<MINC && (buf.length+1+p.length)<=MAXC) buf=buf+' '+p;
+    else { merged.push(buf); buf=p; }
+  }
+  if(buf!==null) merged.push(buf);
+  const out=[];
+  for(let c of merged){
+    while(c.length>MAXC){
+      let cut=c.lastIndexOf(',', MAXC); if(cut<MINC) cut=c.lastIndexOf(' ', MAXC); if(cut<MINC) cut=MAXC;
+      out.push(c.slice(0, cut+1).trim()); c=c.slice(cut+1).trim();
+    }
+    if(c) out.push(c);
+  }
+  return out;
+}
 /* ── bilingual voice (v132): input(ASR) lang + answer(TTS) lang ── */
 function vcLang(){ return store.get('mk-vclang')||((typeof getLang==='function'&&getLang()!=='he')?'en':'he'); }        // recognition language — defaults to the UI language
 function vcAnsLang(){ return store.get('mk-vcanslang')||vcLang(); } // answer/TTS language
