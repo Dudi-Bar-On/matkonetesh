@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מהדורה 278 — האפליקציה נטענת מהר פי ~4 (פיצול מילוני השפות; שפה נטענת לפי בחירה), גיבוי/שחזור בטוחים (פרטי גישה לעולם לא בקובץ), הקשחת שרת ה-AI, וכותרות אבטחה."
+WHATS_NEW = "מה חדש: האפליקציה נטענת מהר פי ~4 (פיצול מילוני השפות; שפה נטענת לפי בחירה), גיבוי/שחזור בטוחים (פרטי גישה לעולם לא בקובץ), הקשחת שרת ה-AI, וכותרות אבטחה."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
