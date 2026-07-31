@@ -514,7 +514,14 @@ for (const lg of ['fr', 'de', 'es', 'it', 'ru']) {
       expect(r.placeholder).not.toContain('הקלד שאלה');   // no Hebrew leak
       expect(r.btn).not.toContain('שאל');
       expect(r.placeholder.length).toBeGreaterThan(2);
-    } finally { await page.unroute(/generativelanguage|gemini/i); }
+    } finally {
+      // unroute must never become the reported failure: if the body times out, Playwright's teardown has
+      // already closed the page, and an unroute rejection here MASKS the real cause (observed 1.8: the
+      // report said `page.unroute: Target page… closed` while the actual defect was the body hanging).
+      // The page is per-test (isolatedPage-style `page` fixture is the warm page, but routes installed
+      // here are page-scoped and die with it), so a failed unroute is harmless — swallow it deliberately.
+      try { await page.unroute(/generativelanguage|gemini/i); } catch { /* page already closed by teardown */ }
+    }
   });
 }
 
