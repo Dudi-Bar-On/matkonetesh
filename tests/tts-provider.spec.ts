@@ -1,4 +1,6 @@
 import { test, expect, seedApp } from './_fixtures';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 
 // R-45 · two-provider TTS layer. Design: docs/superpowers/specs/2026-08-01-tts-provider-layer-design.md
 const MANAGED = { 'mk-central-url': JSON.stringify('https://w.example'), 'mk-central-code': JSON.stringify('abc123') };
@@ -364,4 +366,20 @@ test('R-45 DoD-6: a barge-in during cloud SYNTHESIS never schedules the audio at
   expect(r.cursor).toBe(r.startAt);            // the cursor is returned untouched — the contract holds
   expect(r.scheduled).toBe(0);                 // nothing was ever put on the audio clock
   expect(r.src).toBeNull();
+});
+
+// R-45 DoD-7: the service-account secret must not be in what we ship. This reads the BUILT bundle, not
+// the source — the build is what reaches a user (the v267 lesson: measure the artifact, not a proxy).
+test('R-45 DoD-7: no service-account material is present in the shipped bundle', () => {
+  const dist = readFileSync(resolve(process.cwd(), 'dist/index.html'), 'utf8');
+  for (const needle of [
+    'BEGIN PRIVATE KEY', 'PRIVATE KEY-----', 'private_key', 'client_email',
+    'iam.gserviceaccount.com', 'oauth2.googleapis.com/token',
+    'urn:ietf:params:oauth:grant-type:jwt-bearer', 'GCP_SA_JSON',
+  ]) {
+    expect(dist).not.toContain(needle);
+  }
+  // positive control: the bundle DOES contain the client half, so this test is reading the right file
+  expect(dist).toContain('/v1/tts:synthesize');
+  expect(dist).toContain('cloudSpeakSeg');
 });
