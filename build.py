@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: האפליקציה מדברת עכשיו רק בקול של גוגל, מתחילה לדבר תוך שניות במקום ליפול לקול הרובוטי של הטלפון, מקריאה תשובות ארוכות עד הסוף, ועונה בקצרה כמו בן אדם."
+WHATS_NEW = "מה חדש: הקול חוזר להקריא את שעת המשימה, מדבר ברצף בלי הפסקות ובלי קרעים בין משפטים, וממשיך לדבר גם כשהתשובה ארוכה."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -337,7 +337,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 280 · 31.7.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 281 · 1.8.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>

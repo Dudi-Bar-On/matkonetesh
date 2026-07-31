@@ -2444,6 +2444,7 @@
   "מה חדש: האפליקציה נטענת מהר פי ~4 (פיצול מילוני השפות; שפה נטענת לפי בחירה), גיבוי/שחזור בטוחים (פרטי גישה לעולם לא בקובץ), הקשחת שרת ה-AI, וכותרות אבטחה.": "What's new: the app now loads about 4x faster (language dictionaries are split; a language downloads only when chosen), backup/restore are safer (the central access code never appears in the file), the AI server is hardened, and security headers are in place.",
   "מה חדש: לכל מספר שהאפליקציה מציגה או אומרת בקול יש כעת מקור אחיד ליחידות המידה, כך שטמפרטורה או משקל לא יכולים להוצג ביחידה שגויה; וכן תוקן באג בשורה הזו עצמה.": "What's new: every number the app shows or speaks now comes from a single source of truth for units, so a temperature or weight can no longer be shown in the wrong unit; plus a fix to this very line.",
   "מה חדש: האפליקציה מדברת עכשיו רק בקול של גוגל, מתחילה לדבר תוך שניות במקום ליפול לקול הרובוטי של הטלפון, מקריאה תשובות ארוכות עד הסוף, ועונה בקצרה כמו בן אדם.": "What's new: the app now speaks with Google's voice only, starts talking within seconds instead of falling back to the phone's robotic voice, reads long answers in full, and answers briefly like a person would.",
+  "מה חדש: הקול חוזר להקריא את שעת המשימה, מדבר ברצף בלי הפסקות ובלי קרעים בין משפטים, וממשיך לדבר גם כשהתשובה ארוכה.": "What's new: the voice reads the task's clock time again, speaks continuously with no pauses or seams between sentences, and keeps going even when the answer is long.",
   "מלח / ריפוי": "Salt / cure",
   "עץ ופחם": "Wood & charcoal",
   "ציר זמן משולב": "Combined timeline",
