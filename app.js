@@ -6924,6 +6924,65 @@ async function cloudSpeakSeg(text, lang, gen, startAt){
   return await gemPlayBuf(ab, gen, startAt);
 }
 
+// §4.1 names EXACTLY three fallback triggers: 429/quota, timeout, no-audio. Nothing else falls over —
+// a 403 is a real permission/billing problem that a second engine cannot fix (and v281 already made
+// "never retry a 403" law), a 404 is a wrong model name, and a stream-unsupported is handled separately
+// below because the EXISTING blocking path already answers it correctly.
+function ttsFallbackWorthy(err){
+  const s = String((err&&err.message)||'');
+  if(/api-403/.test(s)) return false;
+  return gemIsRateLimited(err) || /timeout|no-audio/.test(s);
+}
+// Lookahead-1 prefetch. When the secondary is available the prefetch does NOT retry Gemini — the ONE
+// remedial request belongs to the secondary (design §4.3: "הספק המשני מחליף בקשה, לא מוסיף"). Without a
+// secondary the shipped gemSynthChunkRetrying behaviour is used, byte for byte.
+function ttsPrefetch(text, gen){
+  return ttsCloudAvail() ? gemSynthChunk(text) : gemSynthChunkRetrying(text, gen);
+}
+
+// ══ THE ONE DECISION POINT (design §3) ══════════════════════════════════════════════════════════
+// (text, lang, gen, startAt) → cursor, plus a useCase for the §4.2 table. Every caller in gemSpeak goes
+// through here; no other function in the app names a provider.
+//
+// Request-count discipline (design §4.3, hotfix 0bee32f is sacred): in the MANAGED path this calls
+// gemSpeakSegStream DIRECTLY rather than gemSpeakSeg, because gemSpeakSeg owns the ONE allowed Gemini
+// retry. Calling gemSpeakSeg and then the secondary would be 5 requests where v281 allows 4. Calling the
+// stream once and then the secondary is 2. The secondary REPLACES the retry; it never adds to it.
+//   BYOK (no secondary): gemSpeakSeg is invoked unchanged, retry and all — behaviour identical to v281.
+async function ttsSpeakSeg(text, lang, gen, startAt, useCase){
+  // the same test seam gemSpeakSeg exposes, at the same position — every existing voice test that
+  // installs window.__gemTtsStreamMock keeps working through the new decision point.
+  if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen);
+  const provider = ttsProviderFor(useCase);
+
+  if(provider==='cloud'){
+    try{
+      return await cloudSpeakSeg(text, lang, gen, startAt);
+    }catch(e){
+      if(!vcGenCurrent(gen)) return startAt;
+      if(!ttsCloudUnavailableErr(e)) throw e;      // a real synthesis failure surfaces — no silent double-spend
+      ttsCloudOff = true;                          // latched ONCE per session: this Worker has no secondary
+      return await gemSpeakSeg(text, lang, gen, startAt);
+    }
+  }
+
+  if(!ttsCloudAvail()) return await gemSpeakSeg(text, lang, gen, startAt);   // BYOK — the v281 path, untouched
+
+  try{
+    return await gemSpeakSegStream(text, lang, gen);
+  }catch(e){
+    if(!vcGenCurrent(gen)) return startAt;         // barge-in during the attempt: stay silent
+    if(String((e&&e.message)||'')==='stream-unsupported'){
+      // a Worker deployed before streaming — the EXISTING blocking path is the right answer, not a
+      // different engine (gemSpeakSegAttempt's own branch, reproduced here so gemSpeakSeg stays untouched)
+      const buf = await gemSynthChunk(text);
+      return vcGenCurrent(gen) ? await gemPlayBuf(buf, gen, startAt) : startAt;
+    }
+    if(!ttsFallbackWorthy(e)) throw e;
+    return await cloudSpeakSeg(text, lang, gen, startAt);   // §4.1 — ONE hop, never a chain
+  }
+}
+
 // ── Hotfix v281 (owner-reported live regression, ~1h after v280 shipped): v280 sent ONE Gemini TTS
 // request per vcChunkText sentence-chunk — measured 10-15 requests for a realistic answer. Live probe:
 // chunk 1 succeeded, chunks 2-12 all came back HTTP 429 ("You exceeded your current quota") — the
@@ -7020,10 +7079,11 @@ async function gemSynthChunkRetrying(text, gen){
 // any number of independent handlers, and `.catch()` here doesn't consume/replace what a later `await`
 // on the SAME promise observes.
 function gemTrackPending(p){ try{ p.catch(function(){}); }catch(e){} return p; }
-async function gemSpeak(text, lang, gen){
+async function gemSpeak(text, lang, gen, useCase){
   if(gen===undefined) gen=vcNewSpeakGen();
   if(!aiAvail()) throw new Error('no-key');            // defensive only — R-35: no keyless user exists
   const L2=lang||vcVoiceLang();
+  const UC=useCase||'answer';                          // R-45 §4.2 — the routing key, defaulted, never absent
   // sentence-level split only (min:0 → vcChunkText never merges, so this is the same sentence
   // boundaries the old per-sentence request bug was already using) — vcCoalesceTtsChunks does the
   // actual request-economy coalescing below.
@@ -7031,34 +7091,34 @@ async function gemSpeak(text, lang, gen){
   const chunks=vcCoalesceTtsChunks(sentences);
   if(!chunks.length) return;
   vcLatMark('ttsReq1');
-  // Regression fix (b)+(d), owner-reported live bugs on v280: a long silence between adjacent lines, and
-  // audible jitter DURING playback — one root cause (controller-verified against gemPlayBuf/
-  // gemPlayPcmStream directly). `cursor` is the running audio-clock time threaded across EVERY chunk
-  // boundary (streamed chunk 0 via gemPlayPcmStream's own cursor, buffered chunks 1..n via gemPlayBuf's
-  // new startAt param) — buffers now queue back-to-back on the WebAudio clock the same way
-  // gemPlayPcmStream already schedules its OWN PCM sub-frames, instead of starting "now" and resolving on
-  // the `onended` DOM event. `pending` restores lookahead-1 (chunk i+1's synthesis, gemSynthChunk alone —
-  // no playback — starts as soon as chunk i's OWN request is dispatched, so it has chunk i's whole
-  // playback duration to finish) WITHOUT reverting the quota hotfix (0bee32f): the request COUNT is
-  // unchanged, only WHEN each request starts moves earlier.
+  // Regression fix (b)+(d) — UNCHANGED from v281: `cursor` is the running audio-clock time threaded
+  // across EVERY chunk boundary, and `pending` is the lookahead-1 prefetch. R-45 changes only WHICH
+  // engine answers a chunk (ttsSpeakSeg, the single decision point) and what happens when the prefetched
+  // Gemini synthesis fails: with a secondary available, the fallback REPLACES the retry (ttsPrefetch
+  // drops gemSynthChunkRetrying's retry precisely so the count cannot grow — design §4.3).
   let cursor;
   let pending=null;
   for(let i=0;i<chunks.length;i++){
     if(!vcGenCurrent(gen)) return;
-    // firstSound is marked BEFORE the await (matches the old mark's meaning: "chunk 0's speech is
-    // starting now") — the finer-grained "sound actually scheduled" moment is gemPlayPcmStream's own
-    // 'firstAudio' mark, taken exactly when the first PCM frame is scheduled on the audio clock.
     if(i===0) vcLatMark('firstSound');
     try{
       if(pending && pending.idx===i){
-        const buf=await pending.promise;
-        if(!vcGenCurrent(gen)) return;                  // barge-in while this chunk was prefetching: never schedule it
-        if(i+1<chunks.length) pending={idx:i+1, promise:gemTrackPending(gemSynthChunkRetrying(chunks[i+1], gen))};
-        cursor=await gemPlayBuf(buf, gen, cursor);
+        let buf=null, fellOver=false;
+        try{
+          buf=await pending.promise;
+        }catch(e){
+          if(!vcGenCurrent(gen)) return;                // barge-in while prefetching: never schedule it
+          if(!ttsCloudAvail() || !ttsFallbackWorthy(e)) throw e;
+          fellOver=true;                                // the ONE remedial request goes to the secondary
+        }
+        if(!vcGenCurrent(gen)) return;
+        if(i+1<chunks.length) pending={idx:i+1, promise:gemTrackPending(ttsPrefetch(chunks[i+1], gen))};
+        cursor = fellOver ? await cloudSpeakSeg(chunks[i], L2, gen, cursor)
+                          : await gemPlayBuf(buf, gen, cursor);
       } else {
-        // chunk 0 (or any chunk reached with nothing pre-fetched): stream for the fastest first sound (R-39).
-        const p=gemSpeakSeg(chunks[i], L2, gen, cursor);
-        if(i+1<chunks.length) pending={idx:i+1, promise:gemTrackPending(gemSynthChunkRetrying(chunks[i+1], gen))};
+        // chunk 0 (or any chunk reached with nothing pre-fetched): the decision point picks the engine.
+        const p=ttsSpeakSeg(chunks[i], L2, gen, cursor, UC);
+        if(i+1<chunks.length) pending={idx:i+1, promise:gemTrackPending(ttsPrefetch(chunks[i+1], gen))};
         cursor=await p;
       }
     }catch(err){ err.chunkIdx=i; throw err; }           // position → visible error (Task 6)
@@ -7070,15 +7130,16 @@ async function gemSpeak(text, lang, gen){
 // silent downgrade: a failure stops speech and shows an actionable toast; the answer text stays on
 // screen; a retry (same button) reuses every cached chunk. R-35: there is no keyless user — the
 // !aiAvail() branch is a defensive no-op, not a product path (the other 26 branches: Phase 9).
-function vcSpeak(text, lang){
+function vcSpeak(text, lang, useCase){
   const L2=lang||vcVoiceLang();
+  const UC=useCase||'answer';                      // R-45 §4.2 — see TTS_ROUTE
   const gen=vcNewSpeakGen();                       // taking the floor invalidates every in-flight speaker
   gemStop();
   // M5 (silent-failure-hunter audit): !aiAvail() used to be a bare return — if the key drops mid-session
   // (revoked, network config change, disconnect), every subsequent "הקרא" press became a silent no-op
   // forever, with no way for the user to learn why. Toast the reconnect hint instead.
   if(!aiAvail()){ toast(L('אין מפתח AI מחובר — התחבר כדי להשתמש בהקראה קולית.','No AI key connected — connect one to use voice read-aloud.')); return; }
-  gemSpeak(text, L2, gen).catch(err=>{
+  gemSpeak(text, L2, gen, UC).catch(err=>{
     // Accepted as correctly silent (owner-reviewed): a superseded speaker must never toast over its
     // successor. But an error racing a stale generation was previously swallowed with zero trace — log it
     // so a REAL bug hiding behind a race still leaves evidence, even though it never surfaces to the user.
@@ -7166,8 +7227,8 @@ function vcRender(){
   // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
   { const tm=host.querySelector('.vc-timerwrap .timer'); if(tm){ const total=+tm.dataset.sec; const warnAt=total>150?120:(total>60?30:0);
       wireTimer(tm, { warnSec:warnAt,
-        onWarn:function(left){ const min=Math.round(left/60); vcSpeak(vcVoiceLang()==='en'?(left>=60?min+' minutes left':'less than a minute left'):(left>=60?'עוד כ-'+min+' דקות':'עוד פחות מדקה')); },
-        onEnd:function(){ vcSpeak(vcVoiceLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.'); } }); } }
+        onWarn:function(left){ const min=Math.round(left/60); vcSpeak(vcVoiceLang()==='en'?(left>=60?min+' minutes left':'less than a minute left'):(left>=60?'עוד כ-'+min+' דקות':'עוד פחות מדקה'), vcVoiceLang(), 'alert'); },
+        onEnd:function(){ vcSpeak(vcVoiceLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.', vcVoiceLang(), 'alert'); } }); } }
   { const ai=host.querySelector('#vcAskInput'); if(ai) ai.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const q=ai.value.trim(); if(q) vcAskFlow(q); } }); }
   { const gs=host.querySelector('#gemVoiceSel'); if(gs) gs.addEventListener('change',()=>{ store.set('mk-gemvoice',gs.value); vcSpeak('שלום! זה הקול החדש של ההקראה. נשמע טוב?'); }); }
   if(t) vcWarmAck();   // fire-and-forget panel-open pre-warm — makes the *spoken* ack the common case
@@ -7183,14 +7244,14 @@ function vcAction(a){
     const m=(t&&((t.det||'')+' '+(t.label||'')).match(/(\d{2,3})°/));
     const chamber = t && (t.kind==='smoke'||t.kind==='cook');   // matched temp is the pit/chamber, not the internal
     const bcheck = t && t.kind==='bcheck';                       // this step IS the internal-temp check
-    if(en) vcSpeak(m?`${m[1]} degrees${bcheck?' — that is the target core temperature; check with a probe before serving':chamber?' — that is the chamber temperature; pull when the core reaches the safe internal temp':''}.`:'No temperature for this step.', 'en');
-    else vcSpeak(m?(bcheck?`טמפרטורת יעד בליבה: ${m[1]} מעלות — בדוק עם מד-חום לפני הגשה`:chamber?`טמפרטורת התא: ${m[1]} מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה`:`הטמפרטורה: ${m[1]} מעלות`):'אין טמפרטורה במשימה הזו', 'he');
+    if(en) vcSpeak(m?`${m[1]} degrees${bcheck?' — that is the target core temperature; check with a probe before serving':chamber?' — that is the chamber temperature; pull when the core reaches the safe internal temp':''}.`:'No temperature for this step.', 'en', 'step');
+    else vcSpeak(m?(bcheck?`טמפרטורת יעד בליבה: ${m[1]} מעלות — בדוק עם מד-חום לפני הגשה`:chamber?`טמפרטורת התא: ${m[1]} מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה`:`הטמפרטורה: ${m[1]} מעלות`):'אין טמפרטורה במשימה הזו', 'he', 'step');
   }
   else if(a==='qwhen'){
     const nx=vcTasks[vcIdx+1];
     const say=en?(nx?`Next task at ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'That was the last task.')
                :(nx?`המשימה הבאה בשעה ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'זו המשימה האחרונה');
-    vcSpeak(say, vcVoiceLang());   // build in the answer language, speak directly (same voice as the other buttons)
+    vcSpeak(say, vcVoiceLang(), 'step');   // build in the answer language, speak directly (same voice as the other buttons)
   }
   else if(a==='mic') vcToggleMic();
   else if(a==='asktext'){ const inp=$("#vcAskInput"); const q=inp&&inp.value.trim(); if(q) vcAskFlow(q); }
@@ -7222,7 +7283,7 @@ async function vcTranslateToEn(text){
   vcTransCache.set(src,out); return out;
 }
 // speak app CONTENT (task steps) — the content is already in the UI language (R-31); no translation leg.
-function vcSpeakContent(text){ vcSpeak(text, vcVoiceLang()); }
+function vcSpeakContent(text){ vcSpeak(text, vcVoiceLang(), 'step'); }
 // W2-P5: the live-session state as grounding for the voice Ask (so "how much longer?" uses the real ETA).
 function copilotVoiceContext(){
   const s=(typeof liveSession==='function')?liveSession():null;
@@ -7633,7 +7694,7 @@ function vcToggleMic(){
     };
     rec.onend=()=>{ if(vcRec===rec && !rec._stop){ setTimeout(()=>{ try{rec.start();}catch(err){} },250); } };  // לולאת one-shot
     rec.start(); vcRender();
-    vcSpeak(vcVoiceLang()==='en'?'Listening. Say: next, back, read again, details, temperature — or ask a question.':'מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.', vcVoiceLang());
+    vcSpeak(vcVoiceLang()==='en'?'Listening. Say: next, back, read again, details, temperature — or ask a question.':'מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.', vcVoiceLang(), 'alert');
   }catch(e){ vcRec=null; toast(L('לא ניתן להפעיל מיקרופון: ','Could not start the microphone: ')+e.message); } };
   if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{

@@ -123,3 +123,140 @@ test('R-45: a 501 from the Worker is the clean-skip signal, not an error the use
   expect(r.msg).toContain('cloud-unavailable');
   expect(r.unavailable).toBe(true);
 });
+
+// Instrument every outbound TTS request so the DoD-8 count assertion is measured, not assumed.
+const COUNTING_FETCH = `
+  window.__ttsCalls = [];
+  window.__realFetch = window.fetch;
+  window.__installFetch = function(handler){
+    window.fetch = async function(u,o){
+      const url=String(u&&u.url?u.url:u);
+      if(/:streamGenerateContent|:generateContent|\\/v1\\/tts:synthesize/.test(url)) window.__ttsCalls.push(url);
+      return handler(url,o);
+    };
+  };
+  window.__restoreFetch = function(){ window.fetch = window.__realFetch; };
+  window.__gemini429 = function(){
+    return new Response(JSON.stringify({error:{code:429,message:'You exceeded your current quota',
+      details:[{'@type':'type.googleapis.com/google.rpc.RetryInfo', retryDelay:'0s'}]}}),
+      {status:429, headers:{'Content-Type':'application/json'}});
+  };`;
+
+test('R-45 DoD-2+3+8: a Gemini 429 falls over to Cloud ONCE — sound comes out and the request count does not grow', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof ttsSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  await page.evaluate(COUNTING_FETCH);
+  const r = await page.evaluate(`(async()=>{
+    window.__installFetch(async function(url){
+      if(url.indexOf('/v1/tts:synthesize')>=0) return new Response(window.__pcmBytes(0.4), {status:200});
+      return window.__gemini429();                               // every Gemini TTS request 429s
+    });
+    try{
+      const gen=vcNewSpeakGen();
+      const startAt=gemAudioCtx().currentTime+1.0;
+      const before=window.__gemAudioChunks;
+      const cursor=await ttsSpeakSeg('שלום','he',gen,startAt,'answer');
+      return { cursor, startAt, calls: window.__ttsCalls.slice(), audible: window.__gemAudioChunks-before };
+    } finally { window.__restoreFetch(); }
+  })()`);
+  // DoD-2: the user gets SOUND, not silence
+  expect(r.audible).toBe(1);
+  expect(r.cursor).toBeGreaterThan(r.startAt + 0.3);
+  // DoD-3: exactly ONE fallback hop — one Gemini attempt, one Cloud request. Not a loop.
+  const gemini = r.calls.filter((u: string) => u.includes('GenerateContent'));
+  const cloud = r.calls.filter((u: string) => u.includes('/v1/tts:synthesize'));
+  expect(gemini.length).toBe(1);
+  expect(cloud.length).toBe(1);
+  // DoD-8: 2 requests total — v281's own worst case for this chunk was 4 (attempt ×2, retry ×2)
+  expect(r.calls.length).toBe(2);
+});
+
+test('R-45 DoD-4: a BYOK user never calls the secondary and never goes silent', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...BYOK });
+  await page.waitForFunction(`typeof ttsSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  await page.evaluate(COUNTING_FETCH);
+  const r = await page.evaluate(`(async()=>{
+    window.__installFetch(async function(url){
+      if(url.indexOf('/v1/tts:synthesize')>=0) throw new Error('the secondary must never be reached by a BYOK user');
+      return new Response(window.__pcmBytes(0.3), {status:200});   // pretend Gemini answers (mocked below anyway)
+    });
+    window.__gemTtsStreamMock = async function(t,l,g){ window.__spoke=(window.__spoke||0)+1; return gemAudioCtx().currentTime+0.3; };
+    try{
+      const gen=vcNewSpeakGen();
+      const cursor=await ttsSpeakSeg('התראה קצרה','he',gen,0,'alert');   // an ALERT — a cloud row in the table
+      return { cursor, spoke: window.__spoke, cloudCalls: window.__ttsCalls.filter(function(u){return u.indexOf('/v1/tts:synthesize')>=0;}).length };
+    } finally { window.__restoreFetch(); delete window.__gemTtsStreamMock; }
+  })()`);
+  expect(r.cloudCalls).toBe(0);        // skipped cleanly — design §2
+  expect(r.spoke).toBe(1);             // and it still SPEAKS — no mysterious silence (DoD-4)
+  expect(typeof r.cursor).toBe('number');
+});
+
+test('R-45: a 403 permission failure is NOT fallback-worthy — a second engine cannot fix billing', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof ttsFallbackWorthy==='function'`);
+  const r = await page.evaluate(`({
+    rate:    ttsFallbackWorthy(new Error('api-429: RESOURCE_EXHAUSTED')),
+    quota:   ttsFallbackWorthy(new Error('api-400: quota')),
+    timeout: ttsFallbackWorthy(new Error('timeout')),
+    noAudio: ttsFallbackWorthy(new Error('no-audio')),
+    perm:    ttsFallbackWorthy(new Error('api-403: permission denied')),
+    other:   ttsFallbackWorthy(new Error('api-404: model not found'))
+  })`);
+  expect(r.rate).toBe(true);
+  expect(r.quota).toBe(true);
+  expect(r.timeout).toBe(true);
+  expect(r.noAudio).toBe(true);
+  expect(r.perm).toBe(false);
+  expect(r.other).toBe(false);
+});
+
+test('R-45 §4.2: an alert routes to the secondary and an answer does not — same code path, table-driven', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof ttsSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  await page.evaluate(COUNTING_FETCH);
+  const r = await page.evaluate(`(async()=>{
+    window.__installFetch(async function(url){ return new Response(window.__pcmBytes(0.2), {status:200}); });
+    try{
+      // ttsSpeakSeg checks window.__gemTtsStreamMock UNCONDITIONALLY, at the same first-line position
+      // gemSpeakSeg already used (required so every existing voice test that installs the mock keeps
+      // working) — so it must stay UNINSTALLED for the alert call, or it would short-circuit the cloud
+      // decision this call is testing and never reach cloudSpeakSeg at all.
+      await ttsSpeakSeg('התראה','he',vcNewSpeakGen(),0,'alert');
+      const afterAlert = window.__ttsCalls.filter(function(u){return u.indexOf('/v1/tts:synthesize')>=0;}).length;
+      window.__gemTtsStreamMock = async function(){ return gemAudioCtx().currentTime+0.2; };
+      await ttsSpeakSeg('תשובה','he',vcNewSpeakGen(),0,'answer');
+      const afterAnswer = window.__ttsCalls.filter(function(u){return u.indexOf('/v1/tts:synthesize')>=0;}).length;
+      return { afterAlert, afterAnswer };
+    } finally { window.__restoreFetch(); delete window.__gemTtsStreamMock; }
+  })()`);
+  expect(r.afterAlert).toBe(1);        // alert → cloud
+  expect(r.afterAnswer).toBe(1);       // answer → gemini (the cloud counter did not move)
+});
+
+test('R-45: vcSpeak threads the use case through to the decision point', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof vcSpeak==='function' && typeof ttsSpeakSeg==='function'`);
+  await page.evaluate(`{
+    window.__seen=[];
+    window.__ttsSpeakSegReal=window.ttsSpeakSeg;
+    window.ttsSpeakSeg=async function(t,l,g,s,useCase){ window.__seen.push(useCase); return (s||0)+0.1; };
+  }`);
+  try{
+    await page.evaluate(`{
+      vcSpeak('תשובה','he');                       // default
+      vcSpeak('התראה','he','alert');
+      vcSpeakContent('שלב');
+    }`);
+    await page.waitForFunction(`window.__seen && window.__seen.length>=3`);
+    const r = await page.evaluate(`window.__seen.slice()`);
+    expect(r).toContain('answer');
+    expect(r).toContain('alert');
+    expect(r).toContain('step');
+  } finally {
+    await page.evaluate(`{ window.ttsSpeakSeg=window.__ttsSpeakSegReal; delete window.__ttsSpeakSegReal; }`);
+  }
+});
