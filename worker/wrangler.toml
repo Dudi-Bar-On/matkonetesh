@@ -1,6 +1,13 @@
 name = "matkonet-ai"
 main = "index.js"
 compatibility_date = "2024-11-01"
+# Task 6 (streaming metering): workerd has an open regression (cloudflare/workerd#6832) where a
+# client disconnect no longer cancels an async JS ReadableStream response body — `cancel()` never
+# runs, `controller.enqueue()` never throws, and an unbounded stream would run to completion after
+# the client is gone (never stopping the spend on the upstream Gemini call). The issue confirms
+# `request.signal` still reliably fires `abort` on every affected workerd version, but ONLY when this
+# flag is opted in (no default-enable date yet). handleStream (worker/index.js) relies on it for F4.
+compatibility_flags = ["enable_request_signal"]
 
 # Per-user access codes live in this KV namespace.
 # Create it once with:  wrangler kv namespace create CODES

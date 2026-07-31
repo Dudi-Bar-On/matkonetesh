@@ -70,13 +70,137 @@ describe('D1 — fail-CLOSED on a malformed KV record (P0-worker fix)', () => {
   });
 });
 
-describe('B19 — streaming route is closed (app never calls it)', () => {
-  it('POST :streamGenerateContent returns 404 and no upstream call', async () => {
-    await env.CODES.put('code:streamer', JSON.stringify({ active: true, cap: 1000, used: 10 }));
+describe('B19 successor — streaming route is OPEN but METERED (spec §2.2/§3)', () => {
+  it('admission precedes the first upstream byte: an over-cap code gets 402 and Gemini is never called', async () => {
+    await env.CODES.put('code:st-capped', JSON.stringify({ active: true, cap: 100, used: 100 }));
     const fetchSpy = vi.spyOn(globalThis, 'fetch');
-    const response = await post(STREAM_URL, 'streamer');
-    expect(response.status).toBe(404);
+    const r = await post(STREAM_URL, 'st-capped');
+    expect(r.status).toBe(402);
+    expect((await r.json()).error).toBe('quota_reached');
     expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('an invalid code on the streaming route: 403, no upstream call', async () => {
+    const fetchSpy = vi.spyOn(globalThis, 'fetch');
+    const r = await post(STREAM_URL, 'no-such-code');
+    expect(r.status).toBe(403);
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('the reserve is debited BEFORE the upstream call resolves', async () => {
+    await env.CODES.put('code:st-reserve', JSON.stringify({ active: true, cap: 100000, used: 0 }));
+    let usedAtUpstream = -1;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(async () => {
+      usedAtUpstream = JSON.parse(await env.CODES.get('code:st-reserve')).used;
+      return geminiOkResponse(5);
+    });
+    await post(STREAM_URL, 'st-reserve');
+    expect(usedAtUpstream).toBe(2000);   // RESERVE_TOKENS landed before any upstream byte
+  });
+});
+
+function sseFrames(frames) {           // build lazily INSIDE mockImplementation (workerd I/O isolation)
+  const enc = new TextEncoder();
+  return new Response(new ReadableStream({
+    start(c) {
+      for (const f of frames) c.enqueue(enc.encode('data: ' + JSON.stringify(f) + '\n\n'));
+      c.close();
+    },
+  }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+const frameText = (text, total) => ({
+  candidates: [{ content: { parts: [{ text }] } }],
+  ...(total != null ? { usageMetadata: { totalTokenCount: total } } : {}),
+});
+
+describe('Streaming metering (spec §2.3/§2.4)', () => {
+  it('F-happy: body passes through; used reconciles to the FINAL usageMetadata.totalTokenCount', async () => {
+    await env.CODES.put('code:st-ok', JSON.stringify({ active: true, cap: 100000, used: 10 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      sseFrames([frameText('שלום, ', 3), frameText('עולם.', 9)]));
+    const r = await post(STREAM_URL, 'st-ok');
+    expect(r.status).toBe(200);
+    const bodyText = await r.text();
+    expect(bodyText).toContain('שלום, ');
+    expect(bodyText).toContain('עולם.');
+    await vi.waitFor(async () => {          // reconcile rides ctx.waitUntil — poll the observable state
+      expect(JSON.parse(await env.CODES.get('code:st-ok')).used).toBe(10 + 9);
+    });
+  });
+
+  it('F7 fail-closed: NO usageMetadata anywhere → charge at least the full reserve', async () => {
+    await env.CODES.put('code:st-nousage', JSON.stringify({ active: true, cap: 100000, used: 0 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => sseFrames([frameText('קצר.')]));
+    const r = await post(STREAM_URL, 'st-nousage');
+    await r.text();
+    await vi.waitFor(async () => {
+      const used = JSON.parse(await env.CODES.get('code:st-nousage')).used;
+      expect(used).toBeGreaterThanOrEqual(2000);   // max(RESERVE, ceil(chars/3)) — never a refund on missing data
+    });
+  });
+
+  it('F1 refund: upstream dies before any byte → 504 and the reserve is refunded', async () => {
+    await env.CODES.put('code:st-dead', JSON.stringify({ active: true, cap: 1000, used: 0 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      Promise.reject(new DOMException('The operation was aborted', 'AbortError')));
+    const r = await post(STREAM_URL, 'st-dead');
+    expect(r.status).toBe(504);
+    await vi.waitFor(async () => {
+      expect(JSON.parse(await env.CODES.get('code:st-dead')).used).toBe(0);
+    });
+  });
+
+  it('F5 never-cut: a stream that crosses the cap COMPLETES; the over-debit lands; the NEXT request is 402', async () => {
+    await env.CODES.put('code:st-cross', JSON.stringify({ active: true, cap: 2100, used: 0 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      sseFrames([frameText('חלק ראשון, ', 1500), frameText('וגם הסוף המלא של ההנחיה.', 3000)]));
+    const r1 = await post(STREAM_URL, 'st-cross');
+    const t1 = await r1.text();
+    expect(t1).toContain('וגם הסוף המלא של ההנחיה.');   // NOT cut, despite crossing cap mid-stream (spec §2.5)
+    await vi.waitFor(async () => {
+      expect(JSON.parse(await env.CODES.get('code:st-cross')).used).toBe(3000); // over-debit stands
+    });
+    const r2 = await post(STREAM_URL, 'st-cross');
+    expect(r2.status).toBe(402);                          // per-user enforcement at the NEXT admission (G3)
+  });
+
+  it('F4 disconnect: client cancels mid-stream → upstream cancelled, fail-closed charge still lands', async () => {
+    await env.CODES.put('code:st-gone', JSON.stringify({ active: true, cap: 100000, used: 0 }));
+    let upstreamCancelled = false;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      const enc = new TextEncoder();
+      return new Response(new ReadableStream({
+        start(c) { c.enqueue(enc.encode('data: ' + JSON.stringify(frameText('התחלה, ', 800)) + '\n\n')); },
+        cancel() { upstreamCancelled = true; },   // never closes on its own — only a cancel ends it
+      }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    });
+    const r = await post(STREAM_URL, 'st-gone');
+    const reader = r.body.getReader();
+    await reader.read();                          // take the first frame…
+    await reader.cancel();                        // …then hang up
+    await vi.waitFor(async () => {
+      expect(upstreamCancelled).toBe(true);
+      const used = JSON.parse(await env.CODES.get('code:st-gone')).used;
+      expect(used).toBeGreaterThanOrEqual(2000);  // counted-or-reserve, fail closed — never a free ride
+    });
+  });
+
+  it('F6 ceiling: STREAM_MAX_TOKENS cuts a runaway stream at a FRAME boundary', async () => {
+    await env.CODES.put('code:st-runaway', JSON.stringify({ active: true, cap: 100000000, used: 0 }));
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+      const enc = new TextEncoder();
+      let n = 0;
+      return new Response(new ReadableStream({
+        pull(c) { n++; c.enqueue(enc.encode('data: ' + JSON.stringify(frameText('עוד ועוד ', n * 500)) + '\n\n')); },
+      }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+    });
+    const r = await post(STREAM_URL, 'st-runaway');
+    const text = await r.text();                  // resolves ⇔ the Worker CLOSED the stream (the assertion)
+    expect(text.endsWith('\n\n')).toBe(true);     // ended at a frame boundary, never mid-frame
+    await vi.waitFor(async () => {
+      const used = JSON.parse(await env.CODES.get('code:st-runaway')).used;
+      expect(used).toBeGreaterThanOrEqual(4096);  // the counted overrun was charged
+    });
   });
 });
 
