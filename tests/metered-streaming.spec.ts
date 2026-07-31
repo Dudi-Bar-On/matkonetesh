@@ -94,3 +94,31 @@ test('managed streaming 404 (stale Worker) throws stream-unsupported; managed 40
     expect(seen.some(u => u.includes('generativelanguage.googleapis.com'))).toBe(true);   // fell back to BYOK
   } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
 });
+
+test('vcSentenceStream closes sentences on the vcChunkText boundary; a decimal never splits', async ({ page }) => {
+  await seedApp(page, {});
+  const out = await page.evaluate(() => {
+    const got: string[] = [];
+    const a = (window as any).vcSentenceStream((s: string) => got.push(s));
+    a.push('החום יציב');
+    a.push('. עטוף כשהצבע ');
+    a.push('מהגוני. הפנים 63.5 מעלות בערך. סוף');
+    a.end();
+    return got;
+  });
+  expect(out).toEqual(['החום יציב.', 'עטוף כשהצבע מהגוני.', 'הפנים 63.5 מעלות בערך.', 'סוף']);
+});
+
+test('vcStreamSafe: digit-free passes; ANY digit or unit-bearing token fails (fail closed)', async ({ page }) => {
+  await seedApp(page, {});
+  const r = await page.evaluate(() => ({
+    clean: (window as any).vcStreamSafe('עטוף אותו בנייר קצבים כשהקרום מתייצב.'),
+    digit: (window as any).vcStreamSafe('עטוף אחרי 4 שעות בערך.'),
+    temp:  (window as any).vcStreamSafe('משוך ב-96°C.'),
+    fw:    (window as any).vcStreamSafe('משוך ב-９６ מעלות.'),   // full-width digits — normalize runs FIRST
+  }));
+  expect(r.clean).toBe(true);
+  expect(r.digit).toBe(false);
+  expect(r.temp).toBe(false);
+  expect(r.fw).toBe(false);
+});

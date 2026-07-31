@@ -6569,6 +6569,32 @@ function vcChunkText(text, opts){
   }
   return out;
 }
+// ── Metered-streaming arc (spec §5.2/§6) · sentence assembler over streamed deltas. SAME boundary
+// rule as vcChunkText (terminator + whitespace — a decimal can never split); end() flushes the tail.
+function vcSentenceStream(onSentence){
+  let buf='';
+  return {
+    push:function(d){
+      buf+=String(d||'');
+      const parts=buf.split(/(?<=[.!?…])\s+/);
+      while(parts.length>1){ const s=parts.shift().trim(); if(s) onSentence(s); }
+      buf=parts[0]||'';
+    },
+    end:function(){ const s=buf.trim(); buf=''; if(s) onSentence(s); }
+  };
+}
+// The stream gate (spec §6.2): a sentence may be spoken BEFORE the whole-answer guard runs ONLY if it
+// is provably guard-neutral — zero digit runs (safetyNumRe — the ONE shared number definition; never
+// write a second pattern, per the SAFETY_NUM covenant) and zero unit-bearing tokens (aiSafetyNums),
+// measured on the SAME normalization the guard itself applies. A digit-free sentence is untouchable by
+// every guard branch (markers and redactions only ever attach to number tokens), so early speech can
+// neither leak nor pre-empt what vcGuardSpoken will decide about the full answer.
+function vcStreamSafe(sentence){
+  const n=UNITS.normalize(String(sentence||''));
+  if((n.match(safetyNumRe())||[]).length) return false;
+  if(aiSafetyNums(n).length) return false;
+  return true;
+}
 /* ── Voice Wave 0 · ONE language source (R-31, owner ruling 31.7.2026): the voice speaks the app's
    current UI language. Answer language, TTS locale and recognition locale all derive from getLang() —
    the mk-vclang/mk-vcanslang stores are DELETED (migration in vcRender), the HE/EN button pairs removed (R-29). */
