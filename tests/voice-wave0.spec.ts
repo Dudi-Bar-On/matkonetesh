@@ -213,3 +213,48 @@ test('ack is visual and instant: vcAskFlow paints the "…thinking" state synchr
   })()`) as { during: string | null };
   expect(r.during).toBe('…חושב');
 });
+
+// Task 9 (spec §9 phase-gate) — R-31 sweep across the 7 live languages: voice derives from the app's ONE
+// UI-language source (R-31, no separate voice-language choice), and every language has a real per-language
+// acknowledgement phrase (VC_ACK, app.js ~6979), not a fallback stub. Born GREEN: this pins behavior that
+// was already proven RED→GREEN language-by-language across Tasks 7-8 (R-29 button removal, R-31 migration,
+// commits a6ac914/0958f47) — DoD-2 note per the T9 brief, not silence. It is a genuine regression guard: it
+// would fail today if a future change dropped a language from VC_ACK or VC_LOCALES, or reintroduced a
+// separate voice-language source.
+// Task 9 finding (DoD-9 screenshot review): the ask-row input placeholder and button used a raw
+// en/he-only ternary (`vcVoiceLang()==='en'?'...':'...'`) instead of L() — every non-en/non-he language
+// (fr/de/es/it/ru) rendered the HEBREW fallback for these two strings. Fixed to route through L(); this
+// pins the regression for all 5 previously-leaking languages.
+for (const lg of ['fr', 'de', 'es', 'it', 'ru']) {
+  test(`R-36a/T9 regression: the ask-row placeholder and button are localized, not a Hebrew leak (${lg})`, async ({ page }) => {
+    await seedApp(page, { 'mk-lang': JSON.stringify(lg), 'mk-gemkey': JSON.stringify('test-key') });
+    // openVoiceCook fires a fire-and-forget vcWarmAck() network pre-warm (app.js ~6641) — block it so a
+    // fake test key never races a real fetch under full-suite parallel load (matches the R-32/DoD-8 tests'
+    // established page.route pattern for this same panel).
+    await page.route(/generativelanguage|gemini/i, r => r.abort());
+    try {
+      await page.evaluate(`(function(){ closePanel(); vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; openVoiceCook(vcTasks); })()`);
+      await page.waitForSelector('#vcAskInput', { state: 'visible' });
+      const r = await page.evaluate(`(function(){
+        return { placeholder: document.querySelector('#vcAskInput').getAttribute('placeholder'),
+                 btn: document.querySelector('.vc-askbtn').textContent };
+      })()`) as { placeholder: string; btn: string };
+      expect(r.placeholder).not.toContain('הקלד שאלה');   // no Hebrew leak
+      expect(r.btn).not.toContain('שאל');
+      expect(r.placeholder.length).toBeGreaterThan(2);
+    } finally { await page.unroute(/generativelanguage|gemini/i); }
+  });
+}
+
+for (const lg of ['he', 'en', 'fr', 'de', 'es', 'it', 'ru']) {
+  test(`R-31 sweep: voice derives from UI language ${lg}`, async ({ page }) => {
+    await seedApp(page, { 'mk-lang': JSON.stringify(lg) });
+    const r = await page.evaluate(() => {
+      const w = window as any;
+      return { v: w.vcVoiceLang(), loc: w.vcLocale(w.vcVoiceLang()), ack: w.vcAckText() };
+    });
+    expect(r.v).toBe(lg);
+    expect(r.loc.startsWith(lg === 'he' ? 'he' : lg)).toBe(true);
+    expect(r.ack.length).toBeGreaterThan(3);           // a real per-language phrase, not a fallback stub
+  });
+}

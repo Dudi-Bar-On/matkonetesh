@@ -861,6 +861,8 @@
   "מסך גדול, כפתורים גדולים — נועד לעמוד ליד המעשנת. פקודות: \"הבא\", \"הקודם\", \"הקרא שוב\", \"פרטים\".": "Big screen, big buttons — meant to stand by the smoker. Commands: \"next\", \"back\", \"read again\", \"details\".",
   "הקול מדבר בשפת האפליקציה — החלפת שפה בהגדרות מחליפה גם את הקול.": "The voice speaks the app's language — switching the app language switches the voice too.",
   "אפשר לשאול שאלות חופשיות בקול (למשל \"כמה עוד זמן לחזה?\") — אפשר לשאול באנגלית ולקבל תשובה בעברית.": "You can ask free questions by voice (e.g. \"how much longer for the brisket?\") — you can ask in English and get an answer in Hebrew.",
+  "הקלד שאלה…": "Type a question…",
+  "שאל ✨": "Ask ✨",
   "Gemini TTS פעיל": "Gemini TTS active",
   "קול:": "Voice:",
   "שדרוג איכות קול — Gemini TTS (מפתח אישי · דורש Billing)": "Upgrade voice quality — Gemini TTS (personal key · requires Billing)",
