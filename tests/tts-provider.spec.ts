@@ -57,3 +57,69 @@ test('R-45: the voice mapping produces a real Chirp3-HD name for each supported 
   expect(r.ru.languageCode).toBe('ru-RU');
   expect(r.junk.languageCode).toBe('he-IL');   // unknown language falls to the app's own default
 });
+
+// A 0.5 s LINEAR16 @24 kHz mono tone, as the Worker route returns it: raw PCM16LE bytes.
+const PCM_HELPERS = `
+  window.__pcmBytes = function(seconds){
+    const n = Math.round(24000*seconds), b = new Uint8Array(n*2), dv = new DataView(b.buffer);
+    for(let i=0;i<n;i++) dv.setInt16(i*2, Math.round(3000*Math.sin(i/12)), true);
+    return b;
+  };`;
+
+test('R-45 DoD-1: cloudSpeakSeg honours the cursor contract — it returns the audio-clock END time', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof cloudSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  const r = await page.evaluate(`(async()=>{
+    const calls=[]; const realFetch=window.fetch;
+    window.fetch=async function(u,o){ calls.push(String(u)); return new Response(window.__pcmBytes(0.5), {status:200, headers:{'Content-Type':'audio/l16'}}); };
+    try{
+      const gen=vcNewSpeakGen();
+      const ctx=gemAudioCtx();
+      const startAt=ctx.currentTime+2.0;                 // a FUTURE cursor, as a mid-answer chunk gets
+      const cursor=await cloudSpeakSeg('שלום','he',gen,startAt);
+      return { cursor, startAt, url: calls[0], calls: calls.length };
+    } finally { window.fetch=realFetch; }
+  })()`);
+  expect(r.calls).toBe(1);
+  expect(r.url).toContain('/v1/tts:synthesize');
+  expect(typeof r.cursor).toBe('number');
+  // the returned cursor is an audio-clock time AT OR AFTER startAt, advanced by the clip's duration
+  expect(r.cursor).toBeGreaterThan(r.startAt + 0.4);
+  expect(r.cursor).toBeLessThan(r.startAt + 0.7);
+});
+
+test('R-45 DoD-1: two chained segments queue back-to-back — the second starts where the first ended', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof cloudSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  const r = await page.evaluate(`(async()=>{
+    const realFetch=window.fetch;
+    window.fetch=async function(){ return new Response(window.__pcmBytes(0.3), {status:200}); };
+    try{
+      const gen=vcNewSpeakGen();
+      const c0=await cloudSpeakSeg('אחת','he',gen, gemAudioCtx().currentTime+1.5);
+      const c1=await cloudSpeakSeg('שתיים','he',gen,c0);
+      return { c0, c1 };
+    } finally { window.fetch=realFetch; }
+  })()`);
+  // no gap and no overlap: the second clip's end is one clip-length past the first's end
+  expect(r.c1 - r.c0).toBeGreaterThan(0.25);
+  expect(r.c1 - r.c0).toBeLessThan(0.42);
+});
+
+test('R-45: a 501 from the Worker is the clean-skip signal, not an error the user sees', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof cloudSynthChunk==='function'`);
+  const r = await page.evaluate(`(async()=>{
+    const realFetch=window.fetch;
+    window.fetch=async function(){ return new Response(JSON.stringify({error:'tts_secondary_unconfigured'}), {status:501, headers:{'Content-Type':'application/json'}}); };
+    try{
+      let msg='';
+      try{ await cloudSynthChunk('שלום','he'); }catch(e){ msg=String(e.message); }
+      return { msg, unavailable: ttsCloudUnavailableErr(new Error(msg)) };
+    } finally { window.fetch=realFetch; }
+  })()`);
+  expect(r.msg).toContain('cloud-unavailable');
+  expect(r.unavailable).toBe(true);
+});

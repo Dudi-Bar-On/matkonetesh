@@ -6877,6 +6877,53 @@ function cloudVoiceFor(lang){
   return { languageCode: lc, voice: CLOUD_TTS_VOICE[lc] };
 }
 
+// Cloud TTS is reachable ONLY through the Worker (design §2). This is a deliberate hard-coding of the
+// managed transport: there is no BYOK branch here and there must never be one, because the only
+// credential Cloud TTS accepts is a service-account private key, and a key in this bundle is a
+// published key. Returns raw PCM16LE @24 kHz mono — the exact shape gemPcm16ToF32 already reads.
+async function cloudSynthChunk(text, lang){
+  const v = cloudVoiceFor(lang);
+  const ctl=(typeof AbortController!=='undefined')?new AbortController():null;
+  const to=ctl?setTimeout(function(){ try{ctl.abort();}catch(e){} }, 20000):null;   // same budget as gemSynthChunk
+  try{
+    const r = await fetch(centralUrl()+'/v1/tts:synthesize', {
+      method:'POST',
+      headers:{'Content-Type':'application/json','X-Access-Code':centralCode()},
+      body: JSON.stringify({ text: text, languageCode: v.languageCode, voice: v.voice }),
+      signal: ctl?ctl.signal:undefined });
+    if(!r.ok){
+      // 501 = this Worker has no service account configured; 404 = a Worker deployed before R-45.
+      // Both mean "the secondary does not exist here" — a CONFIGURATION fact, not a synthesis failure.
+      if(r.status===501||r.status===404) throw new Error('cloud-unavailable-'+r.status);
+      let reason=''; try{ const eb=await r.json(); reason=(eb&&eb.error)||''; }catch(_){}
+      throw new Error('cloud-'+r.status+(reason?': '+reason:''));
+    }
+    const ab = await r.arrayBuffer();
+    if(!ab || !ab.byteLength) throw new Error('no-audio');
+    return new Uint8Array(ab);
+  }catch(e){ throw (e&&e.name==='AbortError') ? new Error('timeout') : e; }
+  finally{ if(to) clearTimeout(to); }
+}
+function ttsCloudUnavailableErr(err){ return /cloud-unavailable/.test(String((err&&err.message)||'')); }
+
+// ── THE CONTRACT (design §3): the SAME signature and the SAME return value as gemSpeakSeg —
+// (text, lang, gen, startAt) → cursor, an audio-clock time. Playback is delegated to the EXISTING
+// gemPlayBuf, which already (a) threads startAt→endAt, (b) assigns gemSrc BEFORE start(t0) so gemStop()
+// can cancel a chunk that is queued-but-not-yet-audible (barge-in, DoD 6), and (c) guards vcSpeaking
+// with `gemSrc===src`. Re-implementing any of that here would re-open the v281 regressions.
+async function cloudSpeakSeg(text, lang, gen, startAt){
+  if(typeof window!=='undefined' && window.__cloudTtsMock) return window.__cloudTtsMock(text, lang, gen, startAt);
+  const bytes = await cloudSynthChunk(text, lang);
+  if(!vcGenCurrent(gen)) return startAt;              // barge-in during synthesis: never schedule it
+  const ctx = gemAudioCtx();
+  const f32 = gemPcm16ToF32(bytes);
+  if(!f32.length) throw new Error('no-audio');
+  const ab = ctx.createBuffer(1, f32.length, 24000);
+  ab.getChannelData(0).set(f32);
+  if(typeof window!=='undefined') window.__gemAudioChunks++;   // same instrument the streamed path bumps
+  return await gemPlayBuf(ab, gen, startAt);
+}
+
 // ── Hotfix v281 (owner-reported live regression, ~1h after v280 shipped): v280 sent ONE Gemini TTS
 // request per vcChunkText sentence-chunk — measured 10-15 requests for a realistic answer. Live probe:
 // chunk 1 succeeded, chunks 2-12 all came back HTTP 429 ("You exceeded your current quota") — the
