@@ -741,9 +741,23 @@ sub-findings each get a landing, only its headline conclusion. Gate: when a rese
 decision, walk its full section list for landing, not just the section that answered the question being
 asked at the time; an unlanded subsection is a debt exactly like an unlanded ledger row.
 
+**L39 · A subagent reported "no key in env" and stopped measuring — the key was there all along (2026-08-01).**
+`GEMINI_API_KEY` lives in the Windows **USER** environment scope, which a spawned process does **not**
+inherit into `process.env`. Agents concluded it was absent, skipped every live probe, and the controller
+ended up running those measurements by hand — which is backwards: investigation and measurement belong to
+subagents, the decision belongs to the controller (owner instruction, 2026-08-01). **How any agent reads
+it, in PowerShell:**
+`$env:GEMINI_API_KEY=[Environment]::GetEnvironmentVariable('GEMINI_API_KEY','User'); node <script>`
+Bash/git-bash does **not** see it. The service-account file for Cloud TTS is at `C:\Downloads\` and is
+read by path, never opened or echoed. **The rule stands unchanged: never print, log, echo, or commit a
+key** — read it into the process and use it, nothing more. A probe that cannot get a key must say so with
+this line quoted, so the next agent does not repeat the dead end.
+
 **L35 · A test that builds its own fixture can only prove the code's assumption, never the wire (2026-08-01).**
-Google separates SSE frames with `
-
+Google separates SSE frames with `
+
+
+
 `. Every parser we wrote split on `
 
 `, so no frame was ever
