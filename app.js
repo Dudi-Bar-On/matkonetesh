@@ -3430,18 +3430,28 @@ function renderTimerWarn(){
 // fired while the app was closed is still shown the next time it's opened (renderBcheckAlarm is also
 // called at boot, below) — same durability shape as mk-timers' `fired` flag.
 function _bcheckDue(){ return store.get('mk-bcheck-due')||{}; }
+// R-56 (owner-reported regression on v282): ackBcheck used to DELETE the entry, which made "never
+// surfaced" and "surfaced and acknowledged" indistinguishable to scheduleBcheckDue's guard — the card
+// re-fired on every re-entry to the event. Acknowledging now marks the record `acked:true` instead of
+// deleting it, so the guard (which only checks "does a record exist for this occurrence") keeps working,
+// while renderBcheckAlarm hides acked rows from the card. The record's key already carries the occurrence
+// (see scheduleBcheckDue below), so a NEW cook still gets a fresh key and is unaffected by an old ack.
 function ackBcheck(key){
   const d=_bcheckDue();
-  if(key){ delete d[key]; } else { Object.keys(d).forEach(function(k){ delete d[k]; }); }
+  if(key){ if(d[key]) d[key].acked=true; } else { Object.keys(d).forEach(function(k){ d[k].acked=true; }); }
   store.set('mk-bcheck-due', d);
   renderBcheckAlarm();
 }
 function renderBcheckAlarm(){
-  const d=_bcheckDue(), keys=Object.keys(d); let el=document.getElementById('mkBcheckAlarm');
+  const d=_bcheckDue(), keys=Object.keys(d).filter(function(k){ return d[k]&&!d[k].acked; });
+  let el=document.getElementById('mkBcheckAlarm');
   if(!keys.length){ if(el) el.remove(); return; }
   if(!el){ el=document.createElement('div'); el.id='mkBcheckAlarm'; el.className='mk-alarm mk-alarm-bcheck'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label',L('בדיקת בטיחות','Safety check')); document.body.appendChild(el); }
   el.innerHTML=`<div class="mka-head">🌡️ <b>${L('בדוק טמפ׳ פנים לפני הגשה','Check internal temp before serving')}</b></div>`+
-    keys.map(function(k){ const w=d[k]; return `<div class="mka-row"><span class="mka-name">${esc(w.name)}${w.temp!=null?` <small>· ${L('יעד','target')} ${w.temp}°</small>`:''}</span><button class="mka-stop" data-bcheckack="${encodeURIComponent(k)}">✓ ${L('נבדק','Checked')}</button></div>`; }).join('');
+    // R-56 second symptom: name the event on every row, same pattern as the timer alarm (mkFiredTimers'
+    // r.ev via timerEventName at ~3375/3387) — the global placement itself stays (owner ruling: safety
+    // alerts are never silenceable), this only adds context for which event the row belongs to.
+    keys.map(function(k){ const w=d[k]; const ev=(typeof timerEventName==='function'?timerEventName(w.tid||k):''); return `<div class="mka-row"><span class="mka-name">${esc(w.name)}${ev?` <small>· ${esc(ev)}</small>`:''}${w.temp!=null?` <small>· ${L('יעד','target')} ${w.temp}°</small>`:''}</span><button class="mka-stop" data-bcheckack="${encodeURIComponent(k)}">✓ ${L('נבדק','Checked')}</button></div>`; }).join('');
   el.querySelectorAll('[data-bcheckack]').forEach(function(b){ b.addEventListener('click',function(){ ackBcheck(decodeURIComponent(b.dataset.bcheckack)); }); });
 }
 // UNCONDITIONAL — unlike the mk-tlalerts-gated stage-start reminders (renderTimelinePanel's buildList) —
@@ -3457,11 +3467,18 @@ function scheduleBcheckDue(computed, tlTimers){
     const nm=(typeof itemName==='function'?itemName(c.m):c.m.heb);
     c.stages.forEach(function(s){
       if(s.kind!=='bcheck'||!s.start||!s.tid) return;
-      const key=s.tid;
-      if(_bcheckDue()[key]) return;   // already surfaced (possibly since acknowledged) — never re-fire the same instant
+      // R-56: key on the OCCURRENCE (tid + its scheduled instant), not just the stage identity (tid).
+      // s.tid is stable across cooks of the same item in the same event (it's built from evScope()+m.key+
+      // s.kind, ~8318) — that's correct for a running timer, but wrong for an acknowledgement: keying on
+      // tid alone means one cook's "checked" would silence every future cook of the same item forever,
+      // which is exactly the failure mode this safety gate exists to prevent. s.start is recomputed by
+      // planSchedule from the cook's own serve time, so a NEW cook gets a NEW start and therefore a NEW
+      // key — the check fires again for it, while re-entering the SAME cook keeps hitting the same key.
+      const key=s.tid+'@'+s.start.getTime();
+      if(_bcheckDue()[key]) return;   // already surfaced for this occurrence (shown OR acknowledged) — never re-fire it
       const mark=function(){
         const d2=_bcheckDue(); if(d2[key]) return;
-        d2[key]={name:nm, temp:(s.temp!=null?s.temp:null)}; store.set('mk-bcheck-due', d2);
+        d2[key]={name:nm, temp:(s.temp!=null?s.temp:null), tid:s.tid, acked:false}; store.set('mk-bcheck-due', d2);
         mkNotify('🌡️ '+L('בדיקת טמפ׳ פנים','Internal temp check'), L(`הגיע הזמן לבדוק — ${nm}`,`Time to check — ${nm}`), 'mk-bcheck-'+key);
         mkVibrate([200,100,200]);
         renderBcheckAlarm();
