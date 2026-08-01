@@ -7720,9 +7720,10 @@ function vcSafeSubstitution(tiers, lang){
 function vcMapSafetyNums(s, fn){
   return String(s||'').replace(safetyTokenRe(),
     function(_m, r1, r2, ru, n1, u1, ph){
-      if(r1!=null) return fn([safetyNumVal(r1), safetyNumVal(r2)], ru||'', 'range');
-      if(n1!=null) return fn([safetyNumVal(n1)], u1||'', 'single');
-      return fn([safetyNumVal(ph)], 'pH', 'ph');
+      // 4th arg (R-62): the WHOLE matched token, byte-identical — the join key the classifier map uses.
+      if(r1!=null) return fn([safetyNumVal(r1), safetyNumVal(r2)], ru||'', 'range', _m);
+      if(n1!=null) return fn([safetyNumVal(n1)], u1||'', 'single', _m);
+      return fn([safetyNumVal(ph)], 'pH', 'ph', _m);
     });
 }
 // Redaction marker for an unverified number. Visually distinct from the sentence's own em-dash
@@ -7863,7 +7864,110 @@ function vcBuildClaimMap(src, json){
 }
 try{ window.vcClassifySafetyClaims=vcClassifySafetyClaims; window.vcBuildClaimMap=vcBuildClaimMap; }catch(e){}
 
-function vcGuardSpoken(text, tiers, lang){
+// §5.3 — the ENTIRE decision table, in one function. Returns:
+//   {verdict:'verified', c:<°C>}  → speak the APP's figure with the verified marker
+//   {verdict:'release'}           → speak the token verbatim, NO marker, NO redaction  (the R-62 change)
+//   null                          → TODAY'S BEHAVIOUR (the caller redacts)
+// Silence is NEVER release (§5.4.3): a token is released only on a POSITIVE non-internal attribution.
+const SAFETY_CLAIM_SAFETY_KINDS = {internal_safe_temp:1, internal_target_temp:1, cure_ppm:1};
+const SAFETY_CLAIM_FREE_KINDS   = {chamber_temp:1, bath_temp:1, surface_temp:1, duration:1, weight:1, spacing:1};
+function vcClaimVerdict(tokenText, vals, unit, kind, claims){
+  if(!claims || typeof claims.get!=='function') return null;
+  const cl = claims.get(tokenText);
+  if(!cl) return null;                                     // unclassified token → today's behaviour
+  if(!(typeof cl.confidence==='number') || cl.confidence < 0.85) return null;
+  if(SAFETY_CLAIM_SAFETY_KINDS[cl.kind]){
+    if(kind!=='single') return null;                       // a RANGE is a composite claim — never verified
+    const ref = vcClaimSubjectSafeC(cl);
+    if(ref==null) return null;                             // unidentified item, OR a MIXED category → redact
+    const c = Math.round(aiSafetyToC(vals[0], unit));
+    return (c===ref) ? {verdict:'verified', c:c} : null;   // must equal OUR cited figure — not the model's word
+  }
+  if(SAFETY_CLAIM_FREE_KINDS[cl.kind]) return {verdict:'release'};
+  return null;                                             // 'other', missing, or anything unlisted
+}
+// The subject's cited °C from OUR tables — item first, category second, exactly the precedence
+// vcResolveTiers (7566) and vcIdentifiedSafeCategory (7670) already enforce: a named item is strictly
+// more specific than its category and must never be shadowed by it.
+// NOTE (spec §5.3, stated not hidden): `cure_ppm` is routed through this same comparison, and no field
+// in the catalog carries a ppm figure — so a cure_ppm claim can never match and is always redacted.
+// That is the conservative direction the approved table specifies; it is not an oversight.
+function vcClaimSubjectSafeC(cl){
+  const sub = cl && cl.subject;
+  const itemQ = sub && typeof sub.item==='string' ? sub.item.trim().toLowerCase() : '';
+  if(itemQ && typeof askFindEntity==='function'){
+    const hits = askFindEntity(itemQ) || [];
+    const h = hits[0];
+    if(h && h.obj){
+      const v = h.obj.safe;
+      return (v!=null && !isNaN(Number(v)) && Number(v)!==0) ? Math.round(Number(v)) : null;
+    }
+    return null;                                           // named an item we do NOT have → redact (D2)
+  }
+  const catQ = sub && typeof sub.category==='string' ? sub.category.trim().toLowerCase() : '';
+  if(catQ && typeof askFindCategory==='function'){
+    const cat = askFindCategory(catQ);
+    if(!cat) return null;
+    return catUniformSafe(cat);                            // MIXED (בקר 63/71) → null → redact (D1)
+  }
+  return null;                                             // no subject at all → redact
+}
+try{ window.vcClaimVerdict=vcClaimVerdict; }catch(e){}
+
+// ═════ R-62 Task 2a — CLAIM_ONLY_UNIT: a SEPARATE, WIDER vocabulary (time/mass/length, He+En) ═════
+// The shared SAFETY_UNIT (line ~5932) recognises ONLY temperature/ppm/percent — by design, it is "the
+// ONE tokenizer shared by every rewrite path" and governs ELIGIBILITY (nAiNums, digitRuns, the branch-
+// (a)/(b) split below) everywhere vcGuardSpoken runs. Task 2's blocking finding
+// (.superpowers/sdd/task-2-report.md) showed that widening SAFETY_UNIT itself would make the guard MORE
+// aggressive: answers that pass through completely untouched today (no unit-bearing token at all — the
+// guard's own "wait 20 minutes then 10 more" example) would start entering the guard, and with
+// claims===null would start being redacted where today they are not — breaking the byte-identical
+// invariant the whole design rests on.
+//
+// CLAIM_ONLY_UNIT is a DIFFERENT artifact, consulted ONLY inside vcGuardSpoken's branch (b), AFTER
+// eligibility is already decided from SAFETY_UNIT alone, and ONLY to ask the SAME decision table
+// (vcClaimVerdict) whether a number SAFETY_UNIT could never see (so it was ALREADY going to fall to the
+// blind bare-digit sweep and be redacted) has a 'release' verdict. It can therefore only ever RELEASE a
+// number that today is redacted — it can never pull a new answer into the guard, and it cannot change
+// any branch when claims is null/undefined (vcClaimVerdict returns null unconditionally in that case —
+// proven structurally, not just by test, at its own first line).
+function _claimOnlyUnitTokens(){
+  const out=[];
+  ['time','mass','len'].forEach(function(k){
+    const ku = UNITS.KINDS[k] && UNITS.KINDS[k].units; if(!ku) return;
+    Object.keys(ku).forEach(function(u){ (ku[u].tokens||[]).forEach(function(t){ if(t) out.push(t); }); });
+  });
+  return out;
+}
+function _claimUnitEsc(s){ return String(s).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
+const CLAIM_ONLY_UNIT = (function(){
+  // Longest-first, so e.g. "min" cannot shadow "mins"/"minute"/"minutes" (mirrors UNITS._prefixRe).
+  const toks = _claimOnlyUnitTokens().slice().sort(function(a,b){ return b.length-a.length; });
+  return toks.map(function(t){
+    const esc=_claimUnitEsc(t);
+    return /^[a-z]+$/i.test(t) ? esc+'\\b' : esc;   // bare Latin words need a boundary; Hebrew/glyph forms don't
+  }).join('|');
+})();
+// One number + one CLAIM_ONLY_UNIT token; the tail (separator+unit) is captured WHOLE so the default
+// (no release) branch in vcGuardSpoken can re-emit it byte-for-byte — reproducing exactly what the
+// pre-existing bare-digit sweep + an untouched leftover unit word already produced. Deliberately
+// SINGLE-shape only (no range form): a "5-10 שעות" input still redacts correctly — the wide pass matches
+// "10 שעות" as its own single token and the leading "5" falls through to the final bare-digit sweep
+// exactly as before; a composite RANGE claim over time/mass/length is out of this task's tested scope
+// and fails toward redaction (the safe direction), never toward an unintended release. A short Hebrew
+// unit letter (e.g. "ש") can over-match past a real word boundary Hebrew has no \b for (e.g. "5 של") —
+// harmless: the default branch re-emits the captured tail VERBATIM, so the assembled output is
+// byte-identical to what the bare-digit sweep alone would have produced either way. It matters only if
+// vcClaimVerdict finds an EXACT claims-map key for that over-matched text, which requires the classifier
+// (or a test) to have manufactured that precise string as a claim's `text` — never a byte-count
+// coincidence.
+const CLAIM_ONLY_TOKEN_SRC = '('+SAFETY_NUM+')(\\s*(?:'+CLAIM_ONLY_UNIT+'))';
+function claimOnlyTokenRe(){ return new RegExp(CLAIM_ONLY_TOKEN_SRC, 'gi'); }
+
+// `claims` (optional, R-62): a Map(tokenText -> claim) from vcClassifySafetyClaims, or null/undefined.
+// With claims null/undefined EVERY branch below is byte-for-byte the shipped code — that is what makes
+// P6 ("failure ⟹ today's behaviour") structural rather than test-enforced (spec §5.5, DoD D6).
+function vcGuardSpoken(text, tiers, lang, claims){
   // R-2/R-3 marker redesign (Task 13, H13-approved 2026-07-31, ROADMAP §5a rows R-2/R-3; spec-change §3.1
   // D2-A+D3-A folded as ONE change — docs/analysis/program/new-gaps-2026-07-24-p0-app.md §G-A1/§G-A2/the
   // G-A1 addendum) + three tokenizer widenings ride together in this task. vcNormalizeSafetyText is the
@@ -7913,7 +8017,7 @@ function vcGuardSpoken(text, tiers, lang){
   // as ONE run, take the eligible branch, and have the tokenizer match only its tail "063°C" — corrupting a
   // value the model never said into a fake "verified" one. Never write a second number pattern (see
   // SAFETY_NUM above).
-  let redacted=0, out;
+  let redacted=0, verified=0, out;
   if(digitRuns===1){
     if(!nAiNums){
       // G-A1 hole 1, continued — the lone number truly has no unit anywhere (vcMapSafetyNums cannot even
@@ -7922,6 +8026,7 @@ function vcGuardSpoken(text, tiers, lang){
       out=src.replace(safetyNumRe(), function(){ redacted++; return VC_REDACT; });
     }else{
       out=vcMapSafetyNums(src, function(vals, unit, kind){
+        const tok=arguments[3];                       // vcMapSafetyNums passes the whole token as arg 4
         if(kind==='single' && isTempUnit(unit)){
           const c=Math.round(aiSafetyToC(vals[0], unit));
           if(ok[c]){
@@ -7937,15 +8042,72 @@ function vcGuardSpoken(text, tiers, lang){
               +(lang==='he'?'לפי המדריך המאומת.':L('לפי המדריך המאומת.','per the app\'s verified guide.'));
           }
         }
+        // R-62 · the PARALLEL approval path. Reached only where the shipped rule already gave up.
+        const v=vcClaimVerdict(tok, vals, unit, kind, claims);
+        if(v && v.verdict==='verified'){ verified++; return UNITS.fmt(v.c,'temp',{role:'safeFloor'})+' '
+          +(lang==='he'?'לפי המדריך המאומת.':L('לפי המדריך המאומת.','per the app\'s verified guide.')); }
+        if(v && v.verdict==='release'){ return tok; }   // spoken verbatim, NO marker (§5.3)
         redacted++; return VC_REDACT;
       });
     }
   }else{
-    // Two or more numbers → nothing is spoken as verified. Redact the recognised safety tokens FIRST
-    // (that also removes their unit), then sweep any remaining bare digits — because a number the
-    // extractor cannot see is exactly the one that would otherwise be voiced unguarded.
-    out=vcMapSafetyNums(src, function(){ redacted++; return VC_REDACT; })
-          .replace(safetyNumRe(), function(){ redacted++; return VC_REDACT; });
+    // Two or more numbers → nothing is spoken as verified BY THE SHIPPED RULE. With `claims`, the
+    // decision table below applies (§5.3); without it (claims null/undefined), vcClaimVerdict always
+    // returns null and every branch collapses back to today's unconditional redaction.
+    // BUG FOUND DURING D3 (RED, this task): the bare-digit sweep below is a SECOND, blind pass over the
+    // already-substituted string — it exists to catch a number the tokenizer never saw at all (no unit),
+    // which is safe only because the ORIGINAL code's first pass always left VC_REDACT (digit-free) behind.
+    // A 'release'/'verified' outcome now legitimately puts fresh digits back into that same string (e.g.
+    // "110°C" itself, or a formatted verified figure), and the blind sweep re-matched and re-redacted
+    // them ("110°C" → "[…]°C") — an approval silently destroyed one statement later, in the SAME function,
+    // by a sweep that has no way to tell "digits the tokenizer never saw" from "digits an approval just
+    // wrote". Fix: park every approval behind a digit-free placeholder while the sweep runs, then restore
+    // the approved text verbatim — the sweep never sees an approval's digits at all.
+    // Task 2a addendum (R-62): a SECOND, independent pass (claimOnlyTokenRe / CLAIM_ONLY_UNIT — see its
+    // own comment above vcGuardSpoken) runs over what the FIRST pass below leaves behind, to release a
+    // number the narrow tokenizer never sees at all (time/mass/length — e.g. "6 שעות"). Each pass parks
+    // its own approvals behind a UNIQUELY-TAGGED placeholder, never a shared one: two independent
+    // left-to-right scans do not, in general, produce approvals in the same order as their placeholders'
+    // final left-to-right position once combined (verified while building this: a shared-placeholder +
+    // positional split/reduce restore mis-assigned approved text between the two passes whenever the
+    // second pass matched something positioned BEFORE the first pass's own match). A keyed lookup
+    // sidesteps the ordering question entirely, at zero extra cost when CLAIM_ONLY_UNIT never matches
+    // (the single-pass case this file's 148 pre-existing safety assertions already exercise).
+    let phSeq=0; const parked={};
+    const PH_LETTERS='abcdefghijklmnopqrstuvwxyz';      // NEVER digits — must stay invisible to the
+    function seqTag(n){ let s=''; do{ s=PH_LETTERS[n%26]+s; n=Math.floor(n/26); }while(n>0); return s; }
+    // bare-digit sweep below, or that sweep could corrupt the placeholder it needs to restore later.
+    function park(txt){ const ph=' VCP'+seqTag(phSeq++)+' '; parked[ph]=txt; return ph; }
+
+    out=vcMapSafetyNums(src, function(vals, unit, kind){
+          const tok=arguments[3];
+          const v=vcClaimVerdict(tok, vals, unit, kind, claims);
+          if(v && v.verdict==='verified'){
+            verified++;
+            return park(UNITS.fmt(v.c,'temp',{role:'safeFloor'})+' '
+              +(lang==='he'?'לפי המדריך המאומת.':L('לפי המדריך המאומת.','per the app\'s verified guide.')));
+          }
+          if(v && v.verdict==='release'){ return park(tok); }
+          redacted++; return VC_REDACT;
+        });
+    // Wide pass — CLAIM_ONLY_UNIT tokens the narrow pass above structurally cannot match (SAFETY_UNIT
+    // has no time/mass/length forms). Default (no release) re-emits the captured tail VERBATIM after
+    // VC_REDACT, reproducing byte-for-byte what the ORIGINAL bare-digit sweep + an untouched leftover
+    // unit word already produced — see CLAIM_ONLY_TOKEN_SRC's own comment for why this holds even when
+    // the unit match itself over-reaches (e.g. a bare Hebrew unit letter).
+    out=out.replace(claimOnlyTokenRe(), function(_m, n1, nTail){
+      const v=vcClaimVerdict(_m, [safetyNumVal(n1)], '', 'single', claims);
+      if(v && v.verdict==='release') return park(_m);
+      redacted++; return VC_REDACT+nTail;
+    });
+    // The bare-digit sweep — UNCHANGED from pre-Task-2: catches a number with no unit either tokenizer
+    // can see. Both passes above park their approvals behind digit-free placeholders first, so this
+    // sweep can neither reach nor even match (by construction — no digit appears in a placeholder) an
+    // approval's text.
+    out=out.replace(safetyNumRe(), function(){ redacted++; return VC_REDACT; });
+    if(phSeq){
+      out=out.replace(/ VCP[a-z]+ /g, function(ph){ return parked[ph]; });
+    }
   }
   // COSMETIC (Task 13, R-2 follow-on) — the inline marker can now land directly before the sentence's OWN
   // trailing period when the matched unit token itself carried no dot of its own (e.g. plain "63°C."
