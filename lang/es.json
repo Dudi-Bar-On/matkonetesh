@@ -2527,5 +2527,6 @@
  "ריפוי/ייבוש רב-יומי": "Curado / secado de varios días",
  "תזכורת שהגיע תורה מוצגת כאן וכבאנר בבית כשהאפליקציה פתוחה. התראת מערכת (גם ברקע) דורשת אישור התראות — הפעל ב\"תוכנית עבודה\" 🔔.": "Un recordatorio vencido aparece aquí y como banner en la pantalla de inicio mientras la app está abierta. La notificación del sistema (también en segundo plano) requiere permiso de notificaciones: actívalo en «Plan de trabajo» 🔔.",
  "שלום! זה הקול החדש של ההקראה. נשמע טוב?": "¡Hola! Esta es la nueva voz de lectura. ¿Suena bien?",
- "מעולה! Gemini מחובר. ככה אני נשמע עכשיו.": "¡Excelente! Gemini está conectado. Así sueno ahora."
+ "מעולה! Gemini מחובר. ככה אני נשמע עכשיו.": "¡Excelente! Gemini está conectado. Así sueno ahora.",
+ "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "Novedades: la voz responde ahora casi al instante en lugar de tardar varios segundos, dos minutos antes de que termine un temporizador aparece también un aviso en pantalla, y la comprobación de temperatura previa al servicio avisa por sí sola."
 }

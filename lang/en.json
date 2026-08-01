@@ -2527,5 +2527,6 @@
  "ריפוי/ייבוש רב-יומי": "Multi-day cure / dry",
  "תזכורת שהגיע תורה מוצגת כאן וכבאנר בבית כשהאפליקציה פתוחה. התראת מערכת (גם ברקע) דורשת אישור התראות — הפעל ב\"תוכנית עבודה\" 🔔.": "A reminder that has come due appears here, and as a banner on the home screen while the app is open. A system notification (including in the background) requires notification permission — enable it in \"Work plan\" 🔔.",
  "שלום! זה הקול החדש של ההקראה. נשמע טוב?": "Hello! This is the new reading voice. Does it sound good?",
- "מעולה! Gemini מחובר. ככה אני נשמע עכשיו.": "Excellent! Gemini is connected. This is how I sound now."
+ "מעולה! Gemini מחובר. ככה אני נשמע עכשיו.": "Excellent! Gemini is connected. This is how I sound now.",
+ "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "What's new: the voice now responds almost instantly instead of after several seconds, an on-screen alert appears two minutes before a timer ends, and the pre-serving temperature check now announces itself."
 }
