@@ -8147,6 +8147,11 @@ function vcGuardSpoken(text, tiers, lang, claims){
   // item carries one (vcSafeSubstitution above) — never a substitute for the notice, always in addition
   // to it, so the cook still hears that the MODEL's own numbers were unverified.
   const sub=vcSafeSubstitution(tiers, lang);
+  // R-61 (owner report 1.8 on R-53): a listener cannot scroll back. When NOTHING was approved the body
+  // is near-contentless ("[…] […] [...]"), so the one verified sentence must be the FIRST thing heard.
+  // When at least one token WAS approved the body already carries real information and the shipped
+  // order stands — this is deliberately not a blanket reordering.
+  if(sub && !verified) return sub+' '+out+' '+notice;
   return out+' '+notice+(sub?(' '+sub):'');
 }
 
