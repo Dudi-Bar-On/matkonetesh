@@ -6,7 +6,9 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const DIR = dirname(fileURLToPath(import.meta.url));
-const files = readdirSync(DIR).filter(f => f.startsWith('test-check-') && f.endsWith('.mjs')).sort();
+const files = readdirSync(DIR)
+  .filter(f => f.startsWith('test-') && f.endsWith('.mjs') && f !== 'test-helpers.mjs')
+  .sort();
 let failed = 0;
 for (const f of files) {
   console.log(`\n----- ${f} -----`);
