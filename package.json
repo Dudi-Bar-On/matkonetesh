@@ -9,7 +9,8 @@
   "scripts": {
     "test": "playwright test",
     "eval": "playwright test --config evals/playwright.config.ts",
-    "meta": "node scripts/check-meta.mjs"
+    "meta": "node scripts/check-meta.mjs",
+    "prepare": "git config core.hooksPath .githooks"
   },
   "keywords": [],
   "author": "",
