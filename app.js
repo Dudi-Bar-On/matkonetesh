@@ -7557,6 +7557,55 @@ function vcVerifiedSafeNums(meta){
     .filter(function(v){ return v!=null && !isNaN(Number(v)); })
     .map(function(v){ return Math.round(Number(v)); });
 }
+// R-53 (owner-reported live defect, 2026-08-01, docs/analysis — the asado question): the guard's
+// "exactly one number" eligibility rule (below, in vcGuardSpoken) is deliberately NEVER loosened — three
+// earlier fixes were each defeated by a different range phrasing, and per-number verification would
+// reopen exactly that hole. But the app frequently DOES have the answer even when redaction wipes the
+// whole sentence: the real defect's own item was named IN THE QUESTION TEXT ("אני מבשל אסאדו, מה
+// הטמפרטורה הבטוחה?") and resolved via Tier 2 (askFindEntity on the question), carrying a cited `safe`
+// figure (traced to a primary source, docs/sources/baldwin-backbone.md) that was simply sitting there
+// unused. Substitution, not loosening: when redaction fires AND the question text itself names an item
+// with a cited `safe` value, vcGuardSpoken appends ONE sentence in the guide's own name carrying it.
+// Nothing new becomes speakable — a verified source replaces silence.
+//
+// Design points (owner brief, settled here, not left implicit):
+//  - **Tier 2 ONLY — Tier 1 (the active-cook item) is deliberately EXCLUDED from this decision.**
+//    Discovered by the suite itself, not assumed: the pre-existing range/leak/comma regression tests
+//    (owner ruling 2026-07-24, fix 1b248a1, reviewer fix wave) all keep an active-cook item as Tier 1
+//    while asking a GENERIC, off-topic question ("שאלה: מה הטווח" / "ask: what temp") — being mid-cook on
+//    an item is no evidence the redacted number is even ABOUT that item, and substituting its `safe`
+//    figure there is exactly the wrong-attribution hazard this task exists to avoid, not to reintroduce.
+//    A textual match in the QUESTION ITSELF (Tier 2) is a materially stronger signal — the user named the
+//    item — and is the actual shape of the real live defect. Tier 1 alone never triggers substitution.
+//  - `safe` ONLY, never `tgt`. `tgt` is a texture target, not a safety figure — same distinction R-3's
+//    field-narrowing comment above draws for the inline "verified" marker. An item with a `tgt` but no
+//    `safe` (e.g. several charcuterie `spec-*` rows) gets NO substitution: silence is the correct,
+//    non-hazardous default there, never tgt-presented-as-safe.
+//  - The substituted number is `Math.round(item.obj.safe)` — the app's OWN stored, cited figure. It is
+//    never parsed out of the model's (already-redacted) text.
+function vcIdentifiedSafeItem(tiers){
+  const m=tiers && tiers.t2;
+  if(!m || !m.obj) return null;   // no question-text match — Tier 1 alone is never sufficient (see above)
+  const o=m.obj;
+  if(o.safe==null || isNaN(Number(o.safe))) return null;   // no cited SAFETY figure — never substitute tgt as if it were one
+  return { m:m, safeC: Math.round(Number(o.safe)) };
+}
+// Builds the substitution sentence, or '' when nothing eligible (silence). `lang` is the SAME voice-
+// language param vcGuardSpoken receives — by construction (R-31) it equals getLang(), so itemName()'s
+// internal getLang() read stays in sync with it. The static prefix goes through L() (mode-1 harvestable —
+// see i18n-extract.mjs); the item name and the number are pure interpolation, exactly like the existing
+// inline "verified" marker a few lines below builds its own sentence.
+function vcSafeSubstitution(tiers, lang){
+  const found=vcIdentifiedSafeItem(tiers);
+  if(!found) return '';
+  const name=(typeof itemName==='function')?itemName(found.m):'';
+  if(!name) return '';   // no displayable name (e.g. a bare test stub with no heb/eng) — nothing to attribute the figure to, so stay silent rather than substitute an unnamed number
+  const tempStr=(typeof UNITS!=='undefined' && UNITS.fmt)?UNITS.fmt(found.safeC,'temp',{role:'safeFloor'}):(found.safeC+'°C');
+  const prefix=lang==='he'
+    ? 'לפי המדריך, הטמפרטורה הבטוחה עבור '
+    : L('לפי המדריך, הטמפרטורה הבטוחה עבור ', "Per the app's guide, the safe temperature for ");
+  return prefix+name+': '+tempStr+'.';
+}
 // The ONE tokenizer shared by every rewrite path AND by aiSafetyNums (via SAFETY_TOKEN_SRC / safetyTokenRe,
 // defined above aiSafetyToC) — so a number the extractor can see is never a number the guard fails to
 // rewrite. The callback receives the whole token (a range is ONE token, not two numbers) and returns its
@@ -7706,11 +7755,15 @@ function vcGuardSpoken(text, tiers, lang){
   // SUFFIX is gone — a verified number already carries its own inline marker above. Only the redaction
   // NOTICE remains sentence-final: it is a warning, not an authority claim, so summarising it once
   // (singular/plural, count-aware) is still correct.
-  return redacted
-    ? out+' '+(redacted===1
-        ? (lang==='he'?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':L('מספר זה אינו מאומת — בדוק בכרטיס הפריט.','This number isn\'t verified — check the item card.'))
-        : (lang==='he'?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':L('המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.','These numbers aren\'t verified — check the item card.')))
-    : out;
+  if(!redacted) return out;
+  const notice=redacted===1
+    ? (lang==='he'?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':L('מספר זה אינו מאומת — בדוק בכרטיס הפריט.','This number isn\'t verified — check the item card.'))
+    : (lang==='he'?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':L('המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.','These numbers aren\'t verified — check the item card.'));
+  // R-53: append the app's own cited `safe` figure when the guard redacted AND exactly one identified
+  // item carries one (vcSafeSubstitution above) — never a substitute for the notice, always in addition
+  // to it, so the cook still hears that the MODEL's own numbers were unverified.
+  const sub=vcSafeSubstitution(tiers, lang);
+  return out+' '+notice+(sub?(' '+sub):'');
 }
 
 async function vcAskAI(question, ent){

@@ -704,3 +704,137 @@ test('R-36a: a brief safety answer still carries the number, unit, and caveat th
   expect(spoken).toContain('לפי המדריך המאומת'); // the caveat/verification marker
 });
 
+// R-53 (owner-reported live defect, 2026-08-01) — reproduces the real asado failure: the model's answer
+// carries THREE numbers for one identified item (safe minimum + fully-cooked + tenderness target), the
+// "exactly one number total" eligibility rule (owner ruling 2026-07-24, unchanged by this fix) redacts
+// all of them — but the app itself holds a cited `safe` figure for the identified cut, so it must be
+// substituted back in, in the guide's own name, instead of leaving the cook with zero numbers.
+test('R-53: a fully-redacted multi-number safety answer for an identified item is substituted with the app\'s own cited safe figure (the live asado defect)', async ({ page }) => {
+  await bootVC(page);
+  const setup = await page.evaluate(`(function(){
+    for (var i=0;i<DATA.cuts.length;i++){
+      var c=DATA.cuts[i];
+      if (c.safe==null) continue;
+      var q='מה הטמפ הבטוחה ל'+c.heb;
+      var hits=askFindEntity(q.toLowerCase());
+      var best=hits && hits[0];
+      if (best && best.obj && best.obj.n===c.n && best.obj.safe===c.safe){
+        return {heb:c.heb, safe:Math.round(c.safe), q:q};
+      }
+    }
+    return null;
+  })()`) as {heb:string; safe:number; q:string} | null;
+  expect(setup).not.toBeNull();
+  const { heb, safe, q } = setup!;
+  // No active-cook item (vcTasks=[]) — Tier 1 is null, exactly like the live report; the item is
+  // identified ONLY via Tier 2 (askFindEntity on the question text), just like the real repro.
+  await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock='${safe}°C מינימלי עם מנוחה, 71°C מבושל לגמרי, וכ-93°C לרכות מקסימלית.';`);
+  await page.evaluate(`vcAskFlow(${JSON.stringify('שאלה: ' + q)})`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).not.toMatch(/71\D{0,2}°?C/);           // the model's OTHER numbers are still redacted, never spoken raw
+  expect(spoken).toContain('המספרים האלה אינם מאומתים'); // the original redaction notice still fires — substitution is additive, not a replacement
+  expect(spoken).toContain(String(safe));                // the app's OWN cited safe figure is substituted in
+  expect(spoken).toContain(heb);                          // attributed to the identified item, by name
+});
+
+// DoD-8/9 evidence: the substitution sentence rendered in the real Hebrew voice-panel transcript, at
+// the suite's default 390x844 viewport — same pattern as the "DoD-8/9 — the inline verified marker..."
+// screenshot test above (line 628).
+test('R-53 DoD-8/9 — the substitution sentence renders correctly in the Hebrew voice-panel transcript', async ({ page }) => {
+  await bootVC(page);
+  const setup = await page.evaluate(`(function(){
+    for (var i=0;i<DATA.cuts.length;i++){
+      var c=DATA.cuts[i];
+      if (c.safe==null) continue;
+      var q='מה הטמפ הבטוחה ל'+c.heb;
+      var hits=askFindEntity(q.toLowerCase());
+      var best=hits && hits[0];
+      if (best && best.obj && best.obj.n===c.n && best.obj.safe===c.safe){
+        return {heb:c.heb, safe:Math.round(c.safe), q:q};
+      }
+    }
+    return null;
+  })()`) as {heb:string; safe:number; q:string} | null;
+  expect(setup).not.toBeNull();
+  const { heb, safe, q } = setup!;
+  // vcRender() renders nothing at all when vcTasks is empty (host.innerHTML = t?...:'') — an active
+  // task with NO `.ikey` keeps the panel populated (so `.vc-qa-a` exists to screenshot) while still
+  // leaving Tier 1 unresolved, exactly like the real repro (no matching active-cook item).
+  await page.evaluate(`(function(){ closePanel(); openVoiceCook([{label:'x',t:new Date()}]); })()`);
+  await page.waitForSelector('#vcBody');
+  await page.evaluate(`window.__vcAskMock='${safe}°C מינימלי עם מנוחה, 71°C מבושל לגמרי, וכ-93°C לרכות מקסימלית.';`);
+  await page.evaluate(`vcAskFlow(${JSON.stringify('שאלה: ' + q)})`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  await page.waitForFunction(`(function(){ var a=document.querySelector('.vc-qa-a'); return a && a.textContent.indexOf('${heb}')>=0; })()`);
+  const shownText = await page.evaluate(`document.querySelector('.vc-qa-a').textContent`) as string;
+  expect(shownText).toContain(heb);
+  expect(shownText).toContain(String(safe));
+  await page.waitForFunction(`document.querySelector('#panel').getBoundingClientRect().left===0`);
+  await page.evaluate(`document.querySelector('.vc-qa').scrollIntoView({block:'center'})`);
+  await page.waitForFunction(`(function(){ const r=document.querySelector('.vc-qa').getBoundingClientRect();
+    return r.top>=0 && r.bottom<=window.innerHeight; })()`);
+  await page.screenshot({ path: '.superpowers/sdd/r53-substitution-390x844.png' });
+});
+
+test('R-53 negative — no item identified: redaction fires but nothing is substituted (silence is correct, DoD-6)', async ({ page }) => {
+  await bootVC(page);
+  const out = await page.evaluate(`vcGuardSpoken('הטמפ הבטוחה היא בין 63 ל-74°C', { t1: null, t2: null }, 'he')`) as string;
+  expect(out).toContain('אינם מאומתים');
+  expect(out).not.toMatch(/\d/);   // no item identified -> no substitution -> no digits survive anywhere
+});
+
+test('R-53 negative — an identified item with only `tgt` (no cited `safe`) is never substituted (tgt is a texture target, not a safety figure)', async ({ page }) => {
+  await bootVC(page);
+  const setup = await page.evaluate(`(function(){
+    for (var i=0;i<DATA.specials.length;i++){
+      var s=DATA.specials[i];
+      if (s.safe==null && s.tgt!=null && !isNaN(Number(s.tgt))) return {key:'spec-'+s.n};
+    }
+    return null;
+  })()`) as {key:string} | null;
+  expect(setup).not.toBeNull();
+  const { key } = setup!;
+  // Tier 2 (question-text match) on purpose — this test isolates the safe-vs-tgt field decision, not
+  // the Tier-1-vs-Tier-2 eligibility decision (that is the separate test right below).
+  const out = await page.evaluate(`vcGuardSpoken('הטמפ היא בין 63 ל-74°C', { t1: null, t2: resolveItem('${key}') }, 'he')`) as string;
+  expect(out).toContain('אינם מאומתים');
+  expect(out).not.toMatch(/\d/);
+});
+
+// Discovered by the suite itself, not assumed: an active-cook item (Tier 1) alone is NOT sufficient
+// evidence the redacted number is even about that item — several pre-existing regression tests (owner
+// ruling 2026-07-24 on ranges, fix 1b248a1 on the Fahrenheit trap, the comma-grouping fix) keep an
+// active-cook item as Tier 1 while asking a generic, off-topic question, and correctly demand ZERO
+// digits survive. Only a question-text match (Tier 2 — the item's own name appears in what the user
+// asked) is strong enough evidence to attribute a substituted figure to it.
+test('R-53 negative — an active-cook item alone (Tier 1, not named in the question) never triggers substitution; only a question-text match (Tier 2) does', async ({ page }) => {
+  await bootVC(page);
+  const setup = await page.evaluate(`(function(){
+    var c=DATA.cuts.find(function(x){ return x.safe!=null; });
+    return c?{key:'cut-'+c.n}:null;
+  })()`) as {key:string} | null;
+  expect(setup).not.toBeNull();
+  const { key } = setup!;
+  const out = await page.evaluate(`vcGuardSpoken('הטמפ היא בין 63 ל-74°C', { t1: resolveItem('${key}'), t2: null }, 'he')`) as string;
+  expect(out).toContain('אינם מאומתים');
+  expect(out).not.toMatch(/\d/);
+});
+
+test('R-53: the substitution sentence renders in the caller\'s language too (non-Hebrew, e.g. French) — no Hebrew leak', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('fr') });
+  await page.waitForFunction(`typeof vcGuardSpoken==='function' && typeof resolveItem==='function'`);
+  // wait for the fr dict to actually be loaded — L() falls back to Hebrew (not English) while a
+  // non-en/he dict isn't ready yet (I-1), which would make this test pass for the wrong reason.
+  await page.waitForFunction(`(function(){ try{ return typeof getDict==='function' && !!getDict() && Object.keys(getDict()).length>0; }catch(e){ return false; } })()`);
+  const setup = await page.evaluate(`(function(){
+    for (var i=0;i<DATA.cuts.length;i++){ var c=DATA.cuts[i]; if(c.safe!=null) return {key:'cut-'+c.n, safe:Math.round(c.safe)}; }
+    return null;
+  })()`) as {key:string; safe:number} | null;
+  expect(setup).not.toBeNull();
+  const { key, safe } = setup!;
+  const out = await page.evaluate(`vcGuardSpoken('la température est entre 63 et 74°C', { t1: null, t2: resolveItem('${key}') }, 'fr')`) as string;
+  expect(out).toContain(String(safe));
+  expect(out).not.toContain('לפי המדריך');   // no Hebrew leak on the fr branch
+});
+
