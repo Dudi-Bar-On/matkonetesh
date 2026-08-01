@@ -18,8 +18,11 @@ test('R-45 §4.2: the routing table is data, and resolution filters it by availa
     missing: ttsProviderFor(undefined),
     avail: ttsCloudAvail()
   })`);
-  // the table itself matches the design's §4.2 rows exactly
-  expect(managed.table).toEqual({ answer: 'gemini', step: 'gemini', alert: 'cloud' });
+  // the table itself matches the design's §4.2 rows exactly, plus Task 10's four R-52 §1.5 rows
+  // (timer/schedule/progress/safety) — same table, orthogonal axis (use-case → provider, not the
+  // ttsCategoryEnabled switch axis).
+  expect(managed.table).toEqual({ answer: 'gemini', step: 'gemini', alert: 'cloud',
+    timer: 'cloud', schedule: 'cloud', progress: 'gemini', safety: 'gemini' });
   expect(managed.avail).toBe(true);
   expect(managed.answer).toBe('gemini');
   expect(managed.step).toBe('gemini');

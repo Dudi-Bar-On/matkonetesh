@@ -1796,6 +1796,7 @@ const store={
   get(k){try{return JSON.parse(localStorage.getItem(k))}catch(e){return null}},
   set(k,v){try{localStorage.setItem(k,JSON.stringify(v)); return true;}catch(e){ try{mkStorageWarn(e);}catch(_){} return false; }}   // Wave C: surface quota failures instead of swallowing them silently
 };
+try{ window.store=store; }catch(e){}   // const → not a window property by default (6097 precedent); Task 10 test needs a mockable w.store.get
 let _mkStorageWarned=0;
 function mkStorageWarn(e){
   const quota = e && (e.name==='QuotaExceededError' || e.code===22 || e.code===1014 || /quota|exceeded/i.test((e.name||'')+(e.message||'')));
@@ -3458,8 +3459,10 @@ function voiceSay(cat, text, opts){
   const logId = voiceLogAdd({cat:cat, text:text, status:'skipped'});   // pessimistic: upgraded on success
   if(tier==='act') voiceActShow(opts.key||('va'+logId), cat, opts.title||'', text, logId);
   else voiceFyi(text);
-  // (Task 10 inserts the ttsCategoryEnabled gate on the next line; Task 12 replaces the direct vcSpeak
-  //  with voiceQueuePush. The visual half above NEVER moves behind either — spec P1.)
+  // §1.3 + P1: the gate sits AFTER the visual half and BEFORE speech. A muted category still logs and
+  // still shows — "voice configuration adds a channel; it never subtracts one" (§9).
+  // (Task 12 replaces the direct vcSpeak below with voiceQueuePush; the gate itself does not move.)
+  if(!ttsCategoryEnabled(cat)){ voiceLogSetStatus(logId,'skipped'); return logId; }
   try{
     const p=vcSpeak(text, vcVoiceLang(), cat);
     if(p && p.then) p.then(function(){ voiceLogSetStatus(logId,'said'); },
@@ -7174,8 +7177,15 @@ const TTS_ROUTE = {
   answer: 'gemini',   // §4.2 — תשובת AI חופשית: pronunciation quality is the core of the product
   step:   'gemini',   // §4.2 — הקראת שלב/משימה: same timbre as answers, for consistency
   alert:  'cloud',    // §4.2 — התראות קצרות/חוזרות: speed and quota beat timbre
+  // R-52 §1.5 — the categories map use-case → SWITCH (ttsCategoryEnabled/voiceMode above); this table
+  // maps use-case → PROVIDER. Two orthogonal axes over the SAME key; there is no second taxonomy.
+  timer:    'cloud',    // short, repetitive — speed and quota beat timbre
+  schedule: 'cloud',
+  progress: 'gemini',   // a full sentence
+  safety:   'gemini',   // the PRIMARY — this is the content that must never sound sloppy
 };
 const TTS_ROUTE_DEFAULT = 'gemini';   // an unlisted use case gets the PRIMARY — never silence
+try{ window.TTS_ROUTE=TTS_ROUTE; }catch(e){}   // const → not a window property by default (6097 precedent)
 
 // Session latch. Set (once) when the Worker answers "the secondary is not configured here" — after that
 // the secondary simply is not in routing for this session. Not persisted: a redeployed Worker should be
@@ -10479,6 +10489,15 @@ $("#favBtn").addEventListener("click",()=>{
   toast("הסינון נוקה");
 }); })();
 
+// R-52 · voice categories (spec §1.4, owner ruling F-1) — THREE states per category:
+// 'off' | 'whenAway' | 'always'. Declared BEFORE `PREFS` because `valid` here is an ARRAY (checked by
+// `prefOk` at call time) rather than a lazy-closure predicate, so the array literal is evaluated at
+// table-definition time and ordering matters (unlike the `valid` functions below, which close over
+// constants defined further down the file).
+const VOICE_MODES=['off','whenAway','always'];       // owner ruling F-1 · לא · רק כשאיני מסתכל · תמיד
+const VOICE_PREF_KEY={timers:'voiceTimers', schedule:'voiceSchedule', steps:'voiceSteps',
+                      answers:'voiceAnswers', progress:'voiceProgress'};
+
 /* ═══ preferences framework — one registry for every user-tunable behavior ═══
    Formalizes the validated-default pattern already used by themeKey()/uiLevel()/fontScale():
    read the stored value, validate it, else fall back to a default that reproduces today's behavior.
@@ -10505,6 +10524,16 @@ const PREFS={
   aiRank:     {store:'mk-pref-airank',   def:true,     valid:[true,false]},
   slotModel:  {store:'mk-pref-slots',    def:'size',   valid:['size','count']},
   holdMaxH:   {store:'mk-pref-holdmax',  def:3,        valid:[1,2,3], coerce:Number},
+  // R-52 · voice categories (spec §1.4). Owner ruling F-1: THREE states per category —
+  // 'off' | 'whenAway' | 'always'. `safety` is deliberately ABSENT from this table: it is not a key
+  // with a locked value, it is outside the config layer entirely (§1.3) — a registered key could be
+  // made writable by any future PREFS change, and that is the failure this shape prevents.
+  // Defaults per §6.1 of the UX review: what you lose by missing it beats what you lose by hearing it.
+  voiceTimers:  {store:'mk-pref-voice-timers',  def:'always',   valid:VOICE_MODES},
+  voiceSchedule:{store:'mk-pref-voice-schedule',def:'always',   valid:VOICE_MODES},   // F-3: registered, NOT rendered (Task 11)
+  voiceSteps:   {store:'mk-pref-voice-steps',   def:'always',   valid:VOICE_MODES},
+  voiceAnswers: {store:'mk-pref-voice-answers', def:'always',   valid:VOICE_MODES},
+  voiceProgress:{store:'mk-pref-voice-progress',def:'whenAway', valid:VOICE_MODES},
 };
 function prefOk(p, v){
   if(typeof p.valid==='function') return !!p.valid(v);
@@ -10522,6 +10551,43 @@ function setPref(key, val){
   if(!prefOk(p,v)) return false;
   store.set(p.store, v); return true;
 }
+try{ window.PREFS=PREFS; window.pref=pref; window.setPref=setPref; }catch(e){}   // consts → not window props by default (SAFETY_UNIT precedent, 6097)
+
+// §1.3 · THE gate. The safety short-circuit is the FIRST line and returns before `store` is ever
+// touched — so a corrupt store, a thrown getter, or any future PREFS refactor cannot silence it. This
+// is the same shape TTS_ROUTE_DEFAULT (below) already uses: "an unlisted use case gets the PRIMARY —
+// never silence".
+function ttsCategoryEnabled(cat){
+  if(cat==='safety') return true;
+  const m=voiceMode(cat);
+  if(m==='always') return true;
+  if(m==='whenAway') return voiceUserAway();
+  return false;
+}
+function voiceMode(cat){
+  if(cat==='safety') return 'always';
+  const k=VOICE_PREF_KEY[cat];
+  if(!k) return 'always';                       // an UNREGISTERED category is never silenced (7008's covenant)
+  // A REGISTERED category whose store read THREW is a different case: P1 already guarantees the visual
+  // half regardless, so there is no safety cost to being conservative here — fall back to 'whenAway'
+  // (never 'always') so a corrupted store cannot make a category speak against a value the user may have
+  // actually set to 'off' moments ago. Only the two structurally-safe defaults ever resolve to 'always'
+  // on failure: an unregistered category above, and `safety` itself (short-circuited before this runs).
+  try{ return pref(k); }catch(e){ return 'whenAway'; }
+}
+function setVoiceMode(cat, mode){ const k=VOICE_PREF_KEY[cat]; return k?setPref(k, mode):false; }
+// Owner ruling (2026-08-01, §0.1): "not looking" = the screen is OFF (document.visibilityState !==
+// 'visible') OR there has been no touch/key interaction for 90 SECONDS. One function, one place.
+let mkLastTouchTs=Date.now();
+const VOICE_AWAY_IDLE_MS=90000;                 // the owner's ruling — 90 seconds
+try{ ['pointerdown','keydown','visibilitychange'].forEach(function(ev){
+  document.addEventListener(ev, function(){ mkLastTouchTs=Date.now(); }, {passive:true}); }); }catch(e){}
+function voiceUserAway(){
+  try{ if(document.visibilityState!=='visible') return true; }catch(e){ return true; }
+  return (Date.now()-mkLastTouchTs) >= VOICE_AWAY_IDLE_MS;
+}
+try{ window.ttsCategoryEnabled=ttsCategoryEnabled; window.voiceMode=voiceMode;
+     window.setVoiceMode=setVoiceMode; window.voiceUserAway=voiceUserAway; }catch(e){}
 
 /* ── v144: appearance system — color themes · font pairs · text scale ── */
 const THEMES={
