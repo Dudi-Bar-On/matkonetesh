@@ -13,11 +13,17 @@ name: graph-freshness
 # announced that fact. A missing/skipped scheduled CI run shows up as a missing check in GitHub's
 # own UI; a dead daemon shows up as nothing. "Not running" must itself be an alarm, and only the
 # CI platform (not a process this repo owns and can forget to restart) gives that for free.
+# Triggers: nightly only, plus a manual button. Comments are kept on their OWN lines inside this block —
+# GitHub failed to parse an earlier version that carried trailing comments here, which made the whole
+# workflow invalid (it showed up under its file path instead of its name, and every push produced a 0s
+# startup failure). Keep them out of the mapping.
 on:
+  # once nightly; the minute is deliberately off a round number to avoid the documented
+  # top-of-hour scheduling pile-up on GitHub's shared runners.
   schedule:
-    - cron: '17 2 * * *' # once nightly; the exact minute is arbitrary, chosen off round numbers
-                          # on purpose to avoid GitHub's documented top-of-hour scheduling pile-up.
-  workflow_dispatch: {} # manual "run it now" button, for verifying the workflow itself.
+    - cron: '17 2 * * *'
+  # manual "run it now" button, for verifying the workflow itself.
+  workflow_dispatch:
 
 jobs:
   graph-freshness:
