@@ -7812,6 +7812,10 @@ function vcClassMockActive(){ return typeof window!=='undefined' && window.__vcC
 // null is the ONE failure signal: api error, timeout, malformed JSON, schema violation, non-STOP finish,
 // thought leak (which necessarily breaks the JSON), empty claims, or no claim matching any token.
 async function vcClassifySafetyClaims(answerText){
+  // R-62 Task 3 · D10 — a one-line call counter, NOT a network-presence proxy. It exists so the
+  // read-aloud-never-classifies test can assert on "the classifier was not invoked" directly, per
+  // DoD-4 (observable effect, not the absence of a side effect two layers removed).
+  try{ window.__vcClassCalls=(window.__vcClassCalls||0)+1; }catch(e){}
   const src = vcNormalizeSafetyText(answerText);          // the SAME normalization the guard runs on
   const tokens = (src.match(safetyTokenRe()) || []);
   if(!tokens.length) return null;                          // nothing tokenizable → nothing to classify
@@ -8283,10 +8287,18 @@ async function vcAskFlow(rawSaid){
     const answer=await vcAskAIStream(question, tiers.t1||tiers.t2, function(d){ asm.push(d); });
     asm.end();
     vcLatMark('textResp');
+    // R-62 · the classifier pass (spec §5.2). Strictly AFTER the complete answer and strictly BEFORE the
+    // guard — the same "exactly once, on the whole answer" position the guard itself already occupies.
+    // It NEVER awaits anything on the read-aloud path: `early.chain` (the opener) is already sounding and
+    // is not awaited until below, so this wait overlaps audible speech instead of preceding it.
+    // Any failure resolves to null (vcClassifySafetyClaims never throws) → the guard behaves as today.
+    vcLatMark('classReq');
+    const claims=await vcClassifySafetyClaims(answer);
+    vcLatMark('classResp');
     // THE guard — exactly once, on the COMPLETE answer (spec §6.1): strictly after asm.end() (the last
     // delta is assembled) and strictly before any post-guard text is spoken. A guard over a fragment is
     // structurally impossible here, not merely avoided.
-    const guarded=vcGuardSpoken(answer, tiers, ansL);
+    const guarded=vcGuardSpoken(answer, tiers, ansL, claims);
     vcLastQA={q:question, a:guarded}; vcRender();
     // The opener's audio-clock end time. gemPlayPcmStream now resolves when the last PCM frame has been
     // SCHEDULED, so this await costs nothing measurable and the remainder's synthesis starts while the
