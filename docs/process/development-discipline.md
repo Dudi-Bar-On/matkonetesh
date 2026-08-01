@@ -858,6 +858,27 @@ branches, never for proving the feature works. And when a subagent reports a gap
 documented elsewhere", **verify it by running the chain** — this one was reported that way and moved past,
 and it would have shipped a dead feature with a full green suite behind it.
 
+**L43 · Identical-looking code behaved differently — an invisible control byte (2026-08-01).**
+A small tool's row-matching regex silently matched **zero** rows on every run. Re-reading the source
+showed a correct pattern. Re-typing that same pattern in a scratch script and running it against the same
+input **worked**. The contradiction was the clue: the file carried a literal **U+0008 backspace** inside
+the regex, immediately after a literal word — invisible in every editor and diff, and impossible for the
+pattern to ever match, since no real text contains that byte. Almost certainly injected by one of my own
+scripted edits (`sed`/`python` rewriting a line).
+
+Two gates come out of it:
+1. **When code that looks identical behaves differently, compare BYTES, not glyphs.** A `charCodeAt` scan
+   found it in seconds; four rounds of reading the source found nothing. Reading cannot see what is not
+   rendered.
+2. **Scripted edits to source are a source of corruption, not just of speed.** Prefer an editing tool that
+   matches on exact strings over regex line-rewriting for code, and when a scripted edit is the right
+   choice, verify the result **by running it**, not by grepping that the new text is present — the grep
+   passed here the whole time.
+
+A related trap, same day: a fix aimed at a *different real defect* in the same function made it look like
+"the fix didn't work", when in fact it fixed what it targeted and never touched this. **Two defects in one
+function look exactly like one unfixed defect.**
+
 **Adopted wins (2026-07-31) — patterns that worked this session, keep using them:** (7) **The controller
 verifies everything independently** — every subagent claim this session was checked by diff or by the
 controller's own suite run rather than trusted as reported, and that independent check is what caught
