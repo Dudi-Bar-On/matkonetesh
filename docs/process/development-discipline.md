@@ -741,6 +741,47 @@ sub-findings each get a landing, only its headline conclusion. Gate: when a rese
 decision, walk its full section list for landing, not just the section that answered the question being
 asked at the time; an unlanded subsection is a debt exactly like an unlanded ledger row.
 
+**L35 · A test that builds its own fixture can only prove the code's assumption, never the wire (2026-08-01).**
+Google separates SSE frames with `
+
+`. Every parser we wrote split on `
+
+`, so no frame was ever
+parsed and the entire streaming architecture — audio (R-39/v281) and text (Tasks 2/4) alike — was inert in
+production for days. It was worse than absent: each call spent ~1.8s failing with `no-audio` and then paid
+again for the blocking path, so a 28-character line took ~4.5s instead of ~1.1s. **Every test passed the
+whole time**, because the tests fed `
+
+` fixtures of their own making. Gate: when a parser consumes an
+external wire format, at least one test must use **bytes captured from the real endpoint**, not a fixture
+written from the same assumption the parser holds. This is `verify-against-the-runtime-path` applied to
+data rather than to code paths.
+
+**L36 · "Target page, context or browser has been closed" almost always means timeout, not a crash
+(2026-08-01).** When a test times out with a `waitForFunction` pending, teardown closes the page and the
+pending wait reports the closure — the symptom, not the cause. Two separate investigations lost hours
+hunting a browser crash that never happened. Gate: read it as "the condition never became true", and use
+the one-minute discriminator — **run the test alone**. Load contention vanishes in isolation; a real defect
+does not. That single step separated a flake from a genuine product regression in under a minute the same
+day.
+
+**L37 · Three plausible explanations died before the single-point cause was found (2026-08-01).** For the
+same slow-voice symptom I successively believed the digit gate was freezing early speech, then that the
+thinking floor was the bottleneck, then that a second network call was a fallback. All three were
+reasonable, all three were wrong, and all three were noise around one character-class bug (L35). This is
+L14/Occam restated with a fresh scar: when a hypothesis needs several independent things to be true at
+once, look harder for the single point. Also: the owner's domain correction — that most voice use is
+read-aloud, not Q&A — is what exposed it, because the read-aloud path has no thinking latency to hide
+behind. **A user's correction about how their product is actually used is evidence, not context.**
+
+**L38 · A green test guarded a false screenshot (2026-08-01).** The DoD-8 spec asserted on `vcLastQA` — JS
+state — so it passed while its committed screenshot captured the onboarding panel instead of the transcript
+it existed to prove, because `maybeAskUiLevel()` replaces any open panel 400ms after boot and that spec
+(unlike 125 of 134 others) never seeded `mk-uilevel-asked`. A subagent reported the screenshot "looked at
+and correct"; it had been looked at, but it was the wrong screen. Gate: visual evidence is only evidence if
+the assertion that accompanies it reads the **rendered output**, not internal state — the same lesson v267
+taught about measuring translation coverage at a proxy instead of at the DOM.
+
 **Adopted wins (2026-07-31) — patterns that worked this session, keep using them:** (7) **The controller
 verifies everything independently** — every subagent claim this session was checked by diff or by the
 controller's own suite run rather than trusted as reported, and that independent check is what caught
