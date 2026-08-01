@@ -683,56 +683,71 @@ test('ack is visual and instant: vcAskFlow paints the "…thinking" state synchr
 // en/he-only ternary (`vcVoiceLang()==='en'?'...':'...'`) instead of L() — every non-en/non-he language
 // (fr/de/es/it/ru) rendered the HEBREW fallback for these two strings. Fixed to route through L(); this
 // pins the regression for all 5 previously-leaking languages.
+//
+// ── FLAKE ROOT CAUSE, PROVEN 2026-08-01 (supersedes the two earlier, wrong explanations below) ────────
+// Symptom: in a FULL-SUITE run this test hung the whole 30 s and reported "page.waitForFunction: Target
+// page, context or browser has been closed"; the failing language varied run to run; it never reproduced
+// in isolation.
+// Cause: `app.js:12763` runs `setTimeout(() => maybeAskUiLevel(), 400)` on EVERY boot. `maybeAskUiLevel()`
+// (app.js ~10154) returns early only when `mk-uilevel-asked` is already stored — and `seedApp()` clears
+// localStorage on every test, so every test is a "first run". 400 ms after boot it therefore calls
+// `showPanel(...)` with the onboarding question and REPLACES whatever panel is open, `#vcBody` and all.
+// Under light load this test finished ~200 ms after boot and beat the timer; under full-suite contention
+// the seedApp→gate→open→read sequence crosses 400 ms and the onboarding panel wins — so the awaited
+// condition never became true again, for the entire test, whatever the polling mechanism.
+// Evidence (instrumented full-suite run, 921 passed / 2 failed — fr and ru): the ask row was present at
+// `openVoiceCook()` return (panel innerHTML 2219 chars, correct French) and GONE 18 ms later
+// (`#vcBody` absent, panel innerHTML 947), unchanged for the remaining 22 s of polling. A deterministic
+// repro with zero app changes confirmed the mechanism byte-for-byte: waiting on the CONDITION
+// `store.get('mk-uilevel-asked')===true` (i.e. maybeAskUiLevel actually ran) flipped the ask row from
+// present to absent, leaving `panel.innerHTML.length === 960` and `<h2>` = "Какой у вас опыт работы?" —
+// the same 960 seen in the ru full-suite failure.
+// Fix: seed `mk-uilevel-asked` like the 125 other spec files in this suite already do. This is a TEST
+// defect (a missing, already-established seed), not a product defect — `vcRender()`'s output was correct
+// every single time it was sampled.
+// REFUTED, do not resurrect: (1) `polling:'raf'` compositor starvation — `{polling:100}` did not fix it,
+// and the condition genuinely never became true; (2) a missing/unsettled `window.__mkLangReady` — across
+// four instrumented full-suite runs `typeof window.__mkLangReady` was `object` and `I18N_DICTS[lang]` was
+// populated in EVERY sample, including both failing languages of both reproducing runs.
 for (const lg of ['fr', 'de', 'es', 'it', 'ru']) {
   test(`R-36a/T9 regression: the ask-row placeholder and button are localized, not a Hebrew leak (${lg})`, async ({ page }) => {
-    await seedApp(page, { 'mk-lang': JSON.stringify(lg), 'mk-gemkey': JSON.stringify('test-key') });
+    await seedApp(page, {
+      'mk-lang': JSON.stringify(lg),
+      'mk-gemkey': JSON.stringify('test-key'),
+      'mk-uilevel-asked': 'true',   // see FLAKE ROOT CAUSE above — without it app.js:12763 replaces this panel 400 ms after boot
+    });
     // openVoiceCook fires a fire-and-forget vcWarmAck() network pre-warm (app.js ~6641) — block it so a
     // fake test key never races a real fetch under full-suite parallel load (matches the R-32/DoD-8 tests'
     // established page.route pattern for this same panel).
     await page.route(/generativelanguage|gemini/i, r => r.abort());
-    // Task 2 (Dec-A1): the placeholder/button below render through L(), which is gated on the async
-    // boot dict fetch (window.__mkLangReady) — every other L()-dependent test in this suite awaits it
-    // first (tests/i18n-Lcontract.spec.ts, i18n-completeness.spec.ts, i18n-names.spec.ts, etc.); this
-    // loop test omitted it and read the DOM immediately after seedApp's reload instead. Under light load
-    // the in-memory-fulfilled lang-<lg>.json round trip reliably beat the follow-on evaluate(), masking
-    // the gap; under full-suite worker contention it sometimes doesn't, and L() falls back to its
-    // not-yet-loaded-dict guard (app.js L(), ~9361) — Hebrew, not the target language. Reproduced by
-    // deliberately slowing the lang-ru.json route: dictReady=false at render time reliably reproduces
-    // the exact Hebrew leak this test exists to catch. Fix: wait on the same gate every sibling test does.
     try {
+      // The placeholder/button render through L(), which falls back to Hebrew until the async boot dict
+      // fetch lands (app.js `_langDictReady`). `await page.evaluate(() => window.__mkLangReady)` alone is
+      // NOT enough on its own: if boot has not yet reached app.js:9863 the property is `undefined`,
+      // evaluate returns instantly and the "wait" silently no-ops. Wait for the gate to EXIST, then for it
+      // to SETTLE, then for the state it is supposed to guarantee — three conditions, no timeouts, and no
+      // way for any of them to pass vacuously.
+      await page.waitForFunction(`(function(){ var g=window.__mkLangReady; return !!g && typeof g.then==='function'; })()`, undefined, { polling: 50 });
       await page.evaluate(() => (window as any).__mkLangReady);
+      await page.waitForFunction(`(function(){ return typeof getLang==='function' && (getLang()==='he' || !!(I18N_DICTS||{})[getLang()]); })()`, undefined, { polling: 50 });
       await page.evaluate(`(function(){ closePanel(); vcTasks=[{ikey:'cut-1',label:'x',t:new Date()}]; vcIdx=0; openVoiceCook(vcTasks); })()`);
-      // Root cause (askrow-hang investigation, v280/v281 hotfix gate): confirmed by runtime instrumentation
-      // (a plain page.evaluate() read immediately after the open call, dumped for the two languages that
-      // failed in the reproducing run) that #vcAskInput/.vc-askbtn were ALREADY IN THE DOM the instant
-      // openVoiceCook() returned — the render/state path (aiAvail, dict-readiness, vcTasks/vcIdx) is correct
-      // every time. The hang is purely in HOW this test re-checked that DOM, not in what the app did:
-      // page.waitForFunction defaults to `polling:'raf'`, which re-runs its predicate only inside a
-      // requestAnimationFrame callback — i.e. it depends on the tab's compositor actually producing a new
-      // frame. Under full-suite load (workers:20 on far fewer physical cores), the compositor/paint pipeline
-      // can starve for many seconds while the JS main thread — and plain Runtime.evaluate calls like the one
-      // above — keep executing fine (proven directly: the plain evaluate above never hung in any repro run).
-      // A raf-polled wait can therefore sit past the 30s test timeout even though the exact condition it is
-      // polling for became true immediately. Reproduced 2/2 full-suite runs (fr+it, then it+es — a different
-      // language each time, matching "which language hangs varies" — pure scheduling luck, not app logic);
-      // 0/3 in isolation (no contention to starve the compositor). VERDICT: TEST bug, not a product bug —
-      // the app's render path is proven correct at the exact moment of the hang. Fix: poll on a timer
-      // (`polling: 100`, i.e. setTimeout-driven, independent of frame production) instead of `raf` — still a
-      // condition-based wait (DoD-11), just checked via a mechanism that isn't starvable by paint contention.
-      const r = await page.waitForFunction(`(function(){
-        var i=document.querySelector('#vcAskInput'), b=document.querySelector('.vc-askbtn');
-        if(!i||!b) return null;
-        return { placeholder: i.getAttribute('placeholder'), btn: b.textContent };
-      })()`, undefined, { polling: 100 }).then(h => h.jsonValue()) as { placeholder: string; btn: string };
-      expect(r.placeholder).not.toContain('הקלד שאלה');   // no Hebrew leak
-      expect(r.btn).not.toContain('שאל');
-      expect(r.placeholder.length).toBeGreaterThan(2);
+      // Locator assertions, not waitForFunction: they retry on Playwright's own scheduler and, when the row
+      // really is missing, fail with the actual DOM state instead of the misleading "Target page … closed"
+      // that a pending waitForFunction reports after the test-level timeout tears the page down.
+      const input = page.locator('#vcAskInput');
+      const btn = page.locator('.vc-askbtn');
+      await expect(input).toBeVisible();
+      await expect(btn).toBeVisible();
+      const placeholder = (await input.getAttribute('placeholder')) ?? '';
+      const btnText = (await btn.textContent()) ?? '';
+      expect(placeholder).not.toContain('הקלד שאלה');   // no Hebrew leak
+      expect(btnText).not.toContain('שאל');
+      expect(placeholder.length).toBeGreaterThan(2);
     } finally {
       // unroute must never become the reported failure: if the body times out, Playwright's teardown has
       // already closed the page, and an unroute rejection here MASKS the real cause (observed 1.8: the
       // report said `page.unroute: Target page… closed` while the actual defect was the body hanging).
-      // The page is per-test (isolatedPage-style `page` fixture is the warm page, but routes installed
-      // here are page-scoped and die with it), so a failed unroute is harmless — swallow it deliberately.
+      // Routes installed here are page-scoped, so a failed unroute is harmless — swallow it deliberately.
       try { await page.unroute(/generativelanguage|gemini/i); } catch { /* page already closed by teardown */ }
     }
   });
