@@ -3419,6 +3419,59 @@ function renderTimerWarn(){
   el.querySelectorAll('[data-warnstop]').forEach(function(b){ b.addEventListener('click',function(){ mkClearTimerWarn(decodeURIComponent(b.dataset.warnstop)); }); });
 }
 
+// ── D2 · bcheck (internal-temp safety check) "due now" — the sole pre-serve safety gate ─────────────
+// docs/analysis/2026-08-01-voice-output-audit.md N2/S6: itemStages() gives the bcheck stage hours:0 by
+// design (D1 spec §3.1: DoD-10 forbids touching that — it stays a zero-duration marker, never a
+// countdown), but workPlanHtml never gave it a tid/dur either, so it had NO active trigger at all — a
+// static table row. "The right moment" is unambiguous, not invented here: planSchedule already computes
+// a 0-hour stage's `start` as the instant the stage before it ends, so s.start IS "when the preceding
+// stage completes". This surface only ADDS a notification path on top of that already-correct timestamp
+// — it never reads or writes hours/temp/safe. Persisted in store (mk-bcheck-due) so a due check that
+// fired while the app was closed is still shown the next time it's opened (renderBcheckAlarm is also
+// called at boot, below) — same durability shape as mk-timers' `fired` flag.
+function _bcheckDue(){ return store.get('mk-bcheck-due')||{}; }
+function ackBcheck(key){
+  const d=_bcheckDue();
+  if(key){ delete d[key]; } else { Object.keys(d).forEach(function(k){ delete d[k]; }); }
+  store.set('mk-bcheck-due', d);
+  renderBcheckAlarm();
+}
+function renderBcheckAlarm(){
+  const d=_bcheckDue(), keys=Object.keys(d); let el=document.getElementById('mkBcheckAlarm');
+  if(!keys.length){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='mkBcheckAlarm'; el.className='mk-alarm mk-alarm-bcheck'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label',L('בדיקת בטיחות','Safety check')); document.body.appendChild(el); }
+  el.innerHTML=`<div class="mka-head">🌡️ <b>${L('בדוק טמפ׳ פנים לפני הגשה','Check internal temp before serving')}</b></div>`+
+    keys.map(function(k){ const w=d[k]; return `<div class="mka-row"><span class="mka-name">${esc(w.name)}${w.temp!=null?` <small>· ${L('יעד','target')} ${w.temp}°</small>`:''}</span><button class="mka-stop" data-bcheckack="${encodeURIComponent(k)}">✓ ${L('נבדק','Checked')}</button></div>`; }).join('');
+  el.querySelectorAll('[data-bcheckack]').forEach(function(b){ b.addEventListener('click',function(){ ackBcheck(decodeURIComponent(b.dataset.bcheckack)); }); });
+}
+// UNCONDITIONAL — unlike the mk-tlalerts-gated stage-start reminders (renderTimelinePanel's buildList) —
+// because bcheck is the safety gate (owner ruling 2026-08-01: safety notifications sit outside any
+// mutable config layer). The in-app card always shows; the OS notification is best-effort on top of it
+// (mkNotify itself is a no-op without permission — never a silent failure, just a narrower channel, same
+// honesty as the mk-tlalerts toast at ~8100). `computed` and `tlTimers` are the SAME arrays buildList
+// already maintains — no new scheduling primitive.
+function scheduleBcheckDue(computed, tlTimers){
+  const nowTs=Date.now();
+  (computed||[]).forEach(function(c){
+    if(!c||c.blocked||!c.stages) return;
+    const nm=(typeof itemName==='function'?itemName(c.m):c.m.heb);
+    c.stages.forEach(function(s){
+      if(s.kind!=='bcheck'||!s.start||!s.tid) return;
+      const key=s.tid;
+      if(_bcheckDue()[key]) return;   // already surfaced (possibly since acknowledged) — never re-fire the same instant
+      const mark=function(){
+        const d2=_bcheckDue(); if(d2[key]) return;
+        d2[key]={name:nm, temp:(s.temp!=null?s.temp:null)}; store.set('mk-bcheck-due', d2);
+        mkNotify('🌡️ '+L('בדיקת טמפ׳ פנים','Internal temp check'), L(`הגיע הזמן לבדוק — ${nm}`,`Time to check — ${nm}`), 'mk-bcheck-'+key);
+        mkVibrate([200,100,200]);
+        renderBcheckAlarm();
+      };
+      const ms=s.start.getTime()-nowTs;
+      if(ms<=0) mark(); else if(ms<24*3600e3) tlTimers.push(setTimeout(mark, ms));
+    });
+  });
+}
+
 function openSpec(s){
   curProject=pendingProject; pendingProject=null;
   const smk = s.smt? `${s.smt}°C · ${s.smh} ${L('שעות','hours')}` : t(s.smh);
@@ -8218,6 +8271,7 @@ function renderTimelinePanel(){
       if(preheat) fire(preheat,L('🔥 זמן להדליק','🔥 Time to light up'),L(`הדלק את המעשנת — ${preheatHint()} לפני העישון הראשון`,`Fire up the smoker — ${preheatHint()} before the first smoke`));
       sorted.forEach(c=>{ if(!c.blocked&&c.startClock){ const nm=(typeof itemName==='function'?itemName(c.m):c.m.heb); fire(c.startClock,'⏰ '+stripEmoji(nm),L('הזמן להתחיל: ','Time to start: ')+nm); } });
     }
+    try{ scheduleBcheckDue(computed, tlTimers); }catch(e){}   // D2: unconditional — see the function's own comment for why this sits outside the mk-tlalerts gate above
     const viewMode=store.get('mk-tlview')||'items';
     let html=`<div class="tl-viewtoggle"><button class="mchip ${viewMode==='items'?'on':''}" data-tlview="items">📦 ${L('לפי פריט','By item')}</button><button class="mchip ${viewMode==='plan'?'on':''}" data-tlview="plan">📋 ${L('תוכנית עבודה','Work plan')}</button><button class="mchip tl-allbtn" data-tlallopen>${_tlAllOpen?'⤡ '+L('כווץ הכל','Collapse all'):'⤢ '+L('הרחב הכל','Expand all')}</button></div>`;
     const _wpHtml=workPlanHtml(computed, preheat, serve);   // F5: always build the plan (populates window._wpTasks for voice cook even when the items view is showing)
@@ -12787,6 +12841,7 @@ document.querySelectorAll('[data-mfn="__more"]').forEach(b=>b.addEventListener('
 try{ cRefreshHome(); cNavGo('home'); }catch(e){ /* headless/init guard */ }
 try{ if(typeof startTimerWatch==='function') startTimerWatch(); }catch(e){}   // parallel multi-event alarms
 try{ if(typeof anyTimerRinging==='function' && anyTimerRinging()){ if(typeof renderAlarm==='function') renderAlarm(); if(typeof startRingLoop==='function') startRingLoop(); } }catch(e){}   // reopened while a timer is ringing → show the in-app alarm + resume the re-pulse
+try{ if(typeof renderBcheckAlarm==='function') renderBcheckAlarm(); }catch(e){}   // D2: a bcheck that came due while the app was closed is still shown on reopen (mk-bcheck-due persists)
 // Wave 5: keep translating as the SPA re-renders. childList only (subtree) — tnode edits text values,
 // not structure, so it never re-triggers itself. Debounced; no-op in Hebrew.
 try{ let _tnTmo=null; const _mo=new MutationObserver(function(){ if(getLang()==='he') return; clearTimeout(_tnTmo); _tnTmo=setTimeout(function(){ try{ applyI18n(document.body); }catch(e){} try{ tnode(document.body); }catch(e){} try{ hydrateMT(document.body); }catch(e){} }, 50); }); _mo.observe(document.body, {childList:true, subtree:true}); }catch(e){}
