@@ -2543,5 +2543,6 @@
  "המשימה הבאה בשעה ": "Nächste Aufgabe um ",
  "זו המשימה האחרונה": "Das war die letzte Aufgabe.",
  "לא זוהתה פקודה: ": "Befehl nicht erkannt: ",
- "מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.": "Ich höre zu. Sagen Sie: weiter, zurück, nochmal vorlesen, Details, Temperatur — oder stellen Sie eine Frage."
+ "מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.": "Ich höre zu. Sagen Sie: weiter, zurück, nochmal vorlesen, Details, Temperatur — oder stellen Sie eine Frage.",
+ "מה חדש: שאלת בטיחות מקבלת עכשיו את הערך המצוטט מהמדריך במקום תשובה ריקה, הדיבור בכל שפה נשמע בשפה שלה, והתראת בדיקת הטמפרטורה כבר לא חוזרת אחרי שאישרת.": "Neu: Eine Sicherheitsfrage liefert jetzt den zitierten Wert des Leitfadens statt einer leeren Antwort, die Sprachausgabe klingt in jeder Sprache in dieser Sprache, und die Erinnerung zur Temperaturkontrolle kehrt nach dem Bestätigen nicht mehr zurück."
 }

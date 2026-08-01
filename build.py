@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה."
+WHATS_NEW = "מה חדש: שאלת בטיחות מקבלת עכשיו את הערך המצוטט מהמדריך במקום תשובה ריקה, הדיבור בכל שפה נשמע בשפה שלה, והתראת בדיקת הטמפרטורה כבר לא חוזרת אחרי שאישרת."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -338,7 +338,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 282 · 1.8.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 283 · 1.8.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
