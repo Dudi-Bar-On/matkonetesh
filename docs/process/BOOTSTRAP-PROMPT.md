@@ -419,7 +419,7 @@ Four legs, each covering what the others structurally cannot:
 
 | Leg | What it is | Blocking? | Covers what the others cannot |
 |---|---|---|---|
-| **1. Session-start check** | A hook that runs the gate script on session start, resume, **and after compaction** | **No — visibility only** | Surfaces existing red state at the moment work begins, and re-anchors the rules right after the event that erases them |
+| **1. Session-start emission** | A hook firing on session start, resume, **and after compaction**, emitting **three different things**: the gate, a position digest, and a **verbatim reload of the rules** (§5.2) | **No — visibility and restoration only** | Surfaces existing red state at the moment work begins, **and puts the rules themselves back into context right after the event that erases them** |
 | **2. Pre-commit hook** | Local git hook running the same script | Yes, **bypassable by design** | Fast structural feedback before a round-trip to CI |
 | **3. CI job** | The same script in CI on every push and PR | **Yes — the authority** | Cannot be bypassed by a developer the way a local hook can |
 | **4. Scheduled job** | A nightly CI cron for time-based properties | Yes, visibly | Catches rules that go stale from **elapsed time and inaction**, which no commit-triggered gate can ever express |
@@ -459,20 +459,37 @@ chmod +x .githooks/*        # on Windows/git-bash, `git update-index --chmod=+x 
 document `git config core.hooksPath .githooks` as the first line of your CONTRIBUTING file and have CI
 verify it — see §5.6.)*
 
-### 5.2 Leg 1 — the session-start / post-compaction check
+### 5.2 Leg 1 — the session-start / post-compaction emission
 
-For a harness that supports lifecycle hooks (this example is the Claude Code `settings.json` schema —
-**verify the exact schema against your agent harness's own documentation** if you use a different one):
+**This leg is not one script. It is three, and they are different in kind.** Getting this wrong is the
+single easiest mistake in the whole document, so it is stated before the code:
+
+| # | Emission | The question it answers | If it is the only one |
+|---|---|---|---|
+| **1. The gate** | The same compliance script legs 2–4 run | **Is anything broken right now?** | Prints green over an agent that no longer holds the rules — confidence nobody earned |
+| **2. The position digest** | Read-only report derived from the repo and `git` | **Where are we, what is in flight, what awaits a decision?** | The agent knows the rules and not what to apply them to |
+| **3. The rule reload** | **Verbatim** re-emission of the rule text itself | **What are the rules, word for word, right now?** | — this is the one that gets omitted. Without it the other two restore nothing |
+
+> **A gate reports whether the rules were followed. Reloading the rules restores the ability to follow
+> them.**
+
+Compaction is not a *violation*; it is a *deletion*. Nothing was breached — the rules are simply gone from
+context. A checker printing `OK` at that moment is answering a different question, and leaves the agent
+exactly where the failure starts: coherent, confident, and without the bar it is supposed to meet.
 
 ```jsonc
 // .claude/settings.json
+// This example is the Claude Code schema — VERIFY the exact schema and, crucially, the
+// stdout-into-context behaviour against your own harness's documentation (see "The mechanism" below).
 {
   "hooks": {
     "SessionStart": [
       {
         "matcher": "startup|resume|compact",
         "hooks": [
-          { "type": "command", "command": "node scripts/check-meta.mjs", "timeout": 20 }
+          { "type": "command", "command": "node scripts/check-meta.mjs",    "timeout": 20 },
+          { "type": "command", "command": "node scripts/session-brief.mjs", "timeout": 10 },
+          { "type": "command", "command": "node scripts/session-rules.mjs", "timeout": 15 }
         ]
       }
     ]
@@ -481,9 +498,155 @@ For a harness that supports lifecycle hooks (this example is the Claude Code `se
 ```
 
 `compact` is in that matcher deliberately, and it is the least obvious and most valuable part: compaction
-is precisely the moment the working memory the discipline depends on gets erased mid-session. A rule
-re-anchored right after the event that erases it is worth far more than the same rule stated once at the
-start. **This leg blocks nothing.** Its job is that nobody can honestly say "I didn't know it was red."
+is precisely the moment the working memory the discipline depends on gets erased mid-session. **This leg
+blocks nothing.** Its job is that nobody can honestly say "I didn't know it was red" — and that nobody
+*continues* after compaction without the rules.
+
+#### The mechanism: a hook's stdout lands in the agent's context
+
+All of this works because of exactly one platform property: **the hook's stdout is injected into the
+agent's context**, not written to a log nobody reads. That is what turns "run a script" into "put text
+back into the agent's head".
+
+**Verify this on your harness before relying on it.** If your harness only logs hook output, this
+mechanism *does not exist for you*, no matter what the script prints — and you need a different carrier
+(an auto-read file the agent is instructed to open first, a system-prompt injection, a preamble message).
+Say which one you used.
+
+#### Why a summary of the rules is not the rules
+
+Not pedantry. **Paraphrase is the exact failure this mechanism exists to prevent.** Compaction *is* a
+paraphrase engine: it summarises and discards the source, and caveats go first — "the owner ruled X,
+because Y, **with caveat Z**" becomes "X was agreed". An emission that is itself a summary is a second
+pass of the same deletion, wearing the costume of a fix.
+
+The source project states this outright in its always-loaded rules file, and it is worth copying verbatim
+into yours:
+
+> **Memory is not a substitute for re-reading.** "I remember this rule" is a red flag — rules are re-read
+> at invocation, never recalled.
+
+A non-verbatim emission breaks that rule while claiming to enforce it. The already-paid sibling lesson
+(§8.2 #3): a rules file written from recollection omitted the two sections the source document itself
+calls "the core" and "the most important rule". A script that summarises instead of quoting makes that
+same mistake automatically, every day.
+
+#### The real tension: you cannot emit everything, every time
+
+State this honestly rather than rounding it off. **The emission consumes the very resource it protects.**
+Dumping the whole corpus on every compaction funds the next compaction. So some things are printed **in
+full** and others are **named with a path** — and that split must be a stated decision, not an accident.
+
+**How to choose:**
+
+1. **In full: the sections whose absence caused a real failure.** Not "what someone thinks is important" —
+   what your lessons log or audit names as the cause of something that actually happened. On the source
+   project that resolved to: the always-loaded rules file, the memory index, the verification gate, the
+   waiver rule, **the owner's standing instructions** (the section the audit found had gone unread on the
+   day of the failure), and the complete lessons log.
+2. **Named with a path: reference material consulted on demand.** Debugging protocol, thinking models,
+   testing infrastructure, reviewer discipline. Not needed to *start* a task; needed when you reach them.
+3. **An index counts as the pointer.** A memory index that is already one line per topic gets emitted in
+   full; the ~30 documents beneath it do not. Its own line descriptions *are* the named-with-path pointer,
+   and opening any one of them is a deliberate follow-up.
+4. **Everything named gets a one-line reason.** `§5–§9 — debugging protocol, failure-mode map, reviewer
+   discipline — procedural detail consulted on demand, not needed to START a task.` A bare list of
+   omissions becomes, within a month, a skip-list nobody remembers the rationale for.
+5. **Extract by anchor, never by line number.** Documents get edited and sections move. An extractor
+   pinned to line 412 keeps reporting that it emits §10 while emitting something else entirely — the exact
+   shape of failure principle §6.2 is about. Anchor on heading text, and when the anchor is **not found**,
+   say `not established` loudly rather than silently emitting a fragment.
+
+Two more that save sessions: the emission is **read-only**, and it **must never fail the session** — guard
+every read, print `not established` for a missing file, and exit 0 regardless. A rule-reload that breaks
+session start is the fastest way to get itself disabled.
+
+#### Skeleton — adapt the anchors, keep the shape
+
+```js
+#!/usr/bin/env node
+// scripts/session-rules.mjs — a RE-READ, not a recollection.
+// Companion to the gate (is anything broken?) and the position digest (where are we?).
+// This one answers: what are the rules, verbatim, right now?
+import { readFileSync, existsSync } from 'node:fs';
+
+const NA = 'not established';
+const out = [];
+const rule = (c = '=') => c.repeat(78);
+
+// Never throw: a missing file degrades this section, it does not fail the session.
+const readOrNA = (p, label) =>
+  existsSync(p) ? readFileSync(p, 'utf8') : `${NA} — ${label} not found at ${p}`;
+
+// Anchor-based, NOT line numbers: slice from a heading regex to the next matching heading.
+function sliceSection(text, startRe, stopRe) {
+  const m = startRe.exec(text);
+  if (!m) return null;                      // caller prints "not established" — never a silent partial
+  stopRe.lastIndex = m.index + m[0].length;
+  const stop = stopRe.exec(text);
+  return text.slice(m.index, stop ? stop.index : text.length).trimEnd();
+}
+
+out.push(rule(), 'SESSION-RULES — a RE-READ, not a recollection.',
+  'This is the verbatim rule text, emitted fresh into context. It is not a paraphrase and must not be\n' +
+  'treated as one. If anything below looks truncated or stale, open the source file directly before the\n' +
+  'next task. "I remember this rule" is a red flag, not a reason to skip reading.', rule());
+
+// IN FULL — the always-loaded rules file and the memory index.
+for (const [path, label] of [['CLAUDE.md', 'always-loaded rules file'],
+                             [process.env.MEMORY_INDEX ?? '', 'memory index']]) {
+  out.push('\n' + rule('-'), `${label} (${path}) — FULL TEXT`, rule('-'), readOrNA(path, label));
+}
+
+// IN FULL — the sections of the discipline document whose absence caused real failures.
+const disc = readOrNA('docs/process/development-discipline.md', 'discipline document');
+for (const [name, startRe] of [['§3 THE VERIFICATION GATE', /^## 3\. .*$/m],
+                               ['§4 THE WAIVER RULE',       /^## 4\. .*$/m],
+                               ['§10 STANDING INSTRUCTIONS',/^## 10\. .*$/m],
+                               ['§11 LESSONS LOG',          /^## 11\. .*$/m]]) {
+  const body = sliceSection(disc, startRe, /^## \d/m);
+  out.push('\n' + rule('-'), `discipline ${name} — FULL TEXT`, rule('-'),
+           body ?? `${NA} — anchor not found; document structure may have changed.`);
+}
+
+// NAMED, NOT QUOTED — each with a one-line reason. Never a bare skip-list.
+out.push('\n' + rule('-'), 'NOT quoted here (named + reason; open the file for these):', rule('-'),
+  '  §5–§9  — debugging protocol, failure-mode map, reviewer discipline — consulted on demand',
+  '  §12    — thinking models — used when a task calls for one, not to start one',
+  '  §11a   — testing infrastructure — only relevant when actually running the suite');
+
+const body = out.join('\n');
+// Principle §6.2: publish the measure, not just the fact that something was emitted.
+console.log(body + `\n${rule()}\nEND SESSION-RULES — ${body.split('\n').length} lines, ` +
+  `${Buffer.byteLength(body, 'utf8')} bytes. This is a re-read, not a summary.\n${rule()}`);
+process.exit(0);   // read-only, best-effort, never fails the session
+```
+
+Wrap `main()` in a `try/catch` that prints a one-line warning naming the files to open manually, and still
+exits 0.
+
+#### The manual command must emit the *same thing*
+
+You will also want a proactive way to say "get back in the groove" — a manual command, outside the
+automatic triggers. **It must invoke the same scripts, byte for byte.**
+
+```md
+<!-- .claude/commands/enforce.md — or your harness's slash-command equivalent -->
+Run, in order, and show each output IN FULL — including what each gate scanned, not only its verdict:
+  1. node scripts/check-meta.mjs      # the gate — is anything broken right now?
+  2. node scripts/session-brief.mjs   # the position digest — where are we?
+  3. node scripts/session-rules.mjs   # the rule reload — the rules themselves, verbatim
+Do not summarise, re-word, or select from these outputs. This command RUNS commands; it does not
+compose content. If the emission looks truncated, open the named source files directly.
+```
+
+The moment the manual path grows its own version — "a short summary of the rules", "just what's relevant
+right now" — you have two mechanisms: the automatic one, which is maintained, and the manual one, which is
+a weaker ritual that decays quietly. It is always the manual one that decays, because it was written "just
+for convenience".
+
+**The test that holds this in place:** the manual command runs commands and does not compose content. If
+you can change what it emits without touching a script, it has already forked.
 
 ### 5.3 Leg 2 — the pre-commit hook
 
@@ -1510,51 +1673,65 @@ project. You can have them for free.
    source document — a rules file, an index, a brief, a summary — open the source and work through it
    section by section. A rules-file was once written from memory and omitted the two sections the source
    document itself calls "the core" and "the most important rule".
-4. **"I remember this skill/rule" is a red flag.** Rules are re-read at invocation, never recalled.
-5. **Occam first.** Rule out typo, stale cache, wrong path, unfinished build, missing env var **before**
+4. **"I remember this skill/rule" is a red flag.** Rules are re-read at invocation, never recalled. And
+   the corollary that is easy to miss: **a gate reports whether the rules were followed; only reloading
+   them restores the ability to follow them** (§5.2). After compaction, the second is what you need.
+5. **A documented intent is not an implemented mechanism — and that gap is worse than an omission.** Two
+   teaching documents described, in precise words, that the rules were "re-anchored right after the event
+   that erases them", while the mechanism they actually specified ran only a compliance checker. The
+   intent was described; the implementation was absent. A reader sees an accurate sentence and concludes
+   the ground is covered — **an accurate description of a mechanism that does not exist is more harmful
+   than silence, because silence at least does not stop the search.** The test: for every sentence of the
+   form "the mechanism does X", point at the line that does X. If you cannot, write it as an intention.
+6. **Documentation written before the mechanism was proven to work inherits the author's
+   misunderstanding.** Same incident: the requirement was misunderstood, and two documents were written
+   *from* the misunderstanding — after which it looked like two independent sources agreeing. **Documents
+   are not corroborating evidence when they share an author.** Write the document against the running
+   implementation, and have someone other than the requirement's interpreter verify it.
+7. **Occam first.** Rule out typo, stale cache, wrong path, unfinished build, missing env var **before**
    race conditions and framework bugs. **If your hypothesis needs three independent things to be wrong at
    once, stop and look for a single-point failure.** Three plausible explanations died in one session
    before a single character-class bug was found.
-6. **Instrument the boundary *between* layers.** When something hangs while the machine is provably idle,
+8. **Instrument the boundary *between* layers.** When something hangs while the machine is provably idle,
    timestamp both sides of the boundary — client send vs server receive, process vs process — before
    theorising further *within* a layer that is already instrumented and already showing nothing. Five
    measurement campaigns tallied a defect that one boundary-instrumented probe found in an afternoon.
-7. **Measurement campaigns certify a stable system; they do not diagnose an unstable one.** While any
+9. **Measurement campaigns certify a stable system; they do not diagnose an unstable one.** While any
    unexplained failure is open, stop measuring and debug it to root cause.
-8. **Verify the measurement before trusting the measurement.** Two probes lied in one evening: one
+10. **Verify the measurement before trusting the measurement.** Two probes lied in one evening: one
    wrapped its runs in a binary that does not exist on that platform, so all five "runs" executed
    nothing; another sampled the wrong process name. When a measurement is surprising, first prove the
    probe ran the workload at all.
-9. **A worker/concurrency ceiling measured on a contaminated machine is not a ceiling.** Verify the
+11. **A worker/concurrency ceiling measured on a contaminated machine is not a ceiling.** Verify the
    machine is idle first, and sample **six to nine** runs, not three — a one-in-six flake hides
    completely in a three-run check.
-10. **An allow-list of directories is a silent deny-list of everything else.** A sync script staged three
+12. **An allow-list of directories is a silent deny-list of everything else.** A sync script staged three
     directories and cheerfully reported success while leaving the single most important root-level file
     uncommitted, three times running. Any script that reports a push must verify it staged what the task
     actually changed.
-11. **Never kill a long job mid-flight; every setup owns its teardown.** Repeated kill-and-restart during
+13. **Never kill a long job mid-flight; every setup owns its teardown.** Repeated kill-and-restart during
     a measurement left a supervising process alive that respawned its workers, producing a server that
     accepted connections and never responded — and wedged the port for every subsequent run. The
     debugging methodology created the failure being debugged. If you must kill, kill the whole tree from
     the parent and then **verify the resource is released**.
-12. **Read "target closed" / "connection lost" as *the condition never became true*, not as a crash.**
+14. **Read "target closed" / "connection lost" as *the condition never became true*, not as a crash.**
     Two investigations lost hours hunting a crash that never happened. The one-minute discriminator: run
     the failing test **alone**. Contention vanishes in isolation; a real defect does not.
-13. **Never set a low output cap on a model call.** A modest-looking cap plus high reasoning effort
+15. **Never set a low output cap on a model call.** A modest-looking cap plus high reasoning effort
     silently truncates structured output mid-stream: no error, just a confident wrong answer. Billing is
     on tokens actually used, so a high cap is free headroom.
-14. **A user's correction about how their product is actually used is evidence, not context.** It is
+16. **A user's correction about how their product is actually used is evidence, not context.** It is
     frequently the fact that collapses three wrong hypotheses at once.
-15. **Question the ingredient, not just the patch.** When one component repeatedly causes trouble,
+17. **Question the ingredient, not just the patch.** When one component repeatedly causes trouble,
     evaluate a genuinely better alternative instead of stacking band-aids. Find alternatives by research;
     judge them on evidence.
-16. **When stuck, research — do not attempt fix #4.** After three failed fixes, **stop**. Read the
+18. **When stuck, research — do not attempt fix #4.** After three failed fixes, **stop**. Read the
     official documentation, help pages, and issue trackers of every product involved, in detail. Two
     focused documentation-reading sessions cracked in under an hour what a day of guessing had not.
-17. **A "while I'm here" fix is scope creep.** Note it; do not do it. And never delete code whose purpose
+19. **A "while I'm here" fix is scope creep.** Note it; do not do it. And never delete code whose purpose
     you do not understand — check history, comments and tests first; if the purpose stays unclear, keep
     it and record the uncertainty.
-18. **Know when NOT to apply any of this.** A stack trace naming file and line gets fixed, not
+20. **Know when NOT to apply any of this.** A stack trace naming file and line gets fixed, not
     fault-treed. A single-task change with one clear requirement does not get a pre-mortem. This
     discipline is heavy; ceremony applied where it adds nothing is cost with no evidence.
 
@@ -1711,6 +1888,11 @@ that lives only in the conversation reaches zero subagents. Keep the always-load
 authoritative discipline document separate, and have the small file say plainly which document is
 authoritative where they differ.
 
+"Re-read at invocation" has a machine-side counterpart, and it is the thing this project got wrong once:
+after compaction, *nothing* is at its invocation point any more — the rules are simply gone. That is what
+the rule-reload emission in **§5.2** is for. Re-reading skills by hand and reloading the rules by hook are
+the same principle applied at two different scales.
+
 ---
 
 ## 10. The staged adoption path
@@ -1743,8 +1925,10 @@ place every subagent inherits.
    **deliberately make a bad commit and watch it get blocked.** A gate you have never seen block
    something is not installed.
 8. Wire **leg 3** (the CI `discipline` job, §5.6) — this is the one that is actually the authority.
-9. Wire **leg 1** (the session-start / post-compaction hook, §5.2). Cheap, and it is what makes red state
-   impossible to be unaware of.
+9. Wire **leg 1** (the session-start / post-compaction hook, §5.2) with **all three emissions** — gate,
+   position digest, and **rule reload**. First prove your harness injects hook stdout into context; then
+   trigger a compaction and confirm the rule text is actually present afterwards. Wiring only the gate
+   here is the documented mistake (§8.2 #5): it looks complete and restores nothing.
 
 ### The first week — coverage, then time, then knowledge
 
@@ -1788,17 +1972,27 @@ This is not free, and you should tell the human that plainly rather than selling
   and a placebo.
 - **Exit codes captured directly** (§3.6). Trivial to do, silently corrupts every downstream claim when
   it is not done.
+- **The verbatim rule reload on compaction** (§5.2), if your harness compacts at all. Everything else in
+  this document assumes the agent still holds the rules; this is the only piece that makes that true
+  after the event that erases them.
 
 **Refinements — real value, but adopt them when the basics are holding:**
 
-- The full four-leg layering. Two legs (pre-commit + CI) cover most of it; the nightly job and the
-  session-start hook are worth adding, later.
+- The full four-leg layering. Two legs (pre-commit + CI) cover most of the *gating*; the nightly job is
+  worth adding later. **The session-start leg is the exception — its rule-reload emission is
+  load-bearing, not a refinement** (above); only its gate and position-digest emissions can wait.
 - The grandfather-baseline machinery (§6.1). Necessary the moment you have accumulated debt; unnecessary
   on a green-field project on day one.
 - The graph corpus and the symbol server (§9). Transformative on a large or long-lived codebase;
   meaningful overhead on a small one.
 - The status board, capabilities inventory, and per-release human-facing report. Excellent for a long
   programme with a non-technical stakeholder; ceremony for a two-week project.
+
+**And one cost that is paid in context rather than in time:** the rule reload occupies part of the window
+it exists to protect — on the source project, roughly a hundred kilobytes of text on every session start
+and every compaction. That is the price of the in-full/named-with-a-path split being a deliberate decision
+(§5.2) rather than an accident. Measure your own emission, print the number, and revisit the split when it
+grows; do not shrink it by paraphrasing, which converts a known cost into an unknown loss.
 
 **The ongoing tax, stated as it actually feels:** roughly one extra artifact per task (the brief), one
 extra artifact per task (the report with its table), one board update per task, and one lessons pass per
@@ -1830,6 +2024,14 @@ to* is part of the discipline, not an exception to it.
       state.
 - [ ] A fresh clone gets the hooks automatically, and CI verifies the hook files exist.
 - [ ] The lessons log has at least one entry, and every entry names a **gate**, not a good intention.
+- [ ] Session start / resume / **compaction** emits all three: the gate, the position digest, and the
+      **verbatim rule reload** — and you have confirmed your harness puts hook stdout **into context**.
+- [ ] You have **triggered a compaction** and confirmed the rule text is present in context afterwards.
+      Reading the script is not confirmation; a reload nobody has watched land is not installed.
+- [ ] The rule reload states, in its own header, that it is a **re-read and not a summary**, prints its
+      own size, and prints `not established` when an anchor is missing rather than a silent fragment.
+- [ ] Everything the reload does *not* quote is **named with a path and a one-line reason**.
+- [ ] The manual enforcement command **invokes the same scripts** and composes no content of its own.
 - [ ] You can state, in one sentence each, which parts of this you installed, which you deliberately did
       not, and why.
 
@@ -1845,3 +2047,6 @@ while four releases shipped over it. The second-deepest was a gate that *did* ru
 sixty-three rows it never looked at. So: move every rule you care about behind automation; wire that
 automation to an event you cannot forget and a CI job you cannot bypass; make every gate print what it
 scanned and not just its verdict; and never trust a gate you have not personally watched block something.
+And the one thing no gate can do: after the event that erases the rules from working memory, **put the
+rules back — verbatim, not summarised.** A gate reports whether they were followed; only the reload
+restores the ability to follow them.
