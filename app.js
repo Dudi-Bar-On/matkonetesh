@@ -8687,8 +8687,10 @@ function renderPlanStartRow(earliest, serve, rebuild){
   const list=$("#tlList"); if(list) list.classList.toggle('plan-idle', !started);   // timers disabled until the plan is started
   const sb=el.querySelector('[data-planstart]'); if(sb) sb.addEventListener('click',()=>{ if(planStarted()){ const removed=resetPlanTimers(); setPlanStarted(null); rebuild(); if(typeof toast==='function' && Object.keys(removed).length) toast('התוכנית אופסה', ()=>{ const t2=store.get('mk-timers')||{}; Object.assign(t2,removed); store.set('mk-timers',t2); setPlanStarted(Date.now()); rebuild(); }); } else { setPlanStarted(Date.now()); if(behind && typeof toast==='function') toast('התחלת עם לחץ-זמן — עקוב אחרי הטיימרים'); rebuild(); } });   // R1: scoped reset + undo
   const stc=el.querySelector('[data-planstrict]'); if(stc) stc.addEventListener('change',()=>{ store.set('mk-plan-strict', stc.checked); rebuild(); });
-  const pp=el.querySelector('[data-planpush]'); if(pp) pp.addEventListener('click',()=>{ const inp=$("#tlServe"); if(!inp) return; const d=serveDateTime(); d.setMinutes(d.getMinutes()+30); const nv=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); inp.value=nv; store.set('mk-tlserve',nv); store.set(serveDateKey(), isoDate(d)); rebuild(); });   // push on the full datetime so a past-midnight bump rolls the day, not wraps into today
-  const prb=el.querySelector('[data-planreschedule]'); if(prb) prb.addEventListener('click',()=>{ if(!earliest) return; const span=serve.getTime()-earliest.getTime(); const ns=new Date(Date.now()+span+60000); store.set('mk-tlserve', ('0'+ns.getHours()).slice(-2)+':'+('0'+ns.getMinutes()).slice(-2)); store.set(serveDateKey(), isoDate(ns)); rebuild(); });   // F1: shift serve so the plan starts now (earliest→now) instead of only nudging +30m
+  const pp=el.querySelector('[data-planpush]'); if(pp) pp.addEventListener('click',()=>{ const inp=$("#tlServe"); if(!inp) return; const d=serveDateTime(); d.setMinutes(d.getMinutes()+30); const nv=('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+    evServeWriteGate(function(){ inp.value=nv; store.set('mk-tlserve',nv); store.set(serveDateKey(), isoDate(d)); rebuild(); }); });   // §4.4 gate — push on the full datetime so a past-midnight bump rolls the day, not wraps into today
+  const prb=el.querySelector('[data-planreschedule]'); if(prb) prb.addEventListener('click',()=>{ if(!earliest) return; const span=serve.getTime()-earliest.getTime(); const ns=new Date(Date.now()+span+60000);
+    evServeWriteGate(function(){ store.set('mk-tlserve', ('0'+ns.getHours()).slice(-2)+':'+('0'+ns.getMinutes()).slice(-2)); store.set(serveDateKey(), isoDate(ns)); rebuild(); }); });   // §4.4 gate — F1: shift serve so the plan starts now (earliest→now) instead of only nudging +30m
 }
 // identity banner at the top of the work plan so it's always clear WHICH event you're in
 function tlEventBanner(){
@@ -8722,7 +8724,8 @@ function renderTimelinePanel(){
     <div id="tlList">${items.length?'':`<div class="shop-empty">${L('הרשימה ריקה — הוסף פריטים (כפתור ＋) או דרך בונה התפריט, ואז חזור לכאן.','The list is empty — add items (the ＋ button) or via the menu builder, then come back here.')}</div>`}</div>`;
   const si=$("#tlServe");
   if(si) si.addEventListener('input',()=>{store.set('mk-tlserve',si.value); buildList();});
-  { const sd=$("#tlServeDate"); if(sd) sd.addEventListener('change',()=>{ store.set(serveDateKey(), sd.value||null); buildList(); }); }   // pick the serve day (night / next-day cooks)
+  { const sd=$("#tlServeDate"); if(sd) sd.addEventListener('change',()=>{
+      evServeWriteGate(function(){ store.set(serveDateKey(), sd.value||null); buildList(); }); }); }   // §4.4 gate — pick the serve day (night / next-day cooks)
   { const ta=$("#tlAlerts"); if(ta) ta.addEventListener('click',async()=>{
       const on=!store.get('mk-tlalerts');
       if(on){ if(!('Notification' in window)){ toast('הדפדפן לא תומך בהתראות'); return; }
@@ -11566,8 +11569,72 @@ function evUnfinish(id){                                                  // re-
   delete list[i].finishedAt; list[i].updated=Date.now();
   evSaveList(list); return true;
 }
+
+// §4.4 · "התחל מחדש". wpck: has NEVER had a reset path (verified against resetPlanTimers ~8666,
+// evDelete ~11693, tlReset's own handler) — this IS that path, written here for the first time. It is a
+// RAW localStorage prefix (evCookStarted's own witness #2, above), so it is swept directly, exactly like
+// that scan. PLANNING choices are deliberately kept: mk-tlstate-<id> holds method/ready/sv-order, which
+// the spec calls "החלטות תכנון, לא התקדמות" — restarting a cook must not un-plan the menu.
+function evClearProgress(evId){
+  const id=evId||(typeof evScope==='function'?evScope():null); if(!id) return {wpck:0, timers:0, bcheck:0};
+  let n=0;
+  try{
+    const kill=[];
+    for(let i=0;i<localStorage.length;i++){ const k=localStorage.key(i); if(k && k.indexOf('wpck:'+id+':')===0) kill.push(k); }
+    kill.forEach(function(k){ localStorage.removeItem(k); n++; });
+  }catch(e){}
+  const removed=(id===(typeof evScope==='function'?evScope():null) && typeof resetPlanTimers==='function')
+    ? resetPlanTimers() : _evDropTimers(id);
+  try{ store.set('mk-plan-started-'+id, null); }catch(e){}
+  const d=store.get('mk-bcheck-due')||{}; let b=0;
+  Object.keys(d).forEach(function(k){ if(String((d[k]&&d[k].tid)||k).indexOf('st-'+id+'-')===0){ delete d[k]; b++; } });
+  store.set('mk-bcheck-due', d);
+  try{ renderBcheckAlarm(); }catch(e){}
+  return {wpck:n, timers:Object.keys(removed||{}).length, bcheck:b};
+}
+function _evDropTimers(id){ const ts=store.get('mk-timers')||{}, out={};
+  Object.keys(ts).forEach(function(k){ if(k.indexOf('st-'+id+'-')===0){ out[k]=ts[k]; delete ts[k]; } });
+  store.set('mk-timers', ts); return out; }
+
+// §4.4 · "המשך". Keeps every check-off and every RUNNING timer; drops exactly two things that would
+// otherwise detonate on the first render of the re-armed plan: FIRED timer records (they ring
+// immediately — renderAlarm reads `fired`, ~3382) and UNACKNOWLEDGED bcheck rows from the previous cycle
+// (they are that cycle's, not this one's — the acknowledged ones stay, so R-56's guard keeps working).
+function evKeepProgress(evId){
+  const id=evId||(typeof evScope==='function'?evScope():null); if(!id) return {timers:0, bcheck:0};
+  const ts=store.get('mk-timers')||{}; let t=0;
+  Object.keys(ts).forEach(function(k){ if(k.indexOf('st-'+id+'-')===0 && ts[k] && ts[k].fired){ delete ts[k]; t++; } });
+  store.set('mk-timers', ts);
+  const d=store.get('mk-bcheck-due')||{}; let b=0;
+  Object.keys(d).forEach(function(k){ const r=d[k];
+    if(r && !r.acked && String(r.tid||k).indexOf('st-'+id+'-')===0){ delete d[k]; b++; } });
+  store.set('mk-bcheck-due', d);
+  try{ renderAlarm(); renderBcheckAlarm(); }catch(e){}
+  return {timers:t, bcheck:b};
+}
+
+// §4.4 · the ONE gate. Every serve-time write this task touches goes through here — the question can
+// never be skipped by a caller that forgot. `yes-no` shape (§12.5): exactly two options. Fires ONLY for
+// needsUpdate/finished, and NEVER for any other state (the spec says "ולא באף מקרה אחר").
+function evServeWriteGate(applyWrite){
+  const ev=(typeof evActive==='function' && typeof evList==='function')
+    ? (evList().find(function(e){ return e.id===evActive(); })||null) : null;
+  const st=ev?evState(ev):'planning';
+  if(st!=='needsUpdate' && st!=='finished'){ applyWrite(); return; }
+  appConfirm(L('מצאנו סימונים וטיימרים מהבישול הקודם.','We found check-offs and timers from the previous cook.'),
+    { okLabel:L('המשך מאיפה שהפסקתי','Continue where I left off'),
+      cancelLabel:L('התחל מחדש','Start over') }).then(function(ans){
+    if(ans==null) return;                          // dismissed (scrim/Esc) → the serve time is NOT written
+    applyWrite();                                   // the new serve instant lands first, then the re-arm
+    if(ans===true) evKeepProgress(ev.id); else evClearProgress(ev.id);
+    try{ evUnfinish(ev.id); }catch(e){}              // §4.3 — a re-armed event leaves `finished`
+    if(typeof buildList==='function') buildList();
+  });
+}
+
 try{ window.evState=evState; window.evCookStarted=evCookStarted; window.evStaleMs=evStaleMs;
-     window.evFinish=evFinish; window.evUnfinish=evUnfinish; }catch(e){}
+     window.evFinish=evFinish; window.evUnfinish=evUnfinish; window.evClearProgress=evClearProgress;
+     window.evKeepProgress=evKeepProgress; window.evServeWriteGate=evServeWriteGate; }catch(e){}
 
 // resolve which event a stage-timer key (st-<scope>-…) belongs to — exact prefix, robust
 function timerEventName(key){ if(!key) return ''; const evs=evList(); for(var i=0;i<evs.length;i++){ if(String(key).indexOf('st-'+evs[i].id+'-')===0) return evs[i].name||''; } return ''; }
