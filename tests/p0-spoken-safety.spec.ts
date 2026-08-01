@@ -943,3 +943,48 @@ test('R-58 DoD-8/9 — the category substitution sentence renders correctly in t
   await page.screenshot({ path: '.superpowers/sdd/r58-category-substitution-390x844.png' });
 });
 
+// R-59 (owner-reported live defect, 2026-08-01, v283) — a Q&A asked in Hebrew stayed on screen after
+// switching the app language to Russian. Owner ruling: DELETE it, never translate it — a transcript
+// records a conversation that happened in a specific language, and translating it after the fact would
+// manufacture words nobody said. applyLang() (the one function every language-change path funnels
+// through — setLang(), boot dict-load, boot-failure recovery) now clears vcLastQA and repaints the open
+// voice panel immediately.
+test('R-59: the on-screen Q&A transcript is DELETED (not translated) when the app language changes', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`(function(){ closePanel(); openVoiceCook([{label:'x',t:new Date()}]); })()`);
+  await page.waitForSelector('#vcBody');
+  await page.evaluate(`window.__vcAskMock='תן לו לנוח כמה דקות ואז פרוס דק.'; vcTasks=[{label:'x',t:new Date()}]; vcIdx=0;`);
+  await page.evaluate(`vcAskFlow('שאלה: מה עכשיו')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  await page.waitForFunction(`(function(){ var a=document.querySelector('.vc-qa-a'); return a && a.textContent.indexOf('לנוח')>=0; })()`);
+  expect(await page.evaluate(`vcLastQA && vcLastQA.a`)).toContain('לנוח');   // sanity: the transcript really is populated first
+  // pre-populate a (near-empty, truthy) ru dict so setLang() takes its SYNCHRONOUS branch (mirrors the
+  // established pattern in tests/i18n-foundation.spec.ts) — this test is about vcLastQA clearing, not
+  // about awaiting a real network dict fetch.
+  await page.evaluate(`I18N_DICTS.ru=I18N_DICTS.ru||{}; setLang('ru');`);
+  await page.waitForFunction(`getLang()==='ru'`);
+  // DELETED, not translated: no Q&A block survives in the DOM at all, and the internal state is null —
+  // never a Russian rendering of the same Hebrew answer.
+  await page.waitForFunction(`!document.querySelector('.vc-qa')`);
+  expect(await page.evaluate(`vcLastQA`)).toBeNull();
+  const bodyHtml = await page.evaluate(`document.getElementById('vcBody').innerHTML`) as string;
+  expect(bodyHtml).not.toContain('לנוח');   // the old Hebrew content is gone, not carried over translated
+});
+
+test('R-59 negative — with no active transcript, a language switch is a harmless no-op (DoD-6) and a fresh question afterward still works normally', async ({ page }) => {
+  await bootVC(page);
+  await page.evaluate(`(function(){ closePanel(); openVoiceCook([{label:'x',t:new Date()}]); })()`);
+  await page.waitForSelector('#vcBody');
+  expect(await page.evaluate(`vcLastQA`)).toBeNull();   // nothing asked yet — the case this fix must not disturb
+  await page.evaluate(`I18N_DICTS.ru=I18N_DICTS.ru||{}; setLang('ru');`);
+  await page.waitForFunction(`getLang()==='ru'`);
+  expect(await page.evaluate(`vcLastQA`)).toBeNull();   // still nothing — no error, no phantom transcript conjured
+  // the fix is surgical, not a feature regression: a NEW question asked AFTER the switch still populates
+  // the transcript normally, in the now-active language's voice panel.
+  await page.evaluate(`window.__vcAskMock='ok'; vcTasks=[{label:'x',t:new Date()}]; vcIdx=0;`);
+  await page.evaluate(`vcAskFlow('question: what now')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  await page.waitForFunction(`vcLastQA && vcLastQA.a==='ok'`);
+  expect(await page.evaluate(`document.getElementById('vcBody').innerHTML`)).toContain('ok');
+});
+

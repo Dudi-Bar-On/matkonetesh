@@ -10246,6 +10246,16 @@ function restoreHe(root){ const r=root||document.body; if(!r) return;
 let _mkMethodRepaint=null;
 function syncHomeLang(){ try{ const l=getLang(); const f=$("#cHomeLangFlag"); if(f) f.textContent=langFlag(l); const nm=$("#cHomeLangName"); if(nm) nm.textContent=(I18N_LANGS[l]||l); }catch(e){} }
 function applyLang(){
+  // R-59 (owner-reported live defect, 2026-08-01, v283) — a Q&A asked in one language stayed on screen
+  // after switching the app to another (an answer asked in Hebrew still visible under Russian). Owner
+  // ruling: DELETE it, never translate it — the transcript is a record of a conversation that happened
+  // in a specific language, and translating it after the fact would manufacture words nobody actually
+  // said. Every applyLang() run (the ONE function every language-change path — setLang(), the boot
+  // dict-load promise, the boot-failure recovery branch — funnels through) clears the transcript and, if
+  // the voice panel is currently open, repaints it immediately so the stale answer disappears without
+  // waiting for the next question. A same-language boot repaint finds vcLastQA already null, so this is
+  // a harmless no-op there.
+  if(vcLastQA!==null){ vcLastQA=null; try{ if(document.getElementById('vcBody')) vcRender(); }catch(e){} }
   const lRaw=getLang();
   // I-1 (Task 3, controller-anchored review finding): render as Hebrew whenever the stored language's
   // dict hasn't loaded (or failed to) — otherwise dir/lang/class flip to the target language while the
