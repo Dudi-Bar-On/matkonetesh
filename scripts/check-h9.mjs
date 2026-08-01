@@ -3,8 +3,11 @@
 // Every .superpowers/sdd/*-report.md that landed after the newest release(v commit must carry all
 // five H9 header strings (מה היה · מה נעשה · מה נשאר · איפה אנחנו · הבא בתור). Audit finding: 0/16
 // today carried even one. "Landed after" is resolved via git history when the file is tracked
-// (robust across clones); an UNTRACKED report file falls back to mtime vs the graph-freshness-style
-// stamp, same documented limit as check-graph-fresh.mjs.
+// (robust across clones). GROUND TRUTH IN THIS REPO: .superpowers/sdd/.gitignore excludes the whole
+// directory ("*"), so every report file is untracked and this ALWAYS falls back to mtime vs the
+// newest release(v commit's date - same documented same-machine/same-session limit as
+// check-graph-fresh.mjs's local mode. If .superpowers/sdd is ever made tracked, the git-history path
+// activates with no code change.
 // Env overrides (self-test fixtures): SDD_DIR=<path>, GITROOT=<path>.
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';

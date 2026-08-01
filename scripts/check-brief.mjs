@@ -4,6 +4,10 @@
 // field markers (א)..(ו) — audit finding: 0/6 briefs touched the template AT ALL on 2026-08-01.
 // Also enforces §7's fix: a brief may not hand the operator a full-suite gate command
 // (`npx playwright test` with no file path after it) — DoD-12 reserves that for the controller (H7).
+// "Landed after the template" prefers git commit history when tracked; GROUND TRUTH IN THIS REPO:
+// .superpowers/sdd/.gitignore excludes the whole directory ("*"), so briefs are untracked and this
+// ALWAYS falls back to mtime vs the template's own commit date - same documented limit as
+// check-graph-fresh.mjs's local mode.
 // Env overrides (self-test fixtures): SDD_DIR=<path>, TEMPLATE=<path>, GITROOT=<path>.
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
