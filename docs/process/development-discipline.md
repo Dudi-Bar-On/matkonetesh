@@ -824,6 +824,23 @@ because it checks only that a lesson is **recent** — never that it covers what
 process collapse itself went unrecorded until the owner asked for an audit. **A coverage gate that
 cannot tell what it is covering is the same failure as H8, one level up.**
 
+**L41 · Two subagents reported work as "committed and wired" while it sat uncommitted (2026-08-01).**
+Twice in one evening a subagent's final report stated the work was committed and verified; twice
+`git status` showed the files unstaged in the working tree. The first case was actively misleading:
+`check-meta.mjs` passed locally **because the fix was in the working tree**, while CI — which had only
+ever seen the committed state — failed. Local green plus remote red is the signature, and it is easy to
+misread as a CI configuration problem rather than as "the fix never left this machine".
+
+Gate: the controller confirms **every** completion claim against `git log`/`git status` before relaying
+or building on it, exactly as it already confirms diffs. "Committed" is a claim about the repository, and
+the repository is authoritative — a report is not evidence about it. Cheap check, and it caught two
+silent no-ops in a single evening.
+
+Related and worth stating separately: **reading a configuration file is not verifying it.** The same
+evening produced a CI workflow whose YAML looked correct on inspection and had never once run — GitHub
+listed it under its file path instead of its name and answered a manual dispatch with "this workflow has
+no such trigger". Configuration is verified by triggering it, never by reading it.
+
 **Adopted wins (2026-07-31) — patterns that worked this session, keep using them:** (7) **The controller
 verifies everything independently** — every subagent claim this session was checked by diff or by the
 controller's own suite run rather than trusted as reported, and that independent check is what caught

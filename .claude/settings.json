@@ -8,6 +8,16 @@
             "type": "command",
             "command": "node scripts/check-meta.mjs",
             "timeout": 20
+          },
+          {
+            "type": "command",
+            "command": "node scripts/session-brief.mjs",
+            "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "node scripts/session-rules.mjs",
+            "timeout": 10
           }
         ]
       }
