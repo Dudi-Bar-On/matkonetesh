@@ -43,4 +43,29 @@ assertExit(
   0,
 );
 
+// GRANDFATHER BASELINE (gate-scoping-report.md, 2026-08-01 follow-up): same mechanism as check-brief's.
+const baselineFile = writeFile(join(repo, 'baseline'), 'gate-baselines.json',
+  JSON.stringify({ brief: [], report: ['grandfathered-report.md'] }));
+
+const sddDirBaseline = join(repo, 'sdd-baseline');
+const grandfatheredReport = writeFile(sddDirBaseline, 'grandfathered-report.md', 'pre-existing debt, no H9 headers\n');
+setMtime(grandfatheredReport, '2026-07-02T00:00:00Z');
+const newReport = writeFile(sddDirBaseline, 'brand-new-report.md', 'a brand new report, also no H9 headers\n');
+setMtime(newReport, '2026-07-02T00:00:00Z');
+
+const baselineResult = runNode(SCRIPT, [], { SDD_DIR: sddDirBaseline, GITROOT: repo, GATE_BASELINES: baselineFile });
+assertExit('a non-grandfathered report still blocks even when a grandfathered one is present', baselineResult, 1);
+if (!/STANDING DEBT/.test(baselineResult.stdout) || !/grandfathered-report\.md/.test(baselineResult.stdout)) {
+  console.error('FAIL  expected grandfathered-report.md to be reported under STANDING DEBT');
+  process.exitCode = 1;
+} else {
+  console.log('PASS  grandfathered report reported as standing debt');
+}
+if (!/brand-new-report\.md/.test(baselineResult.stderr)) {
+  console.error('FAIL  expected brand-new-report.md to be named as the blocking violation');
+  process.exitCode = 1;
+} else {
+  console.log('PASS  non-grandfathered report is the one that blocks');
+}
+
 summary('check-h9');

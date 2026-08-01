@@ -6,10 +6,10 @@
 # This is now the "mechanical enforcement" the discipline doc has been claiming since §10.12.
 #
 # LAYERING (four legs, on purpose - see .claude/settings.json and .github/workflows/*.yml):
-#   1. THIS hook = fast local structural feedback. Bypassable BY DESIGN (META_SKIP_HOOK=1 below,
-#      or plain `git commit --no-verify`) — a local hook can never be the actual authority, because
-#      any developer can skip it, same as today's `.git/hooks` was already technically present but
-#      unwired. Its job is to catch problems before they cost a round-trip to CI, not to be trusted.
+#   1. THIS hook = fast local structural feedback. Bypassable BY DESIGN (META_SKIP_GATE=<id>, see
+#      below) — a local hook can never be the actual authority, because any developer can skip it,
+#      same as today's `.git/hooks` was already technically present but unwired. Its job is to catch
+#      problems before they cost a round-trip to CI, not to be trusted.
 #   2. The `discipline` job in CI = the actual authority. It runs on every push/PR and cannot be
 #      bypassed the way a local hook can.
 #   3. The nightly `graph-freshness` schedule = covers what no commit hook OR push job can express:
@@ -24,6 +24,14 @@
 # die silently, which is exactly how 2026-08-01 happened. "Not running" must itself be an alarm —
 # CI (and Claude Code's own hook lifecycle) gives that for free, a daemon does not.
 #
+# GATE SCOPING (gate-scoping-report.md, 2026-08-01 follow-up): a commit that PAID DOWN compliance
+# debt was blocked by check-meta.mjs's OWN pre-existing red state (a stale graph, 22 historical
+# briefs) — neither introduced nor worsened by that commit — forcing META_SKIP_HOOK=1. That is a gate
+# working against its own purpose: routine bypass is exactly as protective as no gate. check-meta.mjs
+# itself now judges the CHANGE, not the standing state, per-checker (see its own header for the full
+# per-checker ruling); this hook's only remaining job is to stay fast and to make the escape hatch
+# narrow and loud when it IS genuinely needed.
+#
 # Skip during rebase/merge/cherry-pick, same convention as the graphify hooks in this directory.
 GIT_DIR=${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)}
 [ -d "$GIT_DIR/rebase-merge" ] && exit 0
@@ -31,10 +39,18 @@ GIT_DIR=${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)}
 [ -f "$GIT_DIR/MERGE_HEAD" ] && exit 0
 [ -f "$GIT_DIR/CHERRY_PICK_HEAD" ] && exit 0
 
-# Loud, explicit override only — never a silent default (mirrors sync-docs.sh's SYNC_ALLOW_STALE).
-if [ "${META_SKIP_HOOK:-0}" = "1" ]; then
-    echo "[pre-commit] META_SKIP_HOOK=1 - skipping check-meta.mjs for this commit."
-    exit 0
+# Loud, explicit, NAMED override only — never silent, never a blanket default. META_SKIP_GATE names
+# exactly which gate id(s) to skip, comma-separated (ids match check-meta.mjs's run() calls, e.g.
+# "check-graph-fresh,check-brief"), or the literal "ALL" to skip everything — still has to be typed
+# out, never implied. Every use is appended to .superpowers/gate-skip-log.jsonl BEFORE the commit
+# proceeds, and check-meta.mjs prints that log's recent entries on every subsequent run (including
+# SessionStart), so a skip cannot quietly age out of view.
+if [ -n "${META_SKIP_GATE:-}" ]; then
+    ts=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+    branch=$(git rev-parse --abbrev-ref HEAD 2>/dev/null)
+    mkdir -p .superpowers
+    printf '{"ts":"%s","hook":"pre-commit","gates":"%s","branch":"%s"}\n' "$ts" "$META_SKIP_GATE" "$branch" >> .superpowers/gate-skip-log.jsonl
+    echo "[pre-commit] META_SKIP_GATE=$META_SKIP_GATE — recorded in .superpowers/gate-skip-log.jsonl. Only the named gate(s) are skipped; every other gate still runs below."
 fi
 
 echo "[pre-commit] running node scripts/check-meta.mjs ..."
@@ -44,7 +60,8 @@ if [ $status -ne 0 ]; then
     echo ""
     echo "[pre-commit] BLOCKED: check-meta.mjs failed (see the specific gate(s) marked FAIL above)."
     echo "[pre-commit] Each gate above names which rule broke, which file, and what to run to fix it."
-    echo "[pre-commit] Escape hatch (loud, stated out loud per §4 - never silent): META_SKIP_HOOK=1 git commit ..."
+    echo "[pre-commit] Pre-existing debt is printed as STANDING DEBT and does NOT block by itself — only a NEW or WORSENED finding blocks. If this is still red, the commit in front of you introduces or worsens something."
+    echo "[pre-commit] Escape hatch (named gate(s) only, logged — never silent, never blanket by default): META_SKIP_GATE=<gate-id>[,<gate-id>...] git commit ...   (or META_SKIP_GATE=ALL for everything)"
     exit 1
 fi
 exit 0

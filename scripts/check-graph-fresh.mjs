@@ -86,6 +86,8 @@ if (mode === 'git-log') {
   if (untracked.length) console.log(`  note: ${untracked.length} doc(s) have no commit history (new/untracked) - not evaluated by commit-date freshness: ${untracked.slice(0, 5).join(', ')}${untracked.length > 5 ? ', ...' : ''}`);
   if (stale.length) {
     stale.sort((a, b) => (b.d > a.d ? 1 : -1));
+    const ages = stale.map(s => Math.max(0, Math.round((Date.now() - new Date(s.d).getTime()) / 86400000)));
+    console.error(`STANDING DEBT: ${stale.length} document(s) newer than the graph (oldest ${Math.max(...ages)}d, newest ${Math.min(...ages)}d) — stays uncomfortable until /graphify rebuilds it. Not blocking here; see check-meta.mjs's ADVISORY note and graph-freshness.yml (nightly, blocking).`);
     console.error(`FAIL: ${stale.length} document(s) committed after the graph proxy was last committed:`);
     for (const s of stale) console.error(`  x ${s.d.slice(0, 16)}  ${s.rel}`);
     console.error('  run:  /graphify docs --update --mode deep   (chunk by ~12k words, §10.12), then commit GRAPH_REPORT.md');
@@ -114,6 +116,8 @@ for (const f of mdFiles(join(ROOT, 'docs'))) {
 console.log(`[local mode] graph stamp: ${new Date(stamp).toISOString()} · docs scanned: ${scanned}`);
 if (stale.length) {
   stale.sort((a, b) => b.m - a.m);
+  const ages = stale.map(s => Math.max(0, Math.round((Date.now() - s.m) / 86400000)));
+  console.error(`STANDING DEBT: ${stale.length} document(s) newer than the graph (oldest ${Math.max(...ages)}d, newest ${Math.min(...ages)}d) — stays uncomfortable until /graphify rebuilds it. Not blocking here; see check-meta.mjs's ADVISORY note and graph-freshness.yml (nightly, blocking).`);
   console.error(`FAIL: ${stale.length} document(s) newer than the graph:`);
   for (const s of stale) console.error(`  x ${new Date(s.m).toISOString().slice(0, 16)}  ${s.rel}`);
   console.error('  run:  /graphify docs --update --mode deep   (chunk by ~12k words, §10.12)');

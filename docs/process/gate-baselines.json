@@ -1,0 +1,29 @@
+{
+  "_note": "Frozen grandfather list for gate-scoping-report.md (2026-08-01 follow-up). Filenames listed here are PRE-EXISTING debt as of the date this file was created — check-brief.mjs/check-h9.mjs report them as standing debt but never block a commit on them. This list is NOT auto-updated: a file added here later must be a deliberate owner decision (a new noncompliant file must never be silently grandfathered — that would recreate the exact flaw this fix closes). A file already on the list that becomes compliant is harmless to leave here (it just never fires); removing it is optional cleanup, not required.",
+  "_frozen_at": "2026-08-01",
+  "brief": [
+    "stream-T1-brief.md",
+    "stream-T2-brief.md",
+    "task-1-brief.md",
+    "task-14-brief.md",
+    "task-2-brief.md",
+    "task-3-brief.md",
+    "task-4-brief.md",
+    "task-5-brief.md",
+    "task-6-brief.md",
+    "units-U1-brief.md",
+    "units-U2-brief.md",
+    "units-U3-brief.md",
+    "voice-T1-brief.md",
+    "voice-T2-brief.md",
+    "voice-T3-brief.md",
+    "voice-T4-brief.md",
+    "voice-T5-brief.md",
+    "voice-T6-brief.md",
+    "voice-T7-brief.md",
+    "voice-T8-brief.md",
+    "voice-T9-brief.md",
+    "voice-wave0-brief.md"
+  ],
+  "report": []
+}

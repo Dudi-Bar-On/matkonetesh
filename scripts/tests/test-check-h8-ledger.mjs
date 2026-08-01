@@ -65,8 +65,8 @@ const goodRoad = VALID_5 + `
 const goodPath = writeFile(tempDir('h8-ledger-'), 'roadmap-good.md', goodRoad);
 const goodResult = runNode(SCRIPT, [], { ROADMAP: goodPath });
 assertExit('§5a rows all populated -> exit 0', goodResult, 0);
-if (!/§5a: 2 recovery-ledger rows scanned/.test(goodResult.stdout)) {
-  console.error(`FAIL  expected stdout to report "§5a: 2 recovery-ledger rows scanned", got: ${goodResult.stdout}`);
+if (!/§5a: 2 row\(s\) scanned/.test(goodResult.stdout)) {
+  console.error(`FAIL  expected stdout to report "§5a: 2 row(s) scanned", got: ${goodResult.stdout}`);
   process.exitCode = 1;
 } else {
   console.log('PASS  §5a scan count is reported and nonzero (2 rows)');

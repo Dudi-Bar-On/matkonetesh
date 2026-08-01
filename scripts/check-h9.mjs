@@ -8,7 +8,14 @@
 // newest release(v commit's date - same documented same-machine/same-session limit as
 // check-graph-fresh.mjs's local mode. If .superpowers/sdd is ever made tracked, the git-history path
 // activates with no code change.
-// Env overrides (self-test fixtures): SDD_DIR=<path>, GITROOT=<path>.
+//
+// GRANDFATHER BASELINE (gate-scoping-report.md, 2026-08-01 follow-up) — same mechanism and same
+// reasoning as check-brief.mjs's baseline: a report file that already existed and was already
+// noncompliant before this checker shipped must not hold hostage a commit that never touches it.
+// docs/process/gate-baselines.json's "report" array names exactly those files; anything on it is
+// STANDING DEBT (reported, not blocking); anything off it is judged normally. The list is frozen, not
+// auto-grown — see the JSON file's own "_note".
+// Env overrides (self-test fixtures): SDD_DIR=<path>, GITROOT=<path>, GATE_BASELINES=<path>.
 import { readdirSync, readFileSync, statSync, existsSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, relative } from 'node:path';
@@ -17,8 +24,17 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const GITROOT = process.env.GITROOT || ROOT;
 const SDD_DIR = process.env.SDD_DIR || join(ROOT, '.superpowers', 'sdd');
+const BASELINE_FILE = process.env.GATE_BASELINES || join(ROOT, 'docs', 'process', 'gate-baselines.json');
 
 const HEADERS = ['מה היה', 'מה נעשה', 'מה נשאר', 'איפה אנחנו', 'הבא בתור'];
+
+function loadBaseline(key) {
+  if (!existsSync(BASELINE_FILE)) return new Set();
+  try {
+    const json = JSON.parse(readFileSync(BASELINE_FILE, 'utf8'));
+    return new Set(Array.isArray(json[key]) ? json[key] : []);
+  } catch { return new Set(); }
+}
 
 function latestReleaseDate() {
   // NOTE: argv array (execFileSync), never a shell string - "release(v" contains an
@@ -47,10 +63,12 @@ if (!existsSync(SDD_DIR)) {
   process.exit(0);
 }
 const cutoff = latestReleaseDate();
+const reportBaseline = loadBaseline('report');
 const files = readdirSync(SDD_DIR).filter(f => f.endsWith('-report.md'));
 let scanned = 0;
 let checked = 0;
 const errs = [];
+const standing = [];
 for (const f of files) {
   scanned++;
   const abs = join(SDD_DIR, f);
@@ -61,13 +79,23 @@ for (const f of files) {
   checked++;
   const text = readFileSync(abs, 'utf8');
   const missing = HEADERS.filter(h => !text.includes(h));
-  if (missing.length) errs.push(`${f}: missing H9 header(s): ${missing.join(', ')}`);
+  if (!missing.length) continue;
+  if (reportBaseline.has(f)) {
+    const ageDays = Math.max(0, Math.round((Date.now() - new Date(landedAt).getTime()) / 86400000));
+    standing.push(`${f} (age ~${ageDays}d, grandfathered): missing H9 header(s): ${missing.join(', ')}`);
+  } else {
+    errs.push(`${f}: missing H9 header(s): ${missing.join(', ')}`);
+  }
 }
-console.log(`report files scanned: ${scanned} · newer than last release (${cutoff ?? 'n/a'}): ${checked}`);
+console.log(`report files scanned: ${scanned} · newer than last release (${cutoff ?? 'n/a'}): ${checked} · grandfathered baseline: ${reportBaseline.size}`);
+if (standing.length) {
+  console.log(`\nSTANDING DEBT (pre-existing per docs/process/gate-baselines.json, reported not blocking - ${standing.length}):`);
+  for (const s of standing) console.log('  ~ ' + s);
+}
 if (errs.length) {
   for (const e of errs) console.error('  x ' + e);
-  console.error(`\nFAIL: ${errs.length} report(s) missing the H9 5-row table (§10.6/H9).`);
+  console.error(`\nFAIL: ${errs.length} report(s) missing the H9 5-row table (§10.6/H9) and NOT on the grandfather baseline — this is new debt.`);
   console.error('  Add the fixed 5-row table: מה היה · מה נעשה · מה נשאר · איפה אנחנו · הבא בתור.');
   process.exit(1);
 }
-console.log('OK - every report landed since the last release carries all 5 H9 headers.');
+console.log(`OK - no new (non-grandfathered) H9 violations (${standing.length} standing-debt report(s) reported above, not blocking).`);

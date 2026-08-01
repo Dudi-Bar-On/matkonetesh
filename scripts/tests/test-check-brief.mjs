@@ -11,13 +11,18 @@ const templateDir = tempDir('brief-template-');
 const template = writeFile(templateDir, 'task-brief.md', '# template\n(א) ... (ב) ... (ג) ... (ד) ... (ה) ... (ו) ...\n');
 setMtime(template, '2026-07-01T00:00:00Z');
 
+// Points GATE_BASELINES at a path that does not exist, so these fixture filenames (task-1-brief.md
+// etc.) can never coincidentally collide with the real repo's docs/process/gate-baselines.json list -
+// tests must be isolated from that file except in the dedicated baseline block below.
+const NO_BASELINE = join(templateDir, 'no-such-baseline.json');
+
 // RED: a brief newer than the template, touching NONE of the six field markers -> exit 1.
 const sddDir1 = tempDir('brief-sdd-bad-');
 const badBrief = writeFile(sddDir1, 'task-1-brief.md', '# Brief: Task 1\nJust some prose, no field markers at all.\n');
 setMtime(badBrief, '2026-07-02T00:00:00Z');
 assertExit(
   'brief with zero field markers -> exit 1',
-  runNode(SCRIPT, [], { SDD_DIR: sddDir1, TEMPLATE: template }),
+  runNode(SCRIPT, [], { SDD_DIR: sddDir1, TEMPLATE: template, GATE_BASELINES: NO_BASELINE }),
   1,
 );
 
@@ -29,7 +34,7 @@ const suiteBrief = writeFile(sddDir2, 'task-2-brief.md',
 setMtime(suiteBrief, '2026-07-02T00:00:00Z');
 assertExit(
   'brief hands operator a bare "npx playwright test" -> exit 1',
-  runNode(SCRIPT, [], { SDD_DIR: sddDir2, TEMPLATE: template }),
+  runNode(SCRIPT, [], { SDD_DIR: sddDir2, TEMPLATE: template, GATE_BASELINES: NO_BASELINE }),
   1,
 );
 
@@ -41,7 +46,7 @@ const goodBrief = writeFile(sddDir3, 'task-3-brief.md',
 setMtime(goodBrief, '2026-07-02T00:00:00Z');
 assertExit(
   'brief with all six markers + scoped test command -> exit 0',
-  runNode(SCRIPT, [], { SDD_DIR: sddDir3, TEMPLATE: template }),
+  runNode(SCRIPT, [], { SDD_DIR: sddDir3, TEMPLATE: template, GATE_BASELINES: NO_BASELINE }),
   0,
 );
 
@@ -51,8 +56,36 @@ const oldBrief = writeFile(sddDir4, 'task-4-brief.md', 'pre-template brief, no m
 setMtime(oldBrief, '2026-06-01T00:00:00Z');
 assertExit(
   'brief older than template is not retroactively enforced -> exit 0',
-  runNode(SCRIPT, [], { SDD_DIR: sddDir4, TEMPLATE: template }),
+  runNode(SCRIPT, [], { SDD_DIR: sddDir4, TEMPLATE: template, GATE_BASELINES: NO_BASELINE }),
   0,
 );
+
+// GRANDFATHER BASELINE (gate-scoping-report.md, 2026-08-01 follow-up): the direct regression test for
+// the live-observed flaw — a brief that is on docs/process/gate-baselines.json's "brief" list must be
+// reported as standing debt but NEVER block, while a brief with the identical violation that is NOT on
+// the list must still block (proves the baseline narrows the gate, it doesn't disable it).
+const baselineFile = writeFile(tempDir('brief-baseline-'), 'gate-baselines.json',
+  JSON.stringify({ brief: ['grandfathered-brief.md'], report: [] }));
+
+const sddDir5 = tempDir('brief-sdd-baseline-');
+const grandfatheredBrief = writeFile(sddDir5, 'grandfathered-brief.md', 'pre-existing debt, no markers\n');
+setMtime(grandfatheredBrief, '2026-07-02T00:00:00Z');
+const newBrief = writeFile(sddDir5, 'brand-new-brief.md', 'a brand new brief, also no markers\n');
+setMtime(newBrief, '2026-07-02T00:00:00Z');
+
+const baselineResult = runNode(SCRIPT, [], { SDD_DIR: sddDir5, TEMPLATE: template, GATE_BASELINES: baselineFile });
+assertExit('a non-grandfathered brief still blocks even when a grandfathered one is present', baselineResult, 1);
+if (!/STANDING DEBT/.test(baselineResult.stdout) || !/grandfathered-brief\.md/.test(baselineResult.stdout)) {
+  console.error('FAIL  expected grandfathered-brief.md to be reported under STANDING DEBT');
+  process.exitCode = 1;
+} else {
+  console.log('PASS  grandfathered brief reported as standing debt');
+}
+if (!/brand-new-brief\.md/.test(baselineResult.stderr)) {
+  console.error('FAIL  expected brand-new-brief.md to be named as the blocking violation');
+  process.exitCode = 1;
+} else {
+  console.log('PASS  non-grandfathered brief is the one that blocks');
+}
 
 summary('check-brief');
