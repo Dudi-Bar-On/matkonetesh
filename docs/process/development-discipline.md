@@ -796,6 +796,34 @@ and correct"; it had been looked at, but it was the wrong screen. Gate: visual e
 the assertion that accompanies it reads the **rendered output**, not internal state — the same lesson v267
 taught about measuring translation coverage at a proxy instead of at the DOM.
 
+**L40 · The gates were never running, and the one that ran was blind (2026-08-01).**
+An owner-requested compliance audit found **ten** discipline rules breached across four releases in a
+single day — and the cause was not forgetfulness. `check-meta.mjs` **is wired to no git hook and was not
+invoked once all day**; its only call site is `scripts/sync-docs.sh`, which no commit went through. Worse,
+the H8 gate that *did* run when invoked manually splits the roadmap on `## 5 ·` alone, so the entire §5a
+recovery ledger — R-1..R-63, including every row created that day — sat outside the scan while the gate
+printed OK. **A gate that reports green on what it never scanned is worse than no gate: it buys confidence
+nobody earned.**
+
+Three things follow, and they generalise beyond this repo:
+
+1. **A rule enforced by a script survives a busy day; a rule enforced by discipline does not.** Every rule
+   breached was memory-dependent (H9 tables, H10 board, H14 reports, briefs against the template). Every
+   rule with a live check — where one existed and ran — held. The fix is never "try harder", it is moving
+   the rule behind automation.
+2. **Rigour decays monotonically under load, and the decay is invisible from inside.** The release evidence
+   degraded across the same day: v281 recorded "889 passed ×2, exit 0 both times, on the tree being
+   shipped"; v282 lost the second run; v283 lost the exit code and wrote an unmeasurable "931+"; v284 lost
+   the tree clause. Nobody decided to lower the bar. That is exactly the drift a checker catches and a
+   person, mid-flow, does not.
+3. **A gate must state what it covered, not only its verdict.** Had H8 printed "scanned 18 of 63 rows",
+   the blindness would have been obvious the first time it ran. Every gate now prints its scan count.
+
+And a lesson about the lessons: L35–L39 are all product bugs, and `gate-lessons` passed throughout,
+because it checks only that a lesson is **recent** — never that it covers what actually broke. The
+process collapse itself went unrecorded until the owner asked for an audit. **A coverage gate that
+cannot tell what it is covering is the same failure as H8, one level up.**
+
 **Adopted wins (2026-07-31) — patterns that worked this session, keep using them:** (7) **The controller
 verifies everything independently** — every subagent claim this session was checked by diff or by the
 controller's own suite run rather than trusted as reported, and that independent check is what caught
