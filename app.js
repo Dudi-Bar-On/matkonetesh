@@ -3362,6 +3362,14 @@ function startTimerWatch(){
         try{ timerBeep(); }catch(e){}
         mkVibrate([200,100,200,100,200]);
         { var _en=(typeof timerEventName==='function')?timerEventName(k):''; mkNotify('⏱ הטיימר הסתיים'+(_en?' · '+_en:''), (r.name||'טיימר בישול'), 'mk-'+k); }   // E2: name which event's timer fired
+        // R-52 · the app's first system-INITIATED utterance outside the Voice Cook panel. The audit's
+        // "החסר המרכזי": an 880Hz beep does not say WHICH timer, in WHICH event — and this product is
+        // explicitly multi-event (the comment at 3328). §7 of the UX review: a tier-A utterance ALWAYS
+        // names its event. The beep/vibrate/notification above are untouched and unconditional — voice
+        // ADDS a channel, it never removes one.
+        try{ voiceSay('timers',
+              L(`הטיימר של ${r.name||'טיימר בישול'} הסתיים`,`The ${r.name||'cooking timer'} timer is done`)
+              +(_en?' · '+_en:''), {key:'t:'+k}); }catch(e){}
       }
     });
     if(changed){ store.set('mk-timers', ts); startRingLoop(); try{ if(typeof renderAlarm==='function') renderAlarm(); }catch(e){} try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){} }   // F2: home banner + the global in-app alarm + the floating active shortcut
@@ -3386,6 +3394,83 @@ function mkActStackOrder(){
   MK_ACT_ORDER.forEach(function(id){ const el=document.getElementById(id); if(el) s.appendChild(el); });
   s.classList.toggle('mk-actstack-scroll', s.children.length>2);   // §2.3 — internal scroll above two cards
 }
+
+// §2.5 · voiceLog — the single record of everything the app said, tried to say, or dropped. A 50-row
+// RING in mk-voicelog: persisted so a page refresh cannot erase what the cook never heard.
+const VOICE_LOG_KEY='mk-voicelog', VOICE_LOG_MAX=50;
+// status: 'said' | 'cut' | 'skipped' | 'failed'   (spec §2.5 — נאמר / נקטע / לא הושמע / נכשל)
+function voiceLogAll(){ const a=store.get(VOICE_LOG_KEY); return Array.isArray(a)?a:[]; }
+function voiceLogAdd(entry){
+  const rows=voiceLogAll();
+  rows.push({ id:'vl'+Date.now()+Math.random().toString(36).slice(2,6), ts:Date.now(),
+              cat:entry.cat||'', text:String(entry.text||''), status:entry.status||'said', seen:false });
+  while(rows.length>VOICE_LOG_MAX) rows.shift();          // ring: oldest out
+  store.set(VOICE_LOG_KEY, rows);
+  try{ syncActiveFab(); }catch(e){}                       // the unseen-count badge lives on the FAB
+  return rows[rows.length-1].id;
+}
+function voiceLogSetStatus(id, status){
+  const rows=voiceLogAll(); const r=rows.find(function(x){ return x.id===id; });
+  if(!r) return false; r.status=status; store.set(VOICE_LOG_KEY, rows); try{ syncActiveFab(); }catch(e){} return true;
+}
+function voiceLogUnseen(){ return voiceLogAll().filter(function(r){ return !r.seen; }).length; }
+function voiceLogMarkSeen(){ const rows=voiceLogAll(); rows.forEach(function(r){ r.seen=true; }); store.set(VOICE_LOG_KEY, rows); try{ syncActiveFab(); }catch(e){} }
+
+// §2.2 tier A — the ONE new card source (spec §2.3: "נוסף מקור אחד בלבד"). Same .mk-alarm family, same
+// persistence contract: it does NOT disappear on a timer, on navigation, or when a panel closes. Only an
+// explicit ≥56px tap, or the condition itself clearing, removes it.
+let mkVoiceActs={};   // key -> {cat, title, text, logId}
+function voiceActShow(key, cat, title, text, logId){
+  mkVoiceActs[key]={cat:cat, title:title, text:text, logId:logId};
+  renderVoiceAct();
+}
+function voiceActClear(key){ if(key && mkVoiceActs[key]){ delete mkVoiceActs[key]; renderVoiceAct(); } }
+function renderVoiceAct(){
+  const keys=Object.keys(mkVoiceActs); let el=document.getElementById('mkVoiceAct');
+  if(!keys.length){ if(el) el.remove(); try{ mkActStackOrder(); }catch(e){} return; }
+  if(!el){ el=document.createElement('div'); el.id='mkVoiceAct'; el.className='mk-alarm mk-alarm-act';
+    el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive');
+    el.setAttribute('aria-label',L('פעל עכשיו','Act now')); mkActStack().appendChild(el); }
+  el.innerHTML=`<div class="mka-head">🔔 <b>${L('פעל עכשיו','Act now')}</b></div>`+
+    keys.map(function(k){ const a=mkVoiceActs[k];
+      // §2.3/§5.4 UX: the card carries the utterance WORD FOR WORD — a cook 3m away who heard half a
+      // sentence completes it with the eye, never decodes a different phrasing. vcLtrNums per L13.
+      return `<div class="mka-row"><span class="mka-name">${vcLtrNums(esc(a.text))}</span>`+
+        `<button class="mka-replay" data-vareplay="${encodeURIComponent(k)}" aria-label="${L('השמע שוב','Play again')}">🔁</button>`+
+        `<button class="mka-stop mka-ack56" data-vaack="${encodeURIComponent(k)}">✓ ${L('הבנתי','Got it')}</button></div>`;
+    }).join('');
+  el.querySelectorAll('[data-vaack]').forEach(function(b){ b.addEventListener('click',function(){ voiceActClear(decodeURIComponent(b.dataset.vaack)); }); });
+  el.querySelectorAll('[data-vareplay]').forEach(function(b){ b.addEventListener('click',function(){
+    const a=mkVoiceActs[decodeURIComponent(b.dataset.vareplay)]; if(a) vcSpeak(a.text, vcVoiceLang(), a.cat); }); });
+  try{ mkActStackOrder(); }catch(e){}
+}
+// §2.2 tier B — the shipped toast, at EIGHT seconds. toast() itself is untouched (92 call sites); the
+// duration is passed, so nothing else in the app changes length.
+function voiceFyi(text){ toast(text, undefined, undefined, 8000); }
+
+// §2.1 · THE emitter. Every spoken surface in the app goes through here — logging and the visual
+// counterpart happen BEFORE speech is even attempted, so a TTS failure (vcSpeak is Google-only, R-32:
+// its failure rate is not zero) can never produce a silent, invisible miss. Category gating arrives in
+// Task 10 and the priority queue in Task 12; both plug in HERE, at one place.
+function voiceSay(cat, text, opts){
+  opts=opts||{};
+  const tier = opts.tier || (VOICE_TIER_A[cat] ? 'act' : 'fyi');
+  const logId = voiceLogAdd({cat:cat, text:text, status:'skipped'});   // pessimistic: upgraded on success
+  if(tier==='act') voiceActShow(opts.key||('va'+logId), cat, opts.title||'', text, logId);
+  else voiceFyi(text);
+  // (Task 10 inserts the ttsCategoryEnabled gate on the next line; Task 12 replaces the direct vcSpeak
+  //  with voiceQueuePush. The visual half above NEVER moves behind either — spec P1.)
+  try{
+    const p=vcSpeak(text, vcVoiceLang(), cat);
+    if(p && p.then) p.then(function(){ voiceLogSetStatus(logId,'said'); },
+                            function(){ voiceLogSetStatus(logId,'failed'); });
+    else voiceLogSetStatus(logId,'said');
+  }catch(e){ voiceLogSetStatus(logId,'failed'); }
+  return logId;
+}
+const VOICE_TIER_A = {safety:1, timers:1, schedule:1};   // §2.2 — the rest are tier B
+try{ window.voiceSay=voiceSay; window.voiceLogAll=voiceLogAll; window.voiceLogUnseen=voiceLogUnseen;
+     window.renderVoiceAct=renderVoiceAct; }catch(e){}
 
 // ── In-app alarm banner ──────────────────────────────────────────────────────
 // A fixed overlay listing every RINGING (fired) timer with a Stop button, shown on any screen — so
@@ -3930,13 +4015,13 @@ $("#panel").addEventListener("keydown",e=>{
 });
 /* toast with optional undo */
 let toastTmo=null;
-function toast(msg, undoFn, actionLabel){
+function toast(msg, undoFn, actionLabel, ms){
   let t=$("#toast");
   if(!t){ t=document.createElement("div"); t.id="toast"; t.className="toast"; t.setAttribute("role","status"); t.setAttribute("aria-live","polite"); document.body.appendChild(t); }
   const _d=(typeof getDict==='function')?getDict():null; const tr=(s)=>(_d&&_d[s]!=null)?_d[s]:s;   // i18n: dict-translate the notification, Hebrew passes through unchanged
   t.innerHTML=`<span>${tr(msg)}</span>`+(undoFn?`<button data-undo>${tr(actionLabel||'בטל')}</button>`:'');   // action label defaults to "בטל" (undo); pass e.g. "רענן עכשיו" for non-undo actions
   t.classList.add("show");
-  clearTimeout(toastTmo); toastTmo=setTimeout(()=>t.classList.remove("show"),5000);
+  clearTimeout(toastTmo); toastTmo=setTimeout(()=>t.classList.remove("show"),ms||5000);   // §2.2 tier B passes 8000; every one of the 92 shipped call sites keeps 5000
   if(undoFn){ t.querySelector("[data-undo]").addEventListener("click",()=>{ clearTimeout(toastTmo); t.classList.remove("show"); undoFn(); }); }
 }
 $("#q").addEventListener("input",debounce(()=>catView(),120));
@@ -11415,6 +11500,11 @@ function syncActiveFab(){ try{ const fab=$("#cActiveFab"); if(!fab) return; cons
   const panelOpen=document.body.classList.contains('noscroll');
   if(s.live && !panelOpen){ fab.hidden=false; const t=$("#cActiveFabT"); if(t) t.textContent = s.ringing? (L('הסתיים','Done')+' '+s.ringing) : (s.running? (s.running+' '+L('פעילים','running','running')) : L('פעיל עכשיו','Active now')); fab.classList.toggle('caf-ring', s.ringing>0); }
   else fab.hidden=true;
+  // §2.5 — the voiceLog unseen-count badge lives on the FAB (the log itself is Task 11's UI; this is
+  // just the counter so an owner-approved future entry point has something to show).
+  const _un=(typeof voiceLogUnseen==='function')?voiceLogUnseen():0;
+  fab.classList.toggle('caf-voice', _un>0);
+  { const vb=$("#cActiveFabV"); if(vb){ vb.hidden=!_un; vb.textContent='🗒 '+_un; } }
 }catch(e){} }
 // ═══════════ "Active now" hub — every ongoing timer / plan / long-term project in one place, each with a jump-back ═══════════
 function _openItemByKey(key){ try{ const it=(typeof resolveItem==='function')?resolveItem(key):null; if(!it) return false;

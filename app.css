@@ -368,6 +368,9 @@ body.noscroll .cactive-fab{display:none}
 .cactive-fab[hidden]{display:none}   /* the class's display:flex out-specifies the UA [hidden] rule — restore it, or the FAB is stuck on */
 .cactive-fab{position:fixed;inset-inline-end:16px;bottom:calc(74px + env(safe-area-inset-bottom,0px));z-index:45;display:flex;align-items:center;gap:7px;background:linear-gradient(135deg,var(--ember2),var(--ember));color:#fff;border:none;border-radius:999px;padding:11px 16px;font-family:var(--font-body);font-weight:800;font-size:calc(13.5px * var(--fscale));box-shadow:0 6px 18px rgba(231,111,81,.42);cursor:pointer}
 .cactive-fab .caf-ic{font-size:calc(16px * var(--fscale))}
+/* §2.5 — the voiceLog unseen-count badge on the "Active now" FAB */
+.cactive-fab .caf-v[hidden]{display:none}
+.cactive-fab .caf-v{background:rgba(0,0,0,.28);border-radius:999px;padding:2px 8px;font-size:calc(11.5px * var(--fscale));font-weight:800}
 .cactive-fab.caf-ring{animation:cafpulse 1.2s ease-in-out infinite}
 @keyframes cafpulse{0%,100%{box-shadow:0 6px 18px rgba(231,111,81,.42)}50%{box-shadow:0 6px 26px rgba(231,111,81,.75),0 0 0 4px rgba(231,111,81,.22)}}
 @media (prefers-reduced-motion:reduce){.cactive-fab.caf-ring{animation:none}}
@@ -983,6 +986,12 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
    silenceable (owner ruling 2026-08-01) — deep red to read as more urgent than a timer warning. */
 .mk-alarm-bcheck{background:#8e2a20;animation:mkapulse 1.2s ease-in-out infinite}
 .mk-alarm-bcheck .mka-stop{color:#8e2a20}
+/* §2.2/§2.3 — the voiceAct card (Task 9): every tier-A utterance's visual counterpart, same .mk-alarm
+   family, deep blue so it reads as distinct from the safety/alarm/warn reds and amber. */
+.mk-alarm-act{background:#1f4e79;animation:mkapulse 1.2s ease-in-out infinite}
+.mk-alarm-act .mka-stop{color:#1f4e79}
+.mka-replay{background:rgba(255,255,255,.22);color:#fff;border:none;border-radius:9px;padding:8px 10px;font-size:calc(14px * var(--fscale));cursor:pointer}
+.mka-ack56{min-height:56px}   /* §2.2 tier A: ≥56px, thumb-reachable with greasy/gloved hands */
 /* §2.3 — the ordered act stack. The individual .mk-alarm cards keep every visual property they have
    today (colour, pulse, contrast); only the fixed positioning moves up one level, to the host. */
 .mk-actstack{position:fixed;inset-inline:8px;top:12px;z-index:60;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 24px)}

@@ -327,7 +327,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <!-- floating "Active now" shortcut — shows on any screen while something is cooking -->
-<button class="cactive-fab" id="cActiveFab" aria-label="פעיל עכשיו" hidden><span class="caf-ic">🔥</span><span class="caf-t" id="cActiveFabT">פעיל עכשיו</span></button>
+<button class="cactive-fab" id="cActiveFab" aria-label="פעיל עכשיו" hidden><span class="caf-ic">🔥</span><span class="caf-t" id="cActiveFabT">פעיל עכשיו</span><span class="caf-v" id="cActiveFabV" hidden>🗒 0</span></button>
 <!-- ═══ bottom nav ═══ -->
 <div class="cnav">
   <button class="on" data-cnav="home"><span class="ni">🏠</span>בית</button>
