@@ -5491,7 +5491,19 @@ function gemNoteUsage(role, r, ms){
 }
 // ── Voice Wave 0 · latency instrumentation (spec §8). Dev/test surface only — no UI, no persistence.
 const VC_LAT={};
-function vcLatMark(k){ try{ VC_LAT[k]=performance.now(); window.__vcLat=VC_LAT; }catch(e){} }
+// Metered-streaming Task 4: an answer now produces TWO audio streams — the early opening sentence and
+// the coalesced post-guard remainder — and both pass through the same speaking functions. Without
+// first-write-wins the remainder's own first PCM frame would overwrite `firstAudio` and DoD-D1
+// (`firstAudio − ask`, spec §10) would measure the wrong sound. `ask` resets the whole record, so the
+// marks always describe the CURRENT question. (Consequence, stated openly: a read-aloud press that
+// happens after an ask, with no new ask between, no longer moves these four marks. __vcLat is a
+// dev/test instrument with no UI and no persistence — vcLatReport is its only consumer.)
+const VC_LAT_ONCE={ttsReq1:1, firstSentence:1, firstSound:1, firstAudio:1};
+function vcLatMark(k){ try{
+  if(k==='ask') for(const p in VC_LAT) delete VC_LAT[p];
+  if(VC_LAT_ONCE[k] && VC_LAT[k]!==undefined) return;
+  VC_LAT[k]=performance.now(); window.__vcLat=VC_LAT;
+}catch(e){} }
 function vcLatReport(){ const t0=VC_LAT.ask||0, out={}; for(const k in VC_LAT) out[k]=Math.round(VC_LAT[k]-t0); return out; }
 
 // ── Metered-streaming arc (spec §5.1) · ONE transport builder for BOTH verbs and BOTH backends.
@@ -6721,7 +6733,7 @@ if(typeof window!=='undefined') window.__gemAudioChunks=0;   // test instrument 
 // alike, instead of resolving on `onended`/the DOM event loop.
 async function gemSpeakSegAttempt(text, lang, gen, startAt){
   try{
-    return await gemSpeakSegStream(text, lang, gen);
+    return await gemSpeakSegStream(text, lang, gen, startAt);
   }catch(e){
     if(!vcGenCurrent(gen)) return startAt;            // barge-in during the attempt: stay silent
     // fallback (spec §5.3): stale Worker (stream-unsupported), stream death, or no-audio → blocking path
@@ -6744,7 +6756,7 @@ function gemRetryDelayMs(err){
   return (typeof ms==='number' && ms>=0) ? Math.min(10000, ms) : 1500;   // cap a server-requested delay at 10s — bounded UX wait, still the API's own number when it's short
 }
 async function gemSpeakSeg(text, lang, gen, startAt){
-  if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen);
+  if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen, startAt);
   try{
     return await gemSpeakSegAttempt(text, lang, gen, startAt);
   }catch(e){
@@ -6755,7 +6767,7 @@ async function gemSpeakSeg(text, lang, gen, startAt){
     return await gemSpeakSegAttempt(text, lang, gen, startAt);   // the ONE allowed retry — a second failure propagates
   }
 }
-async function gemSpeakSegStream(text, lang, gen){
+async function gemSpeakSegStream(text, lang, gen, startAt){
   const mdl=GEM_MODELS.tts.id;
   const t=gemTransport(mdl, 'streamGenerateContent');
   const body={ contents:[{role:'user',parts:[{text:text}]}],
@@ -6773,19 +6785,19 @@ async function gemSpeakSegStream(text, lang, gen){
         const b=gemTransport(mdl,'streamGenerateContent',gemKey());
         const r2=await fetch(b.url,{method:'POST',headers:b.headers,body:JSON.stringify(body),signal:ctl?ctl.signal:undefined});
         if(!r2.ok){ const info=await gemParseErrBody(r2); throw gemMakeErr(r2.status, info.reason, info.retryAfterMs); }
-        return gemPlayPcmStream(r2.body, gen);
+        return gemPlayPcmStream(r2.body, gen, startAt);
       }
       // hotfix v281: enrich with retryAfterMs (via gemParseErrBody) so gemSpeakSeg's single retry can
       // honor the API's own backoff hint instead of guessing — same helper gemFetch itself now uses.
       { const info=await gemParseErrBody(r); throw gemMakeErr(r.status, info.reason, info.retryAfterMs); }
     }
-    return gemPlayPcmStream(r.body, gen);
+    return gemPlayPcmStream(r.body, gen, startAt);
   }finally{ if(to) clearTimeout(to); }
 }
-async function gemPlayPcmStream(stream, gen){
+async function gemPlayPcmStream(stream, gen, startAt){
   const ctx=gemAudioCtx();
   const reader=stream.getReader(); const dec=new TextDecoder();
-  let buf='', cursor=0, got=false;
+  let buf='', cursor=startAt||0, got=false;
   function schedule(bytes){
     if(!vcGenCurrent(gen)) return;
     const f32=gemPcm16ToF32(bytes);
@@ -6819,10 +6831,11 @@ async function gemPlayPcmStream(stream, gen){
     }
   }
   if(!got) throw new Error('no-audio');
-  // resolve when the LAST scheduled chunk finishes on the audio clock (a playback deadline, not an
-  // arbitrary wait — DoD-11 governs tests, and the test asserts marks/counters, never this timer)
-  const waitMs=Math.max(0,(cursor-ctx.currentTime)*1000);
-  if(waitMs>0) await new Promise(function(res){ setTimeout(res, waitMs); });
+  // Task 4: resolve as soon as the last PCM frame has been SCHEDULED on the audio clock — NOT after it
+  // has finished playing. Scheduling is what makes the sound inevitable; waiting for playback would
+  // delay the caller's next synthesis by this segment's whole duration, which is precisely the gap
+  // R-47(b) closed. Sequencing is unaffected: every consumer schedules the next segment at the returned
+  // cursor (an audio-clock time in the future), never on the JS event loop.
   return cursor;   // gap/jitter fix (b+d): hands the audio-clock end time to the caller so the NEXT
                     // chunk (streamed or buffered) can be scheduled back-to-back instead of starting "now"
 }
@@ -6952,7 +6965,9 @@ function ttsPrefetch(text, gen){
 async function ttsSpeakSeg(text, lang, gen, startAt, useCase){
   // the same test seam gemSpeakSeg exposes, at the same position — every existing voice test that
   // installs window.__gemTtsStreamMock keeps working through the new decision point.
-  if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen);
+  // Task 4: startAt threaded through — gemSpeakSegStream (below) gained the parameter under this
+  // function's own managed-Gemini call, and the mock seam must observe the same cursor a real call would.
+  if(typeof window!=='undefined' && window.__gemTtsStreamMock) return window.__gemTtsStreamMock(text, lang, gen, startAt);
   const provider = ttsProviderFor(useCase);
 
   if(provider==='cloud'){
@@ -6969,7 +6984,9 @@ async function ttsSpeakSeg(text, lang, gen, startAt, useCase){
   if(!ttsCloudAvail()) return await gemSpeakSeg(text, lang, gen, startAt);   // BYOK — the v281 path, untouched
 
   try{
-    return await gemSpeakSegStream(text, lang, gen);
+    // Task 4: pass startAt through — dropped here since inception (gemSpeakSegStream had no such
+    // parameter until this task added it), invisible while only chunk 0 of any answer ever streamed.
+    return await gemSpeakSegStream(text, lang, gen, startAt);
   }catch(e){
     if(!vcGenCurrent(gen)) return startAt;         // barge-in during the attempt: stay silent
     if(String((e&&e.message)||'')==='stream-unsupported' || !ttsFallbackWorthy(e)){
@@ -7081,7 +7098,7 @@ async function gemSynthChunkRetrying(text, gen){
 // any number of independent handlers, and `.catch()` here doesn't consume/replace what a later `await`
 // on the SAME promise observes.
 function gemTrackPending(p){ try{ p.catch(function(){}); }catch(e){} return p; }
-async function gemSpeak(text, lang, gen, useCase){
+async function gemSpeak(text, lang, gen, useCase, startAt){
   if(gen===undefined) gen=vcNewSpeakGen();
   if(!aiAvail()) throw new Error('no-key');            // defensive only — R-35: no keyless user exists
   const L2=lang||vcVoiceLang();
@@ -7098,7 +7115,7 @@ async function gemSpeak(text, lang, gen, useCase){
   // engine answers a chunk (ttsSpeakSeg, the single decision point) and what happens when the prefetched
   // Gemini synthesis fails: with a secondary available, the fallback REPLACES the retry (ttsPrefetch
   // drops gemSynthChunkRetrying's retry precisely so the count cannot grow — design §4.3).
-  let cursor;
+  let cursor=startAt;
   let pending=null;
   for(let i=0;i<chunks.length;i++){
     if(!vcGenCurrent(gen)) return;
@@ -7132,16 +7149,19 @@ async function gemSpeak(text, lang, gen, useCase){
 // silent downgrade: a failure stops speech and shows an actionable toast; the answer text stays on
 // screen; a retry (same button) reuses every cached chunk. R-35: there is no keyless user — the
 // !aiAvail() branch is a defensive no-op, not a product path (the other 26 branches: Phase 9).
-function vcSpeak(text, lang, useCase){
+function vcSpeak(text, lang, useCase, gen, startAt){
   const L2=lang||vcVoiceLang();
   const UC=useCase||'answer';                      // R-45 §4.2 — see TTS_ROUTE
-  const gen=vcNewSpeakGen();                       // taking the floor invalidates every in-flight speaker
-  gemStop();
+  // A standalone caller (the הקרא button, an error message) takes the floor exactly as before. A caller
+  // that passes its OWN gen — vcAskFlow's post-guard remainder — is joining an utterance that is already
+  // sounding: taking a new generation would invalidate the early opener mid-word, and gemStop() would
+  // cut its audio off. It also passes `startAt` so the remainder queues at the opener's end (R-47(b)).
+  if(gen===undefined){ gen=vcNewSpeakGen(); gemStop(); }
   // M5 (silent-failure-hunter audit): !aiAvail() used to be a bare return — if the key drops mid-session
   // (revoked, network config change, disconnect), every subsequent "הקרא" press became a silent no-op
   // forever, with no way for the user to learn why. Toast the reconnect hint instead.
   if(!aiAvail()){ toast(L('אין מפתח AI מחובר — התחבר כדי להשתמש בהקראה קולית.','No AI key connected — connect one to use voice read-aloud.')); return; }
-  gemSpeak(text, L2, gen, UC).catch(err=>{
+  gemSpeak(text, L2, gen, UC, startAt).catch(err=>{
     // Accepted as correctly silent (owner-reviewed): a superseded speaker must never toast over its
     // successor. But an error racing a stale generation was previously swallowed with zero trace — log it
     // so a REAL bug hiding behind a race still leaves evidence, even though it never surfaces to the user.
@@ -7582,6 +7602,42 @@ async function vcAskAI(question, ent){
   if(!txt) throw new Error('empty');
   return txt;
 }
+// ── Metered-streaming arc (spec §5.2). Streaming twin of vcAskAI: same prompt, same tools, same
+// generationConfig — ONLY the transport differs. A stale managed Worker (404 → 'stream-unsupported')
+// falls back to the non-streaming vcAskAI, so the app never breaks against an undeployed route (§5.1).
+async function vcAskAIStream(question, ent, onDelta){
+  if(typeof window!=='undefined' && window.__vcAskStreamMock) return window.__vcAskStreamMock(question, onDelta);
+  // The NON-streaming mock seam stays authoritative wherever it is installed: tests/p0-spoken-safety.spec.ts
+  // drives vcAskFlow through window.__vcAskMock at 25 call sites, and voice-wave0's H1 test at :515 does
+  // too. A mocked answer has no deltas to stream anyway — delegating keeps those tests pinning the exact
+  // path they were written for instead of silently falling through to the network.
+  if(typeof window!=='undefined' && window.__vcAskMock!==undefined && window.__vcAskMock!==null) return vcAskAI(question, ent);
+  if(!aiAvail()) throw new Error('no-key');
+  const ans=vcVoiceLang();
+  const {sys, userText}=vcBuildAskPrompt(question, ans, vcCookContext());
+  const body={ system_instruction:{parts:[{text:sys}]},
+    contents:[{role:'user',parts:[{text:userText}]}],
+    tools: searchFor('vcAsk', !!ent) ? [{google_search:{}}] : undefined,
+    generationConfig: gemGen('text', {temperature:0.6, maxOutputTokens:8192}, {think: thinkFor('vcAsk')}) };
+  try{ return await gemStreamFetch('text', body, {timeout:30000}, onDelta); }
+  catch(e){
+    if(String(e&&e.message)==='stream-unsupported') return vcAskAI(question, ent);   // stale Worker — full answer, no deltas
+    throw e;
+  }
+}
+// spec §6.3 — after the guard, the guarded string's prefix equals the already-spoken opener, because the
+// guard is the identity on digit-free text apart from the normalization the gate (vcStreamSafe) already
+// applied. UNITS.normalize is the SAME seam vcNormalizeSafetyText delegates to (app.js:7284), so this is
+// not a second normalization rule. Whitespace is collapsed on both sides because vcGuardSpoken collapses
+// space runs on the branches that rewrite a number. On a mismatch (unreachable by construction) fail
+// toward CORRECTNESS: return the whole guarded string, so the answer is complete even at the cost of one
+// repeated opening sentence. Never drop text to keep the seam tidy.
+function vcRemainderAfterSpoken(guarded, spoken){
+  const g=String(guarded||'').replace(/\s+/g,' ').trim();
+  const p=UNITS.normalize(String(spoken||'')).replace(/\s+/g,' ').trim();
+  if(!p) return g;
+  return (g.slice(0,p.length)===p) ? g.slice(p.length).trim() : g;
+}
 // ── Voice Wave 0 · instant acknowledgement (spec §3). Fixed per-language phrases — never model output,
 // never awaited over the network. Warm path: cached Google buffer from panel-open pre-warm. Cold path:
 // VISUAL ONLY (owner correction, post-dispatch review) — no earcon/chime of any kind. app.js already
@@ -7640,25 +7696,58 @@ async function vcAskFlow(rawSaid){
   const question=vcStripAskPrefix(rawSaid);
   if(!question){ return; }
   const ansL=vcVoiceLang();
-  vcAck(vcNewSpeakGen());                          // instant, zero-network — never a cloud round-trip
+  const gen=vcNewSpeakGen();                       // ONE generation: the ack, the early opener, the remainder
+  vcAck(gen);                                      // instant, zero-network — never a cloud round-trip
   vcLastQA={q:question, a:(VC_THINKING[ansL]||VC_THINKING.en)}; vcRender();
+  // The answer takes the floor from the ack exactly ONCE, at its first sound. The shipped flow got this
+  // for free from vcSpeak's own gemStop(); now the opener may sound first, and vcSpeak must NOT gemStop()
+  // when it joins this generation (that would cut the opener off mid-word).
+  let floorTaken=false;
+  const takeFloor=function(){ if(!floorTaken){ floorTaken=true; gemStop(); } };
   try{
     const tiers=vcResolveTiers(question);                  // resolved ONCE — both tiers
     vcLatMark('textReq');
-    const answer=await vcAskAI(question, tiers.t1||tiers.t2);
+    // Early speech (spec §5.2/§6.2): the FIRST assembled sentence, and only if it is provably digit-free.
+    // QUOTA COVENANT (hotfix 0bee32f, v281): one TTS request per sentence is the shape that 429'd in live
+    // use. The opener is ONE short request; everything after it goes through the shipped coalescing path
+    // (vcSpeak → gemSpeak → vcCoalesceTtsChunks), so the answer's total request count is unchanged. The
+    // latency win lives entirely in not waiting for the whole answer (measured 2,256–4,722 ms) before the
+    // first request leaves — not in splitting the answer into more requests.
+    const early={ text:'', chain:null, decided:false };
+    const asm=vcSentenceStream(function(sent){
+      if(early.decided) return;                    // exactly one early sentence per answer
+      early.decided=true;
+      if(!vcStreamSafe(sent)) return;              // gate failed → early speech freezes (spec §6.2)
+      vcLatMark('firstSentence');
+      early.text=sent;
+      vcLastQA={q:question, a:sent+' …'}; vcRender();       // transcript: gate-passed text ONLY (spec §6.4)
+      takeFloor();
+      vcLatMark('ttsReq1'); vcLatMark('firstSound');
+      // INV-T: ttsText remains the ONLY transform between gate-passed text and the engine.
+      early.chain=gemSpeakSeg(ttsText(sent, ansL), ansL, gen)
+        .catch(function(){ early.text=''; return undefined; });   // opener never sounded → the remainder carries the whole answer
+    });
+    const answer=await vcAskAIStream(question, tiers.t1||tiers.t2, function(d){ asm.push(d); });
+    asm.end();
     vcLatMark('textResp');
-    // P0-app item 1: nothing reaches speech OR the transcript un-guarded. One guarded string, both
-    // surfaces — a sighted user must never read something different from what a hands-busy user hears.
+    // THE guard — exactly once, on the COMPLETE answer (spec §6.1): strictly after asm.end() (the last
+    // delta is assembled) and strictly before any post-guard text is spoken. A guard over a fragment is
+    // structurally impossible here, not merely avoided.
     const guarded=vcGuardSpoken(answer, tiers, ansL);
     vcLastQA={q:question, a:guarded}; vcRender();
-    vcSpeak(guarded, ansL);
+    // The opener's audio-clock end time. gemPlayPcmStream now resolves when the last PCM frame has been
+    // SCHEDULED, so this await costs nothing measurable and the remainder's synthesis starts while the
+    // opener is still audible — the seam stays gapless (R-47(b)).
+    const openEnd = early.chain ? await early.chain : undefined;
+    if(!vcGenCurrent(gen)) return;                 // barge-in while we waited: stay silent
+    const rest=vcRemainderAfterSpoken(guarded, early.text);
+    takeFloor();
+    if(rest) vcSpeak(rest, ansL, undefined, gen, openEnd);    // joins THIS gen — the full toast map still applies
   }catch(e){
-    // H1 (silent-failure-hunter audit): this catch wraps vcResolveTiers, vcAskAI AND vcGuardSpoken — a
+    // H1 (silent-failure-hunter audit): this catch wraps vcResolveTiers, the ask AND vcGuardSpoken — a
     // TypeError inside the safety guard would silently answer "AI unavailable" forever while the AI is
-    // healthy, with nothing recorded anywhere. Structurally the same defect class as the 20s-timeout bug
-    // that cost weeks (docs/analysis/2026-07-31-voice-latency-baseline.md). Log every failure, and
-    // distinguish a quota failure (transient, worth retrying) from a genuine outage/bug — a user who hits
-    // a quota wall needs different guidance than one hitting a real error.
+    // healthy, with nothing recorded anywhere. Log every failure, and distinguish a quota failure
+    // (transient, worth retrying) from a genuine outage/bug.
     console.warn('[vcAsk]', e);
     const s=String(e&&e.message||e||'');
     const quota=s.includes('api-429')||/quota|RESOURCE_EXHAUSTED/i.test(s);
