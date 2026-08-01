@@ -983,6 +983,11 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
    silenceable (owner ruling 2026-08-01) — deep red to read as more urgent than a timer warning. */
 .mk-alarm-bcheck{background:#8e2a20;animation:mkapulse 1.2s ease-in-out infinite}
 .mk-alarm-bcheck .mka-stop{color:#8e2a20}
+/* §2.3 — the ordered act stack. The individual .mk-alarm cards keep every visual property they have
+   today (colour, pulse, contrast); only the fixed positioning moves up one level, to the host. */
+.mk-actstack{position:fixed;inset-inline:8px;top:12px;z-index:60;display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 24px)}
+.mk-actstack .mk-alarm{position:static;inset:auto;left:auto;top:auto;transform:none;width:auto;margin:0 auto}
+.mk-actstack-scroll{overflow-y:auto;-webkit-overflow-scrolling:touch}
 .lang-lbl{font-size:calc(12px * var(--fscale));font-weight:800;color:var(--smoke);margin:0 0 6px}
 .lang-row{display:flex;flex-wrap:wrap;gap:8px;margin:0 0 16px}
 .lang-flag{display:flex;align-items:center;gap:7px;background:var(--char2);border:1.5px solid var(--line2);border-radius:12px;padding:9px 13px;cursor:pointer;font-family:var(--font-body);color:var(--bone);font-size:calc(13.5px * var(--fscale));font-weight:600}

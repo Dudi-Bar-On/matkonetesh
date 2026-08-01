@@ -3368,6 +3368,25 @@ function startTimerWatch(){
     syncWakeLock();
   }, 1000);
 }
+// §2.3 · ONE ordered host for the whole .mk-alarm family. Each renderer still owns its own card, its own
+// id and its own listeners (they were each built against a different reported bug — Chesterton's Fence);
+// this only stops them fighting over `position:fixed; top:12px` and pushing each other off a 390×844
+// screen. Order is FIXED and semantic — safety first, then the fired alarm, then the new voice card,
+// then the soft "about to finish" warning — never DOM-insertion order.
+const MK_ACT_ORDER = ['mkBcheckAlarm','mkAlarm','mkVoiceAct','mkWarnAlarm','mkStaleEv'];
+function mkActStack(){
+  let s=document.getElementById('mkActStack');
+  if(!s){ s=document.createElement('div'); s.id='mkActStack'; s.className='mk-actstack'; document.body.appendChild(s); }
+  return s;
+}
+// Called by every renderer after it has appended/updated its card. Sorting a 5-element list on an event
+// that fires at most a few times a minute costs nothing and removes an entire class of layout bug.
+function mkActStackOrder(){
+  const s=document.getElementById('mkActStack'); if(!s) return;
+  MK_ACT_ORDER.forEach(function(id){ const el=document.getElementById(id); if(el) s.appendChild(el); });
+  s.classList.toggle('mk-actstack-scroll', s.children.length>2);   // §2.3 — internal scroll above two cards
+}
+
 // ── In-app alarm banner ──────────────────────────────────────────────────────
 // A fixed overlay listing every RINGING (fired) timer with a Stop button, shown on any screen — so
 // an alarm can be seen and silenced from inside the app, not only by finding its specific timer.
@@ -3382,12 +3401,13 @@ function ackAlarm(id){ const ts=store.get('mk-timers')||{};
 function renderAlarm(){
   const ring=_ringingTimers(); let el=document.getElementById('mkAlarm');
   if(!ring.length){ if(el) el.remove(); return; }
-  if(!el){ el=document.createElement('div'); el.id='mkAlarm'; el.className='mk-alarm'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label','טיימר הסתיים'); document.body.appendChild(el); }
+  if(!el){ el=document.createElement('div'); el.id='mkAlarm'; el.className='mk-alarm'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label','טיימר הסתיים'); mkActStack().appendChild(el); }
   el.innerHTML=`<div class="mka-head">⏰ <b>${ring.length>1?ring.length+' טיימרים הסתיימו':'טיימר הסתיים'}</b></div>`+
     ring.map(function(r){ return `<div class="mka-row"><span class="mka-name">${esc(r.name)}${r.ev?` <small>· ${esc(r.ev)}</small>`:''}</span><button class="mka-stop" data-alarmstop="${encodeURIComponent(r.id)}">🔕 עצור</button></div>`; }).join('')+
     (ring.length>1?`<button class="mka-stopall" data-alarmstopall>🔕 ${L('עצור הכל','Stop all')}</button>`:'');
   el.querySelectorAll('[data-alarmstop]').forEach(function(b){ b.addEventListener('click',function(){ ackAlarm(decodeURIComponent(b.dataset.alarmstop)); }); });
   const sa=el.querySelector('[data-alarmstopall]'); if(sa) sa.addEventListener('click',function(){ ackAlarm(); });
+  mkActStackOrder();
 }
 
 // ── V-1 · a persistent visual counterpart to the spoken "~2 minutes left" timer warning ─────────────
@@ -3413,10 +3433,11 @@ function mkClearTimerWarn(tid){
 function renderTimerWarn(){
   const keys=Object.keys(mkTimerWarns); let el=document.getElementById('mkWarnAlarm');
   if(!keys.length){ if(el) el.remove(); return; }
-  if(!el){ el=document.createElement('div'); el.id='mkWarnAlarm'; el.className='mk-alarm mk-alarm-warn'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label',L('אזהרת טיימר','Timer warning')); document.body.appendChild(el); }
+  if(!el){ el=document.createElement('div'); el.id='mkWarnAlarm'; el.className='mk-alarm mk-alarm-warn'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label',L('אזהרת טיימר','Timer warning')); mkActStack().appendChild(el); }
   el.innerHTML=`<div class="mka-head">⏳ <b>${L('עומד להסתיים','About to finish')}</b></div>`+
     keys.map(function(k){ const w=mkTimerWarns[k]; return `<div class="mka-row"><span class="mka-name">${esc(w.name)} <small>· ${esc(w.text)}</small></span><button class="mka-stop" data-warnstop="${encodeURIComponent(k)}">✓ ${L('הבנתי','Got it')}</button></div>`; }).join('');
   el.querySelectorAll('[data-warnstop]').forEach(function(b){ b.addEventListener('click',function(){ mkClearTimerWarn(decodeURIComponent(b.dataset.warnstop)); }); });
+  mkActStackOrder();
 }
 
 // ── D2 · bcheck (internal-temp safety check) "due now" — the sole pre-serve safety gate ─────────────
@@ -3446,13 +3467,14 @@ function renderBcheckAlarm(){
   const d=_bcheckDue(), keys=Object.keys(d).filter(function(k){ return d[k]&&!d[k].acked; });
   let el=document.getElementById('mkBcheckAlarm');
   if(!keys.length){ if(el) el.remove(); return; }
-  if(!el){ el=document.createElement('div'); el.id='mkBcheckAlarm'; el.className='mk-alarm mk-alarm-bcheck'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label',L('בדיקת בטיחות','Safety check')); document.body.appendChild(el); }
+  if(!el){ el=document.createElement('div'); el.id='mkBcheckAlarm'; el.className='mk-alarm mk-alarm-bcheck'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label',L('בדיקת בטיחות','Safety check')); mkActStack().appendChild(el); }
   el.innerHTML=`<div class="mka-head">🌡️ <b>${L('בדוק טמפ׳ פנים לפני הגשה','Check internal temp before serving')}</b></div>`+
     // R-56 second symptom: name the event on every row, same pattern as the timer alarm (mkFiredTimers'
     // r.ev via timerEventName at ~3375/3387) — the global placement itself stays (owner ruling: safety
     // alerts are never silenceable), this only adds context for which event the row belongs to.
     keys.map(function(k){ const w=d[k]; const ev=(typeof timerEventName==='function'?timerEventName(w.tid||k):''); return `<div class="mka-row"><span class="mka-name">${esc(w.name)}${ev?` <small>· ${esc(ev)}</small>`:''}${w.temp!=null?` <small>· ${L('יעד','target')} ${w.temp}°</small>`:''}</span><button class="mka-stop" data-bcheckack="${encodeURIComponent(k)}">✓ ${L('נבדק','Checked')}</button></div>`; }).join('');
   el.querySelectorAll('[data-bcheckack]').forEach(function(b){ b.addEventListener('click',function(){ ackBcheck(decodeURIComponent(b.dataset.bcheckack)); }); });
+  mkActStackOrder();
 }
 // UNCONDITIONAL — unlike the mk-tlalerts-gated stage-start reminders (renderTimelinePanel's buildList) —
 // because bcheck is the safety gate (owner ruling 2026-08-01: safety notifications sit outside any
@@ -3529,7 +3551,7 @@ function renderStaleEventBanner(ev, suppressedChecks){
   const alerts=(typeof _staleSuppressedAlerts==='function')?_staleSuppressedAlerts(ev):0;
   if(!el){ el=document.createElement('div'); el.id='mkStaleEv'; el.className='mk-alarm mk-alarm-stale';
     el.setAttribute('role','status'); el.setAttribute('aria-label',L('אירוע שעבר','Past event'));
-    (document.getElementById('mkActStack')||document.body).appendChild(el); }
+    mkActStack().appendChild(el); }
   const lead=L('האירוע הזה עבר.','This event has passed.');
   // DoD-9 (development-discipline §3): correct singular/plural on an interpolated count — "1 בדיקות" is
   // not valid Hebrew. Each clause branches singular/plural independently (the numeral itself still shows
@@ -3543,6 +3565,7 @@ function renderStaleEventBanner(ev, suppressedChecks){
     `<button class="mka-stop" data-staleupdate>${L('עדכן מועד הגשה','Update serve time')}</button></div>`;
   const b=el.querySelector('[data-staleupdate]');
   if(b) b.addEventListener('click', function(){ if(typeof openTimeline==='function') openTimeline(); });
+  try{ mkActStackOrder(); }catch(e){}
 }
 
 function openSpec(s){
