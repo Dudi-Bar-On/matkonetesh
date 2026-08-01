@@ -669,6 +669,27 @@ test('R-36a: the voice-answer system prompt instructs brief spoken style AND exe
   expect(r.he).toMatch(/היחידה/);
 });
 
+// R-48 (docs/analysis/2026-08-01-spelled-out-safety-numbers.md, owner-approved: instruct-the-model over
+// widening the digit-only detector). vcGuardSpoken/aiSafetyNums/safetyNumRe recognise digits only, so a
+// spelled-out safety number ("תשעים ושש מעלות") sails through unredacted. Fix: tell the model to always
+// write safety-bearing numbers as digits. All three vcBuildAskPrompt branches (he/en/other-language) must
+// carry the instruction — verified here via the sys-prompt string, same pattern as the R-36a test above.
+test('R-48: the voice-answer system prompt instructs safety-bearing numbers to always be written as digits, never spelled out (he/en/other)', async ({ page }) => {
+  await seedApp(page, {});
+  const r = await page.evaluate(`(function(){
+    var he = vcBuildAskPrompt('שאלה', 'he', '').sys;
+    var en = vcBuildAskPrompt('q', 'en', '').sys;
+    var fr = vcBuildAskPrompt('q', 'fr', '').sys;
+    return { he: he, en: en, fr: fr };
+  })()`) as { he: string; en: string; fr: string };
+  for (const sys of [r.en, r.fr]) {
+    expect(sys).toMatch(/digits/i);
+    expect(sys).toMatch(/never.*words|not.*spelled out/i);
+  }
+  expect(r.he).toMatch(/בספרות/);
+  expect(r.he).toMatch(/לעולם לא במילים/);
+});
+
 test('R-36a: a brief safety answer still carries the number, unit, and caveat through the guard (mocked model — no live API call)', async ({ page }) => {
   await bootVC(page);
   // simulate the SHORT, brevity-instructed answer shape the measured wording produces — a real verified

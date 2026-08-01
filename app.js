@@ -7339,10 +7339,12 @@ const VC_BREVITY_EN='You are a voice assistant being listened to, not read: answ
   +'spoken style, at most 60 words — no markdown, no bullet lists, no headings. Non-negotiable exception: '
   +'if the answer touches safety (a safe temperature, a cure ratio, a time/temperature pair), the number, '
   +'its unit and the caveat must be preserved in full, even at the cost of less aggressive brevity elsewhere '
-  +'and going past the word limit.';
+  +'and going past the word limit. Any such safety-bearing number must always be written as digits (e.g. 74°C), '
+  +'never spelled out in words.';
 const VC_BREVITY_HE='אתה עוזר קולי שמאזינים לו, לא קוראים אותו: ענה בקצרה ובסגנון דיבור טבעי, עד 60 מילים — בלי '
   +'Markdown, בלי רשימות, בלי כותרות. חריג בל-יעבור: אם התשובה נוגעת לבטיחות (טמפרטורה בטוחה, יחס מלח/כבישה, '
-  +'זמן/טמפרטורה) — המספר, היחידה וההסתייגות חייבים להישמר במלואם, גם במחיר קיצור פחות אגרסיבי בשאר התשובה וחריגה ממגבלת המילים.';
+  +'זמן/טמפרטורה) — המספר, היחידה וההסתייגות חייבים להישמר במלואם, גם במחיר קיצור פחות אגרסיבי בשאר התשובה וחריגה ממגבלת המילים. '
+  +'מספר בטיחות כזה ייכתב תמיד בספרות (למשל 74°C), לעולם לא במילים.';
 function vcBuildAskPrompt(question, ansLang, ctx){
   ctx=ctx||'';
   let sys;
