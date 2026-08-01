@@ -7558,9 +7558,13 @@ function vcBuildAskPrompt(question, ansLang, ctx){
 function vcResolveTiers(question){
   const t=vcTasks[vcIdx];
   const r1=(t && t.ikey && typeof resolveItem==='function') ? resolveItem(t.ikey) : null;
-  const hits=(typeof askFindEntity==='function')?askFindEntity(String(question||'').toLowerCase()):[];
+  const qL=String(question||'').toLowerCase();
+  const hits=(typeof askFindEntity==='function')?askFindEntity(qL):[];
   const h=hits && hits[0];
-  return { t1:(r1 && r1.obj)?r1:null, t2:(h && h.obj)?h:null };
+  // R-58: category lookup only runs when Tier 2 found NO item — "חזה עוף" (item) must never be shadowed
+  // by "עוף" (category); see vcIdentifiedSafeCategory/askFindCategory above for the full reasoning.
+  const cat=(!(h && h.obj) && typeof askFindCategory==='function') ? askFindCategory(qL) : null;
+  return { t1:(r1 && r1.obj)?r1:null, t2:(h && h.obj)?h:null, cat:cat };
 }
 // The verified figures a resolved item actually carries. Same accessor set askContextFor (4136) and
 // itemStages (3262) already read — not a new one. Celsius-native; rounded to match the integer °C
@@ -7616,6 +7620,61 @@ function vcIdentifiedSafeItem(tiers){
   if(o.safe==null || isNaN(Number(o.safe))) return null;   // no cited SAFETY figure — never substitute tgt as if it were one
   return { m:m, safeC: Math.round(Number(o.safe)) };
 }
+// R-58 (owner-reported live defect, 2026-08-01, v283) — a CATEGORY question ("טמפרטורת בטיחות עוף") got NO
+// substituted value even though R-53 (above) already exists: askFindEntity returns an EMPTY array for "עוף"
+// because it is a `cat` (category) in the catalog, not an item — the catalog has "חזה עוף", never a bare
+// "עוף". R-53's substitution only ever fires off an ITEM match (Tier 2), so a category-only question fell
+// straight through to silence-with-redactions. This extends substitution one level up: when the question
+// names a CATEGORY and every item in it shares the SAME `safe`, speak that value, attributed to the
+// CATEGORY (never phrased as if it were about one cut). When the category is MIXED (בקר: whole-cut 63°C vs
+// ground 71°C — a real, safety-relevant split) stay silent: one asserted number there would be dangerous,
+// not merely unhelpful. `safe=0` (ירקות/פירות) is excluded — zero is not a safety temperature.
+// Uniformity is computed FROM THE CATALOG AT RUNTIME (askAllItems(), never a hardcoded table) so a future
+// catalog edit cannot silently go stale here. Item-level match ALWAYS wins: vcResolveTiers (below) only
+// looks for a category when askFindEntity found NO item at all — "חזה עוף" is strictly more specific than
+// "עוף" and must never be shadowed by it.
+function askAllCategories(){
+  const s=new Set();
+  askAllItems().forEach(function(m){ if(m.cat) s.add(m.cat); });
+  return [...s];
+}
+// Category named in the question text — the catalog's own Hebrew `cat` string as a direct substring, OR
+// its shipped English name (lang/en.json — the SAME dict itemName()/t() already read for these very `cat`
+// strings, e.g. "עוף"->"Chicken"). Mirrors askFindEntity's own direct-match tier (heb substring / eng
+// first-word substring) one level up, at category granularity — no new matching strategy invented.
+function askFindCategory(q){
+  const cats=askAllCategories();
+  let hit=null;
+  cats.forEach(function(c){
+    if(hit) return;
+    if(q.includes(c)){ hit=c; return; }
+    const enName=(typeof I18N_DICTS!=='undefined' && I18N_DICTS.en && I18N_DICTS.en[c]) ? String(I18N_DICTS.en[c]).toLowerCase() : '';
+    if(enName && enName.length>2 && q.includes(enName)) hit=c;
+  });
+  return hit;
+}
+// The category's `safe` value IF every item in it that carries a cited, non-zero `safe` shares the SAME
+// rounded °C — else null (no data, or MIXED). Recomputed fresh from askAllItems() on every call; see the
+// block comment above for why this must never be a hardcoded table.
+function catUniformSafe(cat){
+  if(!cat) return null;
+  const vals=askAllItems().filter(function(m){ return m.cat===cat; })
+    .map(function(m){ return m.obj&&m.obj.safe; })
+    .filter(function(v){ return v!=null && !isNaN(Number(v)) && Number(v)!==0; })
+    .map(function(v){ return Math.round(Number(v)); });
+  if(!vals.length) return null;
+  return vals.every(function(v){ return v===vals[0]; }) ? vals[0] : null;
+}
+// tiers.cat is populated ONLY when vcResolveTiers found no item (see below) — this re-checks that
+// precedence defensively for any caller (e.g. a test) that hand-builds a tiers object.
+function vcIdentifiedSafeCategory(tiers){
+  if(tiers && tiers.t2) return null;   // an item match already exists — never shadow it with a category guess
+  const cat=tiers && tiers.cat;
+  if(!cat) return null;
+  const safeC=catUniformSafe(cat);
+  if(safeC==null) return null;   // no data, or MIXED — stay silent (the whole point of R-58)
+  return { cat:cat, safeC:safeC };
+}
 // Builds the substitution sentence, or '' when nothing eligible (silence). `lang` is the SAME voice-
 // language param vcGuardSpoken receives — by construction (R-31) it equals getLang(), so itemName()'s
 // internal getLang() read stays in sync with it. The static prefix goes through L() (mode-1 harvestable —
@@ -7623,14 +7682,30 @@ function vcIdentifiedSafeItem(tiers){
 // inline "verified" marker a few lines below builds its own sentence.
 function vcSafeSubstitution(tiers, lang){
   const found=vcIdentifiedSafeItem(tiers);
-  if(!found) return '';
-  const name=(typeof itemName==='function')?itemName(found.m):'';
-  if(!name) return '';   // no displayable name (e.g. a bare test stub with no heb/eng) — nothing to attribute the figure to, so stay silent rather than substitute an unnamed number
-  const tempStr=(typeof UNITS!=='undefined' && UNITS.fmt)?UNITS.fmt(found.safeC,'temp',{role:'safeFloor'}):(found.safeC+'°C');
-  const prefix=lang==='he'
-    ? 'לפי המדריך, הטמפרטורה הבטוחה עבור '
-    : L('לפי המדריך, הטמפרטורה הבטוחה עבור ', "Per the app's guide, the safe temperature for ");
-  return prefix+name+': '+tempStr+'.';
+  if(found){
+    const name=(typeof itemName==='function')?itemName(found.m):'';
+    if(!name) return '';   // no displayable name (e.g. a bare test stub with no heb/eng) — nothing to attribute the figure to, so stay silent rather than substitute an unnamed number
+    const tempStr=(typeof UNITS!=='undefined' && UNITS.fmt)?UNITS.fmt(found.safeC,'temp',{role:'safeFloor'}):(found.safeC+'°C');
+    const prefix=lang==='he'
+      ? 'לפי המדריך, הטמפרטורה הבטוחה עבור '
+      : L('לפי המדריך, הטמפרטורה הבטוחה עבור ', "Per the app's guide, the safe temperature for ");
+    return prefix+name+': '+tempStr+'.';
+  }
+  // R-58: category-level substitution — only reached when NO item matched. `t()` is the SAME dictionary
+  // lookup itemName()/ppRender() already use to render these very `cat` strings per language; passing no
+  // fallback means it renders the raw Hebrew category name when lang==='he' (t()'s own he short-circuit),
+  // exactly mirroring itemName()'s language routing above.
+  const catFound=vcIdentifiedSafeCategory(tiers);
+  if(catFound){
+    const catName=(typeof t==='function')?t(catFound.cat):catFound.cat;
+    if(!catName) return '';
+    const tempStr=(typeof UNITS!=='undefined' && UNITS.fmt)?UNITS.fmt(catFound.safeC,'temp',{role:'safeFloor'}):(catFound.safeC+'°C');
+    const prefix=lang==='he'
+      ? 'לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית '
+      : L('לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית ', "Per the app's guide, the safe temperature for the category ");
+    return prefix+catName+': '+tempStr+'.';
+  }
+  return '';
 }
 // The ONE tokenizer shared by every rewrite path AND by aiSafetyNums (via SAFETY_TOKEN_SRC / safetyTokenRe,
 // defined above aiSafetyToC) — so a number the extractor can see is never a number the guard fails to

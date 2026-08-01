@@ -838,3 +838,108 @@ test('R-53: the substitution sentence renders in the caller\'s language too (non
   expect(out).not.toContain('לפי המדריך');   // no Hebrew leak on the fr branch
 });
 
+// R-58 (owner-reported live defect, 2026-08-01, v283) — a CATEGORY question ("טמפרטורת בטיחות עוף") got
+// THREE redactions and no number: askFindEntity returns an EMPTY array for "עוף" because it is a `cat`
+// in the catalog, not an item — the catalog has "חזה עוף", never a bare "עוף". Reproduces the live defect
+// end-to-end through vcAskFlow, exactly like the R-53 asado test above.
+test('R-58: a category-only safety question (no item named) gets the category\'s uniform safe figure substituted (the live "עוף" defect)', async ({ page }) => {
+  await bootVC(page);
+  // Pin the catalog precondition this fix relies on: "עוף" itself resolves to NO item via askFindEntity
+  // (the live bug's exact mechanism) but every עוף item shares the same cited safe figure.
+  const setup = await page.evaluate(`(function(){
+    var hits=askFindEntity('טמפרטורת בטיחות עוף');
+    if (hits.length) return {ok:false};
+    var vals=[];
+    DATA.cuts.forEach(function(c){ if(c.cat==='עוף' && c.safe!=null) vals.push(Math.round(c.safe)); });
+    var uniform = vals.length>0 && vals.every(function(v){ return v===vals[0]; });
+    return {ok: uniform, safe: uniform?vals[0]:null};
+  })()`) as {ok:boolean; safe:number|null};
+  expect(setup.ok).toBe(true);
+  const safe = setup.safe as number;
+  await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock='הטמפ הבטוחה היא בין 63°C ל-${safe}°C, ולעיתים עד 90°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: טמפרטורת בטיחות עוף')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  const shown  = await page.evaluate(`vcLastQA.a`) as string;
+  expect(spoken).not.toMatch(/\b63\b/);                    // the model's OTHER numbers are still redacted, never spoken raw
+  expect(spoken).not.toMatch(/\b90\b/);
+  expect(spoken).toContain('המספרים האלה אינם מאומתים');   // the redaction notice still fires — substitution is additive
+  expect(spoken).toContain(String(safe));                   // the app's OWN cited, uniform category safe figure
+  expect(spoken).toContain('עוף');                          // attributed to the CATEGORY, by name
+  expect(shown).toBe(spoken);
+});
+
+test('R-58 negative — a MIXED category (בקר: whole-cut 63°C vs ground 71°C) gets NO substituted number (DoD-6, the dangerous case)', async ({ page }) => {
+  await bootVC(page);
+  const setup = await page.evaluate(`(function(){
+    var vals=new Set();
+    DATA.cuts.forEach(function(c){ if(c.cat==='בקר' && c.safe!=null) vals.add(Math.round(c.safe)); });
+    return {mixed: vals.size>1};
+  })()`) as {mixed:boolean};
+  expect(setup.mixed).toBe(true);   // pin the precondition the whole negative case hinges on
+  const out = await page.evaluate(`vcGuardSpoken('הטמפ הבטוחה היא בין 63°C ל-74°C', { t1: null, t2: null, cat: 'בקר' }, 'he')`) as string;
+  expect(out).toContain('אינם מאומתים');
+  expect(out).not.toMatch(/\d/);   // MIXED category -> silence, never a guessed number
+});
+
+test('R-58 negative — safe=0 categories (ירקות) are excluded: zero is not a safety temperature', async ({ page }) => {
+  await bootVC(page);
+  const out = await page.evaluate(`vcGuardSpoken('הטמפ הבטוחה היא בין 63°C ל-74°C', { t1: null, t2: null, cat: 'ירקות' }, 'he')`) as string;
+  expect(out).toContain('אינם מאומתים');
+  expect(out).not.toMatch(/\d/);
+});
+
+test('R-58 — item-level match still wins over a category match ("חזה עוף" is more specific than "עוף")', async ({ page }) => {
+  await bootVC(page);
+  const setup = await page.evaluate(`(function(){
+    var c=DATA.cuts.find(function(x){ return x.heb==='חזה עוף' && x.safe!=null; });
+    return c?{safe:Math.round(c.safe)}:null;
+  })()`) as {safe:number}|null;
+  expect(setup).not.toBeNull();
+  const { safe } = setup!;
+  await page.evaluate(`vcTasks=[]; vcIdx=0; window.__vcAskMock='הטמפ הבטוחה היא בין 63°C ל-${safe}°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: מה הטמפרטורה הבטוחה לחזה עוף')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
+  expect(spoken).toContain(String(safe));
+  expect(spoken).toContain('חזה עוף');       // attributed to the SPECIFIC item, per R-53
+  expect(spoken).not.toContain('קטגוריית');  // never the category phrasing when an item matched
+});
+
+test('R-58: the category substitution sentence renders in the caller\'s language too (non-Hebrew, e.g. French) — no Hebrew leak', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('fr') });
+  await page.waitForFunction(`typeof vcGuardSpoken==='function'`);
+  // wait for the fr dict to actually be loaded (I-1 — see the identical R-53 language test above)
+  await page.waitForFunction(`(function(){ try{ return typeof getDict==='function' && !!getDict() && Object.keys(getDict()).length>0; }catch(e){ return false; } })()`);
+  const safe = await page.evaluate(`(function(){
+    var vals=[]; DATA.cuts.forEach(function(c){ if(c.cat==='עוף' && c.safe!=null) vals.push(Math.round(c.safe)); });
+    return (vals.length && vals.every(function(v){ return v===vals[0]; })) ? vals[0] : null;
+  })()`) as number|null;
+  expect(safe).not.toBeNull();
+  const out = await page.evaluate(`vcGuardSpoken('la température est entre 63°C et ${safe}°C', { t1: null, t2: null, cat: 'עוף' }, 'fr')`) as string;
+  expect(out).toContain(String(safe));
+  expect(out).not.toContain('לפי המדריך');   // no Hebrew leak on the fr branch
+});
+
+test('R-58 DoD-8/9 — the category substitution sentence renders correctly in the Hebrew voice-panel transcript', async ({ page }) => {
+  await bootVC(page);
+  const safe = await page.evaluate(`(function(){
+    var vals=[]; DATA.cuts.forEach(function(c){ if(c.cat==='עוף' && c.safe!=null) vals.push(Math.round(c.safe)); });
+    return (vals.length && vals.every(function(v){ return v===vals[0]; })) ? vals[0] : null;
+  })()`) as number|null;
+  expect(safe).not.toBeNull();
+  await page.evaluate(`(function(){ closePanel(); openVoiceCook([{label:'x',t:new Date()}]); })()`);
+  await page.waitForSelector('#vcBody');
+  await page.evaluate(`window.__vcAskMock='הטמפ הבטוחה היא בין 63°C ל-${safe}°C.';`);
+  await page.evaluate(`vcAskFlow('שאלה: טמפרטורת בטיחות עוף')`);
+  await page.waitForFunction(`window.__spoke.length>0`);
+  await page.waitForFunction(`(function(){ var a=document.querySelector('.vc-qa-a'); return a && a.textContent.indexOf('עוף')>=0; })()`);
+  const shownText = await page.evaluate(`document.querySelector('.vc-qa-a').textContent`) as string;
+  expect(shownText).toContain(String(safe));
+  await page.waitForFunction(`document.querySelector('#panel').getBoundingClientRect().left===0`);
+  await page.evaluate(`document.querySelector('.vc-qa').scrollIntoView({block:'center'})`);
+  await page.waitForFunction(`(function(){ const r=document.querySelector('.vc-qa').getBoundingClientRect();
+    return r.top>=0 && r.bottom<=window.innerHeight; })()`);
+  await page.screenshot({ path: '.superpowers/sdd/r58-category-substitution-390x844.png' });
+});
+
