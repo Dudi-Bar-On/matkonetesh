@@ -6972,13 +6972,15 @@ async function ttsSpeakSeg(text, lang, gen, startAt, useCase){
     return await gemSpeakSegStream(text, lang, gen);
   }catch(e){
     if(!vcGenCurrent(gen)) return startAt;         // barge-in during the attempt: stay silent
-    if(String((e&&e.message)||'')==='stream-unsupported'){
-      // a Worker deployed before streaming — the EXISTING blocking path is the right answer, not a
-      // different engine (gemSpeakSegAttempt's own branch, reproduced here so gemSpeakSeg stays untouched)
+    if(String((e&&e.message)||'')==='stream-unsupported' || !ttsFallbackWorthy(e)){
+      // Either a stale Worker (stream-unsupported), or a failure Cloud is no better positioned to fix
+      // than blocking Gemini (a plain network blip, a 403 billing/permission problem, etc. — §4.1 names
+      // only 429/timeout/no-audio as Cloud-worthy). The v281 universal safety net: fall to the EXISTING
+      // blocking path (gemSpeakSegAttempt's own branch, reproduced here so gemSpeakSeg stays untouched)
+      // rather than going silent. If the blocking attempt also fails, that error propagates unchanged.
       const buf = await gemSynthChunk(text);
       return vcGenCurrent(gen) ? await gemPlayBuf(buf, gen, startAt) : startAt;
     }
-    if(!ttsFallbackWorthy(e)) throw e;
     return await cloudSpeakSeg(text, lang, gen, startAt);   // §4.1 — ONE hop, never a chain
   }
 }

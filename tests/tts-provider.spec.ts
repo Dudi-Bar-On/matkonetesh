@@ -174,6 +174,51 @@ test('R-45 DoD-2+3+8: a Gemini 429 falls over to Cloud ONCE — sound comes out 
   expect(r.calls.length).toBe(2);
 });
 
+// Regression pin: a plain NETWORK failure on the stream attempt (connection refused / DNS / "Failed to
+// fetch") is not one of §4.1's three fallback triggers (429/timeout/no-audio), so ttsFallbackWorthy(e) is
+// false and the secondary must NOT be tried. Before this fix that path was thrown straight out of
+// ttsSpeakSeg — SILENCE. v281's own universal safety net (any stream failure -> blocking gemSynthChunk +
+// gemPlayBuf) is restored here: 2 Gemini requests (stream + blocking), 0 Cloud requests, audio comes out.
+test('R-45 regression: a non-fallback-worthy stream failure (network) still produces audio via blocking Gemini, never Cloud', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...MANAGED });
+  await page.waitForFunction(`typeof ttsSpeakSeg==='function'`);
+  await page.evaluate(PCM_HELPERS);
+  await page.evaluate(COUNTING_FETCH);
+  const r = await page.evaluate(`(async()=>{
+    // a base64 PCM16 payload, in the SAME envelope shape gemReadAudio expects off generateContent
+    const pcmB64 = (function(){
+      const bytes = window.__pcmBytes(0.3);
+      let s=''; for(let i=0;i<bytes.length;i++) s+=String.fromCharCode(bytes[i]);
+      return btoa(s);
+    })();
+    window.__installFetch(async function(url){
+      if(url.indexOf(':streamGenerateContent')>=0) throw new TypeError('Failed to fetch');   // plain network blip — NOT fallback-worthy
+      if(url.indexOf(':generateContent')>=0){
+        return new Response(JSON.stringify({candidates:[{content:{parts:[{inlineData:{mimeType:'audio/L16;rate=24000', data: pcmB64}}]}}]}),
+          {status:200, headers:{'Content-Type':'application/json'}});
+      }
+      throw new Error('the secondary must NOT be reached — this failure is not fallback-worthy: '+url);
+    });
+    try{
+      const gen=vcNewSpeakGen();
+      const startAt=gemAudioCtx().currentTime+1.0;
+      const cursor=await ttsSpeakSeg('שלום','he',gen,startAt,'answer');
+      return { cursor, startAt, calls: window.__ttsCalls.slice() };
+    } finally { window.__restoreFetch(); }
+  })()`);
+  // sound, not silence — the cursor advanced by roughly the clip's duration past startAt
+  expect(r.cursor).toBeGreaterThan(r.startAt + 0.2);
+  expect(r.cursor).toBeLessThan(r.startAt + 0.5);
+  // note: the blocking path's verb is the lowercase-'g' 'generateContent' while the stream attempt's is
+  // camelCase 'streamGenerateContent' — a case-INSENSITIVE match is required to count both (the existing
+  // DoD-2+3+8 test above only ever sees the stream call, so its capital-G filter never had to catch this).
+  const gemini = r.calls.filter((u: string) => /generatecontent/i.test(u));
+  const cloud = r.calls.filter((u: string) => u.includes('/v1/tts:synthesize'));
+  expect(gemini.length).toBe(2);     // 1 stream attempt + 1 blocking generateContent (v281 safety net)
+  expect(cloud.length).toBe(0);      // the secondary is never touched for a non-fallback-worthy error
+  expect(r.calls.length).toBe(2);
+});
+
 test('R-45 DoD-4: a BYOK user never calls the secondary and never goes silent', async ({ page }) => {
   await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('he'), ...BYOK });
   await page.waitForFunction(`typeof ttsSpeakSeg==='function'`);
