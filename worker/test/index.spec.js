@@ -113,6 +113,20 @@ const frameText = (text, total) => ({
   ...(total != null ? { usageMetadata: { totalTokenCount: total } } : {}),
 });
 
+// Google's REAL wire format separates SSE frames with \r\n\r\n, never \n\n (proven against the live
+// API 2026-08-01: CRLFCRLF=1, LFLF=0). `sseFrames` above uses \n\n only — it proves the Worker parses
+// its OWN fixture, not that it parses what Google actually sends. `sseFramesCRLF` closes that gap,
+// including tearing the separator itself across two enqueued chunks (the nastiest real case).
+function sseFramesCRLF(chunks) {       // build lazily INSIDE mockImplementation (workerd I/O isolation)
+  const enc = new TextEncoder();
+  return new Response(new ReadableStream({
+    start(c) {
+      for (const chunk of chunks) c.enqueue(enc.encode(chunk));
+      c.close();
+    },
+  }), { status: 200, headers: { 'Content-Type': 'text/event-stream' } });
+}
+
 describe('Streaming metering (spec §2.3/§2.4)', () => {
   it('F-happy: body passes through; used reconciles to the FINAL usageMetadata.totalTokenCount', async () => {
     await env.CODES.put('code:st-ok', JSON.stringify({ active: true, cap: 100000, used: 10 }));
@@ -125,6 +139,24 @@ describe('Streaming metering (spec §2.3/§2.4)', () => {
     expect(bodyText).toContain('עולם.');
     await vi.waitFor(async () => {          // reconcile rides ctx.waitUntil — poll the observable state
       expect(JSON.parse(await env.CODES.get('code:st-ok')).used).toBe(10 + 9);
+    });
+  });
+
+  it('F-happy over the REAL \\r\\n\\r\\n wire format: used reconciles to the FINAL usageMetadata, including a frame torn INSIDE the separator itself', async () => {
+    await env.CODES.put('code:st-crlf', JSON.stringify({ active: true, cap: 100000, used: 10 }));
+    const frame1 = 'data: ' + JSON.stringify(frameText('שלום, ', 3)) + '\r\n\r\n';
+    const frame2 = 'data: ' + JSON.stringify(frameText('עולם.', 9)) + '\r\n\r\n';
+    // tear frame2's own separator in half across two enqueued chunks: '...}\r\n' then '\r\n'
+    const sepStart = frame2.length - 4;
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() =>
+      sseFramesCRLF([frame1, frame2.slice(0, sepStart + 2), frame2.slice(sepStart + 2)]));
+    const r = await post(STREAM_URL, 'st-crlf');
+    expect(r.status).toBe(200);
+    const bodyText = await r.text();
+    expect(bodyText).toContain('שלום, ');
+    expect(bodyText).toContain('עולם.');
+    await vi.waitFor(async () => {          // reconcile rides ctx.waitUntil — poll the observable state
+      expect(JSON.parse(await env.CODES.get('code:st-crlf')).used).toBe(10 + 9);
     });
   });
 

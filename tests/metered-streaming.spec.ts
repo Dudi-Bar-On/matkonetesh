@@ -68,6 +68,63 @@ test('gemSseParse yields text deltas incrementally and survives a frame split ac
   expect(out.c).toEqual(['עולם. 63.5']);
 });
 
+test('gemSseParse yields text deltas over the REAL Google wire format (\\r\\n\\r\\n frames), including a tear landing inside the separator itself', async ({ page }) => {
+  // Proven against the live API (2026-08-01): CRLFCRLF=1, LFLF=0 — Google separates SSE frames with
+  // \r\n\r\n, never \n\n. A fixture using only \n\n proves nothing about production (the bug this test
+  // guards against). The nastiest real case: the tear lands INSIDE the four-byte separator itself.
+  await seedApp(page, {});
+  const out = await page.evaluate(() => {
+    const p = (window as any).gemSseParse();
+    const f = (t: string) => 'data: ' + JSON.stringify({ candidates: [{ content: { parts: [{ text: t }] } }] }) + '\r\n\r\n';
+    const a = p.push(f('שלום, '));
+    const whole = f('עולם. 63.5');
+    // tear the separator itself: whole ends '...}\r\n\r\n' — split so the first push carries the JSON
+    // plus only the FIRST \r\n of the separator, and the second push starts with the trailing \r\n.
+    const sepStart = whole.length - 4;                // index of the \r\n\r\n
+    const b = p.push(whole.slice(0, sepStart + 2));    // '...}\r\n'  (half the separator)
+    const c = p.push(whole.slice(sepStart + 2));       // '\r\n'      (the other half)
+    return { a, b, c };
+  });
+  expect(out.a).toEqual(['שלום, ']);
+  expect(out.b).toEqual([]);                       // separator torn in half — not yet a complete frame
+  expect(out.c).toEqual(['עולם. 63.5']);            // completed once the separator's second half arrives
+});
+
+test('gemSseParse still handles \\n\\n-delimited frames (fixture-only servers, and the pre-existing coverage)', async ({ page }) => {
+  await seedApp(page, {});
+  const out = await page.evaluate(() => {
+    const p = (window as any).gemSseParse();
+    const f = (t: string) => 'data: ' + JSON.stringify({ candidates: [{ content: { parts: [{ text: t }] } }] }) + '\n\n';
+    return p.push(f('שלום עולם'));
+  });
+  expect(out).toEqual(['שלום עולם']);
+});
+
+test('gemSpeakSeg schedules streamed PCM over the REAL Google wire format (\\r\\n\\r\\n frames) — a \\n\\n-only fixture would mask this', async ({ page }) => {
+  await seedApp(page, { 'mk-gemkey': JSON.stringify('k-test') });
+  const pcm = Buffer.alloc(4800, 7).toString('base64');
+  const frame = (d: string) => 'data: ' + JSON.stringify({ candidates: [{ content: { parts: [{ inlineData: { mimeType: 'audio/pcm;rate=24000', data: d } }] } }] }) + '\r\n\r\n';
+  await page.route('**/models/*:streamGenerateContent*', r => r.fulfill({ status: 200, contentType: 'text/event-stream', body: frame(pcm) + frame(pcm) }));
+  try {
+    const out = await page.evaluate(async () => {
+      const w = window as any;
+      // if the CRLF frame is never parsed, gemPlayPcmStream throws 'no-audio' and gemSpeakSegAttempt
+      // silently falls back to the blocking synth path — mock that fallback so the failure surfaces
+      // as a clean assertion (usedFallback) instead of an uncaught network error from a fake key.
+      let usedFallback = 0;
+      w.__gemTtsMock = () => { usedFallback++; return { length: 1, sampleRate: 24000 }; };
+      w.__gemPlayMock = () => Promise.resolve();
+      const gen = w.vcNewSpeakGen();
+      await w.gemSpeakSeg('שלום, המעשנה יציבה.', 'he', gen);
+      delete w.__gemTtsMock; delete w.__gemPlayMock;
+      return { firstAudio: w.__vcLat && w.__vcLat.firstAudio, chunks: w.__gemAudioChunks, usedFallback };
+    });
+    expect(out.usedFallback).toBe(0);        // streaming must succeed on its own — no silent fallback
+    expect(typeof out.firstAudio).toBe('number');
+    expect(out.chunks).toBe(2);
+  } finally { await page.unroute('**/models/*:streamGenerateContent*'); }
+});
+
 test('managed streaming 404 (stale Worker) throws stream-unsupported; managed 402 with a BYOK key retries BYOK', async ({ page }) => {
   await seedApp(page, { 'mk-central-url': JSON.stringify('https://w.example'), 'mk-central-code': JSON.stringify('abc123') });
   await page.route('**/models/*:streamGenerateContent*', r => r.fulfill({ status: 404, contentType: 'application/json', body: '{"error":"not_found"}' }));

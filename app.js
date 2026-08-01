@@ -5524,15 +5524,19 @@ function gemTransport(mdl, verb, key){
   return {mode, url, headers};
 }
 
-// Incremental SSE → text-delta parser. Frames are acted on ONLY when complete (\n\n seen) — a torn
-// frame carries over; half a frame is never parsed (mirror of the Worker's scanner, spec §2.3).
+// Incremental SSE → text-delta parser. Frames are acted on ONLY when complete (a blank line seen) — a
+// torn frame carries over; half a frame is never parsed (mirror of the Worker's scanner, spec §2.3).
+// Google's real wire format separates frames with \r\n\r\n, not \n\n (proven against the live API
+// 2026-08-01: CRLFCRLF=1, LFLF=0) — GEM_SSE_SEP matches either, and a tear landing inside the
+// separator itself resolves once the buffer is rescanned on the next push (no stateful regex state).
+const GEM_SSE_SEP = /\r\n\r\n|\n\n/;
 function gemSseParse(){
   let buf='', finished=false;
   function drain(){
-    const out=[]; let idx;
-    while((idx=buf.indexOf('\n\n'))>=0){
-      const frame=buf.slice(0,idx); buf=buf.slice(idx+2);
-      for(const line of frame.split('\n')){
+    const out=[]; let m;
+    while((m=GEM_SSE_SEP.exec(buf))){
+      const frame=buf.slice(0,m.index); buf=buf.slice(m.index+m[0].length);
+      for(const line of frame.split(/\r?\n/)){
         if(line.indexOf('data:')!==0) continue;
         try{
           const j=JSON.parse(line.slice(5).trim());
@@ -6815,10 +6819,10 @@ async function gemPlayPcmStream(stream, gen, startAt){
     if(step.done) break;
     if(!vcGenCurrent(gen)){ try{reader.cancel();}catch(e){} return; }   // barge-in: stop the spend
     buf+=dec.decode(step.value,{stream:true});
-    let i;
-    while((i=buf.indexOf('\n\n'))>=0){
-      const fr=buf.slice(0,i); buf=buf.slice(i+2);
-      for(const line of fr.split('\n')){
+    let m;
+    while((m=GEM_SSE_SEP.exec(buf))){
+      const fr=buf.slice(0,m.index); buf=buf.slice(m.index+m[0].length);
+      for(const line of fr.split(/\r?\n/)){
         if(line.indexOf('data:')!==0) continue;
         try{
           const j=JSON.parse(line.slice(5).trim());

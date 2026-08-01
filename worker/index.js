@@ -126,9 +126,13 @@ async function handleStream(request, env, ctx, url, code, key, json, cors) {
     return new Response(t, { status: gResp.status, headers: { ...cors, 'Content-Type': 'application/json' } });
   }
 
+  // Google's real wire format separates SSE frames with \r\n\r\n, not \n\n (proven against the live
+  // API 2026-08-01: CRLFCRLF=1, LFLF=0) — GEM_SSE_SEP matches either, and a tear landing inside the
+  // separator itself resolves once sseBuf is rescanned on the next chunk (no stateful regex state).
+  const GEM_SSE_SEP = /\r\n\r\n|\n\n/;
   const meter = { total: 0, sawUsage: false, chars: 0 };
-  const scanFrame = (frame) => {                   // one complete SSE event (between \n\n)
-    for (const line of frame.split('\n')) {
+  const scanFrame = (frame) => {                   // one complete SSE event (between blank lines)
+    for (const line of frame.split(/\r?\n/)) {
       if (!line.startsWith('data:')) continue;
       try {
         const j = JSON.parse(line.slice(5).trim());
@@ -187,8 +191,8 @@ async function handleStream(request, env, ctx, url, code, key, json, cors) {
         if (done) break;
         // scan COMPLETE frames only — a count over half a frame would miscount
         sseBuf += dec.decode(value, { stream: true });
-        let idx;
-        while ((idx = sseBuf.indexOf('\n\n')) >= 0) { scanFrame(sseBuf.slice(0, idx)); sseBuf = sseBuf.slice(idx + 2); }
+        let m;
+        while ((m = GEM_SSE_SEP.exec(sseBuf))) { scanFrame(sseBuf.slice(0, m.index)); sseBuf = sseBuf.slice(m.index + m[0].length); }
         try { await writer.write(value); } catch {}    // the client is gone; ignore, `clientGone` already covers it
         if (runningCount() > STREAM_MAX_TOKENS) {       // F6 — abuse ceiling, NOT cap
           try { await reader.cancel(); } catch {}
