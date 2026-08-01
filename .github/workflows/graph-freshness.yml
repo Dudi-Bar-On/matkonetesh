@@ -1,0 +1,42 @@
+name: graph-freshness
+
+# LAYERING (COMPLIANCE-AUDIT-2026-08-01.md, addressing the controller's explicit follow-up):
+# check-graph-fresh is not a property of any single commit - it is a property of ELAPSED TIME and
+# document drift, which is exactly why neither a pre-commit hook nor a push-triggered CI job ever
+# caught it: nothing was pushed on 2026-07-31 evening while five hours of docs went stale. This
+# workflow runs on a schedule instead, so a graph that goes stale purely from inaction is still
+# caught and still fails VISIBLY (a red run in the Actions tab / a failing scheduled check),
+# without ever blocking a legitimate push (kept as a separate workflow from test.yml on purpose).
+#
+# Explicitly rejected: a background daemon/file-watcher doing this continuously. A daemon can die
+# silently, which is exactly how 2026-08-01 happened - check-meta was not running and nothing
+# announced that fact. A missing/skipped scheduled CI run shows up as a missing check in GitHub's
+# own UI; a dead daemon shows up as nothing. "Not running" must itself be an alarm, and only the
+# CI platform (not a process this repo owns and can forget to restart) gives that for free.
+on:
+  schedule:
+    - cron: '17 2 * * *' # once nightly; the exact minute is arbitrary, chosen off round numbers
+                          # on purpose to avoid GitHub's documented top-of-hour scheduling pile-up.
+  workflow_dispatch: {} # manual "run it now" button, for verifying the workflow itself.
+
+jobs:
+  graph-freshness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # CI mode compares git commit dates, not filesystem mtimes (see the
+                          # script's own header comment for why: graphify-out/ is .gitignore'd and
+                          # never exists in a fresh checkout, so mtime comparison is meaningless
+                          # here - a shallow checkout would also starve the git-log commit-date walk).
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Check graph freshness (CI mode: git commit dates via GRAPH_REPORT.md proxy)
+        run: node scripts/check-graph-fresh.mjs
+        env:
+          CI: true # GitHub Actions sets this automatically; stated explicitly so the script's
+                    # auto-detection is legible here even if that default ever changes upstream.

@@ -7,6 +7,31 @@ on:
     branches: [main]
 
 jobs:
+  # LAYERING (COMPLIANCE-AUDIT-2026-08-01.md): .githooks/pre-commit gives fast local structural
+  # feedback and is bypassable by design (META_SKIP_HOOK=1 - a human can always choose to skip a
+  # local hook, e.g. --no-verify). THIS job is the authority: it runs in CI, on every push and PR,
+  # and cannot be skipped by a developer. A time-based rule (graph staleness - see the separate
+  # graph-freshness.yml schedule) is deliberately NOT enforced here; a push job only fires on a
+  # push, so a graph going stale from pure inaction between pushes would never trip it.
+  # No Chromium, no suite build - pure Node + git log reads - so this is the fastest job here and
+  # reports the discipline-gate result well before the Playwright job finishes.
+  discipline:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # check-meta's sub-checks (gate-lessons, check-release, check-board-fresh,
+                          # check-h9, check-brief) all read git log history - a shallow checkout
+                          # would silently starve them of the commits they need to compare against.
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Run the discipline gate (scripts/check-meta.mjs)
+        run: node scripts/check-meta.mjs
+
   playwright:
     runs-on: ubuntu-latest
     timeout-minutes: 20

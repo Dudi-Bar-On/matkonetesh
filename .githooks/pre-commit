@@ -1,0 +1,50 @@
+#!/bin/sh
+# .githooks/pre-commit — versioned, installed via `git config core.hooksPath .githooks`.
+# COMPLIANCE-AUDIT-2026-08-01.md fix #1: check-meta.mjs existed but was wired to NO git hook all day
+# (2026-08-01) — .git/hooks held only graphify's post-checkout/post-commit, both AFTER the fact, and
+# the sole call site was scripts/sync-docs.sh:61, which no commit that day went through.
+# This is now the "mechanical enforcement" the discipline doc has been claiming since §10.12.
+#
+# LAYERING (four legs, on purpose - see .claude/settings.json and .github/workflows/*.yml):
+#   1. THIS hook = fast local structural feedback. Bypassable BY DESIGN (META_SKIP_HOOK=1 below,
+#      or plain `git commit --no-verify`) — a local hook can never be the actual authority, because
+#      any developer can skip it, same as today's `.git/hooks` was already technically present but
+#      unwired. Its job is to catch problems before they cost a round-trip to CI, not to be trusted.
+#   2. The `discipline` job in CI = the actual authority. It runs on every push/PR and cannot be
+#      bypassed the way a local hook can.
+#   3. The nightly `graph-freshness` schedule = covers what no commit hook OR push job can express:
+#      a rule that goes stale from pure elapsed time and inaction, not from any one commit.
+#   4. `.claude/settings.json`'s SessionStart hook (matcher: startup|resume|compact) = surfaces
+#      existing red state at the moment work BEGINS (or resumes after compaction wipes context),
+#      and blocks nothing — unlike the first three legs, its job is visibility, not enforcement.
+#      Compaction gets it too, deliberately: compaction is precisely the moment the working memory
+#      discipline depends on gets erased, and a rule re-anchored right after that event is worth
+#      more than the same rule stated once at session start and then forgotten mid-session.
+# A background daemon/watcher was considered and explicitly rejected for all of this: a daemon can
+# die silently, which is exactly how 2026-08-01 happened. "Not running" must itself be an alarm —
+# CI (and Claude Code's own hook lifecycle) gives that for free, a daemon does not.
+#
+# Skip during rebase/merge/cherry-pick, same convention as the graphify hooks in this directory.
+GIT_DIR=${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)}
+[ -d "$GIT_DIR/rebase-merge" ] && exit 0
+[ -d "$GIT_DIR/rebase-apply" ] && exit 0
+[ -f "$GIT_DIR/MERGE_HEAD" ] && exit 0
+[ -f "$GIT_DIR/CHERRY_PICK_HEAD" ] && exit 0
+
+# Loud, explicit override only — never a silent default (mirrors sync-docs.sh's SYNC_ALLOW_STALE).
+if [ "${META_SKIP_HOOK:-0}" = "1" ]; then
+    echo "[pre-commit] META_SKIP_HOOK=1 - skipping check-meta.mjs for this commit."
+    exit 0
+fi
+
+echo "[pre-commit] running node scripts/check-meta.mjs ..."
+node scripts/check-meta.mjs
+status=$?
+if [ $status -ne 0 ]; then
+    echo ""
+    echo "[pre-commit] BLOCKED: check-meta.mjs failed (see the specific gate(s) marked FAIL above)."
+    echo "[pre-commit] Each gate above names which rule broke, which file, and what to run to fix it."
+    echo "[pre-commit] Escape hatch (loud, stated out loud per §4 - never silent): META_SKIP_HOOK=1 git commit ..."
+    exit 1
+fi
+exit 0
