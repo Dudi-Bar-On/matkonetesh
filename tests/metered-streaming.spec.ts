@@ -246,7 +246,19 @@ test('streamed ask: exactly ONE TTS request before the guard, and the guard runs
   // (96 is ungrounded in this fixture) — no synthesis call ever carried the raw model digits:
   expect(r.streamed.concat(r.blocking).some(s => s.includes('96'))).toBe(false);
   expect(r.a).toContain('אינו מאומת');                            // final transcript IS the guarded string
-  expect(r.a.startsWith('קודם כל, תן לזה להתייצב.')).toBe(true);
+  // SUPERSEDED by Task 4 / R-61 (spec §5.6, docs/superpowers/specs/2026-08-01-voice-governance-design.md,
+  // register row R-61, owner-approved 2026-08-01): this fixture's single number (96) is redacted and NO
+  // token was approved, and brisket has a cited safe substitution — so vcGuardSpoken now orders the
+  // answer `sub + out + notice`, not the old `out + notice + sub`. The transcript therefore leads with
+  // the guide's own cited sentence, NOT the model's opener — asserted here instead of the old
+  // `r.a.startsWith('קודם כל, תן לזה להתייצב.')`, which pinned the pre-R-61 order.
+  expect(r.a.startsWith('לפי המדריך')).toBe(true);                 // R-61: the verified substitution leads
+  // the model's own text must still be present in full — R-61 REORDERS, it must never REPLACE the body:
+  expect(r.a).toContain('קודם כל, תן לזה להתייצב.');
+  expect(r.a).toContain('אחר כך תן לו לנוח קצת. בהצלחה.');
+  // and the trailing unverified-caveat notice must still be present, after the model's own text (spec
+  // §5.6 order sub+out+notice — the sentence, not just any digit-caveat, follows the body it qualifies):
+  expect(r.a.indexOf('קודם כל')).toBeLessThan(r.a.indexOf('אינו מאומת'));
   expect(typeof r.lat.firstSentence).toBe('number');
   expect(r.lat.firstSentence).toBeLessThanOrEqual(r.lat.textResp);  // the opener left before the answer closed
 });
