@@ -5552,6 +5552,11 @@ const AI_THINK = {
   ask:        { level:'low',     floor:'low'    },   // grounded prose that can emit safety numbers → floored
   diagnose:   { level:'high',    floor:'medium' },   // highest-stakes reasoning → never cheap
   vcAsk:      { level:'low',     floor:'low'    },   // voice, safety-adjacent, latency-capped
+  // R-62 (spec §5.2): 'high', NOT 'medium' — the thinking-floor measurement
+  // (docs/analysis/2026-08-01-thinking-floor-measurement.md §4) found raw-thought leakage in 2/3 medium
+  // repeats on one question and ZERO in high. A leaked thought breaks the JSON, so medium's defect maps
+  // straight onto this call's only failure mode. floor:'low' per the approved table's own convention.
+  safetyClass:{ level:'high',    floor:'low'    },
   eventPlan:  { level:'medium'                  },
   wcim:       { level:'minimal'                 },
   seasonRec:  { level:'minimal'                 },
@@ -5573,6 +5578,7 @@ function thinkFor(usage){ return (AI_THINK[usage]||{level:'minimal'}).level; }  
 const AI_SEARCH = {
   ask:   'auto',   // askGemini — Ask-the-Fire
   vcAsk: 'auto',   // vcAskAI  — Voice Cook hands-free Q&A
+  safetyClass: 'never',   // §5.2 — it reads text we already have; there is nothing to search for
 };
 function searchFor(usage, hasLocalGrounding){
   const p=AI_SEARCH[usage]||'always';
@@ -7755,6 +7761,107 @@ function vcNormalizeSafetyText(s){
   // U-1 landed: delegates to UNITS.normalize (R-26) — same NFKC behavior, one source.
   return UNITS.normalize(s);
 }
+
+// ── R-62 · the safety-number CLASSIFIER (spec §5, owner ruling 1.8.2026) ────────────────────────────
+// An APPROVAL layer, never a DECISION layer (P6): it can only ADD an approval, never remove a guard.
+// Every failure path below returns null, and null means vcGuardSpoken behaves EXACTLY as it does today
+// — that equivalence is structural (the guard's 4th param is optional), not a promise kept by tests.
+// Why a SEPARATE pass and not self-tagging in the same call (spec §5.2): the read-aloud path already
+// streams and speaks its first sentence mid-stream behind vcStreamSafe (6760); tagging in-call would
+// have to survive chunking and land before a chunk is spoken — i.e. dismantle the ~1.1s gap R-51 bought.
+// This pass never touches the read-aloud path at all (AI_SEARCH.safetyClass='never', and it is called
+// once, after the complete answer).
+const SAFETY_CLAIM_KINDS = ['internal_safe_temp','internal_target_temp','chamber_temp','bath_temp',
+  'surface_temp','duration','cure_ppm','weight','spacing','other'];
+const SAFETY_CLAIM_UNITS = ['C','F','min','h','ppm','g_per_kg','g','kg','cm','in'];
+// responseSchema — HARD (spec §5.3). No prose, no markdown, no fence-stripping guesswork.
+const SAFETY_CLAIM_SCHEMA = {
+  type:'OBJECT',
+  properties:{ claims:{ type:'ARRAY', items:{
+    type:'OBJECT',
+    properties:{
+      text:{type:'STRING'}, kind:{type:'STRING', enum:SAFETY_CLAIM_KINDS},
+      value:{type:'NUMBER'}, unit:{type:'STRING', enum:SAFETY_CLAIM_UNITS},
+      subject:{ type:'OBJECT', properties:{
+        item:{type:'STRING', nullable:true}, category:{type:'STRING', nullable:true},
+        form:{type:'STRING', enum:['whole','ground','unknown']} },
+        required:['form'] },
+      confidence:{type:'NUMBER'}
+    },
+    required:['text','kind','value','unit','confidence']
+  }}},
+  required:['claims']
+};
+const SAFETY_CLAIM_SYS =
+  'You are a strict extractor, not an advisor. You are given a cooking answer. For EVERY number in it '+
+  'that carries a unit, emit ONE claim describing what that number REFERS TO. `text` MUST be the number '+
+  'token copied byte-for-byte from the answer, including its unit. Never invent, merge, split, convert '+
+  'or reword a number. `kind` classifies the ROLE: internal_safe_temp = the minimum safe internal '+
+  'temperature of the food; internal_target_temp = a doneness/texture internal target; chamber_temp = '+
+  'smoker/oven/pit air temperature; bath_temp = sous-vide water bath; surface_temp = sear/grate surface; '+
+  'duration = a time; cure_ppm = curing-salt nitrite concentration; weight/spacing = mass or distance. '+
+  'Use "other" when you are not sure. `confidence` is your own certainty in the kind, 0..1. '+
+  'Return ONLY the JSON object. No prose, no markdown.';
+
+// The test seam, mirroring the shipped __vcAskMock / __aiMock precedent (7871 / 6041). A test sets it to
+// a plain object (the parsed classifier response) or to a function of the answer text.
+function vcClassMockActive(){ return typeof window!=='undefined' && window.__vcClassMock!==undefined && window.__vcClassMock!==null; }
+
+// → Map(tokenText -> claim) with EVERY validation of spec §5.4/§5.5 already applied, or null.
+// null is the ONE failure signal: api error, timeout, malformed JSON, schema violation, non-STOP finish,
+// thought leak (which necessarily breaks the JSON), empty claims, or no claim matching any token.
+async function vcClassifySafetyClaims(answerText){
+  const src = vcNormalizeSafetyText(answerText);          // the SAME normalization the guard runs on
+  const tokens = (src.match(safetyTokenRe()) || []);
+  if(!tokens.length) return null;                          // nothing tokenizable → nothing to classify
+  let json;
+  try{
+    if(vcClassMockActive()){
+      const m = window.__vcClassMock;
+      json = (typeof m==='function') ? m(src) : m;
+    }else{
+      if(!aiAvail()) return null;                          // §5.5 last row — the classifier is not called
+      const body = {
+        system_instruction:{parts:[{text:SAFETY_CLAIM_SYS}]},
+        contents:[{role:'user',parts:[{text:src}]}],
+        // AI_SEARCH.safetyClass==='never' → no google_search tool → responseMimeType/responseSchema are
+        // legal here (the 400 documented at 6054 only occurs WITH the search tool).
+        generationConfig: Object.assign(
+          gemGen('text', {temperature:0, maxOutputTokens:8192}, {think: thinkFor('safetyClass')}),
+          { responseMimeType:'application/json', responseSchema:SAFETY_CLAIM_SCHEMA })
+      };
+      const r = await gemFetch('text', body, {timeout:30000, retries:0});
+      if(!r.ok) return null;
+      const j = await r.json();
+      const cand = j && j.candidates && j.candidates[0];
+      if(!cand || cand.finishReason!=='STOP') return null;  // truncation / safety stop → today's behaviour
+      json = JSON.parse(gemReadText(j));                    // a raw-thought leak breaks this parse → null
+    }
+  }catch(e){ try{ console.warn('[vcClassify]', e); }catch(_){ } return null; }
+  return vcBuildClaimMap(src, json);
+}
+
+// §5.4.1 — the classifier is NEVER allowed to define what a number is. A claim survives only if its
+// `text` is byte-identical to a token OUR tokenizer already found. §5.5 — more claims than tokens, or
+// two claims on the same token, means that token is treated as UNCLASSIFIED (the key is dropped, not
+// arbitrated). Exported for direct unit assertion.
+function vcBuildClaimMap(src, json){
+  const claims = json && Array.isArray(json.claims) ? json.claims : null;
+  if(!claims || !claims.length) return null;
+  const seen = new Set((String(src).match(safetyTokenRe()) || []));
+  const map = new Map(), dup = new Set();
+  claims.forEach(function(c){
+    if(!c || typeof c.text!=='string') return;
+    if(!seen.has(c.text)) return;                          // not a token of ours → discarded outright
+    if(map.has(c.text)){ dup.add(c.text); return; }
+    if(SAFETY_CLAIM_KINDS.indexOf(c.kind)<0) return;       // off-schema kind → unclassified
+    if(typeof c.confidence!=='number') return;
+    map.set(c.text, c);
+  });
+  dup.forEach(function(k){ map.delete(k); });              // duplicated token → unclassified, never picked
+  return map.size ? map : null;
+}
+try{ window.vcClassifySafetyClaims=vcClassifySafetyClaims; window.vcBuildClaimMap=vcBuildClaimMap; }catch(e){}
 
 function vcGuardSpoken(text, tiers, lang){
   // R-2/R-3 marker redesign (Task 13, H13-approved 2026-07-31, ROADMAP §5a rows R-2/R-3; spec-change §3.1
