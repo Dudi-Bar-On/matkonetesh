@@ -2548,5 +2548,16 @@
   "מה חדש: שאלת בטיחות מקבלת עכשיו את הערך המצוטט מהמדריך במקום תשובה ריקה, הדיבור בכל שפה נשמע בשפה שלה, והתראת בדיקת הטמפרטורה כבר לא חוזרת אחרי שאישרת.": "What's new: a safety question now returns the guide's own cited value instead of an empty answer, speech in every language is spoken in that language, and the temperature-check alert no longer returns once you have confirmed it.",
   "מה חדש: שאלה על קטגוריה שלמה — כמו עוף — מקבלת עכשיו את טמפרטורת הבטיחות מהמדריך, ותשובה קודמת כבר לא נשארת על המסך אחרי שמחליפים שפה.": "What's new: a question about a whole category — poultry, for instance — now gets the safe temperature from the guide, and a previous answer no longer stays on screen after switching language.",
   "דורש עדכון": "Needs update",
-  "הסתיים␟evstate": "Finished"
+  "הסתיים␟evstate": "Finished",
+  "אירוע שעבר": "Past event",
+  "האירוע הזה עבר.": "This event has passed.",
+  "בדיקת טמפ׳": "temp check",
+  "בדיקות טמפ׳": "temp checks",
+  "ו-": "and",
+  "התראה לא נורתה.": "alert was not raised.",
+  "התראות לא נורו.": "alerts were not raised.",
+  "עדכן מועד הגשה": "Update serve time",
+  "מצאנו סימונים וטיימרים מהבישול הקודם.": "We found check-offs and timers from the previous cook.",
+  "המשך מאיפה שהפסקתי": "Continue where I left off",
+  "התחל מחדש": "Start over"
 }

@@ -2549,5 +2549,16 @@
   "מה חדש: שאלת בטיחות מקבלת עכשיו את הערך המצוטט מהמדריך במקום תשובה ריקה, הדיבור בכל שפה נשמע בשפה שלה, והתראת בדיקת הטמפרטורה כבר לא חוזרת אחרי שאישרת.": "Nouveautés : une question de sécurité renvoie désormais la valeur citée du guide au lieu d’une réponse vide, la voix parle chaque langue dans cette langue, et l’alerte de contrôle de température ne revient plus une fois confirmée.",
   "מה חדש: שאלה על קטגוריה שלמה — כמו עוף — מקבלת עכשיו את טמפרטורת הבטיחות מהמדריך, ותשובה קודמת כבר לא נשארת על המסך אחרי שמחליפים שפה.": "Nouveautés : une question portant sur toute une catégorie — la volaille, par exemple — reçoit désormais la température de sécurité du guide, et une réponse précédente ne reste plus affichée après un changement de langue.",
   "דורש עדכון": "Mise à jour nécessaire",
-  "הסתיים␟evstate": "Terminé"
+  "הסתיים␟evstate": "Terminé",
+  "אירוע שעבר": "Événement passé",
+  "האירוע הזה עבר.": "Cet événement est passé.",
+  "בדיקת טמפ׳": "contrôle de température",
+  "בדיקות טמפ׳": "contrôles de température",
+  "ו-": "et",
+  "התראה לא נורתה.": "alerte n’a pas été déclenchée.",
+  "התראות לא נורו.": "alertes n’ont pas été déclenchées.",
+  "עדכן מועד הגשה": "Mettre à jour l’heure de service",
+  "מצאנו סימונים וטיימרים מהבישול הקודם.": "Nous avons trouvé des coches et des minuteurs de la cuisson précédente.",
+  "המשך מאיפה שהפסקתי": "Continuer où je m’étais arrêté",
+  "התחל מחדש": "Recommencer"
 }

@@ -3460,8 +3460,28 @@ function renderBcheckAlarm(){
 // (mkNotify itself is a no-op without permission — never a silent failure, just a narrower channel, same
 // honesty as the mk-tlalerts toast at ~8100). `computed` and `tlTimers` are the SAME arrays buildList
 // already maintains — no new scheduling primitive.
+// §4.6 compensation-banner support — tracks how many `schedule`-category (site 1, buildList) alerts were
+// withheld per event when that event went stale (needsUpdate/finished). Set by buildList's own gate
+// (site 1, ~8759); read here so the banner can name both suppressed channels, not just bcheck's own.
+let _staleScheduleSuppressed={};
+function _staleSuppressedAlerts(ev){ return (ev && _staleScheduleSuppressed[ev.id]) || 0; }
+
 function scheduleBcheckDue(computed, tlTimers){
   const nowTs=Date.now();
+  // §4.5 site 2 + owner ruling F-2 (1.8.2026). The `ms<=0` branch below fires SYNCHRONOUSLY with no
+  // lower bound: a serve time from last week ignites mark() for every item at once on the first render.
+  // That is the acknowledgement pile-up the owner reported (R-57/R-56). The ruling is NOT "never fire
+  // in a stale event" and NOT "always" — it is the exact distinction between an event abandoned
+  // MID-COOK (real meat went through a real process — the safety gate is relevant) and one that never
+  // started (nothing to check; an alert here only teaches people to ignore safety alerts).
+  // The failure direction is fixed by the ruling: in doubt, treat as started and FIRE (see evCookStarted).
+  // FUTURE scheduling (0<ms<24h) is untouched — the event is not stale for those.
+  const _ev=(typeof evActive==='function' && typeof evList==='function')
+    ? (evList().find(function(e){ return e.id===evActive(); })||null) : null;
+  const _st=_ev?evState(_ev):'planning';
+  const _stale=(_st==='needsUpdate'||_st==='finished');
+  const _fireImmediate = !_stale || (typeof evCookStarted==='function' && evCookStarted(_ev?_ev.id:null));
+  let _suppressed=0;
   (computed||[]).forEach(function(c){
     if(!c||c.blocked||!c.stages) return;
     const nm=(typeof itemName==='function'?itemName(c.m):c.m.heb);
@@ -3484,9 +3504,45 @@ function scheduleBcheckDue(computed, tlTimers){
         renderBcheckAlarm();
       };
       const ms=s.start.getTime()-nowTs;
-      if(ms<=0) mark(); else if(ms<24*3600e3) tlTimers.push(setTimeout(mark, ms));
+      if(ms<=0){ if(_fireImmediate) mark(); else _suppressed++; }
+      else if(ms<24*3600e3) tlTimers.push(setTimeout(mark, ms));
     });
   });
+  // §4.6 compensation — honesty is preserved even when the alarm is not. Never time-based, never
+  // dismissible-by-timeout: it is a fact about the event, shown for as long as the event is stale.
+  try{
+    if(_stale) renderStaleEventBanner(_ev, _suppressed);
+    else { const el=document.getElementById('mkStaleEv'); if(el) el.remove(); }   // re-armed → no backlog banner
+  }catch(e){}
+}
+// §4.6 — "האירוע הזה עבר. N בדיקות טמפ׳ ו-M התראות לא נורו." Persistent, NOT time-based, NOT a toast
+// (toast is role="status", dies at 5000ms, display:none in print — §2.2 rules it out for anything that
+// must persist). Rendered into the SAME ordered container as the alarm family (#mkActStack, Task 8) so
+// it can never push a live alert off a 390×844 screen; falls back to <body> until that container lands.
+// L() cannot take a template literal with interpolation (the AST extractor only recognises string-literal
+// arguments — same constraint documented at mkTimerWarnText, ~3401): the sentence is split into three
+// STATIC L() calls around the two numbers, each number wrapped in its own dir="ltr" island (L13 — bidi
+// can flip a plain digit run's reading order next to Hebrew text).
+function renderStaleEventBanner(ev, suppressedChecks){
+  let el=document.getElementById('mkStaleEv');
+  if(!ev){ if(el) el.remove(); return; }
+  const alerts=(typeof _staleSuppressedAlerts==='function')?_staleSuppressedAlerts(ev):0;
+  if(!el){ el=document.createElement('div'); el.id='mkStaleEv'; el.className='mk-alarm mk-alarm-stale';
+    el.setAttribute('role','status'); el.setAttribute('aria-label',L('אירוע שעבר','Past event'));
+    (document.getElementById('mkActStack')||document.body).appendChild(el); }
+  const lead=L('האירוע הזה עבר.','This event has passed.');
+  // DoD-9 (development-discipline §3): correct singular/plural on an interpolated count — "1 בדיקות" is
+  // not valid Hebrew. Each clause branches singular/plural independently (the numeral itself still shows
+  // in EVERY branch, incl. singular — the owner-approved spec text names the count, and dropping the
+  // digit for n===1 would erase exactly the fact this banner exists to preserve).
+  const checksWord=L(suppressedChecks===1?'בדיקת טמפ׳':'בדיקות טמפ׳', suppressedChecks===1?'temp check':'temp checks');
+  const mid=L('ו-','and');
+  const alertsClause=L(alerts===1?'התראה לא נורתה.':'התראות לא נורו.', alerts===1?'alert was not raised.':'alerts were not raised.');
+  el.innerHTML=`<div class="mka-head">🗓️ <b>${esc(ev.name||L('אירוע','Event'))}</b></div>`+
+    `<div class="mka-row"><span class="mka-name">${esc(lead)} <span dir="ltr">${suppressedChecks}</span> ${esc(checksWord)} ${esc(mid)} <span dir="ltr">${alerts}</span> ${esc(alertsClause)}</span>`+
+    `<button class="mka-stop" data-staleupdate>${L('עדכן מועד הגשה','Update serve time')}</button></div>`;
+  const b=el.querySelector('[data-staleupdate]');
+  if(b) b.addEventListener('click', function(){ if(typeof openTimeline==='function') openTimeline(); });
 }
 
 function openSpec(s){
@@ -8757,7 +8813,18 @@ function renderTimelinePanel(){
     });
     // in-session reminders (work while app is open)
     tlTimers.forEach(t=>clearTimeout(t)); tlTimers=[];
-    if(store.get('mk-tlalerts') && ('Notification' in window) && Notification.permission==='granted'){
+    // §4.5 site 1 — a stale/finished event stops arming TIME-BASED alerts. An alert about an instant
+    // that passed 12+ hours ago is not information (R-57). evState is read here per §4.2c; no new loop.
+    const _evNow=(typeof evActive==='function' && typeof evList==='function')
+      ? (evList().find(function(e){ return e.id===evActive(); })||null) : null;
+    const _evSt=_evNow?evState(_evNow):'planning';
+    const _armAlerts=(_evSt!=='needsUpdate' && _evSt!=='finished');
+    if(!_armAlerts && _evNow){   // §4.6 — count what a live event WOULD have armed, for the compensation banner
+      let _n=0; const _would=(when)=>{ if(!when) return; const ms=when.getTime()-Date.now(); if(ms>0&&ms<24*3600e3) _n++; };
+      _would(preheat); sorted.forEach(c=>{ if(!c.blocked&&c.startClock) _would(c.startClock); });
+      _staleScheduleSuppressed[_evNow.id]=_n;
+    } else if(_evNow){ delete _staleScheduleSuppressed[_evNow.id]; }
+    if(_armAlerts && store.get('mk-tlalerts') && ('Notification' in window) && Notification.permission==='granted'){
       const now=Date.now(); const fire=(when,title,body)=>{ const ms=when.getTime()-now; if(ms>0&&ms<24*3600e3) tlTimers.push(setTimeout(()=>{ mkNotify(title, body, 'mk-stage'); },ms)); };
       if(preheat) fire(preheat,L('🔥 זמן להדליק','🔥 Time to light up'),L(`הדלק את המעשנת — ${preheatHint()} לפני העישון הראשון`,`Fire up the smoker — ${preheatHint()} before the first smoke`));
       sorted.forEach(c=>{ if(!c.blocked&&c.startClock){ const nm=(typeof itemName==='function'?itemName(c.m):c.m.heb); fire(c.startClock,'⏰ '+stripEmoji(nm),L('הזמן להתחיל: ','Time to start: ')+nm); } });
