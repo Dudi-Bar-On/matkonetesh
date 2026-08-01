@@ -7530,6 +7530,7 @@ function vcRender(){
   const t=vcTasks[vcIdx];
   host.innerHTML=t?`
     <div class="vc-pos">${L('משימה','Task')} ${vcIdx+1} ${L('מתוך','of')} ${vcTasks.length}</div>
+    <button class="mchip vc-rules" data-vcrules>🔊 ${L('מתי אני מדבר','When I speak')} →</button>
     <div class="vc-card wp-${t.kind}">
       <div class="vc-time">${fmtClock(t.t)}</div>
       <div class="vc-label">${t.label}</div>
@@ -7571,6 +7572,7 @@ function vcRender(){
       </details>`}`
    :`<div class="shop-empty">${L('אין משימות — בנה תוכנית עבודה במתזמן ואז חזור.','No tasks — build a work plan in the scheduler, then come back.')}</div>`;
   host.querySelectorAll('[data-vc]').forEach(b=>b.addEventListener('click',()=>vcAction(b.dataset.vc)));
+  { const vr=host.querySelector('[data-vcrules]'); if(vr) vr.addEventListener('click',function(){ if(typeof openVoiceRules==='function') openVoiceRules(); }); }   // §1.4 second entry point — "the moment the user cares is the moment the voice interrupts them"
   host.querySelectorAll('[data-vcjump]').forEach(b=>b.addEventListener('click',()=>{ vcIdx=+b.dataset.vcjump; vcRender(); vcSpeakContent(vcCurrentText(false)); }));   // jump to a parallel running timer
   { const js=host.querySelector('#vcStepJump'); if(js) js.addEventListener('change',function(){ const i=parseInt(js.value,10); if(!isNaN(i)&&i>=0&&i<vcTasks.length){ vcIdx=i; vcRender(); vcSpeakContent(vcCurrentText(false)); } }); }   // shortcut: jump straight to any work-plan step
   // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
@@ -8565,6 +8567,8 @@ function startLiveCook(){
   try{ if(typeof setPlanStarted==='function') setPlanStarted(sc); }catch(e){}   // → _liveCookState().live + home banner
   try{ if(typeof cRefreshHome==='function') cRefreshHome(); if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){}
   openCopilot();
+  // F-6 (spec §8) — the voice discovery card belongs at the first LIVE cook, not an onboarding splash.
+  try{ maybeAskVoiceIntro(); }catch(e){}
 }
 function stopLiveCook(sc){ sc=sc||liveScope(); store.set(liveKey(sc), null);
   try{ if(typeof cRefreshHome==='function') cRefreshHome(); if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){} }
@@ -10995,6 +10999,99 @@ function maybeAskUiLevel(){
     </div>`);
   $("#panel").querySelectorAll('[data-onb]').forEach(b=>b.addEventListener('click',()=>{ setUiLevel(b.dataset.onb); closePanel(); }));
 }
+
+// Task 11 (R-52 §1.4) · a DEDICATED panel, not an openPrefGroup row: each line needs a heading, a
+// SAMPLE of what will actually be heard, a 3-way control and a delivery truth-line. Reuses .ap-lbl /
+// .ap-opts / .section-sub exactly as openUiLevel and openPrefGroup do — no new CSS primitives invented.
+const VOICE_ROWS=[
+  // cat, icon, title(he,en), sample(he,en)
+  ['timers',  '⏱', ['טיימרים','Timers'],                 ['הטיימר של החזה הסתיים.','The brisket timer is done.']],
+  ['steps',   '📋', ['הקראת שלב','Step read-aloud'],       ['להוציא את החזה לעטיפה.','Take the brisket out to wrap.']],
+  ['answers', '❓', ['תשובות לשאלות שלי','Answers to my questions'], ['נשארו כשעה וחצי לפי הקצב הנוכחי.','About an hour and a half left at the current pace.']],
+  ['progress','📈', ['עדכוני קצב ומצב','Pace and status updates'],  ['הקצב האט — הצפי זז.','The pace slowed — the estimate moved.']],
+];
+// F-3: `schedule` is NOT in VOICE_ROWS. Its PREFS key exists (Task 10) but no control is rendered until
+// the stage-alert trigger itself is reliable (audit N3/N4) — the same "no consumer = no dead controls"
+// rule the PREFS table already states for autonomy/shareTolC.
+const VOICE_MODE_LABEL={ off:['לא','No'], whenAway:['רק כשאיני מסתכל','Only when I\'m not looking'], always:['תמיד','Always'] };
+function openVoiceRules(){
+  const rows=VOICE_ROWS.map(function(r){
+    const cat=r[0], cur=voiceMode(cat);
+    // RTL order: weakest on the LEFT, strongest on the RIGHT — in Hebrew the eye lands right first, and
+    // that is where the default belongs. This is the reverse of a latin reading order (a classic RTL bug).
+    const opts=VOICE_MODES.map(function(m){
+      return `<button class="ap-opt ${m===cur?'on':''}" data-vcat="${cat}" data-vmode="${m}">`
+        +`${m===cur?'✓ ':''}${esc(L(VOICE_MODE_LABEL[m][0], VOICE_MODE_LABEL[m][1]))}</button>`; }).join('');
+    return `<div class="vr-row" data-cat="${cat}"><div class="ap-lbl">${r[1]} ${esc(L(r[2][0],r[2][1]))}</div>`
+      +`<div class="ap-opts">${opts}</div>`
+      +`<p class="section-sub vr-sample">“${esc(L(r[3][0],r[3][1]))}”</p>`
+      +`<button class="mchip" data-vsample="${cat}">🔊 ${L('השמע דוגמה','Play a sample')}</button></div>`;
+  }).join('');
+  // §1.3 — a STATIC CHIP, never a disabled control. A greyed-out toggle says "possible, just not now"
+  // and invites repeated taps; a chip says what this is: a statement.
+  const safetyChip=`<div class="vr-row vr-locked" data-cat="safety"><div class="ap-lbl">🔒 ${L('בטיחות','Safety')}</div>`
+    +`<div class="vr-chip">${L('תמיד מדבר · לא ניתן לכבות','Always speaks · cannot be turned off')}</div>`
+    +`<p class="section-sub">${L('אזהרות שהחמצתן פוגעת בבטיחות המזון נאמרות תמיד — גם כשכל השאר כבוי.','Warnings whose miss harms food safety are always spoken — even when everything else is off.')}</p></div>`;
+  // F-4 · the qualification of "always" lives HERE and in the sub-title, never inside a button label
+  // (a Hebrew button with a parenthetical breaks to two lines at 390px and loses its scannability).
+  const truth=`<div class="vr-truth">⚠ <b>${L('מתי הקול לא יגיע','When the voice will not arrive')}</b>`
+    +`<p>${L('כשהאפליקציה ברקע או המסך נעול, האפליקציה לא יכולה לדבר. במצב הזה ההתראה מגיעה כרטט + הודעת מערכת. הקול חוזר כשחוזרים לאפליקציה.','When the app is in the background or the screen is locked, the app cannot speak. The alert then arrives as vibration + a system notification. The voice returns when you come back to the app.')}</p>`
+    +`<button class="mchip" data-vtlalerts>${L('הפעל התראות מערכת','Turn on system notifications')} →</button></div>`;
+  showPanel(`${toolTop(L('מתי האפליקציה מדברת','When the app speaks'),
+      L('בכל מצב יופיע גם חיווי על המסך — הקול מוסיף ערוץ, לעולם לא מחליף','A screen indicator always appears too — voice adds a channel, it never replaces one'),
+      '🔊','#6a8caf')}
+    <div class="panel-body" id="voiceRules">${safetyChip}${rows}${truth}
+      <button class="mchip vr-logbtn" data-vlog>🗒 ${L('יומן הקול — מה נאמר עד עכשיו','Voice log — what was said so far')}</button>
+    </div>`);
+  const p=$("#panel");
+  p.querySelectorAll('[data-vcat]').forEach(function(b){ b.addEventListener('click',function(){
+    if(setVoiceMode(b.dataset.vcat, b.dataset.vmode)) openVoiceRules(); }); });
+  p.querySelectorAll('[data-vsample]').forEach(function(b){ b.addEventListener('click',function(){
+    const r=VOICE_ROWS.find(function(x){ return x[0]===b.dataset.vsample; });
+    if(r) vcSpeak(L(r[3][0], r[3][1]), vcVoiceLang(), b.dataset.vsample); }); });
+  const ta=p.querySelector('[data-vtlalerts]'); if(ta) ta.addEventListener('click',function(){ if(typeof openTimeline==='function') openTimeline(); });
+  const lg=p.querySelector('[data-vlog]'); if(lg) lg.addEventListener('click', openVoiceLog);
+}
+// X2 (docs/analysis/2026-08-01-voice-output-audit.md) — vcSpeak('שלום! זה הקול החדש…') hardcoded in
+// Hebrew at 7439 — is a KNOWN, SEPARATE defect (Circle of Control), not fixed here. The sample string
+// this panel plays goes through L() in all live languages; only that pre-existing hardcoded greeting is
+// out of scope.
+function openVoiceLog(){
+  const rows=voiceLogAll().slice().reverse();
+  const badge={said:'✓', cut:'✂', skipped:'🔇', failed:'⚠'};
+  const label={said:['נאמר','Said'], cut:['נקטע','Interrupted'], skipped:['לא הושמע','Not played'], failed:['נכשל','Failed']};
+  showPanel(`${toolTop(L('יומן הקול','Voice log'),L('כל מה שנאמר, נקטע, הושמט או נכשל','Everything said, interrupted, skipped or failed'),'🗒','#6a8caf')}
+    <div class="panel-body" id="voiceLog">${rows.length?rows.map(function(r){
+      return `<div class="vl-row" data-vlid="${r.id}"><span class="vl-t">${fmtClock(new Date(r.ts))}</span>`
+        +`<span class="vl-s">${badge[r.status]||''} ${esc(L(label[r.status][0],label[r.status][1]))}</span>`
+        +`<span class="vl-x">${vcLtrNums(esc(r.text))}</span>`
+        +`<button class="mchip" data-vlreplay="${r.id}" aria-label="${L('השמע שוב','Play again')}">🔁</button></div>`;
+    }).join(''):`<p class="section-sub">${L('עוד לא נאמר כלום.','Nothing has been said yet.')}</p>`}</div>`);
+  voiceLogMarkSeen();
+  $("#panel").querySelectorAll('[data-vlreplay]').forEach(function(b){ b.addEventListener('click',function(){
+    const r=voiceLogAll().find(function(x){ return x.id===b.dataset.vlreplay; });
+    if(r) vcSpeak(r.text, vcVoiceLang(), r.cat); }); });
+}
+// F-6 (spec §8) — the discovery card appears at the START OF THE FIRST LIVE COOK, where the context
+// ("I'm standing at a fire with dirty hands") actually exists. NOT an onboarding screen: a splash is
+// dismissed unread and the surprise arrives two hours later anyway.
+function maybeAskVoiceIntro(){
+  if(store.get('mk-voiceintro-asked')) return;
+  store.set('mk-voiceintro-asked', true);
+  showPanel(`${toolTop(L('המדריך יכול לדבר אליך','The guide can talk to you'),
+    L('תמיד יחד עם חיווי על המסך','Always together with an on-screen indicator'),'🔊','#6a8caf')}
+    <div class="panel-body"><p>${L('ידיים תפוסות? המכשיר על השולחן? אני יכול להקריא בקול התראות ושלבים.','Hands full? Phone on the table? I can read alerts and steps aloud.')}</p>
+      <div class="ap-opts"><button class="ap-opt" data-vintro="off">${L('לא, רק על המסך','No, screen only')}</button>
+      <button class="ap-opt on" data-vintro="always">${L('כן, דבר אליי','Yes, talk to me')}</button></div>
+      <p class="section-sub">${L('אפשר לשנות בכל רגע ב-⚙️ → 🔊','You can change this any time under ⚙️ → 🔊')}</p></div>`);
+  $("#panel").querySelectorAll('[data-vintro]').forEach(function(b){ b.addEventListener('click',function(){
+    const m=b.dataset.vintro;
+    Object.keys(VOICE_PREF_KEY).forEach(function(c){ if(c!=='progress') setVoiceMode(c, m); });
+    closePanel(); }); });
+}
+try{ window.openVoiceRules=openVoiceRules; window.openVoiceLog=openVoiceLog;
+     window.maybeAskVoiceIntro=maybeAskVoiceIntro; window.VOICE_ROWS=VOICE_ROWS; }catch(e){}
+
 function openAppearance(){
   const swatch=(t)=>`<span class="ap-sw"><i style="background:${t.dots[0]}"></i><i style="background:${t.dots[1]}"></i><i style="background:${t.dots[2]}"></i></span>`;
   const themeBtns=Object.entries(THEMES).map(([k,th])=>`<button class="ap-opt ${k===themeKey()?'on':''}" data-aptheme="${k}">${swatch(th)}${themeName(k)}</button>`).join('');
@@ -13589,7 +13686,7 @@ function openMoreSheet(){
     ['🍽️', L('עבודה','Work'), [['🔥',L('פעיל עכשיו','Active now'),'openActive'],['🍽️',L('בונה ארוחה','Meal builder'),'openMenu'],['📋',L('מתזמן','Scheduler'),'openTimeline',true],['🖨️',L('הדפסת תפריט','Print menu'),'openMenuPrint',true],['🛒',L('רשימת קניות','Shopping list'),'openCart']]],
     ['✨', L('חוויה','Experience'), [['🤖',L('כלי AI','AI tools'),'openAiHub'],['🧂',L('מתבלים ורטבים','Seasonings & sauces'),'openSeasonings'],['🔥',L('שאל את האש','Ask the Fire'),'openAsk'],['✨',L('מחולל מתכונים','Recipe generator'),'openRecipeGen']]],
     ['🧰', L('עזר','Utilities'), [['🧮',L('מחשבון מלח/כמויות','Salt/quantity calculator'),'openCalc'],['🥩',L('מתרגם נתחים','Cut translator'),'openCutTrans',true],['🌳',L('סוגי עץ','Wood types'),'openWoods'],['🧫',L('פרויקטים ומזווה','Projects & pantry'),'openPantry'],['⏰',L('תזכורות','Reminders'),'openReminders',true],['📓',L('יומן','Journal'),'openJournal'],['📖',L('מילון','Glossary'),'__gloss']]],
-    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎚️',L('התנהגות ואוטומציה','Behavior & automation'),'openPrefGroup'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🧰',L('הציוד שלי','My equipment','menu-item'),'openEquipment'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
+    ['⚙️', L('הגדרות ועזרה','Settings & help'), [['🎨',L('מראה — גוונים, פונט וגודל','Appearance — themes, font and size'),'openAppearance'],['🔊',L('מתי האפליקציה מדברת','When the app speaks'),'openVoiceRules'],['🧭',L('רמת ממשק — מתחיל/בינוני/מתקדם','Interface level — beginner/intermediate/advanced'),'openUiLevel'],['🎚️',L('התנהגות ואוטומציה','Behavior & automation'),'openPrefGroup'],['🎛️',L('התאמת מסך הבית','Customize home'),'openHomeCustom'],['🧰',L('הציוד שלי','My equipment','menu-item'),'openEquipment'],['✨',L('תאר את הציוד שלי','Describe my gear'),'openGearConcierge'],['❓',L('איך משתמשים','How to use'),'openGuide'],['🆘',L('מצב הצילו (תקלות)','Rescue mode (problems)'),'openHelp'],['🔑',L('נהל מפתח AI','Manage AI key'),'openKeyManager'],['ℹ️',L('אודות והיכולות','About & features'),'__about'],['💾',L('גיבוי ושחזור','Backup & restore'),'openBackup']]],
   ];
   const reg={}; GROUPS.forEach(g=>g[2].forEach(it=>reg[it[2]]=it));
   const visible=it=>!(beg && it[3]);                                   // advanced items hidden at beginner level
