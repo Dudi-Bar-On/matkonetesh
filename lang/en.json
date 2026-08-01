@@ -2529,5 +2529,19 @@
  "תזכורת שהגיע תורה מוצגת כאן וכבאנר בבית כשהאפליקציה פתוחה. התראת מערכת (גם ברקע) דורשת אישור התראות — הפעל ב\"תוכנית עבודה\" 🔔.": "A reminder that has come due appears here, and as a banner on the home screen while the app is open. A system notification (including in the background) requires notification permission — enable it in \"Work plan\" 🔔.",
  "שלום! זה הקול החדש של ההקראה. נשמע טוב?": "Hello! This is the new reading voice. Does it sound good?",
  "מעולה! Gemini מחובר. ככה אני נשמע עכשיו.": "Excellent! Gemini is connected. This is how I sound now.",
- "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "What's new: the voice now responds almost instantly instead of after several seconds, an on-screen alert appears two minutes before a timer ends, and the pre-serving temperature check now announces itself."
+ "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "What's new: the voice now responds almost instantly instead of after several seconds, an on-screen alert appears two minutes before a timer ends, and the pre-serving temperature check now announces itself.",
+ "עוד כ-": "about ",
+ " דקות": " minutes left",
+ "הזמן לשלב הזה נגמר.": "Time is up for this step.",
+ "טמפרטורת יעד בליבה: ": "Target core temperature: ",
+ " מעלות — בדוק עם מד-חום לפני הגשה": " degrees — that is the target core temperature; check with a probe before serving",
+ "טמפרטורת התא: ": "Chamber temperature: ",
+ " מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה": " degrees — that is the chamber temperature; pull when the core reaches the safe internal temp",
+ "הטמפרטורה: ": "Temperature: ",
+ " מעלות": " degrees",
+ "אין טמפרטורה במשימה הזו": "No temperature for this step.",
+ "המשימה הבאה בשעה ": "Next task at ",
+ "זו המשימה האחרונה": "That was the last task.",
+ "לא זוהתה פקודה: ": "Command not recognized: ",
+ "מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.": "Listening. Say: next, back, read again, details, temperature — or ask a question."
 }

@@ -7379,15 +7379,14 @@ function vcRender(){
   // voice-cook timer: a spoken warning before it expires + a spoken alert at expiry (uses the existing TTS)
   { const tm=host.querySelector('.vc-timerwrap .timer'); if(tm){ const total=+tm.dataset.sec; const warnAt=total>150?120:(total>60?30:0);
       wireTimer(tm, { warnSec:warnAt,
-        onWarn:function(left){ const min=Math.round(left/60); vcSpeak(vcVoiceLang()==='en'?(left>=60?min+' minutes left':'less than a minute left'):(left>=60?'עוד כ-'+min+' דקות':'עוד פחות מדקה'), vcVoiceLang(), 'alert'); },
-        onEnd:function(){ vcSpeak(vcVoiceLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.', vcVoiceLang(), 'alert'); } }); } }
+        onWarn:function(left){ const min=Math.round(left/60); const warnMsg = left>=60 ? (L('עוד כ-','about ')+min+L(' דקות',' minutes left')) : L('עוד פחות מדקה','less than a minute left'); vcSpeak(warnMsg, vcVoiceLang(), 'alert'); },
+        onEnd:function(){ vcSpeak(L('הזמן לשלב הזה נגמר.','Time is up for this step.'), vcVoiceLang(), 'alert'); } }); } }
   { const ai=host.querySelector('#vcAskInput'); if(ai) ai.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const q=ai.value.trim(); if(q) vcAskFlow(q); } }); }
   { const gs=host.querySelector('#gemVoiceSel'); if(gs) gs.addEventListener('change',()=>{ store.set('mk-gemvoice',gs.value); vcSpeak(L('שלום! זה הקול החדש של ההקראה. נשמע טוב?','Hello! This is the new read-aloud voice. Does it sound good?')); }); }
   if(t) vcWarmAck();   // fire-and-forget panel-open pre-warm — makes the *spoken* ack the common case
 }
 function vcAction(a){
   const t=vcTasks[vcIdx];
-  const en=vcVoiceLang()==='en';
   if(a==='next'&&vcIdx<vcTasks.length-1){vcIdx++;vcRender();vcSpeakContent(vcCurrentText(false));}
   else if(a==='prev'&&vcIdx>0){vcIdx--;vcRender();vcSpeakContent(vcCurrentText(false));}
   else if(a==='read') vcSpeakContent(vcCurrentText(false));
@@ -7396,13 +7395,23 @@ function vcAction(a){
     const m=(t&&((t.det||'')+' '+(t.label||'')).match(/(\d{2,3})°/));
     const chamber = t && (t.kind==='smoke'||t.kind==='cook');   // matched temp is the pit/chamber, not the internal
     const bcheck = t && t.kind==='bcheck';                       // this step IS the internal-temp check
-    if(en) vcSpeak(m?`${m[1]} degrees${bcheck?' — that is the target core temperature; check with a probe before serving':chamber?' — that is the chamber temperature; pull when the core reaches the safe internal temp':''}.`:'No temperature for this step.', 'en', 'step');
-    else vcSpeak(m?(bcheck?`טמפרטורת יעד בליבה: ${m[1]} מעלות — בדוק עם מד-חום לפני הגשה`:chamber?`טמפרטורת התא: ${m[1]} מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה`:`הטמפרטורה: ${m[1]} מעלות`):'אין טמפרטורה במשימה הזו', 'he', 'step');
+    // R-53 sweep (voice-i18n): built through L() so all 7 live languages get the temperature reading —
+    // was a binary en/he ternary that spoke Hebrew for ru/fr/de/es/it (the number itself is never touched).
+    const tempMsg = m
+      ? (bcheck ? L('טמפרטורת יעד בליבה: ','Target core temperature: ')+m[1]+L(' מעלות — בדוק עם מד-חום לפני הגשה',' degrees — that is the target core temperature; check with a probe before serving')
+         : chamber ? L('טמפרטורת התא: ','Chamber temperature: ')+m[1]+L(' מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה',' degrees — that is the chamber temperature; pull when the core reaches the safe internal temp')
+         : L('הטמפרטורה: ','Temperature: ')+m[1]+L(' מעלות',' degrees'))
+      : L('אין טמפרטורה במשימה הזו','No temperature for this step.');
+    vcSpeak(tempMsg, vcVoiceLang(), 'step');
   }
   else if(a==='qwhen'){
     const nx=vcTasks[vcIdx+1];
-    const say=en?(nx?`Next task at ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'That was the last task.')
-               :(nx?`המשימה הבאה בשעה ${fmtClock(nx.t)}: ${stripEmoji(nx.label)}`:'זו המשימה האחרונה');
+    // R-53 sweep (voice-i18n): was a binary en/he ternary — every other live language (ru/fr/de/es/it)
+    // fell through to the Hebrew branch, so "next task" answered in Hebrew with the (localized) task
+    // label mixed in. Now built through L() so all 7 languages get their own sentence.
+    const say = nx
+      ? L('המשימה הבאה בשעה ','Next task at ')+fmtClock(nx.t)+': '+stripEmoji(nx.label)
+      : L('זו המשימה האחרונה','That was the last task.');
     vcSpeak(say, vcVoiceLang(), 'step');   // build in the answer language, speak directly (same voice as the other buttons)
   }
   else if(a==='mic') vcToggleMic();
@@ -7961,7 +7970,7 @@ function vcToggleMic(){
       else if(hit(/מתי|הבאה|when|next step/i)) vcAction('qwhen');
       else if(aiAvail() && vcLooksLikeQuestion(alts[0])){ vcAskFlow(alts[0]); toast('❓ '+alts[0]); return; }
       else acted=false;
-      toast((acted?'✓ ':(vcVoiceLang()==='en'?'Command not recognized: ':'לא זוהתה פקודה: '))+`"${alts[0]}"`);
+      toast((acted?'✓ ':L('לא זוהתה פקודה: ','Command not recognized: '))+`"${alts[0]}"`);
     };
     rec.onerror=(e)=>{
       if(e.error==='no-speech'||e.error==='aborted') return;          // שקט — פשוט ממשיכים
@@ -7970,7 +7979,7 @@ function vcToggleMic(){
     };
     rec.onend=()=>{ if(vcRec===rec && !rec._stop){ setTimeout(()=>{ try{rec.start();}catch(err){} },250); } };  // לולאת one-shot
     rec.start(); vcRender();
-    vcSpeak(vcVoiceLang()==='en'?'Listening. Say: next, back, read again, details, temperature — or ask a question.':'מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.', vcVoiceLang(), 'alert');
+    vcSpeak(L('מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.','Listening. Say: next, back, read again, details, temperature — or ask a question.'), vcVoiceLang(), 'alert');
   }catch(e){ vcRec=null; toast(L('לא ניתן להפעיל מיקרופון: ','Could not start the microphone: ')+e.message); } };
   if(navigator.mediaDevices&&navigator.mediaDevices.getUserMedia){
     navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{

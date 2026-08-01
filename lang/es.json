@@ -2529,5 +2529,19 @@
  "תזכורת שהגיע תורה מוצגת כאן וכבאנר בבית כשהאפליקציה פתוחה. התראת מערכת (גם ברקע) דורשת אישור התראות — הפעל ב\"תוכנית עבודה\" 🔔.": "Un recordatorio vencido aparece aquí y como banner en la pantalla de inicio mientras la app está abierta. La notificación del sistema (también en segundo plano) requiere permiso de notificaciones: actívalo en «Plan de trabajo» 🔔.",
  "שלום! זה הקול החדש של ההקראה. נשמע טוב?": "¡Hola! Esta es la nueva voz de lectura. ¿Suena bien?",
  "מעולה! Gemini מחובר. ככה אני נשמע עכשיו.": "¡Excelente! Gemini está conectado. Así sueno ahora.",
- "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "Novedades: la voz responde ahora casi al instante en lugar de tardar varios segundos, dos minutos antes de que termine un temporizador aparece también un aviso en pantalla, y la comprobación de temperatura previa al servicio avisa por sí sola."
+ "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "Novedades: la voz responde ahora casi al instante en lugar de tardar varios segundos, dos minutos antes de que termine un temporizador aparece también un aviso en pantalla, y la comprobación de temperatura previa al servicio avisa por sí sola.",
+ "עוד כ-": "quedan unos ",
+ " דקות": " minutos",
+ "הזמן לשלב הזה נגמר.": "Se acabó el tiempo para este paso.",
+ "טמפרטורת יעד בליבה: ": "Temperatura objetivo en el centro: ",
+ " מעלות — בדוק עם מד-חום לפני הגשה": " grados — esa es la temperatura objetivo en el centro; comprueba con una sonda antes de servir",
+ "טמפרטורת התא: ": "Temperatura de la cámara: ",
+ " מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה": " grados — esa es la temperatura de la cámara; retíralo cuando el centro alcance la temperatura interna segura",
+ "הטמפרטורה: ": "Temperatura: ",
+ " מעלות": " grados",
+ "אין טמפרטורה במשימה הזו": "No hay temperatura para este paso.",
+ "המשימה הבאה בשעה ": "Próxima tarea a las ",
+ "זו המשימה האחרונה": "Esa fue la última tarea.",
+ "לא זוהתה פקודה: ": "Comando no reconocido: ",
+ "מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.": "Escuchando. Di: siguiente, anterior, leer de nuevo, detalles, temperatura — o haz una pregunta."
 }

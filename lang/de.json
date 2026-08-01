@@ -2529,5 +2529,19 @@
  "תזכורת שהגיע תורה מוצגת כאן וכבאנר בבית כשהאפליקציה פתוחה. התראת מערכת (גם ברקע) דורשת אישור התראות — הפעל ב\"תוכנית עבודה\" 🔔.": "Eine fällige Erinnerung erscheint hier und als Banner auf der Startseite, solange die App geöffnet ist. Eine Systembenachrichtigung (auch im Hintergrund) erfordert die Benachrichtigungsberechtigung — aktiviere sie im „Arbeitsplan“ 🔔.",
  "שלום! זה הקול החדש של ההקראה. נשמע טוב?": "Hallo! Das ist die neue Vorlesestimme. Klingt sie gut?",
  "מעולה! Gemini מחובר. ככה אני נשמע עכשיו.": "Ausgezeichnet! Gemini ist verbunden. So klinge ich jetzt.",
- "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "Neu: Die Stimme reagiert jetzt fast sofort statt erst nach mehreren Sekunden, zwei Minuten vor Ablauf eines Timers erscheint zusätzlich ein Hinweis auf dem Bildschirm, und die Temperaturkontrolle vor dem Servieren meldet sich von selbst."
+ "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "Neu: Die Stimme reagiert jetzt fast sofort statt erst nach mehreren Sekunden, zwei Minuten vor Ablauf eines Timers erscheint zusätzlich ein Hinweis auf dem Bildschirm, und die Temperaturkontrolle vor dem Servieren meldet sich von selbst.",
+ "עוד כ-": "noch etwa ",
+ " דקות": " Minuten übrig",
+ "הזמן לשלב הזה נגמר.": "Die Zeit für diesen Schritt ist abgelaufen.",
+ "טמפרטורת יעד בליבה: ": "Ziel-Kerntemperatur: ",
+ " מעלות — בדוק עם מד-חום לפני הגשה": " Grad — das ist die Ziel-Kerntemperatur; vor dem Servieren mit einem Fühler prüfen",
+ "טמפרטורת התא: ": "Kammertemperatur: ",
+ " מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה": " Grad — das ist die Kammertemperatur; herausnehmen, wenn der Kern die sichere Kerntemperatur erreicht",
+ "הטמפרטורה: ": "Temperatur: ",
+ " מעלות": " Grad",
+ "אין טמפרטורה במשימה הזו": "Keine Temperatur für diesen Schritt.",
+ "המשימה הבאה בשעה ": "Nächste Aufgabe um ",
+ "זו המשימה האחרונה": "Das war die letzte Aufgabe.",
+ "לא זוהתה פקודה: ": "Befehl nicht erkannt: ",
+ "מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.": "Ich höre zu. Sagen Sie: weiter, zurück, nochmal vorlesen, Details, Temperatur — oder stellen Sie eine Frage."
 }

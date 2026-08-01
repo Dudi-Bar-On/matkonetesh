@@ -2530,5 +2530,19 @@
  "תזכורת שהגיע תורה מוצגת כאן וכבאנר בבית כשהאפליקציה פתוחה. התראת מערכת (גם ברקע) דורשת אישור התראות — הפעל ב\"תוכנית עבודה\" 🔔.": "Un promemoria scaduto compare qui e come banner nella schermata iniziale mentre l’app è aperta. Una notifica di sistema (anche in background) richiede l’autorizzazione alle notifiche: attivala in «Piano di lavoro» 🔔.",
  "שלום! זה הקול החדש של ההקראה. נשמע טוב?": "Ciao! Questa è la nuova voce di lettura. Suona bene?",
  "מעולה! Gemini מחובר. ככה אני נשמע עכשיו.": "Ottimo! Gemini è collegato. Ecco come suono adesso.",
- "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "Novità: la voce risponde ora quasi subito invece che dopo alcuni secondi, due minuti prima della fine di un timer compare anche un avviso sullo schermo, e il controllo della temperatura prima di servire si segnala da solo."
+ "מה חדש: הקול מגיב עכשיו כמעט מיד במקום אחרי כמה שניות, שתי דקות לפני סוף טיימר מופיעה גם התראה על המסך, ובדיקת הטמפרטורה לפני ההגשה מתריעה בעצמה.": "Novità: la voce risponde ora quasi subito invece che dopo alcuni secondi, due minuti prima della fine di un timer compare anche un avviso sullo schermo, e il controllo della temperatura prima di servire si segnala da solo.",
+ "עוד כ-": "ancora circa ",
+ " דקות": " minuti",
+ "הזמן לשלב הזה נגמר.": "Il tempo per questo passaggio è scaduto.",
+ "טמפרטורת יעד בליבה: ": "Temperatura obiettivo al cuore: ",
+ " מעלות — בדוק עם מד-חום לפני הגשה": " gradi — è la temperatura obiettivo al cuore; controlla con una sonda prima di servire",
+ "טמפרטורת התא: ": "Temperatura della camera: ",
+ " מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה": " gradi — è la temperatura della camera; togli quando il cuore raggiunge la temperatura interna sicura",
+ "הטמפרטורה: ": "Temperatura: ",
+ " מעלות": " gradi",
+ "אין טמפרטורה במשימה הזו": "Nessuna temperatura per questo passaggio.",
+ "המשימה הבאה בשעה ": "Prossima attività alle ",
+ "זו המשימה האחרונה": "Quella era l'ultima attività.",
+ "לא זוהתה פקודה: ": "Comando non riconosciuto: ",
+ "מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.": "In ascolto. Di': avanti, indietro, rileggi, dettagli, temperatura — oppure fai una domanda."
 }
