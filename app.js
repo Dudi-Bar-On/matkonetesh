@@ -11436,6 +11436,72 @@ function evActive(){ return store.get('mk-active')||null; }
 function evScope(){ return (typeof menuCtx==='function'&&menuCtx()==='cook')?'cook':(evActive()||'draft'); }
 // count of currently-running timers for a given event scope (its stage timers are keyed "st-<scope>-…")
 function evRunningCount(id){ const ts=store.get('mk-timers')||{}, now=Date.now(); let c=0; Object.keys(ts).forEach(function(k){ const r=ts[k]; if(r&&r.end&&r.end>now && k.indexOf('st-'+id+'-')===0) c++; }); return c; }   // E2: exact scope-prefix, not a fragile substring match
+
+// ── R-57 · event lifecycle (spec docs/superpowers/specs/2026-08-01-voice-governance-design.md §4,
+// owner rulings 1.8.2026) ──────────────────────────────────────────────────────────────────────────
+const EV_STALE_MS = 12*3600e3;   // owner ruling: 12 hours after serve. Not a guess — R-57 decision (1).
+
+// F-2 · "did the cook actually START?" — the gate that decides whether a STALE event still raises its
+// pre-serve safety check (bcheck). The owner's ruling is explicit about the failure direction: "in
+// doubt, treat it as started and fire — an alert error beats a silence error, in the one pre-serve
+// safety gate." So: FIVE independent witnesses, ANY one is sufficient (OR), and ANY internal error
+// returns TRUE (fail toward the alert, never toward silence).
+// Deliberately NOT a witness: mk-tlstate-<id> (method/ready/sv-order). Those are PLANNING decisions
+// (spec §4.4 says so explicitly) — an event that was configured but never cooked has nothing to check.
+function evCookStarted(evId){
+  const id=evId||(typeof evScope==='function'?evScope():null);
+  if(!id) return true;                                                   // unknown scope → assume started
+  try{
+    if(store.get('mk-plan-started-'+id)) return true;                    // 1 · explicit "▶ start plan" click — never expires
+    const ts=store.get('mk-timers')||{};                                 // 3 · any timer record at all for this scope
+    if(Object.keys(ts).some(function(k){ return k.indexOf('st-'+id+'-')===0; })) return true;
+    if(store.get(typeof liveKey==='function'?liveKey(id):('mk-cook-live-'+id))) return true;   // 4 · a live cook session
+    const d=store.get('mk-bcheck-due')||{};                              // 5 · a bcheck already surfaced for this scope
+    if(Object.keys(d).some(function(k){ const r=d[k]; return r && String(r.tid||k).indexOf('st-'+id+'-')===0; })) return true;
+    // 2 · any work-plan check-off. wpck: is a raw localStorage key prefix (not an mk- key via `store`),
+    // scanned directly — same technique the key-space audit elsewhere in this file already uses.
+    for(let i=0;i<localStorage.length;i++){
+      const k=localStorage.key(i);
+      if(k && k.indexOf('wpck:'+id+':')===0) return true;
+    }
+    return false;
+  }catch(e){ return true; }                                              // storage threw → fire, never hush
+}
+
+// staleMs — POSITIVE only for a DATED event whose serve instant has passed (spec §4.2b). An undated
+// event's parseServeTime rolls `serve` to today/tomorrow (11605), so its serve is always in the future
+// and it can never go stale — that is correct: it is genuinely still a draft.
+function evStaleMs(ev){
+  if(!ev || !ev.date) return -1;                                          // §4.2b — undated never expires
+  try{ return Date.now() - parseServeTime(ev.serve, ev).getTime(); }catch(e){ return -1; }
+}
+// The ONE state function (spec §4.2). Derived at read time; the only PERSISTED addition is finishedAt.
+function evState(ev){
+  if(!ev) return 'planning';
+  if(ev.finishedAt) return 'finished';
+  // 4.2a — a running timer means the event is NEVER stale. A cook who serves at 2am is not a forgotten
+  // event. This check precedes the 12-hour test and reuses evRunningCount (above), not a new mechanism.
+  try{ if(evRunningCount(ev.id)>0) return 'active'; }catch(e){}
+  try{ if(store.get(typeof liveKey==='function'?liveKey(ev.id):('mk-cook-live-'+ev.id))) return 'active'; }catch(e){}
+  if(evStaleMs(ev) >= EV_STALE_MS) return 'needsUpdate';
+  try{ if(store.get('mk-plan-started-'+ev.id)) return 'active'; }catch(e){}
+  return 'planning';
+}
+function evFinish(id){                                                    // the positive, user-declared end
+  const list=evList(), i=list.findIndex(function(e){ return e.id===id; });
+  if(i<0) return false;
+  list[i].finishedAt=Date.now(); list[i].updated=Date.now();
+  evSaveList(list); return true;
+}
+function evUnfinish(id){                                                  // re-arm clears it (spec §4.3)
+  const list=evList(), i=list.findIndex(function(e){ return e.id===id; });
+  if(i<0) return false;
+  delete list[i].finishedAt; list[i].updated=Date.now();
+  evSaveList(list); return true;
+}
+try{ window.evState=evState; window.evCookStarted=evCookStarted; window.evStaleMs=evStaleMs;
+     window.evFinish=evFinish; window.evUnfinish=evUnfinish; }catch(e){}
+
 // resolve which event a stage-timer key (st-<scope>-…) belongs to — exact prefix, robust
 function timerEventName(key){ if(!key) return ''; const evs=evList(); for(var i=0;i<evs.length;i++){ if(String(key).indexOf('st-'+evs[i].id+'-')===0) return evs[i].name||''; } return ''; }
 function evGenId(){ return 'ev-'+Date.now().toString(36)+'-'+Math.floor(Math.random()*1e4).toString(36); }
@@ -11529,6 +11595,7 @@ function evSaveCurrent(name,desc,date){
   const rec={ id, name:(name||m.evName||'אירוע ללא שם').trim()||'אירוע ללא שם', desc:(desc!==undefined?desc:(m.evDesc||'')),
     date:(date!==undefined?date:(m.evDate||'')), serve:store.get('mk-tlserve')||'19:00',
     menu:JSON.parse(JSON.stringify(m)), created:existing?existing.created:now, updated:now };
+  if(existing && existing.finishedAt) rec.finishedAt=existing.finishedAt;   // §4.2: derived-not-migrated, but the ONE stored field must survive a re-save
   const idx=list.findIndex(e=>e.id===id);
   if(idx>=0) list[idx]=rec; else list.push(rec);
   evSaveList(list); store.set('mk-active',id);
@@ -11764,7 +11831,14 @@ function cPaintEvents(){
     const dateStr=e.date?new Date(e.date).toLocaleDateString((getLang&&getLang()!=='he')?'en-US':'he-IL',{day:'numeric',month:'short'}):'';
     return `<div class="cevcard ${isAct?'active':''}">
       <div class="cev-main" data-evload="${e.id}">
-        <div class="cev-name">${e.name}${isAct?` <span class="cev-badge">${L('פעיל','Active')}</span>`:''}${(function(){ const rc=evRunningCount(e.id); return rc?` <span class="cev-badge cev-running">🔴 ${rc} ${L('טיימרים רצים','timers running')}</span>`:(store.get('mk-plan-started-'+e.id)?` <span class="cev-badge cev-live">▶ ${L('פעילה','Live')}</span>`:''); })()}</div>
+        <div class="cev-name">${e.name}${isAct?` <span class="cev-badge">${L('פעיל','Active')}</span>`:''}${(function(){ const rc=evRunningCount(e.id); return rc?` <span class="cev-badge cev-running">🔴 ${rc} ${L('טיימרים רצים','timers running')}</span>`:(store.get('mk-plan-started-'+e.id)?` <span class="cev-badge cev-live">▶ ${L('פעילה','Live')}</span>`:''); })()}${(function(){
+          // R-57 (spec §4.2c) — evState READ at render, no new setInterval: cPaintEvents already runs on
+          // every events-screen paint, and the 60s reminder loop repaints it. This is the real consumer
+          // (DoD-5) — evState is not a computed field nobody reads.
+          const _st=evState(e);
+          return _st==='needsUpdate' ? ` <span class="cev-badge cev-needsupdate" data-evstate="needsUpdate">⚠️ ${L('דורש עדכון','Needs update')}</span>`
+               : _st==='finished'    ? ` <span class="cev-badge cev-finished" data-evstate="finished">✓ ${L('הסתיים','Finished','evstate')}</span>` : '';
+        })()}</div>
         ${e.desc?`<div class="cev-desc">${e.desc}</div>`:''}
         <div class="cev-meta">${dateStr?`📅 ${dateStr} · `:''}🍽️ ${n} ${L('מנות','dishes')} · 👥 ${e.menu&&e.menu.guests||8}${e.serve?' · ⏰ '+e.serve:''}</div>
         <div class="cev-actions">

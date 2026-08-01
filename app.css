@@ -1371,6 +1371,8 @@ footer{max-width:1180px;margin:0 auto;padding:20px 16px 60px;color:var(--smoke);
 .plan-idle .timer button{opacity:.4;pointer-events:none}
 .cev-running{background:var(--tint-warn);color:var(--tint-warn-ink)}
 .cev-live{background:var(--fresh-l);color:var(--fresh)}
+.cev-needsupdate{background:var(--tint-warn);color:var(--tint-warn-ink)}   /* R-57: stale event, needs a re-arm decision */
+.cev-finished{background:var(--char2);color:var(--smoke)}                  /* R-57: positive, distinct from needsUpdate (P4) */
 .cet-legend{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:10px}
 .cet-leg{display:flex;align-items:center;gap:6px;font-size:calc(12.5px * var(--fscale));font-weight:700;color:var(--bone)}
 .cet-dot{width:11px;height:11px;border-radius:50%;flex-shrink:0}
