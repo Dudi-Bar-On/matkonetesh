@@ -73,7 +73,9 @@ function position() {
     if (!/^\|\s*(Phase\b|Planning arc|Language Thread|Sync Thread)/.test(line)) continue;
     const cells = line.split('|').map(s => s.trim());
     // cells[0] is '' (leading pipe); [1]=Phase, [2]=שם, [3]=משימות, [4]=סטטוס
-    if (cells[4] && cells[4].startsWith('🔄')) { active = cells; break; }
+    // trim before matching: a markdown cell almost always carries padding spaces, and comparing the
+    // raw cell silently found nothing while the board was correct — the parser, not the board, was wrong.
+    if (cells[4] && cells[4].trim().startsWith('🔄')) { active = cells; break; }
   }
   const totalsBlock = board.split(/^## סך הפרויקט/m)[1] ?? '';
   const tasksLine = totalsBlock.match(/\|\s*משימות\s*\|\s*\*\*([^*]+)\*\*/);
