@@ -15,5 +15,6 @@
 | `[data-warnstop]` | dismiss button on the timer-warning card | d1-timer-warn-visual.spec.ts |
 | `#mkBcheckAlarm` / `.mk-alarm-bcheck` | D2: bcheck (internal-temp safety check) "due now" card | d2-bcheck-alert.spec.ts |
 | `[data-bcheckack]` | acknowledge button on the bcheck-due card | d2-bcheck-alert.spec.ts |
+| `#cReminderBanner` / `#reminderBanner` | D3: home banner for due multi-day cure/dry reminders | d3-reminders-fire.spec.ts |
 
 *(הטבלה מתמלאת אינקרמנטלית; האינוונטר המלא — משימה נקובה בתוכנית Phase 3.)*

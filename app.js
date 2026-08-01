@@ -4752,16 +4752,57 @@ function openPantry(){
 
 /* ---- reminders (derived from pantry + manual) ---- */
 function reminders(){return store.get('mk-reminders')||[];}
-function openReminders(){
+// D3 (docs/analysis/2026-08-01-voice-output-audit.md N1): openReminders used to build this list only when
+// the panel was opened — a 7-day cure relied entirely on the user remembering to look. allReminders() is
+// the SAME derivation, pulled out so checkReminders()/remindersDue() (below) can read it without opening
+// any panel. Every reminder now carries a stable `id` — derived cure/weigh ones didn't have one before,
+// which is what let a manual reminder's × button work but gave the auto ones nothing to key a
+// "already notified" flag on.
+function allReminders(){
   const man=reminders();
   const derived=pantry().map(p=>{
-    if(p.type==='cure') return {text:`${L('סיום כבישה','Curing done')}: ${p.name}`,date:addDays(p.start,p.days),auto:true};
-    return {text:`${L('שקילת ביניים','Interim weigh-in')}: ${p.name}`,date:addDays(p.start,7*(Math.floor(daysBetween(p.start,today())/7)+1)),auto:true};
+    if(p.type==='cure') return {id:'cure:'+p.id, text:`${L('סיום כבישה','Curing done')}: ${p.name}`,date:addDays(p.start,p.days),auto:true};
+    const wk=Math.floor(daysBetween(p.start,today())/7)+1;
+    return {id:'weigh:'+p.id+':'+wk, text:`${L('שקילת ביניים','Interim weigh-in')}: ${p.name}`,date:addDays(p.start,7*wk),auto:true};
   });
-  const all=[...derived,...man].sort((a,b)=>new Date(a.date)-new Date(b.date));
+  return [...derived,...man].sort((a,b)=>new Date(a.date)-new Date(b.date));
+}
+// due = today or earlier and not yet resolved — the honest "would a real user still want this on screen"
+// definition; a reminder from yesterday that nobody looked at is exactly the N1 gap this closes.
+function remindersDue(){
+  const t0=new Date(today()); t0.setHours(0,0,0,0);
+  return allReminders().filter(function(r){ const d=new Date(r.date); d.setHours(0,0,0,0); return d.getTime()<=t0.getTime(); });
+}
+// Fires AT MOST ONCE per reminder id (persisted in mk-reminders-notified) — reuses the SAME honesty gate
+// as the stage-start reminders (mk-tlalerts + Notification permission): "fires while the app is open,
+// plus a Notification when permitted" is the true platform limit (the toast at ~8100 already says so for
+// stage alerts; this is the same limit for multi-day reminders, not a stronger promise). The always-on
+// counterpart is the home banner (syncReminderBanner) — visual, unconditional, never gated on permission.
+function checkReminders(){
+  const due=remindersDue();
+  if(due.length && store.get('mk-tlalerts') && ('Notification' in window) && Notification.permission==='granted'){
+    const seen=store.get('mk-reminders-notified')||{}; let changed=false;
+    due.forEach(function(r){ if(r.id && !seen[r.id]){ seen[r.id]=1; changed=true; mkNotify('⏰ '+L('תזכורת','Reminder'), r.text, 'mk-rem-'+r.id); mkVibrate([200,100,200]); } });
+    if(changed) store.set('mk-reminders-notified', seen);
+  }
+  try{ if(typeof syncReminderBanner==='function') syncReminderBanner(); }catch(e){}
+}
+// Home banner — same visual language as syncGearBanner (.gear-banner), unconditional (no permission
+// needed: it's in-app DOM, not an OS notification) so it's the honest "you'll still see this even with
+// notifications off" channel N4 already declares for stage alerts.
+function syncReminderBanner(){
+  const host=$("#cReminderBanner"); if(!host) return;
+  const n=remindersDue().length;
+  if(!n){ host.innerHTML=''; return; }
+  host.innerHTML=`<button class="gear-banner" id="reminderBanner">⏰ <span><b>${n===1?L('תזכורת אחת ממתינה','1 reminder pending'):L(`${n} תזכורות ממתינות`,`${n} reminders pending`)}</b> — ${L('ריפוי/ייבוש רב-יומי','multi-day cure/dry')}</span><span class="gb-go">←</span></button>`;
+  const b=$("#reminderBanner"); if(b) b.addEventListener('click',openReminders);
+}
+function openReminders(){
+  const all=allReminders();
   const rows=all.map((r,i)=>`<div class="shop-line"><span>${fmtDate(r.date)} ${new Date(r.date)<new Date(today())?'<b style="color:var(--ember)">⏰</b>':''}</span><span style="flex:1">${r.text}</span>${r.auto?`<span class="ktag kd" style="position:static">${L('אוטומטי','Auto')}</span>`:`<button class="rm" data-rrm="${r.id}">×</button>`}</div>`).join("");
   showPanel(`${toolTop(L('תזכורות','Reminders'),L('אבני-דרך לתהליכים רב-יומיים','Milestones for multi-day processes'),'⏰','#b5603a')}
    <div class="panel-body">
+     <p class="section-sub">${L('תזכורת שהגיע תורה מוצגת כאן וכבאנר בבית כשהאפליקציה פתוחה. התראת מערכת (גם ברקע) דורשת אישור התראות — הפעל ב"תוכנית עבודה" 🔔.','A due reminder shows here and as a home banner while the app is open. A system notification (even backgrounded) needs alerts enabled — turn it on in the Work Plan 🔔.')}</p>
      <div class="miniform"><h4>${L('תזכורת חדשה','New reminder')}</h4>
        <label>${L('טקסט','Text')}<input data-rtext placeholder="${L('להפוך בייקון, לבדוק pH…','Flip bacon, check pH…')}"></label>
        <label>${L('תאריך','Date')}<input type="date" data-rdate value="${today()}"></label>
@@ -10736,6 +10777,7 @@ function renderHomeChrome(){
     } else gc.hidden=true;
   }
   try{ if(typeof syncGearBanner==='function') syncGearBanner(); }catch(e){}   // banner ↔ chip symmetry: banner when unconfigured, chip when configured
+  try{ if(typeof syncReminderBanner==='function') syncReminderBanner(); }catch(e){}   // D3: due multi-day cure/dry reminders, unconditional (no notification permission needed)
   // multi-event bar — 2+ events → the combined command center (v203), with a smoker-clash flag
   const mv=$("#cHomeMultiEv");
   if(mv){
@@ -12842,6 +12884,12 @@ try{ cRefreshHome(); cNavGo('home'); }catch(e){ /* headless/init guard */ }
 try{ if(typeof startTimerWatch==='function') startTimerWatch(); }catch(e){}   // parallel multi-event alarms
 try{ if(typeof anyTimerRinging==='function' && anyTimerRinging()){ if(typeof renderAlarm==='function') renderAlarm(); if(typeof startRingLoop==='function') startRingLoop(); } }catch(e){}   // reopened while a timer is ringing → show the in-app alarm + resume the re-pulse
 try{ if(typeof renderBcheckAlarm==='function') renderBcheckAlarm(); }catch(e){}   // D2: a bcheck that came due while the app was closed is still shown on reopen (mk-bcheck-due persists)
+// D3: multi-day cure/dry reminders (docs/analysis/2026-08-01-voice-output-audit.md N1) used to fire only
+// when the Reminders panel was manually opened. Honest fix, not a stronger promise than the platform
+// allows: check at boot, then every 60s while the app stays open (the SAME "in-session" limit the
+// mk-tlalerts toast at ~8100 already declares) — a Notification fires when permitted, and the home banner
+// (syncReminderBanner, unconditional) is the always-available visual counterpart.
+try{ if(typeof checkReminders==='function'){ checkReminders(); setInterval(checkReminders, 60000); } }catch(e){}
 // Wave 5: keep translating as the SPA re-renders. childList only (subtree) — tnode edits text values,
 // not structure, so it never re-triggers itself. Debounced; no-op in Hebrew.
 try{ let _tnTmo=null; const _mo=new MutationObserver(function(){ if(getLang()==='he') return; clearTimeout(_tnTmo); _tnTmo=setTimeout(function(){ try{ applyI18n(document.body); }catch(e){} try{ tnode(document.body); }catch(e){} try{ hydrateMT(document.body); }catch(e){} }, 50); }); _mo.observe(document.body, {childList:true, subtree:true}); }catch(e){}

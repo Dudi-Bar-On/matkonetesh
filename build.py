@@ -169,6 +169,7 @@ HTML = r"""<!DOCTYPE html>
   <button class="chome-mev" id="cHomeMultiEv" hidden></button>
   <div class="chome-hero"><div class="hi" id="cGreet">ברוך הבא 👋</div><h2 data-i18n-html="home.what">מה <b>מדליקים</b> היום?</h2></div>
   <div id="cGearBanner"></div>
+  <div id="cReminderBanner"></div>
   <div class="chome-modules" id="cHomeModules">
     <div class="chome-lanes" id="cHomeLanes"></div>
     <div class="chome-askwrap" id="cHomeAskWrap">
