@@ -2546,5 +2546,6 @@
  "זו המשימה האחרונה": "Quella era l'ultima attività.",
  "לא זוהתה פקודה: ": "Comando non riconosciuto: ",
  "מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.": "In ascolto. Di': avanti, indietro, rileggi, dettagli, temperatura — oppure fai una domanda.",
- "מה חדש: שאלת בטיחות מקבלת עכשיו את הערך המצוטט מהמדריך במקום תשובה ריקה, הדיבור בכל שפה נשמע בשפה שלה, והתראת בדיקת הטמפרטורה כבר לא חוזרת אחרי שאישרת.": "Novità: una domanda di sicurezza restituisce ora il valore citato della guida invece di una risposta vuota, la voce parla ogni lingua in quella lingua, e l’avviso di controllo della temperatura non ritorna più dopo la conferma."
+ "מה חדש: שאלת בטיחות מקבלת עכשיו את הערך המצוטט מהמדריך במקום תשובה ריקה, הדיבור בכל שפה נשמע בשפה שלה, והתראת בדיקת הטמפרטורה כבר לא חוזרת אחרי שאישרת.": "Novità: una domanda di sicurezza restituisce ora il valore citato della guida invece di una risposta vuota, la voce parla ogni lingua in quella lingua, e l’avviso di controllo della temperatura non ritorna più dopo la conferma.",
+ "מה חדש: שאלה על קטגוריה שלמה — כמו עוף — מקבלת עכשיו את טמפרטורת הבטיחות מהמדריך, ותשובה קודמת כבר לא נשארת על המסך אחרי שמחליפים שפה.": "Novità: una domanda su un'intera categoria — il pollame, per esempio — ottiene ora la temperatura di sicurezza dalla guida, e una risposta precedente non resta più sullo schermo dopo il cambio di lingua."
 }

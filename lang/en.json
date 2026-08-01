@@ -2545,5 +2545,6 @@
  "זו המשימה האחרונה": "That was the last task.",
  "לא זוהתה פקודה: ": "Command not recognized: ",
  "מאזין. אמור: הבא, הקודם, הקרא שוב, פרטים, טמפרטורה — או שאל שאלה חופשית.": "Listening. Say: next, back, read again, details, temperature — or ask a question.",
- "מה חדש: שאלת בטיחות מקבלת עכשיו את הערך המצוטט מהמדריך במקום תשובה ריקה, הדיבור בכל שפה נשמע בשפה שלה, והתראת בדיקת הטמפרטורה כבר לא חוזרת אחרי שאישרת.": "What's new: a safety question now returns the guide's own cited value instead of an empty answer, speech in every language is spoken in that language, and the temperature-check alert no longer returns once you have confirmed it."
+ "מה חדש: שאלת בטיחות מקבלת עכשיו את הערך המצוטט מהמדריך במקום תשובה ריקה, הדיבור בכל שפה נשמע בשפה שלה, והתראת בדיקת הטמפרטורה כבר לא חוזרת אחרי שאישרת.": "What's new: a safety question now returns the guide's own cited value instead of an empty answer, speech in every language is spoken in that language, and the temperature-check alert no longer returns once you have confirmed it.",
+ "מה חדש: שאלה על קטגוריה שלמה — כמו עוף — מקבלת עכשיו את טמפרטורת הבטיחות מהמדריך, ותשובה קודמת כבר לא נשארת על המסך אחרי שמחליפים שפה.": "What's new: a question about a whole category — poultry, for instance — now gets the safe temperature from the guide, and a previous answer no longer stays on screen after switching language."
 }
