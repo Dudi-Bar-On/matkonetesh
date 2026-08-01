@@ -11,5 +11,7 @@
 | Selector | Meaning | Used by |
 |---|---|---|
 | `.foot-stamp` | version stamp `מהדורה NNN` | §10.10 live verification + release probes |
+| `#mkWarnAlarm` / `.mk-alarm-warn` | D1/V-1: persistent visual counterpart to the spoken timer 2-min warning | d1-timer-warn-visual.spec.ts |
+| `[data-warnstop]` | dismiss button on the timer-warning card | d1-timer-warn-visual.spec.ts |
 
 *(הטבלה מתמלאת אינקרמנטלית; האינוונטר המלא — משימה נקובה בתוכנית Phase 3.)*

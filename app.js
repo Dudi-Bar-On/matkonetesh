@@ -3304,9 +3304,11 @@ function wireTimer(tm, opts){
   let iv=null, endsAt=0, left=+tm.dataset.left, warned=false;
   const stop=()=>{ if(iv){clearInterval(iv);iv=null;} };
   const idle=l=>{ play.textContent="▶"; play.setAttribute('aria-label',L('הפעל טיימר','Start timer')); tt.textContent=fmt(Math.max(0,l)); };
-  const done=()=>{ stop(); play.textContent="▶"; play.setAttribute('aria-label',L('הפעל טיימר','Start timer')); tm.classList.add("ringing"); tt.textContent=L('סיום!','Done!'); if(al) al.textContent=L('הטיימר הסתיים!','Timer finished!'); };
+  const done=()=>{ stop(); play.textContent="▶"; play.setAttribute('aria-label',L('הפעל טיימר','Start timer')); tm.classList.add("ringing"); tt.textContent=L('סיום!','Done!'); if(al) al.textContent=L('הטיימר הסתיים!','Timer finished!');
+    try{ if(typeof mkClearTimerWarn==='function') mkClearTimerWarn(id); }catch(e){} };   // the warning card's job ends once the real alarm (renderAlarm) takes over
   const tick=()=>{ left=Math.round((endsAt-Date.now())/1000);
-    if(opts.warnSec && !warned && left<=opts.warnSec && left>0 && opts.onWarn){ warned=true; try{opts.onWarn(left);}catch(e){} }   // R5: one-shot latch (was left===warnSec — stuttered ~4x / could skip)
+    if(opts.warnSec && !warned && left<=opts.warnSec && left>0 && opts.onWarn){ warned=true; try{opts.onWarn(left);}catch(e){}   // R5: one-shot latch (was left===warnSec — stuttered ~4x / could skip)
+      try{ if(typeof mkShowTimerWarn==='function') mkShowTimerWarn(id, tm.dataset.name||'', left); }catch(e){} }   // V-1: a persistent visual counterpart to the spoken warning (owner ruling 2026-08-01 — voice is never the only channel)
     if(left<=0){ done(); timerBeep(); _timerSet(id,{end:endsAt,name:tm.dataset.name||'',fired:1}); if(opts.onEnd){ try{opts.onEnd();}catch(e){} } return; }
     tt.textContent=fmt(left); };
   const run=()=>{ play.textContent="❚❚"; play.setAttribute('aria-label',L('השהה טיימר','Pause timer')); tm.classList.remove("ringing"); if(al) al.textContent=""; stop(); iv=setInterval(tick,250); timers["t"+Math.random()]=iv; tick(); };
@@ -3317,7 +3319,8 @@ function wireTimer(tm, opts){
   if(rec){ if(rec.end!=null){ if(rec.end-Date.now()<-12*3600e3){ _timerSet(id,null); } else { endsAt=rec.end; left=Math.round((endsAt-Date.now())/1000); if(left<=0) done(); else run(); } }
     else if(typeof rec.left==='number'){ left=rec.left; idle(left); } }
   play.addEventListener("click",()=>{ if(iv){ pause(); return; } if(tm.classList.contains('ringing')){ tm.classList.remove('ringing'); left=sec; } startFresh(); });
-  tm.querySelector("[data-reset]").addEventListener("click",()=>{ stop(); left=sec; endsAt=0; warned=false; tm.classList.remove("ringing"); if(al) al.textContent=""; idle(sec); _timerSet(id,null); });
+  tm.querySelector("[data-reset]").addEventListener("click",()=>{ stop(); left=sec; endsAt=0; warned=false; tm.classList.remove("ringing"); if(al) al.textContent=""; idle(sec); _timerSet(id,null);
+    try{ if(typeof mkClearTimerWarn==='function') mkClearTimerWarn(id); }catch(e){} });
   tm.addEventListener("click", e=>e.preventDefault());   // tapping the timer must not toggle a parent <label> (plan-view rows)
 }
 function clearTimers(){Object.values(timers).forEach(clearInterval);timers={};}
@@ -3385,6 +3388,35 @@ function renderAlarm(){
     (ring.length>1?`<button class="mka-stopall" data-alarmstopall>🔕 ${L('עצור הכל','Stop all')}</button>`:'');
   el.querySelectorAll('[data-alarmstop]').forEach(function(b){ b.addEventListener('click',function(){ ackAlarm(decodeURIComponent(b.dataset.alarmstop)); }); });
   const sa=el.querySelector('[data-alarmstopall]'); if(sa) sa.addEventListener('click',function(){ ackAlarm(); });
+}
+
+// ── V-1 · a persistent visual counterpart to the spoken "~2 minutes left" timer warning ─────────────
+// Owner ruling 2026-08-01: voice is never the only channel — everything spoken must also appear visually.
+// docs/analysis/2026-08-01-voice-output-audit.md V-1: onWarn (wireTimer) used to ONLY call vcSpeak — a
+// muted/out-of-earshot user got nothing until the alarm itself fired minutes later. Reuses the renderAlarm/
+// .mk-alarm pattern (persistent, explicit dismiss) rather than toast() — toast is role="status" (polite,
+// won't interrupt a screen reader), auto-dies at 5000ms, and is display:none in print: the code already
+// treats it as ephemeral, wrong for an "act soon" item (docs/analysis/2026-08-01-voice-ux-review.md §2.4).
+let mkTimerWarns={};   // tid -> {name, text}
+function mkTimerWarnText(left){
+  const min=Math.max(1,Math.round(left/60));
+  return left<60 ? L('עוד פחות מדקה','less than a minute left') : L(`עוד כ-${min} דקות`,`about ${min} minutes left`);
+}
+function mkShowTimerWarn(tid, name, left){
+  if(!tid) return;
+  mkTimerWarns[tid]={name:name||L('טיימר','Timer'), text:mkTimerWarnText(left)};
+  renderTimerWarn();
+}
+function mkClearTimerWarn(tid){
+  if(tid && mkTimerWarns[tid]){ delete mkTimerWarns[tid]; renderTimerWarn(); }
+}
+function renderTimerWarn(){
+  const keys=Object.keys(mkTimerWarns); let el=document.getElementById('mkWarnAlarm');
+  if(!keys.length){ if(el) el.remove(); return; }
+  if(!el){ el=document.createElement('div'); el.id='mkWarnAlarm'; el.className='mk-alarm mk-alarm-warn'; el.setAttribute('role','alertdialog'); el.setAttribute('aria-live','assertive'); el.setAttribute('aria-label',L('אזהרת טיימר','Timer warning')); document.body.appendChild(el); }
+  el.innerHTML=`<div class="mka-head">⏳ <b>${L('עומד להסתיים','About to finish')}</b></div>`+
+    keys.map(function(k){ const w=mkTimerWarns[k]; return `<div class="mka-row"><span class="mka-name">${esc(w.name)} <small>· ${esc(w.text)}</small></span><button class="mka-stop" data-warnstop="${encodeURIComponent(k)}">✓ ${L('הבנתי','Got it')}</button></div>`; }).join('');
+  el.querySelectorAll('[data-warnstop]').forEach(function(b){ b.addEventListener('click',function(){ mkClearTimerWarn(decodeURIComponent(b.dataset.warnstop)); }); });
 }
 
 function openSpec(s){
@@ -7256,7 +7288,7 @@ function vcRender(){
         onWarn:function(left){ const min=Math.round(left/60); vcSpeak(vcVoiceLang()==='en'?(left>=60?min+' minutes left':'less than a minute left'):(left>=60?'עוד כ-'+min+' דקות':'עוד פחות מדקה'), vcVoiceLang(), 'alert'); },
         onEnd:function(){ vcSpeak(vcVoiceLang()==='en'?'Time is up for this step.':'הזמן לשלב הזה נגמר.', vcVoiceLang(), 'alert'); } }); } }
   { const ai=host.querySelector('#vcAskInput'); if(ai) ai.addEventListener('keydown',e=>{ if(e.key==='Enter'){ const q=ai.value.trim(); if(q) vcAskFlow(q); } }); }
-  { const gs=host.querySelector('#gemVoiceSel'); if(gs) gs.addEventListener('change',()=>{ store.set('mk-gemvoice',gs.value); vcSpeak('שלום! זה הקול החדש של ההקראה. נשמע טוב?'); }); }
+  { const gs=host.querySelector('#gemVoiceSel'); if(gs) gs.addEventListener('change',()=>{ store.set('mk-gemvoice',gs.value); vcSpeak(L('שלום! זה הקול החדש של ההקראה. נשמע טוב?','Hello! This is the new read-aloud voice. Does it sound good?')); }); }
   if(t) vcWarmAck();   // fire-and-forget panel-open pre-warm — makes the *spoken* ack the common case
 }
 function vcAction(a){
@@ -7285,7 +7317,7 @@ function vcAction(a){
     const inp=$("#gemKeyInp"); const k=(inp&&inp.value||'').trim();
     if(k.length<20){ toast('מפתח לא תקין'); return; }
     store.set('mk-gemkey',k); vcRender();
-    vcSpeak('מעולה! Gemini מחובר. ככה אני נשמע עכשיו.');
+    vcSpeak(L('מעולה! Gemini מחובר. ככה אני נשמע עכשיו.','Great! Gemini is connected. This is how I sound now.'));
   }
   else if(a==='gemoff'){ store.set('mk-gemkey',''); gemCache.clear(); vcRender(); toast(L('Gemini נותק — הקראה תחזור עם חיבור AI','Gemini disconnected — read-aloud returns once AI is reconnected')); }
 }
