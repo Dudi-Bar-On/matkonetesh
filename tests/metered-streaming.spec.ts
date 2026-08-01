@@ -375,7 +375,14 @@ test('stale Worker: streaming 404 falls back to non-streaming vcAskAI — the as
 });
 
 test('DoD-8/9: the mid-stream transcript renders the gate-passed opener in Hebrew at 390x844', async ({ page }) => {
-  await seedApp(page, { 'mk-lang': JSON.stringify('he'), 'mk-gemkey': JSON.stringify('k-test') });
+  // 'mk-uilevel-asked' is NOT optional here (root-caused 2026-08-01, askrow-flake-rootcause.md):
+  // app.js ~12763 runs setTimeout(maybeAskUiLevel, 400) on EVERY boot, and seedApp clears localStorage,
+  // so every test is a "first run". 400ms in, showPanel() replaces the whole open panel with the
+  // onboarding question. This test's assertions read vcLastQA (JS state), so they passed anyway while the
+  // screenshot below silently captured the ONBOARDING panel instead of the transcript — the DoD-8
+  // artifact was wrong without a single test going red. Seeding the flag is what 125 of 134 spec files
+  // already do.
+  await seedApp(page, { 'mk-lang': JSON.stringify('he'), 'mk-gemkey': JSON.stringify('k-test'), 'mk-uilevel-asked': 'true' });
   await page.setViewportSize({ width: 390, height: 844 });
   // openVoiceCook fires a fire-and-forget vcWarmAck() network pre-warm — block it (same pattern as the
   // R-32/DoD-8 tests in voice-wave0.spec.ts) so a fake test key never races a real fetch.
