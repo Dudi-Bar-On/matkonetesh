@@ -841,6 +841,23 @@ evening produced a CI workflow whose YAML looked correct on inspection and had n
 listed it under its file path instead of its name and answered a manual dispatch with "this workflow has
 no such trigger". Configuration is verified by triggering it, never by reading it.
 
+**L42 · Three tasks green, the feature dead — a test that injects the seam reproduces the blind spot
+(2026-08-01).** A safety-guard arc built one layer per task: a classifier, a decision table, and a wider
+vocabulary so the table could rule on numbers the narrow vocabulary cannot see. Every task passed its own
+tests. The feature did not work at all: the function converting classifier output into the table's input
+filtered every claim through the **narrow** vocabulary, so the very claims the wide vocabulary existed for
+were discarded one layer upstream and never reached it.
+
+Why it survived three careful tasks: **each task's tests handed the next layer its input directly.** The
+decision table was tested by constructing a claim map and passing it in — which is exactly the step that
+was broken. A test that injects the seam cannot fail on the seam.
+
+Gate: for any feature spanning more than one layer, **at least one test must enter where the user enters**
+and assert on what the user gets out. Injecting an intermediate structure is legitimate for covering
+branches, never for proving the feature works. And when a subagent reports a gap as "pre-existing,
+documented elsewhere", **verify it by running the chain** — this one was reported that way and moved past,
+and it would have shipped a dead feature with a full green suite behind it.
+
 **Adopted wins (2026-07-31) — patterns that worked this session, keep using them:** (7) **The controller
 verifies everything independently** — every subagent claim this session was checked by diff or by the
 controller's own suite run rather than trusted as reported, and that independent check is what caught
