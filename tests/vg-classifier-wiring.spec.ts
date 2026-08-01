@@ -85,14 +85,15 @@ test.describe('R-62 Task 3 · P6 — every failure path is byte-identical to tod
     await page.waitForFunction(`typeof vcAskFlow==='function' && typeof vcGuardSpoken==='function'`);
     // capture what actually reaches speech, without a real TTS call (p0-spoken-safety.spec.ts precedent)
     await page.evaluate(`window.__spoke=[]; window.vcSpeak=(t,l)=>{ window.__spoke.push({t:String(t),l:l||''}); };`);
-    // Two chamber_temp tokens ONLY (both matched by the shared narrow safetyTokenRe, exactly like the
-    // classifier's own vcBuildClaimMap `seen` set at app.js:7856) — deliberately NOT a duration/weight/
-    // spacing claim: those kinds only ever survive in vg-classifier-verdicts.spec.ts's D3 because that
-    // test builds the claims Map BY HAND, bypassing vcBuildClaimMap's narrow-token filter. Through the
-    // REAL classifier→vcBuildClaimMap pipeline this wiring now actually exercises, a duration claim's
-    // `text` ("6 שעות") is never a member of `seen` and is silently dropped before the guard ever sees it
-    // — a pre-existing gap in Task 1 (e1c3b5b), independent of this task's wiring, reported separately
-    // rather than fixed here (out of this task's declared diff).
+    // Two chamber_temp tokens ONLY (both matched by the shared narrow safetyTokenRe). This test predates
+    // Task 2b: at the time it was written, a duration/weight/spacing claim's `text` (e.g. "6 שעות") was
+    // never a member of vcBuildClaimMap's `seen` set (app.js:7856 then only matched safetyTokenRe) and was
+    // silently dropped before the guard ever saw it — a gap this test deliberately did NOT exercise (it
+    // used two chamber_temp tokens to stay green while the gap was reported separately). Task 2b fixed
+    // vcBuildClaimMap's `seen` set to also match claimOnlyTokenRe (CLAIM_ONLY_UNIT), closing that gap; the
+    // duration case is now proven end-to-end through this exact vcAskFlow pipeline in
+    // tests/vg-claim-map-wide-vocab.spec.ts ("HEADLINE" test). This test is kept as-is (chamber_temp only)
+    // since it still validates the wiring/budget claims below.
     const answer = 'עשן ב-110°C ואז הורד ל-95°C.';
     const claims = [
       { text:'110°C', kind:'chamber_temp', value:110, unit:'C', subject:{item:null,category:null,form:'unknown'}, confidence:0.96 },

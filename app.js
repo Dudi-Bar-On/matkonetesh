@@ -7853,11 +7853,21 @@ async function vcClassifySafetyClaims(answerText){
 function vcBuildClaimMap(src, json){
   const claims = json && Array.isArray(json.claims) ? json.claims : null;
   if(!claims || !claims.length) return null;
-  const seen = new Set((String(src).match(safetyTokenRe()) || []));
+  // Task 2b fix (R-62) — `seen` must recognise BOTH vocabularies: the narrow safety one (safetyTokenRe,
+  // governs eligibility everywhere else — untouched) AND the wide claim-only one (claimOnlyTokenRe, Task
+  // 2a's time/mass/length tokens). Without the second match a `duration`/`weight`/`spacing` claim is a
+  // token vcClaimVerdict is fully capable of ruling 'release' on, but it never reaches that table — it is
+  // discarded HERE, before vcGuardSpoken's branch (b) ever runs. This does not widen eligibility: nAiNums,
+  // digitRuns and the guard's branch (a)/(b) split still derive from safetyTokenRe/SAFETY_UNIT alone (see
+  // the CLAIM_ONLY_UNIT block below) — only what the CLAIM MAP will accept changes.
+  const seen = new Set(
+    (String(src).match(safetyTokenRe()) || [])
+      .concat(String(src).match(claimOnlyTokenRe()) || [])
+  );
   const map = new Map(), dup = new Set();
   claims.forEach(function(c){
     if(!c || typeof c.text!=='string') return;
-    if(!seen.has(c.text)) return;                          // not a token of ours → discarded outright
+    if(!seen.has(c.text)) return;                          // not a token of either vocabulary → discarded outright
     if(map.has(c.text)){ dup.add(c.text); return; }
     if(SAFETY_CLAIM_KINDS.indexOf(c.kind)<0) return;       // off-schema kind → unclassified
     if(typeof c.confidence!=='number') return;
