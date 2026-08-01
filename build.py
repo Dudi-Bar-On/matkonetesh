@@ -518,7 +518,15 @@ if _extracted:
     if _guardA:
         print("[i18n:Guard-A] %d coverage violation(s) — a user-facing string is unlocalized for an active language:" % len(_guardA))
         for _c, _why, _k in _guardA[:30]:
-            print("  [%s] %s: %r" % (_c, _why, _k[:70]))
+            # A guard that cannot print its own findings is worse than no guard: on Windows the default
+            # console codec is cp1252, and %r on a Hebrew key raised UnicodeEncodeError *inside the
+            # failure path*, so the traceback replaced the very list you need in order to fix the build.
+            # Encode defensively — the guard still fails, but now it tells you WHY.
+            try:
+                print("  [%s] %s: %r" % (_c, _why, _k[:70]))
+            except UnicodeEncodeError:
+                _safe = _k[:70].encode("unicode_escape").decode("ascii")
+                print("  [%s] %s: %s" % (_c, _why, _safe))
         if len(_guardA) > 30: print("  ... and %d more" % (len(_guardA) - 30))
         _sys.exit(1)
     print("[i18n:Guard-A] OK — %d KNOWN keys + %d names covered in all %d active langs" % (len(_extA_chrome), len(_extA_names), len(_active_langs)))
