@@ -5685,6 +5685,36 @@ function askCutTimes(meta){
   if(smtV) parts.push(`ואז עישון: ~${smhV}ש ב-${smtV}°C`);
   return parts;
 }
+// ── citedSafeC · the ONE reading of `safe` (R-69 shape F, second path — 2026-08-03) ──────────────
+// `safe` encodes three different states in one scalar, and every consumer used to decide for itself
+// which was which — so they decided differently. `vcIdentifiedSafeItem` (the voice path) was taught the
+// distinction by the R-69 fix; `askFire` and `askContextFor` were not, and carried `${c.safe||63}`,
+// which rendered a fabricated **63°C** for all 27 produce rows (`safe=0`) — stamped ⚡מקומי, i.e. as our
+// own verified figure. Reproduced in the UI at 390x844 before the fix ("האם תירס בטוח" → "תירס: טמפ׳
+// בטיחות 63°C"). This function is now the only place that answers the question, so the paths cannot
+// diverge again.
+//
+//   number → a cited safety floor we may state in our own voice
+//   null   → we may state NO number; ask safeAbsenceKind() which of the two silences it is
+//
+// The data model refactor (R-75) will replace the scalar with a per-mechanism block, at which point this
+// becomes the adapter rather than the arbiter. Until then it is the single point of truth.
+function citedSafeC(o){
+  if(!o) return null;
+  const v = o.safe;
+  if(v==null || v==='' || isNaN(Number(v))) return null;
+  if(Number(v)===0) return null;                       // 0 = "not applicable" — every ירקות/פירות row
+  return Math.round(Number(v));
+}
+
+// Why there is no number, which is a different sentence to the user:
+//   'na'      — safety here is not governed by core temperature at all (produce)
+//   'unknown' — we simply hold no verified figure for this row
+function safeAbsenceKind(o){
+  if(!o) return 'unknown';
+  return Number(o.safe)===0 ? 'na' : 'unknown';
+}
+
 function askFire(qRaw){
   const q=(qRaw||'').trim().toLowerCase(); if(!q) return '';
   const has=(...ks)=>ks.some(k=>q.includes(k));
@@ -5738,7 +5768,14 @@ function askFire(qRaw){
       return {t:`<b>${c.heb}</b> — ראב מובנה: ${c.rub||'מלח+פלפל'}. ${s.length?'תיבולים מתאימים נוספים (נבחרים בתוך המתכון):':'פתח את המתכון לבורר התיבול המלא.'}`,chips:[link(e)]};
     }
     if(has('בטיח','פסטור','בטוח','safe','טפיל')){
-      return {t:`<b>${c.heb}</b>: טמפ׳ בטיחות ${c.safe||63}°C. זכור — בטיחות היא זמן×טמפ׳ במרכז הנתח, לא רק המספר. סו-ויד מנצל זאת (טמפ׳ נמוכה יותר לאורך זמן).${/דג|סלמון|טונה|פורל/.test(c.heb)?' לדג נא/חלקי — הקפאה מוקדמת נגד טפילים.':''}`,chips:[link(e)]};
+      const sc=citedSafeC(c);
+      if(sc==null){
+        const why = safeAbsenceKind(c)==='na'
+          ? 'הבטיחות של הפריט הזה אינה נקבעת בטמפרטורת ליבה — הוא נאכל לפי מרקם וטעם, ואין לו טמפ׳ בטיחות.'
+          : 'אין לנו ערך בטיחות מאומת לפריט הזה, ולכן לא נציג מספר.';
+        return {t:`<b>${c.heb}</b>: ${why}`,chips:[link(e)]};
+      }
+      return {t:`<b>${c.heb}</b>: טמפ׳ בטיחות ${sc}°C. זכור — בטיחות היא זמן×טמפ׳ במרכז הנתח, לא רק המספר. סו-ויד מנצל זאת (טמפ׳ נמוכה יותר לאורך זמן).${/דג|סלמון|טונה|פורל/.test(c.heb)?' לדג נא/חלקי — הקפאה מוקדמת נגד טפילים.':''}`,chips:[link(e)]};
     }
     if(has('איך','שיטה','סו-ויד','עישון','גריל','method')){
       const t=askCutTimes(e); return {t:`<b>${c.heb}</b> — שיטות: ${t.join(' · ')}. יעד ${donenessTarget(c)}°C. פתח את המתכון לצ׳קליסט וטיימרים.`,chips:[link(e)]};
@@ -5794,7 +5831,7 @@ function askContextFor(q){
     if(e.kind==='cut'){
       const smokeFin=(typeof svSmokeFinish==='function')?svSmokeFinish(e):null;
       const smtV=smokeFin?smokeFin.t:o.smt, smhV=smokeFin?smokeFin.h:o.smh;
-      return `• ${e.heb} (${e.cat}): סו-ויד ${o.svt}°C/${o.svh}ש · עישון ${smtV}°C/${smhV}ש · עישון-בלבד ${o.sot}°C/${o.soh}ש · יעד ${donenessTarget(o)}°C · בטיחות ${o.safe||63}°C · עץ ${o.wood||'-'} · ראב ${o.rub||'-'}${o.doneness?' · מידות: '+Object.entries(o.doneness.levels).map(([k,v])=>(v.heb||k)+' '+v.c+'°C').join('/'):''}`;
+      return `• ${e.heb} (${e.cat}): סו-ויד ${o.svt}°C/${o.svh}ש · עישון ${smtV}°C/${smhV}ש · עישון-בלבד ${o.sot}°C/${o.soh}ש · יעד ${donenessTarget(o)}°C${citedSafeC(o)!=null?` · בטיחות ${citedSafeC(o)}°C`:''} · עץ ${o.wood||'-'} · ראב ${o.rub||'-'}${o.doneness?' · מידות: '+Object.entries(o.doneness.levels).map(([k,v])=>(v.heb||k)+' '+v.c+'°C').join('/'):''}`;
     }
     // spec items never carry an sv+smoke combo (itemProfile for meta.kind==='spec' always produces a
     // single smoke-only method, no .combo — app.js ~3158) — svSmokeFinish would ALWAYS return null here,
@@ -8078,16 +8115,21 @@ function vcIdentifiedSafeItem(tiers){
   const m=tiers && tiers.t2;
   if(!m || !m.obj) return null;   // no question-text match — Tier 1 alone is never sufficient (see above)
   const o=m.obj;
-  if(o.safe==null || isNaN(Number(o.safe))) return null;   // no cited SAFETY figure — never substitute tgt as if it were one
   // R-69 (catalogue sweep 2.8.26, shape F — 26 items, the largest shape in the sweep and 100%
   // reproducible). `safe=0` is the data layer's encoding of "not applicable" (every ירקות and פירות row
   // carries it), and this function could not tell it from a cited figure — so the app spoke its single
   // most authoritative sentence, "לפי המדריך, הטמפרטורה הבטוחה עבור תירס: 0°C", and the model's very next
   // sentence explained that no such temperature exists. The DATA is right; this reading of it was wrong.
-  // Zero now falls to the ladder's next rung, which says outright that we hold no verified figure for the
+  // Zero falls to the ladder's next rung, which says outright that we hold no verified figure for the
   // row — true for corn, and the owner's rule: show NO number rather than an unbacked one.
-  if(Number(o.safe)===0) return null;
-  return { m:m, safeC: Math.round(Number(o.safe)) };
+  //
+  // 2026-08-03: this used to spell the three-state reading out inline, which is exactly why the two ASK
+  // paths could carry a different reading (`${o.safe||63}`) for four days without contradicting anything.
+  // The reading now lives in citedSafeC() and nowhere else; behaviour here is unchanged by construction —
+  // null/NaN → null, 0 → null, otherwise Math.round — which is what the R-69 fixtures below assert.
+  const safeC = citedSafeC(o);
+  if(safeC==null) return null;   // no cited SAFETY figure — and never tgt substituted as if it were one
+  return { m:m, safeC: safeC };
 }
 // R-58 (owner-reported live defect, 2026-08-01, v283) — a CATEGORY question ("טמפרטורת בטיחות עוף") got NO
 // substituted value even though R-53 (above) already exists: askFindEntity returns an EMPTY array for "עוף"

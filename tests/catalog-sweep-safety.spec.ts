@@ -242,3 +242,89 @@ test.describe('R-69 · i18n', () => {
     });
   }
 });
+
+// ══ F(b) · shape F again — in the LOCAL ask engine, a path the R-69 fix never covered ═════════════
+// Found 2026-08-03 while designing the data-model refactor, by asking Serena for every consumer of
+// `.safe` in app.js (§10.17). The R-69 fix hardened `vcIdentifiedSafeItem` (the VOICE path) so that
+// `safe=0` — the data layer's "not applicable", carried by every ירקות/פירות row — can no longer be
+// spoken as a cited figure. `askFire` (the LOCAL ask engine, "⚡ מנוע מקומי") was never touched, and it
+// carries its own fallback:
+//
+//     `טמפ׳ בטיחות ${c.safe||63}°C`
+//
+// so `0||63` and `undefined||63` both render **63** — a number that appears nowhere in the row and
+// traces to no source. Reproduced in the real UI at 390x844 before this test was written: asking
+// "האם תירס בטוח" rendered "תירס: טמפ׳ בטיחות 63°C", stamped with the app's own ⚡מקומי badge, i.e.
+// asserted as OUR verified value rather than a model's guess.
+//
+// Reachability is branch-ordered and that is why the sweep missed it: the earlier
+// `has('טמפ','חום','מעלות')` branch is correctly guarded (`${c.safe?...:''}`), so any question containing
+// the word "טמפרטורה" never reaches this one. It takes a safety question WITHOUT a temperature word.
+// 27 of 130 catalogue cuts carry a falsy `safe` and are therefore affected.
+test.describe('F(b) · the local ask engine never invents a safety number', () => {
+
+  const askLocal = async (page: any, q: string) => {
+    await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-askai': '0' });   // '0' = local engine, no network
+    await page.waitForFunction(`typeof askFire==='function' && typeof openAsk==='function'`);
+    await page.evaluate(`openAsk();`);
+    await page.waitForSelector('#askq');
+    await page.fill('#askq', q);
+    await page.click('#askgo');
+    await page.waitForSelector('.abubble');
+    return await page.evaluate(`document.querySelector('.abubble').textContent`) as string;
+  };
+
+  // RED before the fix: renders "תירס: טמפ׳ בטיחות 63°C".
+  test('F(b)1 · a safety question about corn shows no fabricated 63°C (390x844)', async ({ page }) => {
+    const shown = await askLocal(page, 'האם תירס בטוח');
+    expect(shown).toContain('תירס');
+    expect(shown).not.toContain('63');
+    expect(shown).not.toMatch(/טמפ׳ בטיחות\s*\d/);
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.screenshot({ path: 'mockups/rb-corn-local-ask-390x844.png' });
+  });
+
+  // The same shape reached through two other phrasings that also skip the temperature branch.
+  test('F(b)2 · the other phrasings that reach this branch are equally clean', async ({ page }) => {
+    for (const q of ['בטיחות בצל', 'האם חציל בטוח']) {
+      const shown = await askLocal(page, q);
+      expect(shown).not.toContain('63');
+    }
+  });
+
+  // NEGATIVE (DoD-6) · a row that DOES hold a cited safety figure must still show it, unchanged.
+  test('F(b)3 · brisket still shows its real cited 63°C', async ({ page }) => {
+    const shown = await askLocal(page, 'בטיחות בריסקט');
+    expect(shown).toContain('בריסקט');
+    expect(shown).toContain('63');
+  });
+
+  // The invariant behind the fix, asserted over the WHOLE catalogue rather than three samples:
+  // no cut with a falsy `safe` may produce a safety number from this engine.
+  // The regex below is built with `new RegExp` from a plain string, NOT written as a literal inside the
+  // template literal. Reason, paid for once: inside a TS template literal `\s` is not a recognised escape
+  // and collapses to a bare `s`, so the first draft of this test reached the browser as /…s*d/, matched
+  // nothing, and passed on its first run while proving nothing. The contract voids a first-run pass
+  // (L45), which is the only reason it was caught. Escaping is easy to get wrong twice; not escaping
+  // at all cannot be.
+  test('F(b)4 · no falsy-safe cut anywhere in the catalogue yields a number', async ({ page }) => {
+    await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-askai': '0' });
+    await page.waitForFunction(`typeof askFire==='function'`);
+    const bad = await page.evaluate(`(function(){
+      var re = new RegExp(${JSON.stringify('טמפ׳ בטיחות\\s*\\d')});
+      var out=[];
+      DATA.cuts.filter(function(c){ return !c.safe; }).forEach(function(c){
+        var r=askFire('בטיחות '+c.heb);
+        var t=(r&&r.t?String(r.t):String(r)).replace(/<[^>]+>/g,'');
+        if(re.test(t)) out.push(c.heb+' → '+t.slice(0,60));
+      });
+      return out;
+    })()`) as string[];
+    // guard the guard: the regex must be able to fire at all (an interceptor that never matches is
+    // indistinguishable from a passing test — TEST-AUTHORING-CONTRACT §6).
+    const canFire = await page.evaluate(
+      `new RegExp(${JSON.stringify('טמפ׳ בטיחות\\s*\\d')}).test('בריסקט: טמפ׳ בטיחות 63°C.')`) as boolean;
+    expect(canFire).toBe(true);
+    expect(bad).toEqual([]);
+  });
+});
