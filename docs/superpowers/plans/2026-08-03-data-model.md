@@ -1065,3 +1065,288 @@ Assert `DATA.items.length === 130 + 47 + 50 === 227` and that no existing consum
 
 The full suite runs after **1, 1b, 1c, 1d, 1e, 1f, 2, 3, 4, 5** — not before. Everything above is
 build-time and test-time; nothing reaches a user until Task 5 migrates the consumers and Task 6 gates it.
+
+---
+
+# REVISION 2 — the owner's spreadsheet + Wave 0 alignment (2026-08-03)
+
+**Governing spec: `docs/superpowers/specs/2026-08-03-data-model-design-v2.md` (supersedes v1 upon
+owner approval).** Measurement base: `docs/analysis/2026-08-03-sheet-vs-app-reconciliation.md`.
+The spreadsheet finding: an item has 0..n ROUTES; 65 (field,item) pairs were lost to the flattening
+(tgt 24 · wrap 27 · sear 8 · coal 5 · wood 1). Route ids are **the ones `itemPaths` (app.js:4760)
+already emits** (`c:smoke_sv`, `c:smoke`, `:rev` …) — never a new vocabulary (spec v2 §4.1, gate G-5).
+
+**What this revision does to the existing tasks:**
+
+| Task | Status |
+|---|---|
+| 1 (core+thermal) | **LANDED** (`9a31a1d`) — unchanged, except Task 1g moves `texture` from the item onto `paths` |
+| 1b–1f (cure/process/parasite/sources/MAKES) | **Stand as written** — mechanisms are item-level (measured: `safe` identical across both sheet routes 68/68) |
+| 2 (report) | Amended by Task 2r below (new reasons + the 65-pair counter) |
+| **3 (triggers)** | **REPLACED by Task 3r** — v1's Task 3 parses `mid`/`somid` into one item-level `route[]`, which re-flattens the two sheets. Steps must land per path |
+| 4 (guards) | Amended by Task 4r (G-5/G-6/G-7, per-path reachability) |
+| 5 (consumers) | Amended: `MODEL.path(item, id)` added; the schedule consumer is `effectiveSchedule` |
+| 6 (suite+release) | Unchanged; runs after everything below |
+
+**New global constraint (spec v2 §4.2):** the converter NEVER fills a path's field from the other
+path, never invents a path id, and never writes a derivable (`time_h`, `saved`). Missing = report row.
+**Owner gate before Task 1g Step 5:** Q-1 (import the sheet's second-route texture targets as
+`provenance:'owner-sheet'`) must be approved in conversation; until then the import is behind
+`IMPORT_OWNER_SHEET = False` and those targets land in the report as `path-target-unimported`.
+
+---
+
+## Task 1g: `model_paths.py` — routes become first-class, keyed by `itemPaths` ids
+
+**Files:** Create `model_paths.py`, `model_sheet.py` · Modify `model.py` · Test `tests/model-paths.spec.ts`
+**Interfaces:**
+- `model_sheet.load() -> {by_item_he: {...}}` — reads `docs/sources/owner-sheet/0{1,2,3}-*.csv`,
+  **Hebrew-name-first join** (the Duck/Goose trap, reconciliation §1), alias `נקניקיות→נקניקיות מוכנות`.
+- `model_paths.build(row, sheet) -> (paths: dict, unconverted: list)` — keys are `c:`-style ids.
+
+- [ ] **Step 1: failing test** (`tests/model-paths.spec.ts`)
+
+```ts
+import { test, expect, seedApp } from './_fixtures';
+
+const boot = async (page: any) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  await page.waitForFunction(`!!(window.DATA && DATA.items && DATA.items.length)`);
+};
+
+test('PA1 · brisket carries TWO paths with their own legs, keyed by itemPaths ids', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(function(){
+    var b = DATA.items.filter(function(it){ return it.name.he==='בריסקט'; })[0];
+    var ab = b.paths && b.paths['c:smoke_sv'], sb = b.paths && b.paths['c:smoke'];
+    return { keys: b.paths ? Object.keys(b.paths).sort() : null,
+             svLeg: ab && ab.legs && ab.legs.sv,           // ← data.svt/svh, MOVED not rewritten
+             soLeg: sb && sb.legs && sb.legs.smoke,        // ← data.sot/soh
+             tgtB:  sb && sb.texture && sb.texture.target_c };
+  })()`) as any;
+  expect(r.keys).toContain('c:smoke_sv');
+  expect(r.keys).toContain('c:smoke');
+  expect(r.svLeg).toEqual({ t: 68, h: '30' });   // exactly data.py's svt/svh upper (DoD-10: moved)
+  expect(r.soLeg).toEqual({ t: 110, h: '12' });
+  expect(r.tgtB).toBe(95);                        // R-79: 95 stays, ON ITS PATH
+});
+
+test('PA2 · every path key is an id itemPaths can emit — no invented vocabulary', async ({ page }) => {
+  await boot(page);
+  const bad = await page.evaluate(`(function(){
+    var ok = /^c:(sv|smoke|grill)(_(sv|smoke|grill))*(:rev)?$/;
+    var out = [];
+    DATA.items.forEach(function(it){
+      Object.keys(it.paths||{}).forEach(function(k){ if(!ok.test(k)) out.push(it.name.he+':'+k); });
+    });
+    return out;
+  })()`) as string[];
+  expect(bad).toEqual([]);
+});
+
+// NEGATIVE (DoD-6): an item the sheet never described (a vegetable) gets NO sheet-derived path fields.
+test('PA3 · corn carries no smoke-only path fabricated from a sheet it was never in', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(function(){
+    var c = DATA.items.filter(function(it){ return it.name.he==='תירס'; })[0];
+    var p = (c.paths||{})['c:smoke'];
+    return { hasSheetTexture: !!(p && p.texture && p.texture.provenance==='owner-sheet') };
+  })()`) as any;
+  expect(r.hasSheetTexture).toBe(false);
+});
+```
+
+- [ ] **Step 2: run it, watch PA1/PA2 fail** (`paths` undefined).
+  `npx playwright test tests/model-paths.spec.ts; ec=$?; echo "EXIT=$ec"`
+
+- [ ] **Step 3: write `model_sheet.py`** — csv loader (`utf-8-sig`), returns per-item dict
+  `{he, routeA: {...cols…}, routeB: {...}}`; join is he-first, en fallback, the one alias explicit.
+  Unmatched sheet row → raise (there are none today; a future rename must be loud).
+
+- [ ] **Step 4: write `model_paths.py`**
+
+```python
+# -*- coding: utf-8 -*-
+"""Routes as first-class data, keyed by the SAME ids itemPaths emits (spec v2 §4.1).
+
+The flat row holds route A's sv+smoke legs (svt/svh/smt/smh), route B's smoke leg
+(sot/soh), and per-route fields that the flattening collapsed (reconciliation §2).
+Nothing here fills one path's field from the other path, and nothing invents an id.
+"""
+IMPORT_OWNER_SHEET = False   # Q-1 — flips to True only on the owner's spoken approval
+
+def _hours_upper(h):
+    s = str(h or '').strip()
+    return s  # moved verbatim; range parsing stays in the JS consumer it already lives in
+
+def build(row, sheet_row, unconverted):
+    paths = {}
+    if row.get("svt") is not None and row.get("smt") is not None:
+        paths["c:smoke_sv"] = {
+            "legs": {"sv": {"t": row["svt"], "h": _hours_upper(row.get("svh"))},
+                     "smoke": {"t": row["smt"], "h": _hours_upper(row.get("smh"))}},
+            "texture": None, "sear": None, "coal": None, "steps": [],
+        }
+    if row.get("sot") is not None:
+        paths["c:smoke"] = {
+            "legs": {"smoke": {"t": row["sot"], "h": _hours_upper(row.get("soh"))}},
+            "texture": {"target_c": row.get("tgt"), "source_id": None, "provenance": "craft"},
+            "sear": None, "coal": None, "steps": [],
+        }
+    # data.py's single tgt: reconciliation §2.2 measured which route it matches.
+    # kept=A → it belongs to c:smoke_sv; kept=B → c:smoke; ambiguous → report, both stay None.
+    if sheet_row:
+        a_t, b_t = sheet_row.get("tgtA"), sheet_row.get("tgtB")
+        d_t = row.get("tgt")
+        if d_t is not None and a_t is not None and b_t is not None and a_t != b_t:
+            if d_t == a_t and "c:smoke_sv" in paths:
+                paths["c:smoke_sv"]["texture"] = {"target_c": d_t, "source_id": None, "provenance": "craft"}
+                if "c:smoke" in paths:
+                    if IMPORT_OWNER_SHEET:
+                        paths["c:smoke"]["texture"] = {"target_c": b_t, "source_id": None, "provenance": "owner-sheet"}
+                    else:
+                        unconverted.append({"id": row.get("n"), "name": row.get("heb"),
+                                            "field": "tgt:c:smoke", "value": b_t,
+                                            "reason": "path-target-unimported"})
+            elif d_t == b_t and "c:smoke" in paths:
+                if "c:smoke_sv" in paths:
+                    if IMPORT_OWNER_SHEET:
+                        paths["c:smoke_sv"]["texture"] = {"target_c": a_t, "source_id": None, "provenance": "owner-sheet"}
+                    else:
+                        unconverted.append({"id": row.get("n"), "name": row.get("heb"),
+                                            "field": "tgt:c:smoke_sv", "value": a_t,
+                                            "reason": "path-target-unimported"})
+            else:
+                unconverted.append({"id": row.get("n"), "name": row.get("heb"),
+                                    "field": "tgt", "value": d_t,
+                                    "reason": "target-matches-neither-route"})
+        # sear/coal move onto the path from each sheet route; identical → item keeps one copy is FINE,
+        # but the model still writes them per path so no consumer re-derives (G-4).
+        for key, col in (("c:smoke_sv", "A"), ("c:smoke", "B")):
+            if key in paths:
+                paths[key]["sear"] = sheet_row.get("sear" + col)
+                paths[key]["coal"] = sheet_row.get("coal" + col)
+    # order_smokesv (sources.py) → the :rev path — moved verbatim, only when cited (13 items today)
+    os_ = row.get("order_smokesv")
+    if os_ and os_.get("sv", {}).get("pasteurize") is True:
+        paths["c:smoke_sv:rev"] = {"legs": os_, "texture": None, "sear": None, "coal": None, "steps": []}
+    return paths, unconverted
+```
+
+- [ ] **Step 5: wire into `model.py`** — items gain `"paths": _paths`; item-level `texture` becomes
+  the DEFAULT path's texture (adapter compatibility) and is marked `"texture_scope": "path"`.
+- [ ] **Step 6: DoD-10 proof** — extend Task 1 Step 6's script: for every item, every leg value in
+  `paths` equals the source field in `data.py`/`sources.py` byte-for-byte (svt/svh/smt/smh/sot/soh/
+  order_smokesv). Expected: `path values altered: 0`. Paste output.
+- [ ] **Step 7: commit** `feat(model): paths keyed by itemPaths ids — the flattening reversed`
+
+---
+
+## Task 3r (replaces Task 3): triggers land INSIDE paths
+
+**Files:** Create `model_triggers.py` · Modify `model_paths.py` · Test `tests/model-route.spec.ts`
+
+v1's Task 3 parser and closed trigger set survive **verbatim** (same `_TEMP`/`_ACTION`/`_EVERY`
+tables, same "advice stays advice"); the change is the attachment point and one new cross-check:
+
+- `mid` parses into `paths["c:smoke_sv"].steps` · `somid` into `paths["c:smoke"].steps` ·
+  `rest` (measured route-invariant 68/68) appends a rest step to EVERY path.
+- **The wrap cross-check replaces wrap conversion** (spec v2 §4.1): for every sheet-B `wrap=="כן"`,
+  a wrap-or-3-2-1 step must have parsed out of `somid`; mismatch →
+  `{"reason": "wrap-flag-contradicts-somid"}`. The `wrap` field itself is dropped, its information
+  content proven redundant (27/27, reconciliation §2.1) — named in the report as `wrap-field-retired`.
+
+- [ ] **Step 1: failing test** — T1 changes to assert the step lives on the PATH:
+
+```ts
+test('T1r · "עטיפה ב-70°C" is a wrap step ON THE SMOKE-ONLY PATH, absent from sv+smoke', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(function(){
+    var b = DATA.items.filter(function(it){ return it.name.he==='בריסקט'; })[0];
+    var wrapOf = function(k){ return ((b.paths[k]||{}).steps||[]).filter(function(s){ return s.action==='wrap'; })[0]; };
+    return { onSmoke: wrapOf('c:smoke'), onCombo: wrapOf('c:smoke_sv') };
+  })()`) as any;
+  expect(r.onSmoke && r.onSmoke.trigger).toEqual({ at_core_temp: { c: 70 } });
+  expect(r.onCombo).toBeUndefined();      // route A chills; it does not wrap
+});
+```
+
+- [ ] Steps 2–5 as v1 Task 3 (red → parser → build → read the `action-without-trigger` AND
+  `wrap-flag-contradicts-somid` report sections → green).
+- [ ] **Commit:** `feat(model): triggers attach to their path; the wrap flag retires with proof`
+
+---
+
+## Task 1h: specials' smoke temperature gets a shape (G-6)
+
+**Files:** Create `model_smoke_temp.py` · Modify `model.py` · Test `tests/model-smoke-temp.spec.ts`
+
+Measured (reconciliation §4): 12/19 sheet specials carry a ramp (`"60-75°C עולה"`), a cold-smoke
+CEILING (`"עישון קר ≤30°C"`), or "no smoke", all collapsed into a bare number or None+prose.
+A ceiling rendered as a setpoint is the `safe=0` sentinel family.
+
+- Closed shape: `{"kind":"setpoint","c":90}` | `{"kind":"ramp","from":60,"to":75}` |
+  `{"kind":"cold_max","c":30}` | `None` (no smoke stage).
+- Extraction: `smt` + the sheet's `טמפ' עישון` prose + `note` (the app moved the ramp text into
+  notes — measured, e.g. kielbasa "עישון מדורג 60→75°C"). Prose that names a ramp/ceiling wins over
+  the bare `smt` number; **the number itself is never changed, only re-labelled** (DoD-10).
+- Failing test asserts: gouda's block is `{kind:'cold_max', c:30}` and NO consumer-visible setpoint
+  of 30 exists; kielbasa is `{kind:'ramp', from:60, to:75}`; negative: bacon stays
+  `{kind:'setpoint', c:90}`.
+- **Commit:** `feat(model): smoke temperature has a shape — a ceiling can no longer pose as a setpoint`
+
+---
+
+## Task 2r: report amendments
+
+Add to the Task 2 renderer: reasons `path-target-unimported` · `target-matches-neither-route` ·
+`wrap-flag-contradicts-somid` · `wrap-field-retired` · `sheet-drift` (the §3 drift rows: svt 3,
+sot 9, soh 2, svh 3, diff 1, mid 1 — value in each source, **informational, nothing changed**), and a
+**flattening counter**: `65 route-divergent pairs → N converted · M reported · 0 silent` (G-7 feeds
+on this exact number; the test asserts N+M=65).
+
+---
+
+## Task 4r: guard amendments (G-5 · G-6 · G-7 + per-path reachability)
+
+Extend `model_guards.run(items)`:
+
+```python
+        for pid, p in (it.get("paths") or {}).items():
+            if not _PATH_ID_RE.match(pid):
+                problems.append("%s · invented path id %s" % (it["name"]["he"], pid))      # G-5
+            tex = p.get("texture") or {}
+            for s in p.get("steps") or []:
+                ct = ((s.get("trigger") or {}).get("at_core_temp") or {}).get("c")
+                if ct is not None and tex.get("target_c") is not None and ct > float(tex["target_c"]):
+                    problems.append("%s · %s · step '%s' fires at %s but THIS PATH targets %s"
+                                    % (it["name"]["he"], pid, s.get("action"), ct, tex["target_c"]))  # G-2r
+        st = it.get("smoke_temp")
+        if isinstance(st, dict) and st.get("kind") == "cold_max" and st.get("as_setpoint"):
+            problems.append("%s · cold ceiling rendered as setpoint" % it["name"]["he"])   # G-6
+```
+
+plus the G-7 build-time assertion: the flattening counter reads `65 → converted+reported, silent==0`,
+else exit 1. Step "prove the gate BITES" (deliberate bad item, exit 1, remove, exit 0) applies to each.
+**Commit:** `feat(model): gates G-5..G-7 — path ids, smoke-temp shape, zero silent flattening`
+
+---
+
+## Task 5r: consumer amendments
+
+`MODEL` gains `path(it, id)` and `defaultPath(it)`; **`effectiveSchedule` is the first migrated
+consumer** (it is THE schedule surface — spec v2 §10): `itemStages` reads legs via the adapter,
+byte-identical output asserted against a pre-migration snapshot for all 227 items (the CP2-style
+invariance test). `path_outcomes` (Wave 0, `sources.py`) is NOT built here; Task 4r's G-5 already
+guarantees key compatibility the day it lands.
+
+---
+
+## Revised execution order
+
+**1 ✅ → 1g → 3r → 1h → 1b → 1c → 1d → 1e → 1f → 2+2r → 4+4r → 5+5r → 6.**
+Rationale: 1g/3r/1h reshape what 1b–1f attach to (mechanism blocks stay item-level, so 1b–1f are
+unchanged in content, but running them after 1g avoids a double migration of `model.py`'s item loop).
+Owner gates in-flight: **Q-1 before 1g Step 5's flag flip** (default stays False and ships honestly
+reported) · Q-2 (wood_mix) rides Task 1g if approved, else lands as a declared-waiver report line ·
+Q-3 needs no code either way.
