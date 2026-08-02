@@ -5612,9 +5612,63 @@ function askFindEntity(q){
   // 2) token match with prefix-strip + stopword filter; require a meaningful (>=4 char) shared token
   const toks=q.split(/[\s,?.!"'׳״]+/).map(askStrip).filter(w=>w.length>=3 && !ASK_STOP.has(w));
   const score=m=>{ let best=0; toks.forEach(t=>{ const words=m.heb.split(/\s+/); words.forEach(w=>{ const ws=askStrip(w); if((ws.includes(t)||t.includes(ws)) && Math.min(ws.length,t.length)>=3){ best=Math.max(best,Math.min(ws.length,t.length)); } }); }); return best; };
-  hits=all.map(m=>[m,score(m)]).filter(x=>x[1]>=4).sort((a,b)=>b[1]-a[1]).map(x=>x[0]);
+  // R-64 (owner-reported live defect 2.8.26 — docs/analysis/2026-08-02-lamb-beef-misattribution.md).
+  // The scoring above is Math.max over the length of the OVERLAPPING token, so a token shorter than 4
+  // characters contributes ZERO: "כבש" is 3 characters, "צלעות כבש" scored exactly the same as bare
+  // "צלעות" for all three ribs rows, the sort is stable, and catalog order handed back BEEF ribs for a
+  // LAMB question. The word that decides which animal counted for nothing.
+  // The fix is deliberately ORDERING-ONLY: the eligibility filter (>=4) is untouched, so the SET of
+  // matches this function returns is byte-identical to the shipped one for every query — measured, not
+  // assumed (tests/entity-ladder.spec.ts A1 asserts the set equality). Only the ranking changes, by a
+  // second key computed FIRST: how many of the question's own concept words the row actually carries.
+  // Every consumer (askFire's ents[0] 5637, askContextFor's slice(0,3) 5731, vcResolveTiers 7953,
+  // vcSubjectTextHits 8341, vcClaimSubjectSafeC 8373) reads a top-slice, so each gets a strictly
+  // better-targeted first row and none can observe a membership change. A single-token question has
+  // coverage 1 everywhere and keeps its shipped order exactly.
+  const ctoks=askConceptToks(q);
+  hits=all.map(m=>[m,score(m)]).filter(x=>x[1]>=4)
+     .map(x=>[x[0],x[1],askCoverage(x[0],ctoks)])
+     .sort((a,b)=>(b[2]-a[2])||(b[1]-a[1])).map(x=>x[0]);
   return hits;
 }
+// R-64 · the question's CONCEPT words: each raw word AND its prefix-stripped form. Both forms are kept
+// on purpose — askStrip treats the first letter of "כבש" as the prefix כ and returns "בש" (2 chars),
+// which is then dropped by the length filter, which is why the distinguishing word was invisible to the
+// tokenizer as well as to the score. Used ONLY for ranking and for the consistency gate; never for
+// eligibility, so it cannot widen what the search finds.
+function askConceptToks(q){
+  const out=[];
+  String(q||'').split(/[\s,?.!"'׳״]+/).forEach(function(w){
+    [w, askStrip(w)].forEach(function(f){
+      if(f && f.length>=3 && !ASK_STOP.has(f) && out.indexOf(f)<0) out.push(f);
+    });
+  });
+  return out;
+}
+// Does this catalog row CARRY a given concept word — in its Hebrew name, its English name, or its
+// category? Same overlap test the score uses (substring either direction, >=3 shared characters), applied
+// per token instead of collapsed by Math.max, and against the raw word as well as its stripped form.
+// Returns the STRENGTH of the overlap (the shared character count, the same measure the score above
+// uses), or 0 when the row does not carry the word at all. Strength matters because the overlap test is
+// deliberately two-way: the 3-letter cheese "ברי" "carries" the token "בריסקט" as much as "בריסקט" itself
+// does under a boolean test, and a strictly weaker match must never be able to veto a strictly stronger
+// one in the ambiguity check below.
+function askTokStrength(m, t){
+  if(!m || !t) return 0;
+  const words=String(m.heb||'').replace(/[()]/g,' ').split(/\s+/)
+    .concat(String(m.eng||'').toLowerCase().replace(/[()]/g,' ').split(/\s+/))
+    .concat(m.cat?String(m.cat).split(/\s+/):[]);
+  let best=0;
+  words.forEach(function(w){
+    [w, askStrip(w)].forEach(function(f){
+      if(f && f.length>=3 && (f.includes(t)||t.includes(f))) best=Math.max(best, Math.min(f.length,t.length));
+    });
+  });
+  return best;
+}
+function askHitCoversTok(m, t){ return askTokStrength(m,t)>=3; }
+function askCoverage(m, toks){ let n=0; (toks||[]).forEach(function(t){ if(askHitCoversTok(m,t)) n++; }); return n; }
+try{ window.askConceptToks=askConceptToks; window.askHitCoversTok=askHitCoversTok; }catch(e){}
 // CP1 Task 4 (spec 2026-07-25 §4 "AI copilot/ask/menu grounding"): the sv+smoke finish leg reuses
 // svSmokeFinish(meta) — the SAME accessor Task 2/3 wired into the card/grid/work-plan — instead of the
 // catalog's raw smt/smh literal, so this "instant answers" text (askFire, real UI) can no longer
@@ -7959,7 +8013,11 @@ function vcResolveTiers(question){
   // return. It carries the FULL question-text hit list, not just hits[0], because vcClaimSubjectSafeC
   // must be able to apply the uniform-or-null ambiguity rule to the question's own resolution too —
   // handing it a bare hits[0] would re-import exactly the defect that function is being fixed for.
-  return { t1:(r1 && r1.obj)?r1:null, t2:(h && h.obj)?h:null, cat:cat,
+  // R-64 · `q` is ADDITIVE and read-only: the lower-cased question text, carried so the consistency gate
+  // (vcConsistentItem) can ask "does the row we are about to speak actually carry the words the question
+  // distinguished on". Nothing above changes; a hand-built tiers object without `q` degrades to today's
+  // behaviour (no discriminating words known → nothing to contradict).
+  return { t1:(r1 && r1.obj)?r1:null, t2:(h && h.obj)?h:null, cat:cat, q:qL,
            t2all:(hits||[]).filter(function(x){ return x && x.obj; }) };
 }
 // The verified figures a resolved item actually carries. Same accessor set askContextFor (4136) and
@@ -8061,48 +8119,149 @@ function catUniformSafe(cat){
   if(!vals.length) return null;
   return vals.every(function(v){ return v===vals[0]; }) ? vals[0] : null;
 }
-// tiers.cat is populated ONLY when vcResolveTiers found no item (see below) — this re-checks that
-// precedence defensively for any caller (e.g. a test) that hand-builds a tiers object.
-function vcIdentifiedSafeCategory(tiers){
-  if(tiers && tiers.t2) return null;   // an item match already exists — never shadow it with a category guess
-  const cat=tiers && tiers.cat;
-  if(!cat) return null;
-  const safeC=catUniformSafe(cat);
-  if(safeC==null) return null;   // no data, or MIXED — stay silent (the whole point of R-58)
-  return { cat:cat, safeC:safeC };
-}
+// R-64 · vcIdentifiedSafeCategory was REMOVED here, not left dangling (no-inert-shipment). Its entire
+// body was the item-beats-category precedence check plus catUniformSafe; the ladder below now states that
+// precedence explicitly as rung order and calls catUniformSafe itself, so keeping the wrapper would have
+// shipped a function nothing calls. The precedence it defended is preserved and tested (C3/E2).
 // Builds the substitution sentence, or '' when nothing eligible (silence). `lang` is the SAME voice-
 // language param vcGuardSpoken receives — by construction (R-31) it equals getLang(), so itemName()'s
 // internal getLang() read stays in sync with it. The static prefix goes through L() (mode-1 harvestable —
 // see i18n-extract.mjs); the item name and the number are pure interpolation, exactly like the existing
 // inline "verified" marker a few lines below builds its own sentence.
-function vcSafeSubstitution(tiers, lang){
-  const found=vcIdentifiedSafeItem(tiers);
-  if(found){
-    const name=(typeof itemName==='function')?itemName(found.m):'';
-    if(!name) return '';   // no displayable name (e.g. a bare test stub with no heb/eng) — nothing to attribute the figure to, so stay silent rather than substitute an unnamed number
-    const tempStr=(typeof UNITS!=='undefined' && UNITS.fmt)?UNITS.fmt(found.safeC,'temp',{role:'safeFloor'}):(found.safeC+'°C');
-    const prefix=lang==='he'
-      ? 'לפי המדריך, הטמפרטורה הבטוחה עבור '
-      : L('לפי המדריך, הטמפרטורה הבטוחה עבור ', "Per the app's guide, the safe temperature for ");
-    return prefix+name+': '+tempStr+'.';
-  }
-  // R-58: category-level substitution — only reached when NO item matched. `t()` is the SAME dictionary
-  // lookup itemName()/ppRender() already use to render these very `cat` strings per language; passing no
-  // fallback means it renders the raw Hebrew category name when lang==='he' (t()'s own he short-circuit),
-  // exactly mirroring itemName()'s language routing above.
-  const catFound=vcIdentifiedSafeCategory(tiers);
-  if(catFound){
-    const catName=(typeof t==='function')?t(catFound.cat):catFound.cat;
-    if(!catName) return '';
-    const tempStr=(typeof UNITS!=='undefined' && UNITS.fmt)?UNITS.fmt(catFound.safeC,'temp',{role:'safeFloor'}):(catFound.safeC+'°C');
-    const prefix=lang==='he'
-      ? 'לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית '
-      : L('לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית ', "Per the app's guide, the safe temperature for the category ");
-    return prefix+catName+': '+tempStr+'.';
-  }
-  return '';
+// ── R-64 · THE GATE, and THE LADDER (owner report 2.8.26) ────────────────────────────────────────
+// docs/analysis/2026-08-02-lamb-beef-misattribution.md §3, explicit negative finding: "the path that
+// carries the authority of 'לפי המדריך' is the ONLY path in the guard with no gate on it at all."
+// The category path was born with catUniformSafe (R-58); the claims path got vcHitsUniformSafeC (R-63);
+// this one — the sentence we write OURSELVES, with no model input — shipped with none, which is why the
+// only number that survived the lamb answer was the only number nobody checked.
+//
+// The gate asks TWO questions of the row about to be spoken, both answered from the question's own words:
+//  (1) CONSISTENCY — does this row carry every word that actually DISCRIMINATES inside its own candidate
+//      set? "Discriminating" is computed from the candidates, never from a hardcoded vocabulary: a word
+//      at least one candidate carries. For "צלעות כבש" that is {צלעות, כבש} — the beef row carries only
+//      צלעות, so it is refused; for "אסאדו במעשנה" the method word is carried by NO candidate, so it
+//      discriminates nothing and is correctly ignored (measured: the diagnosis refuted method-poisoning).
+//  (2) UNAMBIGUITY — every rival that is equally consistent must agree with it on BOTH the subject
+//      (`cat`) and the cited figure. Disagreement means we do not know which row was asked about, and a
+//      figure taken from a row nobody asked about violates CLAUDE.md's cited-source rule even when the
+//      number happens to come out right.
+function vcQuestionHits(tiers){
+  if(tiers && Array.isArray(tiers.t2all) && tiers.t2all.length) return tiers.t2all.filter(function(h){ return h && h.obj; });
+  return (tiers && tiers.t2 && tiers.t2.obj) ? [tiers.t2] : [];
 }
+function vcConsistentItem(tiers){
+  const m=tiers && tiers.t2;
+  if(!m || !m.obj) return null;
+  const hits=vcQuestionHits(tiers);
+  const toks=askConceptToks((tiers && tiers.q) || '');
+  const disc=toks.filter(function(t){ return hits.some(function(h){ return askHitCoversTok(h,t); }); });
+  if(!disc.every(function(t){ return askHitCoversTok(m,t); })) return null;
+  // A rival only counts as ambiguity when it matches the question AT LEAST AS WELL — same words, and no
+  // weaker an overlap. A strictly weaker match (the cheese "ברי" against a question about "בריסקט") is
+  // not a competing reading of the question, and letting it veto would silence correct answers.
+  const strength=function(h){ let s=0; disc.forEach(function(t){ s+=askTokStrength(h,t); }); return s; };
+  const mine=strength(m);
+  const rivals=hits.filter(function(h){ return h!==m
+    && disc.every(function(t){ return askHitCoversTok(h,t); }) && strength(h)>=mine; });
+  if(rivals.some(function(h){ return (h.cat||'')!==(m.cat||''); })) return null;
+  const sv=function(x){ const v=x&&x.obj&&x.obj.safe; return (v!=null && !isNaN(Number(v)))?Math.round(Number(v)):null; };
+  if(rivals.some(function(h){ return sv(h)!==sv(m); })) return null;
+  return m;
+}
+// The category rung of the ladder. Today `tiers.cat` is populated ONLY when NO item matched (app.js
+// ~7957) — an item match, however bad, and even an item with no `safe` field at all, BLOCKS the category
+// completely. That is a veto, not a ladder. Here the category is asked for again when the item rung
+// produced nothing, from the question we already carry. Order: the resolved lexical category, then a
+// fresh lexical lookup, then — last — the classifier's CHOICE FROM OUR OWN LIST (owner amendment 2.8.26,
+// see vcClassifySafetyClaims): "כבש" is not a category in the catalog (the category is "טלה") and
+// askFindCategory is a plain substring match with no synonyms, so no amount of string scoring reaches it.
+// The model may only pick a value that is already in askAllCategories(); anything else is dropped here.
+function vcLadderCategory(tiers, claims){
+  if(tiers && tiers.cat) return tiers.cat;
+  const q=tiers && tiers.q;
+  if(q && typeof askFindCategory==='function'){ const c=askFindCategory(q); if(c) return c; }
+  const sem=(claims && typeof claims.catalogSubject==='string') ? claims.catalogSubject : '';
+  if(sem && typeof askAllCategories==='function' && askAllCategories().indexOf(sem)>=0) return sem;
+  return null;
+}
+// A MIXED category's two representatives (owner ruling 2.8.26: "טווח + שני המייצגים"). Both figures are
+// read from the SAME `safe` field catUniformSafe reads, on REAL catalog rows, and each is spoken with the
+// name of the row it came from — so the number is attributed to a cut, never to the category as a whole.
+// `safe=0` (ירקות/פירות) is excluded exactly as catUniformSafe excludes it. Deterministic: for each of the
+// lowest and highest cited values, the FIRST row in catalog order carrying it.
+function catSafeSpread(cat){
+  if(!cat) return null;
+  const rows=askAllItems().filter(function(m){ return m.cat===cat; })
+    .map(function(m){ const v=m.obj&&m.obj.safe;
+      return { m:m, c:(v!=null && !isNaN(Number(v)) && Number(v)!==0)?Math.round(Number(v)):null }; })
+    .filter(function(r){ return r.c!=null; });
+  if(rows.length<2) return null;
+  let lo=rows[0], hi=rows[0];
+  rows.forEach(function(r){ if(r.c<lo.c) lo=r; if(r.c>hi.c) hi=r; });
+  if(lo.c===hi.c) return null;   // uniform — catUniformSafe already answered
+  return { lo:lo, hi:hi };
+}
+function vcTempStr(c){
+  return (typeof UNITS!=='undefined' && UNITS.fmt)?UNITS.fmt(c,'temp',{role:'safeFloor'}):(c+'°C');
+}
+// The ladder itself, as ONE function with an explicit rung order and a KIND the caller can act on:
+//   item (consistent, with a cited figure) → item WITHOUT one ("we don't have it") → category (uniform)
+//   → category (mixed: range + both representatives) → silence.
+// OWNER RULING 2.8.26, and it is a safety judgement, not a convenience: an item we HAVE with no cited
+// `safe` value goes STRAIGHT to "we don't have this figure" and must NEVER fall back to its category.
+// מרגז's category נקניקיות reads "uniform 71°C" from a SINGLE pre-cooked row out of 39 (measured,
+// §5 of the diagnosis) — 71°C on raw merguez is an actively dangerous number, so the obvious-looking
+// fallback is the harmful one here.
+function vcSafeSubstitutionParts(tiers, lang, claims){
+  const m=vcConsistentItem(tiers);
+  if(m){
+    const found=vcIdentifiedSafeItem({t1:null, t2:m, cat:null});
+    const name=(typeof itemName==='function')?itemName(m):'';
+    if(found && name){
+      const prefix=lang==='he'
+        ? 'לפי המדריך, הטמפרטורה הבטוחה עבור '
+        : L('לפי המדריך, הטמפרטורה הבטוחה עבור ', "Per the app's guide, the safe temperature for ");
+      return { kind:'item', text:prefix+name+': '+vcTempStr(found.safeC)+'.' };
+    }
+    if(name){
+      // No cited figure on a row we DO have. Said explicitly, and deliberately WITHOUT the usual "check
+      // the item card" redirect (see the notice in vcGuardSpoken): that card carries no safety number
+      // either, so the redirect sends a cook to look for a figure that does not exist.
+      const prefix=lang==='he'
+        ? 'אין לנו ערך בטיחות מאומת ל'
+        : L('אין לנו ערך בטיחות מאומת ל', "We have no verified safety figure for ");
+      return { kind:'nofigure', text:prefix+name+'.' };
+    }
+    return { kind:'', text:'' };
+  }
+  const cat=vcLadderCategory(tiers, claims);
+  if(cat){
+    const catName=(typeof t==='function')?t(cat):cat;
+    const safeC=catUniformSafe(cat);
+    if(safeC!=null && catName){
+      const prefix=lang==='he'
+        ? 'לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית '
+        : L('לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית ', "Per the app's guide, the safe temperature for the category ");
+      return { kind:'category', text:prefix+catName+': '+vcTempStr(safeC)+'.' };
+    }
+    const sp=(safeC==null)?catSafeSpread(cat):null;
+    if(sp && catName){
+      const loName=(typeof itemName==='function')?itemName(sp.lo.m):'';
+      const hiName=(typeof itemName==='function')?itemName(sp.hi.m):'';
+      if(loName && hiName){
+        const tpl=lang==='he'
+          ? 'בקטגוריית %s זה תלוי בנתח: '
+          : L('בקטגוריית %s זה תלוי בנתח: ', 'In the category %s it depends on the cut: ');
+        return { kind:'range', text:tpl.replace('%s', catName)
+          +loName+' '+vcTempStr(sp.lo.c)+', '+hiName+' '+vcTempStr(sp.hi.c)+'.' };
+      }
+    }
+  }
+  return { kind:'', text:'' };
+}
+function vcSafeSubstitution(tiers, lang, claims){ return vcSafeSubstitutionParts(tiers, lang, claims).text; }
+try{ window.vcConsistentItem=vcConsistentItem; window.vcSafeSubstitutionParts=vcSafeSubstitutionParts;
+     window.catSafeSpread=catSafeSpread; }catch(e){}
 // The ONE tokenizer shared by every rewrite path AND by aiSafetyNums (via SAFETY_TOKEN_SRC / safetyTokenRe,
 // defined above aiSafetyToC) — so a number the extractor can see is never a number the guard fails to
 // rewrite. The callback receives the whole token (a range is ONE token, not two numbers) and returns its
@@ -8193,6 +8352,30 @@ const SAFETY_CLAIM_SYS =
   'duration = a time; cure_ppm = curing-salt nitrite concentration; weight/spacing = mass or distance. '+
   'Use "other" when you are not sure. `confidence` is your own certainty in the kind, 0..1. '+
   'Return ONLY the JSON object. No prose, no markdown.';
+// R-64 · owner amendment 2.8.26: "אם יש משהו דומה בשאלה ובקטגוריה שה-ai ימצא ויביא את הדומה האחר —
+// למשל שאלה על כבש תחזיר כמו טלה". כבש≈טלה is SEMANTIC knowledge; no token scoring reaches it (כבש is
+// not a category in this catalog and askFindCategory is a plain substring with no synonyms), and it must
+// hold for questions asked in any of the seven shipped languages, so it cannot be built on Hebrew string
+// shapes. The model's job here is a CONSTRAINED CHOICE, never a generation: it picks one value from OUR
+// OWN category list, we look that identifier up in OUR OWN tables, and the number never comes from it.
+// It rides the classifier request that already runs on this path — no second round trip, no added latency.
+// Everything downstream still applies: the value must be in askAllCategories() (vcLadderCategory drops
+// anything else), and the category rung is still gated by catUniformSafe / catSafeSpread.
+const SAFETY_SUBJECT_SYS =
+  ' You are ALSO given, after a "QUESTION:" line, the user question the answer replies to, and after a '+
+  '"CATEGORIES:" line a closed list of catalog categories. Set `subject_category` to the ONE value from '+
+  'that list the QUESTION is about — the nearest match, including when the question names a different '+
+  'word for the same animal or food, in any language. If nothing in the list fits, set it to "". Copy the '+
+  'value from the list verbatim; never invent one, never translate it, and never put a number in it. '+
+  'Claims are still extracted ONLY from the answer text, never from the QUESTION or CATEGORIES lines.';
+// The enum is built from the live catalog at call time (askAllCategories()), never a hardcoded table, for
+// the same reason catUniformSafe recomputes: a catalog edit must not silently go stale here.
+function safetyClaimSchema(withSubject){
+  if(!withSubject) return SAFETY_CLAIM_SCHEMA;
+  const props=Object.assign({}, SAFETY_CLAIM_SCHEMA.properties,
+    { subject_category:{ type:'STRING', enum:[''].concat(askAllCategories()) } });
+  return Object.assign({}, SAFETY_CLAIM_SCHEMA, {properties:props});
+}
 
 // The test seam, mirroring the shipped __vcAskMock / __aiMock precedent (7871 / 6041). A test sets it to
 // a plain object (the parsed classifier response) or to a function of the answer text.
@@ -8201,7 +8384,7 @@ function vcClassMockActive(){ return typeof window!=='undefined' && window.__vcC
 // → Map(tokenText -> claim) with EVERY validation of spec §5.4/§5.5 already applied, or null.
 // null is the ONE failure signal: api error, timeout, malformed JSON, schema violation, non-STOP finish,
 // thought leak (which necessarily breaks the JSON), empty claims, or no claim matching any token.
-async function vcClassifySafetyClaims(answerText){
+async function vcClassifySafetyClaims(answerText, question){
   // R-62 Task 3 · D10 — a one-line call counter, NOT a network-presence proxy. It exists so the
   // read-aloud-never-classifies test can assert on "the classifier was not invoked" directly, per
   // DoD-4 (observable effect, not the absence of a side effect two layers removed).
@@ -8216,14 +8399,21 @@ async function vcClassifySafetyClaims(answerText){
       json = (typeof m==='function') ? m(src) : m;
     }else{
       if(!aiAvail()) return null;                          // §5.5 last row — the classifier is not called
+      // R-64 · the subject-choice job rides this SAME request (owner amendment 2.8.26). With no question
+      // (every pre-existing caller) neither the instruction nor the schema field is sent at all, so the
+      // request is byte-identical to the shipped one.
+      const withSubj=!!(question && String(question).trim());
+      const userText=withSubj
+        ? ('QUESTION: '+String(question).trim()+'\nCATEGORIES: '+askAllCategories().join(' | ')+'\nANSWER:\n'+src)
+        : src;
       const body = {
-        system_instruction:{parts:[{text:SAFETY_CLAIM_SYS}]},
-        contents:[{role:'user',parts:[{text:src}]}],
+        system_instruction:{parts:[{text:SAFETY_CLAIM_SYS+(withSubj?SAFETY_SUBJECT_SYS:'')}]},
+        contents:[{role:'user',parts:[{text:userText}]}],
         // AI_SEARCH.safetyClass==='never' → no google_search tool → responseMimeType/responseSchema are
         // legal here (the 400 documented at 6054 only occurs WITH the search tool).
         generationConfig: Object.assign(
           gemGen('text', {temperature:0, maxOutputTokens:8192}, {think: thinkFor('safetyClass')}),
-          { responseMimeType:'application/json', responseSchema:SAFETY_CLAIM_SCHEMA })
+          { responseMimeType:'application/json', responseSchema:safetyClaimSchema(withSubj) })
       };
       const r = await gemFetch('text', body, {timeout:30000, retries:0});
       if(!r.ok) return null;
@@ -8264,7 +8454,16 @@ function vcBuildClaimMap(src, json){
     map.set(c.text, c);
   });
   dup.forEach(function(k){ map.delete(k); });              // duplicated token → unclassified, never picked
-  return map.size ? map : null;
+  if(!map.size) return null;
+  // R-64 · the model's CHOICE from our own vocabulary, validated here and nowhere else: a value that is
+  // not literally a category of the live catalog is dropped, so an invented ("שור מיתולוגי") or
+  // translated id can never reach a lookup. It rides ON the map rather than changing the return type,
+  // because `null` must stay the ONE failure signal this whole design rests on (§5.5 / P6).
+  try{
+    const sc=json && typeof json.subject_category==='string' ? json.subject_category.trim() : '';
+    if(sc && typeof askAllCategories==='function' && askAllCategories().indexOf(sc)>=0) map.catalogSubject=sc;
+  }catch(e){}
+  return map;
 }
 try{ window.vcClassifySafetyClaims=vcClassifySafetyClaims; window.vcBuildClaimMap=vcBuildClaimMap; }catch(e){}
 
@@ -8317,11 +8516,21 @@ function vcClaimVerdict(tokenText, vals, unit, kind, claims, bind){
 // applied here to a set of item matches: the shared rounded °C when every match that carries a cited,
 // non-zero `safe` agrees, else null. It reads the SAME `safe` field from the SAME catalog rows; it
 // computes no safety figure and stores none.
+// R-64 · UNIFORMITY OF VALUE IS NOT CORRECTNESS OF SUBJECT — the design error this rule closes. Measured
+// on v287 (diagnosis §2): the three ribs rows "צלעות כבש" resolves to are uniform at 63°C *including the
+// BEEF row*, so this function returned 63 and stamped the model's number "לפי המדריך המאומת" off a set
+// that mixes animals. The uniformity rule did not fail — it was simply not relevant, because it only ever
+// asked whether the numbers agree. A set spanning more than one catalog `cat` is a set we cannot attribute
+// to one subject, so it is refused before the values are even compared. Strictly stricter: it can only
+// turn an approval into a redaction, never the reverse.
 function vcHitsUniformSafeC(hits){
-  const vals=(hits||[]).map(function(h){ return h && h.obj && h.obj.safe; })
-    .filter(function(v){ return v!=null && !isNaN(Number(v)) && Number(v)!==0; })
-    .map(function(v){ return Math.round(Number(v)); });
-  if(!vals.length) return null;
+  const rows=(hits||[]).filter(function(h){ const v=h && h.obj && h.obj.safe;
+    return v!=null && !isNaN(Number(v)) && Number(v)!==0; });
+  if(!rows.length) return null;
+  const cats={}; let nCats=0;
+  rows.forEach(function(h){ const c=h.cat||''; if(!cats[c]){ cats[c]=1; nCats++; } });
+  if(nCats>1) return null;                                 // crosses subjects → redact, however uniform
+  const vals=rows.map(function(h){ return Math.round(Number(h.obj.safe)); });
   return vals.every(function(v){ return v===vals[0]; }) ? vals[0] : null;
 }
 // R-63 · the subject as a HUMAN actually wrote it, used ONLY when the classifier's id resolves to
@@ -8333,6 +8542,13 @@ function vcHitsUniformSafeC(hits){
 // DIFFERENT safe values redacts instead of guessing which one the claim was about.
 function vcSubjectTextHits(bind){
   const tiers = bind && bind.tiers;
+  // R-64 · when the question's OWN resolution passed the consistency/unambiguity gate, that single row is
+  // the subject — the same row the leading sentence is attributed to. Using it here keeps the two halves
+  // of one answer from disagreeing about what was asked (the lamb question would otherwise hand the
+  // decision table a set spanning בקר and טלה, which the new cross-subject rule refuses, redacting the
+  // model's own correct figure while our sentence states it). A gate that ACCEPTED a row can only narrow
+  // the set; when it refused, the full list is used exactly as before and the ambiguity rule decides.
+  if(typeof vcConsistentItem==='function'){ const one=vcConsistentItem(tiers); if(one) return [one]; }
   let q = (tiers && Array.isArray(tiers.t2all)) ? tiers.t2all.filter(function(h){ return h && h.obj; }) : [];
   if(!q.length && tiers && tiers.t2 && tiers.t2.obj) q=[tiers.t2];   // hand-built tiers (tests, direct callers)
   if(q.length) return q;
@@ -8630,13 +8846,22 @@ function vcGuardSpoken(text, tiers, lang, claims){
   // NOTICE remains sentence-final: it is a warning, not an authority claim, so summarising it once
   // (singular/plural, count-aware) is still correct.
   if(!redacted) return out;
+  // R-53: append the app's own cited `safe` figure when the guard redacted AND the question resolves,
+  // through the R-64 ladder, to a row or category we can attribute it to — never a substitute for the
+  // notice, always in addition to it, so the cook still hears that the MODEL's numbers were unverified.
+  const subP=vcSafeSubstitutionParts(tiers, lang, claims);
+  const sub=subP.text;
+  // OWNER RULING 2.8.26 — when the ladder's answer is "we have no verified figure for this item", the
+  // notice must NOT send the cook to the item card: that card carries no safety number either, and in the
+  // reported lamb case the card it pointed at belonged to the WRONG item. Same notice, redirect dropped.
+  const cardless=subP.kind==='nofigure';
   const notice=redacted===1
-    ? (lang==='he'?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':L('מספר זה אינו מאומת — בדוק בכרטיס הפריט.','This number isn\'t verified — check the item card.'))
-    : (lang==='he'?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':L('המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.','These numbers aren\'t verified — check the item card.'));
-  // R-53: append the app's own cited `safe` figure when the guard redacted AND exactly one identified
-  // item carries one (vcSafeSubstitution above) — never a substitute for the notice, always in addition
-  // to it, so the cook still hears that the MODEL's own numbers were unverified.
-  const sub=vcSafeSubstitution(tiers, lang);
+    ? (cardless
+        ? (lang==='he'?'מספר זה אינו מאומת.':L('מספר זה אינו מאומת.','This number isn\'t verified.'))
+        : (lang==='he'?'מספר זה אינו מאומת — בדוק בכרטיס הפריט.':L('מספר זה אינו מאומת — בדוק בכרטיס הפריט.','This number isn\'t verified — check the item card.')))
+    : (cardless
+        ? (lang==='he'?'המספרים האלה אינם מאומתים.':L('המספרים האלה אינם מאומתים.','These numbers aren\'t verified.'))
+        : (lang==='he'?'המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.':L('המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט.','These numbers aren\'t verified — check the item card.')));
   // R-61 (owner report 1.8 on R-53): a listener cannot scroll back. When NOTHING was approved the body
   // is near-contentless ("[…] […] [...]"), so the one verified sentence must be the FIRST thing heard.
   // When at least one token WAS approved the body already carries real information and the shipped
@@ -8828,7 +9053,7 @@ async function vcAskFlow(rawSaid){
     // is not awaited until below, so this wait overlaps audible speech instead of preceding it.
     // Any failure resolves to null (vcClassifySafetyClaims never throws) → the guard behaves as today.
     vcLatMark('classReq');
-    const claims=await vcClassifySafetyClaims(answer);
+    const claims=await vcClassifySafetyClaims(answer, question);   // R-64 · the question rides along (no extra request)
     vcLatMark('classResp');
     // THE guard — exactly once, on the COMPLETE answer (spec §6.1): strictly after asm.end() (the last
     // delta is assembled) and strictly before any post-guard text is spoken. A guard over a fragment is

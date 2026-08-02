@@ -2605,5 +2605,9 @@
  "הקצב האט — הצפי זז": "Le rythme a ralenti — l'estimation a changé",
  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "Vous avez de la marge — vous pouvez le garder dans une glacière",
  "אתה בקצב הנכון להגשה": "Vous êtes dans les temps pour le service",
- "מה חדש: שאלה על נתח מסוים מחזירה עכשיו את המספרים שלו — הנושא נקשר לנתח שבאמת שאלת עליו, וערך בטיחות שאינו שייך לו כבר לא מוצג.": "Nouveautés : une question sur un morceau précis renvoie désormais ses chiffres — le sujet est rattaché au morceau sur lequel vous avez réellement posé la question, et une valeur de sécurité appartenant à un autre morceau n’est plus affichée."
+ "מה חדש: שאלה על נתח מסוים מחזירה עכשיו את המספרים שלו — הנושא נקשר לנתח שבאמת שאלת עליו, וערך בטיחות שאינו שייך לו כבר לא מוצג.": "Nouveautés : une question sur un morceau précis renvoie désormais ses chiffres — le sujet est rattaché au morceau sur lequel vous avez réellement posé la question, et une valeur de sécurité appartenant à un autre morceau n’est plus affichée.",
+ "אין לנו ערך בטיחות מאומת ל": "Nous n’avons pas de valeur de sécurité vérifiée pour ",
+ "בקטגוריית %s זה תלוי בנתח: ": "Dans la catégorie %s cela dépend du morceau : ",
+ "מספר זה אינו מאומת.": "Ce nombre n’a pas été vérifié.",
+ "המספרים האלה אינם מאומתים.": "Ces nombres n’ont pas été vérifiés."
 }

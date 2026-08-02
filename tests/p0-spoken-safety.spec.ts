@@ -869,17 +869,30 @@ test('R-58: a category-only safety question (no item named) gets the category\'s
   expect(shown).toBe(spoken);
 });
 
-test('R-58 negative — a MIXED category (בקר: whole-cut 63°C vs ground 71°C) gets NO substituted number (DoD-6, the dangerous case)', async ({ page }) => {
+// SUPERSEDED BY AN OWNER RULING (2.8.26, quoted in .superpowers/sdd/entity-ladder-task-1-brief.md §ב):
+// "קטגוריה מעורבת ⟵ טווח + שני המייצגים … היום שאלה על 'בקר' מחזירה מסך בלי שום מספר בטיחות".
+// R-58's original answer to a MIXED category was TOTAL SILENCE, and that silence is what the owner
+// reported as a defect: a cook asking about בקר got a screen with no safety figure at all. The rule that
+// replaces it is NOT looser — no category-wide number is ever asserted (that was and remains the
+// dangerous move). Instead both ends of the real spread are spoken, each attributed BY NAME to the actual
+// catalog row it came from, so nothing is averaged, guessed, or presented as "the category's value".
+// The assertions below are rewritten to that contract; the precondition is unchanged.
+test('R-58 (owner ruling 2.8.26) — a MIXED category (בקר: whole-cut 63°C vs ground 71°C) answers with BOTH representatives, never one category-wide number', async ({ page }) => {
   await bootVC(page);
   const setup = await page.evaluate(`(function(){
-    var vals=new Set();
-    DATA.cuts.forEach(function(c){ if(c.cat==='בקר' && c.safe!=null) vals.add(Math.round(c.safe)); });
-    return {mixed: vals.size>1};
-  })()`) as {mixed:boolean};
-  expect(setup.mixed).toBe(true);   // pin the precondition the whole negative case hinges on
+    var vals={}, n=0;
+    DATA.cuts.forEach(function(c){ if(c.cat==='בקר' && c.safe!=null){ var v=Math.round(c.safe); if(!vals[v]){vals[v]=1;n++;} } });
+    return {mixed: n>1, vals:Object.keys(vals).map(Number).sort(function(a,b){return a-b;})};
+  })()`) as {mixed:boolean; vals:number[]};
+  expect(setup.mixed).toBe(true);   // pin the precondition the whole case hinges on
   const out = await page.evaluate(`vcGuardSpoken('הטמפ הבטוחה היא בין 63°C ל-74°C', { t1: null, t2: null, cat: 'בקר' }, 'he')`) as string;
-  expect(out).toContain('אינם מאומתים');
-  expect(out).not.toMatch(/\d/);   // MIXED category -> silence, never a guessed number
+  expect(out).toContain('אינם מאומתים');                       // the model's own numbers are still redacted
+  expect(out).toContain('זה תלוי בנתח');                        // and the answer says WHY there is no single figure
+  expect(out).toContain(String(setup.vals[0]));                 // the lowest cited figure in the category…
+  expect(out).toContain(String(setup.vals[setup.vals.length-1])); // …and the highest, both from our own tables
+  // each figure is attributed to a REAL catalog row, never to the category as a whole
+  const names = await page.evaluate(`askAllItems().filter(function(m){return m.cat==='בקר';}).map(function(m){return m.heb;})`) as string[];
+  expect(names.some(n => out.includes(n))).toBe(true);
 });
 
 test('R-58 negative — safe=0 categories (ירקות) are excluded: zero is not a safety temperature', async ({ page }) => {
