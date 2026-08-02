@@ -7928,7 +7928,12 @@ function vcResolveTiers(question){
   // R-58: category lookup only runs when Tier 2 found NO item — "חזה עוף" (item) must never be shadowed
   // by "עוף" (category); see vcIdentifiedSafeCategory/askFindCategory above for the full reasoning.
   const cat=(!(h && h.obj) && typeof askFindCategory==='function') ? askFindCategory(qL) : null;
-  return { t1:(r1 && r1.obj)?r1:null, t2:(h && h.obj)?h:null, cat:cat };
+  // R-63 · `t2all` is ADDITIVE and changes nothing above: t1/t2/cat are byte-identical to the shipped
+  // return. It carries the FULL question-text hit list, not just hits[0], because vcClaimSubjectSafeC
+  // must be able to apply the uniform-or-null ambiguity rule to the question's own resolution too —
+  // handing it a bare hits[0] would re-import exactly the defect that function is being fixed for.
+  return { t1:(r1 && r1.obj)?r1:null, t2:(h && h.obj)?h:null, cat:cat,
+           t2all:(hits||[]).filter(function(x){ return x && x.obj; }) };
 }
 // The verified figures a resolved item actually carries. Same accessor set askContextFor (4136) and
 // itemStages (3262) already read — not a new one. Celsius-native; rounded to match the integer °C
@@ -8243,14 +8248,18 @@ try{ window.vcClassifySafetyClaims=vcClassifySafetyClaims; window.vcBuildClaimMa
 // Silence is NEVER release (§5.4.3): a token is released only on a POSITIVE non-internal attribution.
 const SAFETY_CLAIM_SAFETY_KINDS = {internal_safe_temp:1, internal_target_temp:1, cure_ppm:1};
 const SAFETY_CLAIM_FREE_KINDS   = {chamber_temp:1, bath_temp:1, surface_temp:1, duration:1, weight:1, spacing:1};
-function vcClaimVerdict(tokenText, vals, unit, kind, claims){
+// R-63 · `bind` (optional) — the subject-binding context: {tiers, src}. Consulted ONLY by
+// vcClaimSubjectSafeC, and only when the classifier's own subject id resolves to nothing. Omitting it
+// (every pre-existing caller, and every direct unit call) leaves this function strictly stricter, never
+// looser — the first line's claims guard is untouched, so claims===null is still byte-identical.
+function vcClaimVerdict(tokenText, vals, unit, kind, claims, bind){
   if(!claims || typeof claims.get!=='function') return null;
   const cl = claims.get(tokenText);
   if(!cl) return null;                                     // unclassified token → today's behaviour
   if(!(typeof cl.confidence==='number') || cl.confidence < 0.85) return null;
   if(SAFETY_CLAIM_SAFETY_KINDS[cl.kind]){
     if(kind!=='single') return null;                       // a RANGE is a composite claim — never verified
-    const ref = vcClaimSubjectSafeC(cl);
+    const ref = vcClaimSubjectSafeC(cl, bind);
     if(ref==null) return null;                             // unidentified item, OR a MIXED category → redact
     const c = Math.round(aiSafetyToC(vals[0], unit));
     if(c===ref) return {verdict:'verified', c:c};          // equals OUR cited figure — not the model's word
@@ -8277,17 +8286,70 @@ function vcClaimVerdict(tokenText, vals, unit, kind, claims){
 // NOTE (spec §5.3, stated not hidden): `cure_ppm` is routed through this same comparison, and no field
 // in the catalog carries a ppm figure — so a cure_ppm claim can never match and is always redacted.
 // That is the conservative direction the approved table specifies; it is not an oversight.
-function vcClaimSubjectSafeC(cl){
+// R-63 · the ITEM path's ambiguity rule — the exact rule catUniformSafe (8023) applies to a category,
+// applied here to a set of item matches: the shared rounded °C when every match that carries a cited,
+// non-zero `safe` agrees, else null. It reads the SAME `safe` field from the SAME catalog rows; it
+// computes no safety figure and stores none.
+function vcHitsUniformSafeC(hits){
+  const vals=(hits||[]).map(function(h){ return h && h.obj && h.obj.safe; })
+    .filter(function(v){ return v!=null && !isNaN(Number(v)) && Number(v)!==0; })
+    .map(function(v){ return Math.round(Number(v)); });
+  if(!vals.length) return null;
+  return vals.every(function(v){ return v===vals[0]; }) ? vals[0] : null;
+}
+// R-63 · the subject as a HUMAN actually wrote it, used ONLY when the classifier's id resolves to
+// nothing. Precedence, and why: (1) the entity list the USER'S OWN QUESTION resolved to — the user named
+// the item, which is the strongest attribution signal available and the same Tier-2 resolution R-53
+// already trusts; (2) failing that, the entities the ANSWER text itself names. Never both merged: mixing
+// a question's subject with whatever else the answer happens to mention would invent a set no one wrote.
+// Whichever list is used goes through vcHitsUniformSafeC above, so a text naming two items with
+// DIFFERENT safe values redacts instead of guessing which one the claim was about.
+function vcSubjectTextHits(bind){
+  const tiers = bind && bind.tiers;
+  let q = (tiers && Array.isArray(tiers.t2all)) ? tiers.t2all.filter(function(h){ return h && h.obj; }) : [];
+  if(!q.length && tiers && tiers.t2 && tiers.t2.obj) q=[tiers.t2];   // hand-built tiers (tests, direct callers)
+  if(q.length) return q;
+  const src = bind && typeof bind.src==='string' ? bind.src : '';
+  if(!src || typeof askFindEntity!=='function') return [];
+  return (askFindEntity(src.toLowerCase()) || []).filter(function(h){ return h && h.obj; });
+}
+// R-63 (owner-reported live defect 2.8.26; evidence docs/analysis/2026-08-02-v286-live-verification.md,
+// chapter "שורש הבעיה" — measured on the live page by wrapping vcClaimVerdict at runtime, not inferred).
+// TWO separate defects lived in the three lines below.
+//
+// DEFECT 1 — the subject never bound, so v286's release branch was UNREACHABLE. The classifier emits
+// English/transliterated subject ids ("asado"); the catalog holds heb="אסאדו" / eng="Short Ribs" and the
+// string `asado` appears in NEITHER field, so askFindEntity('asado') returned 0 hits, this function
+// returned null, and vcClaimVerdict bailed at `if(ref==null) return null` — one line before the release
+// branch. It also explains the run-to-run variance: when the classifier happened to write item:"beef"
+// there WAS a (coincidental) hit and the same question answered. The fix is deliberately NOT a looser
+// search — loosening is precisely what widens defect 2's blast radius. Instead, when the classifier's own
+// id resolves to NOTHING, the subject binds to the item as it appears in the REAL TEXT (vcSubjectTextHits
+// above), which is language-agnostic by construction: it never parses the classifier's id, so it holds
+// for both id shapes and for all six shipped languages without depending on the classifier's prompt.
+// The classifier's prompt and thinking level are untouched.
+//
+// DEFECT 2 — a latent SAFETY defect, more serious than the first. This function took `hits[0]` from a
+// FUZZY search with no ambiguity check at all, while the CATEGORY path below has always been guarded by
+// catUniformSafe (MIXED → null → redact). A general word matching 13 cuts silently borrowed the first
+// one's `safe` value: the live "63°C לפי המדריך המאומת" the owner read was produced exactly that way,
+// from a cut nobody asked about — and "beef" resolves to a 63/72 MIXED set, so the number was right only
+// by luck. A safety figure taken from an item that was not the subject violates CLAUDE.md's "every `safe`
+// value must trace to a cited primary source" even when it happens to come out right. The item path now
+// applies the SAME uniform-or-null rule the category path applies. Never hits[0].
+// The owner accepted in advance (2.8.26) that this redacts some vague cases that pass today; it is not
+// softened to preserve a number that currently survives.
+function vcClaimSubjectSafeC(cl, bind){
   const sub = cl && cl.subject;
   const itemQ = sub && typeof sub.item==='string' ? sub.item.trim().toLowerCase() : '';
   if(itemQ && typeof askFindEntity==='function'){
-    const hits = askFindEntity(itemQ) || [];
-    const h = hits[0];
-    if(h && h.obj){
-      const v = h.obj.safe;
-      return (v!=null && !isNaN(Number(v)) && Number(v)!==0) ? Math.round(Number(v)) : null;
-    }
-    return null;                                           // named an item we do NOT have → redact (D2)
+    let hits = askFindEntity(itemQ) || [];
+    // An id that matches NOTHING carries no information about which item was meant, so the real text is
+    // asked instead. An id that matches SEVERAL items is a different situation — it is ambiguous, not
+    // unknown — and falls straight through to the uniform-or-null rule below, which is what refuses it.
+    if(!hits.length) hits = vcSubjectTextHits(bind);
+    if(!hits.length) return null;                          // named an item we do NOT have, and the text names none → redact (D2)
+    return vcHitsUniformSafeC(hits);                       // uniform → allowed · MIXED → null → redact
   }
   const catQ = sub && typeof sub.category==='string' ? sub.category.trim().toLowerCase() : '';
   if(catQ && typeof askFindCategory==='function'){
@@ -8374,6 +8436,11 @@ function vcGuardSpoken(text, tiers, lang, claims){
   // Hebrew "פרנהייט") recognises what NFKC alone cannot fold. It is also the seam a future generic
   // unit-conversion component (R-26, separate investigation) should delegate to.
   const src=vcNormalizeSafetyText(text);
+  // R-63 · the subject-binding context handed to the decision table (see vcClaimSubjectSafeC): the tiers
+  // already resolved ONCE from the USER'S QUESTION, plus the answer text itself. Read-only, consulted only
+  // when the classifier's own subject id resolves to nothing. With claims null/undefined vcClaimVerdict
+  // still returns null at its first line, so every branch below stays byte-identical to today.
+  const bind={tiers:tiers, src:src};
   const nAiNums=aiSafetyNums(src).length;
   const digitRuns=(src.match(safetyNumRe())||[]).length;
   // G-A1 hole 1 — a lone bare number with NO recognised unit anywhere in the answer ("pull it at 165
@@ -8442,7 +8509,7 @@ function vcGuardSpoken(text, tiers, lang, claims){
           }
         }
         // R-62 · the PARALLEL approval path. Reached only where the shipped rule already gave up.
-        const v=vcClaimVerdict(tok, vals, unit, kind, claims);
+        const v=vcClaimVerdict(tok, vals, unit, kind, claims, bind);
         if(v && v.verdict==='verified'){ verified++; return UNITS.fmt(v.c,'temp',{role:'safeFloor'})+' '
           +(lang==='he'?'לפי המדריך המאומת.':L('לפי המדריך המאומת.','per the app\'s verified guide.')); }
         if(v && v.verdict==='release'){ return tok; }   // spoken verbatim, NO marker (§5.3)
@@ -8480,7 +8547,7 @@ function vcGuardSpoken(text, tiers, lang, claims){
 
     out=vcMapSafetyNums(src, function(vals, unit, kind){
           const tok=arguments[3];
-          const v=vcClaimVerdict(tok, vals, unit, kind, claims);
+          const v=vcClaimVerdict(tok, vals, unit, kind, claims, bind);
           if(v && v.verdict==='verified'){
             verified++;
             return park(UNITS.fmt(v.c,'temp',{role:'safeFloor'})+' '
@@ -8497,7 +8564,7 @@ function vcGuardSpoken(text, tiers, lang, claims){
     // the bare-digit sweep redacts the "5". This pass therefore cannot redact anything that survives
     // today, and cannot release a bound the decision table did not already approve on its own token.
     out=out.replace(claimOnlyRangeRe(), function(_m, _n1, _sep, upper){
-      const v=vcClaimVerdict(upper, [safetyNumVal(upper)], '', 'single', claims);
+      const v=vcClaimVerdict(upper, [safetyNumVal(upper)], '', 'single', claims, bind);
       return (v && v.verdict==='release') ? park(_m) : _m;
     });
     // Wide pass — CLAIM_ONLY_UNIT tokens the narrow pass above structurally cannot match (SAFETY_UNIT
@@ -8506,7 +8573,7 @@ function vcGuardSpoken(text, tiers, lang, claims){
     // unit word already produced — see CLAIM_ONLY_TOKEN_SRC's own comment for why this holds even when
     // the unit match itself over-reaches (e.g. a bare Hebrew unit letter).
     out=out.replace(claimOnlyTokenRe(), function(_m, n1, nTail){
-      const v=vcClaimVerdict(_m, [safetyNumVal(n1)], '', 'single', claims);
+      const v=vcClaimVerdict(_m, [safetyNumVal(n1)], '', 'single', claims, bind);
       if(v && v.verdict==='release') return park(_m);
       redacted++; return VC_REDACT+nTail;
     });
