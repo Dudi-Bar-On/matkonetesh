@@ -115,6 +115,12 @@ try:
 except ImportError:
     print("[equip] equipment_map.py not found — recipes ship without equipment requirements")
 
+# R-75 data model: the structured `items` array that replaces per-consumer re-derivation of the
+# legacy flat row shape. Runs after the sources merge above so `row["src"]` is populated.
+import model as _model
+_items, _unconverted = _model.build_items(CUTS, SPECIALS, MAKES)
+print("[model] items:", len(_items), "· unconverted entries:", len(_unconverted))
+
 payload = {
     "cuts": CUTS,
     "specials": SPECIALS,
@@ -123,6 +129,9 @@ payload = {
     "makes": MAKES,
     "seasonings": SEASONINGS,
     "houseRub": HOUSE_RUB_MAP,
+    "items": _items,
+    "schemaVersion": _model.SCHEMA_VERSION,
+    "unconvertedReasons": sorted({u["reason"] for u in _unconverted}),
 }
 DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
