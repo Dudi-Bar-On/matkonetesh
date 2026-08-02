@@ -1268,6 +1268,12 @@ Authoritative form of METHODOLOGY-2026-07-30 §2, written here so every subagent
 name and what must be pasted in it (RED output, GREEN output, exit code, screenshot paths) **including
 the H9 5-row summary table**, and (e) a "primary tool" field: serena for symbol work, graphify for
 docs/relationship questions, grep only as a declared fallback. A missing field = an invalid brief.
+**Build it with `node scripts/make-brief.mjs --plan <plan> --task <N> --out <brief> --spec "<quoted spec
+lines>" --tool <serena|graphify|אחר>`** — it derives (b)(c)(d)(f) and the plan's Global Constraints, and
+**refuses** when (a) or (e) is missing or a placeholder. That refusal is the whole design: a slice of
+plan text is the raw material of a brief, not a brief, and five such slices sent `check-brief` red and
+taught the escape hatch to become routine (2026-08-02, owner decision — see `gate-baselines.json`
+`_owner_additions`). A generator that emitted "TODO" would pass the marker scan and defeat its own gate.
 A report is a FILE under `.superpowers/sdd/`; the agent returns only a summary + path; Main verifies
 via diff, never on the report alone. **Main's context budget:** no full source files, no full suite
 logs, no long documents — anything projected over ~2k cumulative lines goes to a subagent that returns

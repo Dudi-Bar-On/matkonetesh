@@ -5,12 +5,17 @@
     "stream-T1-brief.md",
     "stream-T2-brief.md",
     "task-1-brief.md",
+    "task-12-brief.md",
+    "task-13-brief.md",
     "task-14-brief.md",
     "task-2-brief.md",
     "task-3-brief.md",
     "task-4-brief.md",
     "task-5-brief.md",
     "task-6-brief.md",
+    "task-7-brief.md",
+    "task-8-brief.md",
+    "task-9-brief.md",
     "units-U1-brief.md",
     "units-U2-brief.md",
     "units-U3-brief.md",
@@ -25,5 +30,20 @@
     "voice-T9-brief.md",
     "voice-wave0-brief.md"
   ],
-  "report": []
+  "report": [],
+  "_owner_additions": [
+    {
+      "date": "2026-08-02",
+      "files": [
+        "task-7-brief.md",
+        "task-8-brief.md",
+        "task-9-brief.md",
+        "task-12-brief.md",
+        "task-13-brief.md"
+      ],
+      "decision": "owner-approved (option א): grandfather these five AND build the root-cause fix in the same breath",
+      "why": "These five were machine-sliced out of plan text and carry none of the six §13 fields. They are already-executed historical artefacts; editing them now to add the markers would fabricate evidence of a contract that was not actually followed, so they are recorded as debt rather than retouched. Adding to this list without fixing the cause is how a waiver list rots — so the same decision required scripts/make-brief.mjs, which builds a template-shaped brief from a plan and REFUSES to emit one when the two judgement fields (spec lines, primary tool) are missing or placeholders. A generator that emitted \"TODO\" would satisfy the marker scan and defeat the gate it serves.",
+      "root_cause_fix": "scripts/make-brief.mjs + scripts/tests/test-make-brief.mjs (10/10, includes check-brief accepting the generator output)"
+    }
+  ]
 }
