@@ -2596,5 +2596,12 @@
   "ממשיך: ": "Continuing: ",
   "זמן להדליק את המעשנת": "Time to light the smoker",
   "הגיע זמן ההגשה": "Serve time is here",
-  "התנגשות מכשיר בזמן חי": "Device conflict in the live window"
+  "התנגשות מכשיר בזמן חי": "Device conflict in the live window",
+  "הזמן קצר — דחה את ההגשה, אל תקצר שלבי בישול": "Time is short — push the serve time, do not shorten cooking stages",
+  "הגיע ליעד הפנימי — נוח והגש": "Target internal temp reached — rest and serve",
+  "בסטָאל — הקצב שטוח. עטוף לפרוץ, או המתן.": "In the stall — the pace is flat. Wrap to push through, or wait it out.",
+  "הטמפ׳ אינה עולה — בדוק את החום והדלק": "The temp is not rising — check the fire and the fuel",
+  "הקצב האט — הצפי זז": "The pace slowed — the estimate moved",
+  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "You have slack — you can hold it in a cooler",
+  "אתה בקצב הנכון להגשה": "You are on pace for serve"
 }

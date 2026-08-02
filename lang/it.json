@@ -2597,5 +2597,12 @@
   "ממשיך: ": "Continua: ",
   "זמן להדליק את המעשנת": "È ora di accendere l'affumicatore",
   "הגיע זמן ההגשה": "È arrivata l'ora di servire",
-  "התנגשות מכשיר בזמן חי": "Conflitto di dispositivo nella finestra live"
+  "התנגשות מכשיר בזמן חי": "Conflitto di dispositivo nella finestra live",
+  "הזמן קצר — דחה את ההגשה, אל תקצר שלבי בישול": "Il tempo è poco — posticipa l’orario di servizio, non accorciare le fasi di cottura",
+  "הגיע ליעד הפנימי — נוח והגש": "Temperatura interna target raggiunta — far riposare e servire",
+  "בסטָאל — הקצב שטוח. עטוף לפרוץ, או המתן.": "Nello stallo — il ritmo è piatto. Avvolgi per superarlo, oppure aspetta.",
+  "הטמפ׳ אינה עולה — בדוק את החום והדלק": "La temperatura non sale — controlla il fuoco e il combustibile",
+  "הקצב האט — הצפי זז": "Il ritmo è rallentato — la stima è cambiata",
+  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "Hai margine di tempo — puoi tenerlo in una ghiacciaia isolante",
+  "אתה בקצב הנכון להגשה": "Sei in linea con i tempi per il servizio"
 }

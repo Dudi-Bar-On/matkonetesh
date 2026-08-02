@@ -7026,6 +7026,7 @@ function armScheduleCard(when, key, text){
 }
 try{ window.__armScheduleCard=armScheduleCard; }catch(e){}
 let _clashPrev=false;   // Task 13 · S7 — device-clash advisory, tracked ACROSS renders so it fires once per state CHANGE
+let _planLateSaid=null; // Task 14 · S4 — evScope() of the last "plan is late" safety announcement, so a rebuild doesn't repeat it
 // R-52 §3 / owner ruling F-5: which chunk of the CURRENT utterance is sounding right now, so an
 // interrupted utterance can resume from the START of that chunk (never mid-sentence). Set by gemSpeak,
 // read (and cleared) by the Task-12 queue only — the cursor contract, prefetch and gen token are untouched.
@@ -7779,7 +7780,10 @@ function vcAction(a){
          : chamber ? L('טמפרטורת התא: ','Chamber temperature: ')+m[1]+L(' מעלות — הוצא כשהפנים מגיע לטמפרטורה הבטוחה',' degrees — that is the chamber temperature; pull when the core reaches the safe internal temp')
          : L('הטמפרטורה: ','Temperature: ')+m[1]+L(' מעלות',' degrees'))
       : L('אין טמפרטורה במשימה הזו','No temperature for this step.');
-    vcSpeak(tempMsg, vcVoiceLang(), 'step');
+    // Task 14 · V3 — a core-temperature answer is safety CONTENT even though its trigger is user-initiated
+    // (§1.1 marks V3 safety-content/steps-trigger): it must still be heard when the `steps` category is
+    // off. voiceSay logs + shows the card before the (always-on) safety gate, same as every other site.
+    voiceSay('safety', tempMsg, {tier:'fyi'});
   }
   else if(a==='qwhen'){
     const nx=vcTasks[vcIdx+1];
@@ -8767,7 +8771,13 @@ function copilotStallInfo(tempC){
   return { inStall: phase==='stall', phase, title, body };
 }
 // W2-P3: probe capture + pace/ETA — the new subsystem. Manual entry (device-agnostic: read off the MEATER/Inkbird app).
-function copilotLogProbe(tempC){ const sc=liveScope(); const s=liveSession(sc); if(!s) return null; if(!Array.isArray(s.probes)) s.probes=[]; s.probes.push({t:Date.now(), tempC:tempC}); store.set(liveKey(sc), s); return s; }
+function copilotLogProbe(tempC){ const sc=liveScope(); const s=liveSession(sc); if(!s) return null; if(!Array.isArray(s.probes)) s.probes=[]; s.probes.push({t:Date.now(), tempC:tempC}); store.set(liveKey(sc), s);
+  // Task 14 (§2.4, C1-C5) — a new probe is the only thing that can change copilotPace's verdict (it is
+  // pure math over s.probes/s.targetC; see copilotPace's own comment), so the announcer is called HERE —
+  // not from openCopilot, whose other callers (panel re-render, view switches) must stay silent.
+  // copilotAnnouncePace itself dedupes on the verdict string, so a repeat call here is a silent no-op.
+  try{ if(typeof copilotAnnouncePace==='function' && typeof copilotPace==='function') copilotAnnouncePace(copilotPace(s)); }catch(e){}
+  return s; }
 function copilotSetTarget(tempC){ const sc=liveScope(); const s=liveSession(sc); if(!s) return null; s.targetC=tempC; store.set(liveKey(sc), s); return s; }
 // W2-P4: adaptive recompute — shift the serve time (running late / moved / ahead). Updates the session verdict AND the
 // work-plan serve (mk-tlserve + date) so the plan reschedules backward to match next time it renders.
@@ -8803,6 +8813,28 @@ function copilotPace(session){
     out.verdict = slackMs>15*60000?'ahead' : (slackMs<-15*60000?'behind':'on-pace'); out.slackMin=Math.round(slackMs/60000); }
   return out;
 }
+// Task 14 (§2.4, C1-C5) · the pace verdict leaves the panel. copilotPace itself is PURE and stays pure —
+// it is the ETA math, and DoD-10 forbids touching what it computes; this is a thin observer above it.
+// Deduped on the verdict STRING — the spec's own requirement ("only on a verdict CHANGE, not every
+// render") — without it, calling this from every copilotLogProbe would still be fine (one call per
+// reading), but a future caller from a render path would speak on every panel open.
+let copilotLastState=null;
+function copilotAnnouncePace(pace){
+  const p=pace||{}, sig=p.state+'|'+(p.verdict||'');
+  if(sig===copilotLastState) return;
+  copilotLastState=sig;
+  if(p.state==='done'){        // C1 — reaching the internal target IS a safety value (§1.1)
+    voiceSay('safety', L('הגיע ליעד הפנימי — נוח והגש','Target internal temp reached — rest and serve'),
+             {tier:'act', key:'cop:done'}); return; }
+  if(p.state==='stall')  return void voiceSay('progress', L('בסטָאל — הקצב שטוח. עטוף לפרוץ, או המתן.','In the stall — the pace is flat. Wrap to push through, or wait it out.'));
+  if(p.state==='flat')   return void voiceSay('progress', L('הטמפ׳ אינה עולה — בדוק את החום והדלק','The temp is not rising — check the fire and the fuel'));
+  if(p.verdict==='behind') return void voiceSay('progress', L('הקצב האט — הצפי זז','The pace slowed — the estimate moved'));
+  if(p.verdict==='ahead')  return void voiceSay('progress', L('יש עודף זמן — אפשר להחזיק בקופסת בידוד','You have slack — you can hold it in a cooler'));
+  // on-pace is still a verdict CHANGE (e.g. from 'behind' back to on-pace after the user reacted) — it
+  // gets the same one-time confirmation the html pace note already shows visually (_copilotPaceHtml).
+  if(p.verdict==='on-pace') return void voiceSay('progress', L('אתה בקצב הנכון להגשה','You are on pace for serve'));
+}
+try{ window.copilotAnnouncePace=copilotAnnouncePace; }catch(e){}
 function _copilotPaceHtml(pace){
   const p=pace||{};
   const note=function(cls,txt){ return `<div class="cop-pacenote ${cls||''}">${txt}</div>`; };
@@ -8979,6 +9011,13 @@ function renderPlanStartRow(earliest, serve, rebuild){
   let warn='';
   if(behind){ const late=Math.round((Date.now()-earliest.getTime())/60000);
     warn=`<div class="plan-warn">${L(`⚠ הזמן קצר — כדי להגיש ב-${fmtServe(serve)} היה צריך להתחיל ב-${fmtServe(earliest)} (לפני ${late} דק׳). דחה את ההגשה — אל תקצר שלבי בישול (עלול להשאיר את הפנים תת-מבושל ולא בטוח).`,`⚠ Time is short — to serve at ${fmtServe(serve)} you should have started at ${fmtServe(earliest)} (${late} min ago). Push the serve time — don't shorten cooking stages (it may leave the inside undercooked and unsafe).`)} <button class="mchip" data-planpush>➕ ${L('דחה הגשה ב-30 דק׳','Push serve by 30 min')}</button> <button class="mchip" data-planreschedule>▶ ${L('תזמן מחדש מעכשיו','Reschedule from now')}</button></div>`;
+    // Task 14 · S4 — the plan is late. The warning's own text says "עלול להשאיר את הפנים תת-מבושל ולא
+    // בטוח" (may leave the inside undercooked and unsafe) — shortening a cook stage under time pressure
+    // is exactly what a rushed cook does, so this is the SAFETY channel, not `schedule`. Deduped on the
+    // event scope so a rebuild (this function runs on every buildList render) does not repeat it.
+    if(typeof evScope==='function' && _planLateSaid!==evScope()){ _planLateSaid=evScope();
+      voiceSay('safety', L('הזמן קצר — דחה את ההגשה, אל תקצר שלבי בישול','Time is short — push the serve time, do not shorten cooking stages'),
+               {tier:'act', key:'plan:late'}); }
   }
   el.innerHTML=`${warn}<div class="plan-startrow">
     <button class="plan-startbtn ${started?'on':''}" data-planstart ${blockStart?'disabled':''}>${started?L('⏹ עצור / אפס תוכנית','⏹ Stop / reset plan'):L('▶ התחל תוכנית','▶ Start plan')}</button>

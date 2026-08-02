@@ -2596,5 +2596,12 @@
   "ממשיך: ": "Weiter: ",
   "זמן להדליק את המעשנת": "Zeit, den Smoker anzuzünden",
   "הגיע זמן ההגשה": "Die Servierzeit ist gekommen",
-  "התנגשות מכשיר בזמן חי": "Gerätekonflikt im Live-Fenster"
+  "התנגשות מכשיר בזמן חי": "Gerätekonflikt im Live-Fenster",
+  "הזמן קצר — דחה את ההגשה, אל תקצר שלבי בישול": "Die Zeit ist knapp — verschiebe die Servierzeit, kürze keine Garphasen",
+  "הגיע ליעד הפנימי — נוח והגש": "Kerntemperatur-Ziel erreicht — ruhen lassen und servieren",
+  "בסטָאל — הקצב שטוח. עטוף לפרוץ, או המתן.": "Im Stall — das Tempo ist flach. Einwickeln, um durchzubrechen, oder abwarten.",
+  "הטמפ׳ אינה עולה — בדוק את החום והדלק": "Die Temperatur steigt nicht — prüfe das Feuer und den Brennstoff",
+  "הקצב האט — הצפי זז": "Das Tempo hat sich verlangsamt — die Schätzung hat sich verschoben",
+  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "Du hast Zeitpuffer — du kannst es in einer Kühlbox warmhalten",
+  "אתה בקצב הנכון להגשה": "Du liegst im Zeitplan für die Servierzeit"
 }
