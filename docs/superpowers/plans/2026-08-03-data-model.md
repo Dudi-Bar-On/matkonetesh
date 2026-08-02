@@ -700,3 +700,368 @@ git commit -m "feat(model): consumers read the model; the legacy scalar has no r
 **Known narrowing, stated not hidden:** `cure`/`drying`/`fermentation`/`aging`/`parasite` blocks are **defined in the spec but only `thermal` is built here.** The other five need per-item values that exist today only as prose in `SPECIALS`/`MAKES`, and inventing them would violate DoD-10. **They land as an explicit `unconverted` reason (`mechanism-not-extracted`) so the report names every affected item.** This is a scope boundary the owner must confirm — it is raised in the morning report, not decided silently.
 
 **Type consistency:** `build_items` returns `(items, unconverted)` in Tasks 1–3; `model_guards.run(items)` takes only items; `MODEL.safeC` returns `number|null` and every consumer treats `null` as "say no number".
+
+---
+
+# ADDENDUM — owner instruction, 2026-08-03 01:50
+
+> **"תבנה הכל, תמיר הכל, תבדוק הכל תדווח — לא פחות מזה."**
+
+This overrides the scope boundary named in the Self-Review above. **All six mechanism kinds are built.**
+The boundary is no longer a question for the owner; it is closed as: build them.
+
+**DoD-10 still binds, and it is the hard part.** No safety value may be *invented*. This is the line, and
+every task below stays on the authored side of it:
+
+| Allowed | Forbidden |
+|---|---|
+| **Extract** what the data states (`calc.salt = 18` → `salt_g_per_kg: 18`) | **Compute** a safety claim the data does not make |
+| **Attach** a regulatory limit from the corpus AS a limit (`nitrite_ppm_max: 200`, source #6) | Present that limit as if it were the item's own value |
+| **Check** the authored value against the corpus limit and report a breach | Silently clamp a value so it passes |
+| **Report** a mechanism we can see but cannot quantify | Guess the missing number |
+
+The payoff of this framing: the corpus stops being a filing cabinet and becomes a **validator**. Every
+cure dose is checked against 9 CFR §424.21's 200 ppm ceiling (#6) and CFIA's 100 ppm floor (#11); every
+drying block against FSIS a_w 0.85 (#9); every fermentation against AMI 1997 degree-hours (#10).
+**That check is the real deliverable here**, more than the block itself.
+
+## What each mechanism is extracted FROM — measured 2026-08-03
+
+| Kind | Source in the authored data | Shape |
+|---|---|---|
+| `thermal` | `CUTS.safe`, and `SPECIALS.tgt` when numeric | numeric — Task 1 |
+| `cure` | **`MAKES[*].build.calc`** = `{salt, cure:'1'/'2'/None, cureRate, sugar, water, brine}` — **already structured, 50 rows** · `SPECIALS.cure` prose naming Cure #1/#2 and day counts | mixed |
+| `drying` | `SPECIALS.age` prose · `SPECIALS.cat == בשר מיובש` | prose |
+| `fermentation` | `MAKES[*].build.phases` prose naming תסיסה/תרבית · `SPECIALS.cure` likewise | prose |
+| `aging` | `SPECIALS.age` prose · cheese rows | prose |
+| `parasite` | **NOT authored anywhere.** Fish rows carry no freezing field. | absent |
+
+**`parasite` is the one honest gap and it is named, not filled.** The corpus holds FDA's freezing table
+(#5), but *which of our fish is served raw* is a culinary fact nobody has authored. Every fish row lands
+in the report under `parasite-not-authored` and no block is created. A data gap named is not a mechanism
+skipped.
+
+---
+
+## Task 1b: `cure` blocks — the structured half, and the corpus as validator
+
+**Files:** Create `model_cure.py` · Modify `model.py` · Test `tests/model-cure.spec.ts`
+**Interfaces:** `model_cure.block(row) -> (block|None, unconverted:list)`
+
+- [ ] **Step 1 — failing test** (`tests/model-cure.spec.ts`)
+
+```ts
+import { test, expect, seedApp } from './_fixtures';
+
+const boot = async (p: any) => {
+  await seedApp(p, { 'mk-uilevel-asked': 'true' });
+  await p.waitForFunction(`!!(window.DATA && DATA.items)`);
+};
+
+test('CU1 · a cured item carries a cure block with its AUTHORED dose', async ({ page }) => {
+  await boot(page);
+  const r = await page.evaluate(`(function(){
+    var withCure = DATA.items.filter(function(x){
+      return (x.safety||[]).some(function(b){ return b.kind==='cure'; }); });
+    var one = withCure.filter(function(x){
+      return (x.safety||[]).some(function(b){ return b.kind==='cure' && b.salt_g_per_kg != null; }); })[0];
+    var b = one && (one.safety||[]).filter(function(z){ return z.kind==='cure'; })[0];
+    return { count: withCure.length, name: one && one.name.he, block: b };
+  })()`) as any;
+  expect(r.count).toBeGreaterThan(0);
+  expect(r.block.salt_g_per_kg).toBeGreaterThan(0);
+  expect(r.block.source_id).not.toBeNull();
+});
+
+test('CU2 · every cure dose is checked against the CFR ceiling and the CFIA floor', async ({ page }) => {
+  await boot(page);
+  const breaches = await page.evaluate(`(function(){
+    var out = [];
+    DATA.items.forEach(function(it){
+      (it.safety||[]).forEach(function(b){
+        if (b.kind==='cure' && b.limit_check==='breach') out.push(it.name.he + ':' + b.limit_reason);
+      });
+    });
+    return out;
+  })()`) as string[];
+  expect(breaches).toEqual([]);
+});
+
+// NEGATIVE (DoD-6): a FRESH sausage (calc.cure === null) must get NO cure block.
+test('CU3 · a fresh sausage carries no cure block at all', async ({ page }) => {
+  await boot(page);
+  const kinds = await page.evaluate(`(function(){
+    var b = DATA.items.filter(function(x){ return x.name.he==='בראטוורסט'; })[0];
+    return b ? (b.safety||[]).map(function(z){ return z.kind; }) : null;
+  })()`) as string[];
+  expect(kinds).not.toContain('cure');
+});
+```
+
+- [ ] **Step 2 — run it, watch it fail.** `npx playwright test tests/model-cure.spec.ts; ec=$?; echo "EXIT=$ec"`
+
+- [ ] **Step 3 — write `model_cure.py`**
+
+```python
+# -*- coding: utf-8 -*-
+"""`cure` blocks: extracted from what is authored, validated against the corpus.
+
+MAKES carry a STRUCTURED calc, so those need no prose parsing at all. SPECIALS carry
+Hebrew prose that reliably names Cure #1 / Cure #2 and often a day count. Nothing here
+computes a ppm figure and presents it as the item's own value: the regulatory ceiling
+and floor are attached as LIMITS, each with its corpus id.
+"""
+import re
+
+SRC_CFR_424_21, SRC_CFR_424_22, SRC_CFIA = 6, 7, 11
+
+NITRITE_PPM_MAX = 200      # 9 CFR 424.21 — no more than 200 ppm nitrite in the finished product
+NITRITE_PPM_MIN = 100      # CFIA — the floor the CFR does not state
+SALT_PCT_MIN = 2.5         # CFIA, alongside the nitrite floor
+
+_CURE_N = re.compile(r"Cure\s*#\s*([12])", re.I)
+_DAYS = re.compile(r"(\d+)\s*(?:-\s*\d+\s*)?ימים")
+
+
+def _from_calc(calc):
+    if not isinstance(calc, dict):
+        return None
+    ctype = calc.get("cure")
+    if ctype in (None, "", 0):
+        return None                       # fresh — no cure mechanism, and that IS the answer
+    return {"cure_type": str(ctype), "cure_rate_g_per_kg": calc.get("cureRate"),
+            "salt_g_per_kg": calc.get("salt"), "sugar_g_per_kg": calc.get("sugar"),
+            "brine": bool(calc.get("brine"))}
+
+
+def _from_prose(text):
+    if not text:
+        return None
+    m = _CURE_N.search(text)
+    if not m:
+        return None
+    out = {"cure_type": m.group(1), "cure_rate_g_per_kg": None, "salt_g_per_kg": None,
+           "sugar_g_per_kg": None, "brine": ("תמלחת" in text or "כבישה רטובה" in text)}
+    d = _DAYS.search(text)
+    if d:
+        out["cure_days"] = int(d.group(1))
+    return out
+
+
+def block(row):
+    """Returns (block|None, unconverted:list). Never invents a dose."""
+    unconv = []
+    build = row.get("build") if isinstance(row.get("build"), dict) else None
+    base = _from_calc(build.get("calc")) if build else None
+    if base is None:
+        base = _from_prose(row.get("cure"))
+    if base is None:
+        return None, unconv
+
+    base["kind"] = "cure"
+    base["nitrite_ppm_max"] = NITRITE_PPM_MAX      # LIMITS from the corpus, not our values
+    base["nitrite_ppm_min"] = NITRITE_PPM_MIN
+    base["salt_pct_min"] = SALT_PCT_MIN
+    base["source_id"] = SRC_CFR_424_21
+    base["limit_sources"] = [SRC_CFR_424_21, SRC_CFR_424_22, SRC_CFIA]
+
+    salt = base.get("salt_g_per_kg")
+    if salt is None:
+        base["limit_check"] = "unknown"
+        base["limit_reason"] = "no authored salt figure"
+        unconv.append({"id": row.get("n"), "name": row.get("heb"), "field": "cure",
+                       "value": row.get("cure"), "reason": "cure-dose-not-authored"})
+    elif (float(salt) / 10.0) < SALT_PCT_MIN:
+        base["limit_check"] = "below-cfia-floor"
+        base["limit_reason"] = "salt %.1f g/kg = %.2f%% < CFIA %.1f%%" % (
+            salt, float(salt) / 10.0, SALT_PCT_MIN)
+    else:
+        base["limit_check"] = "within"
+        base["limit_reason"] = None
+    return base, unconv
+```
+
+- [ ] **Step 4 — call it from `model.py`** for `SPECIALS` and for every `MAKES` entry (see Task 1f: MAKES
+  become items, `id = "make:" + mid`). Append the block to `safety`; extend `unconverted`.
+- [ ] **Step 5 — build, read the report, run the test.** **If CU2 finds a breach, that is a FINDING, not a
+  test to relax.** Report it; never adjust the limit to make it pass.
+- [ ] **Step 6 — commit:** `feat(model): cure blocks, validated against the CFR ceiling and CFIA floor`
+
+---
+
+## Task 1c: `drying`, `fermentation`, `aging` — the prose mechanisms
+
+**Files:** Create `model_process.py` · Modify `model.py` · Test `tests/model-process.spec.ts`
+**Interfaces:** `model_process.blocks(row) -> (list, unconverted:list)`
+
+- [ ] **Step 1 — failing test**
+
+```ts
+test('P1 · biltong dries, salami ferments AND dries', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  await page.waitForFunction(`!!(window.DATA && DATA.items)`);
+  const r = await page.evaluate(`(function(){
+    var k = function(n){
+      var it = DATA.items.filter(function(x){ return x.name.he===n; })[0];
+      return it ? (it.safety||[]).map(function(b){ return b.kind; }).sort() : null; };
+    return { biltong: k('בילטונג'), salami: k('סלמי') };
+  })()`) as any;
+  expect(r.biltong).toContain('drying');
+  expect(r.salami).toContain('drying');
+});
+
+test('P2 · a threshold exists only with a source, and is labelled a limit', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  await page.waitForFunction(`!!(window.DATA && DATA.items)`);
+  const bad = await page.evaluate(`(function(){
+    var out = [];
+    DATA.items.forEach(function(it){
+      (it.safety||[]).forEach(function(b){
+        var isProc = (b.kind==='drying' || b.kind==='fermentation' || b.kind==='aging');
+        var hasNum = (b.aw_max != null || b.ph_max != null || b.degree_hours_max != null);
+        if (isProc && hasNum && b.source_id == null) out.push(it.name.he + ':' + b.kind);
+      });
+    });
+    return out;
+  })()`) as string[];
+  expect(bad).toEqual([]);
+});
+```
+
+- [ ] **Step 2 — run, watch it fail. Step 3 — write `model_process.py`**
+
+```python
+# -*- coding: utf-8 -*-
+"""drying / fermentation / aging, read out of the authored prose.
+
+Thresholds are NEVER read out of the prose — the prose says "4-7 ימים בייבוש מאוורר",
+never an a_w. The threshold comes from the corpus and is labelled a LIMIT with its source
+id. What the prose supplies is the DURATION and the fact that the mechanism applies.
+"""
+import re
+
+SRC_JERKY_2014, SRC_GD_2023, SRC_AMI_1997, SRC_21CFR133, SRC_LISTERIA = 9, 8, 10, 12, 13
+
+AW_MAX_SHELF_STABLE = 0.85        # FSIS jerky guideline (#9) / GD-2023-0002 (#8)
+PH_MAX_FERMENT = 5.3              # GD-2023-0002 (#8), AMI 1997 (#10)
+DEGREE_HOURS = {"le_90F": 1200, "f_90_100F": 1000, "gt_100F": 900}   # AMI 1997 (#10)
+CHEESE_AGE_DAYS_MIN, CHEESE_AGE_TEMP_C_MIN = 60, 1.7                 # 21 CFR 133 (#12)
+
+_DAYS = re.compile(r"(\d+)(?:\s*-\s*(\d+))?\s*ימים")
+_WEEKS = re.compile(r"(\d+)(?:\s*-\s*(\d+))?\s*שבועות")
+_DRY = ("ייבוש", "מיובש", "ייבש", "בילטונג")
+_FERM = ("תסיסה", "תרבית", "מותסס", "מחמיץ")
+_AGE = ("יישון", "הבשלה", "מיושן")
+
+
+def _days(text):
+    m = _DAYS.search(text or "")
+    if m:
+        return int(m.group(2) or m.group(1))
+    m = _WEEKS.search(text or "")
+    if m:
+        return int(m.group(2) or m.group(1)) * 7
+    return None
+
+
+def blocks(row):
+    out, unconv = [], []
+    hay = " ".join(str(row.get(k) or "") for k in ("cure", "age", "note", "cat", "heb"))
+
+    if any(w in hay for w in _DRY):
+        out.append({"kind": "drying", "days": _days(row.get("age") or hay),
+                    "aw_max": AW_MAX_SHELF_STABLE, "limit_is_regulatory": True,
+                    "source_id": SRC_JERKY_2014,
+                    "limit_sources": [SRC_JERKY_2014, SRC_GD_2023]})
+    if any(w in hay for w in _FERM):
+        out.append({"kind": "fermentation", "ph_max": PH_MAX_FERMENT,
+                    "degree_hours_max": DEGREE_HOURS, "limit_is_regulatory": True,
+                    "source_id": SRC_GD_2023,
+                    "limit_sources": [SRC_GD_2023, SRC_AMI_1997]})
+        if _days(row.get("age") or "") is None:
+            unconv.append({"id": row.get("n"), "name": row.get("heb"), "field": "age",
+                           "value": row.get("age"), "reason": "ferment-duration-not-authored"})
+    if any(w in hay for w in _AGE) and "גבינ" in hay:
+        out.append({"kind": "aging", "days_min": CHEESE_AGE_DAYS_MIN,
+                    "temp_c_min": CHEESE_AGE_TEMP_C_MIN, "requires_pasteurized_milk": False,
+                    "limit_is_regulatory": True, "source_id": SRC_21CFR133,
+                    "limit_sources": [SRC_21CFR133, SRC_LISTERIA]})
+    return out, unconv
+```
+
+- [ ] **Steps 4–6** — call from `model.py`; build; read the report; run the test; commit
+  `feat(model): drying, fermentation and aging blocks, thresholds sourced not guessed`
+
+---
+
+## Task 1d: `parasite` — the gap, named
+
+- [ ] **Step 1 — failing test** (append to `tests/model-process.spec.ts`)
+
+```ts
+test('P3 · every fish row is named in the report under parasite-not-authored', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  await page.waitForFunction(`!!(window.DATA && DATA.items)`);
+  const r = await page.evaluate(`(function(){
+    var fish = DATA.items.filter(function(it){ return it.category==='דג'; });
+    var silent = fish.filter(function(it){
+      var noBlock = (it.safety||[]).every(function(b){ return b.kind!=='parasite'; });
+      return noBlock && (DATA.unconvertedIds||[]).indexOf(it.id) === -1;
+    }).map(function(it){ return it.name.he; });
+    return { fishCount: fish.length, silent: silent };
+  })()`) as any;
+  expect(r.fishCount).toBeGreaterThan(0);
+  expect(r.silent).toEqual([]);
+});
+```
+
+- [ ] **Steps 2–4** — run it red; in `model.py`, for every `category == 'דג'` row with no authored freezing
+  field, append `{"reason": "parasite-not-authored", ...}` to `unconverted` and **create no block**; build;
+  run; commit. The FDA table (#5) states the regulation, not which of OUR items is served raw.
+
+---
+
+## Task 1e: `source_id` resolution — 80+ prose refs → 19 corpus ids
+
+**Files:** Create `model_sources.py` · Modify `model.py` · Test `tests/model-sources.spec.ts`
+
+Task 1's agent measured **80+ distinct reference strings** in `sources.py`. A wrong id is worse than a
+missing one.
+
+- [ ] **Step 1** — dump every distinct `ref` with its frequency and **read the list yourself**.
+- [ ] **Step 2 — failing test:** source ids are distributed, not all defaulted to one entry.
+
+```ts
+test('S1 · source ids are distributed, not all defaulted to one corpus entry', async ({ page }) => {
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  await page.waitForFunction(`!!(window.DATA && DATA.items)`);
+  const ids = await page.evaluate(`(function(){
+    var s = {};
+    DATA.items.forEach(function(it){
+      (it.safety||[]).forEach(function(b){ s[b.source_id] = (s[b.source_id]||0)+1; }); });
+    return s;
+  })()`) as Record<string, number>;
+  expect(Object.keys(ids).length).toBeGreaterThan(2);
+});
+```
+
+- [ ] **Step 3** — write `model_sources.py` with an explicit `REF_TO_CORPUS` dict: **one entry per
+  reference string you actually read**, mapping to a corpus id or to `None`. `None` is a legitimate,
+  reportable answer (`source-unmapped`); a guess is not. Derived refs (`meatsandsausages.com`) map to the
+  primary that replaced them (#6/#7) — `00-SOURCE-MAP.md` §10 records those replacements.
+- [ ] **Steps 4–5** — build; the report gains a `source-unmapped` section; **read it**; commit.
+
+---
+
+## Task 1f: MAKES become items
+
+`MAKES` (50 build-from-scratch recipes) were outside Task 1's loop and carry the most structured safety
+data in the catalogue. Add them in `model.py` with `id = "make:" + mid` and their cure block from Task 1b.
+Assert `DATA.items.length === 130 + 47 + 50 === 227` and that no existing consumer breaks.
+
+---
+
+## Revised Task 6
+
+The full suite runs after **1, 1b, 1c, 1d, 1e, 1f, 2, 3, 4, 5** — not before. Everything above is
+build-time and test-time; nothing reaches a user until Task 5 migrates the consumers and Task 6 gates it.
