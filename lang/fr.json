@@ -2609,5 +2609,6 @@
  "בקטגוריית %s זה תלוי בנתח: ": "Dans la catégorie %s cela dépend du morceau : ",
  "מספר זה אינו מאומת.": "Ce nombre n’a pas été vérifié.",
  "המספרים האלה אינם מאומתים.": "Ces nombres n’ont pas été vérifiés.",
- "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "Nouveautés : correctif urgent — les questions contenant des chiffres fonctionnent de nouveau. Dans la version précédente, une requête mal formée au service d’IA supprimait tous les chiffres."
+ "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "Nouveautés : correctif urgent — les questions contenant des chiffres fonctionnent de nouveau. Dans la version précédente, une requête mal formée au service d’IA supprimait tous les chiffres.",
+ "מה חדש: תיקון בטיחות — שאלה על ירק או פרי כבר לא מקבלת טמפרטורת בטיחות שאינה קיימת. בנוסף נחת מאגר המקורות: 19 מקורות ראשוניים עם ציטוט לכל ערך.": "Nouveautés : correctif de sécurité — une question sur un légume ou un fruit ne renvoie plus une température de sécurité qui n’existe pas. Le corpus de sources est également arrivé : 19 sources primaires, avec une citation pour chaque valeur."
 }

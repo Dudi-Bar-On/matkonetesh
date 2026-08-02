@@ -2608,5 +2608,6 @@
  "בקטגוריית %s זה תלוי בנתח: ": "En la categoría %s depende del corte: ",
  "מספר זה אינו מאומת.": "Este número no está verificado.",
  "המספרים האלה אינם מאומתים.": "Estos números no están verificados.",
- "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "Novedades: corrección urgente: las preguntas con números vuelven a funcionar. En la versión anterior, una petición mal formada al servicio de IA hacía que se eliminaran todos los números."
+ "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "Novedades: corrección urgente: las preguntas con números vuelven a funcionar. En la versión anterior, una petición mal formada al servicio de IA hacía que se eliminaran todos los números.",
+ "מה חדש: תיקון בטיחות — שאלה על ירק או פרי כבר לא מקבלת טמפרטורת בטיחות שאינה קיימת. בנוסף נחת מאגר המקורות: 19 מקורות ראשוניים עם ציטוט לכל ערך.": "Novedades: corrección de seguridad — preguntar por una verdura o una fruta ya no devuelve una temperatura de seguridad que no existe. Además ha llegado el corpus de fuentes: 19 fuentes primarias, con una cita para cada valor."
 }

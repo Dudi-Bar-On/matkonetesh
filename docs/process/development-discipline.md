@@ -1381,7 +1381,7 @@ Recovery Ledger location: `docs/ROADMAP-2026-07-30.md` §5a. Task cards for reco
   לכשל, עם שינוי, לא ניסיון חוזר עיוור.
 
 
-### L45 — a green test is not evidence until you know which mechanism made it green (2026-08-02)
+**L45 · A green test is not evidence until you know which mechanism made it green (2026-08-02).**
 
 Four tests were found passing while proving nothing, in a single day, each by a different mechanism:
 
@@ -1416,7 +1416,8 @@ What to do about it, concretely:
   unrelated failure (a missing module exiting 1). A red phase that passes for the wrong reason is the
   same defect arriving early — and it is the cheapest moment to catch it.
 
-### L46 — an environment fact measured with ONE tool, and handed to a fleet, is an assumption wearing evidence's clothes (2026-08-02)
+**L46 · An environment fact measured with ONE tool, and handed to a fleet, is an assumption wearing
+evidence's clothes (2026-08-02).**
 
 The corpus-download arc. Phase 1 probed the network with `curl`, got `000`, and wrote into the source
 map: *"`curl` is completely disconnected from the network — there is no shell-based download path.
@@ -1465,3 +1466,51 @@ The rule this earns:
   ingredient" applies to the **acquisition channel**, not only to servers and runners.
 - Independent corroboration is the reward for doing it right: the eCFR XML agreed with the
   PDF-scraped CSVs on **every** value, which is stronger evidence than either path alone.
+
+**L47 · A field that encodes three states will be read three ways — and the paths never contradict
+each other loudly enough to notice (2026-08-03).**
+
+`safe` carries a cited safety floor, `0` meaning "not applicable" (every ירקות/פירות row), and absence
+meaning "we hold no figure". Nothing in the code says so. Every consumer therefore decided for itself,
+and they decided differently:
+
+- `vcIdentifiedSafeItem` (voice) — taught all three states by the R-69 fix on 2026-08-02, with a long
+  comment explaining corn.
+- `askFire` (the local ask engine) — `${c.safe||63}`. Corn answered **"טמפ׳ בטיחות 63°C"**, stamped
+  ⚡מקומי, i.e. asserted as our own verified figure. 27 catalogue rows.
+- `askContextFor` (the AI's grounding context) — the same `||63`, fed to the model as established fact,
+  where the safety guard would then find it consistent and let it through.
+
+R-69 fixed one of the three and the other two kept shipping, because **nothing in a flat row makes the
+readings compare**. There is no place where two interpretations of `safe` meet and disagree; they simply
+run in different code paths and produce different sentences to different users.
+
+What it teaches:
+
+- **When one consumer of a field is found to be wrong, ask Serena for ALL of them before fixing.** The
+  R-69 fix was correct and complete for the path it examined; the defect was that it examined one path.
+  `find_referencing_symbols` / a `.field` search is a two-minute query and it produced twenty sites here.
+- **Fix by collapsing to one reader, not by patching each site.** `citedSafeC()` is now the only code
+  that decides what `safe` means, and the already-correct path was folded into it too — otherwise the
+  next fix has three places to remember again.
+- **A sentinel inside a value's own domain is the trap.** `0` is a perfectly good temperature, so
+  `safe=0` cannot be distinguished from a cited 0°C by looking at the value. The absence of a mechanism
+  must be encoded OUTSIDE the mechanism's value space. This is the concrete argument for R-75's
+  per-mechanism blocks: a produce row should not have a thermal block at all, rather than have one
+  holding a magic number.
+- **Branch order hides reachability.** The sweep of 279 items missed this because the earlier
+  `has('טמפ','חום','מעלות')` branch IS guarded, so every question containing the word "טמפרטורה" is
+  answered correctly and never reaches the unguarded branch. A sweep that varies the SUBJECT but not the
+  PHRASING measures one path and reports it as coverage.
+
+Two process notes from the same night, both worth keeping:
+
+1. **A test of mine passed on its first run and proved nothing** — its regex sat inside a TS template
+   literal, where `\s` is not a recognised escape and collapses to `s`, so it reached the browser as
+   `/…s*d/` and matched nothing. Caught only by the contract's rule that a first-run pass is void (L45,
+   now with a fifth instance). Build such patterns with `new RegExp` from a `JSON.stringify`'d string,
+   and assert the pattern can fire at all before asserting that it does not.
+2. **The suite's one failure was my own competing load.** Thirteen Chrome processes from this session's
+   MCP browser were live during the run; the spec passed alone, and the machine was quiet for both
+   green runs afterwards. §11a already says the worker count assumes an idle machine — the addition is
+   that *the agent's own tooling* is part of that load, and closing it is part of preparing to measure.

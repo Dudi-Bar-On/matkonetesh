@@ -2608,5 +2608,6 @@
  "בקטגוריית %s זה תלוי בנתח: ": "In the category %s it depends on the cut: ",
  "מספר זה אינו מאומת.": "This number isn't verified.",
  "המספרים האלה אינם מאומתים.": "These numbers aren't verified.",
- "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "What's new: urgent fix — questions with numbers work again. In the previous version a malformed request to the AI service caused every number to be redacted."
+ "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "What's new: urgent fix — questions with numbers work again. In the previous version a malformed request to the AI service caused every number to be redacted.",
+ "מה חדש: תיקון בטיחות — שאלה על ירק או פרי כבר לא מקבלת טמפרטורת בטיחות שאינה קיימת. בנוסף נחת מאגר המקורות: 19 מקורות ראשוניים עם ציטוט לכל ערך.": "What's new: safety fix — asking about a vegetable or a fruit no longer returns a safety temperature that does not exist. The source corpus has also landed: 19 primary sources, with a citation for every value."
 }
