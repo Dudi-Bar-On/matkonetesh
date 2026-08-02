@@ -1,0 +1,8 @@
+source_id,rule_type,item,value_temperature,value_time,note,cfr_pincite
+12,pasteurization,"Dairy ingredient - standard",145 F,30 min,"If fat content >=10%, temperature raised by 5 F",21 CFR 133.3(d)
+12,pasteurization,"Dairy ingredient - HTST",161 F,15 s,"If fat content >=10%, temperature raised by 5 F",21 CFR 133.3(d)
+12,pasteurization,"Dairy ingredient - higher heat shorter time",191 F,1 s,,21 CFR 133.3(d)
+12,pasteurization,"Dairy ingredient - higher heat shorter time",204 F,0.05 s,,21 CFR 133.3(d)
+12,pasteurization,"Dairy ingredient - higher heat shorter time",212 F,0.01 s,,21 CFR 133.3(d)
+12,pasteurization,"Ultrapasteurized",280 F (or above),">=2 s",,21 CFR 133.3(e)
+12,raw_milk_aging,"Cheddar cheese made from unpasteurized dairy ingredients","not less than 35 F",">=60 days","Minimum milkfat 50% by weight of solids; maximum moisture 39% by weight",21 CFR 133.113(a)(1)

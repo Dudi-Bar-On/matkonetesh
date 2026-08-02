@@ -1,0 +1,5 @@
+source_id,parameter,symbol,value,unit,notes
+15,thermal diffusivity (meat, typical),alpha,1.1e-7 to 1.4e-7,m^2/s,"conservative (worst-case, lowest reported) values used for safety margin"
+15,surface heat transfer coefficient (water bath),h,95 to 155,W/(m^2*K),range depends on circulation
+15,geometric shape factor (slab),beta,0,dimensionless,"0<=beta<=2; slab=0, cylinder=1, sphere=2"
+15,geometric shape factor (2:3:5 brick shape used for typical cuts),beta,0.28,dimensionless,used for approximating roast/steak-like cuts

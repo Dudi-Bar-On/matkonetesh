@@ -1,0 +1,5 @@
+source_id,doneness,target_temp_in_oven_F,target_temp_in_oven_C,final_target_temp_F,final_target_temp_C,oven_time_approx_min,oven_temp_range_F,oven_temp_range_C,extraction
+19,rare,105,40,120,49,20-25,200-275,93-135,VERBATIM
+19,medium-rare,115,46,130,54,25-30,200-275,93-135,VERBATIM
+19,medium,125,52,140,60,30-35,200-275,93-135,VERBATIM
+19,medium-well,135,57,150,66,35-40,200-275,93-135,VERBATIM

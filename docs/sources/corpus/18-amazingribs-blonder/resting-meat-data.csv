@@ -1,0 +1,4 @@
+source_id,researcher,cut,condition_a,juice_loss_a,condition_b,juice_loss_b,notes
+18,Blonder,ribeye,unrested,1 oz (7%),rested 30 min,0.85 oz (~15% less loss),"carryover raised rested steak center from 125F to 145F"
+18,Lopez-Alt,steak (~17.6 oz),unrested,"6% greater weight loss than condition b",rested 5 min,baseline,"difference <2.5 tbsp across steak"
+18,Blonder,pork loin (33 oz),rested 3 min,3 oz,rested 20 min,2 oz,"~0.5 oz of the 'saved' ounce evaporated during rest itself"

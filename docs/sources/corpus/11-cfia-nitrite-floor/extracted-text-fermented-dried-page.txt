@@ -1,0 +1,41 @@
+Source: https://inspection.canada.ca/en/preventive-controls/meat/fermented-and-dried
+Retrieved via WebFetch (model-mediated HTML-to-text extraction; see note in sibling file about why this
+is the closest available reference copy for an HTML source).
+Retrieved: 2026-08-02
+
+--- First extraction pass (prompted for the exact C. botulinum sentence) ---
+
+Exact requirement quoted verbatim by the extraction: "nitrite/nitrate are added at a minimum level of
+100 ppm along with a minimum of 2.5% of salt."
+
+Additional note from the extraction: the page contains an extensive degree-hours section addressing
+Staphylococcus aureus control (temperature thresholds, calculations, worked examples) — NOT extracted
+in detail here because degree-hours is explicitly OUT OF SCOPE for this source per the brief: "CFIA —
+נitrite floor ONLY (100 ppm + 2.5% salt). Degree-hours from CFIA was deleted as a unit conversion of
+FSIS" (source-map §8.3 / §10 item 11). See source #8/#9's folders and the AMI-1997 folder (#10) for the
+degree-hours numbers; this folder deliberately does not duplicate them as structured data.
+
+--- Second extraction pass (prompted for verbatim reproduction) ---
+
+## Clostridium botulinum Control
+To prevent Clostridium botulinum outgrowth, manufacturers must add "nitrite/nitrate are added at a
+minimum level of 100 ppm along with a minimum of 2.5% of salt."
+
+## Staphylococcus aureus Control (NOT extracted as structured data — see note above)
+S. aureus cannot multiply above 15.6C or once pH reaches 5.3. "Degree-hours" = (temperature in excess
+of 15.6C) x hours. Acceptable limits: <665 when highest fermentation temp <33C; <555 when 33-37C; <500
+when >37C. [These numbers are the CFIA-side unit conversion of FSIS's 1200/1000/900 degree-F-hours,
+per source-map §8.3 — same requirement (AMI Foundation 1997), different unit system. Not restated as
+this source's own structured data per scope.]
+
+## E. coli O157:H7 and Salmonella Control (out of scope for this source)
+Five compliance options, Option 1 (validated heat process) through Option 5 (challenge study, 5-log
+reduction). Beef products require one of these options or lot testing of 30 finished samples.
+
+## Dried Products Requirements (out of scope for this source)
+Dried beef products require heat treatment before drying: 71C internal temperature for 15 seconds, or
+validated equivalent.
+
+## Shelf-Stable Criteria (out of scope for this source)
+Shelf-stable without refrigeration: pH <=4.6 OR water activity <=0.85, OR pH <=5.3 at end of
+fermentation with final water activity <=0.90.

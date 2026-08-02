@@ -1,0 +1,51 @@
+Source: https://inspection.canada.ca/en/preventive-controls/meat/nitrites
+Retrieved via WebFetch (model-mediated HTML-to-text extraction; WebFetch has no raw-HTML-save path
+analogous to its PDF-to-disk behavior — the tool converts HTML to markdown and summarizes through a
+small model in all cases, per the tool's own documented behavior. This is the closest available
+"reference copy" for an HTML source; the CSV values were independently cross-checked against a second,
+differently-worded WebFetch prompt against the same URL, both agreeing on the same numbers.)
+Retrieved: 2026-08-02
+
+--- First extraction pass (prompted for numeric requirements) ---
+
+# Numeric Requirements for Nitrites/Nitrates in Cured Meat Products
+
+## Minimum Levels
+The Canadian Standards of Identity Volume 7 define "cured" as requiring "at least 100 p.p.m. of sodium
+nitrite, potassium nitrite, sodium nitrate or potassium nitrate" in edible meat products.
+
+## Maximum Levels
+According to the Food and Drug Regulations:
+- Standard products (non-bacon): "maximum input level of sodium nitrite salts is 20 g per 100 kg of
+  meat product, i.e. 200 mg/kg or 200 ppm"
+- Side bacon: "maximum input level of sodium nitrite salts is 12 g per 100 kg of pork bellies, i.e.
+  120 ppm"
+- Dry rub cured products on racks (exception): "62 g of sodium nitrite salts and 186 g of nitrate salts
+  per 100 kg of meat product"
+
+## Salt Requirements
+The document specifies that salt (NaCl) must be used in combination with nitrites/nitrates but does
+not state a minimum salt percentage on THIS page (the 2.5% salt figure is stated on the separate
+fermented-and-dried page, see sibling file).
+
+## Degree-Hours
+No mention of degree-hours appears on this page.
+
+--- Second extraction pass (prompted for verbatim reproduction) ---
+
+## Key Regulatory Requirements
+"Cured" meat products must contain "salt and at least 100 p.p.m. of sodium nitrite, potassium nitrite,
+sodium nitrate or potassium nitrate, or any combination of them."
+
+## Maximum Allowable Levels
+- Standard products: Maximum 200 ppm (20g per 100kg)
+- Side bacon: Maximum 120 ppm (12g per 100kg)
+- Dry rub cured products: Up to 62g nitrite salts and 186g nitrate salts per 100kg
+
+## Approved Curing Methods
+Standard approaches include slow curing (nitrates converted by bacteria) and rapid curing (nitrites
+directly). Alternative methods permit cultured celery powder (preformed nitrites) or non-converted
+vegetable juice powders with starter cultures; validation required for heat-treated products.
+
+## Compliance Note
+Bulk nitrite/nitrate salts must be "kept secure and account for their use in a record log."

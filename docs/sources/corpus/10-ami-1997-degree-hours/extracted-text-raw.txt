@@ -1,0 +1,806 @@
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+PRINCIPLES OF PRESERVATION OF SHELF-STABLE 
+DRIED MEAT PRODUCTS 
+ 
+In general, the term “shelf-stable product” refers to those products that do not 
+require refrigeration or freezing for safety and acceptable organoleptic 
+characteristics.  Most often, the products are stored at “room temperature” 
+(ambient).  This shelf-stability also is often dependent upon the proper packaging 
+to control oxidation and potential mold growth.  The shelf-life for these types of 
+products is usually defined for acceptable quality, not safety because the safety 
+has been addressed in the production process.  FSIS is concerned with product 
+safety and not quality attributes, which are concerns of the establishment. 
+ 
+The shelf-life of the product is defined as the time the specific product can be 
+stored under specified conditions that retains organoleptic acceptability.  Shelf-
+life is determined by two kinds of deterioration: microbiological (spoilage) and 
+chemical (oxidation and physical). 
+ 
+This chapter describes the principles of food preservation as they relate to dried 
+meat products.  It will cover:  
+ 
+1. the interaction of factors that affect shelf-stability; 
+2. the relationship between drying, acidification, and heating; 
+3. the minimum aw and pH values required for microbial growth; 
+4. how additives affect shelf-stability; 
+5. how moisture/protein ratio applies to these products; 
+6. process validations for these products; and 
+7. the critical process parameters for dried meat products. 
+ 
+The objectives of this section are for you to be able to:  
+ 
+1. Identify the relationship between, drying, acidification and heating in 
+the production of shelf-stable products. 
+2. Recognize how moisture/protein ratio relates to product water 
+activity. 
+3. Recognize that microbial thermal resistance will vary due to product 
+characteristics. 
+ 
+ 
+Shelf-stability and Hurdle Effect 
+ 
+Shelf-stability is due to a combination of factors, otherwise known as the “hurdle 
+effect”.  The interaction of these factors affects specific microorganisms and 
+chemical reactions.  Controlling the various factors and interactions maximizes 
+the total effect and achieves shelf-stability. 
+ 
+ 
+156 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+Food preservation technologies usually are classified into three types. 
+ 
+1. Prevention/ removal of contamination 
+ e.g., decontamination of raw materials (steam treatment and organic acid 
+washes of carcasses, irradiation of spices), aseptic processing 
+2. Inactivation of microorganisms 
+ e.g., heat (pasteurization, sterilization), high pressure processing 
+3. Slowing or complete inhibition of microbial growth 
+e.g., low temp, water activity, redox potential, pH, or preservatives 
+ 
+For dried meat products, preservation is mostly due to the slowing or complete 
+inhibition of growth, although inactivation of pathogens such as E. coli O157:H7 
+is also involved.  The following are the most common factors relating to the 
+safety/shelf-stability in dried meat products. 
+ 
+• water activity (aw) 
+• pH 
+• time/temperature/relati ve humidity 
+• salt/brine strength 
+• microflora types 
+ 
+Other factors, such as the following, can also be important in the safety/stability 
+of certain products. 
+ 
+• titratable acidity (% acid) 
+• moisture content 
+• packaging: modified atmosphere/vacuum  
+• preservatives 
+• hydrostatic pressure (high pressure processing) 
+• spices and spice extracts 
+ 
+With dried meat products, water activity probably is the most important factor 
+contributing to shelf-stability over the total range of products. (If pathogens are 
+still viable, the product is adulterated.) For the most common microorganisms 
+associated with these products, the minimum water activity for growth is as 
+follows. 
+Campylobacter 0.98 E. coli O157:H7 0.95 
+Pseudomonas 0.97 Listeria monocytogenes 0.92 
+Clostridium botulinum 
+(non-proteolytic) 
+0.96 Some LAB 0.92 
+C. botulinum (proteolytic) 0.93 Staphylococcus aureus 
+(anaerobic) 
+0.90 
+Clostridium perfringens 0.93 S. aureus (aerobic) 0.86 
+Most LAB 0.95 Aspergillus flavus 0.80 
+Salmonellae 0.94   
+ 
+157 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+The product pH is the second most important factor, particularly considering that 
+many of these dried meat products are fermented to some extent, or exhibit 
+some microbial activity to yield the final product characteristics.  Minimum pH 
+values for growth for the relevant microorganisms are as follows. 
+ 
+Clostridium perfringens    5.0 
+Campylobacter     4 .9 
+Clostridium botulinum (proteolytic)  4.6 
+E. coli O157:H7     4.0-4.4 
+Pseudomonas     4 .4 
+Listeria monocytogenes    4.4 
+Yersinia enterocolitica    4.2 
+Staphylococcus aureus    4.0 
+Salmonellae      3.8 
+Most LAB      3.0-3.5 
+Aspergillus flavus     2 .0 
+ 
+Inhibition of microorganisms by pH depends on many factors, including the type 
+of acid and the temperature.  The minimum pH for growth of E. coli O157:H7 is 
+generally closer to 4.4, but it will survive well at lower pH values, especially if 
+refrigerated. 
+ 
+Microbiological minimum or maximum limits for growth are primarily due to 
+temperature, water activity, pH and/or the presence of preservatives.  The limits 
+of water activity and pH as shown above apply only when all other factors are 
+optimal for growth of the specific microorganism.  In food materials, especially 
+dried meats, the environmental conditions are hardly optimal and if more than 
+one preservative effect  (i.e., hurdle) is present, the effects may be added 
+together (synergistic), and may even be more effective than the two factors 
+alone.  For example, in a dried fermented meat product, the competitiveness of 
+commonly occurring microorganisms varies with storage temperature, water 
+activity, pH, presence of additives (e.g., salt, nitrite) and lack of oxygen. 
+ 
+The hurdle effect occurs when the combination of inhibitors is more restrictive 
+than the individual inhibitors alone – a synergistic effect.  Often, the hurdle effect 
+allows the use of lower levels of the individual inhibitors that can result in a more 
+organoleptically acceptable product, e.g., dried meats can have a higher water 
+activity with lower pH.  In other words, the meat product is more acceptable at 
+the higher water activity (e.g., more tender), but normally this higher water 
+activity would not give shelf-stability.  By lowering the pH, the combination of the 
+final water activity and the pH results in a shelf-stable product. 
+ 
+ 
+ 
+ 
+ 
+ 
+158 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+The most important hurdles in food preservation are. 
+ 
+• high temperature 
+• low temperature 
+• reduced water activity 
+• increased acidity 
+• reduced redox potential 
+• preservatives 
+• competitive microflora 
+ 
+For shelf-stable dried meats, the last five hurdles are of primary importance, 
+since these products are not sterilized, often not pasteurized, and certainly not 
+distributed frozen. 
+ 
+The main objective in the formulation and processing of a shelf-stable, dried 
+meat product is to arrive at a combination of hurdles that favor desirable 
+microorganisms over undesirable microorganisms while also maintaining a 
+consumer acceptable product. There are many combinations of hurdles that can 
+achieve product stability.  Typical fermented sausages have been categorized as 
+either “very perishable” (pH > 5.2; aw > 0.95), “perishable” (pH 5.2-5.0 or aw = 
+0.95-0.91)) or “shelf-stable” (pH 5.2 and aw < 0.95 or only pH < 5.0 or only aw < 
+0.91) according to their respective pH and aw, assuming typical levels of the 
+other hurdles such as salt, curing agents, etc.   
+ 
+ 
+►Fermented Sausages 
+ 
+Fermented sausages demonstrate a lowering of product pH due to fermentation, 
+followed by weight loss and decrease in water activity during drying.  These vary 
+in their rate and extent depending upon the specific formulation and process. 
+ 
+ 
+►Water Activity 
+ 
+Water activity probably is the most important single factor for shelf-stability (as 
+indicated by microbial stability) in most dried meats.  Water activity, expressed as 
+aw, is the vapor pressure of the product divided by the vapor pressure of pure 
+water.  Relative humidity measurement is expressed as aw x 100%. 
+ 
+Water activity values in foods vary: fresh meats, fruits and vegetables, greater 
+than 0.98; dried sausages and condensed milk, 0.85 – 0.93; honey and 
+chocolate, less than 0.60.  For dried meats, semi-dry sausages exhibit aw values 
+from 0.95-0.97 while dry sausages generally show values of 0.85 – 0.93.  Dried 
+hams, coppa and beef jerky generally have aw values less than 0.88.  Pork rinds 
+have aw values less than 0.30.  
+ 
+159 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+ 
+When other environmental conditions are optimal, most microorganisms do not 
+exhibit growth below 0.91 water activity, with a few relevant exceptions, notably 
+the staphylococci and fungi.  Staphylococcus aureus, a common meat pathogen, 
+can grow as low as 0.86 water activity depending upon the other growth 
+conditions, particularly if oxygen is present.   
+ 
+ 
+►Moisture/Protein Ratios  
+ 
+Moisture/protein ratios – MPR – are commonly used in the U.S. to classify dried 
+sausages and other meat products.  These ratios express the percent moisture 
+divided by the percent protein.  Dried meat MPR values vary from 3.7:1.0 for 
+Thuringer to as low as 0.75:1.0 for beef jerky.  These MPR values are currently 
+FSIS labeling standards and are historical in nature, representing average values 
+of a market basket survey of representative products exhibited at the time of 
+initial classification for labeling.  Although the MPR values do indicate the degree 
+of product drying, they are not necessarily indicative of microbial safety or 
+stability, as is the case with aw values.   Nevertheless, FSIS, in its Food 
+Standards and Labeling Policy Book, identifies criteria for a shelf-stable product 
+based on MPR.  Shelf-stable dry sausage must have an MPR ≤ 1.9:1 and semi-
+dry sausage must have an MPR ≤ 3.1:1 with a pH ≤ 5.0, or be commercially 
+sterilized (unless another MPR is specified for a product).   
+ 
+ 
+Formulation Ingredients Important for Shelf-Stability 
+ 
+►Salt 
+ 
+Salt (sodium chloride) is the most important ingredient used in the manufacture 
+of dried meat products.  Salt exhibits many functions including suppressing 
+microbial growth, reducing water activity, releasing salt soluble proteins, 
+penetrating easily into meats enhancing cure penetration, flavor and showing a 
+pro-oxidant effect.  The percent salt in a meat product is not as important as the 
+brine strength.  The brine strength (sometimes referred to as water-phase salt) is 
+the percent salt divided by the percent salt plus percent moisture in the same 
+product.  In dried meats that are manufactured with an injected or immersed 
+brine, the salometer reading expresses the strength or salt content in the brine.  
+A 100 degree brine contains the maximum 26.3% salt and a 50 degree brine 
+contains 13.15% salt. 
+ 
+ 
+ 
+ 
+ 
+ 
+160 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+►Nitrate (NO3
+-) 
+ 
+Potassium nitrate, or saltpeter, was the original curing agent and was generally 
+added to the meat unintentionally as a contaminant in the salt.  This chemical is 
+very stable and must be converted to nitrite to effect meat curing.  This 
+conversion usually is done by specific microorganisms, including the Kocuria and 
+staphylococci.  Originally, these microorganisms were also contaminants in the 
+meat, other ingredients, and/or the processing environment.  Although today we 
+realize that nitrite is the active curing ingredient and that it can be added directly 
+to the meat, the use of nitrate salts (sodium or potassium) is still somewhat 
+common, mainly in dried meat products.  The primary reason for its continued 
+use is that residual nitrate in dried meats can serve as a “nitrite reservoir” in non-
+cooked products and the conversion of nitrate to nitrite in meat processing is a 
+slower process and can yield a deeper red cure color.  For the necessary nitrate 
+reduction to nitrite, the specific microorganisms that produce nitrate reductase 
+always must be present and active.  Nitrate is a restricted ingredient and its use 
+is regulated by the relevant government agency in different countries. 
+ 
+ 
+►Nitrite (NO2-) 
+ 
+Sodium nitrite is the active curing ingredient for typical meat curing.  This is a 
+highly reactive chemical that reacts with meat to produce nitric oxide (NO) which 
+replaces the oxygen molecule in the meat pigment structure (heme) yielding the 
+typical cured “pink” color when the meat product is heated.  Nitrite also functions 
+for meat flavor, helps provide microbial stability and acts as a potent antioxidant.  
+Because of the highly reactive nature and toxicity of the nitrite, it is usually first 
+combined with a portion of the salt prior to meat addition and should never be 
+added to anything other than salt prior to the addition to the meat.  
+ 
+ 
+►Curing Accelerators  
+ 
+Compounds such as sodium erythorbate, sodium ascorbate, ascorbic acid, 
+sodium acid pyrophosphate, chemical acidulants, etc., are added to dried meats 
+to enhance the curing reaction by either serving as a reducing agent, oxygen 
+scavenger and/or reducing the product pH. 
+ 
+ 
+►Meat Starter Cultures 
+ 
+Microorganisms typically are active participants in the processing of dried meats.  
+Specific starter cultures are added in the formulation to control the product 
+microflora and function for safety and preservation, product consistency 
+(fermentation, drying, texture), product color and/or product flavor.  Generally, the 
+ 
+161 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+two types of starter cultures used for dried meats are the lactic acid 
+microorganisms and the staphylococci and Kocuria (micrococci).  The presence 
+of antibiotic residues in meat may inhibit growth of the starter culture, resulting in 
+inadequate drop in pH. 
+ 
+►Sugars (carbohydrates) 
+ 
+The role of added sugars or carbohydrates in meat curing and drying often is 
+underestimated.  Carbohydrates, or “sugars,” used in dried meat processing 
+generally consists of dextrose, cane sugar/sucrose, brown sugar, corn syrup, 
+lactose, honey, molasses, maltodextrins, starches, etc.  The added sugars 
+function for flavor, reduce harshness of salt, lowering water activity, yield, and as 
+a source of energy for functional and spoilage microorganisms.  Added sugar 
+type and amounts are critical for fermented products to control fermentation and 
+final product pH.  This is clearly demonstrated in pepperoni, whereby the added 
+dextrose generally is limited to achieve a desired final pH without subsequent 
+charring or burning when the pepperoni is cooked on a pizza.   
+ 
+ 
+►Chemical Acidulants 
+ 
+Chemical acidulants are specific acids that are added to some dried meat 
+product formulations to lower pH for various functions, including flavor, shelf-
+stability, color, and drying enhancement.  Typically, chemical acidulants are 
+designed or chosen to “mimic” the action of the lactic acid microorganisms (i.e., 
+biological fermentation), thus the specific chemical acidulant demonstrates a 
+somewhat slower release than just adding the pure acid.  The slower release 
+allows for some meat matrix formation prior to acidulation.  This is accomplished 
+by either adding a cyclic compound (e.g., glucono-delta-lactone, GDL) and/or 
+adding an encapsulated acid.  Chemical acidulants most often are utilized to 
+replace the starter culture in a typical fermented dried product to eliminate the 
+fermentation phase and, thus, shorten the process. 
+ 
+ 
+►Oxidation Prevention Additives 
+ 
+Oxidation is a major problem with dried meat products which adversely affects 
+color and flavor.  Additives that retard oxidation are classified as either primary 
+antioxidants or secondary antioxidants.  Primary antioxidants are either synthetic 
+(BHA, BHT, TBHQ, etc.) or natural (rosemary extract, tocopherols, smoke, etc.).  
+These primary antioxidants react with the free radicals generated in the fat 
+oxidation process and “break” the chain reaction.  Secondary antioxidants act as 
+oxygen scavengers, synergists, and/or curing accelerators to enhance the curing 
+reaction.  These compounds include citric acid, ascorbic acid, ascorbates, 
+erythorbates, phosphates, lactates, starter cultures, etc., and function to either 
+“scavenge oxygen,” thereby removing it from the system; “chelate” (i.e., tie up) 
+ 
+162 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+the catalysts that initiate oxidation; and/or create low redox potential/reducing 
+conditions that enhance the curing reactions.  Many of these compounds can act 
+in several ways to prevent oxidation.  Specific starter cultures contain the 
+enzyme catalase that removes peroxides from the meat system (oxygen 
+scavenger), promotes the curing reaction, and prevents rancidity development. 
+ 
+The proper use of any antioxidants is critical to its effectiveness.  Usually a 
+combination of primary and secondary antioxidants is employed for maximum 
+effectiveness.  The specific antioxidant should be employed for a specific meat 
+system based on any flavor attributes, solubility, type of fat, and type of oxidation.  
+The respective antioxidant must be stable before and after addition to the meat 
+system and the delivery system must be appropriate for the application (e.g., fat 
+soluble for direct addition to sausage versus water dispersible/water soluble for 
+use in injected brines and marinades).  Adding the antioxidant early in the 
+processing is recommended for maximum efficacy as well as to achieve optimum 
+distribution. 
+ 
+ 
+►Preservatives 
+ 
+Certain preservatives, particularly anti-mold agents, are commonly used in dried 
+meats since mold can grow on almost any dried meat product that is not in an 
+anaerobic pack.  Typical mold inhibitors used include potassium sorbate, propyl 
+parabens, and cultured whey/cultured corn syrup/cultured dextrose.  These latter 
+cultured products contain naturally produced proprionic acid and other organic 
+acids that retard mold growth. 
+ 
+ 
+►Packaging 
+ 
+The packaging system for dried meats is very important for chemical and 
+microbial shelf-stability.  Although most dried meats are shelf-stable with regard 
+to food safety regardless of packaging (due to lower water activity, pH), the 
+proper packaging prevents potential mold growth (that can increase the pH, and 
+potentially allow growth of pathogens) and product oxidation that is undesirable 
+organoleptically. Generally, the products are packaged under vacuum or 
+modified atmosphere where the oxygen is eliminated.  In MAP (modified 
+atmosphere packaged) products, the total elimination of oxygen often is 
+accomplished through the use of oxygen scavengers, which are added in the 
+packaging process, either in packets or incorporated into the film.  These 
+scavengers remove any residual oxygen that may still be present after 
+packaging. 
+ 
+ 
+ 
+163 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+Critical Processing Stages for Shelf-Stability and Safety 
+ 
+Most of the dried meat products rely on the interaction of several parameters to 
+achieve stability and safety. Many steps are controlled, but only a few are truly 
+critical. Generally the critical control points for fermented shelf-stable products 
+are fermentation, heating and, sometimes, drying.  For non-fermented salt-cured 
+products, the salting step is critical, and for dried products the drying step is 
+critical.  For some products, such as freeze-dried products or bacon bits, a 
+cooking step may also be critical. 
+ 
+The main control points in the manufacture of most shelf-stable dried meats are 
+primarily focused on the initial formulation stages where the ingredients are 
+combined with the meat and subsequently processed.  The proper combinations 
+of salt, cure, sugars, starter cultures, etc., for the respective product must be 
+assured.  When using a starter culture, the receipt, storage, and preparation of 
+this ingredient is essential to its function.  However, although these are important 
+parameters to control, the critical control point is at the fermentation stage, where 
+the rate of pH drop to 5.3 or below is critical to prevent growth and enterotoxin 
+production by S. aureus.  The rate of pH drop can be expressed in “degree-
+hours”.  If the critical pH is not reached in the specified time, there may have 
+been an error in the formulation process or with the starter culture.   
+ 
+This is the concept of degree-hours – the number of hours at a temperature 
+above 60°F (the temperature at which staphylococcal growth effectively begins) 
+multiplied by the number of degrees above that temperature.  A process is 
+acceptable if the product reaches pH 5.3 within a certain number of degree-
+hours.  Processes attaining a temperature less than 90°F before reaching pH 5.3 
+are limited to 1200 degree-hours.  Processes reaching a temperature of 90°F-
+100°F prior to reaching pH 5.3 are limited to 1000 degree-hours.  Processes 
+exceeding 100°F before reaching pH 5.3 are limited to 900 degree hours.  For 
+example, a product processed at a constant 80°F reaching pH 5.3 in 55 hours 
+would meet the guideline of 1200 degree-hours, since 80°F-60°F=20°F and 20°F 
+X 55 hours = 1100 degree-hours.  More information on this can be found in the 
+American Meat Institute’s Good Manufacturing Practices for Fermented Dry and 
+Semi-dry Sausage Products: http://www.amif.org/FactsandFigures/SAUSAGE.pdf. 
+ 
+ 
+ 
+164 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+58
+Receiving 
+starter cultures 
+and casings
+Storage 
+Receiving  
+raw meat
+Storage (cold)
+Frozen-
+Refrigerated
+Tempering frozen 
+meat
+Receiving restricted 
+non-meat food 
+ingredients
+Storage
+Weigh of 
+raw meat
+Combination of ingredients and 
+processing (Chopping, grinding, 
+and mixing)
+Stuffing
+Slicing / Peeling
+Preparation
+Fermentation
+Heating
+Drying/ Ripening
+Receiving  
+unrestricted non meat 
+food ingredients
+Storage
+Receiving 
+packaging material
+Packaging / Labeling
+Finished product 
+Storage (cold)
+Shipping
+Casings
+Starter 
+cultures
+Weigh
+Weigh
+Critical Stages: Safety in 
+Fermented Sausages
+ 
+Note: This flow diagram is for teaching purposes only. 
+ 
+For dried whole muscle meats, particularly dry cured products, the initial salt level 
+and application to all exposed meat surfaces is the most critical point in the 
+operation, along with holding the salted product at relatively low temperatures 
+until the critical brine content is achieved uniformly.   
+ 
+59
+Receiving raw 
+hams
+Storage (cold) 
+Frozen-
+Refrigerated
+Receiving 
+additives
+Storage 
+Hams
+Salting
+Postsalting
+Drying
+Ripening
+Shipping
+Conditioning
+Boning Slicing Cutting
+Finished product
+Packaging/Labeling
+Finished product 
+storage
+Thawed hams
+Boned hams
+Receiving 
+packaging 
+materials
+Storage 
+Critical Stages: Safety in 
+Dry Cured Hams
+ 
+Note: This flow diagram is for teaching purposes only. 
+ 
+165 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+Many dried meat products are not heated significantly following the fermentation 
+and/or salting process prior to drying; however with the increased emphasis on 
+food safety, many more dried products, particularly in the U.S., do have a 
+significant “heat step” in the total process to assure lethality of high numbers of 
+specific pathogens.  This step is usually critical to achieve inactivation of the 
+pathogens of concern in the product, and thus would be a critical control point.  
+Consequently, the heat resistance of the target microorganisms in specific 
+environments is a factor in determining lethality.  Heat resistance is usually 
+expressed as D-value, or the time to effect a 1-log or 90% reduction in the 
+number of cells.  Microorganisms vary widely in heat sensitivity.  Sporeforming 
+microorganisms are much more heat resistant than non-sporeformers, and Gram 
+positive type microorganisms are generally more heat resistant than Gram 
+negative types.  The physiological state (e.g., age, growth conditions) of the 
+microbes also affects their heat resistance, as does whether the microorganism 
+has been previously exposed to the specific environment and has “adapted” to 
+the environment.  The heating medium or environment (such as the water 
+activity, pH, fat content, brine strength, proteins, etc.) dramatically affects heat 
+resistance.  In general, the lower the pH, the lower the heat resistance, while 
+drying or lower water activity can increase heat resistance.  Most often, added 
+preservatives lower heat resistance. 
+ 
+The environment in dried meats can be highly variable, with many different 
+formulations and processing variables.  In addition, the microflora varies 
+considerably, especially if not using a starter culture.  Validation studies in 
+specific products generally are required to assure food safety and product 
+stability.  Published validation studies for a similar formulation and process can 
+be acceptable, as long as the reference validation is equal to or less severe than 
+the formulation and process to be validated.   
+ 
+ 
+Dried Meat Process Validation 
+ 
+Validation focuses on putting together scientific and technical information to 
+demonstrate that the hazards of concern are properly controlled.  Dried meat 
+process validation addresses lethality and stabilization “during the shelf-life of the 
+product.”  Processors must assess which hazards are reasonably likely to occur 
+for their product.  For most of the dried meat products, manufacturers will 
+consider the pathogens Salmonella, S. aureus, L. monocytogenes and, in beef, 
+E. coli O157:H7.  Pathogenic sporeformers such as C. botulinum and 
+C. perfringens may also need to be addressed.  Depending on the product and 
+the identified hazards, it may be necessary to validate that the process controls 
+the pathogen.  Currently there is no required log reduction specified for 
+Salmonella; a processor must provide documentation that this organism is 
+controlled for the specific product/process.  Some processors choose to validate 
+their processes for L. monocytogenes, which is generally considered to be more 
+ 
+166 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+resistant than Salmonella.  Processors must validate a 5-log kill of 
+E. coli O157:H7 for products containing beef.  For the most part, to achieve 5-log 
+reduction, the product must be heated to some extent.  The heating effect is 
+enhanced at lower pH; thus the final internal temperature does not have to be as 
+high with a lower pH.  The number of organisms present is important, as well as 
+their heat resistance.  Manufacturers should consider the degree of lethality for 
+each organism of concern.  Because of the nature of the finished product (low 
+aw) pathogenic sporeformers should not be a concern.  For dried meat products it 
+may be desirable to conduct validation studies that demonstrate lack of growth of 
+relevant pathogenic microorganisms if the product is contaminated after the 
+lethality step.   
+ 
+There are some validated processing parameters that have been published for 
+dried meat products, including pepperoni, hard salami, Italian salami, summer 
+sausage, Lebanon bologna, and country hams.  Validation studies have also 
+been conducted to assess the survival of L. monocytogenes during storage of 
+RTE meat products processed by drying, fermentation, and/or smoking (Ingham 
+et al., 2004. J. Food Protect. 12: 2698-2702) to help small processors classify 
+these products with respect to FSIS’ alternatives for L. monocytogenes control 
+(e.g., to assess whether the processing techniques and product characteristics 
+can serve as antimicrobial agents or processes or post-lethality treatments).  
+ 
+ 
+►Examples of Validated Processes 
+ 
+Because there are so many different combinations of variables that impact the 
+safety and stability of these products, it can be difficult to develop validation 
+studies that apply broadly.  A commonly used process that has been validated is 
+to achieve a pH < 5.0, followed by a heat process to achieve 128°F (53.3°C) 
+internal temperature for 1 hour. 
+ 
+ 
+Summer Sausage (fermented, semi-dry sausage) 
+ 
+A typical process/product validation for fermented summer sausage is as follows.  
+The product is fermented with a starter culture at 110°F (43.3°C) until the pH is 
+4.7 or lower, then cooked to 152°F (66.7°C) internal product temperature.  The 
+characteristics of the vacuum packaged product are as follows. 
+ 
+moisture 56.7% brine strength 5.5% 
+m/p ratio 3.28 pH 4.4 
+fat 21.2% Titratable Acidity 0.361 
+salt 3.4% aw 0.964 
+ 
+(Titratable acidity is a measure of the total amount of acid present.) 
+ 
+ 
+167 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+The process validation demonstrated complete destruction under these 
+processing parameters of high levels of Salmonella, Listeria monocytogenes, 
+Staphylococcus aureus, and E. coli O157:H7.  Moreover there was no growth of 
+the same microorganisms when inoculated at high levels post-lethality and stored 
+at either refrigerated temperature or room temperature (the product was shown 
+to be shelf-stable). 
+ 
+ 
+Pepperoni 
+ 
+Similar results have been observed in validation studies with pepperoni (a 
+fermented, dry sausage) where the product is fermented with a starter culture at 
+102°F (38.9°C) to a pH < 5.0, then subsequently heated to 128°F (53.3°C) for 1 
+hour and dried to 68% final yield.  Final product characteristics are as follows. 
+ 
+moisture 26.0% brine strength 15.58% 
+m/p ratio 1.4 pH 4.7 
+fat 46.0% aw 0.896 
+salt 4.05%   
+ 
+ 
+Country Ham 
+ 
+A validated process for a typical dried whole muscle product, country ham, 
+processed with salting for 49 days at 40°F (4.4°C), post-salting drying 20 days at 
+85°F (29.4°C), and dried 129 days at 68-75.2°F (20-24°C) results in a final 
+product with the following characteristics. 
+ 
+salt 8.0% 
+pH 5.5 (5.0-6.0 during process) 
+aw 0.92 
+ 
+ 
+Jerky Products 
+ 
+In the past, many beef and other jerky products processors have relied upon the 
+final moisture/protein ratio of 0.75 or below.  Recently published FSIS jerky 
+processing guidelines emphasize the importance of relying upon water activity 
+(aw) levels rather than moisture protein ratios as an indicator of final product 
+safety and shelf stability. In addition the new guidelines emphasize the 
+importance of including a humidity step at the beginning of the process.  The new 
+guidelines also include several optional processing interventions that may be 
+used to ensure lethality in lieu of a proprietary validated process. 
+ 
+168 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+Workshop: Principles of Preservation of Shelf-Stable Dried Meat 
+Products 
+ 
+ 
+The following questions are short-answer, True/False or fill-in-the-blanks.  
+Record the answer(s) you believe to be correct; some questions have more than 
+one correct answer. 
+ 
+ 
+1. Describe what is meant by the “hurdle effect”. 
+ 
+ 
+ 
+ 
+2. When nitrate is used, it is converted to _____________ by 
+microorganisms or a reducing agent. 
+ 
+ 
+ 
+3. Products can be characterized by both water activity and moisture protein 
+ratio.  Which of these measurements is relative to the safety of a food? 
+ 
+ 
+ 
+4. Semi-dry sausages exhibit higher aw values (0.95-0.97) and dry sausages 
+generally show lower aw values (0.85-0.93).   
+ 
+True 
+ False 
+ 
+ 
+5. Higher water activity (aw) indicates more free water to support the growth 
+of bacteria, yeast, and molds.  
+ 
+True 
+ False 
+ 
+ 
+6. Water activity of a food is the same thing as moisture content. 
+ 
+True 
+ False 
+ 
+ 
+ 
+169 
+FSRE Shelf-Stable 
+Principles of Preservation of Shelf-Stable Dried Meat Products 
+5/11/05 
+ 
+ 
+7. When other environmental conditions are optimal, most microorganisms, 
+with a few exceptions, do not exhibit growth below 0.91 water activity (aw). 
+ 
+True 
+ False 
+ 
+ 
+8. For a food to have an extended shelf-life without relying on refrigerated 
+storage, it is necessary to control either its acidity level (pH) or the level of 
+water activity (aw) or a suitable combination of the two. 
+ 
+True 
+ False 
+ 
+ 
+9. Percent salt is more important than brine strength in dried meat products. 
+ 
+True 
+ False 
+ 
+ 
+10. D-value is defined as the time in minutes required to increase a microbial 
+population by 1-log or 90% of initial value. 
+ 
+True 
+ False 
+ 
+ 
+11. Aunt Eleanor’s Sausage company makes two types of fermented semi-dry 
+sausage.  The formulation is the same, however the difference between 
+the two is in the thickness of the sausage.  The diameter of the smaller 
+sausage is 1½ inch and the larger sausage is 2½ inch.  Could you validate 
+the processes using only one thickness?  Which thickness would you 
+expect to take longer to reach the desired water activity levels?  Aunt 
+Eleanor would like to reformulate the product using an encapsulated 
+acidulant rather than a starter culture.  How might the production process 
+change with this reformulation? 
+ 
+ 
+ 
+170 
+FSRE Shelf-Stable 

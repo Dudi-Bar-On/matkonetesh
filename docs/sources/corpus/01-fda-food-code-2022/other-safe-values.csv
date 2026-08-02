@@ -1,0 +1,8 @@
+source_id,value_type,category,value,unit,notes
+01-fda-food-code-2022,safe,nonintact_meat_ratites_comminuted,63/3min;66/1min;70/instant,C/F mixed - see notes,"§3-401.11(A)(2): 63°C(145°F) 3min OR 66°C(150°F) 1min OR 70°C(158°F) instantaneous"
+01-fda-food-code-2022,safe,poultry_stuffed_items,74,C,"§3-401.11(A)(3): 74°C(165°F) instantaneous for poultry, baluts, wild game, stuffed fish/meat/pasta/poultry/ratites"
+01-fda-food-code-2022,safe,fish_intact_meat_eggs_immediate,63,C,"§3-401.11(A)(1): 63°C(145°F) for 15 seconds"
+01-fda-food-code-2022,safe,plant_food_hot_holding,57,C,"§3-401.13: Plant Food Cooking for Hot Holding shall be cooked to 57°C (135°F). Applies ONLY when food is cooked for the purpose of hot holding - not a general 'doneness' floor for vegetables"
+01-fda-food-code-2022,safe,tcs_holding_general,57,C,"§3-401.13(D): TCS food received hot shall be at or above 57°C (135°F)"
+01-fda-food-code-2022,rest,beef_steak_intact_undercooked,63,C,"§3-401.11(C): surface temp 63°C(145°F) both top and bottom with color change, for raw/undercooked whole-muscle intact beef steak served RTE"
+01-fda-food-code-2022,other,oven_temp_by_roast_weight,see-notes,C/F,"Table: roast <4.5kg(10lb): still-dry oven ≥177°C(350°F) or convection ≥163°C(325°F) or high-humidity ≤121°C(250°F); roast ≥4.5kg(10lb): all oven types ≥121°C(250°F). High humidity = RH>90% for ≥1hr in cooking chamber/exit, or moisture-impermeable bag at 100% humidity"

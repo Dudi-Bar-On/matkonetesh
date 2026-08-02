@@ -1,0 +1,427 @@
+13/02/2017
+1
+February 13, 2017
+Presentation for AFFI
+FDA’s Revised Draft Guidance for Control
+of Listeria monocytogenes in Ready-
+To-Eat Foods
+Hogan Lovells | 2
+•Regulatory Background
+•Top 10 Takeaways
+•Key Issues from Guidance
+–Sanitation Controls
+–Controls on Raw Materials and Other Ingredients
+–Environmental Monitoring Programs
+–Recommendations for Corrective Actions
+–Product “Hold and Test” Sampling Plans
+–Employee Training
+Agenda
+
+13/02/2017
+2
+Hogan Lovells | 3
+•FDA issued draft guidance on control of Lm in RTE foods in 2008
+–Recommended facilities determine whether Listeria spp. detected on food contact
+surface (FCS) is Lm or treat as if it is Lm
+•Since then, food safety regulations and knowledge of Listeria have
+changed significantly
+•2017 revised draft guidance intended to:
+–Reflect amended cGMP requirements and Preventive Controls for Human Food rule
+–Change recommended corrective actions in response to concerns that 2008 draft
+guidance may have deterred robust Listeria control programs
+Regulatory Background
+Hogan Lovells | 4
+•This draft guidance document is in draft form
+–FDA is accepting comments (generally due by July 26, 2017)
+–Represents FDA’s current thinking
+•Expect to see draft guidance regarding how to distinguish between RTE
+and non-RTE foods
+•Expect to see an updated draft Compliance Policy Guide that outlines the
+agency’sLm enforcement policy for FDA staff
+Regulatory Background continued…
+13/02/2017
+3
+Hogan Lovells | 5
+1. A “must read” for facilities producing RTE foods exposed to the
+environment prior to packaging
+–Contains detailed recommendations on Listeria control
+2. The recommended measures for controlling Listeria are more goal-based
+and flexible
+–FDA notes that alternative approaches may be necessary or appropriate
+3. Feedback from industry on the 2008 draft guidance was incorporated into
+the 2017 version
+4. FDA wants to encourage a “seek and destroy” approach toListeria
+–Positive environmental samples are to be expected
+5. Facilities have “one free pass” after one positive FCS test to continue
+production, with requirements for sanitation, retesting, and investigation
+–Helpful to facilities under dual jurisdiction
+Top 10 Takeaways
+Hogan Lovells | 6
+6. Guidance continues to distinguish between foods that do/don’t support
+the growth of Lm with respect to corrective actions
+–No “tolerance” of 100 cfu/g ofLm in foods that don’t support growth
+7. Detailed recommendations for a comprehensive investigation to
+support goal of finding and eliminating source of contamination
+8. Only applies to RTE food and does not change definition of RTE food
+9. Emphasis on recordkeeping (e.g., written program for equipment
+maintenance)
+10. Guidance also is instructive beyond Listeria for development of robust
+environmental monitoring, sanitation, and supplier verification
+programs
+Top 10 Takeaways Continued…
+13/02/2017
+4
+Hogan Lovells | 7
+•Training
+•Procedures to collect,
+prepare, and test samples
+•Records
+•Potential sources of Lm
+•Examples of scenarios
+that could lead to
+contamination of RTE
+foods with Lm
+•Recommended cleaning
+schedules
+•Storage practices and
+time/temperature
+controls
+•Transportation
+•Environmental
+monitoring programs
+•Corrective actions when
+Listeria spp. is detected
+on FCS or non-FCS
+•Sampling and testing of
+RTE foods
+•Analysis of
+environmental
+monitoring and product
+testing data for trends
+•Controls on personnel
+•Design, construction, and
+operation of plants
+•Design, construction, and
+operation of equipment
+•Sanitation controls
+•Controls on raw
+materials and other
+ingredients
+•Formulation controls
+•Listericidal process
+controls
+Key Topics in the Draft Guidance
+Hogan Lovells | 8
+•Draft guidance outlines:
+– What SSOPs should include
+– Recommended steps for cleaning and sanitizing
+– How to clean drains; equipment when production running
+– Use of sanitizers
+– Sanitation monitoring
+•Frequency should be based on:
+– Sanitary design of equipment and room
+– Microbiological profile during a production run
+– History of Listeria in the room and on the line
+– Degree of product exposure to the line and the environment
+•Appendix 4 has recommended schedules for routine cleaning/sanitizing
+– FCS at least once every 24 hours, or validate alternative schedule
+– Non FCS vary daily to semi-annually
+Sanitation Controls
+
+13/02/2017
+5
+Hogan Lovells | 9
+•Recommended controls on suppliers include:
+–Periodic onsite audits
+–Verifying the supplier’s environmental monitoring program and results
+–Obtaining materials under a Certificate of Conformance (COC) along with:
+–Statement of adherence to the draft guidance
+– Periodic testing of the materials to verify the supplier’s controls
+–Obtaining the materials under a Certificate of Analysis (COA) along with:
+–The supplier’s sampling plan for testing the material
+– Initial and periodic testing of the material to verify the supplier’s controls
+•Facility should have written procedures for sampling and testing
+materials
+Controls on Raw Materials and Ingredients
+Hogan Lovells | 10
+•Goal of the EMP:
+– Verify effectiveness of control programs forLm
+– FindLm in your plant
+– Ensure that corrective actions are effective and have eliminatedLm
+•FCS and non-FCS have replaced “critical surface or area” and “critical
+food contact surface”
+•Zone definitions and examples provided
+•FDA recommends testing for Listeria spp. vs. Lm because the conditions
+for Listeria are suitable for survival and/or growth of Lm
+Environmental Monitoring
+13/02/2017
+6
+Hogan Lovells | 11
+•Test both FCS and non FCS sites at each sampling time
+•Number of sites based on size of plant, features, product flow, food
+characteristics, processing methods, previous sampling results
+•Number of samples generally higher in Zones 1 and 2
+•Examples of sites to sample in Appendix 1
+•Recommended minimum of 5 FCS and 5 non-FCS samples on each line
+•Collect samples several hours (3-4) into production
+•Frequency should be based on risk (growth/no-growth)
+•Compositing not recommended
+Environmental Monitoring continued…
+Hogan Lovells | 12
+•Key statements:
+–“You should expect to detect the presence ofListeria spp. or Lm on an occasional basis in
+environmental samples collected form your plant.”
+–“If you consistently see negative test results . . . We recommend that you revise your
+environmental monitoring procedures to add, substitute, or both add and substitute
+other surfaces in your plant for sample collection and testing.”
+–“We recommend that you periodically verify your written environmental monitoring
+procedures with increased and intensive environmental sampling of the plant to assess
+whether the sampling sites are appropriate.”
+ Develop an aggressive program!
+Environmental Monitoring Continued…
+13/02/2017
+7
+Hogan Lovells | 13
+•2008 draft guidance suggested a positive test for Listeria spp. on FCS be
+followed by test to determine whether positive was Lm or assume it was
+Lm
+–Either way, facilities would need to stop production, segregate and hold food, even if food
+did not support growth
+•In 2017 draft guidance:
+–Corrective actions are the same if a test is positive for any species of Listeria
+–Firms allowed one “free pass” whenListeria spp. detected, but should perform root cause
+analysis, clean, and sanitize; no need to stop production or hold product
+–If there is a second positive test for Listeria spp. on a FCS and the food supports growth,
+FDA recommends hold and test and other corrective actions
+Corrective Actions- Summary
+Hogan Lovells | 14
+•If Listeria spp. detected on FCS, firms should conduct comprehensive
+investigation (i.e., expanded root cause analysis):
+ Examine equipment that tested positive and surrounding area
+ Review/modify HACCP or Food Safety Plan
+ Intensify sampling and testing
+ Test upstream from positive testing location
+ Check maintenance records for major equipment
+ Interview and observe sanitation, maintenance, production personnel
+ Review/modify production, maintenance, sanitation procedures
+ Review potential scenarios in Appendix 2 to identify potential causes
+ Review traffic patterns, equipment layout, and adherence to personnel hygiene
+procedures
+First FCS Positive Test = Investigate!
+
+13/02/2017
+8
+Hogan Lovells | 15
+•If composite sampling from multiple sites resulted in positive test, firm
+should:
+–Conduct additional testing to identify specific positive FCS; or
+–Take action on each of tested sites
+•Once FCS identified, firm should pay particular attention to cleaning and
+sanitizing
+•Then retest FCS and surrounding area at least 3 hours into next
+production run
+•If follow-up samples are negative, firm may assume contamination has
+been eliminated and resume routine environmental monitoring
+First FCS Positive Test, continued…
+Hogan Lovells | 16
+•If any follow-up sample is positive for Listeria spp., the firm should:
+ Conduct intensified cleaning and sanitizing, including disassembly of equipment, if
+practical;
+ Conduct intensified sampling and testing;
+ Follow “hold and test” procedures, as appropriate; and
+ Conduct a comprehensive investigation
+•These corrective actions should continue for next two production days
+Second FCS Positive Test
+
+13/02/2017
+9
+Hogan Lovells | 17
+Food Supports Lm GrowthFood Does Not Support Lm Growth
+2nd Positive: Recommended “Hold and Test” Procedures
+•Consider whether to hold the
+production lot for that
+production date
+•Base decision on likelihood of
+product contamination and risk
+of contamination to consumer
+•Hold production lot for
+production day and test product
+for Lm using statistically based
+sampling protocol.
+•Hold food from second and third
+of 3 consecutive days
+Hogan Lovells | 18
+•Firms then should test product lot for Lm and the FCS for Listeria spp.
+for at least 3 sequential production days
+•If product tests negative for Lm and FCS is negative for Listeria spp. for 3
+sequential production days:
+–May release product lot and any product on hold
+–May resume routine production and monitoring
+•If product tests positive for Lm:
+–Firm should reprocess food, divert to non-food use, send for consumption by animals (if
+appropriate), or destroy product lots
+–Should also consider a recall
+Second Positive Corrective Actions continued…
+13/02/2017
+10
+Hogan Lovells | 19
+•If a follow-up sample of a FCS is positive for Listeria spp., firm should
+assume it has a harborage site
+Third FCS Positive Test
+Hogan Lovells | 20
+•If firm ever detects Lm on FCS, firm should:
+–Reprocess food, divert to non-food use, send for consumption by animals (if appropriate)
+or destroy the product lots
+–Firm also should consider a recall
+Lm on Food Contact Surfaces
+
+13/02/2017
+11
+Hogan Lovells | 21
+•FDA recommendations focus on positives in Zone 2
+•After first positive test, clean and sanitize the site at the end of production
+and retest the non-FCS and surrounding area at least 3 hours into the
+next production run
+•If any follow-up samples are positive, firms should conduct intensified
+cleaning, sanitation, sampling, and testing
+–If food supports growth of Lm, cleaning and sanitation may include disassembly of
+equipment, as well as sampling of equipment prior to disassembly
+–If food does not support growth of Lm, firm may not need to disassemble equipment
+unless there is third positive
+Listeria spp. on Non-Food Contact Surfaces
+Hogan Lovells | 22
+•If follow-up samples are negative, firm may assume contamination
+eliminated and resume routine environmental monitoring and
+production
+•If third test is positive, firm should:
+ Conduct comprehensive investigation and root cause analysis
+ Escalate mitigation efforts
+ Consider consulting with food safety expert
+•FDA says minimal value in determining if Listeria spp. is Lm because
+both should be eliminated
+Listeria spp. on Non-Food Contact Surfaces, cont’d
+13/02/2017
+12
+Hogan Lovells | 23
+•Detecting Listeria spp. at several Zone 2 sampling locations during same
+sampling period could indicate:
+–Routine sanitation procedures are inadequate
+–Potential harborages
+–Increased risk of cross contamination from Zone 2 to Zone 1 or food
+ FDA recommends review of sanitation procedures and escalation of
+corrective actions
+•If firm detects Listeria spp. in same general area on multiple occasions
+ FDA recommends firm conduct root cause analysis
+Responding to Trends
+Hogan Lovells | 24
+•FDA recommendations based on FSIS’s guidelines for control ofLm in
+RTE meat and poultry products and ICMSF sampling plans
+•Sampling plan should be based on (1) risk of Lm to population that will
+consume product (serious or severe); and (2) whether conditions prior to
+consumption can influence growth of Lm
+–If risk unknown, FDA recommends sampling plan for severe hazard
+•FDA recommends analyzing 25 g sample for Lm or Listeria spp.
+–Samples should be collected in one day
+–Firm should hold affected products during testing
+Product “Hold and Test” Sampling Plans
+
+13/02/2017
+13
+Hogan Lovells | 25
+Conditions Likely to Reduce Hazard
+(e.g., product will undergo kill step)
+Conditions of Use Likely to Cause
+No Change in Hazard (e.g., no
+growth, no die off)
+Conditions of Use Likely to Increase
+Hazard (e.g., high pH or water
+activity)
+Serious
+Hazard
+5 samples
+Mean Concentration
+1 cfu/32 g
+10 samples
+Mean Concentration
+1 cfu/83 g
+20 samples
+Mean Concentration
+1 cfu/185 g
+Severe Hazard
+15 samples
+Mean Concentration
+1 cfu/135 g
+30 samples
+Mean Concentration
+1 cfu/278 g
+60 samples
+Mean Concentration
+1 cfu/526 g
+Product “Hold and Test” Sampling Plans for RTE Foods
+Hogan Lovells | 26
+•FDA recommends firms test food for Lm because of risk to public health
+–If firm tests for Listeria spp., firm should either determine if Lm or assume as much
+•If Lm detected in food, firm should:
+ Reprocess food with validated listericidal control measure, divert to non-food use, send
+for consumption by animals (if appropriate), or destroy product lots
+ Should consider lots produced between two cleaning and sanitation cycles to be
+implicated by positive
+ Should consider whether other lots are potentially contaminated and should be subjected
+to hold and test procedures
+ Corrective actions should include intensified sampling and testing of FCS and non-FCS,
+followed by additional corrective actions
+ Should consider whether food in commerce should be recalled
+Product “Hold and Test” Sampling Plans for RTE Foods, cont’d
+13/02/2017
+14
+Hogan Lovells | 27
+•Part 117 requires all individuals engaged in manufacturing, packing,
+holding to receive training in food hygiene and food safety, including
+personal health and hygiene
+•FDA recommends
+–Training in health and hygiene specific to Lm control for all personnel and contractors
+who enter production and storage areas, along with annual refresher training
+–Training on the draft guidance for those responsible for or who supervise:
+–Establishing listericidal/listeristatic controls
+–Collecting and testing environmental and product samples
+–Determining and taking corrective actions
+–Establishing and using written sanitation procedures
+Employee Training
+Hogan Lovells | 28
+•Detailed recommendations on how to design systems to control for
+Listeria in RTE foods, but with flexibility
+•Facilities have “one free pass” after one positive FCS test to continue
+production, with investigation, sanitation, and retesting
+•Guidance continues to distinguish between foods that do/don’t support
+the growth of Lm
+•Firms need to be sure to conduct comprehensive investigations to find
+and eliminate the source of contamination
+Recap
+
+13/02/2017
+15
+Hogan Lovells | 29
+•Thoroughly review the draft guidance
+•Comments on this draft guidance due July 26, 2017
+•Forthcoming FDA publications:
+–Draft guidance on determining foods that are RTE
+–Update to 2008 draft Compliance Policy Guide for FDA staff (CPG 555.320)
+Next Steps
+Hogan Lovells | 30
+Questions?
+
+13/02/2017
+16
+Hogan Lovells | 31
+Contact Information
+Maile Hermida, Partner
+(202) 637-5428
+Maile.Hermida@hoganlovells.com
+Elizabeth Fawell, Counsel
+(202) 637-6810
+Elizabeth.Fawell@hoganlovells.com
+February 13, 2017
+Presentation for AFFI
+FDA’s Revised Draft Guidance for Control
+of Listeria monocytogenes in Ready-
+To-Eat Foods

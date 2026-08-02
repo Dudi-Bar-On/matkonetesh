@@ -1415,3 +1415,53 @@ What to do about it, concretely:
 - **When RED "passes", stop.** In two of these cases the RED run showed passing assertions produced by an
   unrelated failure (a missing module exiting 1). A red phase that passes for the wrong reason is the
   same defect arriving early — and it is the cheapest moment to catch it.
+
+### L46 — an environment fact measured with ONE tool, and handed to a fleet, is an assumption wearing evidence's clothes (2026-08-02)
+
+The corpus-download arc. Phase 1 probed the network with `curl`, got `000`, and wrote into the source
+map: *"`curl` is completely disconnected from the network — there is no shell-based download path.
+`WebFetch` is the only channel."* That sentence was quoted verbatim into the task brief, and from there
+into **three** download-agent briefs as an established fact they were told not to re-discover. All three
+built their entire strategy on it: hunting state-government mirrors for federal documents, marking
+`fda.gov`, `ecfr.gov`, `web.archive.org` and `seriouseats.com` as blocked, and settling for WebSearch
+reconstructions where no mirror existed.
+
+One line disproved it:
+
+```
+node -e "fetch('https://example.com')"   ->  200
+```
+
+**`curl` is sandboxed; Node's `fetch` is not.** And what `WebFetch` reports as a block is often its own
+tool-side domain refusal, not a network fact. Re-probed with node: `fda.gov` 200 · `ecfr.gov` 200 (with
+an official versioner **API returning structured XML**) · `web.archive.org` reachable · `seriouseats.com`
+200, no paywall. Exactly one of the declared blocks was real: `fsis.usda.gov` 403, server-side.
+
+The cost: an entire round of mirror-hunting that was unnecessary, two sources abandoned as
+"unretrievable" that were one fetch away, regulatory text scraped out of PDFs when a structured XML API
+was available, and — the part that matters — **a reconstructed value that was simply wrong** (the
+AskUSDA organ list was recorded as heart/chitterlings; the real page says kidney/liver/stomach/tongue/
+tripe). Round 2 closed all of it in about forty minutes.
+
+Why the existing gates did not catch it. §12's PREDICT→TEST→OBSERVE and L14's single-point-failure
+razor both apply to **debugging**. Nothing pointed them at an **environment measurement** — a fact
+established once, early, by one agent, and then propagated as a premise. And a premise, unlike a
+conclusion, is never re-examined: three agents each honoured it precisely *because* the brief told them
+it was verified.
+
+The rule this earns:
+
+- **A capability claim about the environment — "there is no network", "this host is blocked", "that tool
+  cannot do X" — requires TWO independent tools before it may be written down as fact.** One tool
+  returning zero measures the tool, not the world.
+- **Distinguish the layer that refused you.** Sandbox · tool policy · server (403/404) · paywall (402)
+  are four different failures with four different workarounds. Recording all of them as "blocked"
+  destroys the information needed to route around any of them.
+- **A premise inherited by a fan-out is the highest-leverage thing to falsify**, because it multiplies:
+  a wrong conclusion costs one agent, a wrong premise costs all of them at once. Before dispatching N
+  agents on a stated constraint, spend one minute trying to break it.
+- **Prefer the structured channel.** eCFR's versioner API returns date-versioned XML where we were
+  scraping PDFs; USDA FoodData Central serves the same shape for nutrition. §10.15's "evaluate a better
+  ingredient" applies to the **acquisition channel**, not only to servers and runners.
+- Independent corroboration is the reward for doing it right: the eCFR XML agreed with the
+  PDF-scraped CSVs on **every** value, which is stronger evidence than either path alone.

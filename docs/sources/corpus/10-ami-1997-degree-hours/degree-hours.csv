@@ -1,0 +1,7 @@
+source_id,parameter,value,unit,note,pincite
+10,"Degree-hours basis temperature",60,F,"Temperature at which staphylococcal (S. aureus) growth effectively begins; degree-hours = (hours at temperature above 60F) x (degrees F above 60F)",p.160 (per document's own pagination) of UW FSRE secondary document; original AMI Foundation 1997 text as quoted therein
+10,"Target pH for fermentation critical control point",5.3,pH,"Rate of pH drop to 5.3 or below is the critical control point to prevent S. aureus growth and enterotoxin production",same
+10,"Degree-hour limit - process staying below 90F before reaching pH 5.3",1200,degree-hours (F basis),,same
+10,"Degree-hour limit - process reaching 90-100F before reaching pH 5.3",1000,degree-hours (F basis),,same
+10,"Degree-hour limit - process exceeding 100F before reaching pH 5.3",900,degree-hours (F basis),,same
+10,"Worked example","80F constant, pH 5.3 reached in 55 hours -> (80-60)F x 55h = 1100 degree-hours (within the 1200 limit for <90F)",,"Verbatim worked example from the source document",same

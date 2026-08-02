@@ -1,0 +1,3 @@
+source_id,cut,time,temp_C,temp_F,confidence,evidence
+17,beef brisket,2 days (48h),57,135,MANUAL-secondary,"corroborated across multiple secondary sous-vide sites citing the MC brisket recommendation; not read directly from the book's Best Bets table"
+17,beef short ribs,72 hours,60,140,MANUAL-secondary,"corroborated by MC's own published '72-Hour Braised Short Ribs' recipe (modernistcuisine.com) and multiple third-party sous-vide sites"

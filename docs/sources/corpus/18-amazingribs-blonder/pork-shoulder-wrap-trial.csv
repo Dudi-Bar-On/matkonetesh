@@ -1,0 +1,3 @@
+source_id,condition,weight_lb,time_to_180F_hr,texture_note
+18,foil-wrapped ("Texas crutch"),6,6,"juicy, nearly perfect"
+18,unwrapped,6,">6 (still under 180F at comparable time)","slightly tough"

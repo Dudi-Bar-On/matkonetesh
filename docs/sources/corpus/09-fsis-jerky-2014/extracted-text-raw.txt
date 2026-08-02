@@ -1,0 +1,3415 @@
+1 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+This guidance 
+document is designed 
+to help very small 
+meat and poultry 
+establishments that 
+manufacture jerky 
+identify: 
+ 
+• The key steps in 
+the jerky process 
+needed to ensure 
+safety; and 
+ 
+• The scientific 
+support available 
+to help develop a 
+safe process and 
+product. 
+      
+FSIS USDA 
+   
+      
+ 
+FSIS Compliance Guideline for Meat and 
+Poultry Jerky Produced by Small and 
+Very Small Establishments 
+ 
+2014 Compliance Guideline  
+2 
+ 
+ 
+This Compliance Guideline provides guidance to assist establishments in meeting FSIS 
+regulations related to jerky processing.  The guideline also contains recommendations 
+to help industry produce a safe product based on the scientific information available in 
+the literature.  Guidance represents best practice recommendations by FSIS, based on 
+the best scientific and practical considerations, and does not represent requirements 
+that must be met.  Establishments may choose to adopt different procedures than those 
+outlined in the guideline, but they would need to support why those procedures are 
+effective.  It is important to note that this guideline represents FSIS’s current thinking on 
+this topic and should be considered usable as of the issuance date.   
+ 
+This version of the guidance document, dated August 2014, replaces previous versions 
+of the document which was last updated in July 2012.  FSIS updated the guideline 
+based on four comments from three trade associations and one individual.  The 
+following are changes made in response to comments: 
+ 
+• Broken link on page 4 (see footnote) has been changed to a link to a report from 
+the New Mexico Department of Health; 
+• Surface preparation step was added to the step-by-step guide on page  7; 
+• Definition of shelf-stability and recommended shelf-stability parameters were 
+clarified on page 15; 
+• Continuously introducing steam option was clarified on page 22; 
+• Attachment 4
+, which provides guidance on supporting the continuously 
+introducing steam option, was added. 
+ 
+A more detailed summary of the comments and FSIS’ responses can be found in 
+Attachment 1
+.   
+ 
+In addition to making changes in response to public comments, FSIS also made the 
+following changes in response to questions submitted through askFSIS: 
+ 
+• Clarified on page 8 that the lethality treatment of poultry jerky should achieve at 
+least a 5.0-log10 reduction of Salmonella spp.; 
+• Provided guidance on pages 13 – 14 on how to calibrate a humidity recorder;  
+• Clarified on page 19 that reference to the cooking time in the humidity options in 
+Appendix A refers to the entire cooking time (including come up time), not just 
+the time during which the temperature in Appendix A is achieved and maintained 
+(e.g., 145°F for 4 minutes);  
+• Clarified in the text on page 19 that if an establishment using Appendix A as 
+support for the lethality treatment introduces steam or seals the oven, cooking 
+time should never be less than one hour; and   
+• Clarified the documentation that should be collected to support that humidity is 
+being implemented consistent with Appendix A when the sealed oven or 
+continuously introducing steam methods are used on pages 21 and 22. 
+ 
+Although comments will no longer be accepted through regulations.gov on this guidance 
+document, FSIS will update this document as necessary should new information 
+become available.    
+  
+3 
+ 
+Compliance Guideline for Meat and Poultry Jerky Produced by Small 
+and Very Small Establishments 
+ 
+Table of Contents 
+  
+Purpose 
+ 
+4 
+Background 
+ 
+4 
+Step-by-Step Guide for Jerky Processing  5 
+ 
+ 
+Critical Operational Parameters during the 
+Lethality Treatment 
+ 
+ 
+9 
+Scientific Support Available for Jerky Processing 18 
+ 
+References 
+ 
+ 
+29 
+Helpful Websites 
+ 
+31 
+Attachment 1:  FSIS Response to Comments 
+ 
+32 
+Attachment 2:  Time, temperature, and humidity 
+combinations reported in the literature for beef jerky 
+that achieve at least a 5–log10 reduction in 
+Salmonella and E. coli O157:H7 
+ 
+40 
+Attachment 3:  Making Your Own Wet bulb 
+(Reprinted with Permission from the University of 
+Wisconsin) 
+49 
+Attachment 4:  Example Time-Temperature Recorder 
+Chart to Support Option to Continuously Inject 
+Steam  
+ 
+53 
+ 
+  
+4 
+ 
+Compliance Guideline for Meat and Poultry Jerky 
+Produced by Small and Very Small Establishments 
+ 
+Purpose 
+ 
+This guideline is designed to help small and very small meat and poultry 
+establishments that manufacture jerky to identify: 
+ 
+• The key steps in the jerky process needed to ensure safety; and 
+• The scientific support available to help develop a safe process and 
+product. 
+ 
+This guideline is not intended to set any regulatory requirements.  This document 
+replaces previous versions of the guideline last updated in July 2012. 
+ 
+Background 
+ 
+Meat or poultry jerky is a ready-to-eat (RTE), dried product that is considered shelf-
+stable (i.e., it does not require refrigeration after proper processing).  Following a 2003 
+salmonellosis outbreak from Salmonella Kiambu in jerky produced in New Mexico1, 
+FSIS published the first version of the Compliance Guideline for Meat and Poultry Jerky 
+Produced by Small and Very Small Establishments.  The Compliance Guideline 
+provided guidance for small and very small meat and poultry establishments on the 
+critical steps for jerky processing and the controls needed at each of these steps to 
+ensure a safe product is produced.   
+ 
+One potential cause of the 2003 Salmonella Kiambu outbreak in jerky was the very slow 
+drying process under low humidity conditions 
+(1% Relative Humidity - 82°C dry bulb, 30°C 
+wet bulb), which allowed Salmonella 
+organisms to dehydrate during drying and 
+become resistant to heat.  Therefore, the first 
+version of the jerky compliance guidelines 
+emphasized the need for high levels of 
+humidity during jerky processing.  Since 
+2003, a number of journal articles have been 
+published that has increased scientific 
+understanding of the critical factors during jerky processing including the role of 
+humidity.   
+ 
+This document updates and replaces the 2007 and 2012 versions of the guideline to 
+reflect the most up-to-date science and understanding of jerky processing.  This 
+guideline also addresses concerns identified through Food Safety Assessments (FSAs) 
+and askFSIS questions and responds to public comments received on the 2012 version. 
+ 
+ 
+                                                           
+1 http://aces.nmsu.edu/ces/nmhs/documents/albanese.pdf 
+One potential cause of the 2003 
+Salmonella Kiambu in jerky 
+outbreak was the very slow drying 
+process under low humidity 
+conditions 
+5 
+ 
+Step-by-Step Guide for Jerky Processing 
+Below is a summary of the eight (8) general processing steps used in jerky production.  
+Although an establishment’s process may not include these same steps, the lethality 
+treatment followed by drying should be used to produce a safe product.  Other 
+steps such as the intervention and post-drying steps may be used by establishments 
+when the lethality and drying steps do not achieve adequate lethality.  Further 
+descriptions of the key steps in the jerky process, including the microbial interventions 
+that can be applied to ensure safety, are included in the pages that follow.   
+ 
+ Step 1 - Strip preparation:  Whole muscle is sliced or ground; ground product is 
+formed into strips (some jerky is formed). 
+ 
+ Step 2 – Marination:  The strips are marinated in a solution that often contains 
+salt, sugar, and flavoring ingredients. 
+ 
+ Step 3 – Interventions:  Antimicrobial interventions before, during, and after 
+marinating the strips of raw product may be added to increase the level of 
+pathogen reduction beyond that achieved by heating alone.  
+ 
+ Step 4 - Surface preparation:  Strips are heated using a low temperature heat 
+step, which makes the surface tacky to aid in smoke adherence and improve 
+product texture. 
+ 
+ Step 5 – Lethality:  The lethality treatment is defined as the process step or 
+steps used to destroy pathogenic microorganisms on or in a product to make the 
+product safe for human consumption.  The lethality treatment is considered to 
+include the time when the product is placed in the heated oven (including surface 
+preparation and color setting) until the product reaches the desired lethality time-
+temperature combination (also referred to as “the cooking time”). 
+ 
+In order to achieve adequate lethality, it is important that an establishment’s 
+actual process adheres to the following critical operational parameters (see Key 
+Definitions on page 8) in the scientific support:  
+• Product time-temperature combination 
+• Relative humidity 
+ 
+ Step 6 – Drying:  Drying is the process during which water (moisture) is 
+removed from the product.  After the lethality treatment, jerky is dried to meet a 
+water activity level sufficient to prevent the growth of microorganisms, especially 
+toxigenic microorganisms, such as Staphylococcus aureus. 
+ 
+ Step 7 – Post-drying heat step:  A post-drying heat step may be added to 
+increase the level of pathogen reduction beyond that achieved by heating alone. 
+ 
+ Step 8 – Handling:  Product is often handled after the lethality and drying steps 
+and prior to packaging. 
+6 
+ 
+Jerky producers (and all producers of RTE product) are required to control the food 
+safety hazards in their products (9 CFR 417.4(a)) and to document that their Hazard 
+Analysis and Critical Control Point (HACCP) systems work according to 9 CFR 
+417.5(a).  Establishments producing RTE products need to achieve lethality of 
+pathogens (e.g., Salmonella) in the product, and stabilize the product to inhibit the 
+growth of spore-forming bacteria (e.g., C. botulinum and C. perfringens).  In addition, 
+jerky producers need to ensure the growth of toxigenic microorganisms, such as 
+Staphylococcus aureus, is controlled during the process and prevented during the 
+distribution and storage of the finished product.  This guideline provides steps jerky 
+processors can take to ensure that the jerky processes they employ effectively control 
+these hazards.  The guideline discusses each step in the jerky process in more detail 
+below with key considerations related to pathogen reduction or control highlighted for 
+each step.  Each process is unique, so some processors may not use all 8 steps.  Some 
+may perform the steps below in different order, or some may use additional steps.     
+ 
+ Step 1 - Strip preparation: Whole muscle is sliced or ground; ground product is 
+formed into strips (some jerky is formed).  
+ 
+It is critical for establishments to use source materials prepared under good 
+manufacturing practices (GMPs) designed to minimize contamination and the presence 
+and growth of pathogens of public health concern, so the initial pathogen load is not 
+higher than what the process is designed to reduce.  Establishments that choose to 
+purchase source materials known to be contaminated with pathogens of public health 
+concern, such as Salmonella or shiga toxin-producing Escherichia coli (E. coli) (STEC) 
+organisms such as E. coli O157:H7 or E. coli O45, should pay special attention to the 
+controls they put in place to ensure cross-contamination between raw and RTE product 
+does not occur.  
+ 
+ Step 2 – Marination: The strips are marinated in a solution that often contains 
+salt, sugar, and flavoring ingredients.  
+ 
+Establishments should use non-meat ingredients for marinades and spice mixes that 
+are prepared under GMPs designed to minimize contamination and the presence and 
+growth of pathogens of public health concern, so the initial pathogen load is not higher 
+than what the process is designed to reduce.  FSIS recommends that establishments 
+use a new liquid marinade solution or dry spice mix with each production batch to 
+reduce chances of cross-contamination from one batch of production to another.  If an 
+establishment does reuse a marinade or spice mix, it should consider and address the 
+potential hazards associated with cross-contamination from one batch of production to 
+another. 
+ 
+ Step 3 - Interventions: Antimicrobial interventions before, during, and, after 
+marinating the strips of raw product have been shown to increase the level of 
+pathogen reduction beyond that achieved by heating alone.  
+ 
+Some heating processes may not deliver an adequate lethality and, thus, may require 
+an additional intervention step to ensure product safety. Examples of interventions that 
+may increase the lethality of the process are:  
+ 
+7 
+ 
+• Preheating the meat or poultry jerky strips in the marinade to a minimum 
+internal temperature of 160°F will provide an immediate reduction of 
+Salmonella (Harrison and Harrison, 1996). Heating in marinade may 
+produce unacceptable flavors for some products; however, other liquids 
+such as water could be used. The times and temperatures in FSIS 
+Appendix A: Compliance Guidelines For Meeting Lethality Performance 
+Standards For Certain Meat and Poultry Products (referred to throughout 
+this document as Appendix A) could be used for preheating in the liquid, 
+although the product internal temperature should be monitored to ensure 
+adequate lethality is achieved).  
+ 
+• Dipping the product in 5% acetic acid for 10 minutes before placing it in 
+the marinade can augment the log reduction effects of drying but not 
+enough to eliminate pathogens (Calicioglu, 2002 & 2003). This 
+intervention may also result in an undesirable flavor.  
+ 
+• Dipping the product in 1:2 or 1:3 mixtures of calcium sulfate (Mionix 
+Safe
+2
+O™) and water for 30 seconds or dipping in acidified sodium chlorite 
+(Keeper®) at concentrations between 500 and 1,200 ppm can reduce the 
+level of Salmonella, Listeria monocytogenes (Lm), and E. coli O157:H7 
+compared with no pretreatment. These pretreatments were effective in 
+both dehydrators and smokehouse processing (Harrison et al., 2006).  
+ 
+ Step 4 - Surface preparation:  Strips are heated using a low temperature heat 
+step which makes the surface tacky to aid in smoke adherence and improve 
+product texture.   
+ 
+Humidity is often not introduced until the next step, the lethality treatment.  The lack of 
+humidity during the initial surface preparation step is generally not a food safety concern 
+because the step is usually too short (30 minutes or less) to dry out the product to such 
+a degree that the heat resistance of Salmonella would be increased.  This step may 
+include or be followed by a color setting step during which humidity is also not 
+introduced.  This color setting step plus the surface preparation step should be 30 
+minutes or less in total.  If an establishment uses a preparation or color setting step that 
+is longer than 30 minutes, it should provide support for why the lack of humidity does 
+not result in the product drying out before the lethality treatment.  
+ 
+ 
+ Step 5 - Lethality treatment:  The lethality treatment is defined as the process 
+step or steps used to destroy pathogenic microorganisms on or in a product to 
+make the product safe for human consumption.  The lethality treatment is 
+considered to include the time when the product is placed in the heated oven 
+(including surface preparation and color setting) until the point at which the 
+product reaches the desired lethality time-temperature combination (also referred 
+to as the “cooking time”).
+ 
+ 
+In order to achieve adequate lethality, the establishment’s actual process needs 
+to adhere to the following critical operational parameters
+ (see Key Definitions on 
+page 8) in the scientific support:  
+ 
+8 
+ 
+• Product time-temperature 
+combination 
+• Relative humidity 
+ 
+In recent years, several jerky products have been found to 
+be adulterated with Salmonella or E. coli O157:H7.  Often 
+the contamination has been linked to inadequate lethality 
+treatment.  The lethality treatment of meat jerky should 
+achieve at least a 5.0-log10 reduction of Salmonella spp. 
+and at least a 5.0-log10 reduction for shiga toxin-producing 
+Escherichia coli (E. coli) (STEC) for products containing 
+beef as recommended in the Salmonella Compliance 
+Guidelines for Small and Very Small Meat and Poultry 
+Establishments that Produce Ready-to-Eat (RTE) 
+Products.  The lethality treatment of poultry jerky should 
+achieve at least a 5.0-log10 reduction of Salmonella spp.  
+Although poultry jerky is considered to fall under the 
+performance standard in 9 CFR 381.150 (i.e., a 7.0-log
+10 
+reduction of Salmonella spp.), the regulation allows for the 
+use of an alternative lethality that achieves an equivalent 
+probability that no viable Salmonella organisms remain in 
+the finished product.  Research has supported that a 5.0-
+log10 reduction in Salmonella is sufficient for such shelf-
+stable products.  Indeed, the FSIS Risk Assessment of the 
+Impact of Lethality Standards on Salmonellosis from 
+Ready-to-Eat Meat and Poultry Products found that there 
+would not be a significant increase in the cases of 
+salmonellosis if jerky and other shelf-stable products 
+achieved a 5.0-log10 vs. 7.0-log10 lethality.  In addition to 
+Salmonella spp., the lethality treatment of meat and 
+poultry jerky should achieve at least a 3.0-log10 reduction 
+in Lm, although a 5.0-log10 reduction or greater is 
+desirable for providing an even greater safety margin for 
+ensuring that Lm does not grow to detectable levels during 
+storage.  However, establishments are not required to 
+validate that their process achieves reduction in Lm (or 
+STEC for products containing beef) if it achieves sufficient 
+reductions in Salmonella because Salmonella is more 
+heat resistant than other pathogens and is, therefore, 
+considered an indicator of lethality. 
+ 
+Establishments should make sound decisions in the 
+hazard analysis that support that source materials were 
+prepared using GMPs and other process controls as 
+discussed in the previous steps of strip preparation
+ and 
+marination such that a 5.0-log10 reduction in Salmonella 
+results in the production of a safe product. 
+ 
+Official establishments choosing to use cooking to achieve 
+lethality before drying may consider a number of different 
+KEY DEFINITIONS 
+ 
+The lethality treatment is 
+defined as the process step or 
+steps used to destroy 
+pathogenic microorganisms on 
+or in a product to make the 
+product safe for human 
+consumption.  The lethality 
+treatment is considered to 
+include the time when the 
+thermal processing begins 
+(e.g., the product is placed in 
+the heated oven) until the 
+point at which the product 
+reaches the desired lethality 
+time-temperature combination 
+(also referred to as the 
+“cooking time”). 
+ 
+Critical operational 
+parameters are those 
+parameters of an intervention 
+that must be met in order for 
+the intervention to operate 
+effectively and as intended.  
+Such parameters include but 
+are not limited to time, 
+temperature, water activity, 
+concentration, relative 
+humidity, and type of 
+equipment (to the extent that 
+the use of different equipment 
+would result in an inability to 
+achieve the critical parameters 
+of the study).  
+ 
+9 
+ 
+types of scientific documents to support the time-temperature-humidity combination 
+used in the actual process.   
+ 
+Such types of scientific support documents include:  
+ 
+• Compliance Guidelines (e.g., Appendix A) 
+• Journal articles  
+• Challenge studies  
+• In-plant data   
+ 
+Finished product testing would not be considered adequate scientific support for the 
+process used on its own, however, because such testing does not support that at least 
+an adequate reduction of Salmonella spp. is achieved by the process. 
+ 
+An in-depth discussion of considerations for each of these types of scientific support 
+documents, along with examples, is discussed in the section titled:  
+Scientific Support 
+Documents for Jerky Processing. 
+ 
+Critical Operational Parameters during the Lethality Treatment 
+ 
+Regardless of the scientific support document used, it is important that an 
+establishment’s actual process and procedures relate and adhere to the critical 
+operational parameters in the scientific support in order to achieve adequate lethality. 
+There are several critical operational parameters that are important for jerky processing 
+that will be reviewed.   
+ 
+Product time-temperature combination 
+ 
+One of the critical operational 
+parameters during the jerky process is 
+the time-temperature combination the 
+product achieves.  Most often the 
+temperatures used during the lethality 
+treatment that are reported in scientific 
+support documents, such as the 
+Appendix A
+ guidelines, are the 
+temperatures that the product should 
+reach.  FSIS has found that 
+establishments will use these same 
+temperatures to set critical limits for the 
+oven temperature. However, setting the 
+oven temperature to the temperature in 
+the support is not appropriate because it 
+does not ensure that the product will 
+reach the same internal temperature, 
+which is critical to ensure adequate 
+lethality is achieved.         
+ 
+For this reason, FSIS recommends that 
+FSIS has found through FSAs that many 
+establishments use temperatures from support 
+documents to set critical limits for the oven 
+temperature; however, setting the oven 
+temperature to the temperature in the support 
+does not ensure that the product will reach the 
+same internal temperature which is critical to 
+ensure adequate lethality is achieved.  The 
+FSAs show that some establishments do not 
+measure or verify that the product has 
+achieved the desired internal lethality 
+temperature until after drying.  FSIS does not 
+recommended verifying product temperatures 
+only after drying because the product may 
+have dried out before the lethality temperature 
+was reached, resulting in lower than expected 
+pathogen reduction. 
+10 
+ 
+establishments monitor the internal product temperature.  
+Product internal temperature can be measured by inserting 
+a thermocouple probe into the center of a beef strip.  Proper 
+insertion may be difficult because the product is so thin; 
+therefore, FSIS recommends that establishments slice one 
+piece of jerky twice as thick as normal so that the probe can 
+be inserted.  If this thicker piece reaches the lethality 
+temperature, the thinner pieces should as well.  In addition, 
+to accurately measure the product temperature, the 
+establishment should understand factors that could affect 
+the temperature of the product.  These factors include cold 
+spots in the oven, as well as variation in oven temperature 
+during different seasons.  Although monitoring product 
+temperature is strongly encouraged, establishments can use 
+the oven or smokehouse temperature in place of the product 
+temperature, provided that the establishment has a 
+consistent product and process and has sufficient data 
+correlating the oven temperature selected with the product 
+temperature in the scientific support.   
+ 
+In addition to the product temperature, the amount of time 
+the product is held at this temperature is also critical to 
+ensuring that adequate lethality is achieved.  It is important 
+for the establishment to understand how the actual 
+temperature of the product was taken, the time it takes the 
+product to reach the target temperature (known as the 
+come-up time or CUT), and the amount of time the product 
+is held at the target temperature compared to the scientific 
+support documentation. If the product is held at the target 
+lethality treatment for less time than what was used in the 
+scientific support, then adequate lethality may not be 
+achieved.   
+ 
+Relative Humidity 
+ 
+In addition to the product time-temperature combination, the relative humidity (e.g., 
+steam) in the oven is also critical to achieve adequate lethality in jerky. It is important 
+that the establishment maintains humidity according to its scientific support.  If relative 
+humidity is not added or maintained by the process, the establishment should maintain 
+scientific support demonstrating that humidity is not a critical operational parameter.  
+Some jerky processors may be concerned that adding humidity will affect the ability to 
+dry the meat or poultry and result in unacceptable product texture; however, the lethality 
+treatment during which relative humidity is applied takes very little time.  Adding 
+humidity during the lethality treatment should accelerate subsequent drying and prevent 
+case-hardening, which may actually improve product texture.   
+ 
+ 
+ 
+ 
+KEY DEFINITIONS 
+ 
+Relative Humidity is defined 
+as the degree of saturation of 
+the air by water (vapor), 
+expressed as a percentage.  
+Relative humidity describes 
+the relation of the existing 
+vapor pressure at a given 
+temperature to the maximum 
+vapor pressure at that 
+temperature.  Air at a given 
+temperature can absorb 
+vapor until its saturation 
+(100%).  The difference 
+between the dry and wet bulb 
+temperature is the relative 
+humidity at that temperature.  
+The following website 
+http://home.fuse.net/clymer/w
+ater/wet.html contains a 
+function for calculating the 
+relative humidity given the 
+wet and dry bulb 
+temperatures. 
+ 
+ 
+11 
+ 
+Without sufficient humidity the product surface may dry too 
+quickly, and the bacteria may become more heat resistant. 
+Relative humidity around a product during the lethality treatment promotes lethality in 
+two ways:   
+ 
+• First, the humidity reduces surface evaporation and the energy or heat that 
+evaporation removes from the product during heating.  If sufficient relative 
+humidity surrounding the product is not maintained during the lethality treatment, 
+undesirable evaporative cooling at the surface will occur, and the product will not 
+reach the desired temperature. Producing products under conditions of high 
+humidity early in the cooking process reduces evaporative cooling allowing 
+products to reach higher product surface temperatures which results in a greater 
+reduction in microorganisms.   
+ 
+• Second, the humidity keeps the product surface (and any pathogens) more moist 
+and prevents unwanted concentration of solutes (e.g., sugar and salt) as a result 
+of drying. Research has demonstrated that bacteria can become more heat 
+resistant as their moisture levels decrease, and increased concentrations of 
+solutes, especially sugars, increase the heat resistance of bacteria. Therefore, 
+the drying of the product surface before the pathogens are destroyed will 
+increase pathogen heat resistance and allow them to survive the heating 
+process. By incorporating humidity to minimize evaporation, the D values (time at 
+a constant temperature necessary to destroy 90% or 1-log
+10 of the target 
+organism) that are the basis for Appendix A and other scientific support 
+documents remain valid (Goepfert, 1970; Goodfellow and Brown, 1978; Faith, 
+N.G. et al. 1998). 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+For these reasons, it is crucial that the processor prevent drying of the product until a 
+lethal time-temperature combination is attained. In order to be most effective, the 
+humidity should be applied during the lethality treatment and before the drying step 
+occurs.  Although the lethality treatment includes the time when the product is placed in 
+the heated oven until the product reaches the desired lethality time and temperature 
+combination (the “cooking time”), establishments may not introduce relative humidity 
+into the process until 15 to 30 minutes after the product is placed in the heated oven.  
+The establishment would do so because of the previous step of surface preparation
+ that 
+is needed to set the surface to aid in the adherence of smoke.  As discussed earlier, the 
+lack of humidity during this initial step is not a food safety concern because of its short 
+duration.   
+ 
+In addition to applying humidity early in the lethality treatment, FSIS also recommends 
+that establishments treat the lethality and drying steps as separate stages to ensure that 
+lethality is achieved before the product dries out.  Therefore, the establishment should 
+measure and verify the desired product temperature has been met before the drying 
+stage.  One way for an establishment to know that the product has not dried out before 
+a lethal time-temperature combination is attained is to measure the water activity of the 
+12 
+ 
+product after the lethality treatment but before drying and 
+again after drying.  Some published articles (for example, 
+Buege et al., 2006a) report the water activity at these points 
+in the process for comparison.  Another approach is for the 
+establishment to monitor the wet bulb temperature early in 
+the process because it provides a good indication of product 
+surface temperature, which strongly influences lethality 
+(Buege, 2006a).  Further explanation and directions for 
+making a wet bulb thermometer are in Attachment 3.  
+Although this information may be useful, establishments do 
+not need such data to validate the process if they are able to 
+demonstrate that their process can achieve the level of 
+relative humidity in their scientific support.     
+ 
+Some simple and practical measures that can be used to aid 
+in meeting the humidity level utilized in the scientific support 
+documents include:  
+ 
+• Seal the oven:  Close the smokehouse doors and 
+oven dampers to provide a closed system and 
+prevent moisture loss.   
+ 
+• Add humidity:  
+o Place one or more shallow, wide pans of hot 
+water in the oven to increase the humidity in 
+the system. Conduct a test run to determine 
+whether the water evaporates.  
+o Injecting steam or a fine water mist into the 
+oven can also add humidity.  
+ 
+The use of a humidity sensor or the use of wet bulb and dry 
+bulb thermometers (to measure relative humidity) would 
+enable the operator to determine whether adequate humidity 
+is being applied for either measure.  
+ 
+In order to ensure that adequate humidity is attained, 
+the establishment should monitor the humidity 
+throughout the lethality treatment.  The process should be 
+monitored using wet and dry bulb thermometers (used to 
+determine relative humidity) or a humidity sensor.   
+ 
+The following website 
+http://home.fuse.net/clymer/water/wet.html
+ contains a 
+function for calculating the relative humidity given the wet 
+and dry bulb temperatures.  A basic wet bulb thermometer 
+can be prepared by fitting a wet, moisture-wicking cloth 
+around a dry bulb thermometer. To maintain a wet cloth 
+during the process, submerse an end of the cloth in a water 
+supply. The cloth must remain wet during the entire lethality 
+treatment especially if smoke is applied.  The establishment 
+KEY DEFINITIONS 
+ 
+The dry bulb temperature 
+refers to the ambient air 
+temperature.  It is called “dry 
+bulb” because the air 
+temperature is indicated by a 
+thermometer not affected by 
+the moisture in the air or 
+evaporative cooling that 
+removes heat and moisture 
+from the surface of the product.  
+The dry bulb temperature is 
+most commonly measured by 
+jerky-makers.  Jerky makers 
+commonly measure the dry 
+bulb temperature. 
+ 
+The wet bulb temperature is 
+the temperature indicated by a 
+moistened thermometer bulb 
+exposed to the air flow.  A wet 
+bulb thermometer measures 
+the extent of cooling that 
+happens as moisture dries from 
+a surface, a process also 
+known as evaporative cooling.  
+The wet bulb temperature is 
+always lower than the dry bulb 
+temperature except when there 
+is 100% relative humidity, when 
+they will be identical.  Because 
+evaporative cooling occurs on 
+the surface of thin jerky strips, 
+the wet bulb temperature is a 
+more accurate measure of 
+product surface temperature. 
+ 
+A sealed oven is generally 
+defined as one in which the 
+smokehouse doors and 
+smokehouse oven dampers are 
+closed to prevent moisture 
+loss. 
+ 
+ 
+ 
+13 
+ 
+should inspect the wet bulb sock prior to thermal processing, and the sock should be 
+changed as necessary depending on its condition.  Attachment 3 contains more details 
+for creating a wet bulb thermometer.   
+ 
+The use of a wet bulb thermometer is especially important for production at altitudes 
+between 3,000 to 7,000 feet or areas of low humidity.  Processing failures in the 
+manufacture of jerky have occurred in establishments in New Mexico located between 
+these altitudes (Eidson et al, 2000).  Establishments located at higher altitudes will 
+generally have a lower atmospheric pressure.  This lower pressure leads to lower 
+boiling points and faster evaporation from the product surface, which can lead to 
+undesirable evaporative cooling and drying of the product surface.  Furthermore, the 
+relative humidity can be less at the higher altitude because of the lower air pressure (if 
+the temperature at sea level and the high altitude is the same).  As a result, at higher 
+altitudes, the amount of moisture added to the smokehouse chamber necessary to 
+achieve a given log reduction of bacteria may need to be increased to account for lower 
+levels of humidity in the ambient (or room) air. Relative humidity in the ambient air will 
+have an effect on the relative humidity in the smokehouse chamber, particularly when 
+humidity is maintained by sealing the oven, because heat in the smokehouses is 
+typically provided by heating ambient air that is passed over electrically-heated or 
+steam-heated coils.  For this reason, all establishments should also take into account 
+variability in relative humidity in the ambient air throughout different times of year.   
+ 
+Establishments will need to make adjustments to the amount of humidity added to the 
+smokehouse chamber to account for changes in humidity in the ambient air at high 
+altitudes or during dry months.  These adjustments should be made on a case-by-case 
+basis as part of the initial design of the system to ensure that the humidity in the actual 
+process matches the level in the scientific support.   
+ 
+FSIS recommends that establishments monitor relative humidity using wet and dry bulb 
+thermometers or a humidity sensor with every lot or batch of product although FSIS 
+does not require this monitoring frequency.  Establishments have flexibility in how they 
+address humidity in their HACCP systems.  If relative humidity is addressed as part of a 
+critical control point (CCP), the establishment is required to list the critical limits per 9 
+CFR 417.2(c)(3) and list and support the monitoring procedures and frequencies 
+chosen for each CCP to ensure compliance with the critical limits per 9 CFR 417.2(c)(4) 
+and 9 CFR 417.5(a)(2).   Furthermore, per 9 CFR 417.4(a)(2), establishments are 
+required to calibrate process-monitoring instruments as part of ongoing verification 
+activities and, per 417.5(a)(2), are required to support their verification procedures and 
+frequencies of those procedures.  If relative humidity is addressed in a prerequisite 
+program, and the establishment determines that the implementation of that program 
+results in potential hazards being not reasonably likely to occur, then it must have 
+supporting documentation for the decisions made in the hazard analysis per 9 CFR 
+417.5(a)(1). 
+ 
+NOTE:  Accurate recordkeeping documenting the implementation of the critical 
+operational parameters is critical to support the fact that safe products are produced.  
+Inadequate or inaccurate recordkeeping (e.g., data entry error or unclear monitoring 
+records) has contributed to jerky product recalls in the past, particularly when such 
+records were associated with a lack of information regarding the implementation of all of 
+the critical operational parameters for each batch or lot produced. 
+14 
+ 
+Often the owner’s manual for humidity recorders recommends calibration on an annual 
+basis.  Establishments should follow the manual’s instructions for calibration.  
+Establishments may calibrate by comparing the temperature readouts from the 
+microprocessor to the temperature and time plotted on the recorder charts to check for 
+accuracy.  For this procedure, FSIS recommends that the establishment calibrate the 
+microprocessor controls before use and show that the calibration is accurate.  This 
+procedure can be performed “in-house” in a few simple steps: 
+ 
+1. The wet bulb and dry bulb probes can be placed in a bucket of hot water 
+along with a National Institute of Standards and Technology (NIST) 
+reference thermometer. Some establishments use a small propane burner 
+to maintain the water at a constant temperature. 
+2. The NIST thermometer represents the known temperature standard, and 
+the establishment can compare the wet and dry bulb probe readings on 
+the microprocessor to the NIST device to verify accuracy of the probes.  
+3. Once the probe readings are verified on the microprocessor as being 
+accurate, the temperature reading on the microprocessor can be 
+compared to the chart recorder temperature. The chart recorder is then 
+adjusted (if needed) to the microprocessor reading. 
+ 
+These procedures for calibrating humidity recorders are provided as guidance to 
+establishments; other procedures may be used, provided the establishment maintains 
+support for the method chosen. 
+ 
+ Step 6 – Drying: Drying is the process during which water (moisture) is removed 
+from the product.  After the lethality treatment, jerky is dried to meet a water 
+activity level sufficient to prevent the growth of microorganisms, especially 
+toxigenic microorganisms such as Staphylococcus aureus. 
+ 
+Jerky is a shelf-stable product.  After drying is complete, the establishment should 
+monitor or verify the water activity to demonstrate that the product has attained shelf-
+stability in accordance with the scientific support.  FSIS does not have a standard of 
+identity for jerky in its regulations.  However, jerky has historically been dried to an MPR 
+of 0.75:1 or below as described in the FSIS Food Standards and Labeling Policy Book
+.  
+FSIS is aware that some manufacturers rely upon the MPR, rather than water activity, 
+for determining whether their process adequately dries the jerky to produce a shelf-
+stable product.  MPR is an inappropriate indicator of shelf-stability.  Water activity (also 
+referred to as aw), measured by an instrument such as a water activity meter, is the 
+more appropriate indicator to verify jerky is properly dried for food safety.  This is 
+because water activity is a better measure of available water (or water that is not bound 
+by other components) for microbial growth than is MPR.  Minimizing available water 
+(e.g., achieving a sufficiently low water activity) is necessary to achieve shelf stability, 
+provided measures are taken to address mold growth.  Such measures to prevent mold 
+growth may include using short inventory pull dates, low pH, antimycotics, coatings, 
+packaging, or any combination of these measures. 
+ 
+ 
+ 
+ 
+ 
+15 
+ 
+ 
+ 
+In order to achieve a shelf-stable product, a water activity 
+critical limit of 0.85 or lower should be targeted for products 
+stored in an aerobic or oxygen containing environment 
+such as in ambient air, provided the establishment takes 
+steps to prevent mold growth on the finished product.  If the 
+product is vacuum packaged in an oxygen impervious 
+packaging (creating an anaerobic environment where no 
+oxygen is present), then the water activity critical limit can 
+be 0.91 or lower.  These limits are based on the growth 
+limits for Staphylococcus aureus with and without oxygen 
+present (ICMSF, 1996) and FSIS’ definition of shelf-stability 
+(see the Key Definition in the right panel).   
+ 
+According to the International Commission on 
+Microbiological Specifications for Foods (ICMSF), the water 
+activity limit for Staphylococcus aureus growth is 0.83 
+under aerobic conditions and 0.90 under anaerobic 
+conditions.  However, as noted in a footnote of that book, 
+this criterion is based on optimal conditions.  FSIS 
+recognizes that most jerky type products have other 
+intrinsic factors, such as sodium nitrite, indigenous 
+microflora, and salt concentration, that would also act as 
+barriers to Staphylococcus aureus growth.  By considering 
+these factors, FSIS recommends an upper limit of 0.85 
+under aerobic conditions or 0.91 under anaerobic 
+conditions.   
+ 
+Establishments that choose to use these limits as support 
+for the shelf-stability of their product may cite this guideline 
+as scientific support for these limits and are not required to 
+provide additional scientific support.  Establishments may 
+be able to support other water activity critical limits, 
+provided scientific support is available to support the 
+decision-making.   The establishment needs to achieve the 
+water activity of the finished product identified in its 
+scientific support. 
+KEY QUESTION 
+Question:  Can a product be labeled as “jerky” if it 
+meets the MPR of 0.75:1 but is not shelf-stable? 
+ 
+Answer:  No.  In order to label a product “jerky” it must 
+be shelf-stable.  Although FSIS does not define jerky 
+as shelf-stable in the regulatory standards of identity 
+(9 CFR part 319), consumers consider and expect 
+jerky to be shelf-stable. 
+KEY DEFINITIONS 
+ 
+Shelf-stable is the condition 
+achieved when meat and 
+poultry products can be 
+stored under ambient 
+temperature and humidity 
+conditions; if the package 
+integrity is maintained during 
+storage, shipping, and 
+display at retail and in the 
+home; and  the product will 
+not spoil or become unsafe 
+throughout the 
+manufacturer’s specified 
+shelf-life.   
+ 
+Water activity, also referred 
+to as a
+w, is a measure of the 
+concentration of moisture 
+(i.e., water) and its 
+availability in a food.   The 
+amount of water available in 
+a food depends on the total 
+concentration of all dissolved 
+substances in the product 
+because they bind water. 
+Thus, if ingredients such as 
+salt or sugar are added to 
+food, they compete with the 
+bacteria for available water.  
+ 
+Moisture-protein-ratio 
+(MPR) expresses the percent 
+moisture divided by the 
+percent protein.  MPR is 
+commonly used in the U.S. to 
+classify dried sausages and 
+other meat products.  
+Although MPR values 
+indicate the degree of 
+product drying, they are not 
+necessarily indicative of 
+microbial safety or product 
+shelf-stability because they 
+do not take into account 
+availability of the water. 
+ 
+ 
+16 
+ 
+NOTE:  Vacuum packaged products with a water activity level > 0.85 and ≤ 0.91 should 
+be kept refrigerated once the package is opened because the product would no longer 
+be considered shelf-stable once it is exposed to oxygen.  Lack of shelf-stability once the 
+product is exposed to oxygen is mainly a concern for products that would not be 
+consumed within a single serving as these products are not likely to be vacuum 
+packaged by the consumer between servings.  Therefore, unless the establishment has 
+support that the product is likely to be consumed in a single serving, vacuum packaged 
+products with a water activity in the range of > 0.85 and ≤ 0.91 should be labeled with a 
+statement such as “Refrigerate After Opening” (as described in 9 CFR 317.2(k)). 
+ 
+Finally, it should be noted that although the establishment may control the water activity 
+level of a product to achieve shelf-stability, controlling water activity alone would not be 
+sufficient to assure the safety of the product.  Drying the product does not necessarily 
+result in an adequate reduction of Salmonella organisms because the pathogen can be 
+resistant to drying.  For this reason, the establishment should use a validated lethality 
+treatment, as described in Step 5 – Lethality treatment
+.    
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ Step 7 – Post-drying heat step:  A post-drying heat step may be added to 
+increase the level of pathogen reduction beyond that achieved by heating alone. 
+ 
+This step may be needed for processes that do not result in an adequate reduction of 
+Salmonella through the initial heating process.   Adding a post-drying heat step has the 
+potential to reduce Salmonella levels by approximately 2-log10’s from the level of 
+reduction achieved during the initial heat step.  One example of a post-drying heat step 
+that has been found to reduce Salmonella levels by approximately 2-log10’s is to heat 
+the dried product in a 275°F oven for 10 minutes (Harrison et al., 2001).  
+ 
+ Step 8 – Handling:  Product is often handled after the lethality and drying steps 
+and prior to/during packaging. 
+ 
+Establishments should control their processes to prevent contamination of product with 
+pathogens from handling after the lethality and drying steps.  Such controls should 
+KEY QUESTION 
+Question:  Should an establishment use the MPR to 
+determine whether its process produces a shelf-
+stable product? 
+ 
+Answer:  No.  Establishments should use water 
+activity to demonstrate that the product has attained 
+the critical limit for shelf-stability.   
+17 
+ 
+include ensuring that cross-contamination of product is minimized before packaging, 
+and ensuring that the product is packaged in such a way that cross-contamination of 
+product post-packaging is also minimized (e.g., with a good seal to maintain package 
+integrity throughout storage, shipment, and display).  Preventing cross-contamination is 
+important even if the product is dried to a water activity such that the product is 
+considered shelf-stable.  Pathogens may still be able to survive on the product if it 
+becomes contaminated during handling. 
+ 
+Cross-contamination of product can occur from situations such as the following:  
+ 
+• Using the same equipment (e.g., preparation tables, scales, or packaging 
+equipment) for both raw and cooked products without completely cleaning and 
+sanitizing the equipment between production lots.  
+ 
+• Placing cooked product on the same surface (e.g., cutting table) as raw product 
+without completely cleaning and sanitizing the surface before reuse.  
+ 
+• Using the same utensils or containers (e.g., scoops or buckets) for both raw and 
+cooked product without completely cleaning and sanitizing the surface before 
+reuse.  
+ 
+• Condensation, aerosolization, or dusting of dry ingredients into the processing 
+environment.  
+ 
+• Employee movement between raw and ready-to-eat areas without hand-washing 
+or garment changing. 
+ 
+The establishment is required to maintain sanitation in the RTE area to ensure that food 
+contact surfaces are free of contamination from Lm and other pathogens, such as 
+Salmonella, in accordance with 9 CFR part 430. The establishment is required to 
+develop and implement Sanitation SOPs (9 CFR 416) to ensure that contamination and 
+adulteration of the product is prevented after the lethality treatment.   
+ 
+Further guidance on post-processing handling and sanitation for ready-to-eat products 
+including jerky is in the 
+Salmonella Compliance Guidelines for Small and Very Small 
+Meat and Poultry Establishments that Produce Ready-to-Eat (RTE) Products and the 
+Compliance Guidelines to Control Listeria monocytogenes in Post-Lethality Exposed 
+Ready-to-Eat Meat and Poultry Products. 
+ 
+  
+18 
+ 
+Scientific Support Available for Jerky Processing 
+ 
+Establishments have numerous options for the types of scientific documents that can 
+be used to support that the process achieves adequate lethality.  Examples of the 
+scientific support available to help develop a safe jerky process and product are 
+discussed below, along with considerations for each type of support.  Product 
+sampling results, based on historical data alone, should not be used as scientific 
+support for a jerky process because they do not provide information on the level of 
+pathogen reduction that is achieved for the process. 
+ 
+Compliance Guidelines 
+FSIS has issued a number of different compliance guidelines that have application to 
+jerky processing.  It is important to note that, while FSIS considers these documents to 
+be guidelines, if followed precisely, they are considered as validated process schedules 
+because the guidelines contain processing methods already accepted by the Agency as 
+effective in safely producing meat and poultry products.   
+ 
+Some considerations for each of these compliance guidelines are outlined on the 
+following pages. 
+ 
+ FSIS Appendix A: Compliance Guidelines For Meeting Lethality 
+Performance Standards For Certain Meat and Poultry Products  
+ 
+For meat jerky, use of the product time-temperature combinations provided in 
+Appendix A, including those temperatures above 158°F in which the time for the desired 
+lethality is instantaneous, should help to ensure the safety of the product. These time-
+temperature combinations are based on experiments that were done with products 
+without added salt or sugar. Added salt, sugar, or other substances that reduce water 
+activity will increase the heat resistance of bacteria in a product. However, time and 
+experience have shown that the time-temperature combinations in the lethality 
+compliance guidelines have been sufficient to produce safe products even with both salt 
+and sugar added, but the humidity during heating is a critical factor.   
+FSIS has found through FSAs and askFSIS questions that there is confusion regarding 
+the humidity options in Appendix A that apply to jerky, when establishments can 
+introduce humidity by continuously introducing steam or sealing the oven, and for how 
+long humidity should be introduced. 
+ 
+The humidity options in Appendix A
+ that are applicable to jerky processing are: 
+ 
+o Heating jerky to a minimum internal temperature of 145 °F (62.8 °C) in an 
+oven maintained at any temperature if the relative humidity of the oven is 
+maintained either by continuously introducing steam for 50 percent of the 
+cooking time or by use of a sealed oven for over 50 percent of the cooking 
+time, or if the relative humidity of the oven is maintained at 90 percent or 
+above for at least 25 percent of the total cooking time but in no case less than 
+1 hour; or 
+ 
+o Heating jerky in an oven maintained at any temperature that will satisfy the 
+internal temperature and time combinations from the chart provided in 
+19 
+ 
+Appendix A if the relative humidity of the oven is maintained at 90 percent or 
+above for at least 25 percent of the total cooking time but in no case less than 
+1 hour. The relative humidity may be achieved by use of steam injection or 
+sealed ovens capable of producing and maintaining the required relative 
+humidity. 
+ 
+In order to introduce humidity by continuously introducing steam or sealing the 
+oven, establishments should: 
+ 
+ Cook the jerky product to an internal temperature-time combination of equal to or 
+greater than 145°F for 4 minutes.  It is important to note again that the 
+temperature values in Appendix A correspond to product temperatures, not oven 
+temperatures.  If an establishment cooks its jerky product to an internal 
+temperature-time combination of less than 145°F for 4 minutes, then the relative 
+humidity should be maintained at 90% or above for at least one hour or 25% of 
+the cooking time (whichever is longer).  
+ 
+AND 
+ 
+ Cook the jerky product for at least one hour and in some cases longer.  Cooking 
+time should never be less than one hour.  Appendix A states that the relative 
+humidity of the oven should be maintained either by continuously introducing 
+steam for 50 percent of the cooking time or by use of a sealed oven for over 50 
+percent of the cooking time, but in no case less than one hour.  This means that 
+these options should be applied for at least one hour or 50% of the cooking time - 
+whichever is longer.  If an establishment can not apply these humidity options for 
+equal to or more than one hour (for example because the lethality treatment 
+takes less than one hour), then the humidity of the oven should be maintained at 
+90% or above throughout the lethality treatment (not just during the time and 
+temperature combination in 
+Appendix A) with the exception of a surface 
+preparation step 
+ 
+Establishments can use the flow chart on the following page to determine the humidity 
+options when using the Appendix A
+ guidelines as scientific support for a jerky process.  
+The times listed in the chart do not include any surface preparation or color setting step 
+where humidity is not introduced.  So, if a process includes a 30 minute surface 
+preparation or color setting step, the total cooking time would need to be ≥ 90 minutes 
+in order to continuously introduce steam or seal the oven for at least 1 hour (or 50% of 
+the cooking time, whichever is longer) as specified in Appendix A. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+20 
+ 
+Flow Chart to Identify Humidity Options when Using the Appendix A Guidelines 
+as Scientific Support For a Jerky Process 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Is the Target 
+Product Time-
+Temp One of 
+Those in 
+Appendix A 
+that is ≥ 145 °F 
+for 4 minutes? 
+Is the total 
+cooking 
+time longer 
+than 1 
+hour? 
+Yes 
+No 
+Is the total 
+cooking 
+time less 
+than 1 
+hour? 
+Yes 
+No 
+At least 90% RH 
+for the entire 
+cooking time  
+No 
+At least 90% RH 
+for at least 1 hour 
+or more*  
+Steam injection 
+for at least 1 hour 
+or more** 
+Sealed oven for 
+at least 1 hour or 
+more** 
+Choice 
+of 
+*For processes with 
+cooking times > 4 
+hours, RH should be 
+90% for at least 25% 
+of the cooking time 
+which would result in 
+more than one hour.  
+**For processes 
+with cooking times 
+> 2 hours, RH 
+(introduced by 
+steam injection, 
+sealed oven, or at ≥ 
+90%) should 
+continue to be 
+maintained for at 
+least 50% of the 
+cooking time which 
+would result in more 
+than one hour. 
+At least 90% RH 
+for at least 1 hour 
+or more** 
+Yes 
+21 
+ 
+ 
+Specific guidance for using the sealed oven option to introduce humidity 
+In order to support that the sealed oven option for introducing humidity is being implemented 
+consistent with the Appendix A guidelines, establishments should:  
+ 
+1) Maintain documentation that supports that the jerky product achieves an internal 
+product time-temperature combination from Appendix A of equal to or greater than 145°F 
+for 4 minutes.  Such documentation could include: 
+a. Records of internal product temperature and time held at that temperature (if applicable); or 
+b. Records of the oven or smokehouse temperature in place of product temperature provided 
+that the establishment has a consistent product and process and has sufficient data 
+correlating the oven temperature selected with the product temperature in the scientific 
+support;    
+ 
+2) Maintain documentation that supports that the oven dampers are closed for at least one 
+hour or 50% of the cooking time - whichever is longer.   Such documentation could include:  
+a. Records from a computerized system that contains the time at which the oven dampers 
+were open and were closed; or   
+b. Records of the times at which the oven dampers were open and closed made manually; or 
+c. Records demonstrating the relative humidity level in the oven is maintained for at least one 
+hour or 50% of the cooking time - whichever is longer (e.g., by use of dry and wet bulb 
+thermometers to calculate the relative humidity or use of a humidity sensor that provides a 
+direct measurement) with correlation data supporting a relationship between the relative 
+humidity level in the oven and the time at which the oven dampers were open and closed 
+(see page 23 for guidance on minimum levels of relative humidity/wet and dry bulb 
+temperatures to achieve);  
+ 
+3) Maintain documentation that supports that when the oven dampers are closed, humidity 
+is maintained in the ovens.  Such documentation could include: 
+a. Records demonstrating the relative humidity level in the ovens is maintained (e.g., by use of 
+dry and wet bulb thermometers to calculate the relative humidity or use of a humidity sensor 
+that provides a direct measurement), or 
+b. Data gathered during the initial validation period along with ongoing verification which 
+demonstrates that the relative humidity in the oven is maintained while the dampers are 
+closed; and  
+ 
+4) Have an ongoing procedure for checking that the dampers are properly working along 
+with a maintenance program to periodically monitor that the seals are intact and 
+functional, and that when the oven dampers are closed, a tight seal is obtained. A tight 
+seal is one in which a significant loss of humidity is prevented.  FSIS acknowledges that a small 
+amount of smoke or vapors might be seen escaping the smokehouse even when a tight seal is 
+obtained.  Establishments should also consider whether there are other openings, particularly in 
+older smokehouses, such as drain valves or air intake valves, that need to be closed in order to 
+ensure that a seal is obtained.  Finally, some older ovens may have a stack or other opening 
+that cannot be closed. For those establishments with older ovens that cannot be completely 
+closed, the sealed oven method should not be used.  However, the establishment may choose 
+to close what they are able to and add moisture in the system either by continuously introducing 
+steam or another validated method.  
+22 
+ 
+ 
+Specific guidance for using the continuously injecting steam option to introduce 
+humidity 
+ 
+In order to support that the continuously introducing steam option for introducing humidity is 
+being implemented consistent with the Appendix A  guidelines, establishments should:  
+ 
+1) Maintain documentation that supports that the jerky product achieves an internal 
+product time-temperature combination from Appendix A of equal to or greater than 
+145°F for 4 minutes.  Such documentation could include: 
+a. Records of internal product temperature and time held at that temperature (if 
+applicable); or 
+b. Records of the oven or smokehouse temperature in place of product temperature 
+provided that the establishment has a consistent product and process and has 
+sufficient data correlating the oven temperature selected with the product 
+temperature in the scientific support;  
+ 
+2) Maintain documentation that supports that steam is continuously introduced for at 
+least one hour or 50% of the cooking time - whichever is longer.   Such documentation 
+could include:  
+a. Records from a computerized system that contains the time at which the steam is 
+turned on and off;  or 
+b. Records of the times at which the steam is turned on and off made manually; or   
+c. Records demonstrating the relative humidity level in the oven is maintained for at 
+least one hour or 50% of the cooking time - whichever is longer (e.g., by use of dry 
+and wet bulb thermometers to calculate the relative humidity or use of a humidity 
+sensor that provides a direct measurement) along with correlation data supporting a 
+relationship between the relative humidity level in the oven and the time steam is 
+turned on or a letter from the manufacturer stating that when the relative humidity is 
+rising it is because of live steam injection (see page 23 for guidance on minimum 
+levels of relative humidity/wet and dry bulb temperatures to achieve);  
+ 
+3) Maintain documentation that supports that when steam is injected, humidity is 
+maintained in the ovens. Such documentation could include: 
+a. Records demonstrating the relative humidity level in the ovens is maintained (e.g., 
+by use of dry and wet bulb thermometers to calculate the relative humidity or use of 
+a humidity sensor that provides a direct measurement), or  
+b. Data gathered during the initial validation period along with ongoing verification 
+which demonstrates that the relative humidity in the oven is maintained while steam 
+is being injected.   
+ 
+NOTE:  The “continuously introducing steam” option refers to the use of live steam, although it 
+may also apply to establishments that spray water onto hot heating elements, which creates 
+steam that in turn produces humidity in the smokehouse.  “Continuous” does not mean that the 
+steam is injected for at least one hour during one stage; rather, steam could be injected during 
+stages or time intervals during the lethality (cooking) treatment as long as the total amount of 
+time the steam is introduced adds up to at least one hour or 50% of the cooking time - 
+whichever is longer.  Furthermore, the establishment may turn the steam on and off throughout 
+the cooking time when the target humidity is reached.   
+ 
+Attachment 4
+ has an example of a temperature chart, with wet and dry bulb temperatures, that 
+an establishment could use to demonstrate it is meeting the option to continuously inject steam 
+on an ongoing basis using monitoring records. 
+ 
+23 
+ 
+It is important that establishments maintain and monitor the humidity levels in the oven.  
+Establishments using either the sealed oven or continuously introducing steam options 
+for introducing humidity can support that humidity is being introduced consistent with 
+Appendix A following the guidance on the previous two pages.  Establishments do not 
+need to achieve a specific humidity level in the oven if Appendix A is used as the 
+scientific support.  However, FSIS recommends that establishments that monitor 
+relative humidity try to achieve a wet bulb temperature of at least 125-130°F for 1 hour 
+or more along with a corresponding dry bulb temperature needed to achieve at least 
+27-32% relative humidity or more.  FSIS is making this recommendation based on 
+expert opinion and a review of the literature that suggests that the wet bulb temperature 
+should reach at least 125-130°F for an hour or more during the lethality process, and 
+that at least 27-32% relative humidity should be present to ensure that adequate 
+lethality is attained.  Wet bulb temperature is generally a strong indicator of product 
+surface temperature early in the process.  Therefore, maintaining the wet bulb 
+temperature at a high enough level to cause lethality (125-130°F) is recommended 
+(Buege, 2006a; Harper, 2009).   
+ 
+Although establishments using either the sealed oven or continuously introducing steam 
+option for introducing humidity are not required to achieve a specific humidity level, the 
+values provided in this document are listed so that establishments have further 
+guidance concerning minimum levels to achieve as recommended by experts at FSIS. 
+Establishments should be aware that achieving a low wet bulb temperature for a short 
+time (i.e., below 125-130°F for less than one hour) or low relative humidity for a short 
+time (below 27-32% for less than one hour) may indicate that the jerky process may not 
+be achieving sufficient lethality at the product surface which could represent a 
+vulnerability in the establishment’s process to control food safety hazards of concern.    
+ 
+NOTE:  Achieving a wet bulb temperature of at least 125-130°F and at least 27-32% 
+relative humidity for 1 hour or more is not adequate on its own to support that the 
+process is being implemented consistently with Appendix A
+.  Rather, establishments 
+should ensure that all critical operational parameters from Appendix A are met (i.e., 
+product time-temperature combination and humidity).  Guidance for introducing humidity 
+for the options that require less than 90% relative humidity (continuously introducing 
+steam or sealing the oven) is provided on the previous two pages. 
+ 
+Processes for which Appendix A is not appropriate as scientific support 
+ 
+Finally, although Appendix A
+ is commonly used as scientific support for jerky processes, 
+the time-temperature-humidity combinations can not be applied in every scenario.  For 
+example, establishments should not use Appendix A: 
+ 
+ To support a process in which the drying step comes before the cooking 
+step.  Appendix A was not developed for such processes. 
+ 
+ To support a process that uses a home-style dehydrator.  The humidity 
+parameters in Appendix A cannot be maintained in a home-style 
+dehydrator. Processes that can achieve an adequate reduction of 
+Salmonella and E. coli O157:H7 using home-style dehydrators are 
+described in studies by Borowski et al. (2009b), and Harrison et al. (2006). 
+ 
+24 
+ 
+ FSIS Guidance on Safe Cooking of Non-Intact Meat Chops, Roasts, and 
+Steaks  
+ 
+To support the safe production of meat jerky, establishments can use the time-
+temperature combinations provided in the FSIS Guidance on Safe Cooking of Non-
+Intact Meat Chops, Roasts, and Steaks.  Humidity should be considered when using 
+this time-temperature table; therefore, the same options for humidity in Appendix A 
+should be used with this guidance.  In addition, the same recommendations regarding 
+maintaining and monitoring humidity for Appendix A apply for establishments that use 
+the FSIS Guidance on Safe Cooking of Non-Intact Meat Chops, Roasts, and Steaks for 
+time-temperature combinations. 
+ 
+ Time-Temperature Tables For Cooking Ready-To-Eat Poultry Products 
+ 
+To support the safe production of poultry jerky, establishments can use the minimum 
+internal temperatures listed in Appendix A of 160°F for uncured poultry or 155°F for 
+cured and smoked poultry.  Establishments should not use the time and temperature 
+combinations provided in Appendix A for cooked beef, roast beef, and corned beef for 
+poultry jerky. 
+ 
+NOTE: If highly pathogenic avian influenza (HPAI) virus H5N1 is identified as a hazard 
+reasonably likely to occur, cured and smoked poultry should be cooked to at least 158°F 
+or a time and temperature combination that achieves a 7-log
+10 
+reduction of Salmonella.  
+ 
+The required reduction of Salmonella can also be achieved by using one of the time-
+temperature combinations listed in the Time-Temperature Tables for Cooking Ready-to-
+Eat Poultry Products.  As stated in the Time-Temperature Tables guidance document, 
+the tables reflect newer data on the temperatures needed to control Salmonella in 
+poultry than the data used in developing Appendix A. The Agency has not rescinded the 
+guidance for poultry in Appendix A, but an establishment needs to take into account the 
+data in the Time-Temperature Tables regarding increased time at a specific 
+temperature to achieve a given level of reduction of Salmonella. An establishment that 
+utilizes Appendix A within its process should conduct on-going verification to confirm 
+that the process is being effectively controlled. If an establishment is using Appendix A, 
+and the Agency collects an RTE sample that is positive for Salmonella, the 
+establishment would be required under 9 CFR 417.3(b), among other things, to support 
+its decision within its hazard analysis.  
+ 
+Regardless of which time-temperature combinations an establishment uses, humidity 
+during heating is a critical factor. As with meat jerky, the time-temperature 
+combinations would be sufficient to produce safe products with both salt and sugar 
+additives if the processor uses the humidity parameters applicable to beef as described 
+in Appendix A.    The same recommendations regarding maintaining and monitoring 
+humidity for Appendix A apply for establishments that use the Time-Temperature Tables 
+for Cooking Ready-to-Eat Poultry Products. 
+ 
+ 
+ 
+ 
+25 
+ 
+ 
+Journal articles 
+ 
+Journal articles are a primary type of support used for jerky processes.  A number of 
+studies have been conducted to determine time-temperature-humidity combinations that 
+result in adequate lethality for jerky.  Attachment 2 contains a summary of time-
+temperature-humidity combinations, along with other critical operational parameters 
+from published studies that have been found to result in adequate lethality.   
+ 
+If an establishment chooses to use a journal article as scientific support, it should 
+ensure that all of the critical operational parameters (i.e., product time-temperature 
+combination and relative humidity) used in the study match those used in the actual 
+process.  If one or more of the parameters are not addressed or do not match the level 
+used in the support, then the establishment’s process may not achieve the same level 
+of lethality as cited in the journal article.  In that case, the establishment should 
+document a justification as to why that parameter does not need to be met or measured, 
+or why it differs from the support.  When identifying a journal article, the establishment 
+should consider whether it is using the same:  
+ 
+• Product (e.g., species, type-whole muscle or ground); 
+• Product formulation; 
+• Product time-temperature combination; 
+• Relative humidity at each stage (including, if reported, using the same 
+humidity levels at the beginning and end of each stage); 
+• Type or pH of marination (if applicable); and 
+• Smoke (if applicable) as used in the article. 
+ 
+The establishment should also ensure that the composition of the product (% salt, % fat) 
+used in the study is the same as the composition of the actual product being produced.  
+A prudent establishment should have knowledge of the products it produces.  Because 
+meeting the critical operational parameters is essential to achieve lethality in the 
+product, the parameters used or measured in the article should be addressed in the 
+process. 
+ 
+26 
+ 
+KEY QUESTION 
+Question:  Can an establishment’s process use a different level of a critical operational 
+parameter (for example, a higher concentration of an antimicrobial or a higher processing 
+temperature) than what was used in the scientific support?    
+ 
+Answer:  Generally, establishments should use the same critical operational parameters 
+as those in the scientific support.  In some circumstances, establishments may be able to 
+support using critical operational parameters (e.g., higher concentrations of antimicrobials 
+or higher thermal processing temperatures) that are different from those in the scientific 
+support.  In these cases, establishments should provide justification supporting that the 
+levels chosen are at least as effective as those in the scientific support.  This justification 
+is needed because higher levels of a critical operational parameter may not always be 
+equally effective.  For example, antimicrobial agents may only be effective within a range 
+of concentration after which point efficacy may decrease.  Similarly, higher processing 
+temperatures may result in the surface of the product drying out before adequate lethality 
+is achieved.  In addition to ensuring that the levels chosen are at least equally as 
+effective, establishments should ensure the levels are also safe and suitable (
+FSIS 
+Directive 7120.1 Safe and Suitable Ingredients Used in the Production of Meat and 
+Poultry Products and 9 CFR 424.21(c)).   
+ 
+ 
+ 
+ 
+Key Considerations for Journal Articles in Attachment 2 
+ 
+Attachment 2 contains a summary of processes, and the critical operational parameters 
+of those processes, that have been found to achieve adequate lethality for jerky in the 
+published literature.  The Attachment is provided to help establishments identify 
+alternatives to the Appendix A
+ guidelines. 
+ 
+This Attachment is not considered adequate support on its own because it does not 
+provide the details of each study that an establishment needs to determine if the study is 
+representative of the actual process.   
+ 
+For this reason, if an establishment chooses to use one of the articles provided in 
+Attachment 2
+ for scientific support, the establishment will need to have a full copy of the 
+original article on file. 
+27 
+ 
+Challenge Studies 
+ 
+In cases where an establishment’s process does not match available scientific support 
+documents, such as a Compliance Guideline or published journal article, an 
+establishment may decide to conduct an inoculation challenge study to support that its 
+process achieves adequate lethality (e.g., for meat and poultry jerky at least a 5.0-log
+10 
+reduction of Salmonella spp.).  A challenge study is a study that documents the 
+adequacy of control measures in a process. Obtaining this documentation involves 
+inoculating the target organism (e.g., Salmonella spp. or an appropriate surrogate 
+organism such as certain Pediococcus strains) into a product to determine the effect of 
+control measures such as cooking and drying to reduce the organism. Challenge 
+studies should be conducted by a microbiologist trained in performing challenge studies 
+in a laboratory to avoid the possible spread of contamination in an establishment. In a 
+challenge study, the number of organisms before and after the application of the control 
+measure is counted to determine the effect of the control measure.  The challenge study 
+should be designed to closely match the critical operational parameters (e.g., time, 
+temperature, and relative humidity) in the establishment’s actual process.   
+ 
+Challenge studies should be based on a sound statistical design and should also 
+employ positive and negative controls. As recommended by the National Advisory 
+Committee on Microbiological Criteria of Foods (NACMCF), the number of samples to 
+be analyzed initially and at each time interval during processing or storage should be at 
+a minimum two; however, analysis of three or more samples is preferred.  Replicates 
+should also be conducted.  Replicates should be independent trials using different 
+batches of product and inoculum to account for variations in product, inoculum, and 
+other factors. Generally, the number of samples and replicates should be increased in 
+situations of higher variability or uncertainty. When the number of samples analyzed at 
+each time interval is only two, it is better for the study to be repeated (replicated) more 
+than two times. In studies with three or more samples tested at each time interval, two 
+replicates are usually adequate.  
+ 
+In addition, the inoculum level should be at least two logs greater than the log reduction 
+to be demonstrated.  FSIS recommends that establishments use Salmonella (or an 
+appropriate surrogate of Salmonella) as an indicator of lethality because it tends to be 
+more heat resistant than other pathogens (Goodfellow & Brown, 1978; Line et al, 1991).   
+FSIS considers all Salmonella serotypes to be pathogens of public health concern.  
+At a minimum, a study for a microbiological food safety hazard should identify:  
+ 
+• The hazard (including the specific strains studied),  
+• The expected level of hazard reduction or prevention to be achieved,  
+• The processing steps that will achieve the specified reduction or prevention, 
+• All critical operational parameters or conditions (e.g., time, temperature, and 
+humidity) necessary to achieve the reduction, 
+• How these processing steps/parameters can be monitored,  
+• The critical ingredients (e.g., salt, sugar, and cure), and 
+• The critical product characteristics (e.g., pH, water activity, and fat content).  
+ 
+28 
+ 
+FSIS does not require establishments to validate that their process achieves reduction 
+in E. coli O157:H7 or Lm if they achieve sufficient reductions in Salmonella because 
+Salmonella is an indicator of lethality.  Without further scientific support, establishments 
+should not use pathogens other than Salmonella as indicators of lethality.  For example, 
+establishments should not use reductions in Lm to support similar reductions in 
+Salmonella without support that Lm is at least equally as heat resistant as Salmonella 
+under the conditions being studied.    
+ 
+If an establishment chooses to conduct a challenge study in a testing laboratory, the 
+study should use at least five strains of Salmonella, including strains associated with 
+human illness and strains isolated from meat and poultry products.  Ideally, some of the 
+strains selected should be those with known heat-resistance properties. One good 
+choice, for example, might be Salmonella enterica serovar Senftenberg strain 775W, 
+which displays heat resistance properties (Ng et al., 1969).  Salmonella enterica serovar 
+Senftenberg occurs in the top 10 serotypes seen in FSIS testing for both cow/bull 
+carcass testing and ground beef, as well as in turkeys (carcass and ground) (FSIS 
+testing data, 2012), so it would also be an appropriate choice for what might be seen in 
+these products being tested.   
+ 
+If an establishment chooses to conduct a challenge study in a plant environment, to 
+best represent actual processing conditions for example, then the establishment should 
+choose surrogate organisms that have been found to respond similarly to the pathogens 
+of interest (e.g., Salmonella, and if applicable, E. coli O157:H7).  For example, the 
+University of Wisconsin has conducted research with ground-and-formed jerky and 
+found that two Pediococcus strains (Saga 200 and Biosource) have similar heat-
+resistance to Salmonella and can be used in in-plant validation studies (Borowski et al., 
+2009a).  FSIS has identified four surrogate organisms that have been shown to respond 
+similarly to E. coli O157:H7 during cooking (the following askFSIS Q&A
+ has more 
+information) for use in in-plant validation studies.  For the reasons explained above, 
+establishments also should not use surrogate organisms that have been shown to 
+respond similarly to E. coli O157:H7 to support similar reductions in Salmonella without 
+support that the organisms are at least as heat resistant as Salmonella.       
+ 
+Challenge studies should be equivalent to peer-reviewed scientific literature. All of the 
+critical elements listed above for a study above need to be included to permit evaluation 
+or confirmation of the results.  More information on conducting challenge studies is 
+found in the article published by the National Advisory Committee on Microbiological 
+Criteria for Foods (NACMCF) in the Journal of Food Protection
+ in 2010.    
+ 
+  
+29 
+ 
+References  
+ 
+Borowski, A.G., Ingham, S.C., Ingham, B.H.  2009a.  Validation of ground-and-formed 
+beef jerky processes using commercial lactic acid bacteria starter cultures as pathogen 
+surrogates.  J. Food Prot.  72(6): 1234-1247. 
+ 
+Borowski, A.G., Ingham, S.C., Ingham, B.H.  2009b.  Lethality of home-style dehydrator 
+processes against Escherichia coli O157:H7 and Salmonella serovars in the 
+manufacture of ground-and-formed beef jerky and the potential for using a pathogen 
+surrogate in process validation.  J. Food Prot.  72(10): 2056-2064. 
+ 
+Buege, D. R., Searls, G. Ingham, S.C. 2006a. Lethality of commercial whole-muscle 
+beef jerky manufacturing processes against Salmonella serovars and Escherichia coli 
+O157:H7. J. Food Prot. 69(9): 2091-2099.  
+ 
+Buege, D.R., Searls, G., Mohanan, S., Buege, D.R.  2006b.  Survival of Staphylococcus 
+aureus and Listeria monocytogenes on vacuum-packaged beef jerky and related 
+products stored at 21°C.  J. Food Prot. 69(9) 2263-2267. 
+ 
+Calicioglu, M., Sofos, J.N., Samelis, J., Kendall, P.A., Smith, G.C. 2002. Destruction of 
+acid-adapted and non-adapted Salmonella during drying and storage of beef jerky 
+treated with marinade. Animal Sciences Research Report. Colorado State University.  
+ 
+Calicioglu, M., Sofos, J.N., Samelis, J., Kendall, P.A., Smith, G.C.  2003. Effects of acid 
+adaptation and modified marinades on survival of post drying Salmonella contamination 
+on beef jerky during storage. J. Food Prot. 66(3):396-402.  
+ 
+Centers for Disease Control (CDC).  1995.  Outbreak of Salmonellosis Associated with 
+Beef Jerky – New Mexico, 1995.  MMWR 1995; 44(42); 785-788. 
+ 
+Eidson, M., Sewell, C. M., Graves, G, Olson, R. 2000. Beef jerky gastroenteritis 
+outbreaks. Environ. Health. 62:9-13.  
+ 
+Faith, N.G., Le-Coutour, N.S., Alvarenga, M.B., Calicioglu, M., Buege, D.R., Luchansky, 
+and J. B. 1998. Viability of Escherichia coli O157:H7 in ground and formed beef jerky 
+prepared at levels of 5 and 20% fat and dried at 52, 57, 63, or 68 degrees C in a home-
+style dehydrator. Int. J. Food Microbiol. 41(3):213-221.  
+ 
+FSIS.  2005.  Risk Assessment of the Impact of Lethality Standards on Salmonellosis 
+from Ready-to-Eat Meat and Poultry Products.  Final Report.  Available at: 
+http://www.fsis.usda.gov/wps/wcm/connect/210d3d19-96bc-4b1e-8829-
+325e25e63e0b/Salm_RTE_Risk_Assess_Sep2005.pdf?MOD=AJPERES.  Accessed 22 
+November 2013. 
+   
+FSIS.   2011.  Annual Report: Serotypes profile of Salmonella isolates from meat and 
+poultry products, January 1998 through December 2011.  Available at:  
+http://www.fsis.usda.gov/wps/wcm/connect/26c0911b-b61e-4877-a630-
+23f314300ef8/salmonella-serotype-annual-2011.pdf?MOD=AJPERES.  Accessed 22 
+November 2013. 
+ 
+30 
+ 
+Getty, K.J.K., Boyle, E.A.E., Roberts, M.N., Lonneker, S.M.  2006.  Jerky Validation for 
+Small and Very Small meat and Poultry Businesses:  Final Report.  Available at: 
+http://www.fsis.usda.gov/wps/wcm/connect/35151cb4-1603-4164-b71f-
+bfea44e487e8/C-12_New_Technology_FY2004_Final_Report.pdf?MOD=AJPERES.  
+Accessed 17 August 2013.  Note: the full study for this report can be found in the 
+Harper et al. (2009) reference below.  
+ 
+Goepfert, J.M., Iskander, I.K., Amundson, C.H. 1970. Relation of the heat resistance of 
+Salmonellae to the water activity of the environment. Appl. Microbiol. 19(3):429-33.  
+ 
+Goodfellow, S.J., Brown, W.L.. 1978. Fate of Salmonella inoculated into beef for 
+cooking. J. Food Prot. 41(8):598-605.  
+ 
+Harper, N.M., Roberts, M.N., Getty, K.J.K., Boyle, E.A.E., Fung, D.Y.C., Higgins, J.J.  
+2009.  Evaluation of two thermal processing schedules at low relative humidity for 
+elimination of Escherichia coli O157:H7 and Salmonella Serovars in chopped and 
+formed beef jerky.  J. Food Prot.  72: 2476-2482. 
+ 
+Harrison, J.A. Harrison, M.A. 1996. Fate of Escherichia coli O157:H7, Listeria 
+monocytogenes, and Salmonella Typhimurium during preparation and storage of beef 
+jerky. J. Food Prot. 59(12):1336-8.  
+ 
+Harrison, J.A. Harrison, M.A., Rose-Morrow, R.A., Shewfelt, R.L.  2001. Home-style 
+beef jerky: effect of four preparation methods on consumer acceptability and pathogen 
+inactivation. J. Food Prot. 64(8):1194-98.  
+ 
+Harrison, M. A., Singh, R.K., Harrison, J.A., Singh, N. 2006. Antimicrobial intervention 
+and process validation in beef jerky processing.  Final Report.  Available at: 
+http://www.fsis.usda.gov/wps/wcm/connect/8dd0f238-08d7-4ca0-a31a-77fa3ca8acf6/C-
+17_New_Technology_FY2004_Final_Report.pdf?MOD=AJPERES. Accessed 17 
+August 2013.   
+ 
+International Commission on Microbiological Specifications for Foods (ICMSF).  1996.  
+Microorganisms in Foods 5:  Characteristics of Microbial Pathogens.  London: Blackie 
+Academic & Professional.  p. 304, Table B.   
+ 
+Line, J.E. Fain, A.R. Moran, A.B, Martin, L.M., Lechowch, R.V., Carosella, J.M., and 
+Brown, W.L. 1991. Lethality of heat to Escherichia coli O157:H7: D-value and Z-value 
+determinations in ground beef. J Food Prot. 54: 762-766. 
+ 
+National Advisory Committee on Microbiological Criteria for Foods.  2010.  Parameters 
+for determining inoculated pack/challenge study protocols.  J. Food Prot.  73(1): 140-
+202.   
+ 
+Ng, H., Bayne, H.G., Garibaldi, J.A.  1969.  Heat resistance of Salmonella: the 
+uniqueness of Salmonella senftenberg 775W., Appl. Micro. 17(1):78-82. 
+ 
+Porto-Fett, A.C.S., Call, J.E., Luchansky, J.B.  2008.  Validation of a commercial 
+process for inactivation of Escherichia coli O157:H7, Salmonella Typhimurium, and 
+31 
+ 
+Listeria monocytogenes on the surface of whole muscle beef jerky.  J. Food Prot.  71(5): 
+918-926. 
+ 
+Swayne, D. E. and Beck, J.R. 2005. Experimental study to determine if low-
+pathogenicity and high-pathogenicity avian influenza viruses can be present in chicken 
+breast and thigh meat following intranasal virus inoculation. Avian. Dis. 49:81-85.  
+ 
+Thomas, C. and Swayne, D.E. 2007. Thermal inactivation of H5N1 high pathogenicity 
+avian influenza virus in naturally infected chicken meat. J. Food Prot. 70(3):674-680.  
+ 
+Helpful Websites  
+Dry Bulb, Wet Bulb, and Dew Point Temperature 
+Compliance Guidelines to Control Listeria monocytogenes in Post-Lethality Exposed 
+Ready-to-Eat Meat and Poultry Products 
+ 
+Food Safety Regulatory Essentials (FSRE) Processing Procedures: Dried Meats
+ 
+ 
+FSIS Appendix A: Compliance Guidelines For Meeting Lethality Performance Standards 
+For Certain Meat and Poultry Products 
+ 
+FSIS Guidance on Safe Cooking of Non-Intact Meat Chops, Roasts, and Steaks  
+ 
+Making Your Own Wet Bulb Thermometer 
+ 
+Relative Humidity Calculation Using Dry and Wet Bulb Temperature Measurements 
+ 
+Salmonella Compliance Guidelines for Small and Very Small Meat and Poultry 
+Establishments that Produce Ready-to-Eat (RTE) Products  
+ 
+Time-Temperature Tables For Cooking Ready-To-Eat Poultry Products 
+32 
+ 
+Attachment 1:  FSIS Response to Comments 
+ 
+The following is a summary of FSIS’ response to the comments received during 
+the comment period. 
+ 
+1.  Need for guidance 
+ 
+ Comment:  One commenter questioned the need for the guidance given the 
+limited information publicly available on the causes of past outbreaks in jerky and the 
+importance of humidity in the production of jerky.  The commenter also identified a 
+broken link to a reference to one of the past outbreaks in the 2012 version of the 
+guidance. 
+ 
+ Response:  FSIS initially issued this guidance in 2007 to clarify the importance of 
+introducing humidity to jerky processors given the lack of humidity control identified in 
+past outbreaks.  One potential cause of the 2003 Salmonella Kiambu outbreak in jerky 
+was the very slow drying process under low humidity conditions (1% RH - 82°C dry 
+bulb, 30°C wet bulb), which allowed Salmonella organisms to dehydrate during drying 
+and become resistant to heat.  This information was gathered by FSIS during the course 
+of the investigation.  Research has demonstrated that bacteria can become more heat 
+resistant as their moisture level decreases, and increased concentrations of solutes, 
+especially sugars, increase the heat resistance of bacteria. Therefore, drying of the 
+product surface before the pathogens are destroyed will increase pathogen heat 
+resistance and allow them to survive the heating process. By incorporating humidity to 
+minimize evaporation, the D values (time at a constant temperature necessary to 
+destroy 90% or 1-log
+10 of the target organism) that are the basis for Appendix A and 
+other scientific support documents remain valid (Goepfert, 1970; Goodfellow and 
+Brown, 1978; Faith, N.G. et al. 1998).  For this reason, the low humidity conditions were 
+considered to be a plausible cause of the outbreak.  The low humidity conditions were 
+likely related to the location of the processing establishment in Albuquerque, New 
+Mexico, which is at an elevation of greater than 4,000 feet2.  As described on page 13 of 
+the guidance, the relative humidity in the ambient (or room) air is lower at higher 
+altitudes, which affects the relative humidity in the smokehouse chamber.  Prior to the 
+2003 outbreak, at least six other salmonellosis outbreaks occurred in New Mexico 
+between 1966 and 1995 suggesting the high altitude/low ambient humidity conditions in 
+the state played a role, among other factors (CDC, 1995; Eiden, 2000).  Since the 2003 
+outbreak, FSIS has continued to refine the guidance document based on the most up-
+to-date science and lessons learned from FSAs. 
+ 
+Finally, the broken link provided in the previous version of the guideline has been 
+replaced with a functioning link to an Epidemiology Presentation from the New Mexico 
+Department of Health (http://aces.nmsu.edu/ces/nmhs/documents/albanese.pdf
+).   
+  
+ Comment:  One commenter questioned why the Jerky Compliance Guidelines 
+focused on small and very small establishments. According to one commenter, small 
+and very small meat processors in the U.S. represent 5 percent of the total meat 
+production volume, but 95 percent of the total meat processing businesses in the U.S. 
+                                                           
+2 http://egsc.usgs.gov/isb/pubs/booklets/elvadist/elvadist.html 
+33 
+ 
+This commenter suggested that the guidelines not be limited to small and very small 
+establishments but rather should be addressed to the whole industry.  
+ 
+Response: FSIS focused the Jerky Compliance Guidelines on small and very 
+small establishments in support of the Small Business Administration’s initiative to 
+provide small and very small establishments with compliance assistance under the 
+Small Business Regulatory Flexibility Act (SBRFA).   However, all FSIS regulated meat 
+and poultry establishments may be able to apply the recommendations in this guidance.  
+It is important that small and very small establishments have access to a full range of 
+scientific and technical support, and the assistance needed to establish safe and 
+effective HACCP systems. Although large establishments can benefit from the guidance 
+that FSIS provides, focusing the guidance on the needs of small and very small 
+establishments provides them with information that may be otherwise unavailable to 
+them because of cost.  For example, FSIS included growth limits for Staphylococcus 
+aureus published in an ICMSF book chapter.  Establishments can reference this 
+guideline for support for the development of critical limits based on these values instead 
+of having to purchase the costly textbook.  FSIS also included an inexpensive way for 
+establishment’s to make their own wet bulb in Attachment 3
+ courtesy of University of 
+Wisconsin-Madison Center for Meat Process Validation.  
+ 
+2.  Validation 
+ 
+Comment:  One commenter recommended FSIS postpone the release of the 
+finalized guidance document until the finalized HACCP systems validation guidance 
+document is released to ensure the documents are cohesive and complete. 
+ 
+Response:  This Compliance Guideline articulates how industry can meet FSIS 
+requirements regarding jerky processing as well as FSIS recommendations to help 
+produce a safe product based on the scientific information available in the literature.  
+The primary focus of this guidance document is on the first element of validation: 
+scientific support.  This element includes the process of identifying scientific support 
+documents that closely match the establishment’s actual process along with 
+identification of the critical operational parameters from the scientific support relevant to 
+the establishment’s process.  FSIS is currently enforcing this element of the initial 
+validation requirement (9 CFR 417.4(a)(1)).  In addition, FSIS does not wish to delay 
+finalizing this document because it reflects the most up-to-date science and 
+understanding of jerky processing and addresses key issues FSIS has identified 
+through FSAs and response to outbreak investigations.  FSIS is sharing this information 
+in a timely manner in order to help establishments produce a safe product.      
+ 
+Comment:  One commenter expressed concern with the following “Key Question” 
+in the guidance document: “Can an establishment’s process use a different level of a 
+critical operational parameter (for example, a higher concentration of an antimicrobial or 
+a higher processing temperature) than what was used in the support document?”.  The 
+commenter provided an example of shelf-stable jerky that has a water activity of 0.85 or 
+less.  In the example, some processors may reduce the water activity lower than 0.85 
+for quality issues or an extended shelf life.  The commenter expressed concern that 
+establishments would have to provide a justification for the lower water activity level 
+chosen. 
+   
+34 
+ 
+Response:  FSIS has found through FSAs that establishments use levels of 
+critical operational parameters that are different from those in their scientific support 
+without any consideration as to whether this will result in the same efficacy 
+demonstrated in the scientific support.  The Agency is recommending that 
+establishments provide a scientific justification as to why the same efficacy would be 
+achieved with a different level of a critical operational parameter.   In the example 
+provided by the commenter, an establishment could provide the justification, with 
+reference to applicable scientific support, that pathogen growth decreases as water 
+activity decreases, supporting that if 0.85 is adequate to preclude growth, then a lower 
+water activity would also preclude growth of pathogenic microorganisms.  Such a 
+justification would be adequate and could be maintained in the establishment’s 
+decision-making documents as scientific support for the process used. 
+ 
+Comment:  One commenter indicated that the guidance document is not specific 
+enough in explaining how closely scientific support must match an establishment’s 
+process, species, or products.  In addition, the commenter stated that inspection 
+program personnel would find noncompliance with the validation regulations simply 
+because the supporting document does not match the establishment’s production 
+precisely. 
+ 
+Response:  FSIS is not prescriptive in terms of how closely the scientific support 
+should match the actual process.  Rather, FSIS recommends that the critical operational 
+parameters used in the scientific support be consistent with those used in the 
+establishment’s process and is providing establishments the flexibility to use different 
+levels as long as a scientific justification is provided.  FSIS inspection program 
+personnel (IPP) verify establishment validation when performing the Hazard Analysis 
+Verification (HAV) task.  Instructions for performing the HAV task are provided in 
+FSIS 
+Directive 5000.6 Performance of the Hazard Analysis Verification (HAV) Task and in the 
+HAV section of the Inspection Methods training. FSIS will issue additional instructions to 
+its field personnel for them to verify that establishments meet all validation requirements 
+once the FSIS HACCP Systems Validation Guidance is finalized.    
+ 
+Comment:  One commenter stated that the type of equipment used in the 
+process should not be considered a critical operational parameter. 
+ 
+Response:  FSIS has found through FSAs that establishments use different types 
+of equipment than that used in the scientific support without any consideration as to 
+whether this change will result in the same efficacy demonstrated in the scientific 
+support.  The type of equipment, such as a smokehouse, could influence the ability to 
+implement other critical operational parameters such as humidity.  FSIS is 
+recommending that establishments consider the type of equipment as a critical 
+operational parameter so that establishments take into account whether changes in 
+equipment affect the implementation of other critical operational parameters.  This 
+consideration should be a part of the initial set-up of the system and would not need to 
+be done on an on-going basis unless changes to the equipment are made.  
+ 
+3.  Step-by-step guide for jerky processing 
+ 
+35 
+ 
+ Comment:  Two commenters stated that Steps 2 (Marination) and 3 
+(Interventions) in the 2007 and 2012 versions of the guidance are not commonly used 
+steps in the industry. 
+ 
+ Response:  FSIS recognizes that not all processes may include the same steps 
+listed in the step-by-step guide.  FSIS included steps such as intervention in the 
+guidance because some heating processes may not deliver an adequate lethality and, 
+thus, may require an additional intervention step to ensure product safety.  To more 
+accurately reflect commonly used processing steps, FSIS has included the surface 
+preparation step (now Step 4) in the guidance, which is a commonly used step in which 
+strips are heated using a low temperature heat step to make the surface tacky, thus 
+aiding in smoke adherence and improving product texture.    
+ 
+Comment:  Two commenters stated that steps 5 (drying) and 6 (post-drying heat 
+step) in the 2007 and 2012 versions of the guidance should be combined because they 
+are often performed as single step by processors.   
+ 
+ Response:  Although the steps may be combined, in a processing schedule, for 
+example, these steps are listed separately for purposes of the guidance document to 
+provide information to establishments on the use of a post-drying heat step for 
+processes that do not result in an adequate reduction of Salmonella through the initial 
+heating process.  Adding a post-drying heat step has the potential to reduce Salmonella 
+levels by approximately 2-log
+10’s from the level of reduction achieved during initial heat 
+step. 
+ 
+4.  Lethality treatment 
+  
+ Comment:  One commenter questioned the recommendation that the lethality 
+treatment of meat jerky should achieve at least a 5.0-log10 reduction of Salmonella spp. 
+when there is no USDA/FSIS performance standard specifically for this product. 
+ 
+ Response:  Jerky producers (and all producers of RTE product) are required to 
+control the food safety hazards in their products (9 CFR 417.4(a)) and document that 
+their HACCP systems work according to 9 CFR 417.5(a).  For RTE products, this 
+requirement means that, among other controls, the establishment needs to achieve 
+lethality of pathogens (e.g., Salmonella) in the product.  In the FSIS 
+Salmonella 
+Compliance Guidelines for Small and Very Small Meat and Poultry Establishments that 
+Produce Ready-to-Eat (RTE) Products, FSIS recommends that processors achieve a 5-
+log10 reduction of Salmonella in such meat products as jerky to produce a product safe 
+for consumption. This recommendation is based on expected levels of Salmonella in 
+raw products.  The compliance guideline also provides alternative forms of lethality that 
+establishments may use.  Establishments producing a RTE product must provide 
+adequate scientific support that the process for the RTE product will not result in an 
+adulterated product.  In addition, FSIS tests ready-to-eat product for Salmonella (as well 
+as Listeria monocytogenes) to verify that establishments are addressing the pathogen.   
+  
+5.  Highly pathogenic avian influenza 
+ 
+Comment:  Two commenters disagreed with the following statement: “If highly 
+pathogenic avian influenza (HPAI) virus H5N1 is identified as a hazard reasonably likely 
+36 
+ 
+to occur, cured and smoked poultry should be cooked to at least 158°F or a time and 
+temperature combination that achieves a 7-log reduction of Salmonella.”  The 
+commenters stated that if this statement is included in this guidance document, 
+establishments will now have to reassess all their HACCP plans if inspection personnel 
+interpret it as a requirement.  
+ 
+Response:  This statement has appeared in previous versions of the jerky 
+compliance guidance document.  The Agency has not required establishments to 
+reassess their HACCP plans for highly pathogenic avian influenza and does not intend 
+to do so at this time.  This information has been included as guidance in the event that 
+an establishment identifies HPAI virus H5N1 as a hazard reasonably likely to occur.   
+ 
+6.  Humidity 
+ 
+ Comment: One commenter disagreed with the following statement:  “One way for 
+an establishment to know that the product has not dried out before a lethal time-
+temperature combination is attained is to measure the water activity of the product after 
+the lethality treatment but before drying.”  The commenter stated that this is not 
+necessary if the humidity requirements are achieved.  The commenter also said the 
+guideline should clearly state that lethality should be achieved prior to drying the 
+product to achieve desired quality and water activity for shelf stability. 
+ 
+ Response:  FSIS has added the following clarifying information: “Although this 
+information may provide useful information to an establishment, such data are not 
+needed if an establishment is  following procedures to achieve the relative humidity in 
+the scientific support.” 
+ 
+Comment:  One commenter disagreed with statements in the guidance document 
+that establishments should monitor humidity throughout the entire lethality treatment.  
+The commenter stated that establishments could conduct some sort of 90-day validation 
+of their thermal processing schedules to achieve confidence that humidity was properly 
+addressed. 
+ 
+Response:  As stated on page 13, FSIS recommends that establishments 
+monitor relative humidity using wet and dry bulb thermometers or a humidity sensor with 
+every lot or batch of product although FSIS does not require this monitoring frequency.  
+It is the responsibility of the establishment to support its monitoring procedures and 
+frequencies.  However, inadequate or inaccurate recordkeeping (e.g., data entry error or 
+unclear monitoring records) has contributed to jerky product recalls, particularly when 
+such records were associated with a lack of information regarding the implementation of 
+all of the critical operational parameters for each batch or lot produced. 
+ 
+Comment:  One commenter recommended that FSIS remove the following 
+statement related to Appendix A: “If an establishment cannot apply these humidity 
+options for equal to or more than one hour, then the humidity of the oven should be 
+maintained at 90% or above throughout the lethality treatment.” 
+ 
+Response:  The option in Appendix A that allows for humidity levels less than 
+90% is as follows: “Heating roasts of any size to a minimum internal temperature of 145 
+°F (62.8 °C) in an oven maintained at any temperature if the relative humidity of the 
+37 
+ 
+oven is maintained either by continuously introducing steam for 50 percent of the 
+cooking time or by use of a sealed oven for over 50 percent of the cooking time, or if the 
+relative humidity of the oven is maintained at 90 percent or above for at least 25 percent 
+of the total cooking time, but in no case less than 1 hour.”  The final clause “but in no 
+case less than 1 hour” means that the humidity options of continuously introducing 
+steam or sealing the oven should be applied for at least 1 hour.  FSIS recognizes that 
+jerky is a small mass product that often has total cooking times of less than 1 hour.  
+Appendix A, and that the additional humidity options were originally designed for large 
+mass products with longer cooking times.  In cases where these humidity options can 
+not be applied for at least 1 hour, the establishment should apply at least 90% humidity 
+throughout the cooking time (even if the cooking time is less than 1 hour) in order to use 
+Appendix A as scientific support and to ensure product reaches a lethal temperature 
+and does not dry out before lethality is achieved.  Establishments have flexibility to use 
+other scientific support if they are unable to meet the critical operational parameters.  
+FSIS clarified this issue in the guidance. 
+  
+ Comment:  FSIS received one question through askFSIS inquiring whether 
+reference to the cooking time in the humidity options in Appendix A refers to the entire 
+cooking time (including come up time) or just the time during which the temperature in 
+Appendix A is achieved and maintained (e.g., 145°F for 4 minutes).   
+ 
+ Response:   As stated on page 7, the cooking time (also referred to as the 
+lethality treatment) includes the time when the thermal processing begins (e.g., the 
+product is placed in the heated oven) until the time the product reaches the desired 
+lethality time-temperature combination from Appendix A.  Therefore, if an establishment 
+is applying humidity by continuously introducing steam for 50% of the cooking time, but 
+in no case less than 1 hour, 50% of the cooking time should be calculated based on the 
+total cooking time, not just the time during which the temperature in Appendix A is 
+achieved and maintained.  If humidity is not applied early in the process, evaporating 
+water will absorb the heat and a lethal temperature will not be achieved. 
+ 
+Comment:  One commenter disagreed with the statement: “Establishments using 
+the option to continuously inject steam should also have a procedure or mechanism in 
+place to ensure that steam is being continuously injected… .” The commenter indicated 
+that smokehouses do not operate this way, and that if a program is set for 40% relative 
+humidity, the smokehouse may spray water on the heating element to achieve this 40% 
+relative humidity. If the smokehouse reads that the house has, for example, 50% 
+relative humidity, it will stop spraying water on the heating elements and the dampers 
+will fluctuate to achieve the desired 40% relative humidity in the smokehouse. 
+  
+Response:  FSIS recognizes that steam may be turned on and off throughout the 
+cooking time when the target humidity is reached and has included this approach in the 
+guideline.  Some of the supporting documentation that can be used to demonstrate that 
+steam is being “continuously introduced” is illustrated in Attachment 4.   
+ 
+7.  Ambient vs. smokehouse temperatures 
+ 
+Comment:  One commenter requested further explanation of the effects of 
+ambient temperature on the smokehouse or oven temperatures. The commenter also 
+38 
+ 
+requested that FSIS acknowledge that smokehouses/ovens cannot be completely 
+sealed.  
+ 
+Response:  FSIS has provided additional information on page 12 regarding the 
+role relative humidity in the ambient air plays on the relative humidity in the smokehouse 
+or oven.  FSIS has also provided clarification on page 21 that, even when a tight seal is 
+obtained, some loss of humidity is the form of minor smoke or vapors may be seen. 
+ 
+8.  Reference to International Commission on Microbiological Specifications in Foods 
+(ICMSF) (1996) Microorganisms in Foods 5 
+ 
+Comment:  Two commenters expressed concern that establishments will use the 
+ICMSF book chapter in place of Appendix A.   
+ 
+ Response:  The only reference to the ICMSF book made in this guidance 
+document is provided as support for finished water activity limits in order to support 
+product shelf-stability.  It would not be acceptable for an establishment to cite the water 
+activity critical limits or the ICSMF book chapter as support for a lethality or drying 
+process because meeting a specific water activity level does not support that a 5-log
+10 
+reduction is achieved.  In general, establishments should not use finished product water 
+activity levels alone as support that a product is RTE.  The reason is that low water 
+activity alone, without a further heat treatment, would not necessarily result in adequate 
+reduction of Salmonella because the pathogen is known to be resistant to drying.  This 
+issue has been clarified and addressed in this guidance on page 15.    
+ 
+Comment:  One commenter stated that FSIS should not provide specific 
+guidance on water activity values that can be used to support shelf-stability by an 
+establishment within the guidance.  The commenter indicated if FSIS provides one 
+specific number in any guidance document, industry or FSIS may consider the guidance 
+a requirement. 
+ 
+Response:  FSIS has found through askFSIS questions and FSAs that 
+establishments are not maintaining adequate scientific support that products are shelf-
+stable.  Therefore, water activity values are provided as guidance to provide small and 
+very small establishments with compliance assistance under SBRFA.  However, 
+establishments have flexibility in terms of selecting and supporting the critical limits of 
+their process and are not required to use the limits provided.  FSIS has made clear that 
+this document is guidance and is not establishing new requirements (see page 2) 
+ 
+Comment:  One commenter requested a rationale for the guidance provided on 
+water activity limits to support shelf-stability for products packaged under aerobic and 
+anaerobic conditions because the limits are different than those in the ICMSF book 
+chapter.  The commenter also pointed out that the citation for the ICMSF book chapter 
+referenced the wrong page.   
+ 
+ Response: The water activity limits of 0.85 under aerobic conditions and 0.91 
+under anaerobic conditions provided in this document are based on the definition of 
+shelf-stability in the guidance on page 15 and the growth limit of Staphylococcus aureus 
+in the ICMSF Book chapter (Page 304 Table B).   The definition of shelf-stability in the 
+guidance is stated as the “condition achieved when meat and poultry products can be 
+39 
+ 
+stored under ambient temperature and humidity conditions; if the package integrity is 
+maintained during storage, shipping, and display at retail and in the home; and  the 
+product will not spoil or become unsafe throughout the manufacturer’s specified shelf-
+life. “  Under this definition, no growth of pathogenic organisms occurs.  According to the 
+ICMSF book chapter, the limit of growth for Staphylococcus aureus is 0.83 under 
+aerobic conditions and 0.90 under anaerobic conditions.  However, as noted in the 
+footnote of the book, this criterion is based on optimal conditions.  FSIS recognizes that 
+most jerky type products have other intrinsic factors such as sodium nitrite, indigenous 
+microflora, and salt concentration that would also act as barriers to Staphylococcus 
+aureus growth.  By considering these factors, FSIS has recommended an upper limit of 
+0.85 under aerobic conditions or 0.91 under anaerobic conditions.  This rationale is now 
+provided in the guidance document.  The guidance document also now clarifies that 
+these factors may be used to consider a product stable provided the establishment 
+takes steps to prevent mold growth on the finished product.  Finally, FSIS revised the 
+reference to include the page number of the specific table containing these values.   
+ 
+Comment:  One commenter expressed concern that the ICMSF book chapter 
+used as the reference for the limits of growth of Staphylococcus aureus under aerobic 
+and anaerobic conditions does not contain microbiological data supporting the limits.  
+ 
+Response:  FSIS considers information found in textbooks and other scientific 
+texts as acceptable scientific support because this type of scientific data goes through a 
+process of evaluation involving qualified individuals within the relevant field.   Often 
+textbooks and other scientific texts contain a summary of information based on other 
+peer-reviewed published research, as is the case with the ICMSF book.  In the case of 
+the water activity values provided in this guidance, establishments can refer to the 
+guidance and are not required to provide a copy of the ICMSF book chapter or the 
+original research referred to in the book because this guidance document contains the 
+critical operational parameter (water activity). 
+ 
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+40 
+ 
+Attachment 2:  Time, temperature, and humidity combinations reported in the literature for beef jerky that achieve at 
+least a 5-log10 reduction in Salmonella and E. coli O157:H7.  Unless noted, finished product water levels were ≤ 0.85.   
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+ 
+Oven Temperature 
+(°F) 
+ 
+Time 
+(min) 
+ 
+Humidity 
+(%) 
+Log10 Reduction 
+ 
+Salmonella 
+ 
+E. coli O157:H7 
+Buege et al. 
+(2006a) 3 
+ 
+Whole 
+muscle 
+beef 
+jerky 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Yes – 
+pH 5.3 
+No Type 1-A* 
+Stage 1 –  
+145 
+170  
+ 
+Stage 2 –  
+Choose either: 
+dry bulb at 170 and 
+wet bulb at 125 
+ 
+OR dry bulb at 170 
+and wet bulb at 130† 
+ 
+OR dry bulb at 170 
+and wet bulb at 135† 
+ 
+OR dry bulb at 170 
+and wet bulb at 140†  
+ 
+Stage 3-  
+Dry at 170 dry bulb 
+ 
+ 
+15 
+15 
+ 
+ 
+ 
+at least 60 
+ 
+ 
+at least 60 
+ 
+ 
+at least 30 
+ 
+ 
+at least 10 
+ 
+ 
+ 
+to targeted 
+doneness 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+27 
+ 
+ 
+32 
+ 
+ 
+37 
+ 
+ 
+43 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+6.5 
+ 
+ 
+6.9 
+ 
+ 
+7.0 
+ 
+ 
+6.9 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+6.9 
+ 
+ 
+7.1 
+ 
+ 
+7.1 
+ 
+ 
+7.1 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+                                                           
+3  Buege, D.R., Searls, G., and Ingham, S.C.  2006.  Lethality of commercial whole-muscle beef jerky manufacturing processes against Salmonella 
+Serovars and Escherichia coli O157:H7.  Also see the following website for a more detailed, user-friendly critical limit summary document: 
+http://www.meathaccp.wisc.edu/validation/assets/CLSummary_WMJerkyJune2013.pdf. 
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+41 
+ 
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+ 
+Oven Temperature 
+(°F) 
+ 
+Time 
+(min) 
+ 
+Humidity (%) 
+Log10 Reduction 
+ 
+Salmonella 
+ 
+E. coli O157:H7 
+Buege et al. 
+(2006a) 
+ 
+Whole 
+muscle 
+beef 
+jerky 
+Yes –  
+pH 5.3 
+No Type 1-B*† 
+Stage 1 – 
+145  
+ 
+Then choose either: 
+ 
+Stage 2 –  
+dry bulb at 150 
+THEN dry bulb at 
+150 and wet bulb at 
+130;  
+THEN dry bulb at 
+150 
+ 
+OR 
+Stage 2-  
+dry bulb at 190 
+THEN dry bulb at 
+190 and wet bulb at 
+130;  
+THEN dry bulb at 
+190 
+ 
+ 
+ 
+15 
+ 
+ 
+ 
+ 
+15  
+60  
+ 
+ 
+to targeted 
+doneness 
+ 
+ 
+ 
+15  
+60  
+ 
+ 
+to targeted 
+doneness 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+56 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+19 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+6.8 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+7.1 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+7.0 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+7.3 
+ 
+  Yes –  
+pH 5.3 
+No Type 2**† 
+145 
+170 
+ 
+15  
+to targeted 
+doneness 
+ 
+ 
+ 
+27-31(start)*** 
+17-21(end)         
+ 
+6.3 
+ 
+ 
+6.0 
+ 
+ 
+ 
+ 
+ 
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+42 
+ 
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+Oven 
+Temperature 
+(°F) 
+ 
+Time 
+(min) 
+ 
+Humidity 
+(%) 
+Log10 Reduction 
+Salmonella E. coli O157:H7 
+Buege et al. 
+(2006a) 
+ 
+Whole 
+muscle 
+beef 
+jerky 
+ 
+Yes –  
+pH 5.3 
+No Type 3**† 
+145 
+170 
+ 
+90  
+to targeted 
+doneness 
+ 
+41(start)*** 
+21(end) 
+ 
+5.5 
+ 
+ 
+5.6 
+         
+         
+  Yes –  
+pH 5.3 
+No Type 5** 
+180 
+ 
+ 
+to targeted 
+doneness 
+ 
+ 
+29(start)**** 
+15(end) 
+ 
+5.1 
+ 
+5.6 
+ 
+ 
+*Type 1-A and Type 1-B processes with a higher dry bulb temperature in Stage 1, a higher wet bulb temperature or longer time in 
+Stage 2, or a higher dry  bulb temperature in Stage 3, as long as other parts of the process are not changed, can also be 
+considered validated because they should have greater lethality. 
+**Processes reaching higher dry  bulb temperatures in either stage can also be considered validated because they would have 
+greater lethality. 
+***Humidity values are from Table 3 in Buege et al. (2006a). 
+****Humidity values are from Table 5 in Buege et al. (2006a). 
+†Finished product water activity level was > 0.85 (if an establishment wants to support the product is shelf-stable using 0.85 as a 
+criteria, it should consider further drying the product). 
+ 
+Oven:  Pans of water were placed on the lowest rack in the smokehouse, and a low fan speed was used.  Humidity 
+(steam or water) was introduced in Type 1-A and 1-B processes.  Study did not indicate whether dampers were open or 
+closed. 
+  
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+43 
+ 
+ 
+**Processes reaching higher dry  bulb temperatures in either stage can also be considered validated because they would have 
+greater lethality. 
+***Humidity values are from Table 3 in Buege et al. (2006a). 
+†Finished product water activity level was > 0.85 (if an establishment wants to support the product is shelf -stable using 0.85 as a 
+criteria, it should consider further drying the product). 
+ 
+Oven:  Pans of water were placed on the lowest rack in the smokehouse, and a low fan speed was used.  Humidity 
+(steam or water) was introduced in Type 1-A and 1-B processes.  Study did not indicate whether dampers were open or 
+closed.  
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+Oven 
+Temperature 
+(°F) 
+ 
+Time 
+(min) 
+ 
+Humidity 
+(%) 
+Log10 Reduction 
+ 
+Salmonella E. coli O157:H7 
+Buege et al. 
+(2006a) 
+ 
+Whole 
+muscle 
+beef jerky 
+Yes –  
+pH 5.3 
+No Type 7**† 
+120 
+130 
+140 
+170 
+ 
+60  
+60  
+60  
+60  
+ 
+43*** 
+ 
+ 
+15 
+ 
+6.0 
+ 
+5.6 
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+44 
+ 
+ 
+*Oven temperatures are average of continuous readings taken every 30s after CUT. 
+†Finished product water activity level was > 0.85 (if an establishment wants to support the product is shelf -stable using 0.85 as a 
+criteria, it should consider further drying the product). 
+ 
+Oven:  Dampers were completely open.   
+                                                           
+4 Porto-Fett, A.C.S., Call, J.E., and Luchansky, J.B.  2008.  Validation of a commercial process for inactivation of Escherichia coli O157:H7, Salmonella 
+Typhimurium, and Listeria monocytogenes on the surface of whole muscle beef jerky.  Journal of Food Protection.  71(5): 918-926. 
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+Oven/Product 
+Temperature 
+(°F)* 
+ 
+Time 
+(hours) 
+Humidity 
+(%) 
+(Start/End) 
+Log10 Reduction 
+(cfu/strip) 
+Salmonella E. coli O157:H7 
+Porto-Fett et 
+al. (2008)4 
+Whole 
+muscle 
+beef jerky 
+ 
+Yes –  
+~pH 5.5 
+Yes 178 1.5 63.4 
+21.9 
+≥7 ≥7† 
+ 
+ Whole 
+muscle 
+beef jerky 
+ 
+No Yes 178 1.5 63.4 
+21.9 
+≥7 ≥7† 
+ 
+ Whole 
+muscle 
+beef jerky 
+ 
+Yes –  
+~pH 5.5 
+Yes 178.3 2.5 63.8 
+21.5 
+≥7 ≥7 
+ Whole 
+muscle 
+beef jerky 
+ 
+No  Yes 178.3 2.5 63.8 
+21.5 
+≥7 ≥7† 
+ Whole 
+muscle 
+beef jerky 
+ 
+Yes –  
+~pH 5.5 
+Yes 178.5 3.5 
+ 
+62.3 
+19.2 
+≥7 ≥7 
+  No Yes 178.5 3.5 
+ 
+62.3 
+19.2 
+≥7 ≥7 
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+45 
+ 
+  
+ 
+*Humidity levels were calculated from actual dry and wet bulb temperatures reported in Getty et al. (2006): 
+http://www.fsis.usda.gov/wps/wcm/connect/35151cb4-1603-4164-b71f-bfea44e487e8/C-
+12_New_Technology_FY2004_Final_Report.pdf?MOD=AJPERES. Although the report states that humidity remained at less 
+than 10% throughout the entire smokehouse cycle, humidity levels calculated from dry and wet bulb temperatures in the report 
+were higher, as indicated in the table.  This was verified through personal communication with the author [April 2011].  
+ 
+Oven:  Automated dampers and steam injection. 
+  
+  
+                                                           
+5 Harper, N.M., Roberts, M.N., Getty, K.J.K., Boyle, E.A.E., Fung, D.Y.C., Higgins, J.J.  2009.  Evaluation of two thermal proc essing schedules at low relative humidity 
+for elimination of Escherichia coli O157:H7 and Salmonella Serovars in chopped and formed beef jerky.  Journal of Food Protection.  72: 2476 -2482. 
+6 Getty, K.J.K., Boyle, E.A.E., Roberts, M.N., Lonneker, S.M.  2006.  Jerky Validation for Small and Very Small meat and Poultr y Businesses:  Final Report.  Available 
+at: http://www.fsis.usda.gov/wps/wcm/connect/35151cb4-1603-4164-b71f-bfea44e487e8/C-12_New_Technology_FY2004_Final_Report.pdf?MOD=AJPERES.  
+Accessed 17 August 2013.   
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+Oven 
+Temperature 
+(°F) 
+ 
+Time 
+(min) 
+ 
+Humidity  
+(%)* 
+Log10 Reduction 
+ 
+Salmonella 
+ 
+E. coli O157:H7 
+Harper et al. 
+(2009),5 
+Getty et al. 
+(2006)6 
+Chopped 
+and formed 
+beef jerky 
+No  No  
+(smoke 
+flavor 
+was 
+added) 
+Stage 0 – 
+Stage 1 – 132 
+Stage 2 – 132 
+Stage 3 – 132 
+Stage 4 – 172 
+Stage 5 – 172 
+Stage 6 – 172 
+Stage 7 – 172 
+Stage 8 – 172 
+Stage 9 – 172 
+Stage 10 – 172 
+Stage 11 – 172 
+Stage 12 – 172 
+ 
+14 
+16 
+14 
+16 
+14 
+16 
+14 
+16 
+14 
+16 
+14 
+5 h 
+ 
+32.6 
+52 
+14.5 
+22 
+22 
+22 
+22 
+22 
+22 
+22 
+22 
+22 
+7.1 7.1 
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+46 
+ 
+*A spice rub mix was used.  Two types of spice mixes (Colorado and BBQ) were used in the study.  Results for one type of spice 
+mix (Colorado) are reported here.  Variability in lethality was found due to spice mix type.  See Borowski et al. (2009a) for details 
+on the spice mixes used including pH and aw values and results for products prepared with the BBQ spice mix. 
+**%RH values are approximate based on an average of the range of actual dry and wet bulb temperatures provided in the article.  
+RH values reported as ND were not determined. 
+ 
+NOTE:   All processes reported here used a commercial oven-smokehouse. 
+Oven:  Dampers were open for processes without smoke added. 
+ 
+ 
+  
+                                                           
+7 Borowski, A.G., Ingham, S.C., Ingham, B.H.  2009.  Validation of ground -and-formed beef jerky processes using commercial lactic acid bacteria starter cultures as 
+pathogen surrogates.  Journal of Food Protection.  72(6): 1234-1247. 
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+Oven 
+Temperature 
+(°F) 
+ 
+Time 
+(min) 
+ 
+Humidity  
+(%)** 
+Log10 Reduction 
+ 
+Salmonella 
+ 
+E. coli O157:H7 
+Borowski 
+et al. 
+(2009a)7 
+Ground-
+and-formed 
+beef jerky 
+No*  
+No 
+No 
+No 
+ 
+Type 2-A 
+170 
+130 
+170 
+ 
+30 
+120 
+90 
+ 
+57 
+22 
+28 
+ 
+7.4 
+ 
+7.4 
+ Ground-
+and-formed 
+beef jerky 
+No*   
+No 
+No 
+No 
+ 
+Type 3-A 
+170 
+170 
+170 
+ 
+30 
+15 
+130 
+ 
+7 
+23 
+ND 
+ 
+6.1 
+ 
+6.8 
+ 
+ 
+ 
+ 
+Ground-
+and-formed 
+beef jerky 
+No*   
+No 
+No 
+Type 4-A 
+135 
+185 
+ 
+90 
+150 
+ 
+67 
+9 
+ 
+7.8 
+ 
+8.1 
+         
+         
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+47 
+ 
+ 
+**A spice rub mix was used.  Two types of spice mixes (Colorado and BBQ) were used in the study.  Results for one type of 
+spice mix (Colorado) are reported here.  Variability in lethality was found due to spice mix type.  See Borowski et al. (2009a) for 
+details on the spice mixes used including pH and aw values and results for products prepared with the BBQ spice mix. 
+**%RH values are approximate based on an average of the range of actual dry and wet bulb temperatures provided in the article.  
+RH values reported as ND were not determined. 
+ 
+NOTE:   All processes reported here used a commercial oven-smokehouse. 
+Oven:  Dampers were open until smoke was added at which point dampers were closed. 
+ 
+                                                           
+8 Smoke added after 30 min. 
+9 Smoke discontinued after 90 min. 
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+ 
+Temperature 
+(°F) 
+ 
+Time 
+(min) 
+ 
+Humidity  
+(%)** 
+Log10 Reduction 
+ 
+Salmonella 
+ 
+E. coli O157:H7 
+Borowski et 
+al. (2009a) 
+Ground-
+and-
+formed 
+beef jerky 
+No*  
+Yes 
+Yes 
+Yes 
+ 
+Type 2-B 
+170 
+130 
+170 
+ 
+30 
+120 
+90 
+ 
+32 
+ND 
+ND 
+ 
+7.2 
+ 
+ 
+ 
+7.4 
+ Ground-
+and-
+formed 
+beef jerky 
+No*   
+No 
+No 
+Yes 
+ 
+Type 3-B 
+170 
+170 
+170 
+ 
+30 
+15 
+130 
+ 
+7 
+39 
+ND 
+ 
+7.3 
+ 
+7.4 
+ 
+ 
+ 
+ 
+Ground-
+and-
+formed 
+beef jerky 
+No*  
+Yes8 
+Yes9 
+Type 4-B 
+135 
+185 
+ 
+90 
+150 
+ 
+68 
+ND 
+ 
+7.5 
+ 
+7.5 
+         
+         
+This Attachment is not considered adequate support on its own because it does not provide the details of each study an 
+establishment needs to determine if the study is representative of the actual process. 
+48 
+ 
+ 
+ 
+ 
+ 
+ 
+NOTE:   The process reported here used a commercial oven-smokehouse. 
+Oven:  No humidity control.  Study did not indicate whether dampers were open or not. 
+                                                           
+10 Harrison, M. A., R. K. Singh, J. A. Harrison and N. Singh. 2006. Antimicrobial  intervention and process validation in beef jerky processing.  Final Report.  Available 
+at: http://www.fsis.usda.gov/wps/wcm/connect/8dd0f238-08d7-4ca0-a31a-77fa3ca8acf6/C-17_New_Technology_FY2004_Final_Report.pdf?MOD=AJPERES. 
+Accessed 17 August 2013.  
+ 
+ 
+ 
+Reference 
+ 
+ 
+Product 
+ 
+Marinated 
+(Yes/No) 
+Smoke 
+Added 
+(Yes/No) 
+Oven 
+Temperature 
+(°F) 
+ 
+Time 
+(hours) 
+ 
+Humidity  
+(%) 
+Log10 Reduction 
+ 
+Salmonella 
+ 
+E. coli O157:H7 
+Harrison et 
+al. (2006)10 
+ 
+Beef jerky 
+strips 
+Yes No 143.6 8-9  33 >6 >6 
+ 
+49 
+ 
+Attachment 3:  Making Your Own Wet Bulb Thermometer  
+(Reprinted with permission) 
+By G. Burnham, S.C. Ingham and B.H. Ingham  
+University of Wisconsin-Madison Center for Meat Process Validation  
+ 
+If you are smoking or drying meat, there are several parameters to monitor which will 
+help you control your process: dry bulb temperature, wet bulb temperature, and 
+relative humidity. Research at the University of Wisconsin Center for Meat Process 
+Validation has shown that monitoring wet bulb temperature is even more important 
+(and much easier!) than monitoring product temperature during your process. Since 
+wet bulb temperature is critical to process monitoring, this document describes how to 
+easily, and perhaps inexpensively, construct a wet bulb thermometer.  
+ 
+Dry bulb temperature, usually referred to as air temperature, is the smokehouse/oven  
+property that is most commonly measured by jerky-makers. When people refer to the  
+temperature (heat content) of the air, they are normally referring to the dry bulb  
+temperature. It is called "dry bulb" because the air temperature is indicated by a  
+thermometer that is not moistened and will not be affected by evaporative cooling.  
+ 
+Wet bulb temperature is the temperature indicated by a moistened thermometer bulb  
+exposed to air.  A wet bulb thermometer measures the extent of cooling that happens as  
+moisture dries from a surface (evaporative cooling). The wet bulb temperature is always  
+lower than the dry bulb temperature except when there is 100% relative humidity.  
+Because evaporative cooling occurs on the surface of thin jerky strips, the wet 
+bulb temperature is more accurate measurement of product temperature.  
+We developed a wet bulb thermometer (WBT) which is easy to assemble and 
+economical for a meat processor to use.  
+To begin assembling a wet bulb the rmometer, you will need to determine what type of 
+temperature measuring device you will use. You will need to use a temperature 
+recorder with a “tip reading” probe/wire/stem. Either an instant read or a data-logging 
+temperature measuring device will work; both are pictured in image 1.  
+A - 3 styles of ‘instant read’ temp- 
+A 
+ 
+ 
+ 
+ 
+ 
+B 
+ 
+1 
+erature measuring device 
+B - a data logger-style of temp- 
+erature measuring device 
+In  each  case,  the ‘tip  reading’ 
+probe/wire is circled. 
+Instant read temperature recorders. 
+(A)  An  instant  read temperature 
+Recorder will offer immediate 
+feedback, with the temperature 
+displayed on the front of the unit. 
+However, data may not be recorded 
+with this type of unit; the processor 
+must record the data periodically .  
+See page 51 for more information 
+on ordering instant-read 
+temperature recorders.
+ 
+50 
+ 
+A data logger -style temperature recorder. (B) This type of device keeps track of, or 
+‘logs’ temperature over a period of time. An inexpensive data logger usually does not 
+offer immediate readout of data. A processor must connect the data logger to a 
+computer to view the temperature data. A data logger does, however, offer a continuous 
+record of temperature history which can be important for HACCP documentation. See 
+page 51 for information on ordering a standard data logger.  
+ 
+Once you have your temperature recorder, you will  
+need to choose material to serve as the “wick” to  
+cover the tip probe.  Water evaporating from the wick  
+will  reduce  the  temperature  recorded,  giving  an  
+indication of evaporative cooling. The wick should be  
+made from an absorbent material, preferably cotton.  
+It should also be constructed of two phases: a loose,  
+absorbent  interior,  and  an  exterior  that  is  of  an  
+absorbent tighter meshing material.    The exterior  
+keeps  the  inner  absorbent  material  around  the 
+sensing  portion  of  the  temperature  probe  and 
+prevents the sensing portion of the recorder from  
+being exposed to direct ambient conditions. You may 
+wish   to   purchase   wicks   commercially,   such   as   from   an   online   supplier 
+(http://www.wickstore.com/wetbulbwick.html), or a good substitute is a round cotton bootlace 
+(image 2). See page 51 for more information on supplies for a wet bulb thermometer. 
+ 
+There are several simple steps to setting up a wet bulb thermometer.  
+1. Gather materials. You will need a vessel for holding water  which must either be 
+refilled  during  processing,  or  must  be  
+sufficiently  large  to  hold  enough  water 
+(allowing for evaporation) to keep the water 
+level  close  to  the  temperature  probe. 
+Choosing  a  vessel  with  a  small  diameter  
+opening  will  reduce  evaporation.  Once  a 
+water vessel has been chosen, simply fill it 
+with water.  You will also need a temperature 
+measuring device and material to serve as a 
+wick. In image 3, the bottom of a soda bottle 
+2  
+and a glass beaker are pictured as vessels. 3 
+Both an instant read and a data logger are shown for measuring temperature and 
+pieces of brown cotton shoelace serve as the wick.  
+2.  Assemble the wet bulb thermometer. Cut a  
+ portion of the wicking material (it should be  
+ long enough to reach the bottom of the water  
+ vessel and than some).  Connect the sensing  
+ portion of your temperature recorder to the  
+ wick by inserting the probe/wire/stem into the  
+ center of the wick (image 2). Secure the end  
+ of the wick to the probe/wire/stem using tape. 
+4 Place  the  wick  in  the  water-containing 
+vessel.  Make  sure  the  wick  is  completely 
+ 
+ 
+51 
+ 
+ 
+saturated  with  water,  then  position  the  wick -covered  sensing  portion  of  your  
+temperature recorder so that it is completely exposed to ambient conditions, yet as  
+close as possible to the water source (image 4).   This will ensure adequate wicking  
+of the water to the sensing portion of the temperature recorder.   If exposure to  
+ambient conditions is too great, such as when the wick is too long or the recorder too  
+far from the water surface, the wick may dry out, and evaporative cooling will not be  
+recorded. 
+ 
+3. Place the wet bulb thermometer inside the chamber.   If you are using an instant 
+reading  temperature  measuring  device  to 
+make  process  adjustments,  place  the  wet 
+bulb  thermometer    for  easy  access  and 
+readability, such as near a door or window 
+(image 5).   If immediate feedback is not a  
+consideration (image 6),  place  the  device 
+where the ambient conditions of your process 
+are least likely to give you optimum conditions 
+5 - hence a “worst case” reading. Position the 
+wet bulb thermometer in a flow of air (such as 
+in a stream of incoming air), but away from fans  
+which  will  cause  excessive  evaporation  and  
+drying of the wick. 
+4. Record  wet  bulb  temperature.   Establish  a 
+regular schedule of recording or down-loading 
+wet bulb temperature. Check water level in the  
+vessel periodically, and also check the position of 
+the wick. The portion of the wick above the water 
+must  remain  moist  for  accurate  temperature 
+measurement. The wet bulb temperature can be  
+used to adjust your process conditions, as needed. 
+ 
+ 
+ 
+Supplies for Making a Wet Bulb Thermometer* 
+Instant Read Temperature Recorders 
+Fisher Scientific (800-766-7000) 
+•   Part 15-078-38; price $131.49 plus shipping 
+•   Part 15-077-14; price $111.15 plus shipping 
+Data Logger-Type Temperature Recorders 
+Dickson Company (800-323-2448) 
+•   Part SM325 (LCD Display Temperature Data Logger w/ 2 K -thermocouple probes);  
+ price $399 plus shipping 
+•   Also order software to download information to computer ($79) 
+Wick Material 
+•   Round cotton bootlace (pictured in this document) - available at many general stores •   
+Wet-bulb wick ($50- $60 per spool http://www.wickstore.com/wetbulbwick.html )
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+6  
+ 
+52 
+ 
+•   Wet-bulb sock: Alkar, part #50040; price $127.00 for bundle of 100 (608-592-4865)  
+ 
+*The items and suppliers listed here are suggestions only, based on price and 
+availability. The mention of particular suppliers is not meant to exclude others from 
+consideration.  
+ 
+For more information contact:  
+Steve Ingham, Extension Food Safety Specialist (608) 265-4801, scingham@wisc.edu  
+May, 2006  
+ 
+The University of Wisconsin -Madison Center for Meat Process Validation provides science -based HACCP support to 
+small meat processors in meeting state and federal mandates for safe food processing and handling.  For more information 
+on the Center contact Dr. Steve Ingham, 1605 Linden Drive, UW -Madison, Madison, WI 53706  (608) 265 -4801 Email: 
+scingham@wisc.edu  
+ 
+ 
+ 
+ 
+ 
+ 
+  
+Cooking Program and Recorder Chart Courtesy of: Dr. Jeff J. Sindelar; Meat Science & Muscle Biology Lab, University of 
+Wisconsin-Madison & Robert Hanson; HansonTech, LLC 
+ 
+53 
+ 
+Attachment 4:  Example Time-Temperature Recorder Chart to Support Option to Continuously 
+Inject Steam 
+ 
+The chart on the next page illustrates and supports that steam is being continuously introduced into the smokehouse for at 
+least 50% of the cooking time but in no case for less than one hour per Appendix A.  The smokehouse schedule is provided 
+for reference below.  As can be seen on the recorder chart, during the cooking time (that is the first hour of the process), the 
+wet bulb rises while humidity (in the form of steam) is continuously injected.  The process eventually achieves and maintains 
+a wet bulb of 150oF, which at a dry bulb temperature of 170oF equates to a relative humidity of 59%.  The process targets an 
+internal product temperature of 145oF for 4 minutes per Appendix A.  
+ 
+Cooking program for beef jerky         
+Stage Type  Time   Dry Bulb  Wet Bulb Dampers Notes 
+ 
+ 1  Cook  60 min  170oF  150oF  Closed Humidity continuously injected 
+ 2  Dry  120 min  150   ---  Closed   
+ 3  Dry  80 min (to aw) 150  ---  Open   
+ 
+ 
+In addition to supporting that steam is being continuously introduced, the chart provides a good illustration of why wet bulb 
+temperature is a better indicator of product internal temperature than dry bulb temperature.  As can be seen on the chart, the 
+product internal temperature (shown by the yellow line), follows the wet bulb temperature (shown by the blue line) more 
+closely than the dry bulb temperature (shown by the dark red line) during the lethality treatment.  Towards the end of the 
+process, the product internal temperature breaks above the wet bulb temperature and rises towards the dry bulb temperature 
+as a result of diminishing evaporative cooling of the jerky that occurs because the product is drying out (i.e., moisture has 
+been lost) (Buege et al., 2006a). 
+   
+ 
+ 
+   
+Cooking Program and Recorder Chart Courtesy of: Dr. Jeff J. Sindelar; Meat Science & Muscle Biology Lab, University of 
+Wisconsin-Madison & Robert Hanson; HansonTech, LLC 
+ 
+54 
+ 
+ 
+Temperature profile for beef jerky process during cooking and drying
+Sliced whole muscle beef jerky, 0.125" thick
+40
+50
+60
+70
+80
+90
+100
+110
+120
+130
+140
+150
+160
+170
+180
+190
+200
+0 1 2 3 4 5
+time (hr)
+Temperature (F)
+DryBulb Temperature
+WetBulb Temperature
+Jerky Temperature
+Stage 1. Wet-surface lethality step. 
+Steam is continuously injected from the 
+beginning of the process to achieve and 
+maintain a wet bulb of 150oF. 
+Stage 2. Jerky dried with sealed intake/exhaust 
+dampers. Wet bulb temperature slowly 
+decreases from 140 to 130oF. Evaporative 
+cooling causes the jerky temperature to closely 
+follow the wet-bulb temperature.  
+Stage 3. Intake and exhaust dampers are 
+opened and wet bulb temperature drops. 
+Drying accelerates and jerky temperature 
+breaks above the wet bulb temperature. 

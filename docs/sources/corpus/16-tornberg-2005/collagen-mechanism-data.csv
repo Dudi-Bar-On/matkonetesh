@@ -1,0 +1,6 @@
+source_id,protein_type,event,temp_range_C,notes
+16,collagen,denaturation + fiber shrinkage,53-63,"if not stabilized by heat-resistant bonds it then dissolves to gelatine on further heating (temp/time for that second step not given in abstract)"
+16,sarcoplasmic proteins,aggregation,40-60,"some extend up to 90C"
+16,myofibrillar proteins (in solution),unfolding onset,30-32,
+16,myofibrillar proteins (in solution),protein-protein association,36-40,
+16,myofibrillar proteins (in solution),gelation,45-50,

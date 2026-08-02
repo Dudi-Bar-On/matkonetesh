@@ -1,0 +1,6 @@
+source_id,stage,temp_range_F,description
+18,1 dehydration,up to 500,water evaporates as steam
+18,2 decomposition/pyrolysis,500-700,volatile organic compounds boil off
+18,3 combustion (sweet spot),650-750,guaiacol/syringol desirable flavor compounds form best
+18,3 combustion (acrid),above 750,acrid compounds form
+18,4 charcoal formation,above 1000,pure carbon remains; minimal further smoke/flavor

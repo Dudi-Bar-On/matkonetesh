@@ -1,0 +1,1554 @@
+
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -22 
+Guide 3-B  Instructions for Marking the Food Establishment Inspection Report, 
+Including Food Code References for Risk Factors/Interventions and Good Retail 
+Practices 
+Guide 3-B is intended to be used during inspections to ensure that observations of the 
+provisions of the Code are not overlooked during the inspection and accurately 
+recorded on the Food Code Establishment Inspection Report form.  
+The major headings from the Food Establishment Inspection Report form are 
+condensed in Guide 3-B into key word phrases to assist the person conducting 
+inspections in locating the Food Code citation that corresponds to a given violation and 
+recording inspectional observations. The risk designations (Priority
+ (P), Priority 
+Foundation (Pf) and Core (C)) have been added to each applicable code section for 
+reference when recording observations in the inspection report. 
+All references and code sections in these marking instructions are based on the 2009 Food Code and its 
+Supplement.  
+A. GENERAL MARKING INSTRUCTIONS 
+Header Information 
+Field Description 
+Establishment Complete this section using the “usual/common name” or “Doing 
+Business As” name of the business. This information should be the 
+same as the license/permit application completed at the initiation of 
+the business. 
+Address Street address of the actual business location 
+Zip Code Zip code of the actual business location 
+Telephone Contact phone number for the establishment 
+License/Permit # License number or tracking identification 
+Permit Holder Name of Owner or Operator as shown on application 
+Purpose The reason for the inspection – routine, re-inspection, complaint, or 
+follow-up,etc.  
+Est. Type Description or code for describing the type of facility (e.g. restaurant, 
+market, vehicle, temporary food facility) 
+Risk Category Designation of risk/priority level for determining frequency of 
+inspection 
+Number of Risk Factor / 
+Intervention Violations 
+The number of boxes marked OUT in items 1-29 should be counted 
+and the total number placed here 
+Number of Repeat Risk Factor / 
+Intervention Violations 
+The number of boxes marked R (repeat) in items 1-29 should be 
+counted and the total number placed here  
+Score (optional) A score is optional for this form. If a jurisdiction has a scoring system, 
+it should be incorporated into the inspection form and the score of an 
+inspection placed here. 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -23 
+Field Description 
+Date The date of the inspection including month, day, and year 
+Time In The actual time the inspection begins 
+Time Out The actual time the inspection ends 
+ 
+B. RISK FACTORS AND INTERVENTIONS 
+Risk factors are food preparation practices and employee behaviors most commonly reported to the 
+Centers for Disease Control and Prevention (CDC) as contributing factors in foodborne illness outbreaks. 
+Risk factors include: Food from Unsafe Sources, Improper Holding Temperatures, Inadequate Cooking, 
+Contaminated Equipment, and Poor Personal Hygiene. These items are prominent on the Food 
+Establishment Inspection Report because maintaining these items in compliance is vital to preventing 
+foodborne illness. Additionally, five key public health interventions were introduced in the 1993 Food 
+Code that supplemented the other interventions long-established by the Food and Drug Administration 
+(FDA) model codes and guidances to protect consumer health. The five key interventions are: 
+Demonstration of Knowledge, Employee Health Controls, Controlling Hands as a Vehicle of 
+Contamination, Time and Temperature Parameters for Controlling Pathogens, and the Consumer 
+Advisory.  
+For each item on the inspection report form in the Foodborne Illness Risk Factors and Public Health 
+Interventions section, the inspector should indicate one of the following for COMPLIANCE STATUS: “IN” 
+which means that the item is in compliance; “OUT” which means that the item is not in compliance; 
+“N.O.” which means that the item was not observed during the inspection; or “N.A.” which means that 
+the item is not applicable for the facility. If N.A. or N.O. is not listed as an option for a particular item, this 
+means that this item must be evaluated during the inspection and a compliance status must be 
+determined. If the item is marked “OUT”, document details of each violation for the item number in 
+the “Observations and Corrective Actions” section on the second page of the inspection report. 
+Compliance status should be determined as a result of observations that establish a pattern of non-
+compliance. Consideration should be given to the seriousness of the observation with regard to 
+prevention of foodborne illness. 
+For items marked “OUT,” further indicate the status of the violation by marking an “X” in the 
+corresponding box for Corrected On-Site (COS) during the inspection and/or Repeat violation (R). 
+Marking COS indicates that all violations cited under that particular item number have been corrected and 
+verified before completing the inspection. The actual corrective action taken for each violation should be 
+documented in the “Observations and Corrective Actions” section of the inspection report. For example, 
+Item #10 Handwashing sink is marked out of compliance because the establishment does not have soap 
+and paper towels at the handwashing sink. The person in charge partially corrects the problem by putting 
+soap at the sink, but does not replace the paper towels or provide any other effective means for drying 
+hands. The corrective action taken for the soap is documented in the narrative on the form, but COS is 
+not marked for Item #10 because all violations under that item were not corrected. Marking R indicates 
+that the same violation under a particular item number was cited on the last inspection report. Using the 
+same scenario, on the subsequent inspection if the provision of soap and paper towels is not in violation, 
+but employees are not washing hands in the correct sink (which is also cited under Item #8 Handwashing 
+sink), R would not be marked because this is a new violation which was not cited on the previous 
+inspection report. 
+  
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -24 
+C. Marking Instructions for each RISK FACTOR AND INTERVENTION on the 
+Inspection Report 
+Supervision 
+1. PIC present, demonstrates knowledge, and performs duties 
+IN/OUT This item must be marked IN or OUT of compliance. The person in charge (PIC) has three 
+assigned responsibilities – Presence; Demonstration of Knowledge; and Duties. This item is 
+marked OUT of compliance if any one of the responsibilities is not met.  
+A. Person in charge is present. This item is marked OUT of compliance if there is no PIC 
+per 2-101.11(A) and (B).  
+B. Demonstration of Knowledge. The PIC has three options for demonstrating knowledge. 
+This item is marked IN compliance if the PIC meets at least one of the options. The three 
+options for demonstration of knowledge allowed by the Food Code are: 
+1. Certification by an ACCREDITED PROGRAM as specified in 2-102-20.  
+2. Complying with this Code by having no violations of priority items during the current 
+inspection; or 
+3. Correct responses to the inspector's questions regarding public health practices and 
+principles applicable to the operation. The inspector should assess this item by 
+asking open-ended questions that would evaluate the PIC's knowledge in each of the 
+areas enumerated in ¶ 2-102.11(C)(1), (4)-(16). Questions can be asked during the 
+initial interview, menu review, or throughout the inspection as appropriate. The 
+Inspector should ask a sufficient number of questions to enable the inspector to make 
+an informed decision concerning the PIC's knowledge of the Code requirements and 
+public health principles as they apply to the operation. The dialogue should be 
+extensive enough to reveal whether or not that person is enabled by a clear 
+understanding of the Code and its public health principles to follow sound food safety 
+practices and to produce foods that are safe, wholesome, unadulterated, and 
+accurately represented.  
+C. Duties of the PIC. This item must be marked IN or OUT of compliance based on the 
+interaction and observation with the PIC and food employee. The inspector needs to 
+determine the systems or controls the PIC has put into practice regarding oversight 
+and/or routine monitoring of the Duties listed in § 2-103.11. This is accomplished by 1) 
+discussion with the PIC, and 2) verified through observation that the systems or controls 
+are actually being implemented. This concept is commonly referred to as Active 
+Managerial Control. This item must be marked OUT of compliance when there is a 
+pattern of non-compliance and obvious failure by the PIC to ensure employees are 
+complying with the duties listed in § 2-103.11. Since marking this item out of compliance 
+requires judgment, it is important that this item not be marked for an isolated incident, but 
+rather for an overall evaluation of the PIC's ability to ensure compliance with the duties 
+described in § 2-103.11. 
+N.A.  This item may be marked N.A. if the establishment is deemed by the Regulatory Authority to not 
+apply due to the minimal risk of causing, or contributing to foodborne illness based on the nature 
+of the operation and extent of the food operation. 
+N.O.   Do Not Mark this item N.O. 
+  
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -25 
+Applicable Code Section:  
+2-101.11  Assignment (Pf) 
+2-102.11(A), B) and (C)(1), (4)-(16)   Demonstration (Pf) 
+2-103.11 (A)-(O) and (Q)   Person-In-Charge-Duties (Pf) 
+ 
+2. Certified Food Protection Manager 
+IN/OUT This item must be marked IN or OUT of compliance. This item is marked IN compliance 
+when it is observed that the person in charge is a certified food protection manager. This 
+item is marked OUT when it is observed that there is no person in charge that is deemed 
+a certified food protection manager or the certified food protection manager certificate is 
+deemed not to be from an accredited program.  
+N.A. This item may be marked N.A. if the establishment is deemed by the Regulatory Authority 
+to not apply due to the minimal risk of causing, or contributing to foodborne illness based 
+on the nature of the operation and extent of food operation.  
+N.O. Do NOT MARK this item N.O. 
+ 
+Applicable Code Section: 
+2-102.12(A)  Certified Food Protection Manager (C) 
+ 
+Employee Health/Responding to Contamination Events 
+ 
+3. Management and food employee knowledge, and conditional employee; responsibilities and  
+reporting.  
+IN/OUT This item must be marked IN or OUT of compliance. This item is marked IN compliance when 
+the following criteria are met:  
+1. The PIC is aware of his or her responsibility to inform food employees and conditional employees 
+of their responsibility to report certain symptoms or diagnosed diseases to the person in charge 
+and for the PIC to report to the regulatory authority as specified under Food Code ¶ 2-103.11 (O) 
+and ¶¶ 2-201.11 (A),(B), (C), and (E); and 
+2. The PIC provides documentation or otherwise satisfactorily demonstrates during the inspection, 
+that all food employees and conditional employees are informed of their responsibility to report to 
+management information about their health and activities as it relates to diseases that are 
+transmissible through food, as specified under ¶ 2-201.11(A). Satisfactory compliance may be 
+documented by completion of Form 1-B, Conditional Employees or Food Employees Reporting 
+Agreement, in Annex 7 of the 2009 Food Code for each employee or other similar State or local 
+form containing the same information; or 
+3. In lieu of Form 1-B, compliance may be demonstrated by:  
+a) Presenting evidence such as a curriculum and attendance rosters documenting that each 
+employee has completed a training program which includes all the information required 
+on Form 1-B regarding their reporting responsibilities; or 
+b) Implementation of an employee health policy which includes a system of employee 
+notification using a combination of training, signs, pocket cards, or other means to convey 
+all of the required information on Form 1-B to all food employees and conditional 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -26 
+employees. A signed acknowledgement by the employee should be part of any employee 
+health policy.  
+The regulatory authority is encouraged to establish a policy of selecting one employee at random 
+during each inspection and requesting the PIC verify, by one of the previously listed methods, 
+that the selected employee has been informed of his or her responsibility to report symptoms, 
+exposures, and diagnosed illnesses to management. The PIC is not expected to quote symptoms 
+and diseases from memory, but should be able to locate that information on Form 1-B or similar 
+documents used to demonstrate compliance.  
+Additional information is provided in Annex 3 of the Public Health Reasons for Subpart 2-201, 
+including a number of questions, which may be used as a reference to assist the regulatory 
+authority in determining compliance with this item.   
+N.A.  Do Not Mark this item N.A. 
+N.O.  Do Not Mark this item N.O. 
+ 
+Applicable Code Sections:  
+2-102.11(C)(2),(3) and (17)  Demonstration (Pf) 
+2-103.11 (P)    Person in Charge-Duties (Pf) 
+2-201.11(A), (B), (C), & (E)  Responsibility of Permit Holder, Person in Charge, and 
+Conditional Employees (P,Pf)  
+ 
+4. Proper use of restriction and exclusion  
+IN/OUT  This item must be marked IN or OUT of compliance. Compliance must be based on first hand 
+observations or information and cannot be based solely on responses from the PIC to 
+questions regarding hypothetical situations or knowledge of the Food Code. This item is 
+marked IN when the following criteria are observed at the time of the inspection:  
+•  There are no ill employees.  
+• There are no employees experiencing symptoms with or without a diagnosis that 
+require reporting, or reason for the PIC to exclude or restrict an employee  
+•  A food employee who works in a food establishment serving a HSP or non-HSP, is 
+restricted due to diagnoses with an infection from nontyphoidal Salmonella and is 
+asymptomatic 
+ This item should be marked OUT of compliance when: 
+• The inspector observes a working employee with specific reportable symptoms 
+(subparagraph 2-201.11 (A)(1)); or 
+• The inspector becomes aware that an employee has reported information about his 
+or her health and activities as it relates to diseases that are transmissible through 
+food and the PIC has not acted to restrict/exclude an employee as required by the 
+Food Code (§2-201.12 & §2-201.13); or 
+• The inspector becomes aware that the PIC has not notified the Regulatory Authority 
+that an employee is jaundiced or diagnosed with an illness due to a pathogen as 
+specified under subparagraphs 2-201.11 (A)(2)(a)-(f) of the Food Code. 
+• There are food employees working in the food establishment that have been 
+diagnosed with an illness as specified in paragraphs 2-201.11(A)(2-5); Additionally, in 
+food establishments exclusively serving a highly susceptible population, there are to 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -27 
+be no food employees with an active sore throat with a fever working in the food 
+establishment. 
+ 
+N.A. Do Not Mark this item N.A. 
+N.O. Do Not Mark this item N.O.  
+ 
+Applicable Code Sections:  
+2-201.11 (D) and (F)  Responsibility of Permit Holder, Person in Charge, and Conditional 
+Employees Responsibility of the PIC to Exclude or Restrict 
+(P,) 
+2-201.12  Exclusions & Restrictions (P) 
+2-201.13  Removal, Adjustment, or Retention of Exclusions & Restrictions (P) 
+ 
+5. Clean-up of Vomiting and Diarrheal Events 
+IN/OUT This item should be marked IN or OUT of compliance. This items is marked IN compliance 
+when it is demonstrated that the food establishment has written procedures available for 
+employees to follow when responding to vomiting or diarrheal events that involve the 
+discharge of vomitus or fecal matter onto surfaces in the food establishment. Refer to the 
+Public Health Reasons (§2-501.11 Clean up of Vomiting and Diarrheal Events) for suggested 
+recommendations as to what the food establishment can include within their plan (this is not 
+an exhaustive list). 
+This item is marked OUT of compliance if the establishment does not demonstrate the ability 
+to provide written procedures for employees to follow when responding to vomiting or diarrheal 
+events that involve the discharge of vomitus or fecal matter onto surfaces in the food 
+establishment. 
+N.A. Do Not Mark this item N.A. 
+N.O. Do Not Mark this item N.O. 
+ 
+Applicable Code Section: 
+2-501.11  Clean-up of Vomiting and Diarrheal Events 
+(Pf) 
+ 
+Good Hygienic Practices 
+6. Proper eating, tasting, drinking, or tobacco products use 
+IN/OUT  This item should be marked IN or OUT of compliance based on direct observations or 
+discussions of the appropriate hygienic practices of food employees. This item should be 
+marked IN compliance when a food employee is observed drinking from a closed beverage 
+container subsequently stored on a non-food-contact surface and separate from exposed 
+food, clean equipment, and unwrapped single- service and single-use articles. This item 
+should be marked OUT of compliance when food employees are observed improperly tasting 
+food, eating, drinking, or using tobacco products, or there is supporting evidence of these 
+activities taking place in non-designated areas of the establishment. An open container of 
+liquid in the kitchen preparation area does not necessarily constitute marking this item OUT. 
+Further discussion with a food employee or the PIC may be needed to determine if the liquid, if 
+labeled, is used as an ingredient in food, or may be an employee beverage that is consumed 
+in another designated area. If the liquid is an open beverage that is consumed in a designated 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -28 
+area, it must still be stored in a manner to prevent the contamination of food, equipment, 
+utensils, linens and single-service/single-use articles.  
+N.A.  Do Not Mark this item N.A. 
+N.O.  This item may be marked N.O. for retail operations only in the RARE case when there are no 
+food workers present at the time of inspection. 
+ 
+Applicable Code Sections:  
+2-401.11  Eating, Drinking, or Using Tobacco Products (C)  
+3-301.12  Preventing Contamination When Tasting (P) 
+ 
+7. No discharge from eyes, nose, and mouth 
+IN/OUT This item should be marked IN or OUT of compliance based on direct observations of food 
+employees. This item should be marked IN compliance when no food employees are observed 
+having persistent sneezing, coughing, or a runny nose that causes discharge from the eyes, 
+nose or mouth. This item should be marked OUT of compliance when a food employee has 
+persistent sneezing, coughing, or a runny nose that causes discharges from the eyes, nose or 
+mouth, subjecting food and food-contact surfaces to potential contamination.   
+ 
+N.A.  Do Not Mark this item N.A. 
+N.O.  This item may be marked N.O. for retail operations only in the RARE case when there are no 
+food workers present at the time of inspection. 
+ 
+Applicable Code Sections:  
+2-401.12 Discharges from the Eyes, Nose, and Mouth 
+(C)  
+Control of Hands as a Vehicle of Contamination 
+8. Hands clean and properly washed 
+IN/OUT   This item should be marked IN or OUT of compliance. This item is marked IN compliance only 
+when employees are observed using proper handwashing techniques at appropriate times and 
+places. Hands are not required to be washed between each change of gloves, if it is observed 
+that there was no change in the task being performed and no activities which could potentially 
+result in cross contamination. 
+N.A.  Do Not Mark this item N.A. 
+N.O.   This item may be marked N.O. for retail operations only in the RARE case when there are no 
+food workers present at the time of inspection. (If there are no food workers present, but the 
+PIC accompanies the inspector on the inspection and touches food, clean equipment, or 
+utensils without washing his/her hands, this item is marked OUT.) 
+  
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -29 
+Applicable Code Sections:   
+2-301.11  Clean condition-Hands and Arms (P) 
+2-301.12  Cleaning Procedure (P) 
+2-301.14  When to Wash (P) 
+2-301.15  Where to Wash (Pf) 
+2-301.16 Hand Antiseptics (Pf) 
+ 
+ 9.  No bare hand contact with RTE foods or a pre-approved alternate properly followed 
+IN/OUT This item should be marked IN or OUT of compliance. This item is marked IN compliance only when food 
+employees are observed using suitable utensils or gloves to prevent bare hand (or arm) contact with 
+ready-to-eat foods or if the food employee contacts exposed RTE food with bare hands at the time the 
+RTE food is being added as an ingredient to a food that:  
+• Contains a raw animal food and is to be cooked in the food establishment to heat all parts of the  
+food to minimum temperatures specified in ¶¶3-401.11(A)-(B) or §3-401.12; or  
+• Does not contain a raw animal food but is to be cooked in the food establishment to heat all parts  
+of the food to a temperature of at least 63°C (145°F).  
+This item is also marked IN compliance when food employees are observed properly following a pre-
+approved alternative procedure to no bare hand contact.  
+This item should be marked OUT of compliance if one food employee is observed ready-to-eat food with 
+their bare hands in the absence of a prior approval and written procedures for bare hand contact. Refer 
+to subparagraph 3-301.11 (E)(1)-(7) for a listing of conditions that must be met in order to receive prior 
+approval by the Regulatory Authority. Bare hand contact by food employees serving a Highly Susceptible 
+Population is prohibited and no alternative to bare hand contact is allowed. This item is also marked OUT 
+when food employees contact exposed RTE food with bare hands that is to be added as ingredients to a 
+food that is not properly heat treated as specified in Sub-¶3-301.11(D)(1)-(2).  
+N.A. This item may be marked N.A. for establishments that provide only packaged, or bulk food items that are 
+not ready-to-eat.  
+N.O. This item may be marked N.O. for establishments that prepare ready-to-eat foods only, but no food 
+preparation is performed at the time of inspection. 
+ 
+Applicable Code Sections:   
+3-301.11 Preventing Contamination from Hands 
+(P, Pf, C) 
+3-801.11(D)  Pasteurized Foods, Prohibited Re-Service, and Prohibited Foods (P) 
+ 
+10. Adequate handwashing sinks, properly supplied and accessible  
+IN/OUT This item must be marked IN or OUT of compliance based on observations in determining that 
+handwashing sinks are properly equipped and conveniently located for employee use in food 
+preparation, food dispensing and warewashing areas as well as in or immediately adjacent to 
+toilet rooms. This item must be marked OUT of compliance when the facility is not stocked 
+with soap, hand drying provisions or equipped with the required signage. In addition, if the 
+handwashing sink is not located to be available to employees who are working in a food 
+preparation area, food dispensing and warewashing areas and is blocked by portable 
+equipment or stacked full of soiled utensils or other items, or the facility is unavailable for 
+regular employee use, this item must be marked OUT of compliance. 
+ 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -30 
+N.A. Do Not Mark this item N.A. 
+N.O. Do Not Mark this item N.O. 
+ 
+Applicable Code Sections:   
+5-202.12 Handwashing Sinks, Installation ((Pf, C)   
+5-203.11 Handwashing Sinks-Numbers and Capacities (Pf) 
+5-204.11 Handwashing Sinks-Location and Placement (Pf) 
+5-205.11 Using a Handwashing Sink-Operation and Maintenance (Pf) 
+6-301.11 Handwashing Cleanser, Availability (Pf) 
+6-301.12 Hand Drying Provision (Pf) 
+6-301.13 Handwashing Aids and Devices, Use Restrictions (C) 
+6-301.14 Handwashing Signage (C) 
+ 
+Food From a Source That Complies with Law 
+11. Food obtained from sources that comply with Law  
+IN/OUT  This item should be marked IN or OUT of compliance based on direct observations of food 
+products, food labels and packaging, water analyses, and discussion with the PIC or other 
+food employees. This item should be marked IN compliance when the regulatory authority is 
+able to determine food has been received from sources that comply with LAW. . A review of 
+supplier names, shipment invoices, buyer specification plans, molluscan shellfish tags, proof 
+of regulatory permit/licensure of a food source, etc. can be used to document approved food 
+sources. Wild harvested mushrooms if sold or served have been approved by the regulatory 
+authority. Milk and milk products must comply with Grade A Standards. This item should be 
+marked OUT of compliance when it cannot be determined that food is received from a source 
+that complies with LAW and if the regulatory authority did not approve the sale or service of 
+wild harvested mushrooms and it is observed in the food establishment for sale and service. 
+N.A.  Do Not Mark this item N.A. 
+N.O.  Do Not Mark this item N.O. 
+ 
+Applicable Code Sections: 
+3-201.11  Compliance with Food Law (P, Pf, C) 
+3-201.12  Food in a Hermetically Sealed Container (P) 
+3-201.13  Fluid Milk and Milk Products (P) 
+3-201.14  Fish (P) 
+3-201.15  Molluscan Shellfish (P) 
+3-201.16 Wild Mushrooms (P) 
+3-201.17  Game Animals (P, C) 
+3-202.13  Eggs (P) 
+3-202.14  Eggs and Milk Products, Pasteurized (P) 
+ 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -31 
+3-202.110 Juice Treated-Commercially Processed (P, Pf) 
+5-101.13 Bottled Drinking Water (P) 
+ 
+12. Food received at proper temperature  
+IN/OUT This item should be marked IN or OUT of compliance based on actual food temperature 
+measurements of TCS foods being received. This item should be marked IN compliance when 
+food is received and found at proper temperatures during the inspection (i.e. catered meal for 
+child care center arrives during the inspection and the regulatory authority verifies receiving 
+temperature). This item should be marked OUT of compliance if food is received and 
+accepted, but an actual food temperature measurement of a TCS food by the regulatory 
+authority at the time of delivery exceeds the temperature specifications for receiving as 
+prescribed by the Code. 
+N.A. This item may be marked N.A. for retail operations when the establishment receives only 
+foods that are not TCS food and that are not frozen. 
+N.O. This item may be marked N.O. if food is not received during the inspection. 
+ 
+Applicable Code Sections: 
+3-202.11  Temperature (P, Pf) 
+ 
+13. Food in good condition, safe and unadulterated 
+IN/OUT This item must be marked IN or OUT of compliance based on direct observations of the 
+integrity of product packaging, wholesomeness, and signs of adulteration. This item must be 
+marked IN compliance when a dent in a canned food has not compromised the hermetic seal; 
+cuts made in outer cardboard packaging during opening of the case do not enter the inner 
+product packaging; the true appearance, color, or quality of a food is not misrepresented; and 
+food is honestly presented. This item must be marked OUT of compliance when the integrity of 
+food packaging has been compromised or the true appearance, color, or quality of a food has 
+been intentionally altered. 
+N.A. Do Not Mark this item N.A. 
+N.O.  Do Not Mark this item N.O.  
+ 
+Applicable Code Sections: 
+3-101.11  Safe, Unadulterated and Honestly Presented 
+(P) 
+3-202.15 Package Integrity (Pf) 
+ 
+14. Required records available: molluscan shellfish identification, parasite destruction 
+IN/OUT This item should be marked IN or OUT of compliance based on direct observations of fish in 
+storage, molluscan shellfish identification, and/or records of freezing of fish for parasite 
+destruction. This item should be marked IN compliance if the permit holder provides a 
+statement from supplier(s) identifying that fish sold as raw, raw-marinated or undercooked is 
+frozen by supplier for parasite destruction; or there are freeze records maintained by the 
+permit holder when fish are frozen for parasite destruction on the premises. This item should 
+be marked OUT of compliance if there are no molluscan shellfish identification, when the 
+molluscan shellfish identification are incomplete, when there is evidence of commingling, or 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -32 
+when no records of freezing of fish for parasite destruction are available. Fish exempt from 
+freezing requirements are found in paragraph 3-402.11(B). 
+N.A. This item may be marked N.A. when molluscan shellifsh are not used in the establishment and 
+the only fish sold as raw, raw-marinated or undercooked is the tuna species or aquacultured 
+fish listed as exempted from freezing in the Food Code.  
+N.O. This item may be marked N.O. when molluscan shellfish or raw, raw-marinated and 
+undercooked fish are sold periodically in the establishment, but are not being sold at the time 
+of inspection and prior compliance through tags, invoices, or purchase records cannot be 
+verified. 
+Applicable Code Sections: 
+3-202.18  Molluscan Shellfish, Packaging and Identification (Pf, C) 
+3-203.12  Molluscan Shellfish, Maintaining Identification (Pf) 
+3-402.11  Parasite Destruction (P, C) 
+3-402.12 Records, Creation, & Retention (Pf) 
+  
+Protection from Contamination 
+15. Food separated and protected 
+IN/OUT This item should be marked IN or OUT of compliance based on direct observations of food 
+storage and food handling practices. This item should be marked OUT of compliance when 
+ready-to-eat foods are subject to potential contamination by raw animal foods; raw animal 
+foods are observed not separated by type based on minimum cook temperatures by 
+spacing or placing in separate containers; unpackaged comminuted or otherwise non intact 
+meats are stored above unpackaged whole muscle intact cuts of meat; food is not packaged 
+or covered during storage (unless in the process of cooling); or food is in contact with soiled 
+equipment and utensils; or single-use gloves used for more than one task. An exception is 
+included that allows the following: storage and display of frozen, commercially packaged 
+raw animal food adjacent to or above frozen, commercially packaged ready-to-eat food and 
+combining raw animal foods with ready-to-eat foods when combined as ingredients for 
+future preparation or cooking. 
+N.A. This item may be marked N.A. when there are no raw animal foods used in the facility and 
+only prepackaged foods are sold. 
+N.O. This item is marked N.O. when raw animal foods are used or served seasonally and you are 
+unable to determine compliance. 
+ 
+Applicable Code Sections: 
+3-302.11  Packaged and Unpackaged Food-Separation, Packaging, and Segregation 
+(P, C) 
+3-304.11 Food Contact with Equipment, Utensils, and Linens (P) 
+3-304.15(A) Gloves, Use Limitation (P) 
+3-306.13(A) Consumer Self-Service Operations (P) 
+ 
+16. Food-contact surfaces: cleaned and sanitized 
+IN/OUT This item must be marked IN or OUT of compliance based on direct observations of food-
+contact surfaces of equipment and utensils; actual measurements/readings of chemical 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -33 
+sanitizer concentration, hot water sanitizing temperature, pH, hardness, water pressure, etc. 
+using test strips, heat-sensitive tapes, and equipment gauges; observations of cleaning and 
+sanitizing procedures; and discussion of cleaning and sanitizing procedures and frequency 
+with the PIC or other food employees. This item must be marked IN compliance when manual 
+and/or mechanical methods of cleaning and sanitizing are effective, and performed at the 
+prescribed frequency. There should be an overall assessment of the food-contact surfaces of 
+equipment and utensils in clean storage and in use to determine compliance. For example, 
+this item is not marked OUT of compliance based on one visibly soiled utensil, such as a plate 
+or knife. This item must be marked OUT of compliance when manual and/or mechanical 
+methods of cleaning and sanitizing food-contact surfaces of equipment and utensils are 
+ineffective, or if one multiuse piece of equipment such as a slicer or can opener is visibly 
+soiled and being used at the time of the inspection. This item is also marked OUT if it is 
+observed that equipment or utensils that have come into contact with a major food allergen 
+such as fish was not cleaned and sanitized prior to use for other types of raw animal foods. 
+N.A. This item may be marked N.A. only when there is no requirement to clean equipment and 
+utensils such as when only prepackaged foods are sold. 
+N.O. Do Not Mark this item N.O. 
+ 
+Applicable Code Sections: 
+4-501.111 Manual Warewashing Equipment, Hot Water Sanitization Temperatures 
+(P) 
+4-501.112 Mechanical Warewashing Equipment, Hot Water Sanitization Temperatures (Pf) 
+4-501.113 Mechanical Warewashing Equipment, Sanitization Pressure (C) 
+ 
+4-501.114 Manual and Mechanical Warewashing Equipment, Chemical Sanitization-Temperature, 
+pH, Concentration and Hardness (P, Pf) 
+4-501.115 Manual Warewashing Equipment, Chemical Sanitization Using Detergent-Sanitizers (C) 
+4-601.11(A) Equipment, Food-Contact Surfaces, Nonfood-Contact Surfaces, and Utensils (Pf) 
+4-602.11 Equipment Food-Contact Surfaces and Utensils-Frequency (P, C) 
+4-602.12 Cooking and Baking Equipment (C) 
+4-702.11 Before Use After Cleaning (P) 
+4-703.11 Hot Water and Chemical-Methods (P) 
+ 
+17. Proper disposition of returned, previously served, reconditioned, and unsafe food 
+IN/OUT This item must be marked IN or OUT of compliance. This item is marked OUT of compliance if 
+food is found unsafe, adulterated, not honestly presented, from an unapproved source, or if 
+ready-to-eat food is contaminated by employees and is not discarded or reconditioned 
+according to an approved procedure, or if previously served unwrapped, unprotected food is 
+observed being re-served. 
+N.A. Do Not Mark this item N.A. 
+N.O.  Do Not Mark this item N.O. 
+ 
+Applicable Code Sections: 
+3-306.14  Returned Food and Re-service of Food 
+(P) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -34 
+3-701.11  Discarding or Reconditioning Unsafe, Adulterated, or Contaminated Food (P) 
+ 
+Time Temperature Control for Safety Food (TCS Food)  
+18. Proper cooking time and temperatures 
+NOTE: The cooking temperatures of foods must be measured to determine compliance or 
+noncompliance. Do not rely upon discussions with managers or cooks to make a 
+determination of compliance or noncompliance. The temperature of raw animal foods in each 
+species cooked during the inspection should be taken. For instance, if the facility fries chicken, 
+scrambles eggs, bakes fish, grills hamburgers, and slow-roasts prime rib during the inspection 
+– the cook temperatures of all of the products should be measured and recorded. 
+Temperatures, both IN compliance and OUT of compliance, should be recorded in the 
+“Temperature Observations” section of the inspection report. If there is insufficient space for 
+the number of temperatures taken, additional temperatures should be documented in the 
+“Observations and Corrective Actions” section on the second page of the inspection report. 
+The time of inspections should be varied so that cooking can be observed. 
+ 
+IN/OUT This item should be marked IN or OUT of compliance. This item should be marked OUT of 
+compliance if the items checked do not meet the temperature requirements or manufacturer’s 
+instructions for cooking and the employee doing the cooking attempts to serve the product 
+without returning the product to the cooking process. If a food is cooked below the required 
+temperature but the facility has an approved Consumer Advisory or an approved variance with 
+HACCP plan for that food item, mark the item IN compliance, record the temperature and 
+document the reason it is IN compliance. Foods cooked with a non-continuous cooking 
+process are marked OUT of compliance if the food item does not meet the time/temperature 
+requirements for cooking as specified in 3-401.11(A)-(C) and if written procedures describing 
+how the foods are prepared and stored after initial heating but prior to cooking for sale or 
+service are not available for review. In situations where food bears information from the 
+manufacturer indicating that the food has not been processed to control pathogens, the food 
+can be cooked to a time and temperature that has been commonly applied to that type of food 
+(e.g., heating spiced apple cider to boiling). 
+N.A. This item may be marked N.A. when no raw animal foods are cooked in the establishment. 
+N.O. This item may be marked N.O. when you are unable to determine the cooking temperature of 
+any food. The inspection should be arranged at an optimum time for measuring at least one 
+cooked item. 
+ 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -35 
+Internal Cooking Temperature Specifications for Raw Animal Foods  
+Internal Cooking 
+Temperature Raw Animal Foods 
+145°F for 15 seconds 
+• Raw eggs cooked for immediate service 
+• Fish, except as listed below 
+• Intact Meat, except whole meat roasts* and whole-
+muscle intact beef steak** 
+• Commercially raised game animals, rabbits 
+155°F for 17 seconds: 
+• Ratites (Ostrich, Rhea and Emu) 
+• Non-Intact Meats 
+• Raw eggs not for immediate service 
+• Comminuted fish, or commercially raised game animals 
+165°F for <1 second 
+(instantaneous): 
+• Wild game animals 
+• Poultry 
+• Stuffed fish, meat, pork, pasta, ratites & poultry 
+• Stuffing containing fish, meat, ratites & poultry 
+* Whole Meat Roasts: Refer to cooking charts in the Food Code ¶ 3-401.11(B) 
+** Whole-Muscle Intact Beef Steak: Refer to cooking cooking recommendations in the Food Code 
+    ¶ 3-401.11(C) 
+ 
+ 
+Applicable Code Sections: 
+3-401.11 Raw Animal Foods-Cooking 
+(P, Pf) 
+3-401.12 Microwave Cooking (P, C) 
+3-401.14 Non-Continuous Cooking of Raw Animal Foods (P, Pf) 
+3-401.15 Manufacturer Cooking Instructions (P) 
+ 
+19. Proper reheating procedures for hot holding 
+NOTE: The reheating temperatures of foods must be taken to determine compliance or 
+noncompliance. Do not rely solely upon discussions with managers or cooks to determine 
+compliance or noncompliance. Temperatures IN and OUT of compliance should be recorded 
+in the “Temperature Observations” section of the inspection report. If there is insufficient space 
+for the number of temperatures taken, additional temperatures should be documented in the 
+“Observations and Corrective Actions” section of the inspection report.  
+IN/OUT This item should be marked IN or OUT of compliance based on actual temperature 
+measurements of foods upon completion of the reheating process and prior to being placed in 
+hot holding using a calibrated food temperature measuring device. This item should be 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -36 
+marked OUT of compliance if the items checked are not reheated to the required temperatures 
+or within 2 hours prior to hot holding. 
+N.A. This item may be marked N.A. when foods are not held over for a second service and/or 
+reheating for hot holding is not performed in the establishment.  
+N.O. This item may be marked N.O. such as when foods are held over for a second service, but no 
+foods are reheated during the time of inspection.  
+ 
+Applicable Code Sections: 
+3-403.11 Reheating for Hot Holding (P) 
+ 
+20. Proper cooling time and temperatures 
+NOTE:  The requirement for cooling cooked TCS food, is that the food must be cooled from 135°F to 
+41°F or less in 6 hrs provided that the food is cooled from 135°F to 70°F within the first 2 
+hours. For example, if a facility cools chili from 135°F to 70°F in 1.5 hours; they then have 4.5 
+hours to get it from 70°F to 41°F or less. There are two critical limits that must be met with 
+cooling. Discussions with the person in charge along with observations should be used to 
+determine compliance. For instance, during discussion the person in charge says that a food 
+product was cooled overnight in the walk-in cooler. The product is checked and the 
+temperature is 50°F. Eight hours have elapsed from closing to opening. This item should be 
+marked OUT because the product did not cool from 135°F to 70°F within two hours and from 
+135°F to 41°F or less within a total of 6 hours. Temperatures IN compliance and OUT of 
+compliance should be recorded in the “Temperature Observations” section of the inspection 
+report. If there is insufficient space for the number of temperatures taken, additional 
+temperatures should be documented in the “Observations and Corrective Actions” section of 
+the inspection report. Because the entire cooling process is difficult to observe during an 
+inspection, at the onset of the inspection a determination of whether foods are currently being 
+cooled should be made. If cooling is taking place, temperatures should be taken to make a 
+determination of whether proper cooling is possible with procedures being used.  
+IN/OUT This item should be marked IN or OUT of compliance based on actual temperatures of TCS 
+foods in the cooling process. The basis for determining IN or OUT of compliance can also be 
+supported through discussion and/or record review which would provide the inspector reliable 
+data of the “start time” for cooling from 135°F. See above NOTE for an example of using 
+actual temperature and discussion with the PIC in determining OUT of compliance without 
+actually being at the establishment during the entire cooling of TCS process, from start to 
+finish. 
+N.A.  This item may be marked N.A. when the establishment does not receive raw eggs, shellstock, 
+or milk, prepares no TCS food from ambient temperature ingredients that require cooling, and 
+does not cool cooked TCS food. 
+N.O.  This item may be marked N.O. when the establishment does cool TCS food, but proper 
+cooling per the prescribed temperature and time parameters cannot be determined during the 
+length of the inspection. 
+  
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -37 
+Applicable Code Sections: 
+3-501.14 Cooling (P) 
+ 
+21. Proper hot holding temperatures 
+NOTE:  Temperatures IN compliance and OUT of compliance should be recorded in the “Temperature 
+Observations” section of the inspection report. If there is insufficient space for the number of 
+temperatures taken, additional temperatures should be documented in the “Observations and 
+Corrective Action” section of the inspection report. 
+IN/OUT  This item should be marked IN or OUT of compliance based on actual food temperature 
+measurements using a calibrated food temperature measuring device. This item should be 
+marked IN compliance when the regulatory authority determines that, of the TCS food 
+temperature measurements taken during the inspection, no hot holding temperatures are less 
+than prescribed by the Code. This item is marked OUT of compliance if one TCS food is found 
+out of temperature, unless Time as a Public Health Control (TPHC) is used for that TCS food. 
+N.A  This item may be marked N.A. when the establishment does not hot hold food. 
+N.O.  This item may be marked N.O. when the establishment does hot hold foods, but no foods are 
+being held hot during the time of inspection. Inspections should be conducted during a time 
+when hot holding temperatures can be taken. 
+ 
+Applicable Code Sections: 
+3-501.16(A)(1) Time/Temperature Control for Safety Food, Hot and Cold Holding (P) 
+ 
+22. Proper cold holding temperatures 
+NOTE:  Temperatures IN compliance and OUT of compliance should be recorded in the “Temperature 
+Observations” section of the inspection report. If there is insufficient space for the number of 
+temperatures taken, additional temperatures should be documented in the “Observations and 
+Corrective Action” section of the inspection report. 
+ 
+IN/OUT  This item should be marked IN or OUT of compliance based on actual food temperature 
+measurements using a calibrated food temperature measuring device. Discussions should be 
+made with the PIC to determine if a food is in the process of cooling, TPHC is used, or there is 
+an approved method to render a food so that it is not TCS food. This item should be marked 
+IN compliance when the regulatory authority determines that, of the temperature 
+measurements taken during the inspection, no cold holding temperatures are greater than 
+prescribed by the Code. This item should be marked OUT of compliance if one TCS food is 
+found out of temperature, with supportive evidence, unless TPHC is used for that TCS food.  
+N.A.  This item may be marked N.A. when the establishment does not cold hold food. 
+N.O This item may be marked N.O. when the establishment does cold hold food, but no foods are 
+being held cold during the time of inspection. Inspections should be conducted during a time 
+when hot  holding temperatures can be taken. 
+ 
+Applicable Code Sections: 
+3-501.16(A)(2) and (B) Time/Temperature Control for Safety Food, Hot and Cold Holding 
+(P) 
+23. Proper date marking and disposition 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -38 
+IN/OUT  This item should be marked IN or OUT of compliance. This item would be IN compliance when 
+there is a system in place for date marking all foods that are required to be date marked and is 
+verified through observation. If date marking applies to the establishment, the PIC should be 
+asked to describe the methods used to identify product shelf-life or “consume-by” dating. The 
+regulatory authority must be aware of food products that are listed as exempt from date 
+marking. For disposition, mark IN when foods are all within date marked time limits or food is 
+observed being discarded within date marked time limits or OUT of compliance, such as when 
+date marked food exceeds the time limit or date-marking is not done. 
+N.A.  This item may be marked N.A. when there is no ready-to-eat, TCS food prepared on-premise 
+and held, or commercial containers of ready-to-eat, TCS food opened and held, over 24 hours 
+in the establishment. 
+N.O.  This item may be marked N.O. when the establishment does handle foods requiring date 
+marking, but there are no foods requiring date marking in the facility at the time of inspection.  
+ 
+Applicable Code Sections: 
+3-501.17   Ready-To-Eat Time/Temperature Control for Safety Food, Date Marking 
+(Pf) 
+3-501.18  Ready-To-Eat Time/Temperature Control for Safety Food, Disposition (P) 
+   
+24. Time as a Public Health Control: procedures and records 
+IN/OUT  This item should be marked IN or OUT of compliance based on direct observations, record 
+review, a discussion with the PIC, and the review of any standard operating procedures to 
+determine if the intent of the Code for use of TPHC is met. This provision only applies if it is 
+the actual intention or conscious decision by the PIC to store TCS food out of temperature 
+control using TPHC; otherwise, it may be a cold or hot holding issue. This item should be 
+marked IN compliance if there is a written procedure at the food establishment that identifies 
+the types of food products that will be held using time only, describes the procedure for how 
+TPHC will be implemented, and if applicable delineates how food items, previously cooked 
+and cooled before time is used, are properly cooled; and food items (marked or identified) do 
+not exceed the 4-hour limit at any temperature or 6-hour limit at 70°F or less. This item should 
+be marked OUT of compliance when the PIC implies the use of TPHC but does not have an 
+effective mechanism for indicating the point in time when the food is removed from 
+temperature control to the 4 or 6-hour discard time, or a written procedure or an effective 
+mechanism for using TPHC is not present at the facility. 
+N.A  This item may be marked when the establishment does not use time only as the public health 
+control 
+N.O.  This item may be markedN.O. when the establishment uses time only as the public health 
+control, but is not using this practice at the time of inspection 
+ 
+Applicable Code Sections: 
+3-501.19 Time as a Public Health Control 
+(P, Pf, C) 
+ 
+Consumer Advisory 
+25. Consumer advisory provided for raw or undercooked food 
+IN/OUT  This item should be marked IN or OUT of compliance based on a thorough review with the 
+PIC of the posted, written and special/daily menus, to determine if untreated shell eggs, 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -39 
+meats, fish, or poultry are used as an ingredient or ordered as a raw, raw-marinated, partially 
+cooked, or undercooked food. The advisory also applies to shellstock offered for sale from a 
+retail service case. This item should be marked IN compliance if the establishment provides an 
+advisory that meets the intent of the Food Code for both the disclosure and reminder 
+components. This item should be marked OUT of compliance when raw or undercooked foods 
+are served or sold and there is no consumer advisory, the food item is not disclosed, or there 
+is no reminder statement. The consumer advisory does not exempt the requirement for 
+freezing for parasite control, nor should it be used for foods that have only gone through the 
+initial heating and cooling stages of a non-continuous cooking process.  
+N.A.  This item may be marked N.A. when a food establishment does not serve a ready-to-eat food 
+that necessitates an advisory, i.e., an animal food that is raw, undercooked, or not otherwise 
+processed to eliminate pathogens. 
+N.O.  Do Not Mark this item N.O. 
+ 
+Applicable Code Sections: 
+3-603.11 Consumption of Animal Foods that are Raw, Undercooked, or Not Otherwise Processed 
+to Eliminate Pathogens (Pf) 
+ 
+Highly Susceptible Population 
+26 Pasteurized foods used; prohibited foods not offered 
+NOTE:  Discussions with the PIC and employees regarding whether or not certain foods are served or 
+certain practices occur in the establishment, along with observations should be used to 
+determine compliance.  
+ 
+IN/OUT  This item should be marked IN or OUT of compliance based on direct observations and 
+discussions with the PIC and food employees regarding whether or not certain foods are 
+served or certain practices occur in an establishment serving a highly susceptible population. 
+Violations of bare hand contact by food employees serving a highly susceptible population 
+¶ 3-801.11(D) is marked under Item #9. This item should be marked IN compliance if only 
+treated/pasteurized juices/juice beverages are served; only pasteurized eggs are used in 
+recipes if eggs are undercooked and if eggs are combined, unless there is a cook step or 
+HACCP plan to control Salmonella enteriditis; no raw or partially cooked animal foods or raw 
+seed sprouts are served; and no unopened packaged food is re-served following service to 
+patients in medical isolation or quarantine.  
+N.A.  This item may be markedif a highly susceptible population is not served. 
+N.O.  Do Not Mark this item N.O.  
+ 
+Applicable Code Sections: 
+3-801.11(A), (B), (C), (E) and (G)  Pasteurized Foods, Prohibited Re-Service, and Prohibited 
+Food (P, C) 
+Food/Color Additives and Toxic Substances 
+27. Food additives: approved and properly used 
+IN/OUT  This item should be marked IN or OUT of compliance based on direct observations of food 
+ingredients in storage and listed as product ingredients supplemented by discussion with the 
+PIC. This item is marked IN compliance if approved food and color additives are on site and 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -40 
+used properly or if sulfites are on the premises, and they are not applied to fresh 
+fruits/vegetables for raw consumption. Approved food additives are listed and have threshold 
+limits in accordance with the CFRs, and does not apply to food additives that are considered 
+Generally Recognized as Safe (GRAS), such as salt, pepper, etc. This item is marked OUT of 
+compliance if unapproved additives are found on the premises or approved additives are 
+improperly used, such as sulfites being applied to fresh fruits or vegetables. 
+N.A.  This item may be marked N.A. if the food establishment does not use any additives or sulfites 
+on the premises. 
+N.O.  Do Not Mark this item N.O. 
+ 
+Applicable Code Sections: 
+3-202.12  Additives (P) 
+3-302.14 Protection from Unapproved Additives (P) 
+ 
+28. Toxic substances properly identified, stored, and used; held for retail sale, properly 
+Stored  
+IN/OUT  This item should be marked IN or OUT of compliance based on direct observations of food 
+labeling, storage, reconstitution, and application of bulk and working containers of cleaning 
+agents and sanitizers, personal care items, first aid supplies, medicines, pesticides, and 
+potential toxic and poisonous substances. This item should be marked IN compliance when 
+bulk and working containers of cleaning agents and sanitizers are labeled; sanitizing solutions 
+are not exceeding the maximum concentrations; personal care items, first aid supplies, 
+medicines, and chemicals are stored separate from and not above food, equipment, utensils, 
+linens, and single-service and single-use articles; and restricted use pesticides are applied 
+only by or under the supervision of a certified applicator. This item should be marked OUT of 
+compliance if a cleaning agent or sanitizer is not properly identified and stored; if a sanitizing 
+solution has a higher concentration than prescribed and medicines and first aid kits are 
+improperly labeled and stored. Violations of solutions exceeding the recommended 
+concentration in chemical washes for fruits and vegetables (§7-204.12) would be marked 
+under Item #42. 
+N.A.  This item may be marked N.A. if the establishment does not hold poisonous or toxic materials 
+for retail sale. 
+N.O.  Do Not Mark this item N.O.  
+ 
+Applicable Code Sections: 
+7-101.11  Identifying Information, Prominence-Original Containers 
+(Pf) 
+7-102.11  Common Name-Working Containers (Pf) 
+7-201.11  Separation-Storage (P) 
+7-202.11  Restriction-Presence and Use (Pf) 
+7-202.12  Conditions of Use (P, Pf, C) 
+7-203.11  Poisonous or Toxic Material Containers-Container Prohibitions (P) 
+7-204.11  Sanitizers, Criteria-Chemicals (P) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -41 
+7-204.12  Chemicals for Washing, Treatment, Storage and Processing Fruits and Vegetables, 
+Criteria (P,) 
+7-204.13  Boiler Water Additives, Criteria (P) 
+7-204.14  Drying Agents, Criteria (P) 
+7-205.11  Incidental Food Contact, Criteria-Lubricants (P) 
+7-206.11  Restricted Use Pesticides, Criteria (P) 
+7-206.12  Rodent Bait Stations (P) 
+7-206.13  Tracking Powders, Pest Control and Monitoring (P, C) 
+7-207.11  Restriction and Storage-Medicines (P, Pf) 
+7-207.12  Refrigerated Medicines, Storage (P) 
+7-208.11  Storage-First Aid Supplies (P, Pf) 
+7-209.11  Storage-Other Personal Care Items (C) 
+7-301.11 Separation-Storage and Display, Stock and Retail Sale (P)  
+ 
+Conformance with Approved Procedures 
+29. Compliance with variance, specialized process, reduced oxygen packaging criteria or HACCP 
+plan 
+NOTE  Except for fish a HACCP plan is not required when a TCS food is packaged using a reduced 
+oxygen packaging method and is labeled with production time and date, held at required cold 
+holding temperature, and removed from ROP packaging within 48 hours after packaging at the 
+food establishment. 
+IN/OUT  This item should be marked IN or OUT of compliance based on direct observations of food 
+preparation and storage, a discussion with the PIC to determine if there are specialized food 
+processes [i.e. smoking food, curing food, reduced oxygen packaging, using food additives to 
+render a food so that it is not TCS food, cook chill, sous vide, etc.] and the record review of 
+standard operating procedures and HACCP documentation. This item should be marked IN 
+compliance when observations of food operations and review of available records indicate 
+compliance is being met with regards to specialized food processes and HACCP plans were 
+submitted to the regulatory authority prior to conducting a ROP operation that conforms to 
+procedures within §3-502.12.This item should be marked OUT of compliance if the inspection 
+reveals specialized food processes that are not approved by the regulatory authority are 
+performed or not conducted in accordance with the approved variance or a HACCP plan was 
+not submitted to the regulatory authority prior to engaging in a ROP operation without a 
+variance or the approved variance is not retained in the food establishment. 
+N.A.   This item may be marked N.A. if the establishment is not required by the regulatory authority 
+to have a variance or HACCP plan, juice is not packaged or reduced oxygen packaging is not 
+done on the premises. 
+N.O.  Do Not Mark this item N.O. 
+ 
+Applicable Code Sections: 
+3-404.11  Treating Juice 
+(P, Pf) 
+3-502.11  Variance Requirement (Pf) 
+3-502.12  Reduced Oxygen Packaging, Criteria (P, Pf) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -42 
+4-204.110(B) Molluscan Shellfish Tanks (Pf) 
+8-103.12  Conformance with Approved Procedures (P, Pf) 
+8-201.13  When a HACCP Plan is Required (C) 
+8-201.14 Contents of a HACCP Plan (Pf) 
+ 
+Good Retail Practices (GRPs) 
+D. Marking Instructions for each GOOD RETAIL PRACTICE (GRP) ON the 
+Inspection Report  
+Good Retail Practices (GRPs) are systems to control basic operational and sanitation conditions within a 
+facility, and if not controlled, they could be contributing factors to foodborne illness by introducing hazards 
+(biological, chemical and physical), into the end product, either directly or indirectly. For example, 
+equipment in disrepair, such as a cutting board with deep grooves/cuts, makes effective cleaning difficult 
+or impossible, and thereby could introduce a bacterial hazard onto food that comes into contact with the 
+board. In addition, in assessing GRPs, it is important to make an overall assessment of the conditions by 
+looking for trends versus an isolated incident; and the potential public health impact. For example, a few 
+missing floor tiles in a dry area may not rise to the level of a “violation”; however, missing floor tiles in an 
+area where equipment is subject to in-place manual cleaning without the use of an enclosed clean in 
+place (CIP) system, i.e., using pressure hoses over band saws, slicers, or mixers, could create conditions 
+whereby a bacterial hazard could be introduced on to the food equipment. These items usually require 
+judgment, and if uncorrected, the regulatory authority must decide whether or not these conditions would 
+lead to potential contamination.   
+GRPs are the methods used in, or the facilities or controls used for, the receiving, preparation, storage, 
+serving, packaging or holding of food which are designed to assure unsanitary conditions do not lead to 
+the introduction of hazards or unintentional substances into the end product. The intention of this 
+inspection form is to focus the inspector’s attention on those factors that have been shown to be most 
+often linked with causing foodborne illness. Since the major emphasis of an inspection should be on the 
+Risk Factors that cause foodborne illness and the Public Health interventions that have the greatest 
+impact on preventing foodborne illness, the GRPs have been given less importance on the inspection 
+form and a differentiation between IN, OUT, N.A. and N.O. is not made in this area, with a few exceptions 
+noted below. For marking the GRPs section, place an “X” in the box to the left of the numbered item if a 
+code provision under that item is of compliance. Document each violation of the code provision for the 
+item number in the “Observations and Corrective Actions” section on the second page of the inspection 
+report. For items marked OUT of compliance, further indicate the VIOLATION STATUS by marking an 
+“X” in the corresponding box: COS = Corrected on site during inspection and R = Repeat violation per 
+the same instructions as given in the Risk Factor section. References to the appropriate Food Code 
+provisions that can be debited under each numbered GRP item are listed in Guide 3-B.  
+Note: Items 30, 32, and 33 will allow for either three or four marking options. Item 30 allows for IN OUT or 
+N.A., and items 32 and 33 allow for IN, OUT, N.A .or N.O. For marking in the GRP Section place an “A” in 
+the box to the left of the numbered item if the code provision under that item is not applicable or and “O” 
+for not observed.   
+ 
+E. TEMPERATURE OBSERVATIONS 
+Item/location  
+Record the common name of the food as well as the condition, process, and location of 
+the food at the time of monitoring e.g. hot holding, refrigerator, prep-table. Temperatures 
+in compliance and out of compliance should be documented. If there is insufficient space 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -43 
+for the number of temperatures taken, record the additional temperatures in the 
+“Observations and Corrective Actions” section of the inspection report. 
+Food Temperature 
+ Record the temperature indicated on the inspector’s thermometer. Specify the 
+measurement in °F or °C. (Note: Food temperature measuring devices that are scaled 
+only in Fahrenheit should be accurate to ±2°F in the intended range of use. Food 
+temperature measuring devices that are scaled only in Celsius or dually scaled in Celsius 
+and Fahrenheit should be accurate to ± 1°C in the intended range of use.) 
+ 
+F. OBSERVATIONS AND CORRECTIVE ACTIONS 
+Include here specific descriptions of violations observed and recorded in the Risk Factors and 
+Interventions section and Good Retail Practices check boxes. Also include corrective actions for the 
+noted violations and temperatures if there is insufficient space in the allotted section for temperature 
+recordings.  
+ 
+G. SIGNATURE BLOCK 
+Field Description 
+Person in Charge The PIC is the individual present at a food establishment who is responsible 
+for the operation at the time of the inspection. 
+Inspector The Inspector is the individual conducting the inspection. 
+Date The date the inspection is completed. 
+Follow-up The determination of whether to conduct a reinspection or other enforcement 
+action. 
+Follow-up Date The date the follow-up inspection will be conducted 
+ 
+Safe Food and Water 
+30. Pasteurized eggs used where required 
+Certain menu items use eggs as an ingredient in the preparation of RTE foods, such as Caesar salad, 
+Hollandaise sauce, etc. This is verified by discussion with the PIC and food employees regarding the 
+substitution of pasteurized egg products for raw eggs in uncooked foods, unless allowed under 
+¶ 3-401.11(D)(2). 
+  
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -44 
+Applicable Code Section: 
+3-302.13 Pasteurized Eggs Substituted for Raw Eggs for Certain Recipes (P) 
+31. Water and ice from approved source 
+There are two types of systems: Public Water System or Non-Public Water System. Regardless of its 
+source, it must meet drinking water standards established by EPA and applicable state drinking water 
+quality standards. If a non-public system is used as Drinking water, the water is sampled / tested at least 
+yearly and records retained on file at the food establishment or per state regulations. Consideration must 
+be given to the supply containers, piping, hoses, etc., connected to the APPROVED source when water is 
+made available for mobile and/or temporary food establishment without a permanent supply.  
+Applicable Code Sections: 
+3-202.16 Ice (P) 
+5-101.11 Approved System-Source (P) 
+5-102.11 Standards-Quality (P) 
+5-102.12 Nondrinking Water (P) 
+5-102.13 Sampling (Pf) 
+5-102.14 Sample Report (C) 
+5-104.12 Alternative Water Supply (Pf) 
+ 
+32. Variance obtained for specialized processing methods 
+When a Food Establishment wants to deviate from a requirement in the code, utilizes Specialized 
+Processing Methods as specified in § 3-502.11 such as Smoking Food for Preservation, curing food etc. a 
+variance must first be obtained from the regulatory authority. A HACCP plan may also be required as 
+listed in ¶ 8-201.13(A) as part of the variance request.  
+N.A. This item may be marked N.A. if the establishment is not engaged in a specialized processing 
+method, other operation requiring a variance and a HACCP plan or a process or processing 
+method determined by the regulatory authority to require a variance and a HACCP plan. 
+Applicable Code Section: 
+8-103.11 Documentation of Proposed Variance and Justification 
+(Pf) 
+ 
+Food Temperature Control 
+33. Proper cooling methods used; adequate equipment for temperature control 
+A determination must first be made that cooling food is part of the processing step. To assess whether or 
+not the methods used facilitate the cooling criteria specified under § 3-501.14, a discussion with the PIC 
+should support actual observations used in cooling foods. There should be enough equipment with 
+sufficient capacity used for the cooling, heating and hot/cold holding of foods requiring temperature 
+control as specified in Chapter 3 to meet the demands of the operation. Observations must support the 
+determination of compliance status. Frozen food is solid to the touch. 
+  
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -45 
+Applicable Code Sections: 
+3-501.11  Frozen Food (C) 
+3-501.15  Cooling Methods (Pf, C) 
+4-301.11  Cooling, Heating, and Holding Capacities-Equipment (Pf) 
+ 
+34. Plant food properly cooked for hot holding 
+In determining compliance, observation along with an actual cooking temperature must be obtained. 
+ 
+N.A. This item may be marked N.A. if vegetables and fruits are not cooked for hot holding in the 
+establishment. 
+N.O. This item may be marked N.O. when plant foods are cooked for hot holding, but are not 
+available for observation during the inspection. 
+ 
+Applicable Code Section: 
+3-401.13  Plant Food Cooking for Hot Holding 
+(Pf) 
+ 
+35. Approved thawing methods used 
+Observing and then gaining an understanding of the establishment’s thawing method(s) will help in 
+determining whether a violation exists from the approved thawing methods found under § 3-501.13 as 
+well as the level of risk imposed. Keep in mind that various food products especially those destined for 
+deep-fat frying are often slacked (not thawed) prior to cooking. 
+ 
+Applicable Code Sections: 
+3-501.12  Time/Temperature Control for Safety Food, Slacking 
+(C) 
+3-501.13  Thawing (Pf) 
+ 
+N.A.   This item may be marked N.A. if TCS food are not thawed. 
+ 
+N.O.   This item may be marked N.O. if this food is thawed, but thawing was not observed during the 
+inspection. 
+ 
+36. Thermometers provided and accurate 
+Thermometers provide a means for assessing active managerial control of TCS food temperatures. 
+Determine compliance by observing the in-use storage location and verifying the scaling of 
+the temperature measuring devices in the range of use to measure food, water, or ambient air 
+temperatures. Food thermometers must be calibrated at a frequency to ensure accuracy. Food 
+thermometers should be accessible for use by employees and have a probe size appropriate to 
+the food item. 
+ 
+Applicable Code Sections: 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -46 
+4-203.11  Temperature Measuring Devices, Food-Accuracy (Pf) 
+4-203.12  Temperature Measuring Devices, Ambient Air and Water-Accuracy (Pf) 
+4-204-112 Temperature Measuring Devices-Functionality (Pf, C) 
+ 4-302.12  Food Temperature Measuring Devices (Pf)  
+4-502.11(B)  Good Repair and Calibration (Pf) 
+ 
+Food Identification 
+37. Food properly labeled; original container 
+Packaged foods are required to conform to specific labeling laws. Foods packaged within the food 
+establishment must also conform to the appropriate labeling laws, be accurate and not misleading. All 
+major food allergens, if present, must be accurately declared on the package. In addition, all unpackaged 
+food items containing a major food allergen as an ingredient must have a written notification declaring 
+which major food allergens are contained in that food item. Working containers removed from their 
+original packaging require some level of assessment as to how recognizable the food is without labeling 
+by its common name. Bulk foods that are available for consumer self-dispensing will need to be 
+prominently labeled with the name of the food source for each major food allergen contained in the food, 
+unless the food source is already part of the common name or usual name of the ingredient. Molluscan 
+shellfish and vended TCS foods must specifically be assessed based on their specific packaging and 
+labeling requirements. Molluscan Shellfish shall not be commingled. 
+Applicable Code Sections: 
+3-203.11 Molluscan Shellfish, Original Container 
+(C) 
+3-302.12 Food Storage Containers Identified with Common Name of Food (C) 
+3-305.13 Vended Time/Temperature Control for Safety Food, Original Container (C) 
+3-601.11 Standards of Identity (C) 
+3-601.12 Honestly Presented (C) 
+3-602.11 Food Labels (Pf, C) 
+3-602.12  Other Forms of Information (C) 
+ 
+Prevention of Food Contamination 
+38. Insects, rodents and animals not Present 
+An assessment is made through observation and discussion with the PIC for measures taken to control 
+the presence of pests in the food establishment, including elimination of entry points and harborage 
+areas, and removal of pests and its evidence. Insect trapping devices must not be located over food 
+preparation areas. 
+ 
+Applicable Code Sections: 
+2-403.11 Handling Prohibition-Animals (Pf) 
+6-202.13 Insect Control Devices, Design and Installation (C) 
+6-202.15 Outer Openings, Protected (C) 
+ 6-202.16 Exterior Walls and Roofs, Protective Barrier (C) 
+6-501.111  Controlling Pests (Pf, C) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -47 
+6-501.112  Removing Dead or Trapped Birds, Insects, Rodents and other Pest (C) 
+  6-501.115  Prohibiting Animals (Pf) 
+ 
+39. Contamination prevented during food preparation, storage and display 
+The observation and understanding of the flow of food items from the point of receipt to the point of sale, 
+service or distribution is necessary to determine whether a violation exists. Food is subject to direct and 
+indirect sources of contamination in the establishment. Sources may be related to the working 
+environment, packaging, adequacy of storage facilities, and exposure of food on display to contamination 
+(i.e. salad bars). 
+ 
+Applicable Code Sections: 
+3-202.17 Shellstock, Condition 
+(C) 
+3-303.11 Ice Used as Exterior Coolant, Prohibited as Ingredient (P) 
+3-303.12 Storage or Display of Food in Contact with Water or Ice (C) 
+3-304.13 Linens and Napkins, Use Limitations (C) 
+3-305.11 Food Storage-Preventing Contamination from the Premises (C) 
+3-305.12 Food Storage, Prohibited Areas (C), (Pf) 
+3-305.14 Food Preparation (C) 
+3-306.11 Food Display-Preventing Contamination by Consumers (P) 
+3-306.12 Condiments, Protection (C) 
+3-306.13(B) and (C)  Consumer Self-Service Operations (Pf) 
+3-307.11 Miscellaneous Sources of Contamination (C) 
+6-404.11 Segregation and Location-Distressed Merchandise (Pf) 
+ 
+40. Personal cleanliness 
+Observation of facility personnel for clean outer clothing, effective hair restraints, prohibited jewelry and 
+the condition or protection of fingernails must be made. This includes the use of single-use gloves over an 
+impermeable bandage, finger cot or finger stall. 
+ 
+Applicable Code Sections: 
+2-302.11 Maintenance-Fingernails 
+(Pf) 
+2-303.11 Prohibition-Jewelry (C) 
+2-304.11 Clean Condition-Outer Clothing (C) 
+2-401.13 Use of Bandages, Finger Cots, or Finger Stalls(C) 
+2-402.11 Effectiveness-Hair Restraints (C) 
+41. Wiping cloths; properly used and stored 
+Wiping cloths are to be used for a designated purpose and properly used. When stored in solution, the 
+solutions should be reasonably clean and maintained at the proper sanitizer concentration (§4-501.114). 
+Solutions exceeding the recommended sanitizer concentrations would be marked on the Inspection Form 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -48 
+under item #28, Toxic substances properly identified, stored, and used. Sponges, if present, are not to be 
+used in contact with clean/sanitized food contact surfaces. 
+Applicable Code Sections: 
+3-304.14 Wiping Cloths, Use Limitation (C) 
+4-101.16 Sponges Use Limitation (C) 
+ 4-901.12 Wiping Cloths, Air Drying Location (C) 
+42. Washing fruits and vegetables 
+Raw fruits and vegetables are to be washed prior to their preparation or offered as RTE. Chemicals are 
+allowed for washing fruits and vegetables, along with simply washing them in water. Chemicals that are 
+used in the wash water for fruits and vegetables must be listed and approved with threshold limits in 
+accordance with the CFR’s. Refer to the label or labeling of the additive for adequate directions and to 
+assure safe use. Discussion with the PIC and food employees will help determine the establishment’s 
+practice. 
+ 
+Applicable Code Sections: 
+ 3-302.15 Washing Fruits and Vegetables 
+(Pf, C) 
+7-204.12 Chemicals for Washing, Treatment, Storage and Processing Fruits and Vegetables, 
+Criteria (P ) 
+ 
+43. In-use utensils; properly stored 
+Based on the type of operation, there are a number of methods available for storage of in-use utensils 
+during pauses in food preparation or dispensing, such as in the food, clean and protected, or under 
+running water to prevent bacterial growth. If stored in a container of water, the water temperature must be 
+at least 135°F. In-use utensils may not be stored in chemical sanitizer or ice between uses. Ice scoops 
+may be stored handles up in an ice bin except for an ice machine. 
+ 
+Applicable Code Sections: 
+ 3-304.12 In-Use Utensils, Between-Use Storage (C) 
+ 
+44. Utensils, equipment and linens; properly stored, dried, handled 
+ An assessment is made of the overall storage practices and handling of clean equipment and utensils, 
+including tableware located in the various areas within an establishment, including the basement, wait 
+station and dining room. Equipment must be air dried prior to storage, and linens must be properly 
+cleaned and stored. 
+ 
+Applicable Code Sections: 
+4-801.11 Clean Linens (C) 
+4-802.11   Specifications-Laundering Frequency (C) 
+4-803.11   Storage of Soiled Linens (C) 
+4-803.12 Mechanical Washing (C) 
+4-901.11 Equipment and Utensils, Air-Drying Required (C) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -49 
+4-903.11(A), (B) and (D) Equipment, Utensils, Linens and Single-Service and Single-Use Articles-  
+Storing(C) 
+4-903.12 Prohibitions (C), (Pf) 
+4-904.11 Kitchenware and Tableware-Preventing Contamination (C) 
+4-904.12 Soiled and Clean Tableware (C) 
+ 4-904.13 Preset Tableware (C) 
+ 4-904.14 Rinsing Equipment and Utensils after Cleaning and Sanitizing(C) 
+ 
+45. Single-use/single-service articles; properly stored, used 
+These items are not designed to be cleaned and re-used; therefore, they must be properly stored and 
+protected to prevent from possible contamination. Food establishments without facilities for cleaning and 
+sanitizing kitchenware and tableware shall provide only single-use and single-service articles. 
+ 
+Applicable Code Sections: 
+4-502.12 Single-Service and Single-Use Articles, Required Use (P) 
+4-502.13 Single-Service and Single-Use Articles-Use Limitations (C) 
+4-502.14   Shells, Use Limitations (C) 
+4-903.11(A) and (C)   Equipment, Utensils, Linens and Single-Service and Single-Use Articles-
+Storing(C)  
+4-903.12   Prohibitions (C) 
+ 4-904.11 Kitchenware and Tableware-Preventing Contamination (C) 
+ 
+46. Gloves used properly  
+ The observation of food preparation activities and glove-use by food employees is necessary. There 
+should be a discussion with the PIC on how gloves are used, if applicable, in food preparation activities. 
+Gloves may serve as a source of cross-contamination if misused. 
+ 
+Applicable Code Sections: 
+ 3-304.15(B)-(D)  Gloves, Use Limitations (C) 
+ 
+Utensils, Equipment and Vending 
+47. Food and non-food-contact surfaces cleanable, properly designed, constructed and used 
+ Equipment and utensils must be properly designed and constructed, and in good repair. Proper 
+installation and location of equipment in the food establishment are important factors to consider for ease 
+of cleaning in preventing accumulation of debris and attractants for insects and rodents. The components 
+in a vending machine must be properly designed to facilitate cleaning and protect food products (e.g., 
+equipped with automatic shutoff, etc.) from potential contamination. Equipment must be properly used 
+and in proper adjustment, such as calibrated food thermometers.  
+ 
+Applicable Code Sections: 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -50 
+ 3-304.16 Using Clean Tableware for Second Portions and Refills (C) 
+3-304.17 Refilling Returnables (P) 
+ 4-101.11 Characteristics-Materials for Construction and Repair (P, C) 
+ 4-101.12 Cast Iron, Use Limitations (C) 
+4-101.13 Lead, Use Limitation (P, C) 
+ 4-101.14 Copper Use Limitation (P) 
+ 4-101.15 Galvanized Metal, Use Limitation (P) 
+ 4-101.17 Wood, Use Limitation (C) 
+ 4-101.18 Nonstick Coatings, Use Limitation (C) 
+ 4-101.19 Nonfood-Contact Surfaces (C) 
+ 4-102.11 Characteristics-Single-Service and Single-Use (P, C) 
+ 4-201.11 Equipment and Utensils-Durability and Strength (C) 
+ 4-201.12 Food Temperature Measuring Devices (P) 
+ 4-202.11 Food-Contact Surfaces-Cleanability (Pf) 
+ 4-202.12 CIP Equipment (Pf, C) 
+ 4-202.13 V” Threads, Use Limitation (C) 
+ 4-202.14 Hot Oil Filtering Equipment (C) 
+4-202.15 Can Openers (C) 
+4-202.16 Nonfood-Contact Surfaces (C) 
+4-202.17 Kick Plates Removable (C) 
+4-204.12 Equipment Openings, Closures and Deflectors (C)  
+4-204.13 Dispensing Equipment, Protection of Equipment and Food (P, C) 
+4-204.14 Vending Machine Vending Stage Closure (C) 
+4-204.15 Bearings and Gear Boxes, Leakproof (C) 
+4-204.16 Beverage Tubing, Separation(C)  
+4-204.17 Ice Units, Separation of Drains (C) 
+4-204.18 Condenser Unit, Separation (C) 
+4-204.19 Can Openers on Vending Machines (C) 
+4-204.110(A)  Molluscan Shellfish Tanks (P) 
+4-204.111 Vending Machines, Automatic Shutoff (P)  
+4-204.120 Equipment Compartments, Drainage (C) 
+4-204.121 Vending Machines, Liquid Waste Products (C) 
+4-204.122 Case Lot Handling Apparatuses, Movability (C) 
+4-204.123 Vending Machine Doors and Openings (C) 
+4-302.11 Utensils, Consumer Self-Service (Pf) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -51 
+4-401.11 Equipment, Clothes Washers, Dryers and Storage Cabinets, Contamination Prevention- 
+Location (C), (Pf) 
+4-402.11 Fixed Equipment, Spacing or Sealing-Installation (C) 
+4-402.12 Fixed Equipment, Elevation or Sealing (C) 
+4-501.11 Good Repair and Proper Adjustment-Equipment (C) 
+4-501.12 Cutting Surfaces (C) 
+4-501.13 Microwave Ovens (C) 
+4-502.11(A) and (C) Good Repair and Calibration-Utensils and Temperature and Pressure Measuring 
+Devices (C) 
+4-603.11 Dry Cleaning-Methods (C) 
+4-902.11 Food-Contact Surfaces-Lubricating and Reassembling (C)  
+ 4-902.12 Equipment-Lubricating and Reassembling (C) 
+ 
+48. Warewashing Facilities, Installed, Maintained, Used, Test Strips 
+Adequate warewashing facilities must be available and used for the cleaning and sanitization of food-
+contact surfaces, including the availability of means to monitor its use and the effectiveness of 
+sanitization. For example, an irreversible registering temperature indicator is provided and readily 
+accessible for measuring the utensil surface temperature for establishments that have a hot water 
+mechanical warewashing operation. Observation of manual and mechanical warewashing methods are 
+made to assess the procedure for cleaning and sanitizing equipment and utensils. This item is marked 
+OUT of compliance when cleaners and sanitizers are not available for use within the food establishment.  
+ 
+Applicable Code Sections: 
+4-203.13  Pressure Measuring Devices, Mechanical Warewashing Equipment 
+(C) 
+4-204.113  Warewashing Machine, Data Plate Operation Specifications (C) 
+4-204.114  Warewashing Machines, Internal Baffles (C) 
+4-204.115  Warewashing Machines, Temperature Measuring Devices (Pf) 
+4-204.116  Manual Warewashing Equipment, Heaters and Baskets (Pf) 
+4-204.117  Warewashing Machines, Automatic Dispensing of Detergents and Sanitizers (Pf) 
+4-204.118  Warewashing Machines, Flow Pressure Device (C) 
+4-204.119  Warewashing Sinks and Drainboards, Self-Draining (C) 
+4-301.12  Manual Warewashing, Sink Compartment Requirements (Pf, C) 
+4-301.13  Drainboards (C) 
+4-302.13  Temperature Measuring Devices, Manual and Mechanical Warewashing (Pf) 
+4-302.14  Sanitizing Solutions, Testing Devices (Pf) 
+4-303.11   Cleaning Agents and Sanitizers, Availability (Pf) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -52 
+4-501.14 Warewashing Equipment, Cleaning Frequency (C) 
+4-501.15 Warewashing Machines, Manufacturers’ Operating Instructions (C) 
+4-501.16 Warewashing Sinks, Use Limitation (C) 
+4-501.17 Warewashing Equipment, Cleaning Agents (Pf) 
+4-501.18 Warewashing Equipment, Clean Solutions (C) 
+4-501.19 Manual Warewashing Equipment, Wash Solution Temperature (Pf) 
+4-501.110 Mechanical Warewashing Equipment, Wash Solution Temperature (Pf)  
+4-501.116  Warewashing Equipment, Determining Chemical Sanitizer Concentration (Pf) 
+4-603.12 Precleaning (C) 
+4-603.13 Loading of Soiled Items, Warewashing Machines (C) 
+4-603.14 Wet Cleaning (C) 
+4-603.15 Washing, Procedures for Alternative Manual Warewashing Equipment (C) 
+4-603.16 Rinsing Procedures (C)  
+ 
+49. Non-food-contact surfaces clean 
+Observations should be made to determine if the frequency of cleaning is adequate to prevent soil 
+accumulations on non-food-contact surfaces. 
+ 
+Applicable Code Sections: 
+4-601.11(B) and (C)  Equipment, Food-Contact Surfaces, Nonfood-Contact Surfaces, and Utensils (C) 
+4-602.13  Nonfood Contact Surfaces (C) 
+ 
+Physical Facilities 
+50. Hot and cold water available; adequate pressure 
+Regardless of the supply system, the distribution of water to the facility must be protected and operated 
+according to law.  Adequate pressure is to be maintained at all fixtures during peak demand including the 
+capacity to provide hot water at peak hot water demand. 
+ 
+Applicable Code Sections: 
+5-103.11  Capacity-Quantity and Availability (Pf) 
+5-103.12  Pressure (Pf) 
+5-104.11 System-Distribution, Delivery, and Retention (Pf) 
+ 
+51. Plumbing installed; proper backflow devices 
+The observation of an approved plumbing system, installed and maintained, including the equipment and 
+devices connected to the potable water supply, is necessary to determine whether a violation exists. An 
+assessment of the layout of the establishment and the water distribution system is made to determine if 
+there are any points at which the potable water supply is subject to contamination or is in disrepair.  
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -53 
+ 
+Applicable Code Sections: 
+5-101.12  System Flushing and Disinfection (P) 
+5-201.11  Approved-Materials (P) 
+5-202.11  Approved System and Cleanable Fixtures (P, C) 
+5-202.13  Backflow Prevention, Air Gap (P) 
+5-202.14  Backflow Prevention Device, Design Standard (P) 
+5-202.15  Conditioning Device, Design (C) 
+5-203.13  Service Sink (C) 
+5-203.14  Backflow Prevention Device, When Required (P) 
+5-203.15  Backflow Prevention Device. Carbonator (P) 
+5-204.12  Backflow Prevention Device, Location (C) 
+5-204.13  Conditioning Device, Location (C) 
+5-205.12  Prohibiting a Cross Connection (P, Pf) 
+5-205.13  Scheduling Inspection and Service for a Water System Device (Pf) 
+5-205.14  Water Reservoir of Fogging Devices, Cleaning (P) 
+5-205.15  System Maintained in Good Repair (P, C) 
+5-301.11  Approved-Materials, Mobile Water Tank and Mobile Food Establishment Water Tank (P, C) 
+5-302.11  Enclosed System, Sloped to Drain (C) 
+5-302.12  Inspection and Cleaning Port, Protected and Secured (C) 
+5-302.13  “V” Type Threads, Use Limitation (C) 
+5-302.14  Tank Vent, Protected (C) 
+5-302.15  Inlet and Outlet, Sloped to Drain (C) 
+5-302.16  Hose, Construction and Identification (P, C) 
+5-303.11 Filter, Compressed Air (P) 
+5-303.12 Protective Cover or Device (C) 
+5-303.13 Mobile Food Establishment Tank Inlet (C) 
+5-304.11 System Flushing and Sanitization-Operation and Maintenance (P) 
+5-304.12 Using a Pump and Hoses, Backflow Prevention (C) 
+5-304.13 Protecting Inlet, Outlet and Hose Fitting (C) 
+5-304.14 Tank, Pump and Hoses, Dedication (P) 
+ 
+52. Sewage and waste water properly disposed 
+There are two types of systems: public sewage treatment plant and an individual sewage disposal 
+system. Observations of the facilities overall sewage and wastewater system is necessary to determine if 
+a violation exists. Indications that a system is not functioning properly may include the presence of 
+sewage back-up into the establishment or outdoors on the ground. Condensate drippage and other non-
+sewage wastes must be drained to a system in accordance to LAW, and backflow prevention, if required, 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -54 
+installed between the sewage system and drain of equipment holding food or utensils. Mobile wastewater 
+holding tanks must also be assessed for capacity and maintenance. 
+Applicable Code Sections: 
+ 5-401.11  Capacity and Drainage (C) 
+ 5-402.11  Backflow Prevention (P) 
+ 5-402.12  Grease Trap (C) 
+ 5-402.13  Conveying Sewage (P) 
+ 5-402.14  Removing Mobile Food Establishment Wastes (Pf) 
+ 5-402.15  Flushing a Waste Retention Tank (C) 
+ 5-403.11  Approved Sewage Disposal System (P) 
+ 5-403.12  Other Liquid Wastes and Rainwater (C) 
+ 
+53. Toilet facilities: properly constructed, supplied, clean 
+A toilet facility should be assessed to determine if: it is not an attractant to insects; the number of fixtures 
+are adequate; toilet tissue and a covered trash receptacle (ladies room only) are provided; fixtures are not 
+being kept clean; and the door self-closes to prevent recontamination of hands.  
+Applicable Code Sections: 
+5-203.12 Toilets and Urinals (C) 
+5-501.17 Toilet Room Receptacle, Covered (C) 
+6-202.14 Toilet Rooms, Enclosed (C) 
+6-302.11 Toilet Tissue, Availability (Pf) 
+6-402.11 Conveniently Located (C) 
+6-501.18 Cleaning of Plumbing Fixtures (C) 
+6-501.19 Closing Toilet Room Doors (C)  
+ 
+54. Garbage/refuse properly disposed; facilities maintained 
+The assessment of the refuse collection and disposal areas for proper receptacles and maintenance is 
+necessary to determine whether a violation exists. Since refuse areas may attract and harbor insects and 
+pests, as well as create a public health nuisance, particular attention must be paid to the maintenance of 
+the refuse facilities and area. 
+Applicable Code Sections: 
+5-501.11  Outdoor Storage Surface (C)  
+5-501.12  Outdoor Enclosure (C) 
+5-501.13  Receptacles (C) 
+5-501.14  Receptacles in Vending Machines (C)  
+5-501.15  Outside Receptacles (C) 
+5-501.16  Storage Areas, Rooms and Receptacles, Capacity and Availability (C) 
+5-501.18  Cleaning Implements and Supplies (C) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -55 
+5-501.19  Storage Areas, Redeeming Machines, Receptacles and Waste Handling Units,  
+Location(C) 
+5-501.110  Storage Refuse, Recyclables and Returnables (C) 
+5-501.111  Area, Enclosures and Receptacles, Good Repair (C) 
+5-501.112  Outside Storage Prohibitions (C) 
+5-501.113  Covering Receptacles (C) 
+5-501.114  Using Drain Plugs (C) 
+5-501.115  Maintaining Refuse Areas and Enclosures(C)  
+5-501.116  Cleaning Receptacles (C) 
+5-502.11  Frequency-Removal (C) 
+5-502.12  Receptacles or Vehicles (C) 
+5-503.11  Community or Individual Facility (C) 
+6-202.110  Outdoor refuse Areas, Curbed and Graded to Drain (C) 
+ 
+55. Physical facilities installed, maintained, and clean 
+Observations are made of the overall conditions or practices related to the physical facility (e.g., materials 
+used, good repair, and maintained). It is important to make an overall assessment of the physical facility 
+conditions to determine the level of compliance and the potential public health impact involved if 
+compliance is not met. Storage of maintenance tools, use of laundry facilities, if applicable, disposal of mop 
+water and separate living/sleeping quarters are included in this section. 
+ 
+Applicable Code Sections: 
+4-301.15  Clothes Washers and Dryers (C) 
+4-401.11(C) Equipment, Cloths Washers and Dryers, and Storage Cabinets, Contamination 
+Prevention (C) 
+4-803.13  Use of Laundry Facilities (C) 
+6-101.11  Surface Characteristics-Indoor Areas (C) 
+6-102.11  Surface Characteristics-Outdoor Areas (C) 
+6-201.11  Floors, Walls and Ceilings-Cleanability (C) 
+6-201.12  Floors, Walls, and Ceilings, Utility Lines (C) 
+6-201.13  Floor and Wall Junctures, Coved, and Enclosed or Sealed (C) 
+6-201.14  Floor Carpeting, Restrictions and Installation (C) 
+6-201.15  Floor Covering, Mats and Duckboards (C) 
+6-201.16  Wall and Ceiling Coverings and Coatings (C) 
+6-201.17  Walls and Ceilings, Attachments (C) 
+6-201.18  Walls and Ceilings, Studs, Joists, and Rafters (C) 
+6-202.17  Outdoor Food Vending Areas. Overhead Protection (C) 
+6-202.18  Outdoor Servicing Areas, Overhead Protection (C) 
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -56 
+6-202.19  Outdoor Walking and Driving Surfaces, Graded to Drain (C) 
+6-202.111  Private Homes and Living or Sleeping Quarters, Use Prohibition (P) 
+6-202.112  Living or Sleeping Quarters, Separation (C)  
+6-501.11    Repairing-Premises, Structures, Attachments, and Fixtures-Methods (C) 
+6-501.12    Cleaning, Frequency and Restrictions (C) 
+6-501.13    Cleaning Floors, Dustless Methods (C) 
+6-501.15    Cleaning Maintenance Tools, Preventing Contamination (Pf) 
+6-501.16    Drying Mops(C)  
+6-501.17    Absorbent Materials on Floors, Use Limitation (C) 
+6-501.113  Storing Maintenance Tools (C) 
+6-501.114  Maintaining Premises, Unnecessary Items and Litter (C) 
+ 
+56. Adequate ventilation and lighting; designated areas used 
+Observations should be made to ensure that the ventilation is adequately preventing an accumulation of 
+condensation, grease or other soil from potentially contaminating food and the surrounding environment 
+and that lights are at an adequate light intensity, and personal belongings are properly stored to maintain 
+clean and sanitary facility and protect food and equipment. 
+  
+FDA Food Code 2022                             Annex 7: Model Forms, Guides, and Other Aids 
+ 
+Annex 7 -57 
+Applicable Code Sections: 
+4-202.18  Ventilation Hood Systems, Filters (C) 
+4-204.11  Ventilation Hood Systems, Drip Prevention (C) 
+4-301.14  Ventilation Hood Systems, Adequacy (C) 
+6-202.11  Light Bulbs, Protective Shielding (C) 
+6-202.12  Heating, Ventilation, Air Conditioning System Vents (C) 
+6-303.11  Intensity-Lighting (C)  
+6-304.11  Mechanical-Ventilation (C) 
+6-305.11  Designation-Dressing Areas and Lockers (C) 
+6-403.11  Designated Areas-Employee Accommodations for eating/drinking/smoking (C) 
+6-501.14  Cleaning Ventilation Systems, Nuisance and Discharge Prohibition (C) 
+6-501.110  Using Dressing Rooms and Lockers (C) 
+  

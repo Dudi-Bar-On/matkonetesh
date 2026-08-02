@@ -1,0 +1,7 @@
+source_id,experiment,oven_or_pit_setpoint_F,stall_temp_F,notes
+18,bowl of water in oven,125,115,"first data point in Blonder's series"
+18,bowl of water in oven,175,140,
+18,bowl of water in oven,225,160,
+18,bowl of water in oven,425,212,"approaches boiling point; stall effect nearly vanishes at high heat"
+18,pure beef fat control,225,,"no stall observed; steady temperature rise"
+18,wet cellulose sponge control,225,140,"stalled ~4+ hours, mimicking real brisket stall, until dried"

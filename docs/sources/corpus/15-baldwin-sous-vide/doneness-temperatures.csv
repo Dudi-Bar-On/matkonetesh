@@ -1,0 +1,7 @@
+source_id,food,doneness,temp_F,temp_C
+15,beef,rare,125,50
+15,beef,medium-rare,130,55
+15,beef,medium,140,60
+15,fish,rare,108,42
+15,fish,medium-rare,122,50
+15,fish,medium,140,60

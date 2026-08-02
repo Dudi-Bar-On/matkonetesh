@@ -1,0 +1,5 @@
+source_id,option,relative_humidity_requirement,endpoint_temp_f,cooking_time
+02-fsis-appendix-a-2021,1,"Continuous steam >=50% of cooking time, or 1hr, whichever longer",">=145",">=1 hour dwell"
+02-fsis-appendix-a-2021,2,"Sealed oven for >=50% of total cooking time, or 1hr, whichever longer",">=145",">=1 hour dwell"
+02-fsis-appendix-a-2021,3,"Oven RH >=90% for >=25% of total cooking time, or 1hr, whichever longer","any",">=1 hour"
+02-fsis-appendix-a-2021,4,"Oven RH >=90% for entire cooking time","any","any"

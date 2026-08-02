@@ -1,0 +1,6 @@
+source_id,method,sodium_nitrite_ppm_ingoing,potassium_nitrite_equivalent_ppm_ingoing,sodium_ascorbate_or_erythorbate_ppm,additional_requirements,cfr_pincite
+07,"Pumped bacon (injected/massaged) - standard formula",120,148,550,"Subject to Department nitrosamine (TEA) sampling program per 424.22(b)(1)(i); cooked test at 340F for 3 min/side; detection threshold 10 ppb",9 CFR 424.22(b)(1)
+07,"Pumped bacon - alternative formula A",100,123,550,"Notwithstanding (b)(1)(i) TEA program; per 424.22(b)(1)(ii)(A)",9 CFR 424.22(b)(1)(ii)(A)
+07,"Pumped bacon - alternative formula B (fermented)","40-80","49-99",550,"Requires additional sucrose/fermentable carbohydrate >=0.7% and lactic-acid-producing bacterial inoculum (e.g. Pediococcus acetolactii) to prevent botulinum toxin production; per 424.22(b)(1)(ii)(B)",9 CFR 424.22(b)(1)(ii)(B)
+07,"Immersion cured bacon",120,148,,"Based on actual or estimated skin-free green weight of bacon bellies; brine solution of salt+nitrite+flavoring, or dry container",9 CFR 424.22(b)(2)
+07,"Dry cured bacon",200,246,,"Premeasured cure mixture applied to belly surfaces, completely covering; based on actual or estimated skin-free green weight",9 CFR 424.22(b)(3)

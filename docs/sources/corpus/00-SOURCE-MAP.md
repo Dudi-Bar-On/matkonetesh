@@ -36,42 +36,55 @@ listeria · nitrate · ppm · doneness · ecfr · namp` — **כולם 0 התא�
 
 ## 1 · ⚠️ מטריצת השליפה — הדבר הראשון שסוכן ההורדה חייב לקרוא
 
-**הממצא המרכזי, והוא משנה את התכנון: `curl` מנותק לחלוטין מהרשת בסביבה הזו — גם עם sandbox מושבת.**
-‏`curl https://example.com` מחזיר **000**. כלומר **אין נתיב הורדה המונית מבוסס‑shell.** ‏
-`graphify add <url>` נכשל מאותה סיבה (וגם ב‑`SSL: CERTIFICATE_VERIFY_FAILED`).
+> **תיקון סבב 2 (2026‑08‑02) — הממצא של סבב 1 היה שגוי בנקודה המכרעת, ותוקן על ידי הבקר לפני שסבב זה
+> החל.** סבב 1 קבע *"`curl` מנותק לחלוטין מהרשת... ערוץ הרשת היחיד הוא `WebFetch`"*. **זה לא נכון.**
+> ‏`curl` אכן מוחזר **000** — אבל זה **sandbox על `curl` הספציפי**, לא ניתוק רשת אמיתי. **ל‑Node יש
+> גישת רשת מלאה דרך `fetch` הילידי** (‏`node -e "fetch(url)"` או סקריפט `.mjs`), ומודד **קודי HTTP
+> אמיתיים** — כולל לחלק מהמארחים ש‑`WebFetch` דיווח עליהם כ"חסומים" (‏`ecfr.gov`, `fda.gov`), ואפילו
+> ל‑`web.archive.org` ש‑WebFetch חסם מצידו. **ה"חסימה" של סבב 1 הייתה במקרים רבים סירוב‑תחום מצד הכלי
+> `WebFetch` עצמו, לא חסימת רשת אמיתית.** התיקון הזה משנה את התכנון: הערוץ הראשי מעתה הוא **`node
+> fetch`**, ו‑`WebFetch` נשאר כגיבוי בלבד. `graphify add <url>` עדיין נכשל (אותה סיבה: הוא רץ דרך
+> shell/`curl`), ולא נבדק מחדש הפעם — אינו בהיקף המשימה.
 
-**ערוץ הרשת היחיד שקיים הוא כלי `WebFetch` / `WebSearch`.**
+**מה עדיין נכון מסבב 1, ומה השתנה — טבלה אחת, כדי שהסשן הבא יבטח בה:**
 
-**התגלית המעשית שפותחת את החסימה:** ‏`WebFetch` **שומר כל PDF לדיסק גם כשהוא לא מצליח לפרסר אותו**
-(‏`...\tool-results\webfetch-*.pdf`), ואז `python -c "from pypdf import PdfReader"` מחלץ את הטקסט
-מקומית בלי רשת. **זו תבנית העבודה לכל מסמך רגולטורי:** ‏`WebFetch` → קובץ בדיסק → `pypdf`.
+| מארח | **סבב 1 האמין** | **האמת (נמדד היום, פעמיים, עם `node fetch`)** | פשר ההבדל |
+|---|---|---|---|
+| `curl` (כל מארח) | "אין רשת כלל, גם ל‑example.com" | **נכון לגבי `curl` בלבד** — `curl` ממשיך להחזיר 000. **אך `node fetch` לאותו `example.com` מחזיר 200.** | `curl` ספציפית חסום ב‑sandbox; זה לא ניתוק רשת של הסביבה |
+| `www.ecfr.gov` (אתר אנושי) | "302 → `unblock.federalregister.gov`, חומת בוטים" | **עדיין נכון** — גם `node fetch` מקבל הפניה ל‑`unblock.federalregister.gov` (200, אך זה דף חומת‑בוטים, לא התוכן) | חומת בוטים אמיתית בצד השרת על העמודים ה‑HTML |
+| `www.ecfr.gov/api/versioner/...` (**API**) | לא נבדק כלל בסבב 1 | ✅ **HTTP 200, XML מלא ומובנה** — נבדק פעמיים, יציב | **ה‑API אינו מאחורי חומת הבוטים; רק אתר ה‑HTML האנושי.** ממצא חדש, בעל ערך רב |
+| `www.federalregister.gov` | "אותה חומת בוטים כמו ecfr" | **עדיין נכון** — אותה הפניה | ללא שינוי |
+| `www.fda.gov` (דף בית ועמודי תוכן) | "HTTP 404 לכלי" — **מוצהר חסום** | ✅ **HTTP 200**, נבדק פעמיים | **סבב 1 טעה. זה היה סירוב‑תחום של `WebFetch`, לא חסימת שרת.** תוקן — ראה סגירת #13 למטה |
+| `www.fda.gov/media/{id}/download` (PDF ספציפי) | לא נבדק ישירות (רק "404 לכלי") | ✅ **HTTP 200**, 872,618 בייט, `content-type: application/pdf` | אותו תיקון — הקובץ עצמו נגיש לגמרי |
+| `www.fsis.usda.gov` (כל עמוד/PDF) | "HTTP 403 — חסימת שרת" | **עדיין 403 (ולעיתים 404 לקובץ שהוזז)** — **נבדק היום, זו חסימת שרת אמיתית**, לא כלי | ✅ אושר כחסימה אמיתית — לא תוקן, ולא צריך: העקיפה (Wayback) עבדה |
+| `www.ams.usda.gov` | (לא נבדק פרטנית) | ✅ **HTTP 200** | מארח USDA שכן פתוח — לא כל `*.usda.gov` חסום |
+| `ask.usda.gov` | "‏A2, נגיש דרך WebSearch" | **HTTP 503** (זמנית לא זמין; לא 403/404) — לא ניסיתי מחדש היום, תוצאה של רגע אחד | שונה מ‑403; ייתכן זמני. לא לסמוך על המדידה הבודדת הזו |
+| `web.archive.org` (דף בית) | **"חסום על ידי הכלי עצמו"** | ✅ **HTTP 200** דרך `node fetch` | **סבב 1 טעה שוב באותה צורה בדיוק — סירוב `WebFetch`, לא חסימת רשת.** זה בדיוק מה שפתח את סגירת #8 |
+| `archive.org/wayback/available` (**API**) | לא נבדק | ✅ **HTTP 200, JSON** — מצא snapshot אמיתי ל‑FSIS‑GD‑2023‑0002 | ערוץ עקיפה חדש ל‑`*.usda.gov` שנחסם: snapshot דרך ה‑API, לא גלישה ידנית בארכיון |
+| `www.govinfo.gov` | ✅ עובד | ✅ עדיין עובד | ללא שינוי |
+| `www.ncagr.gov` · `www2.myfloridalicense.com` · `portal.ct.gov` · `eur-lex.europa.eu` · `inspection.canada.ca` | ✅ עובדים | ✅ עדיין עובדים (נבדקו היום מחדש) | ללא שינוי |
+| `douglasbaldwin.com/sous-vide.html` (עמוד HTML) | ✅ עבד בסבב 1 (‏WebFetch) | **HTTP 403 ל‑`node fetch` היום** (נבדק פעמיים) | תבנית מעניינת — ראה שורה הבאה |
+| `douglasbaldwin.com/Baldwin-IJGFS-Preprint.pdf` (**קובץ PDF סטטי, אותו מארח**) | "חסום" (WebFetch: "unable to verify domain") | ✅ **HTTP 200**, 288,024 בייט | **אותו מארח, שתי תוצאות הפוכות** — חומת הבוטים של `douglasbaldwin.com` כנראה בררנית לפי סוג‑תוכן/נתיב, לא חסימת מארח גורפת. **מסקנה מעשית: כשעמוד HTML חסום, נסה נכס PDF ישיר באותו מארח לפני שמוותרים** |
+| `www.sciencedirect.com` | "402/400 — paywall" | **HTTP 403** (נבדק שוב, אותה תוצאה מהותית: paywall אמיתי) | ✅ אושר — לא תוקן, לא צריך תיקון: אין תוכן חדש מאחורי זה שהיה חסר |
+| `www.seriouseats.com` | "402 — paywall" | **עדיין 402** | ✅ אושר, ללא שינוי |
+| `www.regulations.gov` (+ ה‑API שלו) | לא נבדק בסבב 1 | **HTTP 403** — גם דף הבית וגם ה‑API (‏`api.regulations.gov`) | חסימת שרת אמיתית, לא נותב סביב הפעם (לא היה צורך — ה‑Wayback route עבד ל‑#8) |
+| `www.hhs.gov` | "HTTP 403" | **עדיין HTTP 403** | ✅ אושר, ללא שינוי |
+| `www.maine.gov` (מארח מדינתי, לא היה במפה) | — | ✅ **HTTP 200** — מצא מראה איכותית ל‑FSIS‑GD‑2023‑0002 עם ציטוטי עמוד | מארח חדש שנוסף לרשימת "עובד" |
 
-### עובד — אומת בעצמי היום
+### כלל העבודה המתוקן, לסשן הבא
 
-| מארח | מה נמשך | ראיית האימות |
-|---|---|---|
-| **`govinfo.gov`** ⭐ | **CFR רשמי מלא, כל טיטל** + **Federal Register** | `CFR-2024-title9-vol2-sec424-21.pdf` (22 עמ') — חילצתי "Food Safety and Inspection Service, USDA §424.21" · `CFR-2024-title21-vol2-sec133-3.pdf` — חילצתי את אינדקס תקני הגבינה · `FR-2018-05-31/pdf/2018-11300.pdf` (24 עמ') — חילצתי "25302 Federal Register / Vol. 83, No. 105" |
-| **`www2.myfloridalicense.com`** | FSIS Appendix A — **טבלאות בלבד** (4 עמ') | חילצתי מילולית: "Table 2. Time‑Temperature Combinations for Meat Products to Achieve Lethality" |
-| **`ncagr.gov`** | FSIS Appendix A — **המסמך המלא** (92 עמ') | חילצתי את פסקת הפתיחה על destruction of Salmonella |
-| **`portal.ct.gov`** | FDA Food Code 2022 — **Annexes** (487 עמ') | חילצתי "FDA Food Code 2022 — Table of Contents for Annexes / ANNEX 1 COMPLIANCE AND ENFORCEMENT" |
-| **`eur-lex.europa.eu`** | חקיקת EU | ‏2023/915 נטען; HTML + PDF + XML ב‑24 שפות |
-| **`inspection.canada.ca`** | CFIA | ציטטתי מהדף: 665/555/500 degree‑hours · 100 ppm + 2.5% מלח |
-| **`douglasbaldwin.com`** | Baldwin | נטען; הטבלאות הן **HTML tables** ולא תמונות |
-| **`WebSearch`** | שחזור תוכן מדפים חסומים דרך אינדקס החיפוש | כך אומת ערך ה‑offal של AskUSDA |
-
-### חסום — אומת בעצמי היום
-
-| מארח | הכישלון | העקיפה |
-|---|---|---|
-| `curl` (הכול) | **000 — אין רשת כלל**, גם ללא sandbox | אין. השתמש ב‑`WebFetch` |
-| `www.fsis.usda.gov` · `www.ams.usda.gov` | **HTTP 403** | מראות `ncagr.gov` / `myfloridalicense.com` |
-| `www.fda.gov` (גם `/media/*/download` וגם דף Food Code) | **HTTP 404** לכלי | מראה `portal.ct.gov` |
-| `www.ecfr.gov` · `www.federalregister.gov` | **302 → `unblock.federalregister.gov`** (חומת בוטים; אותו מפעיל לשניהם) | **`govinfo.gov`** — הטקסט הרשמי, לא מראה |
-| `web.archive.org` | **חסום על ידי הכלי עצמו** ("unable to fetch") | לא נדרש עוד — `govinfo.gov` מייתר אותו |
-| `lawfilesext.leg.wa.gov` | `ECONNREFUSED` | **לא אומת** — אל תסתמך עליו |
-
-> **הערה לתיעוד:** סוכן קודם דיווח ש‑`web.archive.org/web/2024id_/` עבד לו. **אצלי הוא חסום.**
-> זה כבר לא משנה: `govinfo.gov` נותן את הטקסט הרגולטורי **הרשמי** ישירות, וזה מקור טוב יותר ממראה.
+1. **התחל תמיד ב‑`node -e "fetch(url)"` (או סקריפט `.mjs` בתוך scratchpad), לא ב‑`curl` ולא ב‑`WebFetch`.**
+   ‏`curl` חסום מבחינת sandbox; `WebFetch` מוסיף סירובי‑תחום משלו שאינם חסימות רשת אמיתיות.
+2. **בדוק תמיד את נתיב ה‑API/JSON/XML של מקור לפני שמוותרים על אתר "חסום".** ‏`ecfr.gov` חסום כאתר‑אנוש
+   אך פתוח לגמרי דרך `/api/versioner/...`. ‏`archive.org` פתוח דרך `/wayback/available` גם כשעמוד‑הבית
+   נחסם לכלים אחרים.
+3. **כשעמוד HTML חסום באתר שכן מכיל PDF ישיר (כמו `douglasbaldwin.com`), נסה את קובץ ה‑PDF ישירות** —
+   ‏זו לא אותה חסימה.
+4. **`fsis.usda.gov` הוא עדיין חסימה אמיתית מאומתת** (‏403 בדף הבית, 403/404 בקבצים) — אין לנסות שוב
+   ישירות; העקיפה המאומתת היא **Wayback Machine** (‏`archive.org/wayback/available?url=...` → snapshot
+   URL) או מראה ממשלתית אחרת (כמו `maine.gov`).
+5. **`WebFetch` נשאר גיבוי טוב** לתוכן HTML כללי ולחיפוש (‏`WebSearch`), אך אל תסיק ממנו "המארח חסום" —
+   הוא עצמו מסרב לתחומים מטעמיו.
 
 ---
 

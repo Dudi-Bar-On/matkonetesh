@@ -1,0 +1,18 @@
+source_id,value_type,category,temp_c,temp_f,time_min,time_sec,notes
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,54.4,130,112,,"§3-401.11(B)(1); post-oven heat rise may count toward holding time"
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,55.0,131,89,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,56.1,133,56,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,57.2,135,36,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,57.8,136,28,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,58.9,138,18,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,60.0,140,12,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,61.1,142,8,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,62.2,144,5,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,62.8,145,4,,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,63.9,147,,134,"time now in seconds, not minutes"
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,65.0,149,,85,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,66.1,151,,54,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,67.2,153,,34,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,68.3,155,,22,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,69.4,157,,14,
+01-fda-food-code-2022,safe,beef_pork_lamb_whole_roast,70.0,158,,0,"instantaneous"

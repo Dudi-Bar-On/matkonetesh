@@ -1,0 +1,15 @@
+source_id,thickness_mm,start_temp_C,time_min_at_55C,time_min_at_56C,time_min_at_57C,time_min_at_58C,time_min_at_59C,time_min_at_60C,time_orig_at_55C,time_orig_at_56C,time_orig_at_57C,time_orig_at_58C,time_orig_at_59C,time_orig_at_60C
+15,5,5,150,105,75,50,35,30,2½ hr,1¾ hr,1¼ hr,50 min,35 min,30 min
+15,10,5,165,120,90,60,45,35,2¾ hr,2 hr,1½ hr,60 min,45 min,35 min
+15,15,5,165,120,90,75,55,50,2¾ hr,2 hr,1½ hr,1¼ hr,55 min,50 min
+15,20,5,180,135,105,90,75,60,3 hr,2¼ hr,1¾ hr,1½ hr,1¼ hr,60 min
+15,25,5,195,150,120,105,90,75,3¼ hr,2½ hr,2 hr,1¾ hr,1½ hr,1¼ hr
+15,30,5,225,180,150,120,105,105,3¾ hr,3 hr,2½ hr,2 hr,1¾ hr,1¾ hr
+15,35,5,240,195,165,150,135,120,4 hr,3¼ hr,2¾ hr,2½ hr,2¼ hr,2 hr
+15,40,5,270,225,180,165,150,135,4½ hr,3¾ hr,3 hr,2¾ hr,2½ hr,2¼ hr
+15,45,5,285,240,210,195,165,150,4¾ hr,4 hr,3½ hr,3¼ hr,2¾ hr,2½ hr
+15,50,5,315,270,240,210,195,180,5¼ hr,4½ hr,4 hr,3½ hr,3¼ hr,3 hr
+15,55,5,345,300,270,240,225,210,5¾ hr,5 hr,4½ hr,4 hr,3¾ hr,3½ hr
+15,60,5,375,330,300,270,240,225,6¼ hr,5½ hr,5 hr,4½ hr,4 hr,3¾ hr
+15,65,5,420,360,330,300,270,255,7 hr,6 hr,5½ hr,5 hr,4½ hr,4¼ hr
+15,70,5,450,405,360,330,300,285,7½ hr,6¾ hr,6 hr,5½ hr,5 hr,4¾ hr

@@ -1,0 +1,8 @@
+source_id,food_category,pathogen,D_ref_temp_C,D_value_min,upstream_literature_source
+15,meat(beef/pork/lamb),E. coli,54.87,19.35,"O'Bryan et al. (2006); Bolton et al. (2000); Hansen & Knochel (1996) — linear regression by Baldwin"
+15,meat(beef/pork/lamb),Salmonella,57.58,13.18,"O'Bryan et al. (2006); Bolton et al. (2000); Hansen & Knochel (1996) — linear regression by Baldwin"
+15,meat(beef/pork/lamb),Listeria,59.22,12.66,"O'Bryan et al. (2006); Bolton et al. (2000); Hansen & Knochel (1996) — linear regression by Baldwin"
+15,poultry,Salmonella,60,4.68,"O'Bryan et al. (2006) — linear regression by Baldwin"
+15,poultry,Listeria,60,5.94,"O'Bryan et al. (2006) — linear regression by Baldwin"
+15,fish(lean),Listeria,60,2.88,"Embarek & Huss (1993) — linear regression by Baldwin"
+15,fish(fatty),Listeria,60,5.13,"Embarek & Huss (1993) — linear regression by Baldwin"

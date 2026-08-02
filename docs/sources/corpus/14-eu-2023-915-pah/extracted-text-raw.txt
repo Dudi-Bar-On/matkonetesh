@@ -1,0 +1,2353 @@
+COMMI SSION REGUL A TION (EU) 2023/915 
+of 25 Apr il 2023
+on maximum lev els f or cer t ain contaminants in fo od and repealing Regulation (EC) No 1881/2006 
+(T ext with EEA relevance) 
+THE EUR OPEAN C OMMISSION,
+Havi ng regar d to the T reaty on the Functioning of the European U nion,
+Havi ng regard to Council Regulation (EEC) No 315/93 of 8 Febr uar y 1993 la ying do wn Community procedures f or 
+contaminants in f ood (
+1
+) , and in par ticular Ar ticle 2(3) thereof,
+Whereas:
+(1) Commission Regulation (EC) No 1881/2006 (
+2
+) sets maximum levels f or cer tain contaminants in f ood. That 
+Regulation has already been amended substantially many times and since a number of new amendments are to be 
+made to that Regulation, it should be replaced.
+(2) Maximum levels should be set at a str ict level, which is reasonably achievable by f ollowi ng good agr icultural, fisher y 
+and manufactur ing practices and taking into account the r isk related to the consump tion of the f ood. In the case of a 
+possible health r isk, maximum levels f or contaminants should be set at a level, whic h is as lo w as reasonably 
+achi evable (AL ARA). Such an approac h ensures that f ood business operat ors apply measures to prevent and reduce 
+the contamination as much as possible in order to protect public health. It is fur ther more appropr iate f or the 
+prote ction of the health of infants and y oung c hildren, a vulnerable group, to establish the lowe st maximum levels, 
+which are achievable through a str ict selection of the raw mat er ials used f or the manufactur ing of f oods f or that 
+population, combined, where appropr iat e, with specif ic manufactur ing practices. This str ict selection of the raw 
+mater ials is also appropr iat e f or the production of specifi c f ood placed on the mark et f or the final consumer , f or 
+which a str ict maximum level has been set out in order to prote ct vulnerable populations.
+(3) T o ensure an efficient prote ction of public health, f ood containing contaminants excee ding the maximum levels not 
+only should not be placed on the mark et as such, but should also not be used as a f ood ingredient or be mixed with 
+f ood.
+(4) T o allo w maximum levels to be applied to dr ied, diluted, processed and compo und f ood, f or which no specifi c Union 
+maximum levels hav e been set out, f ood business operators should provi de to the compet ent author ities the specifi c 
+concentration, dilution and processing fa ctors and, in case of compo und f ood, the propor tion of ingredients, 
+accompan ied by the appropr iat e exper imental data justifying the fact ors proposed.
+(5) Due to the lack of to xicological data and scientifi c evidence of the safety of the metabolite s created by c hemical 
+det o xif ication, it is appropr iat e to prohibit such treatment of f ood.
+(6) It is recognised that sor ting or other phy sical treatments make it possible to reduce the content of contaminants in 
+f ood. In order to minimise the eff ects on trade, it is appropr iate to allow higher levels of contaminants f or cer tain 
+products, whic h are not placed on the mark et f or the fi nal consumer or as a f ood ingredient. In those cases, the 
+maximum levels f or contaminants should be set out taking into consideration the eff ectiveness of such treatments 
+to reduce the content of contaminants in f ood to levels below the maximum levels set out f or those products placed 
+on the mark et f or the final consumer or used as a f ood ingredient. T o av oid that these higher maximum levels are 
+abused, it is appropr iat e to la y down provisions f or the marketing, labelling and use of the concer ned products.
+(
+1
+) OJ L 37, 13.2.1993, p. 1.
+(
+2
+) Commission Regulation (EC) No 1881/2006 of 19 December 2006 setting maximum levels f or cer tain contaminants in f oodstuffs 
+(OJ L 364, 20.12.2006, p. 5).
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/103  
+(7) Cer tain commodities have uses other than f ood and f or whic h less str ict or no maximum levels f or a cer tain 
+contaminant are applicable. T o enable effe ctive enf orcement of the maximum levels f or contaminants in these 
+f oods, it is appropr iate to la y down suitable labelling provi sions f or those f oods.
+(8) Cer tain fi sh species or iginating from the Baltic region ma y contain high levels of dio xins, dio xin-like poly chlor inate d 
+biphen yls (‘DL- PCBs’) and non dio xin-like poly c hlor inated biphen yls (‘NDL- PCBs’). A signif icant propor tion of those 
+fi sh species from the Baltic region does not comply with the maximum levels and w ould theref ore be excl uded from 
+the diet if the maximum levels were applied. However , the excl usion of fi sh from the diet ma y have a negat ive im pact 
+on the health of the population of the Baltic region.
+(9) Latvia, Finland and Sweden hav e system s in place to ensure that fi nal consumers are inf or med of the dietar y 
+recommendations f or identif ied vulnerable groups of the population to restr ict consum ption of fi sh from the Baltic 
+region in order to av oid health r isks. Theref ore, it is appropr iate to maintain a derogation to Latvia, Finland and 
+Sweden allowing them to author ise the placing on their respective market f or the fi nal consumer without time limit 
+cer tain fi sh species or iginating in the Baltic region with levels of dio xins and/or DL -PCBs and/or NDL -PCBs higher 
+than those set in this Regulation. In order to allo w the Commission to monitor the situation, Latvia, Finland and 
+Sweden should continue to repor t yearly to the Commission the measures the y have take n to effe ctively inf or m 
+fi nal consumers of the dietar y recommendations and to ensure that fi sh and products thereof non-compliant with 
+the maximum levels are not mark eted in other Member Stat es, as well as the eff ectiveness of those measures.
+(10) Despite the application of good smoking practices to the extent possible, the cur rent maximum levels f or poly cy clic 
+aromatic hy drocarbons (‘P AHs’) are not achi evable in several Member Stat es in cer tain traditionally smoked meats 
+and meat products and traditionally smoked fish and fi sher y products, where smoking practices cannot be alter ed 
+without c hanging significantly the organolep tic charact er istics of the f ood. Consequently , if maximum levels were 
+applied, such traditionally smok ed products w ould disappear from the mark et resulting in the closure of many 
+small and medium size ent er pr ises. That is the case with cer tain traditionally smoke d meat and smoked meat 
+products in Ireland, Spain, Croatia, Cypr us, Latvia, P oland, P or tugal, Slovakia, Finland and Sweden and cer tain 
+traditionally smoked fish and smoked fi sher y products in Latvia, Finland and Sweden. Theref ore, a derogation f or 
+local production and consump tion should be maintained without a time limit f or cer tain traditionally smoked meat 
+and smoked meat products and traditionally smok ed fish and smoked fi sher y products only in those Member States.
+(11) Member State s are to collect and repor t data from off icial controls and from monitor ing of contaminants in 
+accordance with control plans and with the specifi c requirements on official controls of contaminants laid down in 
+Commission Deleg ated Regulation (EU) 2022/931 (
+3
+) and in Commission Im plementing Regulation 
+(EU) 2022/932 (
+4
+) . For cer tain specifi c contaminants, f or which more occur rence data are needed, it is 
+recommended that Member Stat es, f ood business operat ors and other inte rested par ties should monitor and repor t 
+the occur rence data, as well as repor t on the progress with regar d to the application of preventative measures, to 
+allow the Commission to assess the need to modify existing measures or to adopt additional ones. For the same 
+reasons, it is also appropr iate that Member States communicate to the Commission the inf or mation they have 
+collect ed as regar ds other contaminants.
+(
+3
+) Commission Delegat ed Regulation (EU) 2022/931 of 23 March 2022 supplementing Regulation (EU) 2017/625 of the European 
+P arliament and of the Council by la ying down r ules f or the performance of official controls as regar ds contaminants in f ood 
+(OJ L 162, 17.6.2022, p. 7).
+(
+4
+) Commission Implementing Regulation (EU) 2022/932 of 9 June 2022 on unif or m practical ar rangement s f or the perf or mance of 
+official controls as regards contaminants in f ood, on specific additional content of multi-annual national control plans and specific 
+additional ar rangements f or their preparation (OJ L 162, 17.6.2022, p. 13).
+EN
+Offi cial Jour nal of the European Uni on L 119/104 5.5.2023  
+(12) Maximum levels as cur rently set out by Regulation (EC) No 1881/2006, as amended, should be maintained by this 
+Regulation. However , in light of the exper ience gained with that Regulation and in order to im prove the readability 
+of the r ules, it is appropr iate, on the one hand, to av oid the use of numerous f ootnote s and, on the other hand, to 
+increase the references to Annex I to Regulation (EC) No 396/2005 of the European P arliament and of the 
+Council (
+5
+) f or the def initions of the catego r ies.
+(13) Also in light of the exper ience gained with that Regulation and in order to enable unif or m enf orcement of the 
+maximum levels, it is appropr iat e to clar ify that lo wer bound concentrations should be used in those cases where 
+maximum levels are set f or multiple compo unds (sum of concentrations), excep t when specified other wise, and to 
+clar ify the body par ts of cr ustaceans to which maximum levels apply .
+(14) As regards cadmium, it is appropr iat e to exte nd the cur rent exe mp tion f or malt to all cereals used f or the production 
+of beer or distillat es, pro vided that the remaining cereal residue is not placed on the mark et as f ood, because 
+cadmium mainly remains in the cereal residue and theref ore the cont ent of cadmium in beer is ver y low .
+(15) As regards P AHs, based on the available analytical data and on the production method, which showed that neg ligible 
+amount of those substances was f ound in instant/soluble coffee, it is appropr iat e to excl ude instant/soluble coffee 
+from the maximum level f or po wders of f ood of plant or igin f or the preparation of beverages. Fur ther more, as 
+regards maximum levels f or P AHs f or inf ant f or mulae, f ollow-on f or mulae and y oung-ch ild f or mulae and f or f ood 
+f or special medical pur poses intende d f or inf ants and y oung c hildren, they are cur rently set out f or products as 
+placed on the mark et without the distinction of the phy sical f or m of the product. It is theref ore appropr iate to 
+clar ify that these maximum levels refer to the products ready to use (placed on the mark et as such or af ter 
+reconstitution as instr ucte d by the manuf acturer).
+(16) As regar ds melamine, Codex Alimentar ius has adopt ed, additionally to the powdered infant f or mula, a maximum 
+level f or liquid inf ant f or mula, which the U nion has accept ed. It is theref ore appropr iat e to apply that maximum 
+level f or melamine in inf ant f or mula and f ollo w-on f or mula according ly .
+(17) Theref ore, Regulation (EC) No 1881/2006 should be repealed.
+(18) When the Commission sets out new maximum limits f or contaminants in f ood, it provides, where appropr iat e, f or 
+transitional measures in order to enable economic operat ors to prepare f or the application of the new r ules. In 
+order to ensure a smooth transition between Regulation (EC) No 1881/2006 and this Regulation, it is appropr iate 
+to maintain the transitional measures as regards those maximum limits taken over by this Regulation, which are still 
+relevant.
+(19) The measures provid ed f or in this Regulation are in accordance with the opinion of the Standing Committ ee on 
+Plants, Animals, Food and Feed,
+HAS ADOPTED THIS REGUL A TION:
+Ar ticle 1
+Def initions
+For the pur poses of this Regulation, the f ollowi ng definitions apply:
+(a) ‘f ood’ means f ood as defined in Ar ticle 2 of Regulation (EC) No 178/2002 of the European Parliament and of the 
+Council (
+6
+) ;
+(
+5
+) Regulation (EC) No 396/2005 of the European Parliament and of the Council of 23 Febr uar y 2005 on maximum residue levels of 
+pesticides in or on f ood and feed of plant and animal or igin and amending Council Directive 91/414/EEC (OJ L 70, 16.3.2005, p. 1).
+(
+6
+) Regulation (EC) No 178/2002 of the European P arliament and of the Council of 28 Januar y 2002 la ying down the gen eral pr inciples 
+and requirements of f ood law , establishing the European Food Safety Authority and la ying down procedures in matters of f ood safety 
+(OJ L 31, 1.2.2002, p. 1).
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/105  
+(b) ‘f ood business operator ’ means f ood business operat or as def ined in Ar ticle 3, point 3, of Regulation (EC) 
+No 178/2002;
+(c) ‘placing on the mark et ’ means placing on the mark et as defined in Ar ticle 3, point 8, of Regulation (EC) No 178/2002;
+(d) ‘f inal consumer ’ means final consumer as defined in Ar ticle 3, point 18, of Regulation (EC) No 178/2002;
+(e) ‘processing’ means processing as defined in Ar ticle 2(1), point (m) of Regulation (EC) No 852/2004 of the European 
+Parliament and of the Council (
+7
+) ;
+(f) ‘unprocessed products’ means unprocessed products as def ined in Ar ticle 2(1), point (n), of Regulation (EC) 
+No 852/2004; and
+(g) ‘processed products’ means processed products as def ined in Ar ticle 2(1), point (o), of Regulation (EC) No 852/2004.
+Ar ticle 2
+General r ules
+1. The f ood listed in Annex I shall not be placed on the mark et and shall not be used as a raw mater ial in f ood or as an 
+ingredient in f ood where it contains a contaminant at a level which exceeds the maximum level set out in Annex I.
+2. Food compl ying with the maximum levels set out in Annex I shall not be mixed with f ood whic h exceed s these 
+maximum levels.
+3. The maximum levels set out in Annex I, unless other wise specified in that Annex, shall apply to f ood as placed on the 
+mark et and to the edible par t of the f ood concer ned.
+4. In systems where cereal production and processing are integrat ed so that all incoming lots are cleaned, sor ted and 
+processed in the same establishment, the maximum levels shall apply to unprocessed cereals in the production c hain at the 
+stage bef ore fi rst-stag e processing.
+Ar ticle 3
+Dr ied, diluted, processed and compound food
+1. Where no specifi c U nion maximum levels are set out in Annex I f or f ood which is dr ied, diluted, processed or 
+compo und f ood (i.e. compo sed of more than one ingredient), the f ollowi ng aspects shall be tak en into account when 
+applying the maximum levels set out in Annex I to such f ood:
+(a) chang es of the concentration of the contaminant caused by dr ying or dilution processes;
+(b) chang es of the concentration of the contaminant caused by processing;
+(c) the relative propor tions of the ingredients in the product ;
+(d) the analytical limit of quantification.
+2. Where the compet ent author ity car r ies out an official control, the f ood business operator shall provid e and justify the 
+specifi c concentration, dilution or processing fact ors f or the dr ying, diluting or processing operations concer ned or the 
+specifi c concentration, dilution or processing f actors f or the dr ied, dilut ed, processed or compo und f ood concer ned as well 
+as the propor tion of ingredients f or mixing operations concer ned.
+Where the f ood business operator does not provide the necessar y concentration, dilution or processing fact or or where the 
+compet ent author ity deems that f actor inappropr iat e in view of the justif ication given, the compet ent author ity shall itself 
+define that f actor , based on the av ailable inf or mation and with the objective of maximum protection of human health.
+(
+7
+) Regulation (EC) No 852/2004 of the European Parliament and of the Council of 29 Apr il 2004 on the h ygiene of f oodstuffs (OJ L 139, 
+30.4.2004, p. 1).
+EN
+Offi cial Jour nal of the European Uni on L 119/106 5.5.2023  
+3. Where no specifi c Union maximum levels f or f ood f or infants and y oung children are set out in Annex I, Member 
+State s ma y provid e f or str icter maximum levels f or such f ood.
+Ar ticle 4
+Prohibition on det o xif ication
+Food containing contaminants listed in Annex I shall not be deliberately det o xif ied by c hemical treatments.
+Ar ticle 5
+Food to be subjected to sor ting or other physical treatment before placing on the market for the f inal consumer 
+or use as a fo od ing redient
+1. Where a maximum level f or a contaminant is set out in Annex I specifi cally as regar ds f ood to be subjecte d to sor ting 
+or other phy sical treatment bef ore placing on the mark et f or the final consumer or use as a f ood ingredient, such f ood ma y 
+be placed on the market provid ed that:
+(a) it is not placed on the market f or the fi nal consumer or use as a f ood ingredient ;
+(b) it compl ies with the maximum level set out in Annex I f or that contaminant in that f ood to be subjected to sor ting or 
+other ph ysical treatment bef ore placing on the mark et f or the final consumer or use as a f ood ingredient ; and
+(c) it is labelled and mark ed in accordance with paragraph 2.
+2. The label of each individual packag e and the or iginal accompan ying document of f ood refe r red to in paragraph 1, 
+point (c), shall clearly show its use and bear the f ollo wing inf or mation: ‘Product shall be subjected to sor ting or other 
+phy sical treatment to reduce [name contaminant(s)] contamination bef ore placing on the mark et f or the fi nal consumer or 
+use as a f ood ingredient ’.
+The consignment/batc h identification code shall be indelibly mark ed on each individual packag e of the consignment and on 
+the or iginal accompan ying document.
+3. Food to be subjected to sor ting or other phy sical treatment to reduce contamination levels shall not pr ior to this be 
+mixe d with f ood placed on the mark et f or the final consumer or with f ood intended f or use as a f ood ingredient.
+4. Food whic h has been subjected to sor ting or other physical treatment to reduce contamination levels ma y be placed 
+on the mark et provi ded that the maximum levels set out in Annex I f or f ood placed on the market f or the fi nal consumer 
+or use as a f ood ingredient are not exce eded and that the treatment used has not result ed in the presence of other har mful 
+residues.
+Ar ticle 6
+Labelling pro visions fo r g roundnuts (peanuts), other oilseeds, der iv ed products thereof and cereals
+1. The label of each individual packag e and the or iginal accompan ying document of groundnuts (peanuts), other 
+oilseeds, der ived products thereof and cereals shall clearly show its intended use.
+The consignment/batc h identification code shall be indelibly mark ed on each individual packag e of the consignment and on 
+the or iginal accompan ying document. The business activity of the consignee of the consignment given on the 
+accompan ying document shall be compati ble with the intended use.
+2. In the absence of a clear inf or mation that their intended use is not to be placed on the mark et as f ood, the maximum 
+levels set out in Annex I shall apply to all groundnuts (peanuts), other oilseeds and der ived products thereof and cereals 
+placed on the market.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/107  
+3. The excep tion of groundnuts (peanuts) and other oilseeds f or cr ushing from the application of the maximum levels 
+set out in Annex I, shall only apply to consignments, which:
+(a) are clearly labelled showi ng their intended use;
+(b) bear the f ollowi ng inf or mation ‘Product to be subject to cr ushing f or the production of ref ined vegeta ble oil’ on the 
+label of each individual packa ge and on the or iginal accompan ying document ; and
+(c) have a cr ushing plant as the fi nal destination.
+Ar ticle 7
+Derogations from Ar ticle 2
+1. By wa y of derogation from Ar ticle 2, Latvia, Finland and Sweden ma y author ise the placing on their respective mark et 
+f or the fi nal consumer , within their annual quota as set in Regulation (EU) No 1380/2013 of the European Parliament and 
+of the Council (
+8
+) , of wild caught salmon (Salmo salar) and products thereof or iginating in the Baltic region with levels of 
+dio xins and/or DL -PCBs and/or NDL-PCBs higher than those set out in point 4.1.5 of Annex I, provi ded that:
+(a) a system is in place to ensure that fi nal consumers, are fully inf or med of the national dietar y recommendations with 
+regard to the restr ictions on the consum ption of wild caught salmon from the Baltic region and products thereof by 
+identif ied vulnerable groups of the population in order to av oid poten tial health r isks ;
+(b) Latvia, Finland and Sweden continue to apply the necessar y measures to ensure that wild caught salmon and products 
+thereof not compl ying with point 4.1.5 of Annex I are not mark eted in other Member Stat es;
+(c) Latvia, Finland and Sweden repor t yearly to the Commission the measures the y hav e take n to effectively inf or m final 
+consumers of the dietar y recommendations and to ensure that wild caught salmon and products thereof not 
+compliant with the maximum levels are not mark eted in other Member States and provide evidence of the 
+effectiveness of those measures.
+2. By wa y of derogation from Ar ticle 2, Finland and Sweden ma y author ise the placing on their respective market, 
+within their annual quota as set in Regulation (EU) No 1380/2013, wild caught Baltic her r ing larger than 17 cm (Clupea 
+hareng us membr as), of wild caught c har (Salvelinus spp.), wild caught r iver lampre y (Lampetr a f luviatilis) and wild caught 
+trout (Salmo tr utta) and products thereof or iginating in the Baltic region with levels of dio xins and/or DL-PCBs and/or 
+NDL -PCBs higher than those set out in point 4.1.5 of Annex I, provid ed that:
+(a) a system is in place to ensure that f inal consumers are fully inf or med of the dietar y recommendations with rega rd to the 
+restr ictions on the consum ption of wild caught Baltic her r ing larg er than 17 cm, wild caught c har , wild caught r iver 
+lampre y and wild caught trout from the Baltic region and products thereof by identif ied vulnerable groups of the 
+population in order to av oid potential health r isks;
+(b) Finland and Sweden continue to apply the necessar y measures to ensure that wild caught Baltic her r ing larg er than 17 
+cm, wild caught char , wild caught r iver lampre y and wild caught trout and products thereof not compl ying with point 
+4.1.5 of Annex I are not mark eted in other Member States;
+(c) Finland and Sweden repor t ye arly to the Commission the measures they ha ve tak en to eff ectively inf or m the identif ied 
+vulnerable sections of the population of the dietar y recommendations and to ensure that fish and products thereof not 
+compliant with the maximum levels is not market ed in other Member States and provid e evidence of the effe ctiveness 
+of those measures.
+(
+8
+) Regulation (EU) No 1380/2013 of the European Parliament and of the Council of 11 December 2013 on the Common Fisher ies P olicy , 
+amending Council Regulations (EC) No 1954/2003 and (EC) No 1224/2009 and repealing Council Regulations (EC) No 2371/2002 
+and (EC) No 639/2004 and Council Decision 2004/585/EC (OJ L 354, 28.12.2013, p. 22).
+EN
+Offi cial Jour nal of the European Uni on L 119/108 5.5.2023  
+3. By wa y of deroga tion from Ar ticle 2, the f ollowing Member State s ma y author ise the placing on their respective 
+mark et f or the fi nal consumer of the f ollowing traditionally smoked meat and smoke d meat products, smoked in their 
+terr itory with levels of P AHs higher than those set out in point 5.1.6 of Annex I, provided that those products dot not 
+contain more than 5,0 μg/kg f or benzo(a)p yrene and 30,0 μg/kg f or the sum of benzo(a)p yrene, benz(a)anthracene, 
+benzo(b)f luoranthene and c hr ysene:
+(a) Ireland, Croatia, Cypr us, Spain, P oland and P or tugal: traditionally smok ed meat and meat products;
+(b) Latvia: traditionally smoked pork, hot smok ed chic ken meat, hot smoked sausages and hot smoked ga me meat ;
+(c) Slovakia: salted traditionally smok ed meat, traditionally smok ed bacon, traditionally smoked sausage (klobása), where 
+‘traditionally smoke d’ means developing smoke by bur ning woods (w ood logs, w ood sawdus t, wood c hips) in a 
+smokehouse;
+(d) Finland: traditionally hot smoked meat and meat products;
+(e) Sweden: meat and meat products smoked o ver g lowing w ood or other plant mate r ials.
+Those Member Stat es and concer ned f ood business operat ors shall continue to monitor the presence of P AHs in 
+traditionally smoked meat and smoked meat products refer red to in the fi rst subparagraph and shall ensure that good 
+smoking practices are implement ed where possible, without losing typical org anoleptic c haract er istics of those products.
+4. By wa y of deroga tion from Ar ticle 2, the f ollowing Member State s ma y author ise the placing on their respective 
+mark et f or the final consumer of the f ollowi ng traditionally smoked fish and smok ed fi sher y products, smok ed in their 
+terr itory with levels of P AHs higher than those set out in point 5.1.7 of Annex I, pro vided that those smok ed products do 
+not contain more than 5,0 μg/kg f or benzo(a)p yrene and 30,0 μg/kg f or the sum of benzo(a)p yrene, benz(a)anthracene, 
+benzo(b)f luoranthene and c hr ysene:
+(a) Latvia: traditionally hot smoked fi sh;
+(b) Finland: traditionally hot smoked small fish and fi sher y products made from small fi sh;
+(c) Sweden: fish and fi sher y products smoke d o ver g lowing w ood or other plant mate r ials.
+Those Member Stat es and concer ned f ood business operat ors shall continue to monitor the presence of P AHs in 
+traditionally smoked fi sh and smoked fisher y products refer red to in the first subparagraph and shall ensure that good 
+smoking practices are implement ed where possible, without losing typical org anoleptic c haract er istics of those products.
+Ar ticle 8
+Monit or ing and repor ting
+1. By 1 July 2023 , Member Stat es and inter ested par ties shall communicate to the Commission the results of 
+inve stigations under tak en and the progress with regar d to the application of prevention measures to av oid contamination 
+by ergot sclerotia and ergot alkaloids in r ye and r y e milling products and ergot alkaloids in milling products of barley , 
+wheat, spelt and oats grains.
+Member Stat es and interest ed par ties shall repor t ever y y ear to the European Food Safety A uthor ity (‘ A uthor ity’) the 
+occur rence data on ergot sclerotia and ergot alkaloids in r ye and r ye milling products and on ergot alkaloids in milling 
+products of barle y , wheat, spelt and oats grains.
+2. Member Stat es shall communicate to the Commission, when requeste d, the investig ations under take n and the 
+relevant sources identif ied f ollowing Commission Recommendations f or monitor ing of the presence of contaminants in 
+f ood and the progress with regard to the application of prevention measures to av oid contamination.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/109  
+3. Member Stat es shall repor t to the Aut hor ity the occur rence data that they hav e collect ed on other contaminants than 
+those refer red to in paragraph 1. Food business operators and other inter ested par ties ma y submit such occur rence data to 
+the Aut hor ity .
+4. Member Stat es, f ood business operators and other inte rested par ties shall pro vide to the Author ity the occur rence 
+data in accordance with Author ity’s repor ting requirements.
+Ar ticle 9
+Repeal
+Regulation (EC) No 1881/2006 is repealed.
+Ref erences to the repealed Regulation shall be constr ued as ref erences to this Regulation and shall be read in accordance 
+with the cor relation table in Annex II.
+Ar ticle 10
+T ransitional measures
+1. Food lawfully placed on the mark et pr ior to the dat es ref er red to in points (a) to (k) ma y remain on the mark et until 
+their date of minimum durability or use-by dat e:
+(a) 19 Sep tember 2021 as regar ds the maximum levels f or tropane alkaloids in baby f oods and processed cereal-based 
+f oods f or inf ants and y oung c hildren, containing maize or its der ived products set out in point 2.2.1 of Annex I;
+(b) 1 Januar y 2022 as regards the maximum levels f or ergot sclerotia and ergot alkaloids set out in point 1.8 of Annex I;
+(c) 3 Ma y 2022 as regards the maximum levels f or mercur y set out in point 3.3 of Annex I;
+(d) 1 July 2022 as regar ds the maximum levels f or opium alkaloids set out in point 2.5 of Annex I;
+(e) 1 Sept ember 2022 as regards the maximum levels f or tropane alkaloids set out in points 2.2.2 to 2.2.9 of Annex I;
+(f) 1 Januar y 2023 as regards the maximum levels f or oc hrato xin A set out in point 1.2 of Annex I;
+(g) 1 Januar y 2023 as regards the maximum levels f or hy drocyanic acid set out in point 2.3 of Annex I;
+(h) 1 Januar y 2023 as regards the maximum levels f or the sum of Δ
+9
+- THC and Δ
+9
+- THCA set out in point 2.6 of Annex I;
+(i) 1 Januar y 2023 as regards the maximum levels f or the sum of dio xins and f or the sum of dio xins and DL-PCBs set out 
+in points 4.1.1, 4.1.2, 4.1.11 and 4.1.12 of Annex I;
+(j) 1 Januar y 2023 as regards the maximum levels f or the sum of perf luoroalkyl substances set out in point 4.2 of Annex I;
+(k) 26 March 2023 as regards the maximum levels f or arsenic set out in point 3.4 of Annex I.
+2. Food la wfully placed on the market bef ore 1 July 2022 ma y remain on the mark et until 31 December 2023 as regards 
+the maximum levels f or p yr rolizidine alkaloids set out in point 2.4 of Annex I.
+3. The burden of proving the dat e when the products were la wfully placed on the mark et shall be bor ne by the f ood 
+business operat or .
+Ar ticle 11
+Entr y into force
+This Regulation shall ent er into f orce on the twentieth da y f ollowi ng that of its publication in the Off icial Jour nal of the 
+Eur opean Union.
+EN
+Offi cial Jour nal of the European Uni on L 119/110 5.5.2023  
+This Regulation shall be binding in its entirety and directly applicable in all Member States.
+Done at Br ussels, 25 Apr il 2023 .
+For the Commission
+The Pr esident
+U rsula V ON DER LEYEN
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/111  
+ANNEX I 
+Maximum lev els for cer tain cont aminants in f ood (
+1
+)
+1 My coto xins
+1.1 Af lato xins Maximum level (μg/kg) Remark s
+B
+1
+Sum of B
+1
+, 
+B
+2
+, G
+1 
+and G
+2
+M
+1
+For the sum of af lato xins, maximum levels refer to lower bound 
+concentrations, which are calculat ed on the assum ption that all 
+the values below the limit of quantifi cation are zero.
+1.1.1 Dr ied fr uits to be subjected to sor ting or other phy sical 
+treatment bef ore placing on the mark et f or the final 
+consumer or use as an ingredient in f ood excep t products 
+liste d in 1.1.3
+5,0 10,0 -
+1.1.2 Dr ied fr uits used as only ingredient or processed products 
+from dr ied fr uits, placed on the mark et f or the fi nal 
+consumer or use as an ingredient in f ood excep t products 
+liste d in 1.1.3
+2,0 4,0 - In the case of f ood consisting of dr ied fr uits used as only 
+ingredient or in the case of processed products consisting at 
+least of 80 % from the dr ied fr uits concer ned, the maximum 
+levels as established f or the cor responding dr ied fr uits apply 
+also to those products. In other cases, Ar ticle 3(1) and (2) apply .
+1.1.3 Dr ied fi gs 6,0 10,0 - In the case of f ood consisting of dr ied fi gs used as only 
+ingredient or in the case of processed products consisting at 
+least of 80 % from dr ied figs, the maximum levels as 
+established f or dr ied figs apply also to those products. In other 
+cases, Ar ticle 3(1) and (2) apply .
+1.1.4 Groundnuts (peanuts) and other oilseeds, to be subjecte d to 
+sor ting or other phy sical treatment bef ore placing on the 
+mark et f or the final consumer or use as an ingredient in f ood
+8,0 15,0 - Ex cept groundnuts (peanuts) and other oilseeds f or cr ushing f or 
+refined vegetable oil production.
+If groundnuts (peanuts) and other oilseeds with inedible shell are 
+analysed, it is assumed, when calculating the af lato xin cont ent, 
+that all the contamination is on the edible par t.
+EN
+Offi cial Jour nal of the European Uni on L 119/112 5.5.2023  
+1.1.5 Groundnuts (peanuts) and other oilseeds used as only 
+ingredient or processed products from groundnuts (peanuts) 
+and other oilseeds, placed on the mark et f or the fi nal consumer 
+or use as an ingredient in f ood
+2,0 4,0 - Ex cept cr ude vegetable oils destined f or refining and refined 
+veget able oils.
+If groundnuts (peanuts) and other oilseeds with inedible shell are 
+analysed, it is assumed when calculating the af lato xin content 
+that all the contamination is on the edible par t.
+In the case of f ood consisting of groundnuts (peanuts) and other 
+oilseeds used as only ingredient or in the case of processed 
+products consisting at least of 80 % from the groundnuts 
+(peanuts) and other oilseeds concer ned, the maximum levels as 
+established f or the cor responding groundnuts (peanuts) and 
+other oilseeds apply also to those products. In other cases, 
+Ar ticles 3(1) and (2) apply .
+1.1.6 T ree nuts to be subjected to sor ting or other phy sical treatment 
+bef ore placing on the mark et f or the fi nal consumer or use as 
+an ingredient in f ood excep t products list ed in 1.1.8 and 1.1.10
+5,0 10,0 - If tree nuts ‘in shell’ are analysed, it is assumed, when calculating 
+the af lato xin conte nt, that all the contamination is on the edible 
+par t.
+1.1.7 T ree nuts used as only ingredient or processed products from 
+tree nuts, placed on the mark et f or the final consumer or use as 
+an ingredient in f ood excep t products list ed in 1.1.9 and 1.1.11
+2,0 4,0 - If tree nuts ‘in shell’ are analysed, it is assumed, when calculating 
+the af lato xin conte nt, that all the contamination is on the edible 
+par t.
+In the case of f ood consisting of tree nuts used as only ingredient 
+or in the case of processed products consisting at least of 80 % 
+from the tree nuts concer ned, the maximum levels as established 
+f or tree nuts apply also to those products. In other cases, 
+Ar ticle 3(1) and (2) apply .
+1.1.8 Almonds, pistac hios and apr icot ke r nels to be subjected to 
+sor ting or other phy sical treatment bef ore placing on the 
+mark et f or the final consumer or use as an ingredient in f ood
+12,0 15,0 - If tree nuts ‘in shell’ are analysed, it is assumed, when calculating 
+the af lato xin conte nt, that all the contamination is on the edible 
+par t.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/113  
+1.1.9 Almonds, pistachios and apr icot kernels, placed on the mark et 
+f or the fi nal consumer or use as an ingredient in f ood
+8,0 10,0 - If tree nuts ‘in shell’ are analysed, it is assumed, when calculating 
+the af lato xin conte nt, that all the contamination is on the edible 
+par t.
+In the case of f ood consisting of almonds, pistachios and apr icot 
+kernels used as only ingredient or in the case of processed 
+products consisting at least of 80 % from the tree nuts 
+concer ned, the maximum levels as established f or the 
+cor responding tree nuts apply also to those products. In other 
+cases, Ar ticle 3(1) and (2) apply .
+1.1.10 Hazelnuts and Brazil nuts, to be subjected to sor ting or other 
+phy sical treatment bef ore placing on the market f or the final 
+consumer or use as an ingredient in f ood
+8,0 15,0 - If hazelnuts ‘in shell’ are analysed, it is assumed, when 
+calculating the af lato xin content, that all the contamination is 
+on the edible par t.
+1.1.11 Hazelnuts and Brazil nuts, placed on the market f or the final 
+consumer or use as an ingredient in f ood
+5,0 10,0 - If hazelnuts ‘in shell’ are analysed, it is assumed, when 
+calculating the af lato xin content, that all the contamination is 
+on the edible par t.
+In the case of f ood consisting of hazelnuts and Brazil nuts used 
+as only ingredient or in the case of processed products 
+consisting at least of 80 % from the tree nuts concer ned, the 
+maximum levels as established f or the cor responding tree nuts 
+apply also to those products. In other cases, Ar ticle 3(1) and (2) 
+apply .
+1.1.12 Cereals and products der ived from cereals excep t products 
+liste d in 1.1.13, 1.1.18 and 1.1.19
+2,0 4,0 - Including processed cereal products.
+Products der ived from cereals relat e to products containing at 
+least 80 % cereal products.
+1.1.13 Maize and r ice to be subject ed to sor ting or other phy sical 
+treatment bef ore placing on the mark et f or the final 
+consumer or use as an ingredient in f ood
+5,0 10,0 -
+EN
+Offi cial Jour nal of the European Uni on L 119/114 5.5.2023  
+1.1.14 Following dr ied spices:
+Capsicum spp. (dr ied fr uits thereof, whole or ground, including 
+c hillies, chilli powder , ca yenne or papr ika)
+P epper (fr uits of Piper spp, including whit e and black pepper)
+Nutmeg (Myr istica fr ag r ans)
+T ur mer ic (Curc uma long a)
+Mixtures of dr ied spices containing one or more of the 
+abov ementioned dr ied spices
+5,0 10,0 -
+1.1.15 Ginger (Zingiber off icinale) (dr ied) 5,0 10,0 -
+1.1.16 R aw milk (
+2
+), heat-treat ed milk and milk f or the manufacture of 
+milk -based products
+- - 0,050
+1.1.17 Inf ant f or mulae, f ollow-on f or mulae (
+3
+) and y oung-c hild 
+f or mulae (
+4
+)
+- - 0,025 The maximum level applies to the products ready to use (placed 
+on the mark et as such or af ter reconstitution as instr ucted by the 
+manufact urer).
+1.1.18 Baby f ood and processed cereal-based f ood f or inf ants and 
+y oung children (
+3
+)
+0,10 - - The maximum level applies to the dr y matt er (
+5
+) of the product 
+as placed on the mark et.
+1.1.19 Food f or special medical pur poses inte nded f or infants and 
+y oung children (
+3
+)
+0,10 - 0,025 The maximum level applies in the case of milk, milk products 
+and similar products to the products ready to use (placed on the 
+mark et as such or af ter reconstitution as instr ucted by the 
+manufact urer) and in the case of products other than milk, 
+milk products and similar products to the dr y matt er (
+5
+).
+1.2 Ochrato xin A
+Maximum 
+level (μg/kg)
+Remark s
+1.2.1 Dr ied fr uits
+1.2.1.1 Dr ied vine fr uits (cur rants, raisins and sultanas) and dr ied figs 8,0
+1.2.1.2 Other dr ied fr uits 2,0
+1.2.2 Dat e syr up 15
+1.2.3 Pistac hios to be subjected to sor ting or other phy sical treatment bef ore 
+placing on the market f or final consumer or use as an ingredient in f ood
+10,0 If tree nuts ‘in shell’ are analysed, it is assumed, when calculating the oc hrat o xin 
+A cont ent, that all the contamination is on the edible par t.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/115  
+1.2.4 Pistac hios placed on the market f or fi nal consumer or use as ingredient in 
+f oods
+5,0 If tree nuts ‘in shell’ are analysed, it is assumed, when calculating the oc hrat o xin 
+A cont ent, that all the contamination is on the edible par t.
+1.2.5 Dr ied herbs 10,0
+1.2.6 Ginger roots (dr ied) f or use in herbal infusions 15
+1.2.7 Marshmallo w roots (dr ied), dandelion roots (dr ied) and orange blossoms 
+(dr ied) f or use in herbal infusions or in coffe e substitut es
+20
+1.2.8 Sunf lowe r seeds, pumpk in seeds, (water) melon seeds, hempseeds, so ybeans 5,0
+1.2.9 U nprocessed cereal grains 5,0 The maximum level applies to unprocessed cereal grains placed on the mark et 
+bef ore fi rst-stage processing (
+6
+).
+1.2.10 Products der ived from unprocessed cereal grains and cereals placed on the 
+mark et f or the fi nal consumer excep t products list ed in 1.2.11, 1.2.12, 
+1.2.13, 1.2.23 and 1.2.24
+3,0 Including processed cereal products.
+Products der ived from unprocessed cereal grains relate to products containing at 
+least 80 % cereal products.
+1.2.11 Baker y wares, cereal snac k s and breakf ast cereals
+1.2.11.1 products not containing oilseeds, nuts or dr ied fr uits 2,0
+1.2.11.2 products containing at least 20 % dr ied vine fr uits and/or dr ied figs 4,0
+1.2.11.3 other products containing oilseeds, nuts and/or dr ied fr uits 3,0
+1.2.12 Non-alcoholic malt beverag es 3,0
+1.2.13 Wheat g lut en not placed on the market f or the fi nal consumer 8,0
+1.2.14 R oasted coffe e beans and ground roaste d coffee excep t products listed 
+in 1.2.15
+3,0
+1.2.15 Soluble coffee (instant coffee) 5,0
+1.2.16 Cocoa po wder 3,0
+1.2.17 Dr ied spices excep t products list ed in 1.2.18 15 The maximum level applies also to mixtures of dr ied spices.
+EN
+Offi cial Jour nal of the European Uni on L 119/116 5.5.2023  
+1.2.18 Capsicum spp. (dr ied fr uits thereof, whole or ground, including c hillies, c hilli 
+po wder , ca ye nne or papr ika)
+20
+1.2.19 Liquor ice (Glyc yr rhiza gl abr a, Glycyr rhiza inf lata and other species)
+1.2.19.1 Liquor ice root (dr ied), including as an ingredient in herbal infusions 20
+1.2.19.2 Liquor ice extract f or use in f ood in par ticular beverages and confecti onar y 80 The maximum level applies to the pure and undilute d extract, whereby 1 kg of 
+extract is obtained from 3 to 4 kg liquor ice root.
+1.2.19.3 Liquor ice confe ctioner y containing ≥ 97 % liquor ice extract on dr y basis 50
+1.2.19.4 Other liquor ice confecti oner y 10,0
+1.2.20 Wine (
+7
+) and fr uit wine 2,0 Including semi-sparkling and sparkling wines, excl uding liqueur wine and wine 
+with an alcoholic strength of not less than 15 % v ol.
+The maximum level applies to products produced from the 2005 har vest 
+onwar ds.
+1.2.21 Aromatised wine, aromatised wine-based dr inks and aromatised wine- 
+product coc ktails (
+8
+)
+2,0 The maximum level applies to products produced from the 2005 har vest 
+onwar ds.
+The maximum level applicable to these beverages is function of the propor tion 
+of wine and/or grape must present in the finished product.
+1.2.22 Grape juice, grape juice from concentrate, concentrat ed grape juice, grape 
+nectar , grape must and concentrat ed grape must, placed on the market f or 
+the fi nal consumer (
+9
+)
+2,0 For concentrat ed grape juice or concentrat ed grape must, the maximum level 
+applies to juice or must as reconstituted .
+The maximum level applies to products produced from the 2005 har vest 
+onwar ds.
+1.2.23 Baby f ood and processed cereal-based f ood f or infants and y oung children (
+3
+) 0,50 The maximum level applies to the dr y matte r (
+5
+) of the product as placed on the 
+mark et.
+1.2.24 Food f or special medical pur poses intended f or infa nts and y oung c hildren (
+3
+) 0,50 The maximum level applies in the case of milk, milk products and similar 
+products to the products ready to use (placed on the market as such or 
+reconstituted as instr ucted by the manufacturer) and in the case of products 
+other than milk, milk products and similar products to the dr y matt er (
+5
+).
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/117  
+1.3 Patulin
+Maximum 
+level (μg/kg)
+Remark s
+1.3.1 Fr uit juices, fr uit juices from concentrat e, concentrat ed fr uit juices and fr uit 
+nectars (
+9
+)
+50 For concentrat ed fr uit juice, the maximum level applies to juice as reconstituted .
+1.3.2 Spir it dr ink s (
+10
+), cider and other fe r mente d dr ink s der ived from apples or 
+containing apple juice
+50
+1.3.3 Solid apple products placed on the mark et f or the final consumer excep t 
+products list ed in 1.3.4 and 1.3.5
+25 Including apple compot e and apple puree.
+1.3.4 Apple juice and solid apple products f or inf ants and y oung c hildren (
+3
+) and 
+labelled and placed on the mark et as such
+10,0 Including apple compot e and apple puree.
+The maximum level applies to the products ready to use (placed on the market as 
+such or af te r reconstitution as instr ucted by the manufa cturer).
+1.3.5 Baby f ood (
+3
+) 10,0 The maximum level applies to the products ready to use (placed on the market as 
+such or af te r reconstitution as instr ucted by the manufa cturer).
+1.4 Deo xynivalenol
+Maximum 
+level (μg/kg)
+Remark s
+1.4.1 U nprocessed cereal grains excep t products list ed in 1.4.2 and 1.4.3 1 250 Ex cept un processed maize grains intended to be processed by wet milling and 
+excep t r ice.
+The maximum level applies to unprocessed cereal grains placed on the mark et 
+bef ore fi rst-stage processing (
+6
+).
+1.4.2 U nprocessed dur um wheat grains and oat grains 1 750 The maximum level applies to unprocessed cereal grains placed on the mark et 
+bef ore fi rst-stage processing (
+6
+).
+1.4.3 U nprocessed maize grains 1 750 Ex cept unp rocessed maize grains f or whic h it is evident e.g. through labelling or 
+destination, that they are inte nded f or use in a wet milling process only (starch 
+production).
+The maximum level applies to unprocessed maize grains placed on the mark et 
+bef ore fi rst-stage processing (
+6
+).
+1.4.4 Cereals placed on the mark et f or the final consumer , cereal f lour , semolina, 
+bran and g er m as final product placed on the market f or the f inal consumer 
+excep t products liste d in 1.4.7 and 1.4.8
+750 Ex cept r ice and r ice products.
+EN
+Offi cial Jour nal of the European Uni on L 119/118 5.5.2023  
+1.4.5 P asta 750 P asta means pasta (dr y) with a water content of appro ximat ely 12 %.
+1.4.6 Bread, pastr ies, biscuits, cereal snac k s and breakf ast cereals 500 Ex cept r ice products.
+Including small baker y wares.
+1.4.7 Milling products of maize not placed on the mark et f or the final consumer
+1.4.7.1 Maize f lour not placed on the mark et f or the final consumer 1 250 At least 90 %, measured by weight, of the par ticles in the milling product hav e a 
+size ≤ 500 μm.
+1.4.7.2 Other milling products of maize not placed on the mark et f or the fi nal 
+consumer
+750 Less than 90 %, measured by weight, of the par ticles in the milling product hav e a 
+size ≤ 500 μm.
+1.4.8 Baby f ood and processed cereal-based f ood f or infants and y oung children (
+3
+) 200 Ex cept r ice products.
+The maximum level applies to the dr y matte r (
+5
+) of the product as placed on the 
+mark et.
+1.5 Zearalenone
+Maximum 
+level (μg/kg)
+Remark s
+1.5.1 U nprocessed cereal grains excep t products list ed in 1.5.2 100 Ex cept un processed maize grains intended to be processed by wet milling and 
+excep t r ice.
+The maximum level applies to unprocessed cereal grains placed on the mark et 
+bef ore fi rst-stage processing (
+6
+).
+1.5.2 U nprocessed maize grains 350 Ex cept unprocessed maize grains f or whic h it is evident e.g. through labelling, 
+destination, that it is inte nded f or use in a wet milling process only (starch 
+production).
+The maximum level applies to unprocessed maize grains placed on the mark et 
+bef ore fi rst-stage processing (
+6
+).
+1.5.3 Cereals placed on the mark et f or the final consumer , cereal f lour , semolina, 
+bran and g er m as final product placed on the market f or the f inal consumer 
+excep t products liste d in 1.5.5, 1.5.6 and 1.5.8
+75 Ex cept r ice and r ice products.
+1.5.4 Bread, pastr ies, biscuits, cereal snac k s and breakf ast cereals excep t products 
+liste d in 1.5.5
+50 Ex cept r ice products.
+Includes small baker y wares.
+1.5.5 Maize placed on the mark et f or the final consumer
+Maize-based snac k s and maize-based breakfast cereals
+100
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/119  
+1.5.6 Milling products of maize not placed on the mark et f or the final consumer
+1.5.6.1 Maize f lour not placed on the mark et f or the final consumer 300 At least 90 %, measured by weight, of the par ticles in the milling product hav e a 
+size ≤ 500 μm.
+1.5.6.2 Other milling products of maize not placed on the mark et f or the fi nal 
+consumer
+200 Less than 90 %, measured by weight, of the par ticles in the milling product hav e a 
+size ≤ 500 μm.
+1.5.7 Refin ed maize oil 400
+1.5.8 Baby f ood and processed cereal-based f ood f or infants and y oung children (
+3
+) 20 Ex cept r ice products.
+The maximum level applies to the dr y matte r (
+5
+) of the product as placed on the 
+mark et.
+1.6 F umonisins
+Maximum 
+level (μg/kg)
+Remark s
+Sum of B
+1 
+and B
+2
+For the fumonisins, maximum levels ref er to lowe r bound concentrations, whic h 
+are calculated on the assump tion that all the values below the limit of 
+quantifi cation are zero.
+1.6.1 U nprocessed maize grains 4 000 Ex cept unprocessed maize grains f or whic h it is evident e.g. through labelling, 
+destination, that it is inte nded f or use in a wet milling process only (starch 
+production).
+The maximum level applies to unprocessed maize grains placed on the mark et 
+bef ore fi rst-stage processing (
+6
+).
+1.6.2 Maize placed on the mark et f or the final consumer , milling products of maize 
+placed on the market f or the fi nal consumer , maize-based f ood placed on the 
+mark et f or the final consumer excep t products list ed in 1.6.3 and 1.6.5
+1 000
+1.6.3 Maize-based breakf ast cereals and maize-based snacks 800
+1.6.4 Milling products of maize not placed on the mark et f or the final consumer
+1.6.4.1 Maize f lour not placed on the mark et f or the final consumer 2 000 At least 90 %, measured by weight, of the par ticles in the milling product hav e a 
+size ≤ 500 μm.
+1.6.4.2 Other milling products of maize not placed on the mark et f or the fi nal 
+consumer
+1 400 Less than 90 %, measured by weight, of the par ticles in the milling product hav e a 
+size ≤ 500 μm.
+1.6.5 Baby f ood containing maize and processed maize-based f ood f or inf ants and 
+y oung children (
+3
+)
+200 The maximum level applies to the dr y matte r (
+5
+) of the product as placed on the 
+mark et.
+EN
+Offi cial Jour nal of the European Uni on L 119/120 5.5.2023  
+1.7 Citr inin
+Maximum 
+level (μg/kg)
+Remark s
+1.7.1 Food supplements based on r ice f er mented with red ye ast Monascus pur pureus 100
+1.8 Ergot sclerotia and ergot alkaloids
+1.8.1 Ergot sclerotia Maximum level (g/kg) Remark s
+The maximum level applies to un processed cereal grains 
+placed on the market bef ore fi rst-stag e processing (
+6
+).
+In case scour ing (
+6
+) is applied in the presence of ergot 
+sclerotia, the cereals need to firstly undergo a cleaning 
+step bef ore scour ing.
+The sampling shall be performe d in accordance with point 
+B of Annex I to Regulation (EC) No 401/2006.
+1.8.1.1 U nprocessed cereal grains excep t products list ed in 1.8.1.2 0,2 Ex cept maize and r ice.
+1.8.1.2 U nprocessed r ye grains 0,5
+0,2 as from 1 July 2024
+1.8.2 Ergot alk aloids Maximum level (μg/kg) Remark s
+Lower bound sum of
+ergocor nine/ergocor ninine; ergocr istine/ergocr isti ­
+nine; ergocr yptine/ergocry pti nine (α- and β-f or m); 
+ergometr ine/ergometr inine; ergosine/ergosinine; 
+ergotamine/ergotaminine
+For the ergot alkaloids, maximum levels ref er to lo wer 
+bound concentrations, which are calculat ed on the 
+assump tion that all the values below the limit of 
+quantifi cation are zero.
+1.8.2.1 Milling products of barle y , wheat, spelt and oats (with an 
+ash content lower than 900mg/100g dr y matte r)
+100
+50 as from 1 July 2024
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/121  
+1.8.2.2 Milling products of barle y , wheat, spelt and oats (with an 
+ash conte nt equal or higher than 900mg/100g dr y matter)
+Barle y , wheat, spelt and oats grains placed on the mark et 
+f or the fi nal consumer
+150
+1.8.2.3 R ye milling products
+R ye placed on the mark et f or the final consumer
+500
+250 as from 1 July 2024
+1.8.2.4 Wheat g lut en 400
+1.8.2.5 Processed cereal-based f ood f or infants and y oung children 
+(
+3
+)
+20 The maximum level applies to the product as placed on the 
+mark et.
+2 Plant t o xins
+2.1 Er ucic acid, including er ucic acid bound in fat
+Maximum 
+level (g/kg)
+Remark s
+2.1.1 V egetable oils and fats placed on the market f or the fi nal consumer or f or use 
+as an ingredient in f ood exce pt products list ed in 2.1.2
+20,0
+2.1.2 Camelina oil, mustard oil and borage oil 50,0 With acceptance from the compet ent author ity , the maximum level does not 
+apply to mustard oil locally produced and consumed.
+2.1.3 Mustard (condiment) 35,0
+2.2 T ropane alkaloids Maximum level (μg/kg) Remark s
+Atropine Scopolamine
+2.2.1 Baby f ood and processed cereal-based f ood f or infants and y oung 
+c hildren (
+3
+), containing millet, sorghum, buckwheat , maize or their 
+der ived products
+1,0 1,0 Der ived products relate to products containing at least 80 % these 
+cereal products.
+The sampling f or the control of compl iance with the maximum level 
+shall be performe d in accordance with the provi sions provided f or in 
+point J of Annex I to Regulation (EC) No 401/2006.
+The maximum level applies to the product as placed on the mark et.
+EN
+Offi cial Jour nal of the European Uni on L 119/122 5.5.2023  
+Sum of atropine and 
+scopolamine
+For the sum of atropine and scopolamine, maximum levels refe r to 
+lowe r bound concentrations, whic h are calculat ed on the 
+assump tion that all the values below the limit of quantifi cation are 
+zero.
+2.2.2 U nprocessed millet grains and sorghum grains 5,0 The maximum level applies to unprocessed cereal grains placed on 
+the mark et bef ore fi rst-stag e processing (
+6
+).
+2.2.3 U nprocessed maize grains 15 Ex cept unpro cessed maize grains f or which it is evident e.g. through 
+labelling, destination, that it is inte nded f or use in a wet milling 
+process only (starch production) and excep t unp rocessed maize 
+grains f or popping.
+The maximum level applies to un processed maize grains placed on 
+the mark et bef ore fi rst-stag e processing (
+6
+).
+2.2.4 U nprocessed buckwheat grains 10 The maximum level applies to unprocessed buckwheat grains placed 
+on the mark et bef ore fi rst-stag e processing (
+6
+).
+2.2.5 Maize f or popping
+Millet, sorghum and maize placed on the market f or the final 
+consumer
+Milling products of millet, sorghum and maize
+5,0
+2.2.6 Buckwhea t placed on the mark et f or the fi nal consumer
+Milling products of buckwheat
+10
+2.2.7 Herbal infusions (dr ied product) and ingredients used f or herbal 
+infusions (dr ied products) excep t products liste d in 2.2.8
+25 ‘Herbal infusions (dr ied product)’ refers to:
+— herbal infusions (dr ied product) from f lo wers, leav es, stalks, 
+roots, and any other par ts of the plant (in sachets or in bulk) 
+used f or the preparation of herbal infusion (liquid product); and
+— instant herbal infusions. In the case of po wdered extracts, a con ­
+centration fa ctor of 4 has to be applied.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/123  
+2.2.8 Herbal infusions (dr ied product) and ingredients used f or herbal 
+infusions (dr ied products) of excl usively anise seeds
+50 ‘Herbal infusions (dr ied product)’ refers to:
+— herbal infusions (dr ied product) from f lo wers, leav es, stalks, 
+roots, and any other par ts of the plant (in sachets or in bulk) 
+used f or the preparation of herbal infusion (liquid product); and
+— instant herbal infusions. In the case of po wdered extracts, a con ­
+centration fa ctor of 4 has to be applied.
+2.2.9 Herbal infusions (liquid product) 0,20
+2.3
+Hydrocyanic acid, including hy drocyanic acid bound in cyanogenic 
+gly cosides
+Maximum 
+level (mg/kg)
+Remark s
+2.3.1 U nprocessed whole, ground, milled, crac ked, c hopped linseed not placed on 
+the mark et f or the final consumer
+250 The maximum levels do not apply to oilseeds f or cr ushing and oil refining, 
+provid ed that the remaining pressed oilseeds are not placed on the market as 
+f ood. In case the remaining pressed oilseeds are placed on the market as f ood, 
+the maximum levels apply taking int o account Ar ticle 3(1) and (2).
+2.3.2 U nprocessed whole, ground, milled, crac ked, c hopped linseed placed on the 
+mark et f or the final consumer
+150 The maximum level does not apply to un processed whole, ground, milled, 
+crack ed, c hopped linseed placed on the market f or the fi nal consumer in small 
+quantities where the war ning ‘Only to be used f or cooking and baking. Do not 
+consume raw!’ appears in the pr incipal fi eld of vision of the label (using the 
+specifi c f ont size (
+11
+)). The unprocessed whole, ground, milled, crack ed, 
+c hopped linseed with the war ning message has to compl y with the maximum 
+level provid ed f or in 2.3.1.
+2.3.3 U nprocessed whole, ground, milled, crack ed, c hopped almonds placed on 
+the mark et f or the final consumer
+35 The maximum level does not apply to un processed whole, ground, milled, 
+crack ed, c hopped bitt er almonds placed on the market f or the final consumer 
+in small quantities where the war ning ‘Only to be used f or cooking and baking. 
+Do not consume raw!’ appears in the pr incipal field of vision of the label (using 
+the specifi c f ont size (
+11
+)).
+2.3.4 U nprocessed whole, ground, milled, crack ed, c hopped apr icot kern els placed 
+on the mark et f or the fi nal consumer
+20,0 The operator who places unprocessed whole, ground, milled, crack ed, c hopped 
+apr icot kernels on the mark et f or the final consumer shall provide upon request 
+from the compet ent author ity evidence of compl iance of the mark eted product 
+with the maximum level.
+EN
+Offi cial Jour nal of the European Uni on L 119/124 5.5.2023  
+2.3.5 Cassav a root (fresh, peeled) 50,0
+2.3.6 Cassav a f lour and tapioca f lour 10,0
+2.4 Pyr rolizidine alka loids Maximum level (μg/kg) Remark s
+The maximum level refe rs to the lowe r bound sum of the 
+f ollowi ng 21 p yr rolizidine alkaloids:
+— interm edine/ly copsamine, interm edine-N-o xide/ly copsa ­
+mine-N-o xide, senecionine/seneciver nine, senecionine- 
+N-o xide/seneciver nine-N-o xide, seneciph ylline, seneci ­
+phy lline-N-o xide, retrorsine, retrorsine-N-o xide, echi mi ­
+dine, echi midine-N-o xide, lasiocar pine, lasiocar pine-N- 
+o xide, senkirkine, europine, europine-N-o xide, heliotr ine 
+and heliotr ine-N-o xide
+and the f ollowi ng additional 14 p yr rolizidine alkaloids 
+known to co-elut e with one or more of the abov e identi ­
+fi ed 21 p yr rolizidine alkaloids, making use of cer tain cur ­
+rently used analytical methods:
+— indicine, echinatine, r inder ine (possible co-elution with 
+ly copsamine/interm edine), indicine-N-o xide, echinatine- 
+N-o xide, r inder ine-N-o xide (possible co-elution with 
+ly copsamine-N-o xide/inter medine-N-o xide), integ er r i ­
+mine (possible co-elution with seneciver nine/senecio ­
+nine), integ er r imine-N-o xide (possible co-elution with 
+seneciver nine-N-o xide/senecionine-N-o xide), heliosupine 
+(possible co-elution with echi midine), heliosupine-N- 
+o xide (possible co-elution with echi midine-N-o xide), 
+spar tioidine (possible co-elution with seneciph ylline), 
+spar tioidine-N-o xide (possible co-elution with seneci ­
+phy lline-N-o xide), usaramine (possible co-elution with 
+retrorsine), usaramine N-o xide (possible co-elution with 
+retrorsine N-o xide).
+Pyr rolizidine alkaloids, which can be individually and 
+separately identified with the used method of analysis, shall be 
+quantifi ed and included in the sum.
+For the p yr rolizidine alkaloids, maximum levels refer to 
+lowe r bound concentrations, which are calculat ed on 
+the assum ption that all the values below the limit of 
+quantifi cation are zero.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/125  
+2.4.1 Borage leav es (fresh, frozen) placed on the mark et f or 
+the fi nal consumer
+750 Without prejudice to more restr ictive national r ules in 
+cer tain Member State s on the placing of the market of 
+p yr rolizidine alkaloid containing plants.
+2.4.2 Dr ied herbs exce pt products list ed in 2.4.3 400 Without prejudice to more restr ictive national r ules in 
+cer tain Member State s on the placing of the market of 
+p yr rolizidine alkaloid containing plants.
+2.4.3 Borage, lo vage, mar joram and oregano (dr ied product) 
+and mixtures excl usively composed of these dr ied 
+herbs
+1 000 Without prejudice to more restr ictive national r ules in 
+cer tain Member State s on the placing of the market of 
+p yr rolizidine alkaloid containing plants.
+2.4.4 T ea (Camellia sinensis) and f la voured tea (
+12
+) (Camellia 
+sinensis) (dr ied product) excep t tea and f la vour ed te a 
+refer red to in 2.4.5
+150 For teas with dr ied fr uits and dr ied herbs, Ar ticle 3 
+applies.
+‘ T ea (Camellia sinensis) (dr ied product)’ refers to:
+— tea (Camellia sinensis) (dr ied product) from dr ied 
+leav es, stalks and f lowe rs (in sache ts or in bulk) 
+used f or the preparation of te a (liquid product); and
+— instant teas. In the case of po wdered tea extracts, a 
+concentration f actor of 4 has to be applied.
+2.4.5 T ea (Camellia sinensis), f lav oured tea (
+12
+) (Camellia 
+sinensis) and herbal infusions (dr ied product) and 
+ingredients used f or herbal infusions (dr ied products) 
+f or inf ants and y oung c hildren
+75 For teas with dr ied fr uits and dr ied herbs, Ar ticle 3 
+applies.
+2.4.6 T ea (Camellia sinensis), f lav oured tea (
+12
+) (Camellia 
+sinensis) and herbal infusions (liquid product) f or 
+inf ants and y oung c hildren
+1,0 For teas with dr ied fr uits and dr ied herbs, Ar ticle 3 
+applies.
+2.4.7 Herbal infusions (dr ied product) and ingredients used 
+f or herbal infusions (dr ied products) exce pt products 
+liste d in 2.4.5 and 2.4.8
+200 ‘Herbal infusions (dr ied product)’ refers to:
+— herbal infusions (dr ied product) from f lo wers, 
+leav es, stalks, roots, and any other par ts of the 
+plant (in sache ts or in bulk) used f or the preparation 
+of herbal infusion (liquid product); and
+EN
+Offi cial Jour nal of the European Uni on L 119/126 5.5.2023  
+— instant herbal infusions. In the case of po wdered 
+extracts, a concentration fact or of 4 has to be 
+applied.
+Without prejudice to more restr ictive national r ules in 
+cer tain Member State s on the placing of the market of 
+p yr rolizidine alkaloid containing plants.
+2.4.8 Herbal infusions (dr ied product) and ingredients used 
+f or herbal infusions (dr ied products) of rooibos, anise 
+(Pimpinella anisum), lemon balm, chamomile, thyme, 
+pepper mint, lemon verbena and mixtures exclusively 
+compo sed of these dr ied herbs excep t herbal infusions 
+refer red to in 2.4.5
+400 ‘Herbal infusions (dr ied product)’ refers to:
+— herbal infusions (dr ied product) from f lo wers, 
+leav es, stalks, roots, and any other par ts of the 
+plant (in sache ts or in bulk) used f or the preparation 
+of herbal infusion (liquid product); and
+— to instant herbal infusions. In the case of powdered 
+extracts, a concentration fact or of 4 has to be 
+applied.
+2.4.9 Cumin 400
+2.4.10 Food supplements containing botanical preparation 
+(
+13
+) including extracts excep t products liste d in 2.4.11
+400 The maximum level applies to the f ood supplements as 
+placed on the market.
+Without prejudice to more restr ictive national r ules in 
+cer tain Member State s on the placing of the market of 
+p yr rolizidine alkaloid containing plants.
+2.4.11 P ollen based f ood supplements
+P ollen and pollen products
+500 The maximum level applies to the f ood supplements as 
+placed on the market.
+2.5 Opium alka loids
+Maximum 
+level (mg/kg)
+Remark s
+For the opium alkaloids, maximum levels refe r to lo wer bound concentrations, 
+which are calculated on the assum ption that all the values below the limit of 
+quantifi cation are zero.
+The maximum level refers to the sum of mor phine and codeine, f or which a 
+fa ctor of 0,2 is applied to the level of codeine. Theref ore, the maximum level 
+refers to the sum of mor phine + 0,2 × codeine.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/127  
+2.5.1 Whole, ground or milled popp y seeds placed on the mark et f or the final 
+consumer
+20
+2.5.2 Baker y products containing popp y seeds or processed products thereof 1,50 Baker y products include also f lour -based ready-to-ea t sav our ies and snac k s.
+Processed products thereof relat e to products containing at least 80 % popp y 
+seed products.
+The f ood business operat or supplying the popp y seeds to the f ood business 
+operat or manufactur ing the bak er y products shall provide the necessar y 
+inf or mation to enable the manuf acturer of the bak er y products to place 
+products on the mark et that compl y with the maximum level. This inf or mation 
+shall include analytical data, where appropr iate.
+2.6 Delta-9-t etrah ydrocannabinol (Δ
+9
+- THC) equivalents
+Maximum 
+level (mg/kg)
+Remark s
+For delta-9-te trahydrocannabinol (Δ9- THC) equivalents, maximum levels refer to 
+lowe r bound concentrations, whic h are calculated on the assump tion that all the 
+values below the limit of quantifi cation are zero.
+The maximum level refers to the sum of delta-9-tetrah ydrocannabinol (Δ
+9
+- THC) 
+and delta-9-te trahydrocannabinolic acid (Δ
+9
+- THCA), expressed as Δ
+9
+- THC.
+A fact or of 0,877 is applied to the level of Δ
+9
+- THCA and the maximum level refers 
+to the sum of Δ
+9
+- THC + 0,877 × Δ
+9
+- THCA (in case of a separate deter mination 
+and quantification of Δ
+9
+- THC and Δ
+9
+- THCA).
+2.6.1 Hem p seeds 3,0
+2.6.2 Ground hemp seeds, (par tially) defat ted hem p seed and other hem p seed 
+processed products excep t products liste d in 2.6.3
+3,0 Hem p seed processed products are products processed excl usively from hem p 
+seeds.
+2.6.3 Hem p seed oil 7,5
+EN
+Offi cial Jour nal of the European Uni on L 119/128 5.5.2023  
+3 Met als and other elements
+3.1 Lead Maximum 
+level (mg/kg)
+Remark s
+3.1.1 Fr uits The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.1.1.1 Cranber r ies, cur rants, elderber r ies and stra wber r y tree fr uits 0,20
+3.1.1.2 Fr uits other than cranber r ies, cur rants, elderber r ies and stra wber r y tree fr uits 0,10
+3.1.2 R oot and tuber vege tables The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.1.2.1 R oot and tuber vege tables excep t products listed in 3.1.2.2 and 3.1.2.3 0,10 For potatoes , the maximum level applies to peeled potatoes .
+3.1.2.2 Fresh ginge r , fresh tur mer ic 0,80
+3.1.2.3 Salsify 0,30
+3.1.3 Bulb veg etables 0,10 The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.1.4 Fr uiting vegetables The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.1.4.1 Fr uiting vegetables excep t products liste d in 3.1.4.2 0,050
+3.1.4.2 Sweetcor n 0,10
+3.1.5 Brassica vegetables The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.1.5.1 Brassica vegetables other than those listed in 3.1.5.2 0,10
+3.1.5.2 Leafy brassica 0,30
+3.1.6 Leaf vege tables excluding fresh herbs and edible f lowers 0,30 The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/129  
+3.1.7 Legume vege tables 0,10 The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.1.8 Stem vegeta bles 0,10 The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.1.9 Fungi The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.1.9.1 The f ollowi ng cultivated fungi:
+Common mushroom (Ag ar icus bispor us)
+Oyster mushroom (Pleurotus ostreatus)
+Shiitak e mushroom (Lentinula edodes)
+0,30
+3.1.9.2 Wild fungi 0,80
+3.1.10 Pulses 0,20
+3.1.11 Cereals 0,20
+3.1.12 Dr ied spices
+3.1.12.1 Seed spices 0,90
+3.1.12.2 Fr uit spices 0,60
+3.1.12.3 Bark spices 2,0
+3.1.12.4 R oot and rhizome spices 1,50
+3.1.12.5 Bud spices 1,0
+3.1.12.6 Flo wer pistil spices 1,0
+3.1.13 Meat of bovine animals, sheep, pig and poultr y (
+2
+) excep t products liste d 
+in 3.1.14
+0,10 The maximum level applies to the wet weight.
+3.1.14 Offal (
+2
+) The maximum level applies to the wet weight.
+3.1.14.1 of bovin e animals and sheep 0,20
+3.1.14.2 of pig 0,15
+3.1.14.3 of poultr y 0,10
+3.1.15 Fisher y products (
+2
+) and bivalve molluscs (
+2
+) The maximum level applies to the wet weight.
+EN
+Offi cial Jour nal of the European Uni on L 119/130 5.5.2023  
+3.1.15.1 Muscle meat of fish 0,30 Where fish are intended to be eaten whole, the maximum level applies to the 
+whole fi sh.
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+3.1.15.2 Cephalopods 0,30 The maximum level applies to the animal without viscera.
+3.1.15.3 Cr ustaceans 0,50 The maximum level applies to muscle meat from appendages and abdomen, 
+which means, that the cephalothorax of cr ustaceans is excl uded. In case of crabs 
+and crab-lik e cr ustaceans (Br achyur a and Anomur a), the maximum level applies to 
+the muscle meat from appendage s.
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+3.1.15.4 Bivalve molluscs 1,50 In case of P ecten maximus, the maximum level applies to the adduct or muscle and 
+gonad only .
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+3.1.16 R aw milk (
+2
+), heat-treated milk and milk f or the manuf acture of milk -based 
+products
+0,020 The maximum level applies to the wet weight.
+3.1.17 Honey 0,10
+3.1.18 Fats and oils 0,10 Including milk f at.
+3.1.19 Fr uit juices, fr uit juices from concentrat e, concentrat ed fr uit juices and fr uit 
+nectars (
+9
+)
+The maximum level applies to the wet weight.
+For concentrated fr uit juice, the maximum level applies to the reconstituted juice.
+3.1.19.1 excl usively from ber r ies and other small fr uits 0,05
+3.1.19.2 other than excl usively from ber r ies and other small fr uits, including mixtures 0,03
+3.1.20 Wine (
+7
+), cider , per r y and fr uit wine The maximum level applies to the wet weight.
+Including semi-sparkling and sparkling wines, excl uding liqueur wine and wine 
+with an alcoholic strength of not less than 15 % v ol.
+3.1.20.1 products produced from the 2001 fr uit har vest to the 2015 fr uit har vest 0,20
+3.1.20.2 products produced from the 2016 fr uit har vest to the 2021 fr uit har vest 0,15
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/131  
+3.1.20.3 products produced from the 2022 fr uit har vest on wards 0,10
+3.1.21 Aromatised wine, aromatised wine-based dr inks and aromatised wine- 
+product coc ktails (
+8
+)
+The maximum level applies to the wet weight.
+3.1.21.1 products produced from the 2001 fr uit har vest to the 2015 fr uit har vest 0,20
+3.1.21.2 products produced from the 2016 fr uit har vest to the 2021 fr uit har vest 0,15
+3.1.21.3 products produced from the 2022 fr uit har vest on wards 0,10
+3.1.22 Liqueur wine made from grapes (
+7
+) The maximum level applies to the wet weight.
+3.1.22.1 products produced from the 2022 fr uit har vest on wards 0,15
+3.1.23 Salts
+3.1.23.1 Salts excep t products listed in 3.1.23.2 1,0
+3.1.23.2 The f ollo wing unrefin ed salts: ‘f leur de sel’ and ‘grey salt ’ which are manually 
+har veste d from salt marshes with a cla y bottom
+2,0
+3.1.24 Inf ant f or mulae, f ollow-on f or mulae (
+3
+) and y oung-c hild f or mulae (
+4
+) The maximum level applies to the product as placed on the mark et.
+3.1.24.1 placed on the market as po wder 0,020
+3.1.24.2 placed on the market as liquid 0,010
+3.1.25 Dr inks f or infa nts and y oung children placed on the market and labelled as 
+such exce pt products list ed in 3.1.24 and 3.1.27
+3.1.25.1 placed on the market as liquid or to be reconstitute d f ollowing instr uctions of 
+the manufact urer
+0,020 Including fr uit juices.
+The maximum level applies to the products ready to use.
+3.1.25.2 to be prepared by infusion or decoction 0,50 The maximum level applies to the product as placed on the mark et.
+3.1.26 Baby f ood and processed cereal-based f ood f or infants and y oung children (
+3
+) 
+excep t products liste d in 3.1.25
+0,020 The maximum level applies to the product as placed on the mark et.
+3.1.27 Food f or special medical pur poses intended f or infa nts and y oung c hildren (
+3
+) The maximum level applies to the product as placed on the mark et.
+EN
+Offi cial Jour nal of the European Uni on L 119/132 5.5.2023  
+3.1.27.1 placed on the market as po wder 0,020
+3.1.27.2 placed on the market as liquid 0,010
+3.1.28 Food supplements 3,0
+3.2 Cadmium
+Maximum 
+level (mg/kg)
+Remark s
+3.2.1 Fr uits and tree nuts The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.1.1 Fr uits excep t products liste d in 3.2.1.2, 3.2.1.3 and 3.2.1.4 0,050
+3.2.1.2 Citr us fr uits, pome fr uits, ston e fr uits, table olives, kiwi fr uits, bananas, 
+mangoes, papa yas and pineapples
+0,020
+3.2.1.3 Ber r ies and small fr uits, excep t products list ed in 3.2.1.4 0,030
+3.2.1.4 R aspber r ies 0,040
+3.2.1.5 T ree nuts The maximum levels do not apply to tree nuts f or cr ushing and oil ref ining, 
+provid ed that the remaining pressed tree nuts are not placed on the mark et as 
+f ood. In case the remaining pressed tree nuts are placed on the market as f ood, 
+the maximum levels apply , taking into account Ar ticle 3(1) and (2).
+3.2.1.5.1 T ree nuts excep t products list ed in 3.2.1.5.2 0,20
+3.2.1.5.2 Pine nuts 0,30
+3.2.2 R oot and tuber vege tables The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.2.1 R oot and tuber veg etables excep t products listed in 3.2.2.2, 3.2.2.3, 3.2.2.4, 
+3.2.2.5 and 3.2.2.6
+0,10 For potatoes , the maximum level applies to peeled potatoes .
+3.2.2.2 Beetroots 0,060
+3.2.2.3 Celer iac 0,15
+3.2.2.4 Horseradish, parsnips, salsify 0,20
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/133  
+3.2.2.5 R adishes 0,020
+3.2.2.6 T ropical roots and tubers, parsle y roots, tur nips 0,050
+3.2.3 Bulb veg etables The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.3.1 Bulb veg etables excep t products liste d in 3.2.3.2 0,030
+3.2.3.2 Garlic 0,050
+3.2.4 Fr uiting vegetables The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.4.1 Fr uiting vegetables excep t products liste d in 3.2.4.2 0,020
+3.2.4.2 Aube rgines 0,030
+3.2.5 Brassica vegetables The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.5.1 Brassica excep t products listed in 3.2.5.2 0,040
+3.2.5.2 Leafy brassica 0,10
+3.2.6 Leaf vege tables and herbs The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.6.1 Leaf vege tables excep t products list ed in 3.2.6.2 0,10
+3.2.6.2 Spinache s and similar leaves, mustard seedlings and fresh herbs 0,20
+3.2.7 Legume vege tables 0,020 The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.8 Stem vegeta bles The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.8.1 Stem vegeta bles excep t products list ed in 3.2.8.2 and 3.2.8.3 0,030
+3.2.8.2 Celer ies 0,10
+EN
+Offi cial Jour nal of the European Uni on L 119/134 5.5.2023  
+3.2.8.3 Leek s 0,040
+3.2.9 Fungi The maximum level applies to the wet weight.
+The maximum level applies af ter washing and separating the edible par t.
+3.2.9.1 Cultivated fungi excep t products list ed in 3.2.9.2 0,050
+3.2.9.2 Oyster mushroom (Pleurotus ostreatus)
+Shiitak e mushroom (Lentinula edodes)
+0,15
+3.2.9.3 Wild fungi 0,50
+3.2.10 Pulses and prote ins from pulses
+3.2.10.1 Pulses excep t products listed in 3.2.10.2 0,040
+3.2.10.2 Proteins from pulses 0,10
+3.2.11 Oilseeds The maximum levels do not apply to oilseeds f or cr ushing and oil refining, 
+provid ed that the remaining pressed oilseeds are not placed on the market as 
+f ood. In case the remaining pressed oilseeds are placed on the market as f ood, 
+the maximum levels apply , taking into account Ar ticle 3(1) and (2).
+3.2.11.1 Oilseeds excep t products liste d in 3.2.11.2, 3.2.11.3, 3.2.11.4, 3.2.11.5 
+and 3.2.11.6
+0,10
+3.2.11.2 R ape seeds 0,15
+3.2.11.3 P eanuts and so y beans 0,20
+3.2.11.4 Mustard seeds 0,30
+3.2.11.5 Linseeds and sunf lower seeds 0,50
+3.2.11.6 P opp y seeds 1,20
+3.2.12 Cereals The maximum levels do not apply to cereals used f or the production of beer or 
+distillate s, provid ed that the remaining cereal residue is not placed on the mark et 
+as f ood. In case the remaining cereal residue is placed on the market as f ood, the 
+maximum levels apply , taking into account Ar ticle 3(1) and (2).
+3.2.12.1 Cereals excep t products liste d in 3.2.12.2, 3.2.12.3, 3.2.12.4 and 3.2.12.5 0,10
+3.2.12.2 Barle y and r ye 0,050
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/135  
+3.2.12.3 Rice, quinoa, wheat bran and wheat g lut en 0,15
+3.2.12.4 Dur um wheat (T r iticum dur um) 0,18
+3.2.12.5 Wheat ger m 0,20
+3.2.13 Products of animal or igin (
+2
+) The maximum level applies to the wet weight.
+3.2.13.1 Meat of bovine animals, sheep, pig and poultr y 0,050 Ex cept offal.
+3.2.13.2 Horsemeat 0,20 Ex cept offal.
+3.2.13.3 Liver of bovine animals, sheep, pig, poultr y and horse 0,50
+3.2.13.4 Kidney of bovine animals, sheep, pig, poultr y and horse 1,0
+3.2.14 Fisher y products (
+2
+) and bivalve molluscs (
+2
+) The maximum level applies to the wet weight.
+3.2.14.1 Muscle meat of fish excep t species liste d in 3.2.14.2, 3.2.14.3 and 3.2.14.4 0,050 Where fi sh are intended to be eat en whole, the maximum level applies to the 
+whole fi sh.
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+3.2.14.2 Muscle meat of the f ollowi ng fish:
+Mack erel (Scomber species)
+T una (Thunnus species, K atsuwo nus pelamis, Euthynnus species)
+Bich ique (Sicy opter us lagocephalus)
+0,10 Where fi sh are intended to be eat en whole, the maximum level applies to the 
+whole fi sh.
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+3.2.14.3 Muscle meat of bullet tuna (Auxis species) 0,15 Where fi sh are intended to be eat en whole, the maximum level applies to the 
+whole fi sh.
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+3.2.14.4 Muscle meat of the f ollowi ng fish:
+Ancho vy (Eng r aulis species)
+Sword fi sh (Xiphias gl adius)
+Sardine (Sar dina pilchar dus)
+0,25 Where fi sh are intended to be eat en whole, the maximum level applies to the 
+whole fi sh.
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+3.2.14.5 Cr ustaceans 0,50 The maximum level applies to muscle meat from appendages and abdomen, 
+which means that the cephalothorax of cr ustaceans is excl uded. In case of crabs 
+and crab-lik e cr ustaceans (Br achyur a and Anomur a) the maximum level applies to 
+the muscle meat from appendage s.
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+EN
+Offi cial Jour nal of the European Uni on L 119/136 5.5.2023  
+3.2.14.6 Bivalve molluscs 1,0 In case of P ecten maximus, the maximum level applies to the adduct or muscle and 
+gonad only .
+In case of dr ied, diluted, processed and/or compo und f ood, Ar ticles 3(1) and (2) 
+apply .
+3.2.14.7 Cephalopods 1,0 The maximum level applies to the animal without viscera.
+In case of dr ied, diluted, processed and/or compo und f ood, Ar ticles 3(1) and (2) 
+apply .
+3.2.15 Cocoa and c hocolate products (
+14
+)
+3.2.15.1 Milk c hocolate with < 30 % total dr y cocoa solids 0,10
+3.2.15.2 Chocolate with < 50 % total dr y cocoa solids; milk chocolat e with ≥ 30 % 
+total dr y cocoa solids
+0,30
+3.2.15.3 Chocolate with ≥ 50 % total dr y cocoa solids 0,80
+3.2.15.4 Cocoa powder placed on the mark et f or the fi nal consumer or as an 
+ingredient in sweetened cocoa po wder or po wdered c hocolate placed on 
+the mark et f or the final consumer (dr inking chocolat e)
+0,60
+3.2.16 Salt 0,50
+3.2.17 Inf ant f or mulae, f ollo w-on f or mulae, f ood f or special medical pur poses 
+intended f or infants and y oung children (
+3
+) and y oung-c hild f or mulae (
+4
+)
+The maximum level applies to the product as placed on the mark et.
+3.2.17.1 placed on the market as powder and manufactured from co ws' milk proteins 
+or cow’s milk prot ein hy drolysate s
+0,010
+3.2.17.2 placed on the market as liquid and manufactured from co ws' milk prote ins or 
+co w’s milk protein hydrolysat es
+0,005
+3.2.17.3 placed on the mark et as po wder and manufactured from so y prot ein isolat es, 
+alone or in a mixture with co ws' milk prote ins
+0,020
+3.2.17.4 placed on the mark et as liquid and manuf actured from so y protein isolat es, 
+alone or in a mixture with co ws' milk prote ins
+0,010
+3.2.18 Y oung-child f or mulae (
+4
+) The maximum level applies to the product as placed on the mark et.
+3.2.18.1 placed on the mark et as po wder and manufactured from plant protein 
+isolate s other than so y protein isolates, alone or in a mixture with co w’s 
+milk prote ins
+0,020
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/137  
+3.2.18.2 placed on the market as liquid and manufactured from plant protein isolates 
+other than so ya prot ein isolate s, alone or in a mixture with cow’s milk 
+prote ins
+0,010
+3.2.19 Dr inks f or inf ants and y oung c hildren labelled and placed on the market as 
+such exce pt products list ed in 3.2.17 and 3.2.18
+3.2.19.1 placed on the market as liquid or to be reconstitute d f ollowing instr uctions of 
+the manufact urer
+0,020 Including fr uit juices.
+The maximum level applies to the products ready to use.
+3.2.20 Baby f ood and processed cereal-based f ood f or infants and y oung children (
+3
+) 0,040 The maximum level applies to the product as placed on the mark et.
+3.2.21 Food supplements
+3.2.21.1 Food supplements excep t products list ed in 3.2.21.2 1,0
+3.2.21.2 Food supplements consisting at least of 80 % from dr ied seaweed, from 
+products der ived from seaweed or from dr ied bivalve molluscs (
+2
+)
+3,0
+3.3 Mercur y
+Maximum 
+level (mg/kg)
+Remark s
+3.3.1 Fisher y products (
+2
+) and bivalve molluscs (
+2
+) The maximum level applies to the wet weight.
+Where fish are intended to be eaten whole, the maximum level applies to the 
+whole fi sh.
+In case of dr ied, dilut ed, processed and/or compo und f ood, Ar ticle 3(1) and (2) 
+apply .
+3.3.1.1 Cr ustaceans, molluscs and muscle meat of fi sh excep t species list ed in 3.3.1.2 
+and 3.3.1.3
+0,50 For cr ustaceans, the maximum level applies to muscle meat from appendage s 
+and abdomen, which means, that the cephalothorax of cr ustaceans is excl uded. 
+In case of crabs and crab-like cr ustaceans (Br achyur a and Anomur a) the maximum 
+level applies to the muscle meat from appendages .
+In case of P ecten maximus, the maximum level applies to the adduct or muscle and 
+gonad only .
+EN
+Offi cial Jour nal of the European Uni on L 119/138 5.5.2023  
+3.3.1.2 Muscle meat of f ollowing fi sh:
+Axillar y seabream (P agellus acar ne)
+Black scabbardf ish (Aphanopus carbo)
+Blackspot seabream (P agellus bog ar aveo)
+Bonito (Sar da sar da)
+Common pandora (P agel lus er ythr inus)
+Escolar (Lepidocybium f lavobr unneum)
+Halibut (Hippoglossus species)
+Kingklip (Genypter us capensis)
+Marlin (Mak air a species)
+Megr im (Lepidorhombus species)
+Oilf ish (Ru vettus pr etiosus)
+Orange roughy (Hoplostethus atlanticus)
+Pink cusk -eel (Genypter us blacodes)
+Pike (Eso x species)
+Plain bonito (Orcynopsis unicolor)
+P oor cod (T r isopter us species)
+Red mullet (Mullus barbatus barbatus)
+R oundnose grenadier (Cor yphaenoides r upestr is)
+Sail fish (Istiophor us species)
+Silver scabbardfish (Lepidopus caudatus)
+Snake mack erel (Gemp y lus ser pens)
+Sturgeon (Aci penser species)
+Sur mullet (Mullus sur muletus)
+T una (Thunnus species, Euthynnus species, K atsuwo nus pelamis)
+Shark (all species)
+Sword fi sh (Xiphias gl adius)
+1,0
+3.3.1.3 Cephalopods
+Mar ine gastropods
+Muscle meat of the f ollowi ng fish:
+Ancho vy (Eng r aulis species)
+Alaska polloc k (Ther ag r a chalcog r amma)
+At lantic cod (Gadus morhua)
+At lantic her r ing (Clupea haren gus)
+Basa (P ang asius bocour ti)
+Car p (species belonging to the Cypr inidae family)
+Common dab (Limanda limanda)
+Mack erel (Scomber species)
+European f lounder (Platichthys f lesus)
+European plaice (Pleur onectes platessa)
+European sprat (Spr attus spr attus)
+Mek ong giant catfi sh (P ang asianodon gig as)
+P olloc k (P ollachius pollachius)
+0,30 For cephalopods, the maximum level applies to the animal without viscera.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/139  
+Saithe (P ollachius virens)
+Salmon & T rout (Salmo species and Oncorhynchus species, exce pt Salmo tr utta)
+Sardine or Pilch ard (Dussumier ia species, Sar dina species, Sar dinella species 
+and Sar dinops species)
+Sole (Solea Solea)
+Str iped catfish (P ang asianodon hypopthalmus)
+Whiting (Merlangius merlangus)
+3.3.2 Food supplements 0,10
+3.3.3 Salt 0,10
+3.4 Arsenic
+Maximum 
+level (mg/kg)
+Remark s
+Inorg anic 
+arsenic (sum 
+of As
+(III) 
+and 
+As
+(V)
+)
+The maximum level f or inorganic arsenic applies to products list ed in 3.4.1 to 
+3.4.4.
+3.4.1 Cereals and cereal based products Rice, husk ed r ice, milled r ice and parboiled r ice as defined in Codex Standard 
+198-1995.
+3.4.1.1 Non-parboiled milled r ice (polished or whit e r ice) 0,15
+3.4.1.2 P arboiled r ice and husked r ice 0,25
+3.4.1.3 Rice f lour 0,25
+3.4.1.4 Rice waff les, r ice waf ers, r ice crack ers, r ice cake s, r ice f lakes and popped 
+breakf ast r ice
+0,30
+3.4.1.5 Rice destined f or the production of f ood f or inf ants and y oung c hildren (
+3
+) 0,10
+3.4.1.6 Non-alcoholic r ice-based dr ink s 0,030
+3.4.2 Inf ant f or mulae, f ollow-on f or mulae and f ood f or special medical pur poses 
+intended f or infants and y oung children (
+3
+) and y oung child f or mulae (
+4
+)
+The maximum level applies to the product as placed on the mark et.
+EN
+Offi cial Jour nal of the European Uni on L 119/140 5.5.2023  
+3.4.2.1 placed on the market as po wder 0,020
+3.4.2.2 placed on the market as liquid 0,010
+3.4.3 Baby f ood (
+3
+) 0,020 The maximum level applies to the product as placed on the mark et.
+3.4.4 Fr uit juices, concentrat ed fr uit juices as reconstituted and fr uit nectars (
+9
+) 0,020
+T otal arsenic The maximum level f or total arsenic applies to products list ed in 3.4.5.
+3.4.5 Salt 0,50
+3.5 Tin (inorganic)
+Maximum 
+level (mg/kg)
+Remark s
+3.5.1 Canned f ood excep t products list ed in 3.5.2, 3.5.3, 3.5.4 and 3.5.5 200 The maximum level applies to the wet weight.
+3.5.2 Canned beverages excep t products listed in 3.5.3, 3.5.4 and 3.5.5 100 The maximum level applies to the wet weight.
+Including fr uit juices and vege table juices.
+3.5.3 Canned infa nt f or mulae, canned f ollow-on f or mulae (
+3
+) and canned y oung- 
+c hild f or mulae (
+4
+)
+50 Ex cept canned dr ied and canned powdered products.
+The maximum level applies to the product as placed on the mark et.
+3.5.4 Canned baby f ood and canned processed cereal-based f ood f or inf ants and 
+y oung children (
+3
+)
+50 Ex cept canned dr ied and canned powdered products.
+The maximum level applies to the product as placed on the mark et.
+3.5.5 Canned f ood f or special medical pur poses inte nded f or infa nts and y oung 
+c hildren (
+3
+)
+50 Ex cept canned dr ied and canned powdered products.
+The maximum level applies to the product as placed on the mark et.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/141  
+4 Halogenated persis tent organic pollut ants
+4.1 Dio xins and PCBs Maximum level Remarks
+Sum of 
+dio xins 
+(pg WHO- 
+PCDD/F - 
+TEQ/g) (
+15
+)
+Sum of 
+dio xins and 
+dio xin-like 
+PCBs (pg 
+WHO-PCDD/ 
+F -PCB- TEQ/g) 
+(
+15
+)
+Sum of non 
+dio xin-like 
+PCBs (ng/g) 
+(
+15
+)
+Sum of non dio xin-like PCBs is of PCB28, PCB52, PCB101, PCB138, 
+PCB153 and PCB180 (ICES - 6).
+Maximum levels refer t o upper bound concentrations, which are 
+calculated on the assum ption that all the values of the different 
+cong eners below the limit of quantification are equal to the limit of 
+quantification.
+4.1.1 Meat and meat products excep t edible offal and products 
+liste d in 4.1.3 and 4.1.4 (
+2
+)
+Maximum levels expressed on fa t are not applicable f or f ood 
+containing < 2 % fat. For f ood containing less than 2 % fa t, the 
+maximum level applicable is the level on product basis 
+cor responding to the level on product basis f or the f ood 
+containing 2 % f at, calculated from the maximum level 
+established on f at basis, making use of f ollo wing f or mula: 
+Maximum level expressed on product basis f or f ood containing 
+less than 2 % f at = maximum level expressed on fat f or that f ood × 
+0,02.
+4.1.1.1 of bovin e, o vine and capr ine animals 2,5 pg/g fat 4,0 pg/g fat 40 ng/g fat
+4.1.1.2 of pigs 1,0 pg/g fat 1,25 pg/g f at 40 ng/g fat
+4.1.1.3 of poultr y 1,75 pg/g f at 3,0 pg/g fat 40 ng/g fat
+4.1.1.4 of horse 5,0 pg/g fat 10,0 pg/g f at -
+4.1.1.5 of rabbit 1,0 pg/g fat 1,5 pg/g fat -
+4.1.1.6 of wild boar (Sus scr of a) 5,0 pg/g fat 10,0 pg/g f at -
+4.1.1.7 of wild ga me birds 2,0 pg/g fat 4,0 pg/g fat -
+4.1.1.8 venison 3,0 pg/g fat 7,5 pg/g fat -
+EN
+Offi cial Jour nal of the European Uni on L 119/142 5.5.2023  
+4.1.2 Liver and der ived products thereof
+4.1.2.1 of bovin e and capr ine animals, pigs, poultr y and horse 0,30 pg/g wet 
+weight
+0,50 pg/g wet 
+weight
+3,0 ng/g wet 
+weight
+4.1.2.2 of ovine animals 1,25 pg/g wet 
+weight
+2,00 pg/g wet 
+weight
+3,0 ng/g wet 
+weight
+4.1.2.3 of wild ga me birds 2,5 pg/g wet 
+weight
+5,0 pg/g wet 
+weight
+-
+4.1.3 Fat
+4.1.3.1 of bovin e animals and sheep 2,5 pg/g fat 4,0 pg/g fat 40 ng/g fat
+4.1.3.2 of pigs 1,0 pg/g fat 1,25 pg/g f at 40 ng/g fat
+4.1.3.3 of poultr y 1,75 pg/g f at 3,0 pg/g fat 40 ng/g fat
+4.1.4 Mixed animal fa ts 1,5 pg/g fat 2,50 pg/g f at 40 ng/g fat
+4.1.5 Fisher y products (
+2
+) and bivalve molluscs (
+2
+) excep t products 
+liste d in 4.1.6, 4.1.7, 4.1.8, 4.1.9 and 4.1.10
+3,5 pg/g wet 
+weight
+6,5 pg/g wet 
+weight
+75 ng/g wet 
+weight
+In case of fi sh, maximum level applies to muscle meat of fish.
+Where fi sh are intended to be eat en whole, the maximum level 
+applies to the whole fi sh.
+The maximum level f or cr ustaceans applies to muscle meat from 
+appendage s and abdomen, that means, that the cephalothorax of 
+cr ustaceans is excl uded.
+4.1.6 Muscle meat of wild caught fresh water fish and products 
+thereof
+3,5 pg/g wet 
+weight
+6,5 pg/g wet 
+weight
+125 ng/g wet 
+weight
+Ex cept diadromous fish species caught in fresh water and 
+products thereof
+Where fi sh are intended to be eat en whole, the maximum level 
+applies to the whole fi sh.
+4.1.7 Muscle meat of wild caught spiny dogfi sh (Squalus acanthias) 
+and products thereof
+3,5 pg/g wet 
+weight
+6,5 pg/g wet 
+weight
+200 ng/g wet 
+weight
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/143  
+4.1.8 Muscle meat of wild caught eel (Anguilla anguilla) and 
+products thereof
+3,5 pg/g wet 
+weight
+10,0 pg/g wet 
+weight
+300 ng/g wet 
+weight
+4.1.9 Fish liver and der ived products thereof exce pt products liste d 
+in 4.1.10
+- 20,0 pg/g wet 
+weight
+200 ng/g wet 
+weight
+In the case of canned fi sh liver , the maximum level applies to the 
+whole edible content of the can.
+4.1.10 Mar ine oils (fish body oil, fish liver oil and oils of other 
+mar ine org anisms placed on the mark et f or the fi nal 
+consumer)
+1,75 pg/g f at 6,0 pg/g fat 200 ng/g f at
+4.1.11 R aw milk (
+2
+) and dair y products (
+2
+) 2,0 pg/g fat 4,0 pg/g fat 40 ng/g fat Including butter f at.
+Maximum levels expressed on fa t are not applicable f or f ood 
+containing < 2 % fat. For f ood containing less than 2 % fa t, the 
+maximum level applicable is the level on product basis 
+cor responding to the level on product basis f or the f ood 
+containing 2 % f at, calculated from the maximum level 
+established on f at basis, making use of f ollo wing f or mula: 
+Maximum level expressed on product basis f or f ood containing 
+less than 2 % f at = maximum level expressed on fat f or that f ood × 
+0,02.
+4.1.12 Eggs and egg products excep t goose eggs (
+2
+) 2,5 pg/g fat 5,0 pg/g fat 40 ng/g fat Maximum levels expressed on fa t are not applicable f or f ood 
+containing < 2 % fat. For f ood containing less than 2 % fa t, the 
+maximum level applicable is the level on product basis 
+cor responding to the level on product basis f or the f ood 
+containing 2 % f at, calculated from the maximum level 
+established on f at basis, making use of f ollo wing f or mula: 
+Maximum level expressed on product basis f or f ood containing 
+less than 2 % f at = maximum level expressed on fat f or that f ood × 
+0,02.
+4.1.13 V egetable oils and f ats 0,75 pg/g f at 1,25 pg/g f at 40 ng/g fat
+4.1.14 Food intended f or inf ants and y oung c hildren (
+3
+) 0,1 pg/g wet 
+weight
+0,2 pg/g wet 
+weight
+1,0 ng/g wet 
+weight
+The maximum level applies to the products ready to use (placed 
+on the mark et as such or af ter reconstitution as instr ucted by the 
+manuf acturer).
+EN
+Offi cial Jour nal of the European Uni on L 119/144 5.5.2023  
+4.2 Perf luoroalkyl subst ances Maximum level (μg/kg) Remarks
+PF OS PF O A PFNA PFHxS
+Sum of PFOS, 
+PFO A , PFNA 
+and PFHxS
+The maximum level applies t o the wet weight.
+PFOS: perf luorooctane sulf onic acid
+PFO A: perf luorooctanoic acid
+PFNA: perf luorononanoic acid
+PFHxS: perf luorohexane sulf onic acid
+For PFOS, PFO A, PFNA, PFHxS and their sum, the maximum level 
+refers to the sum of linear and branched stereo isomers, whether 
+they are chromat ographically separated or not.
+For the sum of PFOS, PFO A, PFNA and PFHxS, maximum levels 
+refer t o lo wer bound concentrations, which are calculated on the 
+assump tion that all the values below the limit of quantification are 
+zero.
+4.2.1 Meat and edible offal (
+2
+)
+4.2.1.1 Meat of bovine animals, pig and 
+poultr y
+0,30 0,80 0,20 0,20 1,3
+4.2.1.2 Meat of sheep 1,0 0,20 0,20 0,20 1,6
+4.2.1.3 Offal of bovine animals, sheep, pig 
+and poultr y
+6,0 0,70 0,40 0,50 8,0
+4.2.1.4 Meat of game animals, with the 
+excep tion of bear meat
+5,0 3,5 1,5 0,60 9,0
+4.2.1.5 Offal of game animals, with the 
+excep tion of bear offal
+50 25 45 3,0 50
+4.2.2 Fisher y products (
+2
+) and bivalve 
+molluscs (
+2
+)
+In case of dr ied, dilut ed, processed and/or compo und f ood, 
+Ar ticle 3(1) and (2) apply .
+4.2.2.1 Fish meat Where fi sh are intended to be eaten whole, the maximum level 
+applies to the whole fish.
+4.2.2.1.1 Muscle meat of fish, excep t 
+products list ed in 4.2.2.1.2 
+and 4.2.2.1.3
+Muscle meat of fish listed 
+in 4.2.2.1.2 and 4.2.2.1.3, in case 
+it is inte nded f or the production of 
+f ood f or inf ants and y oung 
+c hildren
+2,0 0,20 0,50 0,20 2,0
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/145  
+4.2.2.1.2 Muscle meat of the f ollowi ng fish, 
+in case it is not inte nded f or the 
+production of f ood f or infants and 
+y oung children:
+Baltic her r ing (Clupea haren gus 
+membr as)
+Bonito (Sar da and Orc ynopsis 
+species)
+Burbot (Lota lota)
+European sprat (Spr attus spr attus)
+Flounder (Platichthys f lesus and 
+Glyptocephalus cynog lossus)
+Grey mullet (Mugil cephalus)
+Horse mack erel (T r achur us 
+tr achur us)
+Pike (Eso x species)
+Plaice (Pleur onectes and 
+Lepidopsetta species)
+Sardine and pilch ard (Sar dina 
+species)
+Seabass (Dicentr arch us species)
+Sea catfish (Silur us and P ang asius 
+species)
+Sea lampre y (P etromyzon mar inus)
+T enc h (Tinca tinca)
+V endace (Cor egonus albula and 
+Core gonus vandesius )
+Silverly lightf ish (Phosichthys 
+argenteus)
+Wild salmon and wild trout (wild 
+Salmo and Oncorhynchus species)
+W olf fish (Anarhichas species)
+7,0 1,0 2,5 0,20 8,0
+EN
+Offi cial Jour nal of the European Uni on L 119/146 5.5.2023  
+4.2.2.1.3 Muscle meat of the f ollowi ng fish, 
+in case it is not inte nded f or the 
+production of f ood f or infants and 
+y oung children:
+Ancho vy (Eng r aulis species)
+Babel (Barbus barbus)
+Bream (Abr amis species)
+Char (Salvelinus species)
+Eel (Anguilla species)
+Pike -perch (Sander species)
+P erch (P erca f luviatilis)
+R oach (Ru tilus r utilus)
+Smelt (Osmer us species)
+White fi sh (Coregon us species other 
+than those listed in 4.2.2.1.2)
+35 8,0 8,0 1,5 45
+4.2.2.2 Cr ustaceans and bivalve molluscs 3,0 0,70 1,0 1,5 5,0 For cr ustaceans, the maximum level applies to muscle meat 
+from appendages and abdomen, that means, that the 
+cephalothorax of cr ustaceans is excl uded. In case of crabs 
+and crab-lik e cr ustaceans (Br achyur a and Anomur a), the 
+maximum level applies to the muscle meat from appendage s.
+In case of P ecten maximus, the maximum level applies to the 
+adduct or muscle and gonad only .
+For canned cr ustaceans, the maximum level applies to the 
+whole content of the can. As regards the maximum level f or 
+the whole compo sit e product, Ar ticle 3(1), point (c) and 
+Ar ticle 3(2) apply .
+4.2.3 Eggs 1,0 0,30 0,70 0,30 1,7
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/147  
+5 Processing contamin ants
+5.1 Poly cy clic aromatic hydrocarbons (P AHs) Maximum level (μg/kg) Remark s
+Benzo(a) 
+pyrene
+Sum of P AHs: 
+benzo(a) 
+pyrene, benz(a) 
+anthracene, 
+benzo(b) 
+f luoranthene 
+and chr ysene
+For the sum of P AHs, maximum levels refer to lo wer bound 
+concentrations, which are calculat ed on the assump tion that all the 
+values of the f our substances below the limit of quantifi cation are 
+zero.
+5.1.1 Banana c hips 2,0 20,0
+5.1.2 P o wders of f ood of plant or igin f or the preparation of beverage s 
+excep t products liste d in 5.1.4 and 5.1.5
+10,0 50,0 The preparation of beverages refers to the use of po wders that are 
+fi nely ground and are stir red into dr inks.
+Ex cept instant or soluble coffee.
+5.1.3 Dr ied herbs 10,0 50,0 The maximum level applies to the product as placed on the mark et.
+5.1.4 Cocoa beans and der ived products excep t products listed in 5.1.5 5,0 μg/kg f at 30,0 μg/kg f at Including cocoa butt er .
+5.1.5 Cocoa fibre and products der ived from cocoa fi bre intended f or use 
+as an ingredient in f ood
+3,0 15,0 Cocoa fibre is a specific cocoa product produced from the shell of the 
+cocoa bean and contains higher levels of P AHs than the cocoa 
+products produced from the cocoa nibs. The cocoa fi bre and 
+der ived products are interm ediat e products in the production c hain 
+and are used as an ingredient in the preparation of low calor ie, high 
+fi bre f ood.
+5.1.6 Smoke d meat and smoked meat products 2,0 12,0
+5.1.7 Smoke d fisher y products (
+2
+) exce pt products list ed in 5.1.8 2,0 12,0 In case of fish, the maximum level applies to muscle meat of fi sh.
+Where fish are intende d to be eaten whole, the maximum level 
+applies to the whole fish.
+The maximum level f or smoked cr ustaceans applies to muscle meat 
+from appendage s and abdomen, that means, that the cephalothorax 
+of cr ustaceans is excluded. In case of smoked crabs and crab-lik e 
+cr ustaceans (Br achyur a and Anomur a) it applies to muscle meat from 
+appendages.
+EN
+Offi cial Jour nal of the European Uni on L 119/148 5.5.2023  
+5.1.8 Smoke d sprats and canned smok ed sprats (Spr attus spr attus)
+Smoke d Baltic her r ing ≤ 14 cm length and canned smoked Baltic 
+her r ing ≤ 14 cm length (Clupea haren gus membr as)
+Kat suobushi (dr ied bonito, K atsuwonus pelamis)
+Bivalve molluscs (
+2
+) (fresh, c hilled or frozen)
+Heat treate d meat and heat treated meat products placed on the 
+mark et f or the final consumer
+5,0 30,0 Where fish are intende d to be eaten whole, the maximum level 
+applies to the whole fish.
+Meat and meat products that have undergone a heat treatment 
+poten tially resulting in f or mation of P AH, i.e. only gr illing and 
+barbecuing.
+For the canned products, the maximum level applies to the whole 
+conte nt of the can. As rega rds the maximum level f or the whole 
+compo site product, Ar ticle 3(1), point (c) and Ar ticle 3(2) apply .
+5.1.9 Smoke d bivalve molluscs (
+2
+) 6,0 35,0
+5.1.10 Dr ied spices 10,0 50,0 Ex cept cardamom and smoke d Capsicum spp.
+The maximum level applies to the product as placed on the mark et.
+5.1.11 Oils and f ats placed on the mark et f or the fi nal consumer or use as 
+an ingredient in f ood
+2,0 10,0 Ex cept cocoa butt er and coconut oil.
+This maximum level applies to vegeta ble oils used as an ingredient in 
+f ood supplements.
+5.1.12 Coconut oil placed on the mark et f or the fi nal consumer or use as an 
+ingredient in f ood
+2,0 20,0
+5.1.13 Inf ant f or mulae, f ollo w-on f or mulae (
+3
+) and y oung-c hild f or mulae (
+4
+) 1,0 1,0 The maximum level applies to the products ready to use (placed on 
+the market as such or af ter reconstitution as instr ucted by the 
+manufact urer).
+5.1.14 Baby f ood and processed cereal-based f ood f or inf ants and y oung 
+c hildren (
+3
+)
+1,0 1,0 The maximum level applies to the product as placed on the mark et.
+5.1.15 Food f or special medical pur poses intende d f or infants and y oung 
+c hildren (
+3
+)
+1,0 1,0 The maximum level applies to the products ready to use (placed on 
+the market as such or af ter reconstitution as instr ucted by the 
+manufact urer).
+5.1.16 Food supplements containing botanicals and their preparations (
+13
+)
+Food supplements containing propolis, ro yal jelly , spir ulina or their 
+preparations
+10,0 50,0 The maximum level does not apply to f ood supplements containing 
+veget able oils. For veg etable oils used as an ingredient in f ood 
+supplements, see point 5.1.11.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/149  
+5.2 3-monochloropropane-1,2-diol (3-MCPD)
+Maximum 
+level (μg/kg)
+Remark s
+5.2.1 Hydrolysed veg etable protein 20 The maximum level is given f or the liquid product containing 40 % dr y 
+matte r , cor responding to a maximum level of 50 μg/kg in the dr y matt er . The 
+level needs to be adjusted propor tionally according to the dr y matte r content 
+of the products.
+5.2.2 So y sauce 20 The maximum level is given f or the liquid product containing 40 % dr y 
+matte r , cor responding to a maximum level of 50 μg/kg in the dr y matt er . The 
+level needs to be adjusted propor tionally according to the dr y matte r content 
+of the products.
+5.3
+Sum of 3-monochloropropanediol (3-MCPD) and 3-MCPD fatty acid esters, 
+expressed as 3-MCPD
+Maximum 
+level (μg/kg)
+Remark s
+For the sum of 3-monochlor opropanediol (3-MCPD) and 3-MCPD f atty acid 
+este rs, maximum levels refe r to lo wer bound concentrations, whic h are 
+calculat ed on the assum ption that all the values below the limit of 
+quantifi cation are zero.
+5.3.1 V egetable oils and fa ts, fi sh oils and oils from other mar ine org anisms 
+excep t products list ed in 5.3.2 placed on the mark et f or the f inal 
+consumer or f or use as an ingredient in f ood f alling within the f ollowing 
+catego r ies:
+Ex cept virgin olive oils (
+7
+).
+5.3.1.1 oils and fats from coconut, maize, rapeseed, sunf lo wer , so ybean, palm 
+kernel and olive oils (com posed of ref ined olive oil and virgin olive oil) 
+and mixtures of oils and f ats with oils and fa ts only from this categor y
+1 250 Ex cept virgin olive oils (
+7
+).
+5.3.1.2 other veg etable oils, fish oils and oils from other mar ine org anisms and 
+mixtures of oils and fats with oils and fats only from this catego r y
+2 500 Including pomace olive oils.
+5.3.1.3 mixtures of oils and fats from products listed in 5.3.1.1 and 5.3.1.2 - The oils and f ats used as ingredient f or the mixture shall compl y with the 
+maximum level established f or the oil and fat. Theref ore, the level of the 
+sum of 3-MCPD and 3-MCPD fatty acid este rs, expressed as 3-MCPD in the 
+mixture, shall not exceed the level calculat ed in accordance with Ar ticle 3(1), 
+point (c).
+EN
+Offi cial Jour nal of the European Uni on L 119/150 5.5.2023  
+In case the quantitative compo sition is not kno wn f or the compet ent 
+author ity and the f ood business operat or , not producing the mixture, the 
+level of the sum of 3-MCPD and 3-MCPD fatty acid esters, expressed as 
+3-MCPD in the mixture shall in an y case not exceed 2 500 μg/kg.
+5.3.2 V egetable oils and fa ts, fi sh oils and oils from other mar ine org anisms 
+destined f or the production of baby f ood and processed cereal-based f ood 
+f or inf ants and y oung c hildren (
+3
+)
+750 When the product is a mixture of differ ent oils or f ats of the same or of 
+differ ent botanical or igins, the maximum level applies f or the mixture. The 
+oils and fa ts used as ingredient f or the mixture shall comply with the 
+maximum level established f or the oil and fa t in point 5.3.1.
+5.3.3 Inf ant f or mulae, f ollo w-on f or mulae and f ood f or special medical pur poses 
+intended f or infants and y oung children (
+3
+) and y oung-c hild f or mulae (
+4
+)
+The maximum level applies to the product as placed on the mark et.
+5.3.3.1 placed on the market as po wder 125
+5.3.3.2 placed on the market as liquid 15
+5.4 Gly cidyl fatty acid esters, expressed as gly cidol
+Maximum 
+level (μg/kg)
+Remark s
+5.4.1 V egetable oils and fa ts, fi sh oils and oils from other mar ine org anisms 
+placed on the mark et f or the fi nal consumer or f or use as an ingredient in 
+f ood excep t products listed in 5.4.2
+1 000 Ex cept virgin olive oils (
+7
+).
+5.4.2 V egetable oils and fa ts, fi sh oils and oils from other mar ine org anisms 
+destined f or the production of baby f ood and processed cereal-based f ood 
+f or inf ants and y oung c hildren (
+3
+)
+500 When the product is a mixture of differ ent oils or f ats of the same or of 
+differ ent botanical or igins, the maximum level applies f or the mixture.
+The oils and f ats used as ingredient f or the mixture shall compl y with the 
+maximum level established f or the oil and fa t in point 5.4.1.
+5.4.3 Inf ant f or mulae, f ollo w-on f or mulae and f ood f or special medical pur poses 
+intended f or infants and y oung children (
+3
+) and y oung-c hild f or mulae (
+4
+)
+The maximum level applies to the product as placed on the mark et.
+5.4.3.1 placed on the market as po wder 50
+5.4.3.2 placed on the market as liquid 6,0
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/151  
+6 Other contaminants
+6.1 Nitrates
+Maximum level
+(mg NO
+3
+/kg)
+6.1.1 Fresh spinac h (Spinacia oler acea) 3 500 The maximum level does not apply f or fresh spinach f or processing, which is 
+directly transpor ted in bulk from field to processing plant.
+6.1.2 Preser ved, deep-frozen or frozen spinac h 2 000
+6.1.3 Fresh lettuce (Lactuca sativa L.) excep t products list ed in 6.1.4
+6.1.3.1 Lettuce grown under co ver , har vested between 1 October and 31 March 5 000 Lettuce grown under co ver has to be labelled as such; other wise the maximum 
+level specified in 6.1.3.2 applies.
+6.1.3.2 Lettuce gro wn in the open air , har veste d between 1 October and 31 March 4 000
+6.1.3.3 Lettuce grown under co ver , har vested between 1 Apr il and 30 Sept ember 4 000 Lettuce grown under co ver has to be labelled as such; other wise the maximum 
+level specified in 6.1.3.4 applies.
+6.1.3.4 Lettuce grown in the open air , har vested between 1 Apr il and 30 Sept ember 3 000
+6.1.4 ‘Iceberg’ type lettuce Including Grazer Krauthäup tl.
+6.1.4.1 Lettuce grown under co ver 2 500 Lettuce grown under co ver has to be labelled as such; other wise the maximum 
+level specified in 6.1.4.2 applies.
+6.1.4.2 Lettuce grown in the open air 2 000
+6.1.5 Rucola (Er uca sativa, Diplotaxis sp., Br assica tenuif olia, Sisymbr ium tenuif olium)
+6.1.5.1 har veste d between 1 October and 31 March 7 000
+6.1.5.2 har veste d between 1 Apr il and 30 Sept ember 6 000
+6.1.6 Baby f ood and processed cereal-based f ood f or inf ants and y oung children 
+(
+3
+)
+200 The maximum level applies to the products ready to use (placed on the mark et 
+as such or af ter reconstitution as instr ucted by the manufacturer).
+EN
+Offi cial Jour nal of the European Uni on L 119/152 5.5.2023  
+6.2 Melamine
+Maximum 
+level (mg/kg)
+Remark s
+6.2.1 Food excep t products list ed in 6.2.2 2,5 The maximum level does not apply to f ood f or whic h it can be proven that the 
+level of melamine higher than 2,5 mg/kg is the consequence of author ized use 
+of cyromazine as insecticide. The melamine level shall not exceed the level of 
+cyromazine.
+6.2.2 Inf ant f or mulae, f ollow-on f or mulae (
+3
+) and y oung-c hild f or mulae (
+4
+) The maximum level applies to the product as placed on the mark et.
+6.2.2.1 placed on the market as po wder 1,0
+6.2.2.2 placed on the market as liquid 0,15
+6.3 Perchlorate
+Maximum 
+level (mg/kg)
+Remark s
+6.3.1 Fr uits and vegetables excep t of products listed in 6.3.1.1 and 6.3.1.2 0,05
+6.3.1.1 Cucurbitaceae and kale 0,10
+6.3.1.2 Leaf vege tables and herbs 0,50
+6.3.2 T ea (Camellia sinensis) (dr ied product)
+Herbal and fr uit infusions (dr ied product) and ingredients used f or herbal 
+and fr uit infusions (dr ied products)
+0,75 ‘Herbal infusions (dr ied product)’ refers to:
+— herbal infusions (dr ied product) from f lo wers, leav es, stalks, roots, and 
+any other par ts of the plant (in sachets or in bulk) used f or the preparation 
+of herbal infusion (liquid product); and
+— instant herbal infusions. In the case of po wdered extracts, a concentration 
+fa ctor of 4 has to be applied.
+6.3.3 Inf ant f or mulae, f ollow-on f or mulae, f ood f or special medical pur poses 
+intended f or infants and y oung children (
+3
+) and y oung-c hild f or mulae (
+4
+)
+0,01 The maximum level applies to the products ready to use (placed on the mark et 
+as such or af ter reconstitution as instr ucted by the manufacturer).
+6.3.4 Baby f ood (
+3
+) 0,02 The maximum level applies to the products ready to use (placed on the mark et 
+as such or af ter reconstitution as instr ucted by the manufacturer).
+6.3.5 Processed cereal-based f ood (
+3
+) 0,01 The maximum level applies to the product as placed on the mark et.
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/153  
+(
+1
+) Fr uits, tree nuts, vegetables, cereals, oilseeds and spices as liste d in the relevant catego r y as defined in Annex I to Regulation (EC) No 396/2005 of the European P arliament and of the 
+Council of 23 Febr uar y 2005 on maximum residue levels of pesticides in or on f ood and feed of plant and animal or igin and amending Council Directive 91/414/EEC ( OJ L 70, 
+16.3.2005, p. 1 ). For the pur pose of this Regulation tree nuts are not co vered by the maximum level f or fr uits.
+(
+2
+) Food as defined in Annex I to Regulation (EC) No 853/2004 of the European P arliament and of the Council of 29 Apr il 2004 la ying down specific hy giene r ules f or f ood of animal 
+or igin ( OJ L 139, 30.4.2004, p. 55 ).
+(
+3
+) Food as def ined in Ar ticle 2 of Regulation (EU) No 609/2013 of the European P arliament and of the Council of 12 June 2013 on f ood intended f or infants and y oung c hildren, f ood f or 
+special medical pur poses, and total diet replacement f or weight control and repealing Council Directive 92/52/EEC, Commission Directives 96/8/EC, 1999/21/EC, 2006/125/EC 
+and 2006/141/EC, Directive 2009/39/EC of the European Parliament and of the Council and Commission Regulations (EC) No 41/2009 and (EC) No 953/2009 ( OJ L181, 29.6.2013, 
+p. 35 ).
+(
+4
+) ‘ Y oung-c hild f or mulae ’ refers to milk -based dr ink s and similar prot ein-based products intended f or y oung children. These products are outside the scope of Regulation (EU) 
+No 609/2013 (Repor t from the Commission to the European P arliament and the Council on y oung-c hild f or mulae (COM(2016) 169 fi nal) https://eur -lex.europa.eu/legal-c ontent/EN/ 
+TXT/?ur i=CELEX%3A52016DC0169&qid=1620902871447 ).
+(
+5
+) Dr y matter is det er mined according to Commission Regulation (EC) No 401/2006 of 23 Febr uar y 2006 la ying down the methods of sam pling and analysis f or the official control of 
+the levels of my cot o xins in f oodstuffs ( OJ L 70, 9.3.2006, p. 12 ).
+(
+6
+) First stage processing means an y phy sical or ther mal treatment, other than dr ying, of or on the grain. Cleaning, including scour ing, sor ting (colour sor ting where applicable) and dr ying 
+procedures are not considered to be ‘f irst-stage processing’ insof ar as the whole grain remains intact af ter cleaning and sor ting. Scour ing means cleaning cereal by br ushing and/or 
+scr ubbing it vigorously , combined with dust remo val (e.g. aspiration). The scour ing could be f ollowe d by a colour sor ting bef ore milling.
+(
+7
+) Food as def ined in P ar t II and Par t VIII of Annex VII to Regulation (EU) No 1308/2013 of the European P arliament and of the Council of 17 December 2013 establishing a common 
+org anisation of the markets in agr icultural products and repealing Council Regulations (EEC) No 922/72, (EEC) No 234/79, (EC) No 1037/2001 and (EC) No 1234/2007 
+( OJ L 347 20.12.2013, p. 671 ).
+(
+8
+) Food as def ined in Ar ticle 3 of Regulation (EU) No 251/2014 of the European P arliament and of the Council of 26 Febr uar y 2014 on the definition, descr ipt ion, presentation, labelling 
+and the protection of geographical indications of aromatised wine products and repealing Council Regulation (EEC) No 1601/91 ( OJ L 84, 20.3.2014, p. 14 ).
+(
+9
+) Food as def ined in Council Directive 2001/112/EC of 20 December 2001 relating to fr uit juices and cer tain similar products intende d f or human consump tion ( OJ L 10, 12.1.2002, 
+p. 58 ).
+(
+10
+) Food as def ined in Ar ticle 2 of Regulation (EU) 2019/787 of the European P arliament and of the Council of 17 Apr il 2019 on the definition, descr ipt ion, presentation and labelling of 
+spir it dr ink s, the use of the names of spir it dr inks in the presentation and labelling of other f oodstuffs, the protection of ge ographical indications f or spir it dr ink s, the use of eth yl 
+alcohol and distillates of agr icultural or igin in alcoholic beverages, and repealing Regulation (EC) No 110/2008 ( OJ L 130, 17. 5. 2019, p.1 ).
+(
+11
+) The f ont size as specif ied in Ar ticle 13(2) of Regulation (EU) No 1169/2011 of the European P arliament and of the Council of 25 October 2011 on the provision of f ood inf or mation 
+to consumers ( OJ L 304 22.11.2011, p. 18 ).
+(
+12
+) ‘Flav oured tea’ is tea with a ‘f la vouri ng’ or a ‘f ood ingredient with f la vouring proper ties ’ as def ined in Ar ticle 3 of Regulation (EC) No 1334/2008 of the European P arliament and of 
+the Council of 16 December 2008 on f la vouri ngs and cer tain f ood ingredients with f la vouri ng proper ties f or use in and on f oods and amending Council Regulation (EEC) 
+No 1601/91, Regulations (EC) No 2232/96 and (EC) No 110/2008 and Directive 2000/13/EC ( OJ L 354, 31.12.2008, p. 34 ).
+EN
+Offi cial Jour nal of the European Uni on L 119/154 5.5.2023  
+(
+13
+) Botanical preparations f or f ood supplements are obtained from botanicals (e.g. whole, plant par ts, fragment ed or cut plants) by var ious processes (e.g. pressing, squeezing, extraction, 
+fractionation, distillation, concentration, dr ying up and fe r mentation). Botanical preparations include comminuted or po wdered plants, plant par ts, algae, fungi, liche n, tinctures, 
+extracts, essential oils (other than the veg etable oils and fa ts (ex cluding butte r and coconut oil) intended f or direct human consum ption or use as an ingredient in f ood), expressed 
+juices and processed exudat es.
+(
+14
+) ‘Cocoa and choc olate products’ are an y of the products defined in points 2, 3 and 4 of par t A of Annex I to Directive 2000/36/EC of the European Parliament and of the Council of 
+23 June 2000 relating to cocoa and c hocolate products intended f or human consum ption ( OJ L 197, 3.8.2000, p. 19 ).
+(
+15
+) WHO- TEQs: The sum of dio xins (poly c hlor inated dibenzo-para-dio xins [PCDDs] and poly c hlor inat ed dibenzofurans [PCDFs]) and the sum of dio xins and dio xin-like poly chlor inated 
+biphen yls (PCBs) are calculat ed using the WHO-to xic equivalency f actors (WHO- TEFs) and expressed as WHO to xic equivalents (WHO- TEQs). WHO- TEFs f or human r isk assessment 
+are based on the conclusions of the W orld Health Organization (WHO) – International Programme on Chemical Safety (IPCS) exper t meeting whic h was held in Geneva in June 2005 
+(V an den Berg et al., The 2005 W orld Health Org anization Re-evaluation of Human and Mammalian T o xic Equivalency Fact ors f or Dio xins and Dio xin-like Compounds. T o xicological 
+Sciences 93[2], 223-241 [2006]).
+Cong ener TEF value Congener TEF value
+Dio xins ’Dio xin-like’ PCBs
+Dibenzo-p-diox ins ("PCDDs") Non-or tho–substituted PCBs
+2,3,7,8- TCDD 1 PCB 77 0,0001
+1,2,3,7,8-P eCDD 1 PCB 81 0,0003
+1,2,3,4,7,8-HxCDD 0,1 PCB 126 0,1
+1,2,3,6,7,8-HxCDD 0,1 PCB 169 0,03
+1,2,3,7,8,9-HxCDD 0,1
+1,2,3,4,6,7,8-HpCDD 0,01
+OCDD 0,0003
+Mono-or tho–substituted PCBs
+2,3,7,8- TCDF 0,1 PCB 105 0,00003
+1,2,3,7,8-P eCDF 0,03 PCB 114 0,00003
+2,3,4,7,8-P eCDF 0,3 PCB 118 0,00003
+1,2,3,4,7,8-HxCDF 0,1 PCB 123 0,00003
+1,2,3,6,7,8-HxCDF 0,1 PCB 156 0,00003
+1,2,3,7,8,9-HxCDF 0,1 PCB 157 0,00003
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/155  
+Cong ener TEF value Congener TEF value
+Dio xins ’Dio xin-like’ PCBs
+2,3,4,6,7,8-HxCDF 0,1 PCB 167 0,00003
+1,2,3,4,6,7,8-HpCDF 0,01 PCB 189 0,00003
+1,2,3,4,7,8,9-HpCDF 0,01
+OCDF 0,0003
+Abbreviations used: ‘ T’ = t etra; ‘Pe’ = penta; ‘Hx’ = hexa; ‘Hp’ = hepta; ‘O’ = octa; ‘CDD’ = chlorodibenzodio xin; ‘CDF’ = c hlorodibenzofuran; ‘CB’ = chlorobiphen yl
+EN
+Offi cial Jour nal of the European Uni on L 119/156 5.5.2023  
+ANNEX II 
+Cor relation table refer red t o in Ar ticle 9
+Regulation (EC) No 1881/2006 This Regulation
+Ar ticle 1 Ar ticle 2
+Ar ticle 2(1), 2(2), 2(3) Ar ticle 3(1), 3(2), 3(3)
+Ar ticle 2(4) Ar ticle 3(3)
+Ar ticle 3(1), 3(2) Ar ticle 2(1), 2(2)
+Ar ticle 3(3) Ar ticle 5(3)
+Ar ticle 3(4) Ar ticle 4
+Ar ticle 4 Ar ticle 5
+Ar ticle 5 Ar ticle 6
+Ar ticle 6 Annex I, points 6.1.3.1, 6.1.3.3, 6.1.4.1
+Ar ticle 7 Ar ticle 7
+Ar ticle 8 -
+Ar ticle 9 Ar ticle 8
+Ar ticle 10 Ar ticle 9
+Ar ticle 11 Ar ticle 10
+Ar ticle 12 Ar ticle 11
+Annex Annex I
+EN
+Offi cial Jour nal of the European Uni on 5.5.2023 L 119/157  

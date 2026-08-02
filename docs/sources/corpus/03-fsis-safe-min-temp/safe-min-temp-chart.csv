@@ -1,0 +1,12 @@
+source_id,value_type,category,temp_f,temp_c,rest_min,extraction,notes
+03-fsis-safe-min-temp,safe,beef_pork_veal_lamb_steaks_chops_roasts,145,62.8,3,PDF-T,"kstate.edu mirror of official FSIS 'Safe Minimum Internal Temperature Chart' (dated June 2012 on the document itself)"
+03-fsis-safe-min-temp,safe,ground_meats_beef_pork_veal_lamb,160,71.1,0,PDF-T,
+03-fsis-safe-min-temp,safe,ham_fresh_or_smoked_uncooked,145,62.8,3,PDF-T,
+03-fsis-safe-min-temp,safe,ham_fully_cooked_to_reheat,140,60.0,0,PDF-T,"Reheat hams packaged in USDA-inspected plants to 140F; all others to 165F(73.9C)"
+03-fsis-safe-min-temp,safe,ham_fully_cooked_to_reheat_non_usda_pkg,165,73.9,0,PDF-T,
+03-fsis-safe-min-temp,safe,all_poultry,165,73.9,0,PDF-T,"breasts, whole bird, legs, thighs, wings, ground poultry, stuffing"
+03-fsis-safe-min-temp,safe,eggs,160,71.1,0,PDF-T,
+03-fsis-safe-min-temp,safe,fish_and_shellfish,145,62.8,0,PDF-T,
+03-fsis-safe-min-temp,safe,leftovers,165,73.9,0,PDF-T,
+03-fsis-safe-min-temp,safe,casseroles,165,73.9,0,PDF-T,
+03-fsis-safe-min-temp,rest,pork_whole_cuts_2011_change,145,62.8,3,MANUAL,"2011 USDA/FSIS policy change: pork whole-muscle cuts (loins/chops/roasts) lowered from 160F/no-rest to 145F+3min rest, announced 2011-05-24/25. Ground pork unchanged at 160F no rest. Secondary-source confirmed (lsuagcenter.com extension news archive quoting the USDA announcement); primary usda.gov blog page returned HTTP 403 to WebFetch"

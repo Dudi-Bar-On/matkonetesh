@@ -1,0 +1,7 @@
+source_id,wood,smoke_intensity,heat_output,spark_production,ember_quality
+18,apple,medium,high,few,excellent
+18,cherry,medium,medium,few,excellent
+18,hickory,strong,high,few,excellent
+18,mesquite,strongest,high,few,excellent
+18,oak,medium,high,few,excellent
+18,pecan,strong,high,few,good

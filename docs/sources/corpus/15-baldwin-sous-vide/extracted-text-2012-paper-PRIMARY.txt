@@ -1,0 +1,1362 @@
+Sous
+Vide Cooking: A Review
+Douglas E. Baldwin
+University of Colorado, Boulder , CO 80309-0526
+Abstract
+Sous
+vide is a method of cooking in vacuumized plastic pouches at precisely controlled
+temperatures. Precise temperature control gives more choice over doneness and tex-
+ture than traditional cooking methods. Cooking in heat-stable, vacuumized pouches
+improves shelf-life and can enhance taste and nutrition. This article reviews the basic
+techniques, food safety, and science of sous vide cooking.
+Keywords: sous vide cooking
+1.
+Introduction
+Sous vide is French for “under vacuum” and sous vide cooking is deﬁned as “raw
+materials or raw materials with intermediate foods that are cooked under controlled
+conditions of temperature and time inside heat-stable vacuumized pouches” (Schellekens,
+1996).
+Food scientists have been actively studying sous vide processing since the 1990s
+(cf. Mossel and Struijk (1991); Ohlsson (1994); Schellekens (1996)) and have mainly
+been interested in using sous vide cooking to extend the the shelf-life of minimally
+processed foods — these efforts seem to have been successful since there have been no
+reports of sous vide food causing an outbreak in either the academic literature or out-
+break databases (Peck et al., 2006). Chefs in some of the world’s top restaurants have
+been using sous vide cooking since the 1970s but it wasn’t until the mid-2000s that sous
+vide cooking became widely known (cf. Hesser (2005); Roca and Brugu ´es (2005)); the
+late-2000s and early-2010s have seen a huge increase in the use of sous vide cooking
+in restaurants and homes (cf. Baldwin (2008); Keller et al. (2008); Blumenthal (2008);
+Achatz (2008); Nor ´en and Arnold (2009); Baldwin (2010); Potter (2010); Kamozawa
+et al. (2010); Myhrvold et al. (2011)).
+Sous vide cooking differs from traditional cooking methods in two fundamental
+ways: the raw food is vacuum-sealed in heat-stable, food-grade plastic pouches and
+the food is cooked using precisely-controlled heating.
+V acuum-sealing has several beneﬁts: it allows heat to be efﬁciently transferred
+from the water (or steam) to the food; it increases the food’s shelf-life by eliminating
+Email
+address: sousvide@douglasbaldwin.com (Douglas E. Baldwin)
+URL: www.douglasbaldwin.com/sous-vide.html (Douglas E. Baldwin)
+Preprint submitted to Int. J. Gastronomy and F ood Science 31 October 2011
+the
+risk of recontamination during storage; it inhibits off-ﬂavors from oxidation and
+prevents evaporative losses of ﬂavor volatiles and moisture during cooking (Church
+and Parsons, 2000); and reduces aerobic bacterial growth — this results in especially
+ﬂavorful and nutritious food (Church, 1998; Creed, 1998; Garc ´ıa-Linares et al., 2004;
+Ghazala et al., 1996; Lassen et al., 2002; Schellekens, 1996; Stea et al., 2006).
+Precise temperature control has more beneﬁts for chefs than vacuumized pack-
+aging does: it allows almost-perfect reproducibility (Keller et al., 2008; Blumenthal,
+2008; Achatz, 2008); it allows greater control over doneness than traditional cooking
+methods (Baldwin, 2008; Nor ´en and Arnold, 2009; Baldwin, 2010; Myhrvold et al.,
+2011); food can be pasteurized and made safe at lower temperatures, so that it doesn’t
+have to be cooked well-done to be safe (Baldwin, 2008, 2010); and tough cuts of meat
+(which were traditionally braised to make them tender) can be made tender and still be
+a medium or a medium-rare doneness (Baldwin, 2008, 2010; Myhrvold et al., 2011).
+This paper ﬁrst reviews the importance of time and temperature in sous vide cook-
+ing in Section 2. Section 3 discusses the basic techniques of sous vide cooking. Food
+safety principles important for sous vide cooking are detailed in Section 4. Some con-
+clusions are drawn in Section 5. Finally, Appendix A brieﬂy discusses the mathematics
+of sous vide cooking.
+2. Temperature and Time
+Cooking is the application of heat to change food for eating: some of these changes
+happen quickly and others happen slowly. Most traditional cooking is only concerned
+with fast changes because it’s hard to hold food at a temperature (below boiling) with
+traditional heat sources for long enough that these slow changes become important.
+The precise temperature control in sous vide cooking lets you control both the fast and
+the slow changes.
+To illustrate fast and slow changes, let’s consider the cooking of eggs and meat. In
+both eggs and meat, it’s the change or denaturing of proteins that’s important: in eggs,
+the tightly bundled proteins unfold when they denature and cause the white or yolk to
+thicken and gel; in meat, the proteins shrink, solubilize, or gel when they denature and
+change the texture of the meat.
+2.1. Effects of Heat and Time on Eggs
+The fast changes happen quickly when the temperature of the food exceeds a cer-
+tain threshold. For example, if you heat a shelled chicken egg until the temperature
+equalizes (say, for 30 to 60 minutes) then at
+ 61.5C/143F: the protein conalbumin denatures and causes the egg white to
+form a loose gel;
+ 64.5C/148F: the protein livetin denatures and causes the egg yolk to form a
+tender gel;
+ 70C/158F: the protein ovomucoid denatures and causes the egg white to form
+a ﬁrm gel (the egg yolk also coagulates around this temperature); and
+ 84.5C/184F: the protein ovalbumin denatures and causes the egg white to be-
+come rubbery
+2
+Figure
+1: Large, AA-grade, shelled chicken eggs cooked for 60 minutes at 61 C/141.8F, 62C/143.6F,
+63C/145.4F, 64C/147.2F, 65C/149F, and 66C/150.8F.
+(Belitz et al., 2004; Charley and Weaver, 1998). Figure 1 shows how even small
+changes in temperature visibly change the texture of the yolk in eggs cooked for 1 hour.
+Similar changes can be achieved if the shelled egg is held for logarithmically-
+different times at a particular temperature. Figure 2 shows a similar change in texture
+from doubling the heating time as Figure 1 shows for small changes in temperature; see
+(V ega and Mercad´e-Prieto, 2011) for a model of yolk viscosity as a function of time
+and temperature.
+2.2. Effects of Heat and Time on Muscle Meat
+Meat is roughly 75% water, 20% protein, and 5% fat and other substances. When
+we cook, we’re using heat to change (or denature) these proteins. Which proteins and
+how much we denature them mainly depends on temperature and to a lesser extent on
+time. Many divide the proteins into three groups: myoﬁbrillar (50–55%), sarcoplasmic
+(30–34%), and connective tissue (10–15%). The myoﬁbrillar proteins (mostly myosin
+and actin) and the connective tissue proteins (mostly collagen) contract when heated,
+while the sarcoplasmic proteins expand when heated. For a non-technical discussion
+of muscle meat, see (McGee, 2004, Chap. 3); for a more technical discussion of mus-
+cle meat, see (Lawrie, 1998; Charley and Weaver, 1998; Belitz et al., 2004); for an
+excellent review article on the effects of heat on meat see (Tornberg, 2005).
+During heating, the muscle ﬁbers shrink transversely and longitudinally, the sar-
+coplasmic proteins aggregate and gel, and connective tissues shrink and solubilize. For
+the fast changes: The muscle ﬁbers begin to shrink at 35–40 C/95–105F and shrink-
+age increases almost linearly with temperature up to 80 C/175F. The aggregation and
+gelation of sarcoplasmic proteins begins around 40C/105F and ﬁnishes around 60C/
+140F. Connective tissues start shrinking around 60 C/140F but contract more in-
+tensely over 65 C/150F. The slow changes mainly increase tenderness by dissolving
+3
+Figure
+2: Large, AA-grade, shelled chicken eggs cooked at 60 C/140F for 45 minutes, 90 minutes, 3 hours,
+6 hours, 12 hours, and 24 hours. The texture of the 3-hour-egg’s yolk was noticeably thicker than the 90-
+minute-egg’s yolk, which was thicker than the 45-minute-egg’s yolk.
+collagen into gelatin and reducing inter-ﬁber adhesion.
+These fast changes lead to the idea that the doneness of meat is determined by the
+highest temperature that it reaches: 50 C/125F is rare, 55 C/130F is medium-rare,
+60C/140F is medium, and 70 C/160F and above is well done. Note that while two
+similar cuts cooked to the same internal temperature will have a similar plumpness
+and juiciness, their color may be different. The color of meat cooked to the same
+temperature depends on how quickly it reaches that temperature and on how long it’s
+held at that temperature: the faster it comes up to temperature, the redder it is; the
+longer it’s held at a particular temperature, the paler it becomes (Charley and Weaver,
+1998); see Figure 3 for meat cooked at 55 C/131F for 90 minutes up to 48 hours and
+note how the meat cooked for 48 hours is noticeably paler than the meat cooked for
+3 hours.
+Myoﬁbrillar proteins
+While there are about 20 different myoﬁbrillar proteins, 65–70% are myosin or
+actin. Myosin molecules form the thick ﬁlaments and actin the thin ﬁlaments of the
+muscle ﬁbers. The muscle ﬁbers start to shrink at 35–40 C/95–105F and the shrink-
+age increases almost linearly up to 80 C/175F. The water-holding capacity of whole
+muscle meat is governed by the shrinking and swelling of myoﬁbrils. Around 80% of
+the water in muscle meat is held within the myoﬁbrils between the thick (myosin) and
+thin (actin) ﬁlaments. Between 40 C/105F and 60 C/140F, the muscle ﬁbers shrink
+transversely and widen the gap between ﬁbers. Then, above 60–65 C/140–150F the
+muscle ﬁbers shrink longitudinally and cause substantial water loss and the extent of
+this contraction increases with temperature.
+4
+Figure
+3: USDA-Choice beef chuck roast cooked at 55 C/131F for 90 minutes, 3 hours, 6 hours, 12 hours,
+24 hours, and 48 hours. Note how the connective tissue has broken down enough in the 24 hour and 48 hour
+pictures that the primary bundles of muscle ﬁbers are readily recognizable.
+Sarcoplasmic proteins
+Sarcoplasmic or soluble proteins are made up of about 50 components, but mostly
+enzymes and myoglobin. Unlike the myoﬁbrillar proteins and connective tissue, sar-
+coplasmic proteins expand when heated. The aggregation and gelation of sarcoplasmic
+proteins begins around 40 C/105F and ﬁnishes around 60 C/140F. Before these en-
+zymes are denatured they can signiﬁcantly increase the tenderness of the meat. The
+ratio of myoglobin (Mb), oxymyoglobin (MbO2), and metmyoglobin (MMb+) also
+determines the color of the meat; see (Belitz et al., 2004) or (Charley and Weaver,
+1998) for more details on meat color.
+Connective tissue
+Connective tissue (or insoluble proteins) holds the muscle ﬁbers, bones, and fat
+in place: it surrounds individual muscle ﬁbers (endomysium) and bundles of these
+ﬁbers (perimysium) and bundles of these bundles (epimysium); the perimysium and
+epimysium bundles are readily seen in the 48-hour picture in Figure 3. Connective
+tissue consists of collagen and elastin ﬁbers embedded in an amorphous intercellular
+substances (mostly mucopolysaccharides). Collagen ﬁbers are long chains of tropocol-
+lagen (which consist of three polypeptides wound about each other like a three-ply
+thread). Collagen ﬁbers start shrinking around 60 C/140F but contract more intensely
+over 65C/150F. Shrinking mostly destroys this triple-stranded helix structure, trans-
+forming it into random coils that are soluble in water and are called gelatin. Elastin
+ﬁbers, on the other hand, don’t denature with heating and have rubber-like properties;
+luckily, there is much less elastin than collagen — except in the muscles involved in
+pulling the legs backward. There isn’t one temperature above which the collagen is
+denatured but the rate of denaturing increases exponentially with higher temperatures;
+5
+for
+safety reasons, we usually use 55 C/130F as the lowest practical temperature for
+denaturing collagen.
+Tenderness
+Tenderness is very highly prized — the tenderest cut of beef, the tenderloin, is also
+the most expensive cut of beef. When chewing, you deform and fracture the meat.
+The mechanical forces include shear, compressive, and tensile forces; most studies use
+a Warner–Bratzler (W-B) shear test perpendicular to the muscle ﬁbers and this seems
+to correlate well with taste tests. Typically, W-B shear decreases from 50 C/120F
+to 65 C/150F and then increases up to 80 C/175F. While this increase in tender-
+ness used to be attributed to a weakening of connective tissue, most now believe it’s
+caused by the change from a viscoelastic to an elastic material: raw meat is tougher
+because of the viscous ﬂow in the ﬂuid-ﬁlled channels between the ﬁbers and ﬁber
+bundles; heating up to 65 C/150F increases tenderness because the sarcoplasmic pro-
+teins aggregate and gel and makes it easier to fracture the meat with your teeth; over
+65C/150F and up to 80 C/175F, the meat is tougher because the elastic modulus
+increases and requires larger tensile stress to extend fractures (Tornberg, 2005).
+Both the intramuscular connective tissue and the myoﬁbrillar component contribute
+to toughness. In many cuts, connective tissue is the major source of toughness, but the
+myoﬁbrillar component is sometimes dominant and referred to as actomyosin tough-
+ness.
+For connective tissue toughness, both the collagen content and its solubility are im-
+portant. Muscles that are well worked have connective tissue that makes them tougher
+than muscles that were exercised comparatively little or that are from young animals.
+The more soluble the collagen, the more tender the meat is and collagen from younger
+animals tend to be more soluble and soluble at lower temperatures.
+Actomyosin toughness can be a major contributor to toughness in young animals
+and in relatively little used muscles; see (Charley and Weaver, 1998; Lawrie, 1998)
+for more detail. Immediately after slaughter, the warm ﬂesh is soft and pliable. In a
+few hours, the meat goes into rigor and becomes rigid and inelastic. Cross-links form
+between the myosin and actin ﬁlaments where they overlap — where the muscles are
+allowed to contract or shorten — and are locked in place during rigor. After rigor has
+passed, the meat again becomes soft and elastic. (If pre-rigor meat is chilled to below
+15C/60F, then cold-shortening of the muscles may occur and signiﬁcantly increase
+toughness.)
+Enzymes
+Recall that enzymes make up a signiﬁcant portion of the sarcoplasmic proteins.
+The sarcoplasmic calpains and lysosomal cathepsins are especially important in aging
+or conditioning. These enzymes catalyze the hydrolysis of one or more of the proteins
+— calpains the Z line proteins and cathepsin the myosin, actin, troponin, and collagen
+proteins. Dry aging is usually done at 1–3.3 C/34–38F with about 70% humidity for
+14 to 45 days. Higher temperature aging is also possible, see (Lawrie, 1998, pp 239–
+40); Myhrvold et al. (2011) found that even 4 hours at 45 C/113F can signiﬁcantly
+improve tenderness. (Lawrie (1998) notes that at 49 C/120F that tenderness is partic-
+ularly increased but that it has a somewhat undesirable ﬂavor.) At sous vide cooking
+6
+temperatures
+between 55 C/130F and 60 C/140F, many of the enzymes have been
+denatured but some of the collagenases are active and can signiﬁcantly increase tender-
+ness after about 6 hours (Tornberg, 2005).
+3. Basic Techniques
+Sous vide cooking typically takes two forms: cook-hold or cook-serve and cook-
+chill or cook-freeze. Cook-hold or cook-serve sous vide cooking consists of prepar-
+ing for packaging, vacuum packaging, heating or pasteurizing, ﬁnishing, and serv-
+ing. Cook-chill or cook-freeze sous vide cooking consists of preparing for packaging,
+vacuum packaging, pasteurizing, rapid chilling, refrigerating or freezing, reheating or
+rethermalizing, ﬁnishing, and serving. See Figure 4 for a ﬂow diagram of the main
+types of sous vide cooking; the food safety reasons behind these steps are discussed in
+detail in Section 4.
+In this section, the cooking of meat in discussed in detail and then the cooking of
+poultry, ﬁsh and shellﬁsh, and plants is brieﬂy discussed.
+3.1. Meat
+Meat has been an important part of our diets for 100 000 years, and we have raised
+animals for food for at least 9 000 years; the last few decades, however, have seen
+dramatic changes in the meat we eat; today’s meat is from younger and leaner animals,
+which might have traveled halfway across the world to reach our tables (McGee, 2004).
+Since traditional cooking methods weren’t designed for today’s leaner and younger
+meat, they often produce dry and ﬂavorless results. Sous vide cooking lets chefs cook
+almost any cut of meat so that it’s moist, tender, and ﬂavorful (Baldwin, 2010).
+3.1.1. Preparing for packaging
+Tougher cuts of meat are frequently marinated, tenderized, or brined before vac-
+uum packaging; see (Myhrvold et al., 2011) for extensive discussions of marinating,
+mechanical tenderizing, and brining.
+Most marinades are acidic and contain either vinegar, wine, fruit juice, buttermilk
+or yogurt. It’s recommended that alcohol is minimized in the marinades because the
+lower vapor pressure of alcohol will tend to cause the vacuumized pouch to balloon
+during cooking.
+Mechanical tenderizing has become quite common and is accomplished by insert-
+ing hundreds or thousands of thin blades into the meat to cut some of the internal ﬁbers.
+This typically doesn’t leave any obvious marks on the meat and reduce moisture lose
+by cutting internal ﬁbers that would have contracted with heating. The greatest concern
+with mechanical tenderizing is that it can push surface pathogens into the interior of
+the whole muscle and so mechanically tenderized meat needs to be pasteurized to be
+safe.
+Brining and curing has become increasingly popular in modern cooking, especially
+when cooking pork and poultry. There are two methods of brining, traditional brining
+and equilibrium brining. In traditional brining, the meat is put in a 3–10% salt solution
+for a couple of hours, then rinsed and cooked as usual. In equilibrium brining: the meat
+7
+.
+.Use
+precisely
+controlled heat-
+ing
+.12D
+reduction
+of C. botulinum
+spores
+. Shelf
+stable
+.
+(Finish
+and)
+Serve
+.
+6D
+reduction of
+proteolytic C.
+botulinum
+. Rapid
+chill
+. Store <4C
+. Rapid
+reheat
+.
+(Finish
+and)
+Serve
+.
+6D
+reduction
+of Listeria or
+7D reduction of
+Salmonella
+. Rapid
+chill
+.Store <3.3C
+for <31
+days or
+freeze
+.Rapid
+reheat
+.
+(Finish
+and)
+Serve
+.
+3D
+reduction of
+Salmonella
+. Rapid
+chill
+.Store <5C
+for <5
+days or
+freeze
+. Rapid
+reheat
+.(Finish
+and)
+Serve
+. Heat
+.Hold
+21–55C
+for <1 hour
+.(Finish
+and)
+Serve
+.
+Prepare
+for
+packaging
+.
+V
+acuum seal
+small portions
+. Sterilized . P
+asteurized . Ra
+w
+. Immuno-Compromised
+People . Immuno-Competent
+People
+Figure
+4: A ﬂow diagram of sous vide cooking. The branches in red and green (the rightmost three) are
+common in both restaurant and home kitchens while industrial food processors only use the branches in blue
+and green (the leftmost three). The branches in red (the rightmost two) should only be served to healthy,
+immuno-competent people and, in the rightmost branch, they should understand and accept the risks.
+8
+and
+water are weighted together; then 0.75–1.25% of the weight of the meat and water
+of salt is added for a brine (or 2–3% for a cure); the meat is then held in the solution for
+hours or days until the salt concentration in the meat and the water has equalized; then
+the meat is rinsed and cooked as usual (Myhrvold et al., 2011). Brining has two effects:
+it dissolves some of the support structure of the muscle ﬁbers so they cannot coagulate
+into dense aggregates and it allows the meat to absorb between 10–25% of its weight
+in water (which may include aromatics from herbs and spices) (Graiver et al., 2006;
+McGee, 2004).
+3.1.2. V acuum packaging
+V acuum-sealing’s main beneﬁt is that it allows heat to be efﬁciently transferred
+from the water bath or steam oven to the meat. For cook-chill or cook-freeze sous vide
+cooking, vacuum packaging eliminates the risk of recontamination during storage and
+inhibits off-ﬂavors from oxidation. It’s been generally recommended that the strongest
+vacuum possible (typically 10–15 mbar for ﬁrm food and 100–120 mbar for liquids)
+should be used to reduce the ballooning of the pouches during cooking and to reduce
+aerobic bacterial growth, but Nor ´en and Arnold (2009) found that pulling a 10–15
+mbar vacuum signiﬁcantly degraded the taste and texture of ﬁsh and poultry. It isn’t
+currently known why pulling a stronger vacuum degrades the texture of the food. If the
+food is below 10C/50F, so the vapor pressure of water is below 12 mbar/0.2 psi, then
+Baldwin (2010) recommends using a 90–95% vacuum when using a chamber vacuum
+sealer and Myhrvold et al. (2011) recommend vacuum-sealing at a pressure of 30–50
+mbar/0.4–0.7 psi; these vacuum sealing pressure seem to keep the texture of the food
+from being damaged and usually prevent the vacuum-sealed pouches from ﬂoating
+during cooking. Both Nor ´en and Arnold (2009) and Baldwin (2010) also recommend
+using the water-displacement-method for sealing food in Ziploc R⃝ (or similar quality
+re-sealable storage) bags; this has the advantages of not damaging the texture of food
+or requiring expensive equipment. Many home cooks use clamp-style vacuum-sealers
+and these sealers have problems sealing pouches with liquid in them but don’t pull a
+strong enough vacuum to damage the texture of foods.
+3.1.3. Cooking
+In almost all cases, the cooking medium is either a water bath or a convection
+steam oven. Convection steam ovens allow large quantities of food to be prepared, but
+do not heat uniformly enough to use Tables 1 or 2. Indeed, Sheard and Rodger (1995)
+found that none of the convection steam ovens they tested heated sous vide pouches
+uniformly when fully loaded; it took the slowest heating (standardized) pouch 70%–
+200% longer than the fastest heating pouch to go from 20 C/68F to 75C/167F when
+set to an operating temperature of 80 C/176F. They believe this variation is a result
+of the relatively poor distribution of steam at temperatures below 100 C/212F and
+the ovens dependence on condensing steam as the heat transfer medium. In contrast,
+circulating water baths heat very uniformly and typically have temperature swings of
+less than 0.1 C/0.2F. To prevent undercooking, it is very important that the pouches
+are completely submerged and are not tightly arranged or overlapping (Rybka-Rodgers,
+1999). At higher cooking temperatures, the pouches often balloon (with water vapor)
+and must be held under water with a wire rack or some other constraint.
+9
+Before
+the mid-2000s, the water bath or steam oven’s temperature was usually
+5–10C/10–20F higher than the desired ﬁnal core temperature of the food; see, for
+example, (Roca and Brugu ´es, 2005). In the late-2000s and early-2010s, setting the
+water bath or steam oven’s temperature to be at or just above the desired ﬁnal core
+temperature of the food became standard; see, for example, (Baldwin, 2008; Keller
+et al., 2008; Myhrvold et al., 2011).
+When cooking in a water bath with a temperature signiﬁcantly (5–10 C/10–20F)
+higher than the desired ﬁnal core temperature of the food, the food must be removed
+from the bath once it has come up to temperature to keep it from overcooking. This
+precludes pasteurizing in the same water bath that the food is cooked in. Since there is
+signiﬁcant variation in the rate at which foods heat (see Appendix A), a needle temper-
+ature probe is typically used to determine when the food has come up to temperature.
+To prevent air or water from entering the punctured bag, the temperature probe is usu-
+ally inserted through closed cell foam tape or a thermocouple feed-through connector.
+Cooking at or just above the desired ﬁnal core temperature of the food has several
+beneﬁts: Since the slow changes (discussed in Section 2) take much longer than the
+fast changes, it’s easy to compute tables of heating times based on the slowest expected
+heating for a given food, shape, and thickness (see Table 1). Moreover, since it’s easy
+to hold the food at its desired ﬁnal core temperature and slowest expected heating times
+can be computed, pasteurization tables based on thickness and water bath temperature
+can be computed (see Table 2). While cooking times are longer than traditional cooking
+methods, the meat comes up to temperature surprisingly quickly because the thermal
+conductivity of water is 23 times greater than that of air.
+When cooking tender meats, it’s the fast changes that are the most important be-
+cause the slow changes are mainly used to increase tenderness. Thus, for tender meat
+you just need to get the center up to temperature and, if pasteurizing, hold it there until
+any pathogens have been reduced to a safe level. In general, the tenderness of meat in-
+creases from 50C/122F to 65C/150F but then decreases up to 80 C/175F (Powell
+et al., 2000; Tornberg, 2005).
+When cooking tough meats, the dissolving of collagen into gelatin and the reduc-
+tion of inter-ﬁber adhesion is important and this takes either a long time or high tem-
+peratures. Prolonged cooking (e.g., braising) has been used to make tough cuts of meat
+more palatable since ancient times. Indeed, prolonged cooking can more than dou-
+ble the tenderness of the meat by dissolving all the collagen into gelatin and reducing
+inter-ﬁber adhesion to essentially nothing (Davey et al., 1976). At 80 C/176F, Davey
+et al. (1976) found that these effects occur within about 12–24 hours with tenderness
+increasing only slightly when cooked for 50 to 100 hours.
+At lower temperatures (50 C/120F to 65 C/150F), Bouton and Harris (1981)
+found that tough cuts of beef (from animals 0–4 years old) were the most tender when
+cooked to between 55 C/131F and 60 C/140F. Cooking the beef for 24 hours at
+these temperatures signiﬁcantly increased its tenderness (with shear forces decreasing
+26%–72% compared to 1 hour of cooking). This tenderizing is caused by weakening
+of connective tissue and proteolytic enzymes decreasing myoﬁbrillar tensile strength.
+Indeed, collagen begins to dissolve into gelatin above about 55 F/131F (This, 2006).
+Moreover, the sarcoplasmic protein enzyme collagenase remains active below 60 C/
+140F and can signiﬁcantly tenderize the meat if held for more than 6 hours (Tornberg,
+10
+Thickness
+Slab-like Cylinder-like Sphere-like
+5
+mm 5 min 5 min 4 min
+10 mm 19 min 11 min 8 min
+15 mm 35 min 18 min 13 min
+20 mm 50 min 30 min 20 min
+25 mm 1 1=4 hr 40 min 25 min
+30 mm 1 1=2 hr 50 min 35 min
+35 mm 2 hr 1 hr 45 min
+40 mm 2 1=2 hr 1 1=4 hr 55 min
+45 mm 3 hr 1 1=2 hr 1 1=4 hr
+50 mm 3 1=2 hr 2 hr 1 1=2 hr
+55 mm 4 hr 2 1=4 hr 1 1=2 hr
+60 mm 4 3=4 hr 2 1=2 hr 2 hr
+65 mm 5 1=2 hr 3 hr 2 1=4 hr
+70 mm — 3 1=2 hr 2 1=2 hr
+75 mm — 3 3=4 hr 2 3=4 hr
+80 mm — 4 1=4 hr 3 hr
+85 mm — 4 3=4 hr 3 1=2 hr
+90 mm — 5 1=4 hr 3 3=4 hr
+95 mm — 6 hr 4 1=4 hr
+100 mm — — 4 3=4 hr
+105 mm — — 5 hr
+110 mm — — 5 1=2 hr
+115 mm — — 6 hr
+Table 1: Approximate heating times for thawed meat to 0.5 C/1F less than the water bath’s temperature.
+Y ou can decrease the time by about 13% if you only want to heat the meat to within 1 C/2F of the water
+bath’s temperature. These calculations assume that the water bath’s temperature is between 45C/110F and
+80C/175F; the thermal diffusivity is about 1:4  10 7 m2/s; and the surface heat transfer coefﬁcient is
+95 W/m2-K. For thicker cuts and warmer water baths, heating time may (counter-intuitively) be longer than
+pasteurization time.
+11
+55C
+56C 57 C 58 C 59 C 60 C
+Thickness 131 F 132.8 F 134.6 F 136.4 F 138.2 F 140 F
+5
+mm 3:33 2:41 2:00 1:30 1:08 0:51
+10 mm 3:35 2:43 2:04 1:36 1:15 1:00
+15 mm 3:46 2:55 2:16 1:48 1:28 1:13
+20 mm 4:03 3:11 2:32 2:04 1:44 1:28
+25 mm 4:17 3:25 2:46 2:18 1:57 1:41
+30 mm 4:29 3:38 3:00 2:32 2:11 1:55
+35 mm 4:45 3:53 3:15 2:46 2:25 2:09
+40 mm 4:59 4:07 3:29 3:00 2:39 2:22
+45 mm 5:21 4:29 3:50 3:22 3:00 2:42
+50 mm 5:45 4:53 4:14 3:44 3:21 3:03
+55 mm 6:10 5:18 4:39 4:08 3:45 3:26
+60 mm 6:38 5:45 5:06 4:35 4:10 3:50
+65 mm 7:07 6:15 5:34 5:02 4:36 4:15
+70 mm 7:40 6:45 6:03 5:30 5:04 4:42
+61C 62 C 63 C 64 C 65 C 66 C
+Thickness 141.8 F 143.6 F 145.4 F 147.2 F 149 F 150.8 F
+5
+mm 0:40 0:31 0:25 0:20 0:17 0:14
+10 mm 0:49 0:41 0:35 0:30 0:27 0:24
+15 mm 1:02 0:53 0:47 0:42 0:38 0:35
+20 mm 1:17 1:08 1:01 0:56 0:52 0:48
+25 mm 1:30 1:21 1:13 1:08 1:03 0:59
+30 mm 1:43 1:33 1:26 1:19 1:14 1:10
+35 mm 1:56 1:46 1:38 1:31 1:26 1:21
+40 mm 2:09 1:59 1:50 1:43 1:37 1:32
+45 mm 2:29 2:17 2:08 2:00 1:53 1:48
+50 mm 2:49 2:37 2:27 2:19 2:11 2:05
+55 mm 3:11 2:58 2:47 2:38 2:30 2:23
+60 mm 3:34 3:20 3:09 2:58 2:50 2:42
+65 mm 3:58 3:43 3:31 3:20 3:11 3:02
+70 mm 4:23 4:08 3:54 3:43 3:32 3:23
+Table 2: Time sufﬁcient to pasteurize meat, ﬁsh, or poultry in water baths from 55 C/131F to 66 C/
+150.8F. This table is based on the internationally accepted and generally conservative 2 minutes at 70 C/
+158F with z = 7.5C/13.5F for a million to one reduction in L. monocytogenes and applies to all foods
+(FDA, 2011). For less conservative pasteurization times, see (Baldwin, 2008) and Figure 5. This calculation
+uses a thermal diffusivity of 1:11  10 7 m2/s, a surface heat transfer coefﬁcient of 95 W/m 2-K, and  = 0
+up to 30 mm and  = 0:28 above 30 mm in ( ).
+12
+2005).
+F
+or example, tough cuts of meat, like beef chuck and pork shoulder, take 10–
+12 hours at 80 C/175F or 1–2 days at 55–60 C/130–140F to become fork-tender.
+Intermediate cuts of meat, like beef sirloin, only needs 6–8 hours at 55–60 C/130–
+140F to become fork-tender because the tenderization from the enzyme collagenase
+is sufﬁcient.
+3.1.4. Chilling for later use
+For cook-chill and cook-freeze sous vide cooking, the food is rapidly chilled in its
+vacuum sealed pouch and refrigerated or frozen after pasteurizing. Before ﬁnishing
+for service, the food is then reheated in a water bath at or below the temperature it was
+cooked in. Typically, meat is reheated or rethermalized in a 53–55 C/127–131F water
+bath for the times listed in Table 1 since the optimal serving temperature for meat is
+between 50–55C/120–130F (Charley and Weaver, 1998).
+The danger with cook-chill is that pasteurizing does not reduce pathogenic spores
+to a safe level. If the food is not chilled rapidly enough or is refrigerated for too long,
+then pathogenic spores can outgrow and multiply to dangerous levels. For a detailed
+discussion, see Section 4.
+3.1.5. Finishing for service
+Since sous vide is essentially a very controlled and precise poach, most food cooked
+sous vide has the appearance of being poached. So foods like ﬁsh, shellﬁsh, eggs, and
+skinless poultry can be served as is. However, steaks and pork chops are not tradition-
+ally poached and usually require searing or saucing. Searing the meat is particularly
+popular because the Maillard reaction (the browning) adds considerable ﬂavor.
+The Maillard or browning reaction is a very complex reaction between amino acids
+and reducing sugars. After the initial reaction, an unstable intermediate structure is
+formed that undergoes further changes and produces hundreds of reaction by-products.
+See (McGee, 2004) for a non-technical description or (Belitz et al., 2004) for a techni-
+cal description.
+The ﬂavor of cooked meat comes from the Maillard reaction and the thermal (and
+oxidative) degradation of lipids (fats); the species characteristics are mainly due to the
+fatty tissues, while the Maillard reaction in the lean tissues provides the savory, roast,
+and boiled ﬂavors (Mottram, 1998). The Maillard reaction can be increased by adding
+a reducing sugar (glucose, fructose, or lactose), increasing the pH (e.g., adding a pinch
+of baking soda), or increasing the temperature. Even a small increase in pH greatly
+increases the Maillard reaction and results in sweeter, nuttier, and more roasted-meat-
+like aromas (Meynier and Mottram, 1995). The addition of a little glucose (e.g., a 4%
+glucose wash) has been shown to increase the Maillard reaction and improve the ﬂavor
+proﬁle (Meinert et al., 2009). The Maillard reaction occurs noticeably around 130 C/
+265F, but produces a boiled rather than a roasted aroma; good browning and a roasted
+ﬂavor can be achieved at temperatures around 150 C/300F with the addition of glu-
+cose (Skog, 1993). Although higher temperatures signiﬁcantly increase the rate of the
+Maillard reaction, prolonged heating at over 175 C/350F can signiﬁcantly increase
+the production of mutagens.
+13
+Mutagens
+formed in the Maillard reaction (heterocyclic amines) have been shown
+to be carcinogenic in mice, rats, and non-human primates; however, while some epi-
+demiological studies have shown a relation with cancer development, others have shown
+no signiﬁcant relation in humans (Arvidsson et al., 1997). These mutagens depend
+strongly on both temperature and time: they increase almost linearly in time before lev-
+eling off (after 5–10 minutes); an increase in temperature of 25 C/45F (from 150 C/
+300F to 175C/350F or 175C/350F to 200C/390F) roughly doubles the quantity
+of mutagens (J ¨agerstad et al., 1998). While adding glucose increases browning, it can
+decrease the production of mutagens (Skog, 1993; Skog et al., 1992). The type of fat
+used to sear the meat in a pan has only minor effects on the formation of mutagens,
+but the pan residue using butter was signiﬁcantly higher in mutagens than when using
+vegetable oil (Johansson et al., 1995).
+In order to limit overcooking of the meat’s interior, very high temperatures are often
+used to brown meat cooked sous vide. Typically, this means either using a blowtorch
+or a heavy skillet with just smoking vegetable oil. Butane and propane blowtorches
+can burn at over 1 900 C/3 500F in air, and produce a particularly nice crust on beef;
+Baldwin (2008) and Nor ´en and Arnold (2009) recommend using a butane blowtorch
+since propane can leave an off-ﬂavor. Some chefs prefer the lower temperature of a
+skillet with just smoking vegetable or nut oil (200 C/400F to 250 C/500F) when
+searing ﬁsh, poultry and pork. Since the searing time at these high temperatures is very
+short (5–30 seconds), mutagens formation is unlikely to be signiﬁcant (Skog, 2009).
+3.2. Poultry
+Today’s poultry, like today’s meat, is leaner and younger than ever before. This is
+why traditional cooking methods often produce dry and tasteless poultry.
+Cooking poultry is very similar to cooking meat. Both lean poultry and lean meat
+are only plump and juicy if they don’t exceed 60–65 C/140–150F — see Section 2.2.
+Tougher (and fattier) cuts of meat and poultry can be cooked to higher temperatures
+and remain juicy, because the melted fat lubricates the lean meat (McGee, 2004).
+Traditional cooking methods make poultry safe by cooking the coldest part to 74C/
+165F or above. Poultry can also be made safe at lower temperatures, it just takes
+longer. Indeed, cooking chicken and turkey breasts at 60 C/140F for the times listed
+in Table 2 is just as safe as cooking them to 74 C/165F.
+For example, chicken and turkey breasts are moist, plump, and juicy when pasteur-
+ized between 58 C/136F to 63 C/145F for the times in Table 2 and duck breasts are
+usually pasteurized at 57 C/135F for the times in Table 2. Dark poultry meat, such as
+legs and thighs, is usually cooked well done at 70–80 C/160–175F until it’s fall-apart
+tender, about 4–6 hours at 80 C/175F or 8–12 hours at 70 C/160F.
+3.3. Fish and Shellﬁsh
+Fish is cooked to change its texture, develop ﬂavor, and destroy food pathogens.
+Traditionally, ﬁsh is considered to be cooked when it ﬂakes. Fish ﬂakes when the col-
+lagen separating the ﬂakes is converted into gelatin at around 46–49C/115–120F (Be-
+litz et al., 2004). This temperature is too low, however, to destroy any food pathogens.
+Many chefs cook salmon and arctic char to rare at 42 C/108F and most other ﬁn and
+14
+shellﬁsh
+to medium-rare at 49 C/120F for 15–20 minutes (cf. (Nor ´en and Arnold,
+2009)). While FDA (2011) generally recommends pasteurizing ﬁsh as in Table 2,
+which will reduce all non-spore forming pathogens and parasites to a safe level, it
+will not reduce the risk of hepatitis A virus (HA V) or norovirus infection from shell-
+ﬁsh. Since a 4-log 10 reduction of HA V in molluscan shellﬁsh requires holding at an
+internal temperature of 90 C/194F for 90 seconds, the risk of viral contamination is
+best controlled through proper sanitation and hygiene (National Advisory Committee
+on Microbiological Criteria for Food, 2008). Since the spores of non-proteolytic C. bo-
+tulinum are not inactivated by pasteurization, the ﬁsh should be stored at below 3.3 C/
+38F for less than four weeks; see Section 4 for more details. Note that Ghazala et al.
+(1996) found that ﬁsh cooked sous vide retains more healthful omega-3 fatty acids and
+nutrients than traditionally cooked ﬁsh.
+3.4. Plants
+While vegetables are a rich source of vitamins and minerals, boiled or steamed
+vegetables lose nutrients to their cooking water (Charley and Weaver, 1998). Sous
+vide cooked vegetables, in comparison, retain nearly all their nutritive value (Creed,
+1995; Schellekens, 1996; Stea et al., 2006). This superior retention of nutrients also
+intensiﬁes the ﬂavor inherent in the vegetable and can cause some vegetables, such as
+turnips and rutabaga, to have a ﬂavor that’s too pronounced for some people (Baldwin,
+2010).
+V egetables that are boiled, steamed, or microwaved lose their nutrients because the
+cell walls are damaged by heat and allow the water and nutrients in the cells to leach out
+(Charley and Weaver, 1998). Sous vide vegetables leave the cell walls mostly intact
+and make the vegetables tender by dissolving some of the cementing material that
+holds the cells together (cf. (Plat et al., 1988; Greve et al., 1994; Georget et al., 1998;
+Kunzek et al., 1999; Sila et al., 2006)). In vegetables, this cementing material starts
+to dissolve around 82–85 C/180–185F. This cementing material can be strengthened
+by pre-cooking, say at 50 C/122F for 30 minutes (Ng and Waldron, 1997; Waldron
+et al., 1997). Starchy vegetables can be cooked at the slightly lower temperature of
+80C/175F because their texture is also changed by the gelatinization of the starch
+granules in their cells (Garc ´ıa-Segovia et al., 2008; Baldwin, 2010).
+While fruits are often eaten raw, chefs sometimes cook apples and pears until
+they’re tender. Tart (high acid) apples, such as Granny Smith, soften faster than sweet
+(low acid) apples, such as Gala or Fuji, because the acid lowers the temperature at
+which the cementing material dissolves (cf. (Charley and Weaver, 1998)).
+Legumes (beans, peas, lentils) are cooked to gelatinize their starches, make their
+proteins more digestible, and to weaken the cementing material that holds their cells to-
+gether so you can chew them; see, for instance, (Charley and Weaver, 1998). Legumes
+cooked sous vide don’t need to be pre-soaked, because they can absorb the same
+amount of water in 50 minutes at 90 C/195F as they would in 16 hours at room tem-
+perature (Charley and Weaver, 1998). Moreover, since the legumes are cooked in their
+soaking water, their water-soluble vitamins and minerals are retained.
+Since vegetables, fruits, and legumes are cooked at 80–90 C/175–195F, their
+pouches may balloon and need to be held under the surface of the water (say, with
+a metal rack). The pouches balloon because the residual air left in the pouch after
+15
+v
+acuum-sealing expands and because some of the moisture in the food is converted
+into water vapor.
+For example, Baldwin (2010) suggests that non-starchy vegetables be cooked sous
+vide at 82–85 C/180–185F for about three times as long as they’d be boiled, starchy
+vegetables at 80 C/175F for about twice as long as they’d be boiled, and legumes at
+90C/195F for 3–6 hours, depending on the species and when it was harvested.
+4. Food Safety
+4.1. Non-technical Background
+The goal is maximizing taste and minimizing the risk from foodborne pathogens.
+While pathogenic microorganisms can be controlled with acids, (ionizing) radiation,
+salts, and some spices, sous vide cooking relies heavily on temperature control (Snyder,
+1995; Rybka-Rodgers, 2001).
+Y ou were probably taught that there’s a “danger zone” between 4.4 C/40F and
+60C/140F. These temperatures aren’t quite right: it’s well known that food pathogens
+can only multiply between  1.3C/29.7F and 52.3 C/126.1F, while spoilage bacte-
+ria begin multiplying at  5C/23F (Snyder, 2006; Juneja et al., 1999; FDA, 2011).
+(Johnson et al. (1983) reported that Bacillus cereus could multiply at 55 C/131F, but
+no one else has demonstrated growth at this temperature and so C. perfringens is used
+instead.) Moreover, contrary to popular belief, food pathogens and toxins cannot be
+seen, smelt, or tasted.
+So why were you taught that food pathogens don’t multiplying below 4.4 C/40F
+and grow all the way up to 60 C/140F? Because it takes days for food pathogens to
+grow to a dangerous level at 4.4 C/40F (FDA, 2011) and it takes many hours for food
+to be made safe at just above 52.3 C/126.1F — compared with only about 12 minutes
+(for meat) (FDA, 2009, 3-401.11.B.2) and 35 minutes (for poultry) (FSIS, 2005) to be
+made safe (for immuno-compromised people) when the coldest part is at 60 C/140F.
+Indeed, the food pathogens that can multiply down to  1.3C/29.7F — Yersinia en-
+terocolitica and Listeria monocytogenes — can only multiply about once per day at
+4.4C/40F and so you can hold food below 4.4 C/40F for ﬁve to seven days (FDA,
+2011). At 52.3 C/126.1F, when the common food pathogen C. perfringens stops mul-
+tiplying, it takes a very long time to reduce the food pathogens we’re worried about —
+namely the Salmonella species, L. monocytogenes , and the pathogenic strains of Es-
+cherichia coli — to a safe level; in a 54.4 C/130F water bath (the lowest temperature
+usually recommend for cooking sous vide) it’ll take you about 2 1=2 hours to reduce E.
+coli to a safe level in a 25 mm/1 inch thick hamburger patty and holding a hamburger
+patty at 54.4C/130F for 21=2 hours is inconceivable with traditional cooking methods
+— which is why the “danger zone” conceived for traditional cooking methods doesn’t
+start at 54.4 C/130F but at 60 C/140F.
+Sous vide cooking can be divided into three broad categories: (i) raw or unpas-
+teurized, (ii) pasteurized, and (iii) sterilized. See Figure 4 for a brief ﬂow diagram of
+sous vide cooking. Most people cook food to make it more palatable and to kill most
+the pathogenic microorganisms on or in it. Killing enough active, multiplying food
+pathogens to make your food safe is called pasteurization. Some bacteria are also able
+16
+to
+form spores that are very resistant to heat and chemicals; heating the food to kill
+both the active microorganisms and the spores is called sterilization.
+Sterilization typically requires a pressure cooker or autoclave for low-acid foods:
+the raw food is vacuum-sealed in retort pouches and heated in an pressure cooker or
+autoclave until the coldest part is heated to the equivalent of 121 C/250F for 3 min-
+utes to achieve a 12-log 10 reduction (1012:1) in C. botulinum spores. This very severe
+thermal processing produces a room-temperature-stable product and is sometimes used
+for conﬁt-style preparations. V ery few restaurants or home cooks are currently inter-
+ested in this type of sous vide cooking but there are a few sous vide recipes that use an
+autoclave or pressure cooker in (Myhrvold et al., 2011).
+Pasteurization is a combination of both temperature and time. Consider the Salmonella
+species: At 60 C/140F, all the Salmonella in a piece of ground beef doesn’t instantly
+die — it’s reduced by a factor ten every 5.48 minutes (Juneja et al., 2001). This is often
+referred as a 1-log 10 or one decimal reduction and is written D 6:0
+60 = 5.48 minutes,
+where the subscript speciﬁes the temperature (in C) that the D-value refers to and the
+superscript is the z-value (in C). The z-value speciﬁes how the D-value changes with
+temperature; increasing the temperature by the z-value decreases the time needed for
+a one decimal reduction by a factor ten. So, D 6:0
+66 = 0.55 minutes and D 6:0
+54 = 54.8
+minutes. How many decimal reductions are necessary depends on how contaminated
+the beef is and how susceptible you are to Salmonella species. For healthy, immuno-
+competent people, a 3-log 10 reduction of the Salmonella species is the minimum rec-
+ommended for restaurants and home cooks; this is because raw meat, ﬁsh, and poultry
+typically has 10 pathogens per gram of food of the Salmonella species (as well as
+for the pathogenic strains of E. coli and L. monocytogenes) and the estimated illness
+dose for a healthy person is more than a thousand pathogens per gram (Snyder, 1995).
+For immuno-compromised people, a few infective vegetative (active) pathogens of the
+Salmonella species or the pathogenic strains of E. coli in the serving could cause them
+to become ill. Thus, FSIS (2005) recommends a 6.5-log 10 reduction of Salmonella
+species in beef and a 7-log 10 reduction in poultry. So, for our example, the coldest part
+should be at least 60 C/140F for at least 6:5D6:0
+60 = 35.6 minutes.
+The rate at which the bacteria die depends on many factors, including temperature,
+meat species, muscle type, fat content, acidity, salt content, certain spices, and water
+content. The addition of acids, salts, or spices can all decrease the number of active
+pathogens. Chemical additives like sodium lactate and calcium lactate are often used
+in the food industry to reduce the risk of spore forming pathogens like the Clostridium
+species and Bacillus cereus (Aran, 2001; Rybka-Rodgers, 2001).
+Some sous vide recipes, especially for ﬁsh, do little more than warm the food and
+any pathogenic bacteria or parasites are likely to survive. This raw or undercooked food
+should only be served to informed healthy adults who understand and accept the risks
+and never to immuno-compromised people. Even for healthy people, it’s important
+that raw and unpasteurized foods are consumed before food pathogens have had time
+to multiply to dangerous levels; most foods shouldn’t be above 21 C/70F for more
+than two hours and ﬁsh shouldn’t be above 27 C/80F for more than an hour (FDA,
+2011).
+17
+4.2.
+Pathogens of Interest
+Sous vide processing is used in the food industry to extend the shelf-life of food
+products; when pasteurized sous vide pouches are held at below 3.3 C/38F, they re-
+main safe and palatable for three to four weeks (Armstrong and McIlveen, 2000; Betts
+and Gaze, 1995; Church, 1998; Creed, 1995; Gonz ´alez-Fandos et al., 2004, 2005;
+Hansen et al., 1995; Mossel and Struijk, 1991; Nyati, 2000a; Peck, 1997; Peck and
+Stringer, 2005; Rybka-Rodgers, 2001; Simpson et al., 1994; V audagna et al., 2002).
+The simplest and safest method of sous vide cooking is cook-hold or cook-serve:
+the raw (or partially cooked) ingredients are vacuum sealed, pasteurized, and then held
+at 54.4 C/130F or above until served. While hot holding the food will prevent any
+food pathogens from growing, meat and vegetables will continue to soften and may
+become mushy if held for too long. How long is too long depends on both the holding
+temperature and what is being cooked. Most foods have an optimal holding time at a
+given temperature; adding or subtracting 10% to this time won’t change the taste or
+texture noticeably; holding for up to twice this time is usually acceptable (Baldwin,
+2010; Myhrvold et al., 2011).
+For cook-hold sous vide, the main pathogens of interest are the Salmonella species
+and the pathogenic strains of E. coli. There are, of course, many other food pathogens
+but these two species are relatively heat resistant and require very few vegetative bac-
+teria per gram to make an immuno-compromised person sick. For a healthy person,
+a 3-log 10 reduction in the Salmonella species should be sufﬁcient (Snyder, 1995); in-
+deed, many of the time and temperature combinations in FDA (2009) correspond to
+less than a 3-log 10 reduction in the Salmonella species — for example, (FDA, 2009, 3-
+401.11.A.1) recommends 15 seconds at 63 C/145F for raw eggs, ﬁsh, and meat raised
+for food while a 3- log10 reduction in the Salmonella species takes 1.6 minutes using
+the D- and z-values in (FDA, 2009, 3-401.11.B.2). For immuno-compromised people,
+most experts recommend a 6.5–7-log 10 reduction of the Salmonella species and a 5-
+log10 reduction of pathogenic strains of E. coli; Figure 5 shows a plot of experimentally
+determined times and temperatures for a 7-log 10 reduction in the Salmonella species,
+a 6-log 10 reduction in L. monocytogenes , and a 5-log 10 reduction in the pathogenic
+strains of E. coli.
+The most popular methods of sous vide cooking are cook-chill and cook-freeze:
+raw (or partially cooked) ingredients are vacuum sealed, pasteurized, rapidly chilled (to
+avoid sporulation of C. perfringens (Andersson et al., 1995)), and either refrigerated or
+frozen until reheating for service. Typically, the pasteurized food pouches are rapidly
+chilled by placing them in an ice water bath for at least the time listed in Table 3.
+For cook-chill sous vide, L. monocytogenes and the spore forming pathogenic bac-
+teria are the pathogens of interest. That’s because L. monocytogenes is the most heat
+resistant non-spore forming pathogen and can grow at refrigerator temperatures (Ny-
+ati, 2000b; Rybka-Rodgers, 2001). For extended shelf-life, a 6- log10 reduction in L.
+monocytogenes is generally recommended; then it’s the (germination,) growth, and
+toxin formation of spore forming pathogens that limit the shelf-life. If the food was
+pasteurized for the Salmonella species instead of L. monocytogenes then the growth
+of Listeria limits shelf-life to less than 7 days between  0.4C/31.3F and 5 C/41F
+(FDA, 2011; Snyder, 1995).
+18
+50 55 60 65 70
+1
+10
+100
+Temperature in °C
+Time in minutes
+Figure
+5: The dots show experimentally determined times and temperatures to achieve a 5-log 10 reduction
+in pathogenic E. coli in green, a 6-log 10 reduction in L. monocytogenes in red, and a 7-log 10 reduction in
+the Salmonella species in blue; the experimental data is for meat, ﬁsh, and poultry and came from O’Bryan
+et al. (2006); Bolton et al. (2000); Hansen and Knøchel (1996); Embarek and Huss (1993). The black line
+shows the 2-minute-at-70 C/158F-equivalents used in Table 2; notice how almost all the experimentally
+determined times and temperatures are below this line and is why it’s considered generally conservative.
+While keeping the food sealed in its plastic pouches prevents recontamination after
+cooking, spores of C. botulinum, C. perfringens, and B. cereus can all survive the mild
+heat treatment of pasteurization. Therefore, after rapid chilling, the food must either
+be frozen or held at
+ below 2.5C/36.5F for up to 90 days,
+ below 3.3C/38F for less than 31 days,
+ below 5C/41F for less than 10 days, or
+ below 7C/44.5F for less than 5 days
+to prevent spores of non-proteolytic C. botulinum from outgrowing and producing
+deadly neurotoxin (Gould, 1999; Peck, 1997).
+A few sous vide recipes — mainly conﬁt-style recipes — use temperature and time
+combinations that can reduce C. botulinum, type E and non-proteolytic types B and F,
+to a safe level; speciﬁcally, a 6-log 10 reduction in non-proteolytic C. botulinum type B
+takes 520 minutes (8 hours 40 minutes) at 75 C/167F, 75 minutes at 80 C/176F, or
+25 minutes at 85 C/185F (Fern´andez and Peck, 1999; Peck, 1997); FDA (2011) gives
+a more conservative time of 10 minutes at 90 C/194F with z = 7.0C/12.6F for
+temperatures less than 90 C/194F. The food may then be stored at below 4 C/39F
+indeﬁnitely, the minimum temperature at which B. cereus can grow (Andersson et al.,
+1995). While O’Mahony et al. (2004) found that the majority of pouches after vacuum
+packaging had high levels of residual oxygen, this doesn’t imply that the Clostridium
+species — which require the absence of oxygen to grow — aren’t a problem since the
+interior of the food often has an absence of oxygen. Most other food pathogens are
+able to grow with or without oxygen.
+19
+4.3.
+HACCP
+Science-based food safety criteria are usually based on the Hazard Analysis and
+Critical Control Point (HACCP) system; for a detailed and nuanced discussion on
+science-based food safety criteria and regulations, see (Committee on the Review of
+the Use of Scientiﬁc Criteria and Performance Standards for Safe Food, 2003). Sny-
+der (1995) gives a comprehensive and detailed application of the HACCP-system to
+refrigerated sous vide products. Because of limited space, only some of the biological
+hazards for sous vide cooking and their controls are discussed below:
+1. Y ou buy your raw food and it usually has millions of microorganisms on and
+in it — most of which are spoilage bacteria. To reduce the risk of the harmful
+pathogens from multiplying rapidly, you store your meat, ﬁsh, or poultry in a
+refrigerator (or in a freezer) and use it before its “best by” date.
+2. Y ou vacuum-seal your raw food. V acuum packaging doesn’t reduce the microor-
+ganisms, so you must either return it to the refrigerator or freezer or (in most
+cases) begin cooking immediately in a temperature controlled water bath.
+3. Y ou heat your vacuumized raw food in a temperature controlled water bath or
+steam oven. Recall that it’s important that the pouches are completely submerged
+and not overlapping in order to heat evenly.
+(a) As the food heats, microorganisms begin to multiply rapidly with most of
+them growing fastest between 30 C/85F and 50 C/120F. If you’re not
+heating to pasteurize, then minimizing the growth of these pathogens is a
+critical step. For example, ﬁsh cooked rare or medium-rare shouldn’t spend
+more than about an hour above 27 C/80F (FDA, 2011). While the interior
+of intact steaks, chops, and roasts is generally considered to be sterile, and
+is the reason that most traditional cooking methods don’t pasteurize steaks
+or roasts, many processors are now mechanically tenderizing the meat be-
+fore it reaches local markets and this can push food pathogens from the
+surface of the meat into the interior. This mechanically tenderized meat
+should be pasteurized in order to make it safe to eat.
+(b) Once the temperature of the food exceeds about 52.3 C/126.1F, then all
+the known food pathogens stop growing and begin to die. Many recom-
+mend that the core of the food reach 54.4 C/130F within 6 hours to keep
+C. perfringens to less then 10 generations (or less than 2 hr 10 min between
+35C and 52C as per Willardsen et al. (1977)), but this isn’t a critical con-
+trol point: While C. perfringens does produce toxins, it only produces them
+while sporulating (and so isn’t a concern when heating) and the toxin is eas-
+ily destroyed by heating (since it’s destroyed in only 10 minutes at 60 C/
+140F); see, for instance, (Jay, 2000, Chap. 24). So, it’s only the vegeta-
+tive form of C. perfringens that’s a hazard when heating and they’re easily
+reduced to safe level when pasteurizing for Salmonella, Listeria, or E. coli.
+Therefore, heating to 54.4 C/130F within six hours is only a critical con-
+trol point if the food isn’t then being pasteurized and the growth of other
+pathogens is usually a greater concern. However, FDA (2011) recommends
+20
+a
+maximum time of 2 hours above 21 C/70F to control the germination,
+growth, and toxin formation by C. botulinum type A and proteolytic types
+B and F; since these species of C. botulinum have a maximum temperature
+of 48 C/118.4F, this gives the same recommendation that the core of the
+food reach 54.4 C/130F within 6 hours — this is a critical control point
+since these toxins aren’t destroyed when pasteurizing for active or vegeta-
+tive pathogens.
+(c) If pasteurizing, then you hold the food at 52.3 C/126.1F or above until
+any active or vegetative pathogens have been reduced to a safe level. Lund
+and O’Brien (2011) estimate that 15–20% of the US and UK population
+is more susceptible to foodborne disease. For healthy people, a 3- log10
+reduction of the Salmonella species is generally recommended while a 7-
+log10 reduction of the Salmonella species is generally recommended for
+immuno-compromised people. If extended refrigerator shelf-life is desired,
+then a 6-log 10 reduction in L. monocytogenes is generally recommended.
+See Table 2 for times that are sufﬁcient to achieve both a 6- log10 reduction
+in L. monocytogenes and a 7-log10 reduction of the Salmonella species.
+4. If the cooked food is served immediately, then you don’t have to worry about
+any additional pathogens growing.
+5. If you plan to chill or freeze the food for later use, then it’s important to follow a
+few simple steps:
+(a) Y ou have to chill the food rapidly to limit sporulation of C. perfringens
+(since it creates its toxins while sporulating); cooling to 4.4 C/40F within
+11 hours is generally recommended (Snyder, 1995). This is usually done
+in an ice-water bath; see Table 3 for cooling times.
+(b) Y ou must leave it in its vacuumized pouch to prevent recontamination.
+(c) Y ou need to properly store the food either in a refrigerator (see above for
+times at different temperatures) or in a freezer: proper storage is critical
+in preventing spores of C. botulinum and B. cereus from outgrowing and
+producing toxins, which aren’t destroyed when reheating or rethermalizing
+(neither S. aureus nor B. cereus toxins are destroyed by heating and C.
+botulinum toxins need either a high temperature or a very long time to be
+destroyed).
+6. When you reheat or rethermalize your chilled food, it’s important to prevent
+toxin formation by C. botulinum and B. cereus and the growth of C. perfringens,
+since you should have already reduced the non-spore forming pathogens in the
+pasteurization step. Reheating to a core temperature of 54.4 C/130F within
+6 hours is generally recommended.
+5. Conclusion
+Sous vide cooking is a powerful tool in the modern kitchen: precise tempera-
+ture control gives superior reproducibility, better control of doneness, reduction of
+21
+Thickness
+Slab-like Cylinder-like Sphere-like
+5
+mm 5 min 3 min 3 min
+10 mm 14 min 8 min 6 min
+15 mm 25 min 14 min 10 min
+20 mm 35 min 20 min 15 min
+25 mm 50 min 30 min 20 min
+30 mm 1 1=4 hr 40 min 30 min
+35 mm 1 1=2 hr 50 min 35 min
+40 mm 1 3=4 hr 1 hr 45 min
+45 mm 2 1=4 hr 1 1=4 hr 55 min
+50 mm 2 3=4 hr 1 1=2 hr 1 hr
+55 mm 3 1=4 hr 1 3=4 hr 1 1=4 hr
+60 mm 3 3=4 hr 2 hr 1 1=2 hr
+65 mm 4 1=4 hr 2 1=4 hr 1 3=4 hr
+70 mm 4 3=4 hr 2 3=4 hr 2 hr
+75 mm 5 1=2 hr 3 hr 2 1=4 hr
+80 mm — 3 1=2 hr 2 1=2 hr
+85 mm — 3 3=4 hr 2 3=4 hr
+90 mm — 4 1=4 hr 3 hr
+95 mm — 4 3=4 hr 3 1=2 hr
+100 mm — 5 hr 3 3=4 hr
+105 mm — 5 1=2 hr 4 hr
+110 mm — 6 hr 4 1=2 hr
+115 mm — — 4 3=4 hr
+Table 3: Approximate cooling time from 55–80 C/130–175F to 5 C/41F in an ice water bath that’s at
+least half ice. These calculations assume that the food’s thermal diffusivity is 1:1  10 7 m2/s and the ice
+water bath has a surface heat transfer coefﬁcient of 100 W/m2-K.
+22
+pathogens
+to a safe level at lower temperatures, and more choice of texture than tradi-
+tional cooking methods; vacuumized packaging improves heat ﬂow, extends the shelf-
+life of the food by eliminating the risk of recontamination, reduces off-ﬂavors from
+oxidation, and reduces the loss of nutrients to the cooking medium.
+Precise temperature control lets you take advantage of both the fast and the slow
+changes when cooking: the fast changes, such as doneness, are mostly determined by
+the highest temperature that the food reaches; the slow changes typically take hours
+to days and let you make tough cuts of meat, which would usually be braised, tender
+while maintaining a medium-rare doneness. Precise temperature control also gives you
+the ability to pasteurize meat and poultry at lower temperatures than traditional cooking
+methods and so they no longer need to be cooked well-done to be safe.
+V acuumized packaging is important when extended shelf-life is required: the vac-
+uumized pouch prevents recontamination of food during storage and allows for the
+efﬁcient transfer of heat. V acuumized packaging isn’t necessary when doing cook-
+hold sous vide cooking and many restaurants don’t vacuum package the food and cook
+directly in a convection steam oven or in a temperature controlled bath of fat (e.g., oil
+or butter) or ﬂavored broth (e.g., stock) if it’ll be served immediately.
+Appendix A. The mathematics of sous vide cooking
+This section is primarily interested in modeling how long it takes the food to come
+up to temperature and how long it takes to pasteurize the food. These are non-trivial
+tasks. Many simpliﬁcations and assumptions are necessary.
+The transfer of heat (by conduction) is described by the partial differential equation,
+Tt = r  (rT );
+where   k=(Cp) is thermal diffusivity (m 2/sec), k is thermal conductivity (W/m-
+K),  is density (kg/m3), and Cp is speciﬁc heat (kJ/kg-K). If we know the temperature
+at some initial time and can describe how the temperature at the surface changes, then
+we can uniquely determine T . Although k,  and Cp depend on position, time, and
+temperature, we will assume the dependence on position and time is negligible.
+Since we are only interested in the temperature at the slowest heating point of
+the food (typically the geometric center of the food), we can approximate the three
+dimensional heat equation by the one dimensional heat equation
+8
+><
+>:
+Cp(T )Tt = k(T )fTrr + Tr=rg;
+T (r; 0) = T0; T r(0; t) = 0;
+k(T )Tr(R; t) = hfTWater   T (R; t)g;
+where 0  r  R, t  0, 0    2 is a geometric factor, T0 is the initial temperature
+of the food, TWater is the temperature of the ﬂuid (air, water, steam) that the food is
+placed in, and h is the surface heat transfer coefﬁcient (W/m 2-K).
+The geometric factor allows us to approximate any shape from a large slab ( = 0)
+to a long cylinder ( = 1) to a sphere ( = 2). Indeed, a cube is well approximated by
+taking  = 1:25, a square cylinder by  = 0:70, and a 2:3:5 brick by  = 0:28. See
+23
+0 20 40 60 80 100 120
+0
+10
+20
+30
+40
+50
+Time in minutes
+Temperature in °C
+Figure
+A.6: A comparison of experimentally measured temperature with temperature predicted by ( ) of
+an agar-agar gel block in a SousVide Supreme water bath. The model used the thermal diffusivity of water
+(1.410 7 m2/s) and a surface heat transfer coefﬁcient of 95 W/m-K. The data-logging thermometer used
+T-type thermocouple with one placed in the center and one at the surface. The top line is the temperature at
+the surface of the block and the lower line is the temperature at the center of the block.
+Figure A.6 to see an example of a block of agar-agar heated in a SousVide Supreme R⃝
+water bath.
+For thawed foods, k,  and Cp are essentially constant. Sanz et al. (1987) re-
+ported that beef with above average fatness had: a thermal conductivity of 0.48 W/m-
+K at 32 F (0 C) and 0.49 W/m-K at 86 F (30 C); a speciﬁc heat of 3.81 kJ/kg-K at
+both 32 F (0 C) and 86 F (30 C); and, a density of 1077 kg/m 3 at 41 F (5 C) and
+1067 kg/m3 at 86F (30C). This is much less than the difference between beef sirloin
+( = 1.2410 7 m2/s) and beef round (  = 1.1110 7 m2/sec) (Sanz et al., 1987).
+Therefore, we can model the temperature of thawed foods by
+8
+><
+>:
+Tt = fTrr + Tr=rg;
+T (r; 0) = T0; T r(0; t) = 0;
+Tr(R; t) = (h=k )fTWater   T (R; t)g;
+()
+for 0  r  R and t  0. Since h is large (95–155 W/m 2-K for most consumer and
+restaurant water baths), even large deviations in h=k caused only minor deviations in
+the core temperature of the food (Nicola ¨ı and Baerdemaeker, 1996); in comparison,
+home and (low convection) commercial ovens have surface heat transfer coefﬁcients
+of only 14–30 W/m 2-K and even small deviations in h can result in large deviations of
+the core temperature of the food.
+Most foods have a thermal diffusivity between 1.2 and 1.6 10 7 m2/s (Baerde-
+maeker and Nicola ¨ı, 1995). Thermal diffusivity depends on many things, including
+meat species, muscle type, temperature, and water content. Despite these variations in
+thermal diffusivity, we can always choose a (minimum) thermal diffusivity which will
+24
+F
+ood Thermal Diffusivity (10 7 m2/s) Reference
+Beef 1.35–1.52 Mark
+owski et al. (2004)
+1.22–1.82 Sheridan and Shilton (2002)
+1.11–1.30 Sanz et al. (1987)
+1.18–1.33 Singh (1982)
+1.19–1.21 Donald et al. (2002)
+1.25–1.32 Tsai et al. (1998)
+Pork 1.12–1.83 Sosa-Morales et al. (2006)
+1.17–1.25 Sanz et al. (1987)
+1.28–1.66 Kent et al. (1984)
+1.18–1.38 Singh (1982)
+Chicken 1.36–1.42 (White) and 1.28–1.33 (Dark) Siripon et al. (2007)
+1.46–1.48 (White) V ´elez-Ruiz et al. (2002)
+1.08–1.39 Sanz et al. (1987)
+Fish 1.09–1.60 Sanz et al. (1987)
+0.996–1.73 Kent et al. (1984)
+1.22–1.47 Singh (1982)
+Fruits 1.12–1.40 (Apple), 1.42 (Banana),
+1.07 (Lemon), 1.39 (Peach), Singh (1982)
+1.27 (Strawberry)
+V egetables 1.68 (Beans), 1.82 (Peas),
+1.23–1.70 (Potato), 1.71 (Squash), Singh (1982)
+1.06–1.91 (Sweet Potato), 1.48 (Tomato)
+Table A.4: The thermal diffusivity (at 0 C to 65 C) of various types of food reported in the literature.
+underestimate the temperature of the meat as it cooks (and overestimate the tempera-
+ture as it cools); see Table A.4. Thus, so long as the pouches do not ﬂoat to the surface
+or are packed too tightly in the water bath, we can generate heating (Table 1), cooling
+(Table 3), and pasteurization (Table 2) tables.
+Using the above models for the temperature at the slowest heating point of the meat,
+the classical model for the log reduction in pathogens is
+LR = 1
+DRef
+∫ t
+0
+10(T (t′) TRef )=z dt′;
+where DRef is
+the time required for a one decimal reduction in the pathogen at the
+reference temperature TRef and the z-value is the temperature increment needed for
+a ten-fold decrease in D. Despite concerns in (Geeraerd et al., 2000) that the clas-
+sical model is inappropriate for the mild heat treatment of sous vide cooking, Huang
+(2007) found that the classical model was (1–2D) more conservative than experimental
+observations for Listeria.
+References
+Achatz, G., 2008. Alinea. Ten Speed Press.
+25
+Andersson,
+A., R¨onner, U., Granum, P . E., 1995. What problems does the food industry
+have with the spore-forming pathogens Bacillus cereus and Clostridium perfringens?
+International Journal of Food Microbiology 28, 145–155.
+Aran, N., 2001. The effect of calcium and sodium lactates on growth from spores of
+Bacillus cereus and Clostridium perfringens in a ‘sous-vide’ beef goulash under
+temperature abuse. International Journal of Food Microbiology 63, 117–123.
+Armstrong, G. A., McIlveen, H., 2000. Effects of prolonged storage on the sensory
+quality and consumer acceptance of sous vide meat-based recipe dishes. Food Qual-
+ity and Preference 11, 377–385.
+Arvidsson, P ., Boekel, M. A. J. S. V ., Skog, K., J ¨agerstad, M., 1997. Kineteics of
+formation of polar heterocyclic amines in a meat model system. Journal of Food
+Science 62 (5), 911–916.
+Baerdemaeker, J. D., Nicola ¨ı, B. M., 1995. Equipment considerations for sous vide
+cooking. Food Control 6 (4), 229–236.
+Baldwin, D. E., 2008. A practical guide to sous vide cooking.
+URL http://www.douglasbaldwin.com/sous-vide.html
+Baldwin, D. E., 2010. Sous Vide for the Home Cook. Paradox Press.
+Belitz, H.-D., Grosch, W., Schieberle, P ., 2004. Food Chemistry, 3rd Edition. Springer.
+Betts, G. D., Gaze, J. E., 1995. Growth and heat resistance of psychrotropic Clostrid-
+ium botulinum in relation to ‘sous vide’ products. Food Control 6, 57–63.
+Blumenthal, H., 2008. The Big Fat Duck Cookbook. Bloomsbury.
+Bolton, D. J., McMahon, C. M., Doherty, A. M., Sheridan, J. J., McDowell, D. A.,
+Blair, I. S., Harrington, D., 2000. Thermal inactivation of Listeria monocytogenes
+and Yersinia enterocolitica in minced beef under laboratory conditions and in sous-
+vide prepared minced and solid beef cooked in a commercial retort. Journal of Ap-
+plied Microbiology 88, 626–632.
+Bouton, P . E., Harris, P . V ., 1981. Changes in the tenderness of meat cooked at 50–
+65C. Journal of Food Science 46, 475–478.
+Charley, H., Weaver, C., 1998. Foods: A Scientiﬁc Approach, 3rd Edition. Prentice-
+Hall, Inc.
+Church, I., 1998. The sensory quality, microbiological safety and shelf life of packaged
+foods. In: Ghazala, S. (Ed.), Sous Vide and Cook–Chill Processing for the Food
+Industry. Aspen Publishers, Gaithersburg, Maryland, pp. 190–205.
+Church, I. J., Parsons, A. L., 2000. The sensory quality of chicken and potato prod-
+ucts prepared using cook-chill and sous vide methods. International Journal of Food
+Science and Technology 35, 155–162.
+26
+Committee
+on the Review of the Use of Scientiﬁc Criteria and Performance Stan-
+dards for Safe Food, 2003. Scientiﬁc Criteria to Ensure Safe Food. The National
+Academies Press.
+Creed, P . G., 1995. The sensory and nutritional quality of ‘sous vide’ foods. Food
+Control 6 (1), 45–52.
+Creed, P . G., 1998. Sensory and nutritional aspects of sous vide processed foods. In:
+Ghazala, S. (Ed.), Sous Vide and Cook–Chill Processing for the Food Industry. As-
+pen Publishers, Gaithersburg, Maryland, pp. 57–88.
+Davey, C. L., Niederer, A. F., Graafhuis, A. E., 1976. Effects of ageing and cooking on
+the tenderness of beef muscle. Journal of the Science of Food and Agriculture 27,
+251–256.
+Donald, K. M., Sun, D.-W., Lyng, J. G., 2002. Effect of vacuum cooling on the ther-
+mophysical properties of a cooked beef product. Journal of Food Engineering 52,
+167–176.
+Embarek, P . K. B., Huss, H. H., 1993. Heat resistance of Listeria monocytogenes in
+vacuum packaged pasteurized ﬁsh ﬁllets. International Journal of Food Microbiol-
+ogy 20, 85–95.
+FDA, 2009. Food code. Tech. rep., U.S. Department of Health and Human Services.
+FDA, 2011. Fish and ﬁshery products hazards and controls guidance, 4th ed. Tech. rep.,
+U.S. Department of Health and Human Services.
+Fern´andez, P . S., Peck, M. W., 1999. A predictive model that describes the effect of pro-
+longed heating at 70 to 90C and subsequent incubation at refrigeration temperatures
+on growth from spores and toxigenesis by nonproteolytic Clostridium botulinum in
+the presence of lysozyme. Applied and Environmental Microbiology 65 (8), 3449–
+3457.
+FSIS, 2005. Time-temperature tables for cooking ready-to-eat poultry products. Notice
+16-05, Food Safety and Inspection Service.
+Garc´ıa-Linares, M. C., Gonzalez-Fandos, E., Garc ´ıa-Fern´andez, M. C., Garc ´ıa-Arias,
+M. T., 2004. Microbiological and nutritional quality of sous vide or traditionally
+processed ﬁsh: Inﬂuence of fat content. Journal of Food Quality 27, 371–387.
+Garc´ıa-Segovia, P ., Andr´es-Bello, A., Mart ´ınez-Monz´o, J., 2008. Textural properties
+of potatoes ( Solanum tuberosum L., cv. Monalisa) as affected by different cooking
+processes. Journal of Food Engineering 88, 28–35.
+Geeraerd, A. H., Herremans, C. H., Impe, J. F. V ., 2000. Structural model requirements
+to describe microbial inactivation during a mild heat treatment. International Journal
+of Food Microbiology 59, 185–209.
+27
+Geor
+get, D. M. R., Ng, A., Smith, A. C., Waldron, K. W., 1998. The thermomechanical
+properties of carrot cell wall material. Journal of the Science of Food and Agriculture
+78, 73–80.
+Ghazala, S., Aucoin, J., Alkanani, T., 1996. Pasteurization effect on fatty acid stability
+in a sous vide product containing seal meat (Phoca groenlacdica ). Journal of Food
+Science 61 (3), 520–523.
+Gonz´alez-Fandos, E., Garc ´ıa-Linares, M. C., Villarino-Rodr ´ıguez, A., Garc´ıa-Arias,
+M. T., Garc´ıa-Fern´andez, M. C., 2004. Evaluation of the microbiological safety and
+sensory quality of rainbow trout ( Oncorhynchus mykiss) processed by the sous vide
+method. Food Microbiology 21, 193–201.
+Gonz´alez-Fandos, E., Villarino-Rodr ´ıguez, A., Garc´ıa-Linares, M. C., Garc ´ıa-Arias,
+M. T., Garc ´ıa-Fern´andez, M. C., 2005. Microbiological safety and sensory char-
+acteristics of salmon slices processed by the sous vide method. Food Control 16,
+77–85.
+Gould, G. W., 1999. Sous vide food: Conclusions of an ECFF Botulinum working
+party. Food Control 10, 47–51.
+Graiver, N., Pinotti, A., Califano, A., Zaritzky, N., 2006. Diffusion of sodium chloride
+in pork tissue. Journal of Food Engineering 77, 910–918.
+Greve, L. C., McArdle, R. N., Gohike, J. R., Labavitch, J. M., 1994. Impact of heating
+on carrot ﬁrmness: Changes in cell wall components. Journal of Agriculture and
+Food Chemistry 42, 2900–06.
+Hansen, T. B., Knøchel, S., 1996. Thermal inactivation of Listeria monocytogenes dur-
+ing rapid and slow heating in sous vide cooked beef. Letters in Applied Microbiology
+22, 425–428.
+Hansen, T. B., Knøchel, S., Juncher, D., Bertelsen, G., 1995. Storage characteristics of
+sous vide cooked roast beef. International Journal of Food Science and Technology
+30, 365–378.
+Hesser, A., August 2005. Under pressure. New Y ork Times.
+Huang, L., 2007. Computer simulation of heat transfer during in-package pasteuriza-
+tion of beef frankfurters by hot water immersion. Journal of Food Engineering 80,
+839–849.
+J¨agerstad, M., Skog, K., Arvidsson, P ., Solyakov, A., 1998. Chemistry, formation and
+occurrence of genotoxic heterocyclic amines identiﬁed in model systems and cooked
+foods. Z Lebensm Unters Forsch A 207, 419–427.
+Jay, J. M., 2000. Modern Food Microbiology, sixth Edition. Aspen Publishers, Inc.
+Johansson, M. A. E., Fredholm, L., Bjerne, I., J ¨agerstad, M., 1995. Inﬂuence of frying
+fat on the formation of heterocyclic amines in fried beefburgers and pan residues.
+Food and Chemical Toxicology 33 (12), 993–1004.
+28
+Johnson,
+K. M., Nelson, C. L., Busta, F. F., 1983. Inﬂuence of temperature on germi-
+nation and growth of spores of emetic and diarrheal strains of bacillus cereus in a
+broth medium and in rice. Journal of Food Science 48, 286–87.
+Juneja, V . K., Eblen, B. S., Ransom, G. M., 2001. Thermal inactivation of Salmonella
+spp. in chicken broth, beef, pork, turkey, and chicken: Determination of d- and z-
+values. Journal of Food Science 66, 146–152.
+Juneja, V . K., Whiting, R. C., Marks, H. M., Snyder, O. P ., 1999. Predictive model for
+growth of Clostridium perfringens at temperatures applicable to cooling of cooked
+meat. Food Microbiology 16, 335–49.
+Kamozawa, A., , Talbot, H. A., 2010. Ideas in Food: Great Recipes and Why They
+Work. Clarkson Potter.
+Keller, T., Benno, J., Lee, C., Rouxel., S., 2008. Under Pressure: Cooking Sous Vide.
+Artisan.
+Kent, M., Christiansen, K., van Haneghem, I. A., Holtz, E., Morley, M. J., Nesvadba,
+P ., Poulsen, K. P ., 1984. COST 90 collaborative measurement of thermal properties
+of foods. Journal of Food Engineering 3, 117–150.
+Kunzek, H., Kabbert, R., Gloyna, D., 1999. Aspects of material science in food pro-
+cessing: changes in plant cell walls of fruits and vegetables. Z Lebensm Unters
+Forsch A 208, 233–50.
+Lassen, A., Kall, M., Hansen, K., Ovesen, L., 2002. A comparison of the retention
+of vitamins B1, B2 and B6, and cooking yield in pork loin with conventional and
+enhanced meal-service systems. European Food Research and Technology 215, 194–
+199.
+Lawrie, R. A., 1998. Lawrie’s Meat Science, sixth Edition. Woodhead Publishing Lim-
+ited.
+Lund, B. M., O’Brien, S. J., 2011. The occurence and prevention of foodborne disease
+in vulnerable people. Foodborne Pathogens and Disease 8 (9), 961–73.
+Markowski, M., Bialobrzewski, I., Cierach, M., Paulo, A., 2004. Determination of
+thermal diffusivity of lyoner type sausages during water bath cooking and cooling.
+Journal of Food Engineering 65, 591–598.
+McGee, H., 2004. On Food and Cooking: The Science and Lore of The Kitchen. Scrib-
+ner, New Y ork.
+Meinert, L., Sch¨afer, A., Bjergegaard, C., Aaslyng, M. D., Bredie, W. L. P ., 2009. Com-
+parison of glucose, glucose 6-phosphate, ribose, and mannose as ﬂavour precursors
+in pork; the effect of monosaccharide addition on ﬂavour generation. Meat Science
+81, 419–425.
+Meynier, A., Mottram, D. S., 1995. The effect of pH on the formation of volatile com-
+pounds in meat-related model systems. Food Chemistry 52, 361–366.
+29
+Mossel,
+D. A. A., Struijk, C. B., 1991. Public health implication of refrigerated pasteur-
+ized (‘sous-vide’) foods. International Journal of Food Microbiology 13, 187–206.
+Mottram, D. S., 1998. Flavour formation in meat and meat products: A review. Food
+Chemistry 62 (4), 415–424.
+Myhrvold, N., Y oung, C., Bilet, M., 2011. Modernist Cuisine: The Art and Science of
+Cooking. The Cooking Lab.
+National Advisory Committee on Microbiological Criteria for Food, 2008. Response
+to the questions posed by the food and drug administration and the national marine
+ﬁsheries service regarding determination of cooking parameters for safe seafood for
+consumers. Journal of Food Protection 71 (6), 1287–1308.
+Ng, A., Waldron, K. W., 1997. Effect of cooking and pre-cooking on cell-wall chem-
+istry in relation to ﬁrmness of carrot tissue. Journal of the Science of Food and Agri-
+culture 73, 503–12.
+Nicola¨ı, B. M., Baerdemaeker, J. D., 1996. Sensitivity analysis with respect to the
+surface heat transfer coefﬁcient as applied to thermal process calculations. Journal
+of Food Engineering 28, 21–33.
+Nor´en, N., Arnold, D., 2009. Cooking issues: The French Culinary Institute’s tech’n
+stuff blog.
+URL http://www.cookingissues.com/
+Nyati, H., 2000a. An evaluation of the effect of storage and processing temperatures
+on the microbiological status of sous vide extended shelf-life products. Food Control
+11, 471–476.
+Nyati, H., 2000b. Survival characteristics and the applicability of predictive mathemat-
+ical modelling to Listeria monocytogenes growth in sous vide products. International
+Journal of Food Microbiology 56, 123–132.
+O’Bryan, C. A., Crandall, P . G., Martin, E. M., Grifﬁs, C. L., Johnson, M. G.,
+2006. Heat resistance of Salmonella spp., Listeria monocytogenes, Escherichia coli
+0157:H7, and Listeria innocua M1, a potential surrogate for Listeria monocytogenes,
+in meat and poultry: A review. Journal of Food Science 71 (3), R23–R30.
+Ohlsson, T., 1994. Minimal processing–preservation methods of the future: an
+overview. Trends in Food Science and Technology 5, 341–44.
+O’Mahony, F. C., O’Riordan, T. C., Papkovskaia, N., Ogurtsov, V . I., Kerry, J. P .,
+Papkovsky, D. B., 2004. Assessment of oxygen levels in convenience-style muscle-
+based sous vide products through optical means and impact on shelf-life stability.
+Packaging Technology and Science 17, 225–234.
+Peck, M. W., 1997. Clostridium botulinum and the safety of refrigerated processed
+foods of extended durability. Trends in Food Science & Technology 8, 186–192.
+30
+Peck,
+M. W., Goodburn, K. E., Betts, R. P ., Stringer, S. C., 2006.Clostridium botulinum
+in vacuum packed (VP) and modiﬁed atmosphere packed (MAP) chilled foods, ﬁnal
+project report (b13006). Tech. rep., Institute of Food Research.
+Peck, M. W., Stringer, S. C., 2005. The safety of pasteurised in-pack chilled meat
+products with respect to the foodborne botulism hazard. Meat Science 70, 461–475.
+Plat, D., Ben-Shalom, N., Levi, A., Reid, D., Goldschmidt, E. E., 1988. Degradation
+of pectic substances in carrots by heat treatment. Journal of Agriculture and Food
+Chemistry 36, 362–65.
+Potter, J., 2010. Cooking for Geeks: Real Science, Great Hacks, and Good Food.
+O’Reilly.
+Powell, T. H., Dikeman, M. E., Hunt, M. C., 2000. Tenderness and collagen composi-
+tion of beef semitendinosus roasts cooked by conventional convective cooking and
+modeled, multi-stage, convective cooking. Meat Science 55, 421–425.
+Roca, J., Brugu ´es, S., 2005. Sous-Vide Cuisine. Montagud Editores, S.A.
+Rybka-Rodgers, S., 1999. Developing a HACCP plan for extended shelf-life cook-chill
+ready-to-eat meals. Food Australia 51, 430–433.
+Rybka-Rodgers, S., 2001. Improvement of food safety design of cook-chill foods. Food
+Research International 34, 449–455.
+Sanz, P . D., Alonso, M. D., Mascheroni, R. H., 1987. Thermophysical properties of
+meat products: General bibliography and experimental values. Transactions of the
+ASAE 30, 283–289 & 296.
+Schellekens, M., 1996. New research issues in sous-vide cooking. Trends in Food Sci-
+ence and Technology 7, 256–262.
+Sheard, M. A., Rodger, C., 1995. Optimum heat treatments for ‘sous vide’ cook-chill
+products. Food Control 6, 53–56.
+Sheridan, P . S., Shilton, N. C., 2002. Determination of the thermal diffusivity of ground
+beef patties under infrared radiation oven-shelf cooking. Journal of Food Engineer-
+ing 52, 39–45.
+Sila, D. N., Smout, C., Elliot, F., Loey, A. V ., Hendrickx, M., 2006. Non-enzymatic
+depolymerization of carrot pectin: Toward a better understanding of carrot texture
+during thermal processing. Journal of Food Science 71, E1–E9.
+Simpson, M. V ., Smith, J. P ., Simpson, B. K., Ramaswamy, H., Dodds, K. L., 1994.
+Storage studies on a sous vide spaghetti and meat sauce product. Food Microbiology
+11, 5–14.
+Singh, R. P ., 1982. Thermal diffusivity in food processing. Food Technology 36 (2),
+134–137.
+31
+Siripon,
+K., Tansakul, A., Mittal, G. S., 2007. Heat transfer modeling of chicken cook-
+ing in hot water. Food Research International 40, 923–930.
+Skog, K., 1993. Cooking procedures and food mutagens: A literature review. Food and
+Chemical Toxicology 31 (9), 655–675.
+Skog, K., 2009. Personal correspondence.
+Skog, K., J ¨agerstad, M., Reutersw ¨ard, A. L., 1992. Inhibitory effect of carbohydrates
+on the formation of mutagens in fried beef patties. Food and Chemical Toxicology
+30 (8), 681–688.
+Snyder, O. P ., 1995. The applications of HACCP for MAP and sous vide products. In:
+Farber, J. M., Dodds, K. L. (Eds.), Principles of Modiﬁed-Atomosphere and Sous
+Vide Product Packaging. Technomic Publishing Co, Inc., pp. 325–83.
+Snyder, Jr., O. P ., 2006. Food safety hazards and controls for the home food preparer.
+Tech. rep., Hospitality Institute of Technology and Management.
+Sosa-Morales, M. E., Orzuna-Esp ´ıritu, R., V´elez-Ruiz, J. F., 2006. Mass, thermal and
+quality aspects of deep-fat frying of pork meat. Journal of Food Engineering 77,
+731–738.
+Stea, T. H., Johansson, M., J ¨agerstad, M., Frølich, W., 2006. Retention of folates in
+cooked, stored and reheated peas, broccoli and potatoes for use in modern large-
+scale service systems. Food Chemistry 101, 1095–1107.
+This, H., 2006. Molecular Gastronomy: Exploring the Science of Flavor. Columbia
+University Press, New Y ork.
+Tornberg, E., 2005. Effect of heat on meat proteins — implications on structure and
+quality of meat products. Meat Science 70, 493–508.
+Tsai, S.-J., Unklesbay, N., Unklesbay, K., Clarke, A., 1998. Thermal properties of
+restructured beef products at different isothermal temperatures. Journal of Food Sci-
+ence 63 (3), 481–484.
+V audagna, S. R., S ´anchez, G., Neira, M. S., Insani, E. M., Picallo, A. B., Gallinger,
+M. M., Lasta, J. A., 2002. Sous vide cooked beef muscles: Effects of low
+temperature-long time (LT-LT) treatments on their quality characteristics and storage
+stability. International Journal of Food Science and Technology 37, 425–441.
+V ega, C., Mercad´e-Prieto, 2011. Culinary biophysics: on the nature of the 6X C egg.
+Food Biophysics 6, 152–59.
+V´elez-Ruiz, J. F., V ergara-Balderas, F. T., Sosa-Morales, M. E., Xique-Hern ´andez, J.,
+2002. Effect of temperature on the physical properties of chicken strips during deep-
+fat frying. International Journal of Food Properties 5 (1), 127–144.
+32
+W
+aldron, K. W., Smith, A. C., Parr, A. J., Ng, A., Parker, M. L., 1997. New approaches
+to understanding and controlling cell separation in relation to fruit and vegetable
+texture. Trends in Food Science and Technology 8, 213–22.
+Willardsen, R. R., Busta, F. F., Allen, C. E., Smith, L. B., 1977. Growth and survival
+of Clostridium perfringens during constantly rising temperatures. Journal of Food
+Science 43, 470–475.
+33

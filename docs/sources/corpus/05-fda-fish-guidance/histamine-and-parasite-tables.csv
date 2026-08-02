@@ -1,0 +1,8 @@
+source_id,value_type,category,value,unit,notes
+05-fda-fish-guidance,safe,histamine_scombrotoxin_action_level_single_fish,50,ppm,"§7 Scombrotoxin (Histamine) chapter. FDA guidance level for histamine in the edible portion of a single fish/uncomposited sample. If 50ppm found in one section, other sections may exceed 500ppm (non-uniform distribution)"
+05-fda-fish-guidance,safe,histamine_composited_sample_20x3,17,ppm,"Composited sample of 20 units of 3 fish each: action point reduced from 50ppm to 17ppm per unit to account for dilution in compositing"
+05-fda-fish-guidance,safe,parasite_kill_freeze_and_store,-20,C,"Freeze and store at ambient temp of -4F(-20C) or below for 7 days total time - sufficient to kill parasites (per FDA guidance; ambient/air temp of freezer, not product core temp)"
+05-fda-fish-guidance,safe,parasite_kill_blast_freeze_fast,-35,C,"Freeze at ambient temp of -31F(-35C) or below until solid, then store at -4F(-20C) or below for 24 hours - sufficient to kill parasites"
+05-fda-fish-guidance,safe,parasite_kill_blast_freeze_15h,-35,C,"Alternative: freeze at ambient -31F(-35C) or below for 15 hours (total time, blast freezer) - sufficient to kill parasites"
+05-fda-fish-guidance,safe,vessel_chilling_time,15.6,C,"If time from catch to chilling by processor is 12 to <15 hours after death, internal fish temp should be 60F(15.6C) or below (histamine-formation control, not a cooking temp)"
+05-fda-fish-guidance,other,decomposition_hold_time_by_temp,7-1,days,"Decomposition/histamine risk hold-time table: 7 days at 31.3-41F(-0.4 to 5C); 1 day at 42F and above (exact upper bound cut off in extraction - see gap note in PROVENANCE)"

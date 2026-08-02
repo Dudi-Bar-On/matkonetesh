@@ -1,0 +1,1461 @@
+   
+ 
+Page 1 of 20 
+ 
+HACCP Model for Ready-to-Eat Fermented, Salt-Cured, and Dried Products (Not Heat 
+Treated—Shelf Stable) 
+The United States Department of Agriculture (USDA) published the Pathogen Reduction; Hazard 
+Analysis Critical Control Point (HACCP) Systems Final Rule i n July 1996 mandating all USDA inspected 
+meat and poultry establishments implement a HACCP system. Hazard Analysis Critical Control Point 
+(HACCP) is a systematic and scientific method of process control for the production of safe food 
+products. The HACCP regulations (
+9 CFR Part 417) require establishments to develop and implement a 
+system of controls designed to improve the safety of their products. The HACCP models’ focus is on 
+product safety, not product quality characteristics.  
+ 
+With the rule, the Food Safety and Inspection Service (FSIS) made available a guidebook for the 
+preparation of HACCP plans and a generic model for each food processing category defined in the 
+regulation (9 CFR 417.2(b)(1)). The guidebook and the generic models have been revised since their 
+initial publication to be consistent with current science and policy. FSIS recommends you use the 
+updated Guidebook for the Preparation of HACCP Plans when developing an establishment-specific 
+HACCP plan.  
+ 
+Generic models serve as useful examples of how to meet the regulatory requirements. Each model 
+represents a food processing category. Each processing category may contain numerous products.  
+Therefore, each single model represents a category of products and, as such, the models do not 
+demonstrate unique products or novel processes. The generic models are not intended to be used “as 
+is”. Establishments are to tailor the models to fit the establishment’s operation.  
+ 
+The Not Heat Treated-Shelf Stable process category applies to products that are further processed by a 
+curing, drying, or fermenting step as the sole means by which product achieves food safety. To use this 
+model, a low-level heat treatment may be applied if the heat treatment is not used as the sole means to 
+achieve food safety. Products in this category include dried sausage, such as salami and pepperoni (if 
+not heat-treated). Semi-dry sausages may also be in this HACCP category, depending on the process 
+steps. Dried whole muscle products which are mostly dry cured could also fall into this category. These 
+products include dried hams, such as prosciutto, parma, and country ham, and dried intact pieces of 
+meat such as dried pork bellies (Pancetta), dried pork shoulders (coppa), and dried beef rounds (e.g., 
+bresaola, beef prosciutto, and basturma).  
+ 
+The finished products are shelf stable. Several products (not all) in this HACCP category are produced 
+as ready-to-eat (RTE) product. If an establishment produces products such as pepperoni, salami, 
+bresaola, biltong, and droëwors, which are typically RTE, as not ready-to-eat the establishment must 
+have on-file documentation supporting their decisions (9 CFR 417.5(a)(1)
+). This support must address 
+how the establishment can ensure the consumer will properly cook the product, particularly if there is 
+evidence, such as marketing materials or recipes, commonly indicating the product is RTE. Additional 
+information on these products can be found in the FSIS Ready- to-Eat Fermented, Salt-Cured, and Dried 
+Products Guideline. Thi s model uses RTE dried fermented sausage as the example product.   
+ 
+The model’s critical control points (CCPs) do not necessarily apply to all operations or products.  
+Products or operations may require fewer or more CCPs depending on the operation. The flow diagram 
+demonstrates a general production process and should be modified to reflect the processes used at the 
+establishment. The food safety critical limits and processing specifications in this model come from 
+   
+ 
+Page 2 of 20 
+ 
+scientific documents or other reliable sources. This model includes references for guidance on the 
+selection of critical limits.  
+  
+The records produced while documenting a HACCP plan, including all documentation used to support 
+the hazard analysis, are HACCP records (9 CFR 417.5(a)). The selection of processing categories and 
+HACCP models are preliminary steps to completing a hazard analysis. The documents produced during 
+the selection process are HACCP records. Ensure you maintain the documents produced while 
+developing a HACCP plan. 
+For further assistance with developing HACCP plans see the Guidebook for the Preparation of HACCP 
+Plans and the guidance materials available on the FSIS HACCP webpage.1   
+ 
+ 
+  
+ 
+1 This information is best suited for small and very small establishments seeking assistance in understanding the requirements in 
+Title 9 Code of Federal Regulations (9 CFR) Part 417. The HACCP model is for demonstration purposes only. The model does 
+not represent requirements that must be met. Establishments are required to develop HACCP plans specific to their facilities, 
+production practices, and products. 
+
+   
+ 
+Page 3 of 20 
+ 
+ 
+ 
+ 
+PRODUCT DESCRIPTION2 
+ 
+Dried Fermented Sausage (Not Heat Treated-Shelf Stable) 
+ 
+ Product Name and Process Type Dried Fermented Sausage (Not Heat 
+Treated—Shelf Stable)  
+Important product characteristics (aw, pH, 
+preservatives, etc.) Water activity (aw), pH, nitrite and nitrate 
+How it is to be used3 Ready-to-eat 
+Packaging (durability and storage 
+conditions) Vacuum packed 
+Shelf-life and at what temperature 180 days non-refrigerated; 365 days 
+refrigerated 
+Where it will be sold (specify intended 
+consumers, especially at-risk 
+populations)4 
+Sold to household consumers through retail 
+outlets or distributed to hotels, restaurants, 
+and institutions (HRI) 
+Labeling instructions 
+Product name, inspection legend and 
+establishment number, net weight statement, 
+address line, and nutrition facts
+5 on retail 
+packages 
+Special distribution control none 
+ 
+DATE:                          APPROVED BY:                                                         
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+2 Prior to developing the HACCP plan, please read the FSIS Guidebook for the Preparation of HACCP Plans for detailed 
+descriptions of the worksheets and hazard analysis. This information is best suited for small and very small establishments 
+seeking assistance in understanding the requirements in Title 9 Code of Federal Regulations (9 CFR) Part 417. The HACCP 
+model is for demonstration purposes only.  The model does not represent requirements that must be met.  Establishments are 
+required to develop HACCP plans specific to their facilities, production practices, and products.  
+3 The intended use or consumer of the product must be identified in accordance with 9 CFR 417.2(a)(2). 
+4 At risk populations include young children, elderly, and immunocompromised persons. 
+5 HRI packages do not require nutrition facts unless the label bears a nutrient content claim (e.g., low sodium, low fat). Nutrition 
+facts may not be required when certain exemptions apply as described in 9 CFR 317.400 including if a business has less than 
+500 employees or production of less than 100,000 lbs per year. 
+
+   
+ 
+Page 4 of 20 
+ 
+EXAMPLE LIST OF PRODUCT INGREDIENTS AND INCOMING MATERIAL6 
+ 
+Dried Fermented Sausage (Not Heat Treated—Shelf Stable) 
+  
+ 
+Meat  Fresh and frozen raw pork and pork 
+trimmings 
+Non-meat food ingredients Dextrose (sugar), salt, flavors, spice 
+mixtures, fermentation starter culture 
+Antimicrobial7 interventions 
+and processing aids None 
+Packaging material 
+55mm and 78 mm (3-inch) casings 
+(natural or semipermeable), plastic 
+vacuum bags, waxed paper  
+Restricted ingredients and 
+allergens Sodium nitrite and sodium nitrate 
+Other None 
+ 
+DATE:         ________________ APPROVED BY:                                                    
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+6 List all meat, non-meat ingredients, restricted ingredients (for example, nitrite), processing aids, and packaging material used in 
+production of this product. This is important to help identify any special ingredients or processes to address in the HACCP plan.  
+See the FSIS Compliance Guidelines Allergens and Ingredients of Public Health Concern: Identification, Prevention and Control, 
+and Declaration through Labeling f or detailed information on allergens. To review restrictions on the use of nitrite and sodium 
+ascorbate or sodium erythorbate, see 9 CFR 424.22(b).  
+7 FSIS and the Food and Drug Administration (FDA) have a memorandum of understanding (MOU) that establishes the working 
+relationship followed when responding to notifications for the use of food additives intended for use in the production of FSIS 
+regulated products. FSIS determines the suitability of the use of food ingredients used in the production of meat, poultry, and 
+egg products. FSIS consults, as necessary, with FDA on the requirements under the Food, Drug, and Cosmetic Act and its 
+implementing regulations. See FSIS Directive 7120.1, Safe and Suitable Ingredients Used in Meat Poultry and Egg Products for 
+the list of suitable ingredients.  
+
+   
+ 
+Page 5 of 20 
+ 
+PROCESS FLOW DIAGRAM8 
+  
+Dried Fermented Sausage (Not Heat Treated—Shelf Stable) 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+ 
+8 This is an example flow diagram. Establishments’ flow diagrams for the same product may be different. Establishments 
+determine which steps are included in their process. The steps must represent all relevant hazards in the hazard analysis. 
+1a. Receiving and Storage of 
+Frozen Raw Meat (Pork) 
+2. Tempering Frozen Meat 
+1c. Receiving and storage 
+of Packaging and Labeling  
+5. Combine Ingredients and 
+Processing (includes one or 
+more of the following: grinding, 
+chopping, mixing, forming)  
+1d. Receiving and Storage of 
+Starter Cultures and Casings 
+1b. Receiving and Storage 
+Non-Meat Ingredients 
+4. Preparing Starter Cultures 
+and Casings 
+3. Weighing Restricted and 
+Non-Meat Ingredients 
+ 8. Fermenting 
+9. Drying 
+10. Peeling and Slicing 
+11. Packaging and Labeling 
+7. Stuffing  
+12. Finished Products 
+Storage and Distribution 
+6. Rework and 
+Work in 
+Progress 
+13. Returned 
+Product 
+
+EXAMPLE HAZARD ANALYSIS9 
+ 
+Dried Fermented Sausage (Not Heat Treated—Shelf Stable)   
+ 
+ 
+ 
+9 For guidance on fermented and dried products, see the FSIS Ready-to-Eat Fermented, Salt-Cured and Dried Products Guideline. The Meat and Poultry Hazards and Controls 
+Guide a lso contains information on potential biological, physical, and chemical hazards and frequently used controls and preventive measures. 
+10 Hazards are grouped into three categories: Biological (B), Chemical (C), and Physical (P).  Biological hazards are living organisms. Chemical hazards may be naturally occurring in 
+foods, used, or added during the processing of foods, or administered to live animals. Physical hazards are a component of a food that is unexpected, such as plastic, glass, metal, or 
+bone in a boneless product. See the Guidebook for the Preparation of HACCP Plans for more information about hazards identification. 
+11 Place the justification for your decision in column 4. Include control measures in column 4 for hazards not reasonably likely to occur and place them in column 5 for hazards 
+reasonably likely to occur. If a hazard is reasonable likely to occur, then a CCP must be addressed at this step or a later step. See FSIS Meat and Poultry Hazards and Controls 
+Guide f or a list of frequently used controls.  
+12 Scientific references are important in making decisions, providing justifications, and validating the HACCP system. When scientific references are used for decisions, the 
+referenced article must be part of the HACCP records. If the scientific justification is from FSIS, then list the document name. If justification is not from an FSIS source, then HACCP 
+system design must be supported by documentary evidence – that is, the theoretical principles, expert advice from processing authorities, scientific or technical data, peer-reviewed 
+journal articles, pathogen modeling programs, or other information demonstrating that particular process control measures can adequately prevent, reduce, or eliminate specific 
+hazards.  These non-FSIS supporting documents must be kept for the life of the HACCP plan.    
+13 Because the results obtained under prerequisite programs could affect decisions made in the hazard analysis, an establishment is required to maintain records associated with 
+these programs as supporting documentation for its hazard analysis (9 CFR 417.5(a)). When an establishment determines that a potential hazard is not reasonably likely to occur 
+because the implementation of a prerequisite program (e.g., Sanitation SOP, written sanitary dressing procedures incorporated into prerequisite programs, purchase specifications, 
+antimicrobial interventions) prevents conditions that make the potential hazard likely, that prerequisite program then becomes part of the HACCP system and as a result, must be 
+validated. This means that establishments must maintain scientific or technical support for the design of those prerequisite programs used to support decisions in the hazard 
+analysis and must collect in-plant validation data to support that the programs are implemented as designed (FSIS Compliance Guideline: HACCP Systems Validation, page 5).  
+14 To determine a CCP (column 5), see FSIS Guidebook for the Preparation of HACCP Plans to determine the best CCP to control, reduce, or eliminate a hazard. 
+Column 1 Column 2 Column 3 Column 4 Column 5 Column 6 
+Ingredient / 
+Process Step 
+Potential Hazards 
+(Introduced or 
+Controlled) at This 
+Step10 
+Is the 
+Potential 
+Food Safety 
+Hazard 
+Reasonably 
+Likely to 
+Occur? 
+(RLTO) (Yes 
+or No)11 
+Justification / Basis for Decision in Column 
+312 
+If Yes in Column 3 
+(Hazard RLTO), What 
+Control Measures Can 
+Be Applied to Prevent, 
+Eliminate, or Reduce 
+the Hazard to 
+Acceptable Levels?13 
+If yes in 
+Column 3 
+(Hazard RLTO) 
+is this Step a 
+Critical Contro  
+Point (CCP)?14 
+1a. Receiving 
+and Storage 
+of Frozen 
+Raw Meat 
+(Pork) 
+B: Presence of 
+pathogens: Salmonella, 
+Listeria monocytogenes 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+ 
+ 
+Salmonella and Listeria monocytogenes are 
+known to be present and may cause illness if not 
+controlled. 
+ 
+An annual Letter of Guarantee (LOG) is on file 
+for each supplier of incoming pork indicating 
+Salmonella controls were applied. 
+Controlled at CCP 1 
+Fermenting and CCP 2 
+Drying 
+ 
+ 
+ 
+No 
+ 
+ 
+ 
+ 
+ 
+
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 7 of 20 
+ 
+ 
+15 The Significance of time-temperature to growth of foodborne pathogens during refrigeration at 40-50°F. Presented during the Joint FSIS/FDA Conference on Time/Temperature. 
+November 18, Washington, DC, Tompkin, R.B. 1996. 
+16 See FSIS Compliance Guideline for the Prevention and Control of Trichinella and Other Parasitic Hazards in Pork and Products Containing Pork 
+ for options used to prevent the control of Trichinella in pork and pork products. This HACCP plan is using Sausage Treatment Method No. 6 (2018 revision page 19). 
+17 Note: The establishment must maintain copies of all the documents referenced in the hazard analysis that are designated as support for the decisions (9 CFR 417.5(a)(1))  
+including establishment historical records. Such historical records are often gathered as part of in-plant validation (9 CFR 417.4(a)(1). When historical records are not available (for 
+example, a HACCP plan for a new process or product), then system design must be supported by other documentary evidence, such as FSIS Meat and Poultry Hazards and 
+Controls Guide. See the guide for frequently used hazard controls. 
+ 
+ 
+ 
+B: Outgrowth of 
+pathogens: Salmonella, 
+Listeria monocytogenes 
+ 
+ 
+B: Presence of 
+Trichinella spiralis 
+ 
+ 
+ 
+No 
+ 
+ 
+ 
+ 
+Yes 
+Written SOP to protect ingredients from 
+environmental contamination. 
+ 
+Written receiving Standard Operating Procedure 
+(SOP) and written storage temperature control 
+SOP for maintaining product at temperatures 
+that preclude Salmonella and limit growth for 
+Listeria monocytogenes (Tompkin, R.B. 1996).
+15 
+ 
+The validated Sausage Treatment Method No. 6 
+drying process in FSIS Compliance Guideline for 
+the Prevention and Control of Trichinella and 
+Other Parasitic Hazards in Pork and Products 
+Containing Pork is met by CCP 2.16 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Controlled at CCP 2 
+Drying 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+No 
+C:  None     
+P: Foreign material No Use written Incoming Material SOP to visually 
+evaluate incoming packaged product for foreign 
+material contamination.   
+ 
+Records demonstrate no incidents of foreign 
+materials detected in products received.17 
+  
+
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 8 of 20 
+ 
+ 
+18 An annual update for LOG is not a regulatory requirement. Each establishment must determine the frequency at which the LOG is updated. The frequency should be sufficient to 
+adequately describe the supplier’s process to support the decisions made.   
+1b. Receiving 
+and Storage 
+of Non-Meat 
+Ingredients 
+B: Presence of 
+pathogens: Salmonella, 
+Listeria monocytogenes 
+Yes Spices and flavorings may introduce pathogens.  
+ 
+Written Receiving SOP includes procedures for 
+examination of non-meat ingredients for sanitary 
+conditions. 
+ 
+Written Sanitation SOP includes the procedures 
+used to protect non-meat ingredients from 
+environmental contamination. 
+ 
+LOGs18 from suppliers describe quality controls 
+and prevention procedures. 
+Controlled at CCP 1 
+Fermenting and CCP 2 
+Drying 
+No 
+C: Undeclared allergens No This product does not contain allergenic 
+ingredients. Allergenic ingredients are used in 
+other product produced in the establishment.  
+ 
+Written allergen program used to protect non-
+allergenic ingredients and products from cross-
+contamination with allergenic ingredients.  
+ 
+LOG for all non-meat ingredients describe 
+quality controls and contamination prevention 
+procedures.  
+ 
+Written Incoming Ingredients SOP procedures to 
+examine incoming non-meat ingredients to verify 
+  
+
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 9 of 20 
+ 
+ingredients statement matches the ordered 
+ingredients and sources.  
+ 
+Written Sanitation SOP used to protect non-meat 
+ingredients from environmental contamination. 
+P: None     
+1c. Receiving 
+and Storage 
+of Packaging 
+and Labeling 
+B: Contamination with 
+pathogens 
+No Procedures to protect packaging materials from 
+pests and environmental contamination.  
+ 
+LOG is on file for each supplier of packaging and 
+labeling items. 
+  
+C: Chemical hazards No Packaging materials may introduce chemical 
+hazards. LOG for all packaging materials 
+describing quality controls and prevention 
+procedures.  
+ 
+Written Packaging Material SOP to examine 
+incoming materials including sanitary conditions. 
+  
+Written Sanitation SOP for procedures used to 
+protect packaging materials from environmental 
+contamination. 
+  
+P: Physical 
+contaminants 
+No Written Sanitation SOP used to protect 
+packaging materials from contamination with 
+physical hazards. 
+  
+1d. Receiving 
+and Storage 
+of Starter 
+B:  Pathogen presence 
+and outgrowth:  
+Yes Natural casings are a known source of 
+pathogens. Casings and starter cultures are 
+stored under refrigeration. 
+Controlled at CCP 1 
+Fermenting and CCP 2 
+Drying 
+No 
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 10 of 20 
+ 
+Cultures and 
+Casings 
+Salmonella and Listeria 
+monocytogenes 
+C: None     
+P: None     
+2. Tempering 
+Frozen Meat 
+B: Pathogen outgrowth: 
+Salmonella and Listeria 
+monocytogenes 
+No Tempering is conducted under refrigeration.  
+Written Temperature Control SOP for 
+maintaining product at temperatures that 
+preclude Salmonella and limit growth for Listeria 
+monocytogenes (
+Tompkin, R.B. 1996).15 
+  
+C: None     
+P: None     
+3. Weighing 
+Restricted 
+and Non-Meat 
+Ingredients  
+B: None     
+C: Sodium nitrite and 
+sodium nitrate, allergens 
+No Inappropriate formulation of sodium nitrite and 
+sodium nitrate in the marinade mix may create a 
+toxic or uncured condition. 
+ 
+Written SOP for weighing restricted ingredients 
+to ensure the nitrite and nitrate limits are within 
+the allowable limits identified in 9 CFR 424.21(c).  
+ 
+ 
+Written allergen program used to protect non-
+allergenic ingredients and products from cross-
+contamination with allergenic ingredients. 
+  
+P: None     
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 11 of 20 
+ 
+ 
+19 Note: this “historical data” must be supported with evidence from the establishment through the establishment’s history or validation data.  When historical data is not available (for 
+example, a HACCP plan for a new process or product), then system design must be supported by other documentary evidence, such as Meat and Poultry Hazards and Controls 
+Guide w hich states “appropriate screening procedure for monitoring equipment” is a frequently used control for foreign material hazards in processing.  
+4. Preparing 
+Starter 
+Cultures and 
+Casings 
+B:  Pathogen outgrowth: 
+Salmonella and Listeria 
+monocytogenes 
+No Proper employee handling through Written 
+Sanitation and Formulation SOPs.  
+ 
+Follow manufacturer’s instruction on the use of 
+starter culture in consistent with the scientific 
+support23. 
+ 
+  
+C: None     
+P: None     
+5. Combine 
+Ingredients 
+and 
+Processing 
+(Includes One 
+or More of the 
+Following: 
+Holding, 
+Grinding, 
+Chopping, 
+Mixing,  
+Forming) 
+B:  Pathogen outgrowth: 
+Salmonella and Listeria 
+monocytogenes 
+No Proper employee handling through Written 
+Sanitation and Formulation SOPs. 
+  
+Written Temperature Control SOP for 
+maintaining product at temperatures that 
+preclude Salmonella and limit growth for Listeria 
+monocytogenes  (Tompkin, R.B. 1996).15 
+  
+C: Allergens No Written allergen program used to protect non-
+allergenic ingredients and products from cross-
+contamination with allergenic ingredients and 
+written SOP to ensure there are no undeclared 
+allergenic ingredients. 
+  
+P: Metal contamination No No history of findings from daily equipment pre-
+operational examination and from disassembly 
+and clean up examination (covered in Sanitation 
+SOP)
+19. 
+  
+
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 12 of 20 
+ 
+ 
+No history of consumer complaints.  
+6. Rework and 
+Work in 
+Progress 
+B: Pathogen: 
+Salmonella, Listeria 
+monocytogenes 
+No Proper employee handling through Written 
+Sanitation and Formulation SOPs. 
+ 
+Only properly formulated product is reworked to 
+ensure restricted ingredients are within required 
+limits. 
+ 
+Written Temperature Control SOP for 
+maintaining product at temperatures that prevent
+ 
+Salmonella and limit growth for Listeria 
+monocytogenes  (Tompkin, R.B. 1996)15. 
+  
+C: None     
+P: None     
+7. Stuffing B: Pathogen outgrowth: 
+Salmonella and Listeria 
+monocytogenes 
+No Proper employee handling through Written 
+Sanitation SOPs.  
+ 
+Written Temperature Control SOP for 
+maintaining product at temperatures that prevent 
+Salmonella and limit growth for Listeria 
+monocytogenes  (Tompkin, R.B. 1996)15. 
+  
+C: None     
+P: Metal Contamination  Written Sanitation SOP includes procedures for 
+examination of equipment for metal fragments. 
+Employees trained to visually observe product. 
+  
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 13 of 20 
+ 
+ 
+20 See FSIS Ready-to-Eat Fermented, Salt-Cured and Dried Products Guideline page 40 for recommended lethality targets for Salmonella, Shiga-toxin producing Escherichia coli 
+and Listeria monocytogenes during fermentation and drying. 
+21 Christiansen, L.N., Tompkin, R.B., Shaparis, A.B., Johnston, R.W., Kautter, D.A.  1975. Effect of sodium nitrite and nitrate on Clostridium botulinum growth and toxin production in 
+a summer style sausage. Journal of Food Science.  488-490. 
+22 Canadian Food Inspection Agency (CFIA). 2020. Preventative control recommendations for manufacturing fermented and dried meat products. Available at: 
+https://inspection.canada.ca/preventive-controls/meat/fermented-anddried/eng/1522951036924/1522951037158#control.  
+Historical data indicate metal clip contamination 
+is not reasonably likely to occur19. 
+ 
+No history of consumer complaints. 
+8. Fermenting B: Pathogens: 
+Staphylococcus aureus 
+ 
+ 
+ 
+ 
+Salmonella, Listeria 
+monocytogenes 
+ 
+ 
+ 
+ 
+C. perfringens and 
+botulinum  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+No 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Inadequately controlled fermentation may allow 
+pathogen outgrowth and Staphylococcus aureus 
+enterotoxin production.  
+ 
+ 
+The fermentation and drying processes were 
+validated to achieve: ≥ 5-log10 reduction in 
+Salmonella, and Listeria monocytogenes20. 
+ 
+ 
+The use of a starter culture, dextrose, nitrite and 
+nitrate have been shown to inhibit C. botulinum 
+growth21.   
+ 
+Formulation also contains at least 2.5% salt and 
+at least 100ppm nitrite/nitrate which also controls 
+C. botulinum growth during fermentation and 
+drying steps22.  
+Controlled at CCP 1 
+Fermenting and CCP 2 
+Drying 
+ 
+ 
+Controlled at CCP 1 
+Fermenting and CCP 2 
+Drying 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+No 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 14 of 20 
+ 
+ 
+23 Deibel Laboratories/https://www.chr-hansen.com/en/. Fate of Salmonella Spp., Escherichia coli O157:H7, Listeria monocytogenes, and Staphylococcus aureus Inoculated into a 
+Non-Heated and Dried Salami Product.  Available from CHR. Hansen Inc. upon request. https://www.chr-hansen.com/en/contact-us. 
+24 If an establishment implements a process consistent with the process specifications described in the scientific support, and the scientific support contains microbiological data 
+specifying the level of pathogen reduction achieved by the intervention strategy for the target pathogen identified in the hazard analysis, the in-plant validation data collected during 
+the 90-day initial validation period will consist of data on quantifiable characteristics of the critical operational parameters, such as pH, aw, temperature, and relative humidity.  (FSIS 
+Compliance Guideline: HACCP Systems Validation, page 27). 
+25 Tilkens, B.L., King, A.M., Glass, K.A., Sindelar, J.J. 2015. Validating the inhibition of Staphylococcus aureus in shelf-stable, ready-to-eat snack sausages with varying 
+combinations of pH and water activity. J. Food Prot. 78(6): 1215-1220. 
+ 
+ 
+ 
+ 
+ 
+ 
+Trichinella spiralis 
+ 
+ 
+ 
+ 
+ 
+Yes 
+Prerequisite formulation SOP to ensure sufficient 
+ingredient levels (starter culture, dextrose, salt, 
+nitrite, nitrate).23, 24 
+ 
+ 
+ 
+ 
+Controlled at CCP 2 
+Drying 
+ 
+ 
+ 
+ 
+ 
+Yes 
+ 
+C: None     
+P: None     
+ 9. Drying B: Pathogens: 
+Staphylococcus aureus 
+ 
+ 
+ 
+Salmonella, Listeria 
+monocytogenes 
+ 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+ 
+Final pH ( ≤ 4.5) and aw (<0.92) combination 
+from CCP1 and CCP2, respectively, results in a 
+shelf-stable product according to Tilkens et al., 
+201525. 
+ 
+The fermentation and drying processes were 
+validated to achieve: ≥ 5-log
+10 reduction in 
+Salmonella and Listeria monocytogenes.  
+ 
+A Drying Room SOP ensures drying occurs 
+between 67-70°F for the first 24 hours and then 
+Controlled at CCP 1 
+Fermenting and CCP 2 
+Drying. 
+ 
+ 
+Controlled at CCP 1 
+Fermenting and CCP 2 
+Drying 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+ 
+
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 15 of 20 
+ 
+ 
+26 Quintavalla, S. 2010. Plant Cleaning and Sanitation. In Toldra, F. Handbook of Meat Processing. Blackwell Publishing. 584 pages. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+C. perfringens and 
+botulinum 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Trichinella spiralis 
+ 
+ 
+ 
+Molds 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+No 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Yes 
+ 
+ 
+ 
+No 
+between 56-59°F to meet critical operational 
+parameters consistent with scientific support23. 
+ 
+Smaller diameter (55mm) product is held for a 
+minimum of 30 days to account for the faster 
+drying time as recommended in 
+FSIS Ready-to-
+Eat Fermented, Salt-Cured and Dried Products 
+Guideline on page 68. 
+ 
+The use of a starter culture, dextrose, nitrite and 
+nitrate have been shown to inhibit C. botulinum 
+growth
+21. Formulation also contains at least 2.5% 
+salt and at least 100pm nitrite/nitrate which also 
+controls C. botulinum 
+growth during fermentation 
+and drying steps22.  Prerequisite Formulation 
+SOP to ensure sufficient ingredient levels 
+(starter culture, dextrose, salt, nitrite, nitrate).  
+The parameters control outgrowth through 
+drying.  
+ 
+The critical limit meets the validated Sausage 
+Treatment Method No 6Error! Bookmark not defined.. 
+Prerequisite Formulation SOP to ensure product 
+formula meets conditions in Method No. 6. 
+ 
+Adherence to Sanitation SOP prevents 
+undesirable molds growth during processing and 
+reduce airborne mold spores in fermentation and 
+aging rooms26. 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Controlled at CCP 2 
+Drying 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+Yes 
+ 
+
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 16 of 20 
+ 
+ 
+27 See Table 2.1 page 35 FSIS Compliance Guideline: Controlling Listeria monocytogenes in Post-lethality Exposed Ready-to-Eat Meat and Poultry Products. 
+C: None      
+P: None     
+10. Peeling 
+and Slicing  
+B: Pathogen 
+contamination and 
+growth:    
+Listeria monocytogenes  
+No Post processing contamination is prevented by 
+Sanitation SOPs and Listeria monocytogenes 
+Alternative 2 (
+9 CFR 430.4) because it has a aw  
+less than or equal to 0.92 which will not support 
+the growth of Listeria monocytogenes
+27. 
+  
+C: None     
+P: Metal contamination 
+from slicer 
+No Written Sanitation SOP includes procedures for 
+examination of slicing equipment for metal 
+fragments, historical records indicate metal 
+contamination is not reasonably likely to occur. 
+  
+11. Packaging 
+and Labeling 
+B: Cross contamination 
+and growth of Listeria 
+monocytogenes  
+ 
+Outgrowth of 
+undesirable molds 
+No 
+ 
+ 
+ 
+No 
+Post processing contamination is prevented by 
+Sanitation SOPs and Listeria monocytogenes 
+Alternative 2 (9 CFR 430.4) because it has a aw  
+less than or equal to 0.9227. 
+ 
+Vacuum packaging makes molds growth 
+unlikely. 
+ 
+ 
+  
+C: Allergens No Written SOP to ensure there are no undeclared 
+allergenic ingredients or cross contamination 
+between allergenic ingredients used in other 
+products produced at this facility.  
+  
+P: None     
+
+Step Hazard RLTO Justification / Basis Controls CCP 
+ 
+Page 17 of 20 
+ 
+   
+DATE:                                                                        APPROVED BY: _________________________________________________
+12. Finished 
+Products 
+Storage and 
+Distribution 
+B: Outgrowth of 
+undesirable molds 
+No Vacuum packaging makes molds growth 
+unlikely. 
+ 
+  
+C: None     
+P: None No Written Final Product SOP procedures to 
+examine outgoing materials, including sanitary 
+conditions of truck and package integrity. 
+  
+13. Returned 
+Product  
+B: None  Returned Product Evaluation SOP is 
+implemented before accepting returned product. 
+Entity returning the product must demonstrate 
+the product was held in a sanitary manner. 
+When such assurance is not available, returned 
+product is rejected or destroyed. Opened 
+packages are not accepted. Accepted product 
+enters the appropriate step of the production 
+system at process flow step 5 or 11 based on 
+findings of product evaluation. If returned 
+product can be re-sold without reformulation, it 
+may be reboxed (in sealed packages) and sold. 
+Evaluation performed on a case-by-
+case basis to 
+determine if product should be reworked and, if 
+so, any impact on formulation, allergens, and 
+critical limits. If support to rework a specific 
+return cannot be determined for a specific return, 
+product is destroyed and does not enter the 
+process.  
+  
+C: None     
+P: None     
+ 
+EXAMPLE HACCP PLAN 
+ 
+Dried Fermented Sausage (Not Heat Treated—Shelf Stable) 
+ 
+Critical 
+Control 
+Point 
+Significant 
+Hazards 
+Critical 
+Limits for 
+Each 
+Control 
+Measure 
+Monitoring Procedures 
+Corrective Action Verification Records 
+What How Frequency Who 
+CCP 1  
+Fermenting 
+ 
+Pathogens: 
+Salmonella, 
+Listeria 
+monocytogenes
+28  
+ 
+Staphylococcus 
+aureus29 
+Room 
+temperature: 
+88-95°F 
+ 
+Maximum 
+hours: 28 
+hours 
+ 
+Maximum 
+product pH: 
+4.9 
+ 
+Measure 
+product pH 
+and record 
+fermentation 
+time 
+ 
+Fermentation 
+starts when 
+the first rack 
+is moved into 
+the room 
+ 
+Room 
+temperature 
+data log  
+ 
+A designee 
+will measure 
+product pH 
+(center of five 
+pieces from 
+the coldest 
+spots 
+identified in 
+the oven or 
+smokehouse)
+30  
+ 
+Review the 
+room 
+temperature 
+data log to 
+verify the 
+room was 
+maintained 
+at 
+a 
+temperature 
+between 88-
+In each batch, 
+pH 
+measurement 
+is performed 
+at the start 
+and end of 
+fermentation 
+ 
+In each batch, 
+the log is 
+continuous. 
+After each 
+batch is 
+complete, 
+review the log 
+to determine 
+temperatures 
+maintained 
+throughout the 
+28 hours 
+Designee 
+ 
+If a deviation from the 
+critical limit occurs, the 
+designee monitoring the 
+CCP will immediately 
+report the critical limit 
+deviation to the 
+production supervisor. 
+The supervisor will per 
+9 
+CFR 417.3: 
+1. Hold all product 
+produced since the last 
+acceptable check until 
+appropriate disposition 
+made (no product 
+injurious to health enters 
+commerce); 
+2. Determine and 
+eliminate the cause of 
+the deviation; 
+3. Bring the CCP under 
+control; and 
+4. Take measures to 
+prevent recurrence 
+Once per week, 
+supervisor will 
+observe the 
+designee perform 
+the pH measurement 
+and review of 
+records  
+ 
+Once per week, the 
+supervisor designee 
+will calibrate the pH 
+meter per 
+manufacturer’s 
+recommended 
+procedures 
+ 
+Once per week 
+designee will replace 
+the room 
+temperature data log  
+paper 
+ 
+Product pH and 
+time Log  
+ 
+Corrective 
+Actions Log 
+ 
+pH Meter 
+Calibration Log
+ 
+ 
+Direct 
+Observation 
+Log 
+ 
+Records 
+Review Log  
+ 
+Room 
+Temperature 
+data log 
+ 
+Thermometer 
+Calibration Log 
+ 
+ 
+28 The ingredient levels (starter culture, dextrose, salt, nitrite, nitrate), and Fermentation Room SOP to ensure fermentation occurs between 88-92°F ensure critical operational 
+parameters are consistent with scientific support: Deibel Laboratories/CHR. Hansen.  2017.  Fate of Salmonella Spp., Escherichia coli O157:H7, Listeria monocytogenes, and 
+Staphylococcus aureus Inoculated into a Non-Heated and Dried Salami Product. Available from CHR. Hansen Inc. upon request.  (https://www.chr-hansen.com/en/contact-us). 
+29 The fermentation step has been validated to allow no more than 2-logs outgrowth of Staphylococcus aureus and a Fermentation Room SOP is used to ensure fermentation 
+occurs between 88-92°F. Using a maximum temperature of 95°F, this process under worst-case conditions has 28 hours to achieve a pH ≤ 5.3 per the scientific support: Good 
+Manufacturing Practices for Fermented Dry and Semi-Dry Sausage Products (American Meat Institute Foundation, October 1997).  The critical limit is designed to meet the 
+maximum degree-hours because it demonstrates a pH ≤ 4.9 within 28 hours, ensuring pH was below 5.3 well within the maximum allowable time. See FSIS Ready-to- Eat 
+Fermented, Salt-Cured and Dried Products Guideline pa ge 37 for recommended target for limiting Staphylococcus aureus  outgrowth during fermentation. 
+30 Establishments should conduct a cold-spot determination as part of the data it gathers during initial in-plant validation (9 CFR 417.4(a)(1)). The cold-spot determination can also 
+be used to support monitoring and verification procedures and the frequencies at which those procedures are monitored and verified (9 CFR 417.5(a)(2)).   
+
+ 
+Page 19 of 20 
+ 
+95°F 
+throughout 
+fermentation 
+ Once per quarter, 
+designee will 
+calibrate the room 
+temperature 
+thermometer and 
+back up 
+thermometer per the 
+manufacturer’s 
+procedures 
+ 
+ 
+ 
+ 
+ 
+Critical 
+Control 
+Point  
+Significant 
+Hazards 
+Critical 
+Limits for 
+Each 
+Control 
+Measure 
+Monitoring Procedures 
+Corrective Action Verification Records 
+What How Frequency Who 
+CCP 2 
+Drying 
+ 
+Pathogens; 
+Salmonella, 
+Listeria 
+monocytogenes31 
+ 
+Product 
+final aw is 
+<0.92. 
+within a 
+minimum 
+of 30 
+days16,23 
+ 
+Final pH 
+of product 
+Check aw 
+and start 
+and end 
+of drying 
+time 
+ 
+Check 
+product 
+pH at the 
+5 pieces of 
+sample 
+selected 
+from the 
+coldest 
+spots 
+identified in 
+the drying 
+room
+30 are 
+cut to 
+expose 
+Each batch 
+aw 
+measurement 
+is performed 
+on day 0, day 
+30 and last 
+day of drying 
+period 
+ 
+Designee If a deviation from the critical 
+limit occurs, the designee 
+monitoring the CCP will 
+immediately report the critical 
+limit deviation to the 
+production supervisor. The 
+supervisor will, per 9 CFR 
+417.3: 
+1. Hold all product produced 
+since the last acceptable 
+Once per week  
+the supervisor will 
+observe the designee 
+performing the aw and 
+pH measurements and 
+review the records 
+ 
+Once per week 
+designee will calibrate 
+the aw meter and pH 
+meter per 
+Product aw 
+and Time Log 
+ 
+Product pH 
+and Time log 
+ 
+Calibration 
+Log 
+ 
+Corrective 
+Action Log 
+ 
+31 The fermentation and drying processes were validated to achieve: ≥ 5-log10 reduction in Salmonella (why O157:H7 deleted throughout?  Not covered?) and Listeria 
+monocytogenes. Critical limit and Drying Room SOP to ensure drying occurs between 67-70°F for the first 24 hours and then between 56-59°F to ensure critical operational 
+ 
+
+ 
+Page 20 of 20 
+ 
+Staphylococcus 
+aureus32 
+ 
+Trichinella 
+spiralis33 
+is 4.5 or 
+less 
+end of 
+drying 
+ 
+cross-
+section for 
+a
+w and pH 
+measureme
+nts  
+ 
+The highest 
+pH value is 
+recorded 
+pH 
+measurement 
+is performed 
+on the last day 
+of drying 
+period 
+check (no product injurious 
+to health enters commerce); 
+2. Determine and eliminate the 
+cause of the deviation; 
+3. Bring the CCP under control; 
+and 
+4. Take measures to prevent    
+recurrence 
+ 
+manufacturer’s 
+recommended 
+procedures 
+ 
+ 
+ 
+Direct 
+Observation  
+Log 
+ 
+Records 
+Review Log 
+ 
+DATE:                                                                        APPROVED BY: ____________________________________ 
+ 
+parameters are consistent with scientific support: Deibel Laboratories/https://www.chr-hansen.com/en/.  2017. Fate of Salmonella Spp., Escherichia coli O157:H7, Listeria 
+monocytogenes, and Staphylococcus aureus Inoculated into a Non-Heated and Dried Salami Product. Available from CHR. Hansen Inc. upon request. https://www.chr-
+hansen.com/en/. 
+32 Final pH (<4.9) water activity (<0.92) combination from CCP1 and CCP2, respectively results in a shelf-stable product according to the scientific support Tilkens, B.L., King, A.M., 
+Glass, K.A., Sindelar, J.J. 2015. Validating the inhibition of Staphylococcus aureus in shelf-stable, ready-to-eat snack sausages with varying combinations of pH and water activity. 
+J. Food Prot. 78(6): 1215-1220.  This paper supports a combination of pH ≤ 5.1 and water activity ≤ 0.92 does not support the growth of S. aureus when products are stored 
+aerobically although molds grew under these conditions in the study. Vacuum packaging makes molds growth unlikely.  
+33 The drying step has been validated to eliminate Trichinella spiralis. The critical limit meets the validated Sausage Treatment Method No 6 from the scientific support FSIS 
+Compliance Guideline for the Prevention and Control of Trichinella and Other Parasitic Hazards in Pork and Products Containing Pork.  
+

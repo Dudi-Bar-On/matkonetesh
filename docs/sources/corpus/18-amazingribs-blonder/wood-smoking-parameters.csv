@@ -1,0 +1,16 @@
+source_id,parameter,value,unit,notes
+18,wood cellulose content,40,%,flavorless
+18,wood hemicellulose content,40,%,
+18,wood lignin content,19,%,source of essentially all smoke flavor
+18,wood mineral content,1,%,
+18,full combustion energy yield,8600,BTU/lb,
+18,optimal aromatic combustion range,650-750,F,guaiacol/syringol sweet spot
+18,recommended cooking temp (most meats),225,F,
+18,recommended cooking temp (poultry),325,F,
+18,air-dried wood moisture,25-30,%,
+18,kiln-dried wood moisture,15-22,%,
+18,starting wood amount (typical),2,oz,
+18,max wood amount (pork/beef),8,oz,
+18,max wood amount (poultry),4,oz,
+18,smoke penetration depth into meat,rarely exceeds 1/8,inch,
+18,blue smoke particle size,<1,micron,optimal visibility/flavor
