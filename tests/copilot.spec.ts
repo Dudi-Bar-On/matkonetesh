@@ -28,7 +28,12 @@ test('W2-P1: live cook session lifecycle + copilot shell (Now/Next stages)', asy
 });
 
 test('W2-P1: the home cooking banner opens the Copilot when a live session exists', async ({ page }) => {
-  await bootCopilot(page);
+  // this test is about the home banner → Copilot re-entry, not the voice-intro first-run card; without
+  // this seed the card (deferred while startLiveCook's Copilot panel was open — see the guard in app.js
+  // near closePanel()) would legitimately reappear the instant the explicit closePanel() below runs,
+  // which is correct "not silently lost" behaviour but has nothing to do with what this test asserts.
+  await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify('en'), 'mk-voiceintro-asked': 'true' });
+  await page.waitForFunction(`typeof startLiveCook==='function' && typeof openCopilot==='function'`);
   await page.evaluate(`(function(){ startLiveCook(); closePanel(); cNavGo('home'); })()`);
   await page.waitForSelector('#cCooking:not([hidden])');
   await page.click('#cCooking');

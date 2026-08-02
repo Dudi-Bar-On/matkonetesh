@@ -3770,6 +3770,38 @@ function showPanel(html){
 // open a panel FROM another panel, remembering how to return to the current one
 function openFrom(reopenCurrent, openNext){ panelStack.push(reopenCurrent); openNext(); }
 function panelBack(){ const fn=panelStack.pop(); if(fn){clearTimers();fn();} else closePanel(); }
+
+// ── first-run discovery/intro cards: never stomp an open panel ────────────────────────────────────
+// Regression (2026-08-02): maybeAskVoiceIntro() called showPanel() unconditionally from startLiveCook(),
+// which replaces whatever panel is already open — destroying the live-cook Copilot the moment it opens.
+// The same shape was flagged the day before for maybeAskUiLevel() (400ms after first boot) and left
+// unfixed because it was a one-shot, unreachable trigger at the time. Onboarding grew a second trigger
+// and the prediction came true. Both first-run cards now route through this one guard: a card is never
+// shown over an open panel — if one is open when the card would fire, it is deferred until the panel
+// actually closes (never lost), and it still fires at most once (the store flag is set the moment the
+// card is committed to render, whether immediately or on the deferred flush).
+let _pendingFirstRunCards=[];
+function isPanelOpen(){ const p=$("#panel"); return !!(p && p.classList.contains('open')); }
+function showFirstRunCardOnce(storeKey, renderFn){
+  if(store.get(storeKey)) return;
+  if(isPanelOpen()){
+    if(!_pendingFirstRunCards.some(function(f){ return f._key===storeKey; })){
+      const fn=function(){ store.set(storeKey, true); renderFn(); };
+      fn._key=storeKey;
+      _pendingFirstRunCards.push(fn);
+    }
+    return;
+  }
+  store.set(storeKey, true);
+  renderFn();
+}
+// called from closePanel() once the panel is actually closed — fires at most one deferred card per
+// close (if it renders a new panel, the next deferred card waits for the NEXT close, never stacking).
+function _flushPendingFirstRunCards(){
+  if(!_pendingFirstRunCards.length || isPanelOpen()) return;
+  const fn=_pendingFirstRunCards.shift();
+  fn();
+}
 /* ── unified in-app dialog (replaces native confirm/prompt/alert) ──
    appConfirm(msg,opts) → Promise<true|false|null(dismiss)>
    appPrompt(msg,def)   → Promise<string|null> */
@@ -3808,7 +3840,9 @@ function closePanel(){
   if(lastFocus&&lastFocus.focus){try{lastFocus.focus();}catch(e){}} lastFocus=null;
   try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){}
   // if home is the screen behind the panel, re-sync it — catches state changed inside a tool (e.g. gear edited → lanes/kick re-gate), on any close path
-  try{ const h=document.getElementById('scr-home'); if(h&&h.classList.contains('on')&&typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} }
+  try{ const h=document.getElementById('scr-home'); if(h&&h.classList.contains('on')&&typeof cRefreshHome==='function') cRefreshHome(); }catch(e){}
+  // a first-run card deferred while this panel was open (see showFirstRunCardOnce) gets its chance now.
+  try{ _flushPendingFirstRunCards(); }catch(e){} }
 
 /* ---------- shopping list ---------- */
 // Wave E: the event cart's "bought" ticks + menu quantities are per-event — a global namespace meant
@@ -10987,17 +11021,21 @@ function openPrefGroup(){
   }); });
 }
 function maybeAskUiLevel(){
-  if(store.get('mk-uilevel-asked')) return;
-  store.set('mk-uilevel-asked', true);
-  showPanel(`${toolTop(L('כמה ניסיון יש לך?','How much experience do you have?'),L('זה קובע כמה פרטים נציג בבת אחת — תמיד אפשר לשנות אח״כ','This sets how much detail we show at once — you can always change it later'),'🧭','#5a7d8c')}
-    <div class="panel-body">
-      <div class="ap-opts" style="flex-direction:column">
-        <button class="ap-opt lvl-opt" data-onb="beginner" style="justify-content:flex-start">🌱 ${L('מתחיל — תדריך אותי צעד-אחר-צעד','Beginner — guide me step by step')}</button>
-        <button class="ap-opt lvl-opt on" data-onb="mid" style="justify-content:flex-start">🔥 ${L('בינוני — יש לי קצת ניסיון','Intermediate — I have some experience')}</button>
-        <button class="ap-opt lvl-opt" data-onb="pro" style="justify-content:flex-start">🎯 ${L('מתקדם — תראה לי הכל','Advanced — show me everything')}</button>
-      </div>
-    </div>`);
-  $("#panel").querySelectorAll('[data-onb]').forEach(b=>b.addEventListener('click',()=>{ setUiLevel(b.dataset.onb); closePanel(); }));
+  // routed through showFirstRunCardOnce (see def near closePanel) — never stomps an open panel; the
+  // original bug this guard was written for (a first-run card 400ms into first boot could stomp
+  // whatever the user opened in that window) was one-shot-unreachable when this landed, but is now
+  // exercised by the same guard as maybeAskVoiceIntro below.
+  showFirstRunCardOnce('mk-uilevel-asked', function(){
+    showPanel(`${toolTop(L('כמה ניסיון יש לך?','How much experience do you have?'),L('זה קובע כמה פרטים נציג בבת אחת — תמיד אפשר לשנות אח״כ','This sets how much detail we show at once — you can always change it later'),'🧭','#5a7d8c')}
+      <div class="panel-body">
+        <div class="ap-opts" style="flex-direction:column">
+          <button class="ap-opt lvl-opt" data-onb="beginner" style="justify-content:flex-start">🌱 ${L('מתחיל — תדריך אותי צעד-אחר-צעד','Beginner — guide me step by step')}</button>
+          <button class="ap-opt lvl-opt on" data-onb="mid" style="justify-content:flex-start">🔥 ${L('בינוני — יש לי קצת ניסיון','Intermediate — I have some experience')}</button>
+          <button class="ap-opt lvl-opt" data-onb="pro" style="justify-content:flex-start">🎯 ${L('מתקדם — תראה לי הכל','Advanced — show me everything')}</button>
+        </div>
+      </div>`);
+    $("#panel").querySelectorAll('[data-onb]').forEach(b=>b.addEventListener('click',()=>{ setUiLevel(b.dataset.onb); closePanel(); }));
+  });
 }
 
 // Task 11 (R-52 §1.4) · a DEDICATED panel, not an openPrefGroup row: each line needs a heading, a
@@ -11076,18 +11114,22 @@ function openVoiceLog(){
 // ("I'm standing at a fire with dirty hands") actually exists. NOT an onboarding screen: a splash is
 // dismissed unread and the surprise arrives two hours later anyway.
 function maybeAskVoiceIntro(){
-  if(store.get('mk-voiceintro-asked')) return;
-  store.set('mk-voiceintro-asked', true);
-  showPanel(`${toolTop(L('המדריך יכול לדבר אליך','The guide can talk to you'),
-    L('תמיד יחד עם חיווי על המסך','Always together with an on-screen indicator'),'🔊','#6a8caf')}
-    <div class="panel-body"><p>${L('ידיים תפוסות? המכשיר על השולחן? אני יכול להקריא בקול התראות ושלבים.','Hands full? Phone on the table? I can read alerts and steps aloud.')}</p>
-      <div class="ap-opts"><button class="ap-opt" data-vintro="off">${L('לא, רק על המסך','No, screen only')}</button>
-      <button class="ap-opt on" data-vintro="always">${L('כן, דבר אליי','Yes, talk to me')}</button></div>
-      <p class="section-sub">${L('אפשר לשנות בכל רגע ב-⚙️ → 🔊','You can change this any time under ⚙️ → 🔊')}</p></div>`);
-  $("#panel").querySelectorAll('[data-vintro]').forEach(function(b){ b.addEventListener('click',function(){
-    const m=b.dataset.vintro;
-    Object.keys(VOICE_PREF_KEY).forEach(function(c){ if(c!=='progress') setVoiceMode(c, m); });
-    closePanel(); }); });
+  // Regression fix (2026-08-02): this used to call showPanel() unconditionally, which stomped the
+  // live-cook Copilot panel that startLiveCook() had just opened one line above. Routed through
+  // showFirstRunCardOnce (see def near closePanel): if the Copilot panel is open when this fires, the
+  // card is deferred until that panel closes rather than destroying it or being silently dropped.
+  showFirstRunCardOnce('mk-voiceintro-asked', function(){
+    showPanel(`${toolTop(L('המדריך יכול לדבר אליך','The guide can talk to you'),
+      L('תמיד יחד עם חיווי על המסך','Always together with an on-screen indicator'),'🔊','#6a8caf')}
+      <div class="panel-body"><p>${L('ידיים תפוסות? המכשיר על השולחן? אני יכול להקריא בקול התראות ושלבים.','Hands full? Phone on the table? I can read alerts and steps aloud.')}</p>
+        <div class="ap-opts"><button class="ap-opt" data-vintro="off">${L('לא, רק על המסך','No, screen only')}</button>
+        <button class="ap-opt on" data-vintro="always">${L('כן, דבר אליי','Yes, talk to me')}</button></div>
+        <p class="section-sub">${L('אפשר לשנות בכל רגע ב-⚙️ → 🔊','You can change this any time under ⚙️ → 🔊')}</p></div>`);
+    $("#panel").querySelectorAll('[data-vintro]').forEach(function(b){ b.addEventListener('click',function(){
+      const m=b.dataset.vintro;
+      Object.keys(VOICE_PREF_KEY).forEach(function(c){ if(c!=='progress') setVoiceMode(c, m); });
+      closePanel(); }); });
+  });
 }
 try{ window.openVoiceRules=openVoiceRules; window.openVoiceLog=openVoiceLog;
      window.maybeAskVoiceIntro=maybeAskVoiceIntro; window.VOICE_ROWS=VOICE_ROWS; }catch(e){}

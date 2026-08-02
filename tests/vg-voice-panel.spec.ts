@@ -62,7 +62,82 @@ test.describe('§1.4 · the voice-rules panel', () => {
     });
     expect(twice).toEqual([true, false]);
   });
+});
 
+// Regression (2026-08-02, Task 11 follow-up): maybeAskVoiceIntro() called showPanel() unconditionally
+// from startLiveCook(), which stomped the live-cook Copilot panel the line above it had just opened
+// (tests/copilot.spec.ts W2-P1 + W2-P3 went red). A flake investigation the day before had flagged the
+// identical shape in maybeAskUiLevel() and predicted a second trigger would hit it — it did. Both first-
+// run cards now route through showFirstRunCardOnce()/isPanelOpen() (app.js, defined near closePanel()):
+// a card never replaces an open panel; if one is open, the card is deferred until the panel actually
+// closes (never lost) and still fires at most once.
+test.describe('first-run card guard — never stomps an open panel (shared by both cards)', () => {
+  test('an open panel survives the trigger, and the deferred card arrives once that panel closes', async ({ page }) => {
+    await seedApp(page, { 'mk-uilevel-asked': 'true' });
+    const result = await page.evaluate(() => {
+      const w = window as any;
+      openAppearance();   // some other panel is already open when the first-run trigger fires
+      const openBefore = document.querySelector('.ap-lbl') && !document.querySelector('[data-vintro]');
+      w.maybeAskVoiceIntro();
+      const stillAppearance = !document.querySelector('[data-vintro]') && document.querySelector('.ap-lbl') !== null;
+      const askedFlagBeforeClose = !!(w.store.get('mk-voiceintro-asked'));
+      closePanel();   // the panel actually closes now → the deferred card gets its turn
+      const cardAfterClose = !!document.querySelector('[data-vintro]');
+      const askedFlagAfterClose = !!(w.store.get('mk-voiceintro-asked'));
+      return { openBefore, stillAppearance, askedFlagBeforeClose, cardAfterClose, askedFlagAfterClose };
+    });
+    expect(result.openBefore).toBe(true);
+    expect(result.stillAppearance).toBe(true);       // the open panel was never destroyed by the trigger
+    expect(result.askedFlagBeforeClose).toBe(false);  // not marked "asked" until it actually renders
+    expect(result.cardAfterClose).toBe(true);         // ...but it is not silently lost either
+    expect(result.askedFlagAfterClose).toBe(true);
+  });
+
+  test('no panel open at trigger time → the card shows immediately', async ({ page }) => {
+    await seedApp(page, { 'mk-uilevel-asked': 'true' });
+    const shown = await page.evaluate(() => {
+      const w = window as any;
+      const noneOpenAtStart = !isPanelOpen();
+      w.maybeAskVoiceIntro();
+      return { noneOpenAtStart, cardNow: !!document.querySelector('[data-vintro]') };
+    });
+    expect(shown.noneOpenAtStart).toBe(true);
+    expect(shown.cardNow).toBe(true);
+  });
+
+  test('deferred behind an open panel, it still never shows twice', async ({ page }) => {
+    await seedApp(page, { 'mk-uilevel-asked': 'true' });
+    const seen = await page.evaluate(() => {
+      const w = window as any; const out: boolean[] = [];
+      openAppearance();
+      w.maybeAskVoiceIntro();               // deferred (panel open)
+      closePanel();                          // deferred card fires here
+      out.push(!!document.querySelector('[data-vintro]'));
+      document.getElementById('panel')!.innerHTML = '';
+      w.maybeAskVoiceIntro();               // already asked — must be a no-op now
+      out.push(!!document.querySelector('[data-vintro]'));
+      return out;
+    });
+    expect(seen).toEqual([true, false]);
+  });
+
+  test('maybeAskUiLevel goes through the SAME guard — also deferred behind an open panel, not lost', async ({ page }) => {
+    await seedApp(page, { 'mk-voiceintro-asked': 'true' });
+    const result = await page.evaluate(() => {
+      const w = window as any;
+      openAppearance();
+      w.maybeAskUiLevel();
+      const stillAppearance = !document.querySelector('[data-onb]') && document.querySelector('.ap-lbl') !== null;
+      closePanel();
+      const cardAfterClose = !!document.querySelector('[data-onb]');
+      return { stillAppearance, cardAfterClose };
+    });
+    expect(result.stillAppearance).toBe(true);
+    expect(result.cardAfterClose).toBe(true);
+  });
+});
+
+test.describe('§1.4 · the voice-rules panel, continued', () => {
   test('A10 · entry point 1 — Settings & help lists "When the app speaks" and opens the panel', async ({ page }) => {
     await seedApp(page, { 'mk-uilevel-asked': 'true' });
     await page.evaluate(() => (window as any).openMoreSheet());
