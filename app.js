@@ -8874,6 +8874,25 @@ function vcGuardSpoken(text, tiers, lang, claims){
   // notice must NOT send the cook to the item card: that card carries no safety number either, and in the
   // reported lamb case the card it pointed at belonged to the WRONG item. Same notice, redirect dropped.
   const cardless=subP.kind==='nofigure';
+  // R-68 (ROADMAP §5a row R-68, OWNER RULING 2.8.26; evidence: the closing line was emitted in 14/14
+  // live runs, INCLUDING answers whose leading sentence already carried our own cited figure —
+  // docs/analysis/2026-08-02-v288-live-verification.md §5 "סעיף 4", …-v289-… §3a/§3d/§4). We were
+  // asserting "לפי המדריך, הטמפרטורה הבטוחה עבור X: 63°C" and disclaiming it in the same breath.
+  // The rule: the notice appears only when something in the answer REALLY remains unverified. Read off
+  // this function's own three outcomes, not assumed:
+  //   · redacted → the number is NOT on screen; it became "[…]". A hole is worth explaining only when
+  //     we have nothing to put in it.
+  //   · release  → on screen, unmarked, but vcClaimVerdict approved it (a non-safety figure above the
+  //     floor) — and a release-only answer has redacted===0 and never reaches this line anyway.
+  //   · verified → carries its own inline "לפי המדריך המאומת" marker.
+  // So the ONLY reader genuinely left with nothing verified is one whose answer delivers no
+  // authoritative figure at all: nothing verified AND no cited substitution (or a `nofigure` one,
+  // which says outright that we have no value — the live merguez case, where the warning is the
+  // whole point). Conservative by construction: every path that leaves the cook without a number
+  // keeps the warning; only the self-contradicting ones lose it.
+  // SCOPE: rendering only. No redaction is weakened, no `safe`/`bcheck`/temp/duration is touched, and
+  // nothing above `if(!redacted) return out` is altered — a redacted number stays redacted either way.
+  if(verified>0 || (sub && !cardless)) return (sub && !verified) ? (sub+' '+out) : (out+(sub?(' '+sub):''));
   const notice=redacted===1
     ? (cardless
         ? (lang==='he'?'מספר זה אינו מאומת.':L('מספר זה אינו מאומת.','This number isn\'t verified.'))

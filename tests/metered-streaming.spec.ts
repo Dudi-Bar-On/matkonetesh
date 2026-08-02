@@ -245,7 +245,11 @@ test('streamed ask: exactly ONE TTS request before the guard, and the guard runs
   // the digit sentence reached synthesis ONLY via the post-guard remainder, and the guard REDACTED it
   // (96 is ungrounded in this fixture) — no synthesis call ever carried the raw model digits:
   expect(r.streamed.concat(r.blocking).some(s => s.includes('96'))).toBe(false);
-  expect(r.a).toContain('אינו מאומת');                            // final transcript IS the guarded string
+  // SUPERSEDED BY R-68 (owner ruling 2.8.26, ROADMAP §5a) — this fixture's brisket HAS a cited safe
+  // figure, which now leads the answer, so the self-contradicting notice is no longer appended. That the
+  // final transcript IS the guarded string is asserted directly instead (the redaction placeholder the
+  // guard produced), which is what this line was standing in for.
+  expect(r.a).toContain('[…]');                                   // final transcript IS the guarded string
   // SUPERSEDED by Task 4 / R-61 (spec §5.6, docs/superpowers/specs/2026-08-01-voice-governance-design.md,
   // register row R-61, owner-approved 2026-08-01): this fixture's single number (96) is redacted and NO
   // token was approved, and brisket has a cited safe substitution — so vcGuardSpoken now orders the
@@ -256,9 +260,12 @@ test('streamed ask: exactly ONE TTS request before the guard, and the guard runs
   // the model's own text must still be present in full — R-61 REORDERS, it must never REPLACE the body:
   expect(r.a).toContain('קודם כל, תן לזה להתייצב.');
   expect(r.a).toContain('אחר כך תן לו לנוח קצת. בהצלחה.');
-  // and the trailing unverified-caveat notice must still be present, after the model's own text (spec
-  // §5.6 order sub+out+notice — the sentence, not just any digit-caveat, follows the body it qualifies):
-  expect(r.a.indexOf('קודם כל')).toBeLessThan(r.a.indexOf('אינו מאומת'));
+  // R-61's ORDER contract, restated on what R-68 leaves observable: the order was `sub + out + notice`
+  // and is now `sub + out` (the notice is gone — see the R-68 note above), so the surviving, and still
+  // load-bearing, half of the claim is that our cited sentence PRECEDES the model's own body rather
+  // than trailing it.
+  expect(r.a.indexOf('לפי המדריך')).toBeLessThan(r.a.indexOf('קודם כל'));
+  expect(r.a).not.toContain('אינו מאומת');
   expect(typeof r.lat.firstSentence).toBe('number');
   expect(r.lat.firstSentence).toBeLessThanOrEqual(r.lat.textResp);  // the opener left before the answer closed
 });

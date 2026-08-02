@@ -733,7 +733,15 @@ test('R-53: a fully-redacted multi-number safety answer for an identified item i
   await page.waitForFunction(`window.__spoke.length>0`);
   const spoken = await page.evaluate(`window.__spoke[window.__spoke.length-1].t`) as string;
   expect(spoken).not.toMatch(/71\D{0,2}°?C/);           // the model's OTHER numbers are still redacted, never spoken raw
-  expect(spoken).toContain('המספרים האלה אינם מאומתים'); // the original redaction notice still fires — substitution is additive, not a replacement
+  // SUPERSEDED BY AN OWNER RULING (R-68, 2.8.26 — ROADMAP §5a; evidence 2026-08-02-v288/v289 live
+  // verification): this line used to assert "the redaction notice still fires — substitution is
+  // additive". The owner reversed exactly that: an answer that already leads with OUR cited figure must
+  // not disclaim it in the same breath. The notice now fires only when the answer carries no
+  // authoritative figure at all (see tests/vg-r68-unverified-line.spec.ts). The rest of this test's
+  // contract — the model's own numbers stay redacted, our cited figure IS substituted in and attributed —
+  // is unchanged and still asserted below.
+  expect(spoken).not.toContain('אינם מאומתים');
+  expect(spoken).not.toContain('מספר זה אינו מאומת');
   expect(spoken).toContain(String(safe));                // the app's OWN cited safe figure is substituted in
   expect(spoken).toContain(heb);                          // attributed to the identified item, by name
 });
@@ -863,7 +871,9 @@ test('R-58: a category-only safety question (no item named) gets the category\'s
   const shown  = await page.evaluate(`vcLastQA.a`) as string;
   expect(spoken).not.toMatch(/\b63\b/);                    // the model's OTHER numbers are still redacted, never spoken raw
   expect(spoken).not.toMatch(/\b90\b/);
-  expect(spoken).toContain('המספרים האלה אינם מאומתים');   // the redaction notice still fires — substitution is additive
+  // SUPERSEDED BY R-68 (owner ruling 2.8.26) — see the note on the R-53 test above: the category's own
+  // cited figure IS the authoritative answer here, so the contradicting notice is no longer appended.
+  expect(spoken).not.toContain('אינם מאומתים');
   expect(spoken).toContain(String(safe));                   // the app's OWN cited, uniform category safe figure
   expect(spoken).toContain('עוף');                          // attributed to the CATEGORY, by name
   expect(shown).toBe(spoken);
@@ -886,7 +896,11 @@ test('R-58 (owner ruling 2.8.26) — a MIXED category (בקר: whole-cut 63°C v
   })()`) as {mixed:boolean; vals:number[]};
   expect(setup.mixed).toBe(true);   // pin the precondition the whole case hinges on
   const out = await page.evaluate(`vcGuardSpoken('הטמפ הבטוחה היא בין 63°C ל-74°C', { t1: null, t2: null, cat: 'בקר' }, 'he')`) as string;
-  expect(out).toContain('אינם מאומתים');                       // the model's own numbers are still redacted
+  // SUPERSEDED BY R-68 (owner ruling 2.8.26) — the notice is gone here (both representatives ARE our
+  // own cited figures), but the redaction it used to stand for is asserted directly instead, which is
+  // the stronger form of the same claim: the model's own numbers never survive.
+  expect(out).not.toContain('אינם מאומתים');
+  expect(out).toContain('[…]');                                 // the model's own numbers are still redacted
   expect(out).toContain('זה תלוי בנתח');                        // and the answer says WHY there is no single figure
   expect(out).toContain(String(setup.vals[0]));                 // the lowest cited figure in the category…
   expect(out).toContain(String(setup.vals[setup.vals.length-1])); // …and the highest, both from our own tables

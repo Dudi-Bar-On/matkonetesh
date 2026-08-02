@@ -49,11 +49,18 @@ test.describe('R-61 · the verified sentence leads when nothing was approved', (
       // them (claims omitted → today's behaviour, P6) — the exact live R-53 asado shape.
       return vcGuardSpoken('${safe}°C מינימלי, 71°C מבושל לגמרי, וכ-93°C לרכות מקסימלית.', tiers, 'he');
     })()`) as string;
+    // R-68 (owner ruling 2.8.26, ROADMAP §5a) removed the trailing notice from exactly this shape — an
+    // answer that leads with our own cited figure must not disclaim it in the same breath. R-61's own
+    // claim is about ORDER, and it survives intact on what is left: the substitution must come FIRST,
+    // before the model's body, not appended after it. The old `subPos < noticePos` compared it against a
+    // sentence that no longer exists here; it is compared against the model's body instead, which is the
+    // same directional claim measured against a part of the answer R-61 never removed.
     const subPos = said.indexOf('לפי המדריך');
-    const noticePos = said.indexOf('אינם מאומתים');
+    const bodyPos = said.indexOf('[…]');
     expect(subPos).toBeGreaterThanOrEqual(0);
-    expect(noticePos).toBeGreaterThanOrEqual(0);
-    expect(subPos).toBeLessThan(noticePos);           // ← RED before the fix: the substitution was appended last
+    expect(bodyPos).toBeGreaterThanOrEqual(0);
+    expect(subPos).toBeLessThan(bodyPos);             // ← RED before R-61's fix: the substitution was appended last
+    expect(said).not.toContain('אינם מאומתים');        // R-68
     expect(said.trim().startsWith('לפי המדריך')).toBe(true);
     expect(said).toContain(heb);
     expect(said).toContain(String(safe));
@@ -74,18 +81,18 @@ test.describe('R-61 · the verified sentence leads when nothing was approved', (
         subject:{item:${JSON.stringify(heb)}, category:null, form:'unknown'}, confidence:0.95 }]]);
       return vcGuardSpoken('${safe}°C לפי הבטיחות, ו-999°C ערך לא קשור.', tiers, 'he', claims);
     })()`) as string;
+    // R-68 (owner ruling 2.8.26, ROADMAP §5a): a token WAS verified here, so the answer carries an
+    // authoritative figure and the contradicting notice is no longer appended. R-61's claim — "when at
+    // least one token was approved, the substitution does NOT jump to the front" — is unaffected and is
+    // asserted directly: the verified figure still LEADS and the R-53 substitution still TRAILS it.
     const numPos = said.indexOf(String(safe));
-    // singular ("מספר זה אינו מאומת") when exactly one number is redacted, plural otherwise (§5.6/8143-8145) —
-    // this fixture redacts exactly one (the unrelated 999°C), so the singular form fires.
-    const noticePos = said.indexOf('אינו מאומת') >= 0 ? said.indexOf('אינו מאומת') : said.indexOf('אינם מאומתים');
     expect(numPos).toBeGreaterThanOrEqual(0);
-    expect(noticePos).toBeGreaterThanOrEqual(0);
-    // Unchanged order = the verified figure (spoken inline, with its own marker) still precedes the
-    // trailing redaction notice — the R-53 substitution sentence, if present at all, still trails too.
-    expect(numPos).toBeLessThan(noticePos);
     expect(said).toContain('לפי המדריך המאומת');       // the INLINE verified marker (unaffected by R-61)
+    expect(said).not.toContain('אינו מאומת');          // R-68 — nothing in this answer is left unverified
+    expect(said).not.toContain('אינם מאומתים');
+    expect(said.trim().startsWith('לפי המדריך, הטמפרטורה הבטוחה')).toBe(false);   // R-61: no jump to the front
     const subPos = said.indexOf('לפי המדריך, הטמפרטורה הבטוחה');
-    if (subPos >= 0) expect(noticePos).toBeLessThan(subPos);   // R-53 substitution, when present, still trails
+    if (subPos >= 0) expect(numPos).toBeLessThan(subPos);   // R-53 substitution, when present, still trails
   });
 
   test('D8c · end to end via vcAskFlow — the SPOKEN string and the on-screen string are the same string, and it leads with the verified sentence', async ({ page }) => {
