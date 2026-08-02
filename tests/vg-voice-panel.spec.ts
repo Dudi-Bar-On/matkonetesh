@@ -24,7 +24,15 @@ test.describe('§1.4 · the voice-rules panel', () => {
     await page.evaluate(() => (window as any).openVoiceRules());
     await expect(page.locator('#voiceRules')).toContainText('הטיימר של החזה הסתיים');
     await page.evaluate(() => (window as any).setLang('ru'));
-    await page.waitForFunction(() => (window as any).__mkLangReady);
+    // NOT __mkLangReady: that is the BOOT-time promise, created once at load for the language stored
+    // THEN. This test boots in Hebrew, so it is Promise.resolve() — already settled forever — and
+    // awaiting it returns instantly while the ru dict is still in flight. The wait looked like a
+    // condition and was vacuous; it only surfaced as a failure once the suite ran under enough load to
+    // slow the fetch. getLang() is the real signal: setLang() writes the store INSIDE the fetch's
+    // .then(), so this cannot be true before the dictionary is actually applied. Same pattern as
+    // i18n-Lcontract.spec.ts:55, which has been stable. (§11a: wait on conditions, never on timeouts —
+    // and a condition that was already true is not a condition.)
+    await page.waitForFunction(() => (window as any).getLang() === 'ru');
     await page.evaluate(() => (window as any).openVoiceRules());
     const txt = await page.locator('#voiceRules').innerText();
     expect(txt).not.toContain('הטיימר של החזה הסתיים');
