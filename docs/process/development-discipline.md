@@ -879,6 +879,29 @@ A related trap, same day: a fix aimed at a *different real defect* in the same f
 "the fix didn't work", when in fact it fixed what it targeted and never touched this. **Two defects in one
 function look exactly like one unfixed defect.**
 
+**L44 · Four defects in code the CONTROLLER dictated, and three conflicts only the full suite saw
+(2026-08-02, a fourteen-task arc).** Two patterns worth separating.
+
+**(a) The brief's own reference code was wrong four times.** Each brief carried the exact implementation
+to write, and in four tasks that code was subtly broken: a fallback that made a storage failure speak
+*more* rather than less; a queue drain that let ordinary alerts interrupt exactly like safety, voiding the
+whole priority scheme; a blind digit sweep that re-redacted values an approval had just restored; and a
+shared placeholder whose restore assumed left-to-right order and would have swapped two approved values.
+**All four were caught by the implementer running the code, none by anyone reading it** — and every one
+would have passed review. The gate is not "write careful briefs"; it is **RED-before-GREEN performed by
+the implementer, on the brief's own code, as written.** A brief is a hypothesis.
+
+**(b) Three conflicts were invisible to every targeted run and visible only to the whole suite.** An
+assertion in one spec pinning an ordering a later approved change reversed; a first-run card that replaced
+whatever panel was open; a test forbidding *any* notification where it meant *blocking* ones. Each task's
+own specs were green. Gate: **the controller runs the entire suite after every task, not at the end of the
+arc** — a conflict found three tasks later costs the three tasks built on top of it.
+
+A third, smaller note with a long tail: one of these was **predicted in writing the day before** — a
+product comment observing that a first-run card would stomp an open panel "if onboarding ever grows more
+triggers". It grew one, and the prediction landed within a day. **A written "this will break if X" is a
+scheduled failure, not an observation.** When the note is cheap to act on, act on it when it is written.
+
 **Adopted wins (2026-07-31) — patterns that worked this session, keep using them:** (7) **The controller
 verifies everything independently** — every subagent claim this session was checked by diff or by the
 controller's own suite run rather than trusted as reported, and that independent check is what caught
