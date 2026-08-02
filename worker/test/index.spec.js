@@ -540,3 +540,76 @@ describe('R-45 — Cloud TTS route protections', () => {
     }
   });
 });
+
+// ── Worker-lock deadlock (live bug, evidence: docs/analysis/2026-08-02-asado-guard-repro.md §1) ──
+// Observed in production: after ONE request was interrupted mid-flight, every later request using the
+// same access code hung until timeout (35s on both :generateContent and :streamGenerateContent, while a
+// fresh code answered 200 in ~2s). Root cause reproduced below: `withCodeLock` chains each request on
+// the previous holder's promise. A holder whose request context dies mid-critical-section leaves a
+// promise that NEVER settles — not resolved, not rejected — so no `finally` inside the holder can ever
+// run, and every successor waits on it forever. The lock is therefore released by the WAITER's own
+// bounded wait, which is the only clock still alive after the holder is gone.
+//
+// The interruption is simulated by holding the critical section (the KV read inside `admitCode`) open
+// and then abandoning it, which is precisely what an aborted request leaves behind. Signalling is
+// condition-based (a deferred resolved from inside the mock); the one deadline in the test is a HANG
+// DETECTOR, not a sleep — some deadline is unavoidable when the assertion is "this does not hang".
+const HANG_DETECTOR_MS = 12_000;
+const HUNG = Symbol('hung');
+function orHung(promise, ms) {
+  let t;
+  return Promise.race([
+    promise.then((v) => { clearTimeout(t); return v; }),
+    new Promise((resolve) => { t = setTimeout(() => resolve(HUNG), ms); }),
+  ]);
+}
+
+describe('Worker lock — an interrupted request must not brick the access code', () => {
+  it('a code whose lock holder never settles still answers the NEXT request', { timeout: 30_000 }, async () => {
+    await env.CODES.put('code:poison', JSON.stringify({ active: true, cap: 100000, used: 0 }));
+
+    // The dead holder: the first KV read inside the critical section never settles, exactly as an
+    // aborted request's pending I/O never settles once its context is torn down.
+    let entered;
+    const enteredTheLock = new Promise((r) => { entered = r; });
+    const realGet = env.CODES.get.bind(env.CODES);
+    let poisoned = false;
+    vi.spyOn(env.CODES, 'get').mockImplementation((k) => {
+      if (!poisoned) { poisoned = true; entered(); return new Promise(() => {}); }
+      return realGet(k);
+    });
+
+    const abandoned = post(GENERATE_URL, 'poison');   // never settles — the interrupted request
+    abandoned.catch(() => {});
+    await enteredTheLock;                             // condition, not a wait: the lock is now held
+
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => geminiOkResponse(7));
+
+    const second = await orHung(post(GENERATE_URL, 'poison'), HANG_DETECTOR_MS);
+    expect(second).not.toBe(HUNG);                    // the observable effect: a real HTTP answer
+    expect(second.status).toBe(200);
+    expect(JSON.parse(await env.CODES.get('code:poison')).used).toBe(7);
+  });
+
+  it('NEGATIVE CASE — the lock still serialises: two concurrent requests on one code never interleave', async () => {
+    await env.CODES.put('code:serial', JSON.stringify({ active: true, cap: 100000, used: 0 }));
+
+    // Widen the critical section so an unserialised pair WOULD interleave, and record entry/exit of
+    // every critical section. Serialised ⇒ the trace is strictly get,put,get,put,…
+    const trace = [];
+    const realGet = env.CODES.get.bind(env.CODES);
+    const realPut = env.CODES.put.bind(env.CODES);
+    vi.spyOn(env.CODES, 'get').mockImplementation(async (k) => {
+      trace.push('get');
+      await new Promise((r) => setTimeout(r, 50));    // widen — a lost lock shows up as get,get
+      return realGet(k);
+    });
+    vi.spyOn(env.CODES, 'put').mockImplementation(async (k, v) => { trace.push('put'); return realPut(k, v); });
+    vi.spyOn(globalThis, 'fetch').mockImplementation(() => geminiOkResponse(11));
+
+    const rs = await Promise.all([post(GENERATE_URL, 'serial'), post(GENERATE_URL, 'serial')]);
+    expect(rs.every((r) => r.status === 200)).toBe(true);
+    for (let i = 0; i < trace.length; i += 2) expect(trace.slice(i, i + 2)).toEqual(['get', 'put']);
+    expect(JSON.parse(await env.CODES.get('code:serial')).used).toBe(22);   // both debits landed
+  });
+});

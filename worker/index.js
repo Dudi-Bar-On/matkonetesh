@@ -45,10 +45,35 @@ function corsHeaders(request, env) {
 // concurrency still rides KV eventual consistency; debit-first bounds that exposure to ~one
 // RESERVE per isolate. The atomic cross-isolate fix is a Durable Object — Sync Thread / S1
 // (trigger-anchored per H8; do not silently attempt it here).
-const LOCKS = new Map();   // code -> tail promise
+// The lock must never outlive its holder. A holder whose request is interrupted mid-critical-section
+// (client abort / navigation away / a torn-down request context) leaves a promise that NEVER settles —
+// not resolved, not rejected — so a `finally` INSIDE the holder can never run, and neither can any
+// timer the holder registered: both die with the context. Chaining unconditionally on that promise is
+// what bricked an access code in production for every later request until timeout (evidence:
+// docs/analysis/2026-08-02-asado-guard-repro.md §1). The release is therefore enforced on the WAITER's
+// side, whose own context is alive and whose own timer is the only clock still running. Bounded
+// staleness (LOCK_MAX_MS) beats a permanent deadlock; the critical sections here are a KV get + put,
+// so the ceiling is orders of magnitude above any healthy holder and only a dead one ever hits it.
+const LOCKS = new Map();   // code -> tail promise (settles when that holder releases)
+const LOCK_MAX_MS = 5_000; // longest a waiter will honour a predecessor before declaring it dead
 function withCodeLock(code, fn) {
-  const tail = (LOCKS.get(code) || Promise.resolve()).then(fn, fn);
-  LOCKS.set(code, tail.then(() => {}, () => {}));
+  const prev = LOCKS.get(code);
+  let gate;
+  if (!prev) {
+    gate = Promise.resolve();
+  } else {
+    let timer;
+    gate = Promise.race([
+      prev.then(() => {}, () => {}),
+      new Promise((resolve) => { timer = setTimeout(resolve, LOCK_MAX_MS); }),
+    ]).then(() => { clearTimeout(timer); }, () => { clearTimeout(timer); });
+  }
+  const tail = gate.then(fn, fn);
+  const released = tail.then(() => {}, () => {});
+  LOCKS.set(code, released);
+  // Drop the entry once released, so LOCKS cannot grow without bound across every code an isolate has
+  // ever seen. A dead holder never reaches here — its stale entry is displaced by the next waiter.
+  released.then(() => { if (LOCKS.get(code) === released) LOCKS.delete(code); }, () => {});
   return tail;
 }
 
