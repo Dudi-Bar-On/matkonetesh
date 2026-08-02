@@ -8035,10 +8035,17 @@ function vcVerifiedNums(meta){
 // UNCHANGED — several existing tests call vcVerifiedNums directly, pooling all five fields, to build range
 // fixtures from ANY of them; that usage is orthogonal to marker-eligibility and must keep working
 // unmodified). Only safe/tgt are eligible for the spoken-verified marker; svt/smt/sot never are.
+// R-69 (catalogue sweep 2.8.26, shape F) · ZERO IS NOT A TEMPERATURE THIS APP HOLDS. Every ירקות/פירות
+// row carries `safe=0` — the data layer's encoding of "no safety temperature applies" — and this pooled
+// it into the marker-eligible set exactly like a cited figure (measured on cut-102: [0,85]). A model
+// sentence saying "0°C" would then have been re-emitted with the guide's own authority. Every other
+// consumer of `safe` in this guard (catUniformSafe, catSafeSpread, vcHitsUniformSafeC) already excludes
+// zero for precisely this reason; this was the one place that did not. No `safe` value is changed — only
+// this function's reading of what 0 MEANS is brought in line with the rest of the file.
 function vcVerifiedSafeNums(meta){
   const o=meta&&meta.obj; if(!o) return [];
   return ['safe','tgt'].map(function(k){ return o[k]; })
-    .filter(function(v){ return v!=null && !isNaN(Number(v)); })
+    .filter(function(v){ return v!=null && !isNaN(Number(v)) && Number(v)!==0; })
     .map(function(v){ return Math.round(Number(v)); });
 }
 // R-53 (owner-reported live defect, 2026-08-01, docs/analysis — the asado question): the guard's
@@ -8072,6 +8079,14 @@ function vcIdentifiedSafeItem(tiers){
   if(!m || !m.obj) return null;   // no question-text match — Tier 1 alone is never sufficient (see above)
   const o=m.obj;
   if(o.safe==null || isNaN(Number(o.safe))) return null;   // no cited SAFETY figure — never substitute tgt as if it were one
+  // R-69 (catalogue sweep 2.8.26, shape F — 26 items, the largest shape in the sweep and 100%
+  // reproducible). `safe=0` is the data layer's encoding of "not applicable" (every ירקות and פירות row
+  // carries it), and this function could not tell it from a cited figure — so the app spoke its single
+  // most authoritative sentence, "לפי המדריך, הטמפרטורה הבטוחה עבור תירס: 0°C", and the model's very next
+  // sentence explained that no such temperature exists. The DATA is right; this reading of it was wrong.
+  // Zero now falls to the ladder's next rung, which says outright that we hold no verified figure for the
+  // row — true for corn, and the owner's rule: show NO number rather than an unbacked one.
+  if(Number(o.safe)===0) return null;
   return { m:m, safeC: Math.round(Number(o.safe)) };
 }
 // R-58 (owner-reported live defect, 2026-08-01, v283) — a CATEGORY question ("טמפרטורת בטיחות עוף") got NO
@@ -8156,6 +8171,17 @@ function vcConsistentItem(tiers){
   const toks=askConceptToks((tiers && tiers.q) || '');
   const disc=toks.filter(function(t){ return hits.some(function(h){ return askHitCoversTok(h,t); }); });
   if(!disc.every(function(t){ return askHitCoversTok(m,t); })) return null;
+  // R-69 (catalogue sweep 2.8.26, shape I — `make-n-linguica-cal`): asked about a smoked PORK sausage the
+  // app said, IN ITS OWN VOICE, "אין לנו ערך בטיחות מאומת לברי" — the cheese ברי. Measured: askFindEntity's
+  // direct tier is a bare `q.includes(m.heb)`, and the three-letter name ברי sits inside the question word
+  // "בקלבריה", so the cheese was the ONLY hit and every gate downstream saw an unambiguous, consistent
+  // resolution. The overlap test askTokStrength runs is deliberately two-way (a fragment "carries" a longer
+  // word), which is right for RANKING and wrong for NAMING: a row we are about to name in the guide's voice
+  // must carry, in full, at least one of the words the question actually distinguished on — not a fragment
+  // buried inside one. Strictly stricter and naming-only: askFindEntity's match SET and order are untouched
+  // (shape I's own I2 negative proves a genuine ברי question still resolves to ברי), and a refusal here
+  // falls through to the category rung or to silence, never to a different food's figure.
+  if(disc.length && !disc.some(function(t){ return askTokStrength(m,t)===t.length; })) return null;
   // A rival only counts as ambiguity when it matches the question AT LEAST AS WELL — same words, and no
   // weaker an overlap. A strictly weaker match (the cheese "ברי" against a question about "בריסקט") is
   // not a competing reading of the question, and letting it veto would silence correct answers.
@@ -8506,6 +8532,23 @@ function vcClaimVerdict(tokenText, vals, unit, kind, claims, bind){
     if(kind!=='single') return null;                       // a RANGE is a composite claim — never verified
     const ref = vcClaimSubjectSafeC(cl, bind);
     if(ref==null) return null;                             // unidentified item, OR a MIXED category → redact
+    // R-69 (catalogue sweep 2.8.26, shape G — the sweep's most serious finding, 15 items) · THE QUESTION'S
+    // OWN SUBJECT HAS A VETO. Measured on v289: asked "מה טמפרטורת הבטיחות בדרוורס" (a dried pork/beef
+    // sausage we hold NO cited figure for) the classifier's subject was the poultry the model had wandered
+    // onto, `askFindEntity('duck')` bound cleanly to two ברווז rows uniform at 74, and the app stamped
+    // "74°C לפי המדריך המאומת" — its highest authority, on a figure belonging to a food nobody asked about.
+    // Same mechanism produced beef's 63°C on the cheese רוקפור. Every gate that existed asked whether the
+    // CLAIM's own subject was coherent; none asked whether it was the subject of the QUESTION.
+    // The rule: when the user's question resolves, through the same consistency/unambiguity gate that
+    // authors our leading sentence, to ONE catalogue row, that row's cited figure — or its ABSENCE — must
+    // agree with whatever the claim bound to. Disagreement means the number is about something else, and
+    // it is redacted. Strictly stricter by construction: it can only turn an approval into a redaction
+    // (`undefined` = the question resolved to no single row = no veto = today's behaviour exactly, which
+    // is also every direct unit caller that passes no `bind`). It also closes shape H — an answer can no
+    // longer carry "אין לנו ערך בטיחות מאומת ל-X" and a verified stamp at the same time, because the same
+    // row that produced the first sentence is what now refuses the second.
+    const qRef = vcQuestionSafeC(bind);
+    if(qRef!==undefined && qRef!==ref) return null;
     const c = Math.round(aiSafetyToC(vals[0], unit));
     if(c===ref) return {verdict:'verified', c:c};          // equals OUR cited figure — not the model's word
     // OWNER RULING 2.8.26 (docs/analysis/2026-08-02-asado-guard-repro.md §3) — an internal TARGET
@@ -8524,6 +8567,19 @@ function vcClaimVerdict(tokenText, vals, unit, kind, claims, bind){
   }
   if(SAFETY_CLAIM_FREE_KINDS[cl.kind]) return {verdict:'release'};
   return null;                                             // 'other', missing, or anything unlisted
+}
+// R-69 · the figure the QUESTION'S own subject holds, for the veto above. `undefined` means "the question
+// did not resolve to one row, so it has nothing to say"; `null` means "it resolved, and we hold NO cited
+// safety figure for it" — which is itself a decision, and the one that refuses the דרוורס/רוקפור stamps.
+// It reads the SAME row vcSafeSubstitutionParts names in the leading sentence (vcConsistentItem) and the
+// SAME `safe` field, with the SAME zero-exclusion the rest of this guard applies; it computes no figure.
+function vcQuestionSafeC(bind){
+  const tiers = bind && bind.tiers;
+  if(!tiers) return undefined;
+  const one = (typeof vcConsistentItem==='function') ? vcConsistentItem(tiers) : null;
+  if(!one) return undefined;
+  const v = one.obj && one.obj.safe;
+  return (v!=null && !isNaN(Number(v)) && Number(v)!==0) ? Math.round(Number(v)) : null;
 }
 // The subject's cited °C from OUR tables — item first, category second, exactly the precedence
 // vcResolveTiers (7566) and vcIdentifiedSafeCategory (7670) already enforce: a named item is strictly
@@ -8731,6 +8787,25 @@ function vcGuardSpoken(text, tiers, lang, claims){
   // the exact G-A2/R-3 proof case) can no longer borrow the guide's authority.
   vcVerifiedSafeNums(tiers && tiers.t1).forEach(function(n){ ok[n]=true; });
   vcVerifiedSafeNums(tiers && tiers.t2).forEach(function(n){ ok[n]=true; });
+  // R-69 (catalogue sweep 2.8.26, shape G, the sweep's own #1-ranked case) · `cut-102` שום שלם מעושן holds
+  // safe=0 and tgt=85, and the live answer read "כדי שהוא יהיה מוכן, רך ובטוח למאכל, מומלץ להגיע
+  // לטמפרטורה פנימית של 85°C לפי המדריך המאומת." The 85 IS ours — but it is the row's TEXTURE TARGET, and
+  // the sentence around it asserts a safety floor. R-3's approved safe/tgt marker set is not re-litigated
+  // here: what is added is that when the classifier tells us the sentence is claiming an
+  // `internal_safe_temp`, the figure must be one of OUR cited SAFETY values, not a doneness target that
+  // merely shares the pool. Exactly the G-A2 hazard R-3's own comment names ("a wrong-field number can no
+  // longer borrow the guide's authority"), one field-pair deeper. Claims-gated and strictly stricter: with
+  // no claims (claims null → the shipped path) nothing below changes, and a `tgt` claimed as the doneness
+  // target it is keeps its marker.
+  const okSafe={};
+  [tiers && tiers.t1, tiers && tiers.t2].forEach(function(meta){
+    const v=meta && meta.obj && meta.obj.safe;
+    if(v!=null && !isNaN(Number(v)) && Number(v)!==0) okSafe[Math.round(Number(v))]=true;
+  });
+  function markerAllowed(tok, c){
+    const cl=(claims && typeof claims.get==='function') ? claims.get(tok) : null;
+    return !(cl && cl.kind==='internal_safe_temp' && !okSafe[c]);
+  }
   // SYNTAX-INDEPENDENT ELIGIBILITY (owner ruling 2026-07-24). Three previous fixes keyed on how a range
   // was *written* and each was defeated by a different phrasing — "63°C-74°C", "between 63 and 74",
   // "בין 63 ל-74°C" all slipped through, and the unit-less bound in "63 to 74°C" was never even
@@ -8757,7 +8832,7 @@ function vcGuardSpoken(text, tiers, lang, claims){
         const tok=arguments[3];                       // vcMapSafetyNums passes the whole token as arg 4
         if(kind==='single' && isTempUnit(unit)){
           const c=Math.round(aiSafetyToC(vals[0], unit));
-          if(ok[c]){
+          if(ok[c] && markerAllowed(tok, c)){
             // COSMETIC (2026-07-24): the matched unit token can itself carry a trailing period ("deg.",
             // "degrees.") — replacing the WHOLE token with c+'°C' silently ate that period. Re-append it
             // when present so the sentence's own full stop survives the substitution.
