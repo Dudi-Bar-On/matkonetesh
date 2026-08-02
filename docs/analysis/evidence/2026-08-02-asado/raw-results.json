@@ -1,0 +1,715 @@
+{
+ "stamp": "מהדורה 285 · 2.8.26",
+ "aiMode": {
+  "avail": true,
+  "mode": "managed"
+ },
+ "results": [
+  {
+   "id": "asado-1",
+   "q": "מה הטמפרטורה הבטוחה לאסאדו?",
+   "ok": true,
+   "wallMs": {
+    "toFirstPaint": 431,
+    "toAnswerText": 19455,
+    "toGuard": 19457,
+    "toSettled": 20069
+   },
+   "vcLat": {
+    "ask": 0,
+    "ackSound": 0,
+    "textReq": 2,
+    "textResp": 4039,
+    "classReq": 4039,
+    "classResp": 19024,
+    "ttsReq1": 19026,
+    "firstSound": 19026
+   },
+   "classCalls": 1,
+   "classifier": {
+    "called": true,
+    "ms": 14985,
+    "returnedNull": false,
+    "threw": null,
+    "claims": [
+     {
+      "text": "63°C",
+      "kind": "internal_safe_temp",
+      "confidence": 0.98,
+      "value": 63,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "beef",
+       "item": "beef"
+      }
+     },
+     {
+      "text": "90°C",
+      "kind": "internal_target_temp",
+      "confidence": 0.98,
+      "value": 90,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "beef",
+       "item": "asado"
+      }
+     },
+     {
+      "text": "95°C",
+      "kind": "internal_target_temp",
+      "confidence": 0.98,
+      "value": 95,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "beef",
+       "item": "asado"
+      }
+     }
+    ]
+   },
+   "guard": {
+    "beforeGuard": "מבחינת בטיחות מזון, הטמפרטורה הפנימית המינימלית הבטוחה לבשר בקר היא 63°C עם מנוחה של שלוש דקות. אבל כדי שהאסאדו יהיה רך ממש ויתפרק מהעצם, מומלץ להביא אותו לטמפרטורה פנימית של 90°C עד 95°C בסוף הבישול הארוך.",
+    "afterGuard": "מבחינת בטיחות מזון, הטמפרטורה הפנימית המינימלית הבטוחה לבשר בקר היא 63°C לפי המדריך המאומת. עם מנוחה של שלוש דקות. אבל כדי שהאסאדו יהיה רך ממש ויתפרק מהעצם, מומלץ להביא אותו לטמפרטורה פנימית של […] עד […] בסוף הבישול הארוך. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור אסאדו: 63°C.",
+    "ms": 1,
+    "claimsArgWasNull": false
+   },
+   "rendered": {
+    "q": "❓ מה הטמפרטורה הבטוחה לאסאדו?",
+    "a": "מבחינת בטיחות מזון, הטמפרטורה הפנימית המינימלית הבטוחה לבשר בקר היא 63°C לפי המדריך המאומת. עם מנוחה של שלוש דקות. אבל כדי שהאסאדו יהיה רך ממש ויתפרק מהעצם, מומלץ להביא אותו לטמפרטורה פנימית של […] עד […] בסוף הבישול הארוך. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור אסאדו: 63°C."
+   },
+   "net": [
+    {
+     "t": 1785652023542,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "rel": 428
+    },
+    {
+     "t": 1785652023542,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 428
+    },
+    {
+     "t": 1785652025152,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "rel": 2038
+    },
+    {
+     "t": 1785652026937,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "rel": 3823
+    },
+    {
+     "t": 1785652027227,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 4113
+    },
+    {
+     "t": 1785652027573,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 4459
+    },
+    {
+     "t": 1785652027610,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "rel": 4496
+    },
+    {
+     "t": 1785652042552,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 19438
+    },
+    {
+     "t": 1785652042560,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "rel": 19446
+    },
+    {
+     "t": 1785652042561,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "rel": 19447
+    }
+   ],
+   "console": [
+    {
+     "t": 1785652026947,
+     "type": "debug",
+     "text": "[AI usage] tts {promptTokenCount: 7, candidatesTokenCount: 66, totalTokenCount: 73, promptTokensDetails: Array(1), candidatesTokensDetails: Array(1)}"
+    },
+    {
+     "t": 1785652027620,
+     "type": "debug",
+     "text": "[AI usage] tts {promptTokenCount: 7, candidatesTokenCount: 76, totalTokenCount: 83, promptTokensDetails: Array(1), candidatesTokensDetails: Array(1)}"
+    },
+    {
+     "t": 1785652042561,
+     "type": "debug",
+     "text": "[AI usage] text {promptTokenCount: 309, candidatesTokenCount: 188, totalTokenCount: 3229, promptTokensDetails: Array(1), thoughtsTokenCount: 2732}"
+    }
+   ]
+  },
+  {
+   "id": "asado-2",
+   "q": "מה הטמפרטורה הבטוחה לאסאדו?",
+   "ok": true,
+   "wallMs": {
+    "toFirstPaint": 40,
+    "toAnswerText": 18167,
+    "toGuard": 18168,
+    "toSettled": 18780
+   },
+   "vcLat": {
+    "ask": 0,
+    "ackSound": 0,
+    "textReq": 1,
+    "textResp": 3421,
+    "classReq": 3421,
+    "classResp": 18125,
+    "ttsReq1": 18126,
+    "firstSound": 18126
+   },
+   "classCalls": 1,
+   "classifier": {
+    "called": true,
+    "ms": 14704,
+    "returnedNull": false,
+    "threw": null,
+    "claims": [
+     {
+      "text": "63°C",
+      "kind": "internal_safe_temp",
+      "confidence": 1,
+      "value": 63,
+      "unit": "C",
+      "subject": {
+       "form": "unknown",
+       "category": "beef",
+       "item": "beef"
+      }
+     },
+     {
+      "text": "90°C",
+      "kind": "internal_target_temp",
+      "confidence": 1,
+      "value": 90,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "beef",
+       "item": "asado"
+      }
+     },
+     {
+      "text": "95°C",
+      "kind": "internal_target_temp",
+      "confidence": 1,
+      "value": 95,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "beef",
+       "item": "asado"
+      }
+     }
+    ]
+   },
+   "guard": {
+    "beforeGuard": "כדי שבשר בקר יהיה בטוח למאכל, הטמפרטורה הפנימית המינימלית היא 63°C. אבל בשביל אסאדו רך ונימוח שמתפרק מהעצם, תרצה להגיע לטמפרטורה פנימית של 90°C עד 95°C. בזמן ההמתנה, פשוט תדאג שהחום במעשנה או בתנור נשאר יציב.",
+    "afterGuard": "כדי שבשר בקר יהיה בטוח למאכל, הטמפרטורה הפנימית המינימלית היא 63°C לפי המדריך המאומת. אבל בשביל אסאדו רך ונימוח שמתפרק מהעצם, תרצה להגיע לטמפרטורה פנימית של […] עד […]. בזמן ההמתנה, פשוט תדאג שהחום במעשנה או בתנור נשאר יציב. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור אסאדו: 63°C.",
+    "ms": 1,
+    "claimsArgWasNull": false
+   },
+   "rendered": {
+    "q": "❓ מה הטמפרטורה הבטוחה לאסאדו?",
+    "a": "כדי שבשר בקר יהיה בטוח למאכל, הטמפרטורה הפנימית המינימלית היא 63°C לפי המדריך המאומת. אבל בשביל אסאדו רך ונימוח שמתפרק מהעצם, תרצה להגיע לטמפרטורה פנימית של […] עד […]. בזמן ההמתנה, פשוט תדאג שהחום במעשנה או בתנור נשאר יציב. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור אסאדו: 63°C."
+   },
+   "net": [
+    {
+     "t": 1785652046273,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 39
+    },
+    {
+     "t": 1785652049331,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 3097
+    },
+    {
+     "t": 1785652049691,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 3457
+    },
+    {
+     "t": 1785652062561,
+     "phase": "fail",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "err": "net::ERR_ABORTED",
+     "rel": 16327
+    },
+    {
+     "t": 1785652064394,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 18160
+    },
+    {
+     "t": 1785652064397,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "rel": 18163
+    },
+    {
+     "t": 1785652064397,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "rel": 18163
+    }
+   ],
+   "console": [
+    {
+     "t": 1785652064397,
+     "type": "debug",
+     "text": "[AI usage] text {promptTokenCount: 317, candidatesTokenCount: 136, totalTokenCount: 1943, promptTokensDetails: Array(1), thoughtsTokenCount: 1490}"
+    }
+   ]
+  },
+  {
+   "id": "asado-3",
+   "q": "מה הטמפרטורה הבטוחה לאסאדו?",
+   "ok": true,
+   "wallMs": {
+    "toFirstPaint": 45,
+    "toAnswerText": 10504,
+    "toGuard": 10506,
+    "toSettled": 11115
+   },
+   "vcLat": {
+    "ask": 0,
+    "ackSound": 0,
+    "textReq": 1,
+    "textResp": 3066,
+    "classReq": 3066,
+    "classResp": 10452,
+    "ttsReq1": 10452,
+    "firstSound": 10452
+   },
+   "classCalls": 1,
+   "classifier": {
+    "called": true,
+    "ms": 7385,
+    "returnedNull": false,
+    "threw": null,
+    "claims": [
+     {
+      "text": "63°C",
+      "kind": "internal_safe_temp",
+      "confidence": 0.98,
+      "value": 63,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "beef",
+       "item": "beef"
+      }
+     },
+     {
+      "text": "93°C",
+      "kind": "internal_target_temp",
+      "confidence": 0.98,
+      "value": 93,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "beef",
+       "item": "asado"
+      }
+     },
+     {
+      "text": "98°C",
+      "kind": "internal_target_temp",
+      "confidence": 0.98,
+      "value": 98,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "beef",
+       "item": "asado"
+      }
+     }
+    ]
+   },
+   "guard": {
+    "beforeGuard": "לטמפרטורת בטיחות מינימלית עבור בקר, יש להגיע ל-63°C לפחות במרכז הנתח, עם מנוחה של שלוש דקות. אבל כדי שהאסאדו יהיה רך, עסיסי ומפורק ממש, מומלץ להמשיך לבשל עד שטמפרטורת הליבה תגיע ל-93°C עד 98°C.",
+    "afterGuard": "לטמפרטורת בטיחות מינימלית עבור בקר, יש להגיע ל-63°C לפי המדריך המאומת. לפחות במרכז הנתח, עם מנוחה של שלוש דקות. אבל כדי שהאסאדו יהיה רך, עסיסי ומפורק ממש, מומלץ להמשיך לבשל עד שטמפרטורת הליבה תגיע ל-[…] עד […]. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור אסאדו: 63°C.",
+    "ms": 1,
+    "claimsArgWasNull": false
+   },
+   "rendered": {
+    "q": "❓ מה הטמפרטורה הבטוחה לאסאדו?",
+    "a": "לטמפרטורת בטיחות מינימלית עבור בקר, יש להגיע ל-63°C לפי המדריך המאומת. לפחות במרכז הנתח, עם מנוחה של שלוש דקות. אבל כדי שהאסאדו יהיה רך, עסיסי ומפורק ממש, מומלץ להמשיך לבשל עד שטמפרטורת הליבה תגיע ל-[…] עד […]. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור אסאדו: 63°C."
+   },
+   "net": [
+    {
+     "t": 1785652068106,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 42
+    },
+    {
+     "t": 1785652070999,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 2935
+    },
+    {
+     "t": 1785652071171,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 3107
+    },
+    {
+     "t": 1785652078555,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 10491
+    },
+    {
+     "t": 1785652078556,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "rel": 10492
+    },
+    {
+     "t": 1785652078557,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "rel": 10493
+    }
+   ],
+   "console": [
+    {
+     "t": 1785652078557,
+     "type": "debug",
+     "text": "[AI usage] text {promptTokenCount: 301, candidatesTokenCount: 145, totalTokenCount: 1750, promptTokensDetails: Array(1), thoughtsTokenCount: 1304}"
+    }
+   ]
+  },
+  {
+   "id": "ribs",
+   "q": "כמה זמן ובאיזו טמפרטורה לעשן ספייר ריבס?",
+   "ok": true,
+   "wallMs": {
+    "toFirstPaint": 37,
+    "toAnswerText": 37880,
+    "toGuard": 37882,
+    "toSettled": 38490
+   },
+   "vcLat": {
+    "ask": 0,
+    "ackSound": 0,
+    "textReq": 1,
+    "textResp": 17177,
+    "classReq": 17177,
+    "classResp": 37845,
+    "ttsReq1": 37846,
+    "firstSound": 37846
+   },
+   "classCalls": 1,
+   "classifier": {
+    "called": true,
+    "ms": 20668,
+    "returnedNull": false,
+    "threw": null,
+    "claims": [
+     {
+      "text": "107°C",
+      "kind": "chamber_temp",
+      "confidence": 1,
+      "value": 107,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "pork",
+       "item": "spare ribs"
+      }
+     },
+     {
+      "text": "120°C",
+      "kind": "chamber_temp",
+      "confidence": 1,
+      "value": 120,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "pork",
+       "item": "spare ribs"
+      }
+     },
+     {
+      "text": "6 שעות",
+      "kind": "duration",
+      "confidence": 1,
+      "value": 6,
+      "unit": "h",
+      "subject": {
+       "form": "whole",
+       "category": "pork",
+       "item": "spare ribs"
+      }
+     },
+     {
+      "text": "63°C",
+      "kind": "internal_safe_temp",
+      "confidence": 1,
+      "value": 63,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "pork",
+       "item": "spare ribs"
+      }
+     },
+     {
+      "text": "93°C",
+      "kind": "internal_target_temp",
+      "confidence": 1,
+      "value": 93,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "pork",
+       "item": "spare ribs"
+      }
+     },
+     {
+      "text": "98°C",
+      "kind": "internal_target_temp",
+      "confidence": 1,
+      "value": 98,
+      "unit": "C",
+      "subject": {
+       "form": "whole",
+       "category": "pork",
+       "item": "spare ribs"
+      }
+     }
+    ]
+   },
+   "guard": {
+    "beforeGuard": "מעשנים ספייר ריבס בטמפרטורה של 107°C עד 120°C במשך 5 עד 6 שעות. מטעמי בטיחות מזון הבשר חייב להגיע לפחות ל-63°C, אך לרכות מושלמת מכוונים לטמפרטורה פנימית של 93°C עד 98°C.",
+    "afterGuard": "מעשנים ספייר ריבס בטמפרטורה של 107°C עד 120°C במשך […] עד 6 שעות. מטעמי בטיחות מזון הבשר חייב להגיע לפחות ל-63°C לפי המדריך המאומת., אך לרכות מושלמת מכוונים לטמפרטורה פנימית של […] עד […]. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור ספייריבס: 63°C.",
+    "ms": 0,
+    "claimsArgWasNull": false
+   },
+   "rendered": {
+    "q": "❓ כמה זמן ובאיזו טמפרטורה לעשן ספייר ריבס?",
+    "a": "מעשנים ספייר ריבס בטמפרטורה של 107°C עד 120°C במשך […] עד 6 שעות. מטעמי בטיחות מזון הבשר חייב להגיע לפחות ל-63°C לפי המדריך המאומת., אך לרכות מושלמת מכוונים לטמפרטורה פנימית של […] עד […]. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור ספייריבס: 63°C."
+   },
+   "net": [
+    {
+     "t": 1785652082258,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 36
+    },
+    {
+     "t": 1785652084399,
+     "phase": "fail",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "err": "net::ERR_ABORTED",
+     "rel": 2177
+    },
+    {
+     "t": 1785652089178,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "rel": 6956
+    },
+    {
+     "t": 1785652089178,
+     "phase": "fail",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "err": "net::ERR_ABORTED",
+     "rel": 6956
+    },
+    {
+     "t": 1785652098558,
+     "phase": "fail",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "err": "net::ERR_ABORTED",
+     "rel": 16336
+    },
+    {
+     "t": 1785652099431,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 17209
+    },
+    {
+     "t": 1785652099432,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 17210
+    },
+    {
+     "t": 1785652120097,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 37875
+    },
+    {
+     "t": 1785652120101,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "rel": 37879
+    },
+    {
+     "t": 1785652120101,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "rel": 37879
+    }
+   ],
+   "console": [
+    {
+     "t": 1785652120102,
+     "type": "debug",
+     "text": "[AI usage] text {promptTokenCount: 298, candidatesTokenCount: 313, totalTokenCount: 4554, promptTokensDetails: Array(1), thoughtsTokenCount: 3943}"
+    }
+   ]
+  },
+  {
+   "id": "chicken",
+   "q": "מה הטמפרטורה הבטוחה לעוף?",
+   "ok": true,
+   "wallMs": {
+    "toFirstPaint": 42,
+    "toAnswerText": 8498,
+    "toGuard": 8501,
+    "toSettled": 9117
+   },
+   "vcLat": {
+    "ask": 0,
+    "ackSound": 0,
+    "textReq": 2,
+    "textResp": 2458,
+    "classReq": 2458,
+    "classResp": 8460,
+    "ttsReq1": 8461,
+    "firstSound": 8461
+   },
+   "classCalls": 1,
+   "classifier": {
+    "called": true,
+    "ms": 6002,
+    "returnedNull": false,
+    "threw": null,
+    "claims": [
+     {
+      "text": "74°C",
+      "kind": "internal_safe_temp",
+      "confidence": 1,
+      "value": 74,
+      "unit": "C",
+      "subject": {
+       "form": "unknown",
+       "category": "poultry",
+       "item": "chicken"
+      }
+     }
+    ]
+   },
+   "guard": {
+    "beforeGuard": "הטמפרטורה הפנימית הבטוחה לבישול עוף היא 74°C. כדי לוודא שהעוף מוכן ובטוח למאכל, מומלץ למדוד את הטמפרטורה בחלק הכי עבה של החזה או הירך באמצעות מדחום בשר, תוך הקפדה שלא לגעת בעצם.",
+    "afterGuard": "לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית עוף: 74°C. הטמפרטורה הפנימית הבטוחה לבישול עוף היא […]. כדי לוודא שהעוף מוכן ובטוח למאכל, מומלץ למדוד את הטמפרטורה בחלק הכי עבה של החזה או הירך באמצעות מדחום בשר, תוך הקפדה שלא לגעת בעצם. מספר זה אינו מאומת — בדוק בכרטיס הפריט.",
+    "ms": 1,
+    "claimsArgWasNull": false
+   },
+   "rendered": {
+    "q": "❓ מה הטמפרטורה הבטוחה לעוף?",
+    "a": "לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית עוף: 74°C. הטמפרטורה הפנימית הבטוחה לבישול עוף היא […]. כדי לוודא שהעוף מוכן ובטוח למאכל, מומלץ למדוד את הטמפרטורה בחלק הכי עבה של החזה או הירך באמצעות מדחום בשר, תוך הקפדה שלא לגעת בעצם. מספר זה אינו מאומת — בדוק בכרטיס הפריט."
+   },
+   "net": [
+    {
+     "t": 1785652123808,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 39
+    },
+    {
+     "t": 1785652123817,
+     "phase": "fail",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "err": "net::ERR_ABORTED",
+     "rel": 48
+    },
+    {
+     "t": 1785652126010,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:streamGenerateContent?alt=sse",
+     "rel": 2241
+    },
+    {
+     "t": 1785652126262,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 2493
+    },
+    {
+     "t": 1785652132263,
+     "phase": "resp",
+     "status": 200,
+     "path": "/v1beta/models/gemini-3.6-flash:generateContent",
+     "rel": 8494
+    },
+    {
+     "t": 1785652132266,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:streamGenerateContent?alt=sse",
+     "rel": 8497
+    },
+    {
+     "t": 1785652132266,
+     "phase": "req",
+     "path": "/v1beta/models/gemini-3.1-flash-tts-preview:generateContent",
+     "rel": 8497
+    }
+   ],
+   "console": [
+    {
+     "t": 1785652132266,
+     "type": "debug",
+     "text": "[AI usage] text {promptTokenCount: 292, candidatesTokenCount: 49, totalTokenCount: 1128, promptTokensDetails: Array(1), thoughtsTokenCount: 787}"
+    }
+   ]
+  }
+ ]
+}

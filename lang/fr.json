@@ -2605,5 +2605,5 @@
  "הקצב האט — הצפי זז": "Le rythme a ralenti — l'estimation a changé",
  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "Vous avez de la marge — vous pouvez le garder dans une glacière",
  "אתה בקצב הנכון להגשה": "Vous êtes dans les temps pour le service",
- "מה חדש: שאלה על זמן וטמפרטורה מחזירה עכשיו את כל המספרים — טמפרטורת יעד לרכות כבר לא נמחקת, ומיד נשמעת הודעה קצרה כדי שלא תמתין בשקט.": "Nouveautés : une question sur le temps et la température renvoie désormais tous les chiffres — la température à cœur visée n’est plus masquée, et une brève annonce est prononcée aussitôt pour ne pas attendre en silence."
+ "מה חדש: שאלה על נתח מסוים מחזירה עכשיו את המספרים שלו — הנושא נקשר לנתח שבאמת שאלת עליו, וערך בטיחות שאינו שייך לו כבר לא מוצג.": "Nouveautés : une question sur un morceau précis renvoie désormais ses chiffres — le sujet est rattaché au morceau sur lequel vous avez réellement posé la question, et une valeur de sécurité appartenant à un autre morceau n’est plus affichée."
 }
