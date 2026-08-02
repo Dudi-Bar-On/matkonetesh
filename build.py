@@ -128,7 +128,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False)
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: אתה מחליט מתי האפליקציה מדברת — חמש קטגוריות בהגדרות, כל הודעה קולית מופיעה גם על המסך ונשמרת ביומן, והתראות בטיחות תמיד נשמעות."
+WHATS_NEW = "מה חדש: שאלה על זמן וטמפרטורה מחזירה עכשיו את כל המספרים — טמפרטורת יעד לרכות כבר לא נמחקת, ומיד נשמעת הודעה קצרה כדי שלא תמתין בשקט."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -338,7 +338,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 285 · 2.8.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 286 · 2.8.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
