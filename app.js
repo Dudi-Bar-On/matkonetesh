@@ -7535,6 +7535,18 @@ const VC_TTS_OPEN_MAX=60;                   // opening chunk cap — small, so t
 // well inside the TTS timeout), even if that puts it slightly over VC_TTS_OPEN_MAX. A few hundred extra ms
 // of first-sound latency is a fair trade for the sentence actually being audible.
 const VC_TTS_OPEN_MIN=16;                   // floor below which an opening piece must never be spoken alone
+// Gap fix (owner-reported on v287: "אחרי המילה מאומת יש שקט יחסית ארוך עד המשך ההקראה"). The AUDIO side
+// of the SAME measurement VC_TTS_CHAR_MS comes from: 204 chars produced 19.7 s of speech → 96.6 ms of
+// audio per char. It is what makes the lookahead-1 prefetch work at all: a chunk's own audio is the only
+// thing that covers the NEXT chunk's synthesis, because gemSpeak starts chunk 1's request in the same
+// tick as chunk 0's. Synthesis costs 55.026 ms/char and audio yields 96.6 ms/char, so similarly-sized
+// chunks are self-covering — the silence came entirely from the size ASYMMETRY between a 60-char opening
+// and a 265-char remainder group (measured: 5.3 s of opening audio against 11.6 s of remainder synthesis).
+const VC_TTS_AUDIO_CHAR_MS=96.6;
+// The seam is never mathematically perfect — the fixed 1385 ms per-request overhead is an irreducible
+// transient. Only a shortfall LARGER than this tolerance is treated as the reported defect ("שקט יחסית
+// ארוך"); a sub-second seam is left alone rather than paid for by merging text into the opening.
+const VC_TTS_GAP_TOLERANCE_MS=1000;
 function vcTtsRemainderBudget(){
   const safeMs=VC_TTS_TIMEOUT_MS*0.8;
   return Math.max(80, Math.floor((safeMs-VC_TTS_REQ_OVERHEAD_MS)/VC_TTS_CHAR_MS));
@@ -7562,6 +7574,21 @@ function vcCoalesceTtsChunks(sentenceChunks, openMax, remainderBudget, openMin){
     if(next===undefined || (opening.length+1+next.length)>remainderBudget) break;
     opening=opening+' '+next;
     consumed++;
+  }
+  // coverage floor (v287 gap fix): keep absorbing pieces until the opening's OWN audio is long enough to
+  // cover the synthesis of the next request. Bounded by the SAME remainderBudget every other group obeys,
+  // so the opening still finishes well inside the 20 s TTS timeout. This MERGES pieces — the request count
+  // can only fall, never rise (the quota covenant, hotfix 0bee32f, is preserved by construction).
+  // First-sound latency is NOT the price: chunk 0 is streamed (gemSpeakSegStream) and its first audio
+  // frame arrives on the stream's TTFB, not at the end of the synthesis.
+  let restLen=0; for(let i=consumed;i<flat.length;i++) restLen+=flat[i].length+1;
+  while(opening!=null && flat[consumed]!==undefined){
+    const haveMs=opening.length*VC_TTS_AUDIO_CHAR_MS;
+    const needMs=VC_TTS_REQ_OVERHEAD_MS+VC_TTS_CHAR_MS*Math.min(restLen, remainderBudget);
+    if(needMs-haveMs<=VC_TTS_GAP_TOLERANCE_MS) break;
+    const next=flat[consumed];
+    if((opening.length+1+next.length)>remainderBudget) break;
+    opening=opening+' '+next; restLen-=next.length+1; consumed++;
   }
   const pool=flat.slice(consumed);
   const groups=[]; let buf='';
@@ -8720,11 +8747,17 @@ const VC_TTS_RATE_LIMIT={
 };
 function vcAckText(){ return VC_ACK[vcVoiceLang()]||VC_ACK.en; }
 function vcWarmAck(){ if(aiAvail()) gemSynthChunk(ttsText(vcAckText(), vcVoiceLang())).catch(function(){}); }
+// Returns TRUE when the acknowledgement actually SOUNDED here (warm cache), FALSE when it did not.
+// Consumer: vcAskFlow's frozen-gate branch below, which must not speak the SAME fixed phrase a second
+// time (owner report on v287: "רגע בודק נאמר פעמיים, כנראה נרשם בשני מקומות" — he was right; v286 added
+// the spoken ack without knowing this one existed).
 function vcAck(gen){
   const clean=ttsText(vcAckText(), vcVoiceLang()), key=clean+gemVoice();
-  if(gemCache.has(key)) gemPlayBuf(gemCache.get(key), gen).catch(()=>{});          // warm: the Google voice, zero network. M1: not awaited by design (fire-and-forget ack) — armed with a no-op catch so a future rejection never surfaces as unhandled (gemPlayBuf itself never rejects today, but this is defense-in-depth, not a behavior change)
+  const warm=gemCache.has(key);
+  if(warm) gemPlayBuf(gemCache.get(key), gen).catch(()=>{});          // warm: the Google voice, zero network. M1: not awaited by design (fire-and-forget ack) — armed with a no-op catch so a future rejection never surfaces as unhandled (gemPlayBuf itself never rejects today, but this is defense-in-depth, not a behavior change)
   // cold: no sound of any kind — the visual "…thinking" state (painted by vcAskFlow, below) IS the ack.
   vcLatMark('ackSound');
+  return warm;
 }
 async function vcAskFlow(rawSaid){
   vcLatMark('ask');
@@ -8732,7 +8765,7 @@ async function vcAskFlow(rawSaid){
   if(!question){ return; }
   const ansL=vcVoiceLang();
   const gen=vcNewSpeakGen();                       // ONE generation: the ack, the early opener, the remainder
-  vcAck(gen);                                      // instant, zero-network — never a cloud round-trip
+  const ackSounded=vcAck(gen);                     // instant, zero-network — never a cloud round-trip. TRUE = the phrase already sounded from the panel-open pre-warm
   vcLastQA={q:question, a:(VC_THINKING[ansL]||VC_THINKING.en)}; vcRender();
   // The answer takes the floor from the ack exactly ONCE, at its first sound. The shipped flow got this
   // for free from vcSpeak's own gemStop(); now the opener may sound first, and vcSpeak must NOT gemStop()
@@ -8763,6 +8796,15 @@ async function vcAskFlow(rawSaid){
         // answer afterwards. One TTS request, the same count the digit-free opener already costs — the
         // quota covenant (hotfix 0bee32f) is unchanged.
         vcLatMark('ackSpoken');
+        // v287 follow-up (owner: "רגע בודק נאמר פעמיים, כנראה נרשם בשני מקומות"). vcAck above ALREADY
+        // sounded this exact phrase whenever the panel-open pre-warm (vcWarmAck) filled gemCache — which
+        // is the common case, since the pre-warm exists precisely to make it so. v286 added this second
+        // utterance without that knowledge, so a warm user heard "רגע, בודק." twice. Speak it here ONLY
+        // when it has not sounded yet. This never removes the acknowledgement (owner ruling 1.8.26 —
+        // the cold path below is untouched), and it REMOVES one TTS request on the warm path rather
+        // than adding one. takeFloor() is skipped with it on purpose: gemStop() would cut the cached
+        // acknowledgement off mid-word, which is the very sound we are keeping.
+        if(ackSounded) return;
         takeFloor();
         vcLatMark('ttsReq1'); vcLatMark('firstSound');
         early.chain=gemSpeakSeg(ttsText(vcAckText(), ansL), ansL, gen).catch(function(){ return undefined; });

@@ -174,7 +174,17 @@ test('chunk pipeline (hotfix v281 + gap/jitter fix): long answer synthesized as 
   // close to one-per-sentence — while still preserving every sentence's content, in order.
   expect(r.n).toBeGreaterThanOrEqual(2);                 // at least an opening + one remainder request
   expect(r.n).toBeLessThanOrEqual(5);                    // drastically fewer than the old 12 (one per sentence)
-  expect(r.first).toBe('משפט מספר 0 עם עוד כמה מילים כדי שלא יתמזג.');  // PLAYED first chunk = exactly the first sentence (short, fast first sound), not pre-merged with more
+  // v287 gap fix (owner: "אחרי המילה מאומת יש שקט יחסית ארוך עד המשך ההקראה"). This assertion USED to
+  // read `toBe('משפט מספר 0 …')` — the opening was exactly one short sentence, on the premise that a
+  // short opening buys a fast first sound. That premise died when chunk 0 became STREAMED
+  // (gemSpeakSegStream, R-39): first audio now arrives on the stream's TTFB, not at the end of the
+  // synthesis, so a short opening no longer buys anything — while its short AUDIO is the only thing
+  // covering the next chunk's synthesis under gemSpeak's lookahead-1 prefetch, which is what produced
+  // the measured 5.3 s mid-answer silence. The opening is now grown to cover it (vcCoalesceTtsChunks).
+  // What still matters, and is asserted instead: playback STARTS at sentence 0, and nothing is merged
+  // in from out of order.
+  expect(r.first.indexOf('משפט מספר 0 עם עוד כמה מילים כדי שלא יתמזג.')).toBe(0);
+  expect(r.first).not.toContain('משפט מספר 11');          // the opening is bounded, never the whole answer
   expect(r.playOrder).toEqual([...r.playOrder].sort((a: string, b: string) => {
     const na = parseInt((a.match(/מספר (\d+)/) || [])[1] || '999', 10);
     const nb = parseInt((b.match(/מספר (\d+)/) || [])[1] || '999', 10);
@@ -214,6 +224,34 @@ test('vcCoalesceTtsChunks (hotfix v281): coalesces sentence chunks into a small,
   const budget = await page.evaluate(() => (window as any).vcTtsRemainderBudget());
   expect(r.typicalMax).toBeLessThanOrEqual(budget);
   expect(r.longMax).toBeLessThanOrEqual(budget);
+});
+
+// v287 gap fix — the COVERAGE invariant that removes the owner-reported mid-answer silence, asserted on
+// the pure function with the app's OWN measured constants (never a second copy of the arithmetic): under
+// gemSpeak's lookahead-1 prefetch, chunk i+1's synthesis starts in the same tick as chunk i's request, so
+// the only thing covering it is chunk i's own AUDIO. Every seam must therefore satisfy
+//   audio(chunk i) + tolerance ≥ request_time(chunk i+1).
+test('vcCoalesceTtsChunks (v287 gap fix): every chunk\'s audio covers the NEXT chunk\'s synthesis', async ({ page }) => {
+  await seedApp(page, {});
+  // string-form evaluate: the VC_TTS_* budgets are top-level `const`s (lexical globals, NOT window
+  // properties), so they are readable only by bare identifier from the page's own global scope.
+  const r = await page.evaluate(`(function(){
+    var mk=function(n){ var a=[]; for(var i=0;i<n;i++) a.push('משפט מספר '+i+' עם עוד כמה מילים כדי שלא יתמזג.');
+      return vcChunkText(a.join(' '), {min:0, max:9999}); };
+    var worst=function(chunks){ var s=0;
+      for(var i=0;i+1<chunks.length;i++){
+        var have=chunks[i].length*VC_TTS_AUDIO_CHAR_MS;
+        var need=VC_TTS_REQ_OVERHEAD_MS+VC_TTS_CHAR_MS*chunks[i+1].length;
+        s=Math.max(s, need-have);
+      } return s; };
+    var t=vcCoalesceTtsChunks(mk(12)), l=vcCoalesceTtsChunks(mk(40));
+    return { tol:VC_TTS_GAP_TOLERANCE_MS, typical:worst(t), long:worst(l), counts:[t.length, l.length] };
+  })()`) as any;
+  expect(r.typical).toBeLessThanOrEqual(r.tol);
+  expect(r.long).toBeLessThanOrEqual(r.tol);
+  // and the fix MERGES — the request count may never rise above the pre-fix shape (quota covenant)
+  expect(r.counts[0]).toBeLessThanOrEqual(3);     // 12-sentence answer: 3 pre-fix, 2 after
+  expect(r.counts[1]).toBeLessThanOrEqual(8);     // 40-sentence answer: 8 pre-fix
 });
 
 // ═══ v280 LIVE REGRESSION (a) — owner-reported: "לא הייתה הקראת שעה כמו בעבר" (the task's time is no
