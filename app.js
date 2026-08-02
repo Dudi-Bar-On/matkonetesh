@@ -3368,9 +3368,13 @@ function startTimerWatch(){
         // explicitly multi-event (the comment at 3328). §7 of the UX review: a tier-A utterance ALWAYS
         // names its event. The beep/vibrate/notification above are untouched and unconditional — voice
         // ADDS a channel, it never removes one.
+        // Task 12 §3.1: `name` is metadata for the QUEUE's same-category coalescing (two timers finishing
+        // in the same second is routine, not an edge case) — it plays NO part in this single-timer
+        // sentence, which keeps its full per-event text exactly as before. voiceQueuePush only reads
+        // opts.name when it needs to MERGE with a twin; a solo timer speaks this text unchanged.
         try{ voiceSay('timers',
               L(`הטיימר של ${r.name||'טיימר בישול'} הסתיים`,`The ${r.name||'cooking timer'} timer is done`)
-              +(_en?' · '+_en:''), {key:'t:'+k}); }catch(e){}
+              +(_en?' · '+_en:''), {key:'t:'+k, name:r.name||'טיימר בישול'}); }catch(e){}
       }
     });
     if(changed){ store.set('mk-timers', ts); startRingLoop(); try{ if(typeof renderAlarm==='function') renderAlarm(); }catch(e){} try{ if(typeof cRefreshHome==='function') cRefreshHome(); }catch(e){} try{ if(typeof syncActiveFab==='function') syncActiveFab(); }catch(e){} }   // F2: home banner + the global in-app alarm + the floating active shortcut
@@ -3461,19 +3465,129 @@ function voiceSay(cat, text, opts){
   else voiceFyi(text);
   // §1.3 + P1: the gate sits AFTER the visual half and BEFORE speech. A muted category still logs and
   // still shows — "voice configuration adds a channel; it never subtracts one" (§9).
-  // (Task 12 replaces the direct vcSpeak below with voiceQueuePush; the gate itself does not move.)
   if(!ttsCategoryEnabled(cat)){ voiceLogSetStatus(logId,'skipped'); return logId; }
-  try{
-    const p=vcSpeak(text, vcVoiceLang(), cat);
-    if(p && p.then) p.then(function(){ voiceLogSetStatus(logId,'said'); },
-                            function(){ voiceLogSetStatus(logId,'failed'); });
-    else voiceLogSetStatus(logId,'said');
-  }catch(e){ voiceLogSetStatus(logId,'failed'); }
+  voiceQueuePush({cat:cat, text:text, logId:logId, name:opts.name||null});
   return logId;
 }
 const VOICE_TIER_A = {safety:1, timers:1, schedule:1};   // §2.2 — the rest are tier B
 try{ window.voiceSay=voiceSay; window.voiceLogAll=voiceLogAll; window.voiceLogUnseen=voiceLogUnseen;
      window.renderVoiceAct=renderVoiceAct; }catch(e){}
+
+// §3.1 · ONE priority queue over ONE speaker (Task 12). Not a new state machine on top of vcNewSpeakGen —
+// it USES vcNewSpeakGen, which is exactly what "yield the floor" already means in this codebase:
+//   priority 0 (safety) → vcNewSpeakGen() + gemStop()  = cut NOW, mid-chunk
+//   priority 1-2        → vcNewSpeakGen() only         = the already-scheduled chunk finishes playing,
+//                         and gemSpeak's own `if(!vcGenCurrent(gen)) return` exits at the next boundary.
+//                         That IS "waits for the end of the current segment", with no new mechanism.
+const VOICE_PRIORITY={safety:0, timers:1, schedule:2, answers:3, steps:4, progress:5};
+const VOICE_COALESCE_MS=2000;
+const VOICE_DROPPABLE={steps:4, progress:5};        // §3.1 — may fall, NEVER silently
+let voiceQueue=[], voiceBusy=false, voiceResumeItem=null;
+
+function voicePri(cat){ const p=VOICE_PRIORITY[cat]; return (p==null)?3:p; }
+
+function voiceQueuePush(item){                       // item: {cat, text, logId, name}
+  // §3.1 coalescing: two utterances of the SAME category inside a 2s window become ONE sentence.
+  // Constraint from the spec, enforced structurally: only NAMES are merged — the merged text is built
+  // from item.name values, never from numbers, and it still passes through the same speech path as any
+  // other text (there is no privileged, unguarded string).
+  const now=Date.now();
+  const twin=voiceQueue.find(function(q){ return q.cat===item.cat && (now-q.ts)<VOICE_COALESCE_MS && q.name && item.name; });
+  if(twin){
+    twin.names=(twin.names||[twin.name]).concat([item.name]);
+    twin.text=voiceCoalescedText(twin.cat, twin.names);
+    voiceLogSetStatus(item.logId,'skipped');         // its content now rides the twin's row
+    return;
+  }
+  voiceQueue.push(Object.assign({ts:now}, item));
+  voiceQueue.sort(function(a,b){ return voicePri(a.cat)-voicePri(b.cat) || a.ts-b.ts; });
+  // A coalescable (named) item gets ONE microtask's grace before the queue is kicked — long enough for
+  // a synchronous sibling (two timers found in the SAME 1s sweep of startTimerWatch's forEach, spec
+  // "two timers finishing in the same second is routine") to arrive and merge into THIS row via the twin
+  // check above, before either one reaches the speaker. A microtask settles before the next task/IPC
+  // round-trip, so it is invisible to first-sound latency (D11) and to every non-coalescable category
+  // (no `name` → the exact same synchronous dispatch as always).
+  if(item.name) Promise.resolve().then(voiceQueueKick);
+  else voiceQueueKick();
+}
+function voiceCoalescedText(cat, names){
+  // ONE static literal per branch (extractor mode 1); the names are pure interpolation, exactly like
+  // renderAlarm's own ring.length>1 line already does visually.
+  return names.length>1
+    ? L('כמה טיימרים הסתיימו: ','Several timers are done: ')+names.join(', ')
+    : L('הטיימר של ','The timer for ')+names[0]+L(' הסתיים','is done');
+}
+
+function voiceQueueKick(){
+  if(!voiceQueue.length) return;
+  const next=voiceQueue[0];
+  // ק-3 (§3.1): while the microphone is listening, ONLY safety speaks. Everything else waits in the
+  // queue and coalesces — it is never dropped, and never swallows the user's command mid-word.
+  if(vcRec && next.cat!=='safety') return;
+  if(!voiceBusy){ voiceQueueDrain(); return; }
+  if(voicePri(next.cat)<=2) voiceYieldFloor(next.cat==='safety');   // 0 cuts now; 1-2 at the chunk boundary
+}
+
+function voiceYieldFloor(immediate){
+  // F-5: capture the interrupted utterance BEFORE the generation is bumped, so the resume can restart
+  // from the beginning of the chunk that was sounding — never mid-sentence.
+  const pr=vcSpeakProgress;
+  if(pr && pr.chunks && pr.idx<pr.chunks.length){
+    voiceResumeItem={ cat:voiceCurrent?voiceCurrent.cat:'steps',
+                      text:pr.chunks.slice(pr.idx).join(' '),
+                      logId:voiceCurrent?voiceCurrent.logId:null };
+    if(voiceCurrent) voiceLogSetStatus(voiceCurrent.logId,'cut');
+  }
+  vcNewSpeakGen();
+  // §3.1: a droppable item that is now behind a 0-2 item FALLS — but loudly, in the log.
+  voiceQueue=voiceQueue.filter(function(q){
+    if(!VOICE_DROPPABLE[q.cat]) return true;
+    voiceLogSetStatus(q.logId,'skipped'); return false; });
+  if(immediate){
+    // priority 0 (safety): cut NOW — stop the audio and hand the floor to the new speaker immediately.
+    try{ gemStop(); }catch(e){}
+    voiceBusy=false; voiceCurrent=null;
+    voiceQueueDrain();
+  }
+  // priority 1-2: NO new mechanism (§3.1 design) — the generation bump above makes gemSpeak's own
+  // `if(!vcGenCurrent(gen)) return` exit the OLD utterance's loop at the next chunk boundary, and that
+  // resolves the SAME promise voiceSpeakNow is already chained on. Its existing `.then()` (below) calls
+  // voiceQueueDrain() itself when that happens — a second synchronous drain here would speak both the
+  // old and the new utterance at once, which is exactly the "two voices" outcome the owner ruled out.
+}
+
+let voiceCurrent=null;
+function voiceQueueDrain(){
+  if(voiceBusy) return;
+  const it=voiceQueue.shift();
+  if(!it){                                            // nothing pending → F-5 auto-resume
+    if(voiceResumeItem){ const r=voiceResumeItem; voiceResumeItem=null; voiceSpeakNow({
+        cat:r.cat, text:voiceResumeCue()+r.text, logId:voiceLogAdd({cat:r.cat, text:r.text, status:'skipped'}) }); }
+    return;
+  }
+  if(vcRec && it.cat!=='safety'){ voiceQueue.unshift(it); return; }
+  voiceSpeakNow(it);
+}
+// F-5 · the re-entry cue. A listener who walked away and came back needs the sentence to have a head.
+function voiceResumeCue(){ return L('ממשיך: ','Continuing: '); }
+
+function voiceSpeakNow(it){
+  voiceBusy=true; voiceCurrent=it;
+  // ק-3 continued: a tier-A utterance SUSPENDS recognition and restarts it afterwards, instead of
+  // talking over (and swallowing) a command the user is in the middle of speaking.
+  const hadRec=!!vcRec, tierA=!!VOICE_TIER_A[it.cat];
+  if(hadRec && tierA){ try{ vcRec._stop=true; vcRec.stop(); }catch(e){} vcRec=null; }
+  let p;
+  try{ p=vcSpeak(it.text, vcVoiceLang(), it.cat); }catch(e){ p=Promise.reject(e); }
+  Promise.resolve(p).then(function(){ voiceLogSetStatus(it.logId,'said'); },
+                          function(){ voiceLogSetStatus(it.logId,'failed'); })
+    .then(function(){
+      voiceBusy=false; voiceCurrent=null; vcSpeakProgress=null;
+      if(hadRec && tierA && typeof vcToggleMic==='function'){ try{ vcToggleMic(); }catch(e){} }
+      voiceQueueDrain();
+    });
+}
+try{ window.voiceQueuePush=voiceQueuePush; window.voiceQueueState=function(){ return {q:voiceQueue.slice(), busy:voiceBusy, resume:voiceResumeItem}; }; }catch(e){}
 
 // ── In-app alarm banner ──────────────────────────────────────────────────────
 // A fixed overlay listing every RINGING (fired) timer with a Stop button, shown on any screen — so
@@ -6890,8 +7004,18 @@ function _tlMarkSelected(){
   if(target) target.classList.add('tl-sel');
 }
 /* ---------- voice cook mode (TTS + closed voice commands) ---------- */
-let vcTasks=[], vcIdx=0, vcRec=null;
+let vcTasks=[], vcIdx=0;
+// Task 12 (ק-3, §3.1): `var`, not `let` — a top-level `var` is aliased onto `window`, so the queue's
+// "only safety speaks while recognition is listening" gate is directly test-overridable via
+// `window.vcRec` (the same seam pattern `window.__cloudTtsMock` already uses in this file), with ZERO
+// behavioural change to any of the existing internal read/write sites.
+var vcRec=null;
 let tlTimers=[]; // in-session timeline notification timers
+// R-52 §3 / owner ruling F-5: which chunk of the CURRENT utterance is sounding right now, so an
+// interrupted utterance can resume from the START of that chunk (never mid-sentence). Set by gemSpeak,
+// read (and cleared) by the Task-12 queue only — the cursor contract, prefetch and gen token are untouched.
+// `var` (not `let`), same reasoning as vcRec above: aliased onto `window` so a test can drive it directly.
+var vcSpeakProgress=null;   // {gen, chunks, idx, lang, useCase} — null when nothing is sounding
 function stripEmoji(t){return String(t).replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu,'').replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim();}
 // נרמול טקסט להגייה עברית טובה: קיצורים, סמלים ומספרים
 /* ── Voice Wave 0 · ttsText (R-33, spec §7): the ONLY transform between vcGuardSpoken and the engine.
@@ -7470,6 +7594,10 @@ async function gemSpeak(text, lang, gen, useCase, startAt){
   const sentences=vcChunkText(ttsText(text, L2), {min:0, max:9999});
   const chunks=vcCoalesceTtsChunks(sentences);
   if(!chunks.length) return;
+  // R-52 §3 / owner ruling F-5: the queue needs to know WHICH chunk is currently sounding, so an
+  // interrupted utterance can resume from the START of that chunk (never mid-sentence). Additive only —
+  // the cursor contract, the prefetch and the generation token are untouched.
+  vcSpeakProgress={gen:gen, chunks:chunks, idx:0, lang:L2, useCase:UC};
   vcLatMark('ttsReq1');
   // Regression fix (b)+(d) — UNCHANGED from v281: `cursor` is the running audio-clock time threaded
   // across EVERY chunk boundary, and `pending` is the lookahead-1 prefetch. R-45 changes only WHICH
@@ -7480,6 +7608,7 @@ async function gemSpeak(text, lang, gen, useCase, startAt){
   let pending=null;
   for(let i=0;i<chunks.length;i++){
     if(!vcGenCurrent(gen)) return;
+    vcSpeakProgress.idx=i;
     if(i===0) vcLatMark('firstSound');
     try{
       if(pending && pending.idx===i){

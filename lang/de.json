@@ -2589,5 +2589,9 @@
   "עדכוני קצב ומצב": "Tempo- und Statusaktualisierungen",
   "הקצב האט — הצפי זז.": "Das Tempo hat sich verlangsamt — die Schätzung hat sich verschoben.",
   "רק כשאיני מסתכל": "Nur wenn ich nicht hinsehe",
-  "תמיד": "Immer"
+  "תמיד": "Immer",
+  "כמה טיימרים הסתיימו: ": "Mehrere Timer sind abgelaufen: ",
+  "הטיימר של ": "Der Timer für ",
+  " הסתיים": " ist abgelaufen",
+  "ממשיך: ": "Weiter: "
 }

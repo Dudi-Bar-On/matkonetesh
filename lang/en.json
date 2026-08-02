@@ -2589,5 +2589,9 @@
   "עדכוני קצב ומצב": "Pace and status updates",
   "הקצב האט — הצפי זז.": "The pace slowed — the estimate moved.",
   "רק כשאיני מסתכל": "Only when I'm not looking",
-  "תמיד": "Always"
+  "תמיד": "Always",
+  "כמה טיימרים הסתיימו: ": "Several timers are done: ",
+  "הטיימר של ": "The timer for ",
+  " הסתיים": " is done",
+  "ממשיך: ": "Continuing: "
 }
