@@ -2593,5 +2593,8 @@
   "כמה טיימרים הסתיימו: ": "Varios temporizadores han terminado: ",
   "הטיימר של ": "El temporizador de ",
   " הסתיים": " ha terminado",
-  "ממשיך: ": "Continuando: "
+  "ממשיך: ": "Continuando: ",
+  "זמן להדליק את המעשנת": "Hora de encender el ahumador",
+  "הגיע זמן ההגשה": "Ha llegado la hora de servir",
+  "התנגשות מכשיר בזמן חי": "Conflicto de dispositivo en la ventana en vivo"
 }

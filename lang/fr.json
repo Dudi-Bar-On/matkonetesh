@@ -2594,5 +2594,8 @@
   "כמה טיימרים הסתיימו: ": "Plusieurs minuteurs sont terminés : ",
   "הטיימר של ": "Le minuteur de ",
   " הסתיים": " est terminé",
-  "ממשיך: ": "Reprise : "
+  "ממשיך: ": "Reprise : ",
+  "זמן להדליק את המעשנת": "Il est temps d'allumer le fumoir",
+  "הגיע זמן ההגשה": "L'heure de servir est arrivée",
+  "התנגשות מכשיר בזמן חי": "Conflit d'appareil dans la fenêtre en direct"
 }

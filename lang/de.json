@@ -2593,5 +2593,8 @@
   "כמה טיימרים הסתיימו: ": "Mehrere Timer sind abgelaufen: ",
   "הטיימר של ": "Der Timer für ",
   " הסתיים": " ist abgelaufen",
-  "ממשיך: ": "Weiter: "
+  "ממשיך: ": "Weiter: ",
+  "זמן להדליק את המעשנת": "Zeit, den Smoker anzuzünden",
+  "הגיע זמן ההגשה": "Die Servierzeit ist gekommen",
+  "התנגשות מכשיר בזמן חי": "Gerätekonflikt im Live-Fenster"
 }

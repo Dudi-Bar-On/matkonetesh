@@ -7011,6 +7011,21 @@ let vcTasks=[], vcIdx=0;
 // behavioural change to any of the existing internal read/write sites.
 var vcRec=null;
 let tlTimers=[]; // in-session timeline notification timers
+// §2.4 · Task 13 — the IN-APP counterpart to a stage-start alert. Today's only channel (mkNotify) sits
+// behind TWO gates (mk-tlalerts AND Notification.permission), both off by default, so a stage start is
+// invisible inside the app itself. This card is armed by the SAME setTimeout list (tlTimers) and the
+// SAME stale-event gate as the notification, but NOT by the permission gate — an in-app card needs no
+// browser permission, and P1 (the visual counterpart is mandatory) makes it required regardless.
+// Exposed at module level (window.__armScheduleCard) so a test can arm one directly, without building a
+// full plan — this is a TEST SEAM, not a product entry point (the product path is buildList, below).
+function armScheduleCard(when, key, text){
+  if(!when || !when.getTime) return;
+  const ms=when.getTime()-Date.now();
+  if(ms<=0 || ms>=24*3600e3) return;              // §4.5: never fire about the past; 24h horizon unchanged
+  tlTimers.push(setTimeout(function(){ voiceSay('schedule', text, {tier:'act', key:key}); }, ms));
+}
+try{ window.__armScheduleCard=armScheduleCard; }catch(e){}
+let _clashPrev=false;   // Task 13 · S7 — device-clash advisory, tracked ACROSS renders so it fires once per state CHANGE
 // R-52 §3 / owner ruling F-5: which chunk of the CURRENT utterance is sounding right now, so an
 // interrupted utterance can resume from the START of that chunk (never mid-sentence). Set by gemSpeak,
 // read (and cleared) by the Task-12 queue only — the cursor contract, prefetch and gen token are untouched.
@@ -9112,6 +9127,16 @@ function renderTimelinePanel(){
       _would(preheat); sorted.forEach(c=>{ if(!c.blocked&&c.startClock) _would(c.startClock); });
       _staleScheduleSuppressed[_evNow.id]=_n;
     } else if(_evNow){ delete _staleScheduleSuppressed[_evNow.id]; }
+    // Task 13 (§2.4, S1/S2) — the in-app card. SAME stale-event gate (_armAlerts) as the notification
+    // below, but deliberately NOT gated on mk-tlalerts/Notification.permission: a card inside the app
+    // needs no browser permission, and the spec makes it mandatory regardless of that setting (P1).
+    if(_armAlerts){
+      if(preheat) armScheduleCard(preheat,'sched:preheat', L('זמן להדליק את המעשנת','Time to light the smoker'));
+      sorted.forEach(function(c){ if(!c.blocked && c.startClock){
+        const nm=(typeof itemName==='function'?itemName(c.m):c.m.heb);
+        armScheduleCard(c.startClock, 'sched:'+c.m.key, L('הזמן להתחיל: ','Time to start: ')+nm); } });
+      armScheduleCard(serve,'sched:serve', L('הגיע זמן ההגשה','Serve time is here'));
+    }
     if(_armAlerts && store.get('mk-tlalerts') && ('Notification' in window) && Notification.permission==='granted'){
       const now=Date.now(); const fire=(when,title,body)=>{ const ms=when.getTime()-now; if(ms>0&&ms<24*3600e3) tlTimers.push(setTimeout(()=>{ mkNotify(title, body, 'mk-stage'); },ms)); };
       if(preheat) fire(preheat,L('🔥 זמן להדליק','🔥 Time to light up'),L(`הדלק את המעשנת — ${preheatHint()} לפני העישון הראשון`,`Fire up the smoker — ${preheatHint()} before the first smoke`));
@@ -9162,6 +9187,11 @@ function renderTimelinePanel(){
     window._wpCtx={computed:computed, serve:serve, scope:_ckScope};   // wireRows() is a sibling scope — hand it the context explicitly
     const _ckMap=store.get('mk-item-cooker-'+_ckScope)||{};
     const _clashes=cookerContention(computed, _ckScope);
+    // Task 13 · S7 (§2.2 tier B) — an advisory, not an action. Emitted once per state CHANGE (false→true
+    // between renders), never per render — the same panel can rebuild dozens of times while still clashed.
+    { const _clashNow=_clashes.length>0;
+      if(_clashNow && !_clashPrev) voiceSay('schedule', L('התנגשות מכשיר בזמן חי','Device conflict in the live window'), {tier:'fyi'});
+      _clashPrev=_clashNow; }
     // Keyed by item AND stage kind: an item can sit on two devices (a bath, then the smoker), and only the
     // stage on the contended device should carry the warning — not every row belonging to that item.
     const _clashOcc={}; _clashes.forEach(function(cl){ cl.items.forEach(function(i){ _clashOcc[i.key+'|'+i.kind]=1; }); });

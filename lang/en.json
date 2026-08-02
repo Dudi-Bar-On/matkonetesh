@@ -2593,5 +2593,8 @@
   "כמה טיימרים הסתיימו: ": "Several timers are done: ",
   "הטיימר של ": "The timer for ",
   " הסתיים": " is done",
-  "ממשיך: ": "Continuing: "
+  "ממשיך: ": "Continuing: ",
+  "זמן להדליק את המעשנת": "Time to light the smoker",
+  "הגיע זמן ההגשה": "Serve time is here",
+  "התנגשות מכשיר בזמן חי": "Device conflict in the live window"
 }
