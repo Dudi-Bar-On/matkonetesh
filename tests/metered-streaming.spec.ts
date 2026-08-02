@@ -263,9 +263,17 @@ test('streamed ask: exactly ONE TTS request before the guard, and the guard runs
   expect(r.lat.firstSentence).toBeLessThanOrEqual(r.lat.textResp);  // the opener left before the answer closed
 });
 
-// The gate's negative case (DoD-6): when the FIRST sentence carries a number, nothing is spoken early at
-// all and the flow degrades to exactly today's behaviour — full answer, guard, then vcSpeak.
-test('streamed ask: a digit-bearing first sentence speaks NOTHING early (spec §6.2 freeze)', async ({ page }) => {
+// The gate's negative case (DoD-6): when the FIRST sentence carries a number, nothing OF THE MODEL is
+// spoken early — the content gate freezes it exactly as before.
+//
+// SUPERSEDED IN PART by the owner ruling of 1.8.26 (guard-fix Task 1, change 2 — see
+// tests/vg-target-temp-release.spec.ts and docs/analysis/2026-08-02-asado-guard-repro.md §4): this test
+// used to assert `preGuardTts === 0`, i.e. total silence. Live measurement showed that on a SAFETY answer
+// (whose first sentence always carries a number) that meant 19.5 s of complete silence — the exact
+// experience the ruling "מוציאים באופן מיידי הודעה קולית רגע בודק" forbids. The frozen model sentence is
+// now replaced by the FIXED, digit-free acknowledgement phrase (VC_ACK), never by model text. What this
+// test pins is therefore unchanged in substance: no model-originated digit ever leaves before the guard.
+test('streamed ask: a digit-bearing first sentence speaks no MODEL text early — only the fixed ack (spec §6.2 freeze)', async ({ page }) => {
   await seedApp(page, { 'mk-gemkey': JSON.stringify('k-test') });
   const r = await page.evaluate(async () => {
     const w = window as any;
@@ -287,9 +295,11 @@ test('streamed ask: a digit-bearing first sentence speaks NOTHING early (spec §
     const a = String(vcLastQA && vcLastQA.a);
     delete w.__vcAskStreamMock; delete w.__gemTtsStreamMock; delete w.__gemTtsMock; delete w.__gemPlayMock;
     w.vcGuardSpoken = realGuard;
-    return { preGuardTts, a, firstSentence: w.__vcLat.firstSentence };
+    return { preGuardTts, a, firstSentence: w.__vcLat.firstSentence, streamed, blocking };
   });
-  expect(r.preGuardTts).toBe(0);                 // nothing synthesized before the guard
+  expect(r.preGuardTts).toBe(1);                 // exactly one pre-guard request — the ack, not the answer
+  expect(r.streamed[0]).toContain('רגע, בודק');   // …and it is the FIXED phrase, never model output
+  expect(r.streamed.concat(r.blocking).some((s: string) => s.includes('96'))).toBe(false); // no model digit left early
   expect(r.firstSentence).toBe(undefined);       // and no early-sentence mark was taken
   expect(r.a).toContain('אינו מאומת');            // the guarded answer still lands on screen
 });

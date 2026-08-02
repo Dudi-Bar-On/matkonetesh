@@ -8253,7 +8253,20 @@ function vcClaimVerdict(tokenText, vals, unit, kind, claims){
     const ref = vcClaimSubjectSafeC(cl);
     if(ref==null) return null;                             // unidentified item, OR a MIXED category → redact
     const c = Math.round(aiSafetyToC(vals[0], unit));
-    return (c===ref) ? {verdict:'verified', c:c} : null;   // must equal OUR cited figure — not the model's word
+    if(c===ref) return {verdict:'verified', c:c};          // equals OUR cited figure — not the model's word
+    // OWNER RULING 2.8.26 (docs/analysis/2026-08-02-asado-guard-repro.md §3) — an internal TARGET
+    // temperature is a DONENESS/TEXTURE figure, not a safety floor: the live asado answer's 90°C/95°C were
+    // classified correctly at confidence 0.98 and redacted anyway, purely because the equality test above
+    // can never be satisfied by a texture target (90 ≠ the catalog's 63). The rule is now monotone in the
+    // SAFE direction: at or above our cited `safe` value the number is RELEASED verbatim (a cook told to
+    // pull at 90°C when the floor is 63°C is strictly safer, never less safe); BELOW the floor it is still
+    // redacted exactly as today. This ADDS a release, it removes no protection — `internal_safe_temp` and
+    // `cure_ppm` still require exact equality (a claim ABOUT the floor must equal the floor), and every
+    // other gate above (single-token only, confidence ≥ 0.85, an identified non-mixed subject) is untouched.
+    // The comparison uses vcClaimSubjectSafeC's figure — the SAME catalog `safe` value the guard already
+    // reads. No second source of safety numbers is introduced and no `safe` value is computed here.
+    if(cl.kind==='internal_target_temp' && c>ref) return {verdict:'release'};
+    return null;
   }
   if(SAFETY_CLAIM_FREE_KINDS[cl.kind]) return {verdict:'release'};
   return null;                                             // 'other', missing, or anything unlisted
@@ -8335,6 +8348,20 @@ const CLAIM_ONLY_UNIT = (function(){
 // coincidence.
 const CLAIM_ONLY_TOKEN_SRC = '('+SAFETY_NUM+')(\\s*(?:'+CLAIM_ONLY_UNIT+'))';
 function claimOnlyTokenRe(){ return new RegExp(CLAIM_ONLY_TOKEN_SRC, 'gi'); }
+
+// Guard fix · change 3 (owner ruling 2.8.26; evidence docs/analysis/2026-08-02-asado-guard-repro.md §5).
+// The RANGE shape of the same claim-only vocabulary: a BARE lower bound that carries no unit of its own
+// ("5" in "5 עד 6 שעות"). The classifier can only ever key a claim on a unit-bearing token, so the "5"
+// gets no claim, falls to the blind bare-digit sweep and is redacted — the user reads "[…] עד 6 שעות" and
+// experiences exactly the reported "the numbers are missing". Group 3 is deliberately the WHOLE upper
+// token ("6 שעות") — byte-identical to what the single wide pass would form — so the verdict for the pair
+// is asked of the SAME decision table with the SAME map key; nothing new decides anything here. The
+// separator vocabulary is the narrow tokenizer's own [-–] widened with the Hebrew/English range words the
+// narrow tokenizer deliberately does NOT carry (widening SAFETY_TOKEN_SRC would change ELIGIBILITY — see
+// the CLAIM_ONLY_UNIT block above); this pass runs inside branch (b) only and can only ever RELEASE.
+const CLAIM_ONLY_RANGE_SEP = '(?:\\s*[-–—]\\s*|\\s+(?:עד|to|until)\\s+(?:ל[-־]?\\s*)?)';
+const CLAIM_ONLY_RANGE_SRC = '('+SAFETY_NUM+')('+CLAIM_ONLY_RANGE_SEP+')('+SAFETY_NUM+'\\s*(?:'+CLAIM_ONLY_UNIT+'))';
+function claimOnlyRangeRe(){ return new RegExp(CLAIM_ONLY_RANGE_SRC, 'gi'); }
 
 // `claims` (optional, R-62): a Map(tokenText -> claim) from vcClassifySafetyClaims, or null/undefined.
 // With claims null/undefined EVERY branch below is byte-for-byte the shipped code — that is what makes
@@ -8462,6 +8489,17 @@ function vcGuardSpoken(text, tiers, lang, claims){
           if(v && v.verdict==='release'){ return park(tok); }
           redacted++; return VC_REDACT;
         });
+    // Range pass (guard fix change 3) — runs BEFORE the single wide pass, over what the narrow pass left.
+    // A bare lower bound is released ONLY when the upper bound of the SAME range is released by the SAME
+    // decision table, and the whole match is parked as ONE unit so both bounds and the separator survive
+    // byte-for-byte (hyphen or Hebrew word alike). On any other verdict the match is re-emitted UNCHANGED
+    // and the two passes below then treat it exactly as they do today — the wide pass redacts "6 שעות",
+    // the bare-digit sweep redacts the "5". This pass therefore cannot redact anything that survives
+    // today, and cannot release a bound the decision table did not already approve on its own token.
+    out=out.replace(claimOnlyRangeRe(), function(_m, _n1, _sep, upper){
+      const v=vcClaimVerdict(upper, [safetyNumVal(upper)], '', 'single', claims);
+      return (v && v.verdict==='release') ? park(_m) : _m;
+    });
     // Wide pass — CLAIM_ONLY_UNIT tokens the narrow pass above structurally cannot match (SAFETY_UNIT
     // has no time/mass/length forms). Default (no release) re-emits the captured tail VERBATIM after
     // VC_REDACT, reproducing byte-for-byte what the ORIGINAL bare-digit sweep + an untouched leftover
@@ -8647,7 +8685,22 @@ async function vcAskFlow(rawSaid){
     const asm=vcSentenceStream(function(sent){
       if(early.decided) return;                    // exactly one early sentence per answer
       early.decided=true;
-      if(!vcStreamSafe(sent)) return;              // gate failed → early speech freezes (spec §6.2)
+      if(!vcStreamSafe(sent)){
+        // OWNER RULING 1.8.26 ("מוציאים באופן מיידי הודעה קולית רגע בודק"), evidence repro §4: a SAFETY
+        // answer's first sentence ALWAYS carries a number, so this gate never released it and the user got
+        // 19.5 s of complete silence — exactly the wait the ruling exists to make tolerable. The content
+        // gate itself is UNCHANGED (the model's sentence is still frozen and still never spoken early);
+        // what leaves instead is the FIXED acknowledgement phrase VC_ACK — never model output, digit-free
+        // by construction, so no branch of vcGuardSpoken could ever have anything to say about it.
+        // `early.text` deliberately stays '' so vcRemainderAfterSpoken still speaks the WHOLE guarded
+        // answer afterwards. One TTS request, the same count the digit-free opener already costs — the
+        // quota covenant (hotfix 0bee32f) is unchanged.
+        vcLatMark('ackSpoken');
+        takeFloor();
+        vcLatMark('ttsReq1'); vcLatMark('firstSound');
+        early.chain=gemSpeakSeg(ttsText(vcAckText(), ansL), ansL, gen).catch(function(){ return undefined; });
+        return;
+      }
       vcLatMark('firstSentence');
       early.text=sent;
       vcLastQA={q:question, a:sent+' …'}; vcRender();       // transcript: gate-passed text ONLY (spec §6.4)
