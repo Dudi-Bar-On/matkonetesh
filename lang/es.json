@@ -2604,9 +2604,9 @@
  "הקצב האט — הצפי זז": "El ritmo se ralentizó — la estimación cambió",
  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "Tienes margen — puedes mantenerlo en una nevera aislante",
  "אתה בקצב הנכון להגשה": "Vas en el ritmo correcto para la hora de servir",
- "מה חדש: שאלה על נתח מסוים מחזירה עכשיו את המספרים שלו — הנושא נקשר לנתח שבאמת שאלת עליו, וערך בטיחות שאינו שייך לו כבר לא מוצג.": "Novedades: una pregunta sobre un corte concreto ahora devuelve sus números: el tema se vincula al corte por el que realmente preguntaste y ya no se muestra un valor de seguridad que pertenece a otro corte.",
  "אין לנו ערך בטיחות מאומת ל": "No tenemos un valor de seguridad verificado para ",
  "בקטגוריית %s זה תלוי בנתח: ": "En la categoría %s depende del corte: ",
  "מספר זה אינו מאומת.": "Este número no está verificado.",
- "המספרים האלה אינם מאומתים.": "Estos números no están verificados."
+ "המספרים האלה אינם מאומתים.": "Estos números no están verificados.",
+ "מה חדש: שאלה על נתח נענית עכשיו מהנתח הנכון — כבש כבר לא נענה מבקר, קטגוריה מעורבת מציגה את שני הערכים, וכשאין לנו נתון מאומת נאמר זאת במקום לשתוק.": "Novedades: una pregunta sobre un corte ahora se responde desde el corte correcto: el cordero ya no se responde desde la ternera, una categoría mixta muestra ambos valores y, cuando no tenemos un dato verificado, lo decimos en vez de callar."
 }

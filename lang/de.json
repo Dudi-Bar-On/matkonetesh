@@ -2604,9 +2604,9 @@
  "הקצב האט — הצפי זז": "Das Tempo hat sich verlangsamt — die Schätzung hat sich verschoben",
  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "Du hast Zeitpuffer — du kannst es in einer Kühlbox warmhalten",
  "אתה בקצב הנכון להגשה": "Du liegst im Zeitplan für die Servierzeit",
- "מה חדש: שאלה על נתח מסוים מחזירה עכשיו את המספרים שלו — הנושא נקשר לנתח שבאמת שאלת עליו, וערך בטיחות שאינו שייך לו כבר לא מוצג.": "Neu: Eine Frage zu einem bestimmten Stück liefert jetzt dessen Zahlen — das Thema wird an das Stück gebunden, nach dem du wirklich gefragt hast, und ein Sicherheitswert eines anderen Stücks wird nicht mehr angezeigt.",
  "אין לנו ערך בטיחות מאומת ל": "Wir haben keinen geprüften Sicherheitswert für ",
  "בקטגוריית %s זה תלוי בנתח: ": "In der Kategorie %s hängt es vom Stück ab: ",
  "מספר זה אינו מאומת.": "Diese Zahl ist nicht geprüft.",
- "המספרים האלה אינם מאומתים.": "Diese Zahlen sind nicht geprüft."
+ "המספרים האלה אינם מאומתים.": "Diese Zahlen sind nicht geprüft.",
+ "מה חדש: שאלה על נתח נענית עכשיו מהנתח הנכון — כבש כבר לא נענה מבקר, קטגוריה מעורבת מציגה את שני הערכים, וכשאין לנו נתון מאומת נאמר זאת במקום לשתוק.": "Neu: Eine Frage zu einem Stück wird jetzt aus dem richtigen Stück beantwortet — Lamm wird nicht mehr aus Rind beantwortet, eine gemischte Kategorie zeigt beide Werte, und wenn wir keinen geprüften Wert haben, sagen wir es, statt zu schweigen."
 }

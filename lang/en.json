@@ -2604,9 +2604,9 @@
  "הקצב האט — הצפי זז": "The pace slowed — the estimate moved",
  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "You have slack — you can hold it in a cooler",
  "אתה בקצב הנכון להגשה": "You are on pace for serve",
- "מה חדש: שאלה על נתח מסוים מחזירה עכשיו את המספרים שלו — הנושא נקשר לנתח שבאמת שאלת עליו, וערך בטיחות שאינו שייך לו כבר לא מוצג.": "What's new: a question about a particular cut now returns its numbers — the subject is bound to the cut you actually asked about, and a safety value belonging to some other cut is no longer shown.",
  "אין לנו ערך בטיחות מאומת ל": "We have no verified safety figure for ",
  "בקטגוריית %s זה תלוי בנתח: ": "In the category %s it depends on the cut: ",
  "מספר זה אינו מאומת.": "This number isn't verified.",
- "המספרים האלה אינם מאומתים.": "These numbers aren't verified."
+ "המספרים האלה אינם מאומתים.": "These numbers aren't verified.",
+ "מה חדש: שאלה על נתח נענית עכשיו מהנתח הנכון — כבש כבר לא נענה מבקר, קטגוריה מעורבת מציגה את שני הערכים, וכשאין לנו נתון מאומת נאמר זאת במקום לשתוק.": "What's new: a question about a cut is now answered from the right cut — lamb is no longer answered from beef, a mixed category shows both values, and when we have no verified figure we say so instead of staying silent."
 }

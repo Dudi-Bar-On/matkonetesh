@@ -2605,9 +2605,9 @@
  "הקצב האט — הצפי זז": "Il ritmo è rallentato — la stima è cambiata",
  "יש עודף זמן — אפשר להחזיק בקופסת בידוד": "Hai margine di tempo — puoi tenerlo in una ghiacciaia isolante",
  "אתה בקצב הנכון להגשה": "Sei in linea con i tempi per il servizio",
- "מה חדש: שאלה על נתח מסוים מחזירה עכשיו את המספרים שלו — הנושא נקשר לנתח שבאמת שאלת עליו, וערך בטיחות שאינו שייך לו כבר לא מוצג.": "Novità: una domanda su un taglio specifico ora restituisce i suoi numeri: l’argomento viene collegato al taglio su cui hai davvero chiesto e non viene più mostrato un valore di sicurezza che appartiene a un altro taglio.",
  "אין לנו ערך בטיחות מאומת ל": "Non abbiamo un valore di sicurezza verificato per ",
  "בקטגוריית %s זה תלוי בנתח: ": "Nella categoria %s dipende dal taglio: ",
  "מספר זה אינו מאומת.": "Questo numero non è verificato.",
- "המספרים האלה אינם מאומתים.": "Questi numeri non sono verificati."
+ "המספרים האלה אינם מאומתים.": "Questi numeri non sono verificati.",
+ "מה חדש: שאלה על נתח נענית עכשיו מהנתח הנכון — כבש כבר לא נענה מבקר, קטגוריה מעורבת מציגה את שני הערכים, וכשאין לנו נתון מאומת נאמר זאת במקום לשתוק.": "Novità: una domanda su un taglio ora riceve la risposta dal taglio giusto: l’agnello non viene più risposto dal manzo, una categoria mista mostra entrambi i valori e, quando non abbiamo un dato verificato, lo diciamo invece di tacere."
 }
