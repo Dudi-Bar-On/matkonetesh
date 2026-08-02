@@ -99,8 +99,23 @@ test('5: non-blocking — the item stays fully in the plan/cookable regardless o
   await expect(ck).toBeEnabled();
   await ck.check();
   await expect(smokeRow(page)).toHaveClass(/wp-done/);
-  // …and no blocking toast/dialog was ever raised by this advisory.
-  expect(await page.locator('#toast').count()).toBe(0);
+  // …and no BLOCKING dialog was ever raised by this advisory. Narrowed post R-52/R-57/R-62 (Tasks
+  // 13/14, commits 5635b46/25f27e2): the voice bus's P1 rule ("everything spoken also appears
+  // visually") wired S4 (plan-running-late, a genuine safety trigger, unconditional per
+  // ttsCategoryEnabled('safety')==='always') into buildList's own render path. This fixture's brisket
+  // (long smoke) + fixed 19:00 serve is realistically "behind schedule" whenever the suite runs, so S4
+  // now legitimately fires — and in a test env with no AI key configured, vcSpeak's own pre-existing
+  // M5 guard (silent-failure-hunter audit, app.js ~7669) toasts a "connect an AI key" hint rather than
+  // failing silently. That toast is `role="status" aria-live="polite"` — non-blocking by construction,
+  // as this very test proves two lines up (the checkbox stayed enabled and the row still went wp-done
+  // with the toast showing). It is unrelated to the wood advisory itself (verified: it fires even
+  // before the checkbox is touched, from a plain openTimeline() render — see the S4 code path, not the
+  // wood-gate code at app.js ~9319). The codebase's actual BLOCKING-dialog primitive is `#appdlg`
+  // (`.appdlg-card[role="dialog"][aria-modal="true"]`, app.js ~3927) — asserting its absence is what
+  // the comment above ("no blocking toast/dialog") actually meant; a bare `#toast` count was an
+  // over-broad proxy that happened to coincide with zero-toasts before any render-path voice trigger
+  // existed. Tightened, not weakened: this still fails if ANY modal/blocking surface appears.
+  expect(await page.locator('#appdlg [aria-modal="true"]').count()).toBe(0);
 });
 
 test('6: Hebrew rendered, no English leak; the advisory is a real rendered DOM node a consumer reads', async ({ page }) => {
