@@ -60,7 +60,30 @@ try {
     console.log(`  cap : ${cap.toLocaleString()} tokens`);
     console.log(`\nHand this code to the user; they paste it into the app › Manage AI › Central access.\n`);
   } else if (cmd === 'list') {
-    console.log(wr(['kv', 'key', 'list', '--binding', 'CODES', '--remote']));
+    // Codes are MASKED here, the way `audit` already masks them. `list` used to print every access code
+    // in full, and on 2026-08-02 a live code was echoed into a working session's terminal by an agent
+    // simply enumerating what existed — no mistake, no unusual command, just the tool doing what it did.
+    // A credential that a routine read-only listing puts on screen is a credential that will eventually
+    // land in a log, a transcript, or a bug report. Enumeration needs identity, not the secret itself:
+    // `show`/`revoke` still take a full code, because there you already hold it.
+    const maskCode = (n) => (n.length > 9 ? n.slice(0, 5) + '***' + n.slice(-2) : '***');
+    const raw = wr(['kv', 'key', 'list', '--binding', 'CODES', '--remote']);
+    let printed = false;
+    try {
+      const keys = JSON.parse(raw);
+      if (Array.isArray(keys)) {
+        console.log(`${keys.length} code(s) — values masked; use \`show <code>\` when you already hold one.`);
+        for (const k of keys) {
+          const name = String(k && k.name || k);
+          console.log(`  ${name.startsWith('code:') ? 'code:' + maskCode(name.slice(5)) : maskCode(name)}`);
+        }
+        printed = true;
+      }
+    } catch { /* fall through — an unparseable payload must NOT be dumped raw, see below */ }
+    if (!printed) {
+      console.log('(could not parse the KV listing; NOT printing it raw, because it carries code values.');
+      console.log(' Re-run with `audit` for the masked health view, or inspect the KV namespace directly.)');
+    }
   } else if (cmd === 'show') {
     if (!a) throw new Error('need a code');
     console.log(wr(['kv', 'key', 'get', '--binding', 'CODES', `code:${a}`, '--remote']));

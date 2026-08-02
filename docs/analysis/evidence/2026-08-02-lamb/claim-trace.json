@@ -1,0 +1,320 @@
+{
+ "askFindEntity(\"lamb ribs\")": [
+  "מכסה אנטריקוט safe=63",
+  "פסטרמה טלה safe=undefined",
+  "צלעות טלה safe=63",
+  "אסאדו טלה safe=63",
+  "צוואר טלה safe=63",
+  "כליות טלה safe=72",
+  "מותן טלה safe=63",
+  "שקדי טלה safe=65",
+  "שוק טלה safe=63",
+  "כתף טלה safe=63",
+  "חזה טלה safe=63",
+  "כבד טלה safe=72",
+  "=> vcHitsUniformSafeC=null"
+ ],
+ "askFindEntity(\"lamb\")": [
+  "פסטרמה טלה safe=undefined",
+  "צלעות טלה safe=63",
+  "אסאדו טלה safe=63",
+  "צוואר טלה safe=63",
+  "כליות טלה safe=72",
+  "מותן טלה safe=63",
+  "שקדי טלה safe=65",
+  "שוק טלה safe=63",
+  "כתף טלה safe=63",
+  "חזה טלה safe=63",
+  "כבד טלה safe=72",
+  "=> vcHitsUniformSafeC=null"
+ ],
+ "askFindEntity(\"rack of lamb\")": [
+  "צלעות כבש (קארה) safe=63",
+  "פסטרמה טלה safe=undefined",
+  "צלעות טלה safe=63",
+  "אסאדו טלה safe=63",
+  "צוואר טלה safe=63",
+  "כליות טלה safe=72",
+  "מותן טלה safe=63",
+  "שקדי טלה safe=65",
+  "שוק טלה safe=63",
+  "כתף טלה safe=63",
+  "חזה טלה safe=63",
+  "כבד טלה safe=72",
+  "=> vcHitsUniformSafeC=null"
+ ],
+ "askFindEntity(\"כבש\")": [
+  "=> vcHitsUniformSafeC=null"
+ ],
+ "askFindEntity(\"צלעות כבש\")": [
+  "צלעות בקר (דינו) safe=63",
+  "צלעות טלה safe=63",
+  "צלעות כבש (קארה) safe=63",
+  "=> vcHitsUniformSafeC=63"
+ ],
+ "askFindEntity(\"merguez\")": [
+  "מרגז safe=undefined",
+  "=> vcHitsUniformSafeC=null"
+ ],
+ "askFindEntity(\"מרגז\")": [
+  "מרגז safe=undefined",
+  "=> vcHitsUniformSafeC=null"
+ ],
+ "askFindEntity(\"sausage\")": [
+  "=> vcHitsUniformSafeC=null"
+ ],
+ "askFindEntity(\"beef\")": [
+  "שריר בקר (אוסובוקו) safe=63",
+  "צלעות בקר (דינו) safe=63",
+  "עצמות מח עצם safe=63",
+  "פסטרמה בקר safe=63",
+  "בייקון בקר safe=undefined",
+  "צוואר בקר safe=63",
+  "כליות בקר safe=72",
+  "ג'רקי בקר safe=undefined",
+  "לשון בקר safe=63",
+  "פילה בקר safe=63",
+  "לחי בקר safe=63",
+  "כבד בקר safe=72",
+  "לב בקר safe=63",
+  "=> vcHitsUniformSafeC=null"
+ ],
+ "claims=null": {
+  "trace": [
+   {
+    "token": "63°C",
+    "kind": "single",
+    "claim": null,
+    "ref": "(no claim)",
+    "verdict": null
+   },
+   {
+    "token": "71°C",
+    "kind": "single",
+    "claim": null,
+    "ref": "(no claim)",
+    "verdict": null
+   },
+   {
+    "token": "90°C",
+    "kind": "single",
+    "claim": null,
+    "ref": "(no claim)",
+    "verdict": null
+   },
+   {
+    "token": "95°C",
+    "kind": "single",
+    "claim": null,
+    "ref": "(no claim)",
+    "verdict": null
+   },
+   {
+    "token": "63°C",
+    "kind": "single",
+    "claim": null,
+    "ref": "(no claim)",
+    "verdict": null
+   },
+   {
+    "token": "3 דקות",
+    "kind": "single",
+    "claim": null,
+    "ref": "(no claim)",
+    "verdict": null
+   }
+  ],
+  "guarded": "לפי המדריך, הטמפרטורה הבטוחה עבור צלעות בקר (דינו): 63°C. טמפרטורת הבטיחות הפנימית המומלצת לבשר כבש היא […] עם מנוחה של […] דקות לפחות. אם מדובר בכבש טחון, יש להגיע ל-[…]. בצלעות כבש בבישול ארוך או עישון, לרוב מגיעים ל-[…] עד […] כדי שהבשר יתרכך, אך מבחינת בטיחות […] זה המינימום. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט."
+ },
+ "claims=live-shape item:\"lamb ribs\"": {
+  "trace": [
+   {
+    "token": "63°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_safe_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "lamb ribs",
+      "category": "lamb"
+     }
+    },
+    "ref": null,
+    "verdict": null
+   },
+   {
+    "token": "71°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_safe_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "lamb ribs",
+      "category": "lamb"
+     }
+    },
+    "ref": null,
+    "verdict": null
+   },
+   {
+    "token": "90°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_target_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "lamb ribs",
+      "category": "lamb"
+     }
+    },
+    "ref": null,
+    "verdict": null
+   },
+   {
+    "token": "95°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_target_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "lamb ribs",
+      "category": "lamb"
+     }
+    },
+    "ref": null,
+    "verdict": null
+   },
+   {
+    "token": "63°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_safe_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "lamb ribs",
+      "category": "lamb"
+     }
+    },
+    "ref": null,
+    "verdict": null
+   },
+   {
+    "token": "3 דקות",
+    "kind": "single",
+    "claim": {
+     "kind": "duration",
+     "conf": 0.98,
+     "subject": {
+      "item": "lamb ribs"
+     }
+    },
+    "ref": null,
+    "verdict": {
+     "verdict": "release"
+    }
+   }
+  ],
+  "guarded": "לפי המדריך, הטמפרטורה הבטוחה עבור צלעות בקר (דינו): 63°C. טמפרטורת הבטיחות הפנימית המומלצת לבשר כבש היא […] עם מנוחה של 3 דקות לפחות. אם מדובר בכבש טחון, יש להגיע ל-[…]. בצלעות כבש בבישול ארוך או עישון, לרוב מגיעים ל-[…] עד […] כדי שהבשר יתרכך, אך מבחינת בטיחות […] זה המינימום. המספרים האלה אינם מאומתים — בדוק בכרטיס הפריט."
+ },
+ "claims=live-shape unresolvable id -> t2all fallback (v287 path)": {
+  "trace": [
+   {
+    "token": "63°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_safe_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "kebes",
+      "category": "lamb"
+     }
+    },
+    "ref": 63,
+    "verdict": {
+     "verdict": "verified",
+     "c": 63
+    }
+   },
+   {
+    "token": "71°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_safe_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "kebes",
+      "category": "lamb"
+     }
+    },
+    "ref": 63,
+    "verdict": null
+   },
+   {
+    "token": "90°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_target_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "kebes",
+      "category": "lamb"
+     }
+    },
+    "ref": 63,
+    "verdict": {
+     "verdict": "release"
+    }
+   },
+   {
+    "token": "95°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_target_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "kebes",
+      "category": "lamb"
+     }
+    },
+    "ref": 63,
+    "verdict": {
+     "verdict": "release"
+    }
+   },
+   {
+    "token": "63°C",
+    "kind": "single",
+    "claim": {
+     "kind": "internal_safe_temp",
+     "conf": 0.98,
+     "subject": {
+      "item": "kebes",
+      "category": "lamb"
+     }
+    },
+    "ref": 63,
+    "verdict": {
+     "verdict": "verified",
+     "c": 63
+    }
+   },
+   {
+    "token": "3 דקות",
+    "kind": "single",
+    "claim": {
+     "kind": "duration",
+     "conf": 0.98,
+     "subject": {
+      "item": "kebes",
+      "category": "lamb"
+     }
+    },
+    "ref": 63,
+    "verdict": {
+     "verdict": "release"
+    }
+   }
+  ],
+  "guarded": "טמפרטורת הבטיחות הפנימית המומלצת לבשר כבש היא 63°C לפי המדריך המאומת. עם מנוחה של 3 דקות לפחות. אם מדובר בכבש טחון, יש להגיע ל-[…]. בצלעות כבש בבישול ארוך או עישון, לרוב מגיעים ל-90°C עד 95°C כדי שהבשר יתרכך, אך מבחינת בטיחות 63°C לפי המדריך המאומת. זה המינימום. מספר זה אינו מאומת — בדוק בכרטיס הפריט. לפי המדריך, הטמפרטורה הבטוחה עבור צלעות בקר (דינו): 63°C."
+ }
+}

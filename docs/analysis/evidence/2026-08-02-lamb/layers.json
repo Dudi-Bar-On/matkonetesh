@@ -1,0 +1,489 @@
+{
+ "queries": {
+  "עוף": {
+   "askFindEntity": [],
+   "askFindCategory": "עוף",
+   "tiers_t2": null,
+   "tiers_cat": "עוף",
+   "substitution": "לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית עוף: 74°C."
+  },
+  "עוף בגריל": {
+   "askFindEntity": [],
+   "askFindCategory": "עוף",
+   "tiers_t2": null,
+   "tiers_cat": "עוף",
+   "substitution": "לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית עוף: 74°C."
+  },
+  "עוף במעשנה": {
+   "askFindEntity": [],
+   "askFindCategory": "עוף",
+   "tiers_t2": null,
+   "tiers_cat": "עוף",
+   "substitution": "לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית עוף: 74°C."
+  },
+  "עוף שלם": {
+   "askFindEntity": [],
+   "askFindCategory": "עוף",
+   "tiers_t2": null,
+   "tiers_cat": "עוף",
+   "substitution": "לפי המדריך, הטמפרטורה הבטוחה עבור קטגוריית עוף: 74°C."
+  },
+  "כבש": {
+   "askFindEntity": [],
+   "askFindCategory": null,
+   "tiers_t2": null,
+   "tiers_cat": null,
+   "substitution": ""
+  },
+  "צלעות כבש": {
+   "askFindEntity": [
+    "צלעות בקר (דינו) [cut-21] cat=בקר safe=63",
+    "צלעות טלה [cut-34] cat=טלה safe=63",
+    "צלעות כבש (קארה) [cut-36] cat=טלה safe=63"
+   ],
+   "askFindCategory": null,
+   "tiers_t2": "צלעות בקר (דינו)",
+   "tiers_cat": null,
+   "substitution": "לפי המדריך, הטמפרטורה הבטוחה עבור צלעות בקר (דינו): 63°C."
+  },
+  "צלעות כבש בגריל": {
+   "askFindEntity": [
+    "צלעות בקר (דינו) [cut-21] cat=בקר safe=63",
+    "צלעות טלה [cut-34] cat=טלה safe=63",
+    "צלעות כבש (קארה) [cut-36] cat=טלה safe=63"
+   ],
+   "askFindCategory": null,
+   "tiers_t2": "צלעות בקר (דינו)",
+   "tiers_cat": null,
+   "substitution": "לפי המדריך, הטמפרטורה הבטוחה עבור צלעות בקר (דינו): 63°C."
+  },
+  "מרגז": {
+   "askFindEntity": [
+    "מרגז [make-m-merg] cat=נקניקיות safe=undefined"
+   ],
+   "askFindCategory": null,
+   "tiers_t2": "מרגז",
+   "tiers_cat": null,
+   "substitution": ""
+  },
+  "אסאדו": {
+   "askFindEntity": [
+    "אסאדו [cut-2] cat=בקר safe=63"
+   ],
+   "askFindCategory": null,
+   "tiers_t2": "אסאדו",
+   "tiers_cat": null,
+   "substitution": "לפי המדריך, הטמפרטורה הבטוחה עבור אסאדו: 63°C."
+  },
+  "אסאדו במעשנה": {
+   "askFindEntity": [
+    "אסאדו [cut-2] cat=בקר safe=63"
+   ],
+   "askFindCategory": null,
+   "tiers_t2": "אסאדו",
+   "tiers_cat": null,
+   "substitution": "לפי המדריך, הטמפרטורה הבטוחה עבור אסאדו: 63°C."
+  }
+ },
+ "categories": {
+  "בקר": {
+   "uniform": null,
+   "rawSafeValues": [
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    71,
+    71,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63
+   ]
+  },
+  "הודו": {
+   "uniform": 74,
+   "rawSafeValues": [
+    74,
+    74,
+    74,
+    74,
+    74
+   ]
+  },
+  "טלה": {
+   "uniform": 63,
+   "rawSafeValues": [
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63
+   ]
+  },
+  "עוף": {
+   "uniform": 74,
+   "rawSafeValues": [
+    74,
+    74,
+    74,
+    74,
+    74,
+    74
+   ]
+  },
+  "חזיר": {
+   "uniform": 63,
+   "rawSafeValues": [
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63
+   ]
+  },
+  "אווז": {
+   "uniform": 74,
+   "rawSafeValues": [
+    74,
+    74,
+    74
+   ]
+  },
+  "נקניקיות": {
+   "uniform": 71,
+   "rawSafeValues": [
+    71,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "ברווז": {
+   "uniform": 74,
+   "rawSafeValues": [
+    74,
+    74,
+    74
+   ]
+  },
+  "דג": {
+   "uniform": 63,
+   "rawSafeValues": [
+    63,
+    63,
+    63,
+    63,
+    63
+   ]
+  },
+  "איברים פנימיים": {
+   "uniform": null,
+   "rawSafeValues": [
+    63,
+    74,
+    74,
+    72,
+    72,
+    65,
+    65,
+    65,
+    74,
+    72,
+    72,
+    65
+   ]
+  },
+  "ירקות": {
+   "uniform": null,
+   "rawSafeValues": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "פירות": {
+   "uniform": null,
+   "rawSafeValues": [
+    0,
+    0,
+    0,
+    0,
+    0,
+    0
+   ]
+  },
+  "פירות ים": {
+   "uniform": 63,
+   "rawSafeValues": [
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63,
+    63
+   ]
+  },
+  "בשר מיובש": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null
+   ]
+  },
+  "בייקון": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null
+   ]
+  },
+  "נקניק מעושן": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "נקניק מיובש": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "גבינה": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "פסטרמה": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "שווארמה": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "צלייה טחונה": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "סלומי": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null,
+    null,
+    null,
+    null
+   ]
+  },
+  "דג מעושן": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null
+   ]
+  },
+  "BBQ קלאסי": {
+   "uniform": null,
+   "rawSafeValues": [
+    null,
+    null,
+    null,
+    null
+   ]
+  }
+ }
+}
