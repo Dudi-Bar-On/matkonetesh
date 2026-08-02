@@ -2609,5 +2609,5 @@
  "בקטגוריית %s זה תלוי בנתח: ": "Nella categoria %s dipende dal taglio: ",
  "מספר זה אינו מאומת.": "Questo numero non è verificato.",
  "המספרים האלה אינם מאומתים.": "Questi numeri non sono verificati.",
- "מה חדש: שאלה על נתח נענית עכשיו מהנתח הנכון — כבש כבר לא נענה מבקר, קטגוריה מעורבת מציגה את שני הערכים, וכשאין לנו נתון מאומת נאמר זאת במקום לשתוק.": "Novità: una domanda su un taglio ora riceve la risposta dal taglio giusto: l’agnello non viene più risposto dal manzo, una categoria mista mostra entrambi i valori e, quando non abbiamo un dato verificato, lo diciamo invece di tacere."
+ "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "Novità: correzione urgente — le domande con numeri funzionano di nuovo. Nella versione precedente una richiesta non valida al servizio AI faceva rimuovere tutti i numeri."
 }

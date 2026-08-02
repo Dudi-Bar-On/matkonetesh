@@ -2608,5 +2608,5 @@
  "בקטגוריית %s זה תלוי בנתח: ": "In the category %s it depends on the cut: ",
  "מספר זה אינו מאומת.": "This number isn't verified.",
  "המספרים האלה אינם מאומתים.": "These numbers aren't verified.",
- "מה חדש: שאלה על נתח נענית עכשיו מהנתח הנכון — כבש כבר לא נענה מבקר, קטגוריה מעורבת מציגה את שני הערכים, וכשאין לנו נתון מאומת נאמר זאת במקום לשתוק.": "What's new: a question about a cut is now answered from the right cut — lamb is no longer answered from beef, a mixed category shows both values, and when we have no verified figure we say so instead of staying silent."
+ "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "What's new: urgent fix — questions with numbers work again. In the previous version a malformed request to the AI service caused every number to be redacted."
 }

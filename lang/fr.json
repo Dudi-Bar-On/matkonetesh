@@ -2609,5 +2609,5 @@
  "בקטגוריית %s זה תלוי בנתח: ": "Dans la catégorie %s cela dépend du morceau : ",
  "מספר זה אינו מאומת.": "Ce nombre n’a pas été vérifié.",
  "המספרים האלה אינם מאומתים.": "Ces nombres n’ont pas été vérifiés.",
- "מה חדש: שאלה על נתח נענית עכשיו מהנתח הנכון — כבש כבר לא נענה מבקר, קטגוריה מעורבת מציגה את שני הערכים, וכשאין לנו נתון מאומת נאמר זאת במקום לשתוק.": "Nouveautés : une question sur un morceau reçoit désormais la réponse du bon morceau — l’agneau n’est plus traité comme du bœuf, une catégorie mixte affiche les deux valeurs, et quand nous n’avons pas de donnée vérifiée, nous le disons au lieu de nous taire."
+ "מה חדש: תיקון דחוף — שאלה עם מספרים חזרה לעבוד. בגרסה הקודמת בקשה שגויה לשרת ה-AI גרמה לכל המספרים להימחק.": "Nouveautés : correctif urgent — les questions contenant des chiffres fonctionnent de nouveau. Dans la version précédente, une requête mal formée au service d’IA supprimait tous les chiffres."
 }
