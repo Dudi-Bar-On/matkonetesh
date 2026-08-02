@@ -6,7 +6,8 @@
 // for a full working day (COMPLIANCE-AUDIT-2026-08-01.md).
 //
 // Wraps: check-graph-fresh (§10.12) · gate-lessons (§10.16) · check-board-fresh (H10) ·
-// check-brief (§13) · check-h9 (H9) · check-h8-ledger (H8, §5 + §5a) · check-release in AUDIT mode
+// check-shipped-closed (H10) · check-brief (§13) · check-h9 (H9) · check-h8-ledger (H8, §5 + §5a) ·
+// check-release in AUDIT mode
 // (H7 x2 / DoD-12 / L29 / H14 - reported, not blocking; see check-release.mjs's own header for why).
 //
 // LAYERING (four legs — see .githooks/pre-commit, .claude/settings.json and .github/workflows/*.yml
@@ -38,7 +39,7 @@
 //     docs/process/gate-baselines.json - see each script's own header for the mechanism.
 //   - check-h8-ledger: blocks only on a finding NOT already present at the git HEAD baseline (i.e. a
 //     finding this commit itself introduces or worsens) - see the script's own header.
-//   - check-board-fresh / check-release / gate-lessons: UNCHANGED, still contribute to `failed` on
+//   - check-board-fresh / check-release / gate-lessons / check-shipped-closed: UNCHANGED, still contribute to `failed` on
 //     every run. Their invariant is always fixable by a single, cheap, immediate edit reachable from
 //     the very commit that trips them (update the board header line; write the release commit message
 //     correctly; add the lesson) - unlike the three above, there is no "separate heavy action" excuse,
@@ -104,6 +105,7 @@ run('check-brief', 'check-brief', 'check-brief.mjs');
 run('check-h9', 'check-h9', 'check-h9.mjs');
 run('check-release', 'check-release (audit mode, reported not blocking - see file header)', 'check-release.mjs');
 run('check-h8-ledger', 'check-h8-ledger (no-unlanded-items, §5 + §5a, worsening-only)', 'check-h8-ledger.mjs');
+run('check-shipped-closed', 'check-shipped-closed (a row whose work shipped may not stay open, H10)', 'check-shipped-closed.mjs');
 
 if (failed.length) { console.error(`\nMETA GATE FAIL: ${failed.join(', ')}`); process.exit(1); }
 console.log('\nMETA GATE OK');
