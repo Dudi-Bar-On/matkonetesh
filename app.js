@@ -8365,15 +8365,31 @@ const SAFETY_SUBJECT_SYS =
   ' You are ALSO given, after a "QUESTION:" line, the user question the answer replies to, and after a '+
   '"CATEGORIES:" line a closed list of catalog categories. Set `subject_category` to the ONE value from '+
   'that list the QUESTION is about — the nearest match, including when the question names a different '+
-  'word for the same animal or food, in any language. If nothing in the list fits, set it to "". Copy the '+
+  'word for the same animal or food, in any language. If nothing in the list fits, set it to "NONE". '+
+  'Copy the '+
   'value from the list verbatim; never invent one, never translate it, and never put a number in it. '+
   'Claims are still extracted ONLY from the answer text, never from the QUESTION or CATEGORIES lines.';
+// v288 hotfix · "nothing in the list fits" was encoded as an empty enum member (`[''].concat(...)`), and
+// the Gemini API rejects that outright — every classifier call came back
+//   api-400: * ...response_schema.properties[subject_category].enum[0]: cannot be empty
+// so vcClassifySafetyClaims returned null and EVERY number in EVERY answer fell to redaction.
+// The escape hatch is now an explicit NON-EMPTY sentinel inside the enum. Two candidate cures were
+// weighed: (a) drop the member and rely on the field being absent — but `required` semantics are the only
+// thing the docs pin down, and nothing documents that a model will OMIT an optional property rather than
+// pick some wrong category to fill it, so that cure trades a 400 for a silent mis-attribution we cannot
+// test locally; (b) `nullable` next to `enum` — the docs do not state that the combination is legal, so it
+// is unverifiable without spending a real request. The sentinel needs neither guarantee: it is valid under
+// the one rule the API actually enforced on us, and it gives the model somewhere correct to go.
+// It is ASCII while every catalog category is Hebrew, so it can never collide with a real category, and
+// vcBuildClaimMap drops it explicitly regardless. subject_category stays OUT of `required`, so a model
+// that omits the field entirely is equally acceptable — both roads end at "unknown".
+const SAFETY_SUBJECT_NONE = 'NONE';
 // The enum is built from the live catalog at call time (askAllCategories()), never a hardcoded table, for
 // the same reason catUniformSafe recomputes: a catalog edit must not silently go stale here.
 function safetyClaimSchema(withSubject){
   if(!withSubject) return SAFETY_CLAIM_SCHEMA;
   const props=Object.assign({}, SAFETY_CLAIM_SCHEMA.properties,
-    { subject_category:{ type:'STRING', enum:[''].concat(askAllCategories()) } });
+    { subject_category:{ type:'STRING', enum:[SAFETY_SUBJECT_NONE].concat(askAllCategories()) } });
   return Object.assign({}, SAFETY_CLAIM_SCHEMA, {properties:props});
 }
 
@@ -8461,7 +8477,10 @@ function vcBuildClaimMap(src, json){
   // because `null` must stay the ONE failure signal this whole design rests on (§5.5 / P6).
   try{
     const sc=json && typeof json.subject_category==='string' ? json.subject_category.trim() : '';
-    if(sc && typeof askAllCategories==='function' && askAllCategories().indexOf(sc)>=0) map.catalogSubject=sc;
+    // The "nothing fits" sentinel is dropped here as explicitly as an invented id would be, so the answer
+    // "no category" and the answer "the field was never sent" are indistinguishable downstream — the
+    // deterministic ladder is left exactly as it stands, which is the only behaviour production relies on.
+    if(sc && sc!==SAFETY_SUBJECT_NONE && typeof askAllCategories==='function' && askAllCategories().indexOf(sc)>=0) map.catalogSubject=sc;
   }catch(e){}
   return map;
 }

@@ -48,7 +48,7 @@ test.describe('R-62 Task 1 · the classifier returns a validated map, or null', 
   test('a non-STOP finishReason returns null (truncation must never approve anything)', async ({ page }) => {
     await seedApp(page, { 'mk-uilevel-asked': 'true' });
     // the mock seam models the PARSED response; the finishReason branch is exercised via a real route
-    await page.route('**/generateContent*', r => r.fulfill({ status: 200, contentType: 'application/json',
+    await page.route('**/models/*:generateContent*', r => r.fulfill({ status: 200, contentType: 'application/json',
       body: JSON.stringify({ candidates: [{ finishReason: 'MAX_TOKENS', content: { parts: [{ text: '{"claims":[]}' }] } }] }) }));
     try {
       // `store` is a top-level `const` in app.js — it is NEVER a `window` property (only `var`/function
@@ -63,6 +63,6 @@ test.describe('R-62 Task 1 · the classifier returns a validated map, or null', 
         return await vcClassifySafetyClaims('הגש ב-71°C.');
       })()`);
       expect(res).toBeNull();
-    } finally { await page.unroute('**/generateContent*'); }
+    } finally { await page.unroute('**/models/*:generateContent*'); }
   });
 });

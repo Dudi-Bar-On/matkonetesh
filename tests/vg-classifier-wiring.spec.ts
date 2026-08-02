@@ -43,7 +43,7 @@ test.describe('R-62 Task 3 · P6 — every failure path is byte-identical to tod
   test('D10 · the read-aloud path never calls the classifier (zero AI requests)', async ({ isolatedPage: page }) => {
     await seedApp(page, { 'mk-uilevel-asked': 'true' });
     let calls = 0;
-    await page.route('**/generateContent*', r => { calls++; return r.abort(); });
+    await page.route('**/models/*:generateContent*', r => { calls++; return r.abort(); });
     try {
       await page.evaluate(() => {
         const w = window as any;
@@ -54,7 +54,7 @@ test.describe('R-62 Task 3 · P6 — every failure path is byte-identical to tod
       expect(calls).toBe(0);      // no TTS key seeded → no request at all; the point is the CLASSIFIER
       const seen = await page.evaluate(() => (window as any).__vcClassCalls || 0);
       expect(seen).toBe(0);
-    } finally { await page.unroute('**/generateContent*'); }
+    } finally { await page.unroute('**/models/*:generateContent*'); }
   });
 
   test('D9 · ask and vcAsk stay low; safetyClass is a NEW row', async ({ page }) => {
