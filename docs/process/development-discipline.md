@@ -1380,3 +1380,38 @@ Recovery Ledger location: `docs/ROADMAP-2026-07-30.md` §5a. Task cards for reco
 - משלים את כללי ה-sdd (״never force the same model to retry without changes״) — הסלמה היא תגובה
   לכשל, עם שינוי, לא ניסיון חוזר עיוור.
 
+
+### L45 — a green test is not evidence until you know which mechanism made it green (2026-08-02)
+
+Four tests were found passing while proving nothing, in a single day, each by a different mechanism:
+
+1. **A hand-built fixture.** v286's target-temperature test fed `vcClaimVerdict` a claim map assembled by
+   hand. The branch worked; the shape the live classifier actually returns never reached it. The feature
+   was dead in production and the test was green — it survived a release and the owner found it.
+2. **A precondition the fixture never established.** The duplicate-acknowledgement test never opened the
+   voice panel, so the pre-warm cache was empty and the FIRST acknowledgement was structurally
+   unreachable. The test could not have seen the duplicate it was meant to guard.
+3. **An interceptor that matched nothing.** "Read-aloud never calls the classifier" intercepted
+   `**/generateContent*`, but the real URL separates the verb with a COLON. It counted a counter that
+   could never increment. Green in a vacuum.
+4. **A contract only the remote validates.** The classifier's response schema carried an empty enum
+   member. 1,101 local tests were green because every one of them mocks the classifier, so the real
+   schema was never sent. Gemini rejected it with a 400 on every call in production, and every number in
+   every answer was redacted.
+
+The common shape: **each test asserted something true about a path the program does not take.** Passing
+proved the assertion, not the behaviour.
+
+What to do about it, concretely:
+- **Feed the live shape.** If a fixture is hand-authored, capture the real payload once and assert your
+  fixture still matches it — a fixture that drifts from production is a test that guards nothing.
+- **State the precondition and assert it.** If a bug only occurs in a warm/authenticated/opened state,
+  the test must establish that state AND assert it was established, or it is testing the other branch.
+- **Prove the interceptor fires.** A route/mock/spy that never matches is indistinguishable from a
+  passing test. Assert the intercept count is non-zero before asserting anything about it.
+- **Validate contracts you cannot execute.** For a schema/protocol only a remote service enforces,
+  validate the ARTEFACT structurally (and against the bytes actually sent), and say out loud what that
+  does and does not prove.
+- **When RED "passes", stop.** In two of these cases the RED run showed passing assertions produced by an
+  unrelated failure (a missing module exiting 1). A red phase that passes for the wrong reason is the
+  same defect arriving early — and it is the cheapest moment to catch it.
