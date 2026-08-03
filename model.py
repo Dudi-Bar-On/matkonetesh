@@ -6,10 +6,25 @@ a cited floor, 0 meaning "not applicable" (every ירקות/פירות row), and
 meaning "we hold no figure" — and R-82 is what happens when each consumer
 decides for itself. That decision now happens exactly here, once.
 """
+import model_cure
 import model_paths
 import model_sheet
 
 SCHEMA_VERSION = 1
+
+# Q-2 — owner gate (2026-08-03, Task 1b bundle-size finding). MAKES-as-items (Task 1f, 102 rows —
+# `data.MAKES` 50 + `sausages_new.NEW_SAUSAGES` 52, NOT the plan's assumed 50) costs ~34KB of raw
+# structural JSON before a single cure block; the whole task (MAKES-as-items + cure blocks on both
+# MAKES and SPECIALS) measured dist/index.html at 2,607,978 bytes against the A1 cap of 2,600,000
+# (headroom was ~7.9KB going in — see docs/sources/corpus and build.py's own A1 comment). Per the
+# task brief's own instruction ("if you would exceed the cap, STOP and report — do not trim
+# converted data to fit"), this is NOT trimmed to fit. The converter is fully built and correct
+# (verified directly against data.py, `.superpowers/sdd/model-task1b-report.md`); shipping it is
+# gated here, exactly like `model_paths.IMPORT_OWNER_SHEET`, pending the owner's decision between
+# (a) raising the A1 cap for this specific growth, or (b) externalizing `items` the way `lang-*.json`
+# was split out of the bundle (Dec-A1) — both are bigger calls than one task should make silently.
+# SPECIALS' cure blocks (13 items, ~1.15KB) are UNAFFECTED by this flag — cheap, and shipped now.
+SHIP_MAKES_ITEMS = False
 
 # Corpus source ids — docs/sources/corpus/NN-*/. Numbering matches the folder prefix exactly
 # (01-fda-food-code-2022 .. 19-serious-eats-lopez-alt); see docs/sources/corpus/00-SOURCE-MAP.md.
@@ -176,6 +191,13 @@ def build_items(cuts, specials, makes):
             th = _thermal_block(row, unconverted, item_id)
             if th:
                 safety.append(th)
+            # Task 1b: cure blocks. CUTS carries no `cure` field at all (raw cuts, not cured
+            # products) — only SPECIALS' prose is a source here; MAKES' structured calc is
+            # handled in its own loop below.
+            if table == "specials":
+                cu = model_cure.block_for_specials(row, unconverted, item_id, _classify_source)
+                if cu:
+                    safety.append(cu)
             sheet_row = by_item_he.get(row.get("heb"))
             paths, path_notes = model_paths.build(table, row, sheet_row, unconverted, item_id)
             items.append({
@@ -203,6 +225,39 @@ def build_items(cuts, specials, makes):
                 "notes": path_notes,
                 "legacy_ref": {"table": table, "n": n},
             })
+    # Task 1b/1f (ADDENDUM, owner instruction "תבנה הכל"): MAKES become items. Outside Task 1's
+    # cuts/specials loop, MAKES carries the most structured safety data in the catalogue
+    # (`build.calc`) — folding it in here rather than leaving it unconverted. `legacy_ref` is
+    # explicitly None (no cuts:/specials: counterpart exists) — PX1 (model-pathid-crosscheck.spec.ts)
+    # already skips any item with no `legacy_ref` (`if (!ref) return;`), so MAKES items are simply
+    # not path-id-crosschecked; `paths` stays {} via model_paths.build's own unrecognized-table
+    # fallback (never modified here — see the module's own `return {}, []` for table not in
+    # {cuts,specials}). `weight_kg` is None: MAKES rows carry no `kg` field (build-from-scratch
+    # recipes, not a cut with an authored weight). Gated by SHIP_MAKES_ITEMS (Q-2, see top of file)
+    # — the converter itself is exercised directly in tests below regardless of the gate; only the
+    # SHIPPED payload is affected.
+    for mid, row in (makes.items() if SHIP_MAKES_ITEMS else []):
+        item_id = "make:%s" % mid
+        safety = []
+        th = _thermal_block(row, unconverted, item_id)
+        if th:
+            safety.append(th)
+        cu = model_cure.block_for_makes(row, unconverted, item_id, _classify_source)
+        if cu:
+            safety.append(cu)
+        paths, path_notes = model_paths.build("makes", row, None, unconverted, item_id)
+        items.append({
+            "id": item_id,
+            "name": {"he": row.get("heb"), "en": row.get("eng")},
+            "category": row.get("cat"),
+            "cut_form": None,
+            "weight_kg": None,
+            "safety": safety,
+            "texture": _texture(row, unconverted, item_id),
+            "paths": paths,
+            "notes": path_notes,
+            "legacy_ref": None,
+        })
     # The wrap cross-check REPLACES wrap conversion (spec v2 §4.1): `data.py`'s `wrap` column is
     # never written into any item or path -- it is route A's answer only (spec v2 §8.2), and its
     # information content is proven redundant with the trigger prose already parsed above
