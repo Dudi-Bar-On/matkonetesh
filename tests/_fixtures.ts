@@ -228,7 +228,40 @@ export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
   // Escape hatch: a fresh page in the test's own BUILT-IN context — full per-test isolation; the
   // config's `use` options, per-file test.use overrides, and automatic trace:'retain-on-failure'
   // all apply here exactly as they did to the classic `page`.
-  isolatedPage: async ({ context }, use) => {
+  //
+  // ITEMS_JSON_RE route (2026-08-03 regression fix, Task B follow-up): app.js now fetches items.json
+  // UNCONDITIONALLY on every boot (see the itemsDoc/ITEMS_JSON_RE note above), so isolatedPage's real
+  // navigation now also triggers it — every isolatedPage test, not just the ones that care about
+  // items. Left unrouted, that fetch goes to the real serve.js over the loopback and reproduces the
+  // exact "shared loopback gate" stall the ROOT-CAUSE FIX note above (2026-07-24) already diagnosed
+  // and cured for the warm path: N concurrent isolatedPage contexts (one per worker, all navigating
+  // around the same moment) serialize on that shared connection layer and the goto/reload times out —
+  // observed as 25 failures across every isolatedPage-heavy spec. Unlike APP_DOC_RE (deliberately
+  // absent here — see the L19 contract test in warm-fixture.spec.ts, which asserts isolatedPage's
+  // index.html navigation carries no x-mk-warm-fulfill header), there is no contract requiring
+  // isolatedPage's items.json fetch to hit the real server on the CHROMIUM project — nothing there
+  // asserts on that response, so routing it from the same in-memory Buffer is a pure availability fix.
+  // GUARDED to the chromium project only (mirrors the `workerInfo.project.name === 'chromium'` guard
+  // on warmContext above), for the same reason stated there: the service-worker project's whole point
+  // is to prove items.json is genuinely fetched over the network and cached by the real SW — several
+  // service-worker.spec.ts tests (e.g. "a fetched items.json is served from the SW cache when offline")
+  // depend on that real round trip, both online (to populate the cache) and via their own explicit
+  // `context.route('**/items.json', ...)` abort/unroute calls for the negative/offline legs. Fulfilling
+  // it here for that project would short-circuit those legs and turn a real-network test into a no-op.
+  isolatedPage: async ({ context }, use, testInfo) => {
+    if (testInfo.project.name === 'chromium') {
+      await context.route(ITEMS_JSON_RE, route => {
+        try {
+          route.fulfill({
+            status: 200,
+            headers: { 'content-type': 'application/json; charset=utf-8', 'x-mk-warm-fulfill': '1' },
+            body: itemsDoc(),
+          });
+        } catch {
+          route.continue();   // dist/items.json missing (build didn't run yet) — fall through to the real server
+        }
+      });
+    }
     const page = await context.newPage();
     dclGoto(page);
     await use(page);
