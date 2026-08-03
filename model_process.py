@@ -1,24 +1,80 @@
 # -*- coding: utf-8 -*-
 """`drying` / `fermentation` / `aging` blocks -- read out of the authored prose, never the
-threshold (ADDENDUM, "Task 1c", owner instruction 2026-08-03).
+threshold (ADDENDUM, "Task 1c", owner instruction 2026-08-03; extended to MAKES.build.phases by
+Task 1c-b, 2026-08-03).
 
 Thresholds are NEVER read out of the prose: the prose says "4-7 ימים בייבוש מאוורר", never an a_w.
 The prose supplies the DURATION and the fact that the mechanism applies; the corpus supplies the
 THRESHOLD, attached as a regulatory LIMIT with its own source_id, never presented as this item's
 own measured value.
 
-Extraction sources, exactly as measured in the plan's own ADDENDUM table ("What each mechanism is
-extracted FROM — measured 2026-08-03"):
+Extraction sources ("What each mechanism is extracted FROM"):
   - `drying`       <- SPECIALS.age prose, gated by SPECIALS.cat in DRY_CATEGORIES
+                      AND (Task 1c-b) MAKES.build.phases prose -- see `_drying_phases` below.
   - `fermentation` <- SPECIALS.cure prose (תרבית/תסיסה) AND MAKES.build.materials/phases prose
-  - `aging`        <- SPECIALS.age prose, gated by SPECIALS.cat == 'גבינה'
-MAKES is not scanned for drying/aging in this task -- the ADDENDUM's own source table names only
-SPECIALS for those two kinds; extending it to MAKES.build prose (which is real: b_salumi/
-sausage_dry() phases DO carry drying/aging language) is a scope boundary named in the report, not
-filled here, exactly the way `parasite` names a gap rather than inventing a fix.
+  - `aging`        <- SPECIALS.age prose, gated by SPECIALS.cat == 'גבינה'. MAKES carries NO aging
+                      signal: verified directly (grep -n "מיושן|יישון" data.py sausages_new.py) --
+                      every hit is a SPECIALS cheese row, the BUILDS cut-18 burger-variant prose, or
+                      the glossary; zero MAKES make()/SG() rows use either word anywhere in their
+                      build (materials or phases). A checked-and-empty scope, not a skipped one --
+                      no code was added for MAKES aging because there is nothing to extract.
 
-Two scope traps checked against each source's own PROVENANCE before applying it (owner instruction
--- verify scope, do not assume):
+## Task 1c-b: MAKES.build.phases -> `drying` (2026-08-03)
+
+Task 1c named MAKES drying/aging as a scope boundary because the plan's ADDENDUM source table
+named only SPECIALS.age/cat for those two kinds. The controller then measured a material gap: four
+shelf-stable dry-cured MAKES sausages (m-sopr, n-milano, n-pepperoni, n-krakowska-pod) carried NO
+`drying` block anywhere, despite `build.phases` holding the richest process prose in the catalogue
+(duration, temperature, humidity, and -- the charcutier's practical a_w proxy -- the weight-loss
+target). This module now also extracts `drying` from MAKES.
+
+**Gate: per-phase keyword co-occurrence, not category.** A phase counts as a genuine drying/ageing
+step only when its OWN label+body contain a drying word ("ייבוש"/"הבשלה") *and* a multi-day
+duration word ("ימים"/"יום"/"שבועות"/"חודשים"). Both conditions are required together -- see the
+two false-positive traps this avoided, found by reading every builder function MAKES actually uses
+(data.py/sausages_new.py), not assumed:
+
+1. **b_emul()'s own Pellicle phase says "ייבוש".** Every emulsion sausage (m-frank, m-morta,
+   m-bolo -- Frankfurter/Mortadella/Bologna, all cooked and refrigerated, never shelf-stable) has a
+   phase whose body reads literally "תלה במקרר 1-2 שעות **לייבוש** מעטפת" -- a pre-smoke surface
+   dry, not the FSIS mechanism. A bare "ייבוש" keyword scan would fire on all three. Excluded
+   because that phase states "שעות" (hours), never a day/week/month word.
+2. **sausage_smoked()'s own post-cook rest phase says "הבשלה".** Its label is literally "8 ·
+   קירור **והבשלה**" (used by m-snack, m-loukaniko, m-linguica, bbq-hotlinks) but the body is "קרר
+   במקלחת קרה... ואז מנוחה במקרר לפני ההגשה" -- a chill-and-rest step with NO duration stated at
+   all. Excluded because neither the label nor the body states a day/week/month figure.
+
+**Category is deliberately NOT the gate.** cat == 'פסטרמה' covers both the five wet-brined,
+steamed pastramis (p-ny/p-mont/p-turkey/p-deckel/p-lamb -- b_pastrami(), whose phases never say
+ייבוש/הבשלה at all, correctly excluded) AND p-bast (Pastırma -- genuinely air-dried, unrefrigerated,
+never cooked, phases literally "3 · ייבוש ראשון" / "5 · ייבוש סופי"). A category gate would either
+wrongly exclude p-bast or wrongly include the other four; the phase-keyword gate gets both right
+for free because it reads what the recipe itself states, verified against all 102 MAKES rows
+(data.MAKES + sausages_new.NEW_SAUSAGES) -- 28 items match, every one inspected by hand.
+
+**Per-field extraction, not one blob.** Duration/temperature/humidity come from the matched
+phase(s) ONLY (their own label+body, sliced from the word "תלה" onward when present, so a merged
+"ferment-then-hang" phase like SG's single ייבוש/הבשלה phase never lets the fermentation-stage
+temperature (e.g. n-pepperoni's "תסס 48ש **ב-22°**") leak into the drying temperature). The
+weight-loss target is scanned across the WHOLE build text (materials + every phase), because
+sausage_dry()/b_salumi() state it in an earlier "weigh the item" phase whose own label never says
+ייבוש/הבשלה (e.g. sausage_dry's phase 4 "מילוי ושקילת יעד") -- restricting that scan to the
+drying-gated phases would silently lose it. When a matched item's build.phases spans TWO
+qualifying phases (b_salumi's initial "ייבוש ראשוני" hang plus the main "הבשלה" phase), each
+phase's own temperature/humidity is extracted separately and the two are combined by the WIDEST
+band (min of the lows, max of the highs) and duration by the LONGEST -- never averaged, never
+re-derived, each number traces to a phase that literally states it.
+
+**Line not crossed (owner instruction, this task's own name for it): the weight-loss figure is
+shipped as `weight_loss_pct_min/max`, an authored value, full stop.** It is never converted to an
+a_w estimate and never compared against AW_MAX_SHELF_STABLE -- the corpus limit attaches alongside
+it (`aw_max`, `source_id`) exactly as it already does for SPECIALS drying blocks, and the two are
+never merged into one number.
+
+## Task 1c's original two scope traps (SPECIALS only -- unchanged by this task)
+
+Checked against each source's own PROVENANCE before applying it (owner instruction -- verify
+scope, do not assume):
 
 1. **Cheese's OWN `cure` field says "ייבוש לילה במקרר" (an overnight pre-smoke surface-dry step)
    for ~26 rows.** A keyword scan of that field would fire the FSIS jerky/RTE-dried a_w<=0.85
@@ -67,6 +123,29 @@ _HOURS = re.compile(r"(\d+)\s*\+?\s*(?:[-–]\s*(\d+)\s*)?שעות")
 _FERMENT_WORDS = ("תרבית", "תסיסה", "התססה", "התסס")
 _AGE_WORDS = ("יישון", "מיושן")
 
+# ---- Task 1c-b: MAKES.build.phases -> drying (module docstring, "Task 1c-b" section) ----
+# Gate words -- BOTH a drying/ageing word AND a multi-day duration word must co-occur in the same
+# phase's own label+body (never single-condition -- see the two false-positive traps documented
+# above: b_emul()'s "לייבוש מעטפת" pellicle phase states only hours, sausage_smoked()'s "8 · קירור
+# והבשלה" states no duration at all).
+_MK_DRY_WORDS = ("ייבוש", "הבשלה")
+_MK_DAY_WEEK_MONTH_WORDS = ("ימים", "יום", "שבועות", "חודשים")
+
+_MK_TEMP_C = re.compile(r"(\d+)\s*(?:[-–]\s*(\d+)\s*)?°\s*C?")
+# Three humidity shapes actually authored: "לחות 70–80%" (word before number), "75% לחות" (number
+# before word), and bare "13° 75%" (number immediately after a temperature, no לחות word at all --
+# the SG()-generated dry-phase shorthand). Tried in this order; first match wins.
+_MK_HUM_LABELLED = re.compile(r"לחות\D{0,3}(\d+)\s*(?:[-–]\s*(\d+)\s*)?%")
+_MK_HUM_TRAILING_WORD = re.compile(r"(\d+)\s*(?:[-–]\s*(\d+)\s*)?%\s*לחות")
+_MK_HUM_AFTER_TEMP = re.compile(r"°\s*C?[^\d%]{0,4}(\d+)\s*(?:[-–]\s*(\d+)\s*)?%")
+_MK_MONTHS = re.compile(r"(\d+)\s*(?:[-–]\s*(\d+)\s*)?חודשים")
+_MK_WEEKS = re.compile(r"(\d+)\s*(?:[-–]\s*(\d+)\s*)?שבועות")
+_MK_DAYS = re.compile(r"(\d+)\s*(?:[-–]\s*(\d+)\s*)?(?:ימים|יום)")
+# Weight-loss: "ירידה 35–40%" / "ירידת 35–40%" / "איבוד ~15%" (word before number) or the reversed
+# "35% איבוד" (number before word) -- both orders are literally authored in this data.
+_MK_WLOSS_WORD_FIRST = re.compile(r"(?:ירידה|ירידת|איבוד)\D{0,6}(\d+)\s*(?:[-–]\s*(\d+)\s*)?%")
+_MK_WLOSS_NUM_FIRST = re.compile(r"(\d+)\s*(?:[-–]\s*(\d+)\s*)?%\s*(?:איבוד|ירידה)")
+
 
 def _duration_days(text):
     """The LONGEST stated duration, in days, or None. Converts only what is literally stated
@@ -108,6 +187,129 @@ def _drying_block_for_specials(row, unconverted, item_id):
     else:
         unconverted.append({"id": item_id, "name": row.get("heb"), "field": "age",
                             "value": row.get("age"), "reason": "drying-duration-not-authored"})
+    return blk
+
+
+def _mk_range_match(regexes, text):
+    """First regex (in order) that matches `text` wins; returns (lo, hi) or None. A single value
+    (no explicit range) sets lo == hi -- the digit IS the stated figure."""
+    for rx in regexes:
+        m = rx.search(text)
+        if m:
+            lo = int(m.group(1))
+            hi = int(m.group(2)) if m.group(2) else lo
+            return (lo, hi)
+    return None
+
+
+def _mk_duration_days(text):
+    """Longest stated duration in `text`, in days -- weeks*7, months*30 (both plain unit
+    conversions of a literally-stated figure, exactly how `_duration_days` already converts
+    weeks). Never invents a number the prose does not give."""
+    candidates = []
+    m = _MK_MONTHS.search(text)
+    if m:
+        candidates.append(int(m.group(2) or m.group(1)) * 30)
+    m = _MK_WEEKS.search(text)
+    if m:
+        candidates.append(int(m.group(2) or m.group(1)) * 7)
+    m = _MK_DAYS.search(text)
+    if m:
+        candidates.append(int(m.group(2) or m.group(1)))
+    return max(candidates) if candidates else None
+
+
+def _mk_phase_scan_text(label, body):
+    """Slice from the word 'תלה' (hang) onward when present -- the merged ferment-then-hang
+    phases SG() generates (e.g. n-pepperoni: "תסס 48ש ב-22°, תלה 3-4 שבועות ב-13° 75%") state the
+    FERMENTATION temperature before 'תלה' and the DRYING temperature after it; scanning the whole
+    phase would misattribute the 22° fermentation temperature as this item's drying temperature.
+    Falls back to the whole text when 'תלה' is absent (single-stage phases, e.g. sausage_dry()'s
+    "ייבש ב-..." phrasing, or b_salumi()'s "6 · הבשלה" phase, never mix stages in one string)."""
+    text = "%s %s" % (label, body)
+    idx = text.find("תלה")
+    return text[idx:] if idx != -1 else text
+
+
+def _drying_phases(build):
+    """The phases of `build` whose OWN label+body state BOTH a drying/ageing word AND a
+    multi-day duration word -- see the module docstring's two false-positive traps for why both
+    conditions are required together. Returns a list of (label, body) pairs, phase order
+    preserved (b_salumi() genuinely has two: an initial short hang, then the main ageing phase)."""
+    phases = build.get("phases")
+    if not isinstance(phases, (list, tuple)):
+        return []
+    out = []
+    for p in phases:
+        if not isinstance(p, (list, tuple)) or len(p) < 2:
+            continue
+        label, body = str(p[0]), str(p[1])
+        combined = label + " " + body
+        if (any(w in combined for w in _MK_DRY_WORDS)
+                and any(w in combined for w in _MK_DAY_WEEK_MONTH_WORDS)):
+            out.append((label, body))
+    return out
+
+
+def _mk_full_build_text(build):
+    """materials + every phase's own label+body, concatenated -- used ONLY for the weight-loss
+    scan (see module docstring: sausage_dry()/b_salumi() state the weight target in an earlier
+    'weigh the item' phase whose own label never says ייבוש/הבשלה, so restricting the scan to
+    `_drying_phases()`'s matched phases would silently lose it)."""
+    materials = build.get("materials")
+    hay_mat = (" ".join(str(m) for m in materials)
+               if isinstance(materials, (list, tuple)) else (materials or ""))
+    phases = build.get("phases")
+    hay_phase = " ".join(
+        "%s %s" % (p[0], p[1]) for p in phases if isinstance(p, (list, tuple)) and len(p) > 1
+    ) if isinstance(phases, (list, tuple)) else ""
+    return hay_mat + " " + hay_phase
+
+
+def _drying_block_for_makes(row, unconverted, item_id):
+    build = row.get("build") if isinstance(row.get("build"), dict) else None
+    if not build:
+        return None
+    phases = _drying_phases(build)
+    if not phases:
+        return None
+    is_jerky = bool(_JERKY_NAME.search(row.get("heb") or ""))
+    blk = {"kind": "drying", "aw_max": AW_MAX_SHELF_STABLE, "limit_is_regulatory": True,
+           "source_id": SRC_FSIS_JERKY_2014 if is_jerky else SRC_FSIS_GD_2023_0002}
+
+    day_cands = []
+    temp_los, temp_his, hum_los, hum_his = [], [], [], []
+    for label, body in phases:
+        scan = _mk_phase_scan_text(label, body)
+        d = _mk_duration_days(scan)
+        if d is not None:
+            day_cands.append(d)
+        t = _mk_range_match([_MK_TEMP_C], scan)
+        if t:
+            temp_los.append(t[0]); temp_his.append(t[1])
+        h = _mk_range_match([_MK_HUM_LABELLED, _MK_HUM_TRAILING_WORD, _MK_HUM_AFTER_TEMP], scan)
+        if h:
+            hum_los.append(h[0]); hum_his.append(h[1])
+
+    if day_cands:
+        blk["days"] = max(day_cands)
+    else:
+        unconverted.append({"id": item_id, "name": row.get("heb"), "field": "build.phases",
+                            "value": [b for _, b in phases], "reason": "drying-duration-not-authored"})
+    if temp_los:
+        blk["temp_c_min"] = min(temp_los)
+        blk["temp_c_max"] = max(temp_his)
+    if hum_los:
+        blk["humidity_pct_min"] = min(hum_los)
+        blk["humidity_pct_max"] = max(hum_his)
+
+    w = _mk_range_match([_MK_WLOSS_WORD_FIRST, _MK_WLOSS_NUM_FIRST], _mk_full_build_text(build))
+    if w:
+        blk["weight_loss_pct_min"] = w[0]
+        blk["weight_loss_pct_max"] = w[1]
+    else:
+        unconverted.append({"id": item_id, "name": row.get("heb"), "field": "build.phases",
+                            "value": None, "reason": "drying-weight-loss-not-authored"})
     return blk
 
 
@@ -168,9 +370,11 @@ def blocks_for_specials(row, unconverted, item_id):
 
 
 def blocks_for_makes(row, unconverted, item_id):
-    """MAKES row -> list of 0..1 blocks. Fermentation only, per the ADDENDUM's own source table
-    (`MAKES[*].build.phases` prose naming תסיסה/תרבית); drying/aging for MAKES are a named scope
-    boundary, not built here (see module docstring)."""
+    """MAKES row -> list of 0..2 blocks: fermentation (Task 1c, from build.materials/phases
+    prose naming תסיסה/תרבית -- UNCHANGED by Task 1c-b, see that section's own docstring for why
+    the "תסס" abbreviated-imperative form some SG() items use was deliberately NOT added to the
+    fermentation word list here) and drying (Task 1c-b, `_drying_block_for_makes`). MAKES carries
+    no aging signal at all (verified, see module docstring) -- no code was added for it."""
     build = row.get("build") if isinstance(row.get("build"), dict) else None
     if not build:
         return []
@@ -180,6 +384,12 @@ def blocks_for_makes(row, unconverted, item_id):
     phases = build.get("phases")
     hay_phase = (" ".join(str(p[1]) for p in phases if isinstance(p, (list, tuple)) and len(p) > 1)
                  if isinstance(phases, (list, tuple)) else "")
+    out = []
     f = _fermentation_block(hay_mat + " " + hay_phase, "build.materials+phases",
                             row, unconverted, item_id)
-    return [f] if f else []
+    if f:
+        out.append(f)
+    d = _drying_block_for_makes(row, unconverted, item_id)
+    if d:
+        out.append(d)
+    return out
