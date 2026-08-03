@@ -1342,6 +1342,61 @@ guarantees key compatibility the day it lands.
 
 ---
 
+## REVISION 3 — the path-id cross-check gate (owner-approved insertion, 2026-08-03)
+
+**Files:** Create `tests/model-pathid-crosscheck.spec.ts` · no production files touched.
+**Order:** runs **after Task 3r, before 1h/1b–1f** (see the updated execution order below) — it
+must land before the mechanism tasks so any drift THEY introduce into `model_paths.py`'s id
+vocabulary is caught immediately, not discovered later at Task 4r/5r.
+
+**Why it exists.** `model_paths.py` hard-codes the path ids it emits as literals (`"c:smoke_sv"`,
+`"c:smoke"`, `"smoke"`, the `":rev"` suffix) — a Python mirror of three JS functions:
+`methodRules` (app.js:1157, which app.js:2541 calls "single source of truth"), `comboMethodEntry`,
+and `itemProfile`/`itemPaths` (app.js:4760). Task 2.3 ("שכבת אוצר-השיטות", Wave 0) expands the
+method vocabulary from today's 3 primitives (`allowed:['sv','smoke','grill']`) to ~30 primary + ~10
+secondary, and its own task card touches `data.py`/schema. When it lands, `itemPaths` will emit a
+different id vocabulary and the Python mirror goes stale **silently** — the model would produce
+keys nobody looks up, and nothing would fail loudly. That is the `no-inert-shipment` failure mode,
+arriving by drift instead of by omission. This gate converts that silent staleness into an
+immediate, loud failure.
+
+**What it asserts.** `PX1` resolves every `DATA.items` row back to its app.js meta (via
+`resolveItem` on its `legacy_ref`), calls the real `itemPaths(meta)`, and compares — **as sets, per
+item, in both directions** — the ids it emits against `Object.keys(item.paths)`:
+- an engine id with no model entry ("missing-from-model" — a path the model would silently ignore
+  if the engine started emitting it as the default/primary route), and
+- a model key the engine never emits for that item ("extra-in-model" — a stale or invented id, the
+  exact failure mode PA2 already guards for the *engine ⊇ model* direction; PX1 adds the reverse).
+
+**The discovery that shaped the design.** Measured against the current build (before this test
+existed): `methodRules` allows `sv`/`smoke`/`grill` in combination for essentially every CUTS
+category, so `itemProfile` validly enumerates several grill-inclusive combos and a solo-`sv` combo
+per item — but `model_paths.py` **only ever converts two routes** ("Route A" sv+smoke, "Route B"
+smoke-only), exactly as its own module docstring already says. Running PX1 with an empty allow-list
+produced **601 divergences across 134 of 177 items** — not isolated drift, but the current,
+pre-existing, documented scope of the converter. Encoding that honestly as 130 literal per-item
+entries would be an unmaintainable, un-auditable list, so PX1's allow-list (`PATHID_ALLOWED_GAPS`)
+is **reasoned patterns**, not a flat id list: "any CUTS id containing `grill`", "CUTS solo-`sv`
+(`c:sv` exactly)", and — kept as a small, closed, **named** list per the task's own instruction —
+the 4 SPECIALS rows with no `smt` in `data.py` (בילטונג, סלמי, צ'וריסו מיובש, פפרוני). Each rule
+carries its reason inline; a divergence that matches none of the three fails the test by name.
+
+- [x] **Step 1: RED witnessed** — `PATHID_ALLOWED_GAPS` temporarily emptied; run showed 601 named
+  divergences (467 grill-inclusive + 130 solo-sv + 4 specials-no-smt), each stating item+id+table.
+- [x] **Step 2: GREEN** — allow-list restored; `real-failures=0`, all three rules exercised
+  (467×/130×/4×), coverage totals logged every run (`engine-ids=916 model-ids=315`).
+- [x] **Step 3: the gate BITES** — `model_paths.py`'s `_cut_paths` temporarily renamed `c:smoke` →
+  `c:smoke_X` for `cuts:1` (בריסקט) only; rebuild; PX1 failed naming בריסקט in BOTH directions
+  (`engine emits 'c:smoke' but model has no entry` / `model has 'c:smoke_X' but the engine never
+  emits it`), and the existing `PA1`/`PA2` specs failed too, independently confirming the same
+  corruption. Reverted; rebuild; all 15 tests (PX1 + the 3 existing model specs) green again.
+- [x] **Commit:** `test(model): PX1 — the path-id cross-check gate, guarding against Wave 0 drift`
+
+**Revised execution order (supersedes the line below for this insertion only):**
+**1 ✅ → 1g → 3r → REVISION 3 (PX1) → 1h → 1b → 1c → 1d → 1e → 1f → 2+2r → 4+4r → 5+5r → 6.**
+
+---
+
 ## Revised execution order
 
 **1 ✅ → 1g → 3r → 1h → 1b → 1c → 1d → 1e → 1f → 2+2r → 4+4r → 5+5r → 6.**
