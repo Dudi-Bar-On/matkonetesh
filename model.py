@@ -8,6 +8,7 @@ decides for itself. That decision now happens exactly here, once.
 """
 import model_cure
 import model_paths
+import model_process
 import model_sheet
 
 SCHEMA_VERSION = 1
@@ -200,6 +201,9 @@ def build_items(cuts, specials, makes):
                 cu = model_cure.block_for_specials(row, unconverted, item_id, _classify_source)
                 if cu:
                     safety.append(cu)
+                # Task 1c: drying / fermentation / aging -- SPECIALS-only per the ADDENDUM's own
+                # source table (see model_process.py module docstring).
+                safety.extend(model_process.blocks_for_specials(row, unconverted, item_id))
             sheet_row = by_item_he.get(row.get("heb"))
             paths, path_notes = model_paths.build(table, row, sheet_row, unconverted, item_id)
             items.append({
@@ -247,6 +251,10 @@ def build_items(cuts, specials, makes):
         cu = model_cure.block_for_makes(row, unconverted, item_id, _classify_source)
         if cu:
             safety.append(cu)
+        # Task 1c: MAKES gets fermentation only (its build.materials/phases prose), per the
+        # ADDENDUM's own source table -- see model_process.py module docstring for why drying/
+        # aging stay a named scope boundary here rather than extending into MAKES.
+        safety.extend(model_process.blocks_for_makes(row, unconverted, item_id))
         paths, path_notes = model_paths.build("makes", row, None, unconverted, item_id)
         items.append({
             "id": item_id,
