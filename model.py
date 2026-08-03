@@ -177,7 +177,7 @@ def build_items(cuts, specials, makes):
             if th:
                 safety.append(th)
             sheet_row = by_item_he.get(row.get("heb"))
-            paths = model_paths.build(table, row, sheet_row, unconverted, item_id)
+            paths, path_notes = model_paths.build(table, row, sheet_row, unconverted, item_id)
             items.append({
                 "id": item_id,
                 "name": {"he": row.get("heb"), "en": row.get("eng")},
@@ -195,8 +195,20 @@ def build_items(cuts, specials, makes):
                 # 177 identical strings is also 4KB the A1 bundle-size gate cannot spare today.
                 "texture": _texture(row, unconverted, item_id),
                 "paths": paths,
-                "route": [],
-                "notes": [],
+                # R-80 / Task 3r (spec v2 §4.1): steps live INSIDE `paths[*].steps`, never at
+                # item level -- v1's Task 3 item-level `route[]` re-flattened the two sheets this
+                # refactor exists to undo, and is gone. `notes` stays item-level on purpose (spec
+                # v2 §4.1's own closing line): advice does not belong to one route more than the
+                # other, and is not lost either way.
+                "notes": path_notes,
                 "legacy_ref": {"table": table, "n": n},
             })
+    # The wrap cross-check REPLACES wrap conversion (spec v2 §4.1): `data.py`'s `wrap` column is
+    # never written into any item or path -- it is route A's answer only (spec v2 §8.2), and its
+    # information content is proven redundant with the trigger prose already parsed above
+    # (reconciliation §2.1). One summary line, not one per row: this is a single design decision
+    # about a whole retired field, not a per-item gap.
+    _wrap_count = sum(1 for row in cuts if (row.get("wrap") or "").strip())
+    unconverted.append({"id": None, "name": None, "field": "wrap", "value": _wrap_count,
+                        "reason": "wrap-field-retired"})
     return items, unconverted

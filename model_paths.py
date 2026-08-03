@@ -23,6 +23,8 @@ The flat row holds route A's sv+smoke legs (svt/svh/smt/smh), route B's smoke le
 (sot/soh), and per-route fields the flattening collapsed (reconciliation §2). Nothing here
 fills one path's field from the other path, and nothing invents an id.
 """
+import model_triggers
+
 IMPORT_OWNER_SHEET = False   # Q-1 — flips to True only on the owner's spoken approval
 
 
@@ -39,6 +41,7 @@ def _requires_sv_in_every_combo(row):
 
 def _cut_paths(row, sheet_row, unconverted, item_id):
     paths = {}
+    notes = []
     if row.get("svt") is not None and row.get("smt") is not None:
         paths["c:smoke_sv"] = {
             "legs": {"sv": {"t": row["svt"], "h": _hours_upper(row.get("svh"))},
@@ -84,6 +87,39 @@ def _cut_paths(row, sheet_row, unconverted, item_id):
             if key in paths:
                 paths[key]["sear"] = sheet_row.get("sear" + col)
                 paths[key]["coal"] = sheet_row.get("coal" + col)
+    # R-80 / Wave 0 N-7 / Task 3r (spec v2 §4.1): `mid` prose -> c:smoke_sv steps, `somid` prose
+    # -> c:smoke steps. Item-level route[] does not exist any more (v1's Task 3 shape) -- the
+    # whole point of 3r is that the actions differ per route and must live on their own path.
+    if "c:smoke_sv" in paths:
+        step, note, reason = model_triggers.parse_field("mid", row.get("mid"))
+        if step:
+            paths["c:smoke_sv"]["steps"].append(step)
+        if note:
+            notes.append(note)
+        if reason:
+            unconverted.append({"id": item_id, "name": row.get("heb"), "field": "mid",
+                                "value": row.get("mid"), "reason": reason})
+    if "c:smoke" in paths:
+        somid_raw = row.get("somid")
+        step, note, reason = model_triggers.parse_field("somid", somid_raw)
+        if step:
+            paths["c:smoke"]["steps"].append(step)
+        if note:
+            notes.append(note)
+        if reason:
+            unconverted.append({"id": item_id, "name": row.get("heb"), "field": "somid",
+                                "value": somid_raw, "reason": reason})
+        # The wrap cross-check REPLACES wrap conversion (spec v2 §4.1): the binary `wrap` column
+        # is never written into the model (proven redundant, 26/26 resolvable pairs measured
+        # here -- reconciliation §2.1 claimed 27/27 against the sheet alone; one CUTS row,
+        # "ספייריבס חזיר", has no sheet join today and is therefore not checkable, a pre-existing
+        # Task 1g join gap, not a Task 3r regression). Sheet-B `wrap=="כן"` must already show a
+        # wrap/3-2-1 signal in `somid`'s own prose -- mismatch is a report row, never a silent
+        # correction in either direction.
+        if sheet_row and (sheet_row.get("wrapB") or "").strip() == "כן":
+            if not model_triggers.wrap_signal(somid_raw):
+                unconverted.append({"id": item_id, "name": row.get("heb"), "field": "somid",
+                                    "value": somid_raw, "reason": "wrap-flag-contradicts-somid"})
     # order_smokesv (sources.py) -> the :rev path — the smoke/sv legs are moved verbatim (DoD-10);
     # `ref`/`url`/`note` are dropped from THIS copy on purpose, not lost: they are the same
     # citation text already shipped once, verbatim, in `payload.cuts[n].order_smokesv` (build.py
@@ -95,7 +131,16 @@ def _cut_paths(row, sheet_row, unconverted, item_id):
             "legs": {"smoke": os_.get("smoke"), "sv": os_.get("sv")},
             "texture": None, "sear": None, "coal": None, "steps": [],
         }
-    return paths
+    # `rest` is measured route-invariant (68/68 identical across both sheet routes) -- one rest
+    # step, appended to EVERY path this item ended up with (including :rev). A fresh dict per
+    # path (model_triggers.rest_step() call, not a shared reference) so no two paths alias the
+    # same mutable object.
+    rest_raw = row.get("rest")
+    for pid in paths:
+        rs = model_triggers.rest_step(rest_raw)
+        if rs:
+            paths[pid]["steps"].append(rs)
+    return paths, notes
 
 
 def _special_paths(row, unconverted):
@@ -105,27 +150,30 @@ def _special_paths(row, unconverted):
     # second route to lose here — the flattening loss measured in the reconciliation (§2) is a
     # CUTS-only phenomenon.
     if row.get("smt") is None:
-        return {}
+        return {}, []
     tgt = row.get("tgt")
     texture = ({"target_c": tgt, "source_id": None, "provenance": "craft"}
                if isinstance(tgt, (int, float)) else None)
     # a non-numeric tgt (prose) is already reported once, at item level, by model.py's
     # `_texture()` (`tgt-nonnumeric`) — reporting it again here would be the same gap named
     # twice under two different reasons, which reads as two problems instead of one.
+    # SPECIALS carries no `mid`/`somid`/`rest` keys at all (data.py's own `# keys:` comment for
+    # SPECIALS omits them — measured: `row.get('mid')` is always None here) — so there is no
+    # route-level prose to parse into steps for this table; `steps` stays [].
     return {
         "smoke": {
             "legs": {"smoke": {"t": row["smt"], "h": _hours_upper(row.get("smh"))}},
             "texture": texture, "sear": None, "coal": None, "steps": [],
         }
-    }
+    }, []
 
 
 def build(table, row, sheet_row, unconverted, item_id):
-    """Returns paths:dict for one row. `table` is 'cuts' or 'specials' — the id vocabulary
-    itemPaths emits differs by table (see module docstring); nothing here is shared logic
-    dressed up as one function, because the underlying app functions are not shared either."""
+    """Returns (paths:dict, notes:list) for one row. `table` is 'cuts' or 'specials' — the id
+    vocabulary itemPaths emits differs by table (see module docstring); nothing here is shared
+    logic dressed up as one function, because the underlying app functions are not shared either."""
     if table == "cuts":
         return _cut_paths(row, sheet_row, unconverted, item_id)
     if table == "specials":
         return _special_paths(row, unconverted)
-    return {}
+    return {}, []

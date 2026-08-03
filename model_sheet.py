@@ -23,8 +23,10 @@ _ALIASES = {"נקניקיות": "נקניקיות מוכנות"}
 
 # 02-sousvide-smoke.csv columns (0-indexed), route A:
 _A_HE, _A_EN, _A_SEAR, _A_COAL, _A_TGT = 2, 3, 9, 16, 22
+_A_WRAP = 11
 # 03-smoke-only.csv columns (0-indexed), route B:
 _B_HE, _B_EN, _B_SEAR, _B_COAL, _B_TGT = 2, 3, 9, 16, 20
+_B_WRAP = 11
 
 
 def _num(raw):
@@ -44,7 +46,7 @@ def _read_rows(path):
 
 
 def load():
-    """Returns {by_item_he: {he, en, tgtA, tgtB, searA, searB, coalA, coalB}}.
+    """Returns {by_item_he: {he, en, tgtA, tgtB, searA, searB, coalA, coalB, wrapA, wrapB}}.
 
     An unmatched sheet row (a name in one file with no partner in the other) is loud, not
     silent — there are none today (reconciliation §1: 68/68 both ways), so a future rename
@@ -83,5 +85,7 @@ def load():
             "searB": rb[_B_SEAR],
             "coalA": ra[_A_COAL],
             "coalB": rb[_B_COAL],
+            "wrapA": ra[_A_WRAP],
+            "wrapB": rb[_B_WRAP],
         }
     return {"by_item_he": by_item_he}
