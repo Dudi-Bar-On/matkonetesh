@@ -121,6 +121,13 @@ import model as _model
 _items, _unconverted = _model.build_items(CUTS, SPECIALS, MAKES)
 print("[model] items:", len(_items), "· unconverted entries:", len(_unconverted))
 
+# Task B (2026-08-03, owner-approved): `items` is externalized to dist/items.json, fetched on demand
+# by app.js — mirrors Dec-A1's lang-<code>.json split, which pulled the language dictionaries out of
+# the bundle the same way. Only schemaVersion/unconvertedReasons/unconvertedIds stay inline: tiny, and
+# some are read at boot. ITEMS_JSON holds the actual array; it is written to dist/ beside lang-*.json
+# below, NOT included in `payload`/DATA_JSON.
+ITEMS_JSON = json.dumps(_items, ensure_ascii=False, separators=(',', ':'))
+
 payload = {
     "cuts": CUTS,
     "specials": SPECIALS,
@@ -129,9 +136,9 @@ payload = {
     "makes": MAKES,
     "seasonings": SEASONINGS,
     "houseRub": HOUSE_RUB_MAP,
-    "items": _items,
     "schemaVersion": _model.SCHEMA_VERSION,
     "unconvertedReasons": sorted({u["reason"] for u in _unconverted}),
+    "unconvertedIds": sorted({u["id"] for u in _unconverted if u["id"] is not None}),
 }
 # separators=(',',':'): compact — no functional change (JSON.parse doesn't care about
 # insignificant whitespace), but the default separators' extra space-per-comma/colon was costing
@@ -733,10 +740,11 @@ for _code in sorted(_active_langs):
     _i18n_meta[_code] = {"name": _mm.get("name") or _code, "dir": _mm.get("dir") or "ltr"}
 I18N_META_JSON = json.dumps(_i18n_meta, ensure_ascii=False)
 html = HTML.replace("__CSS__", _css).replace("__JS__", _eqm + "\n;\n" + _js).replace("__DATA__", "JSON.parse(" + _js_str(DATA_JSON) + ")").replace("__I18N_META__", "JSON.parse(" + _js_str(I18N_META_JSON) + ")").replace("__WHATS_NEW__", WHATS_NEW)
-# A1 bundle guard — the split may never silently regress (Dec-A1: 73% of 7.79MB was dictionaries).
+# A1 bundle guard — the split may never silently regress (Dec-A1: 73% of 7.79MB was dictionaries;
+# Task B, 2026-08-03: `items` is externalized the same way, for the same reason — see ITEMS_JSON above).
 _html_bytes = len(html.encode("utf-8"))
 if _html_bytes >= 2_600_000:
-    raise SystemExit("A1: dist/index.html is %d bytes — dictionaries must stay OUT of the bundle (Dec-A1)" % _html_bytes)
+    raise SystemExit("A1: dist/index.html is %d bytes — dictionaries/items must stay OUT of the bundle (Dec-A1/Task B)" % _html_bytes)
 import os as _os, shutil as _shutil
 _root = _os.path.dirname(_os.path.abspath(__file__))
 # 1) index.html at repo root — used by the dev server, tests, and manual upload
@@ -753,6 +761,9 @@ with open(_os.path.join(_dist, "index.html"), "w", encoding="utf-8") as f:
 for _code in sorted(_active_langs):
     with open(_os.path.join(_dist, "lang-%s.json" % _code), "w", encoding="utf-8") as f:
         json.dump(_i18n[_code], f, ensure_ascii=False, separators=(",", ":"))
+# Task B: the structured item catalogue, beside index.html — fetched on demand by app.js (window.__mkItemsReady).
+with open(_os.path.join(_dist, "items.json"), "w", encoding="utf-8") as f:
+    f.write(ITEMS_JSON)
 _site = _os.path.join(_root, "site")
 _copied = []
 if _os.path.isdir(_site):
@@ -834,6 +845,7 @@ with open(_os.path.join(_dist, "_headers"), "w", encoding="utf-8") as f:
         "/manifest.webmanifest\n  Cache-Control: no-cache\n"
         "/sw.js\n  Cache-Control: no-cache\n"
         "/lang-*.json\n  Cache-Control: no-cache\n"
+        "/items.json\n  Cache-Control: no-cache\n"
         "/*.png\n  Cache-Control: public, max-age=31536000, immutable\n"
     )
 print("written", len(html), "bytes;", len(CUTS), "cuts", len(SPECIALS), "specials", len(GLOSSARY), "glossary")

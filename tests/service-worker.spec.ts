@@ -171,6 +171,69 @@ test('a fetched language dict is served from the SW cache when offline (Dec-A3 d
   await page.context().setOffline(false);
 });
 
+// ── Task B (2026-08-03): the `items` split must not break the SW offline shell (mirrors the lang-dict
+// test above, same underlying mechanism — build.py's generic same-origin-GET runtime-cache branch,
+// unchanged by Task B). items.json is fetched UNCONDITIONALLY at boot (unlike the lang dict, which
+// only fetches for a non-Hebrew stored language), so this is exercised on every single boot, not a
+// per-language opt-in.
+test('Task B: a fetched items.json is served from the SW cache when offline, and a boot with no cache entry degrades like the lang path', async ({ isolatedPage: page }) => {
+  await page.goto('/index.html');
+  await page.evaluate(() => navigator.serviceWorker.ready);
+  await page.waitForFunction(() => !!navigator.serviceWorker.controller);   // same first-boot race as the lang test above
+  // items.json is fetched UNCONDITIONALLY, synchronously at script-parse time — on this very first
+  // navigation that fetch can race ahead of self.clients.claim() adopting this document as controlled
+  // (same root cause as the comment above, just triggered automatically instead of by a manual
+  // page.evaluate fetch). An uncontrolled fetch bypasses the SW's fetch handler entirely — no cache
+  // write happens (confirmed via a throwaway diagnostic: without this reload, the later offline read
+  // came back with 0 items every time). Reload now that the client is controlled, so THIS boot's
+  // items.json fetch is guaranteed to go through the SW and get cached — same fix shape as the lang
+  // tests' controller-wait, just needing an extra reload since this fetch isn't test-triggered.
+  await page.reload();
+  const count = await page.evaluate(() => (window as any).__mkItemsReady.then((items: any[]) => items.length));
+  expect(count).toBeGreaterThan(0);
+  await page.waitForFunction(async () => {
+    const keys = await caches.keys();
+    for (const k of keys) { if (await (await caches.open(k)).match('items.json')) return true; }
+    return false;
+  });
+  await page.context().setOffline(true);
+  await page.reload();
+  // __mkItemsReady must resolve even offline — served from the SW cache, not a hung/rejected fetch.
+  const offlineCount = await page.evaluate(() => (window as any).__mkItemsReady.then((items: any[]) => items.length));
+  expect(offlineCount).toBe(count);   // same catalogue, served from cache — no data loss offline
+  const offlineFetch = await page.evaluate(() => fetch('items.json').then((r) => r.status).catch(() => 0));
+  expect(offlineFetch).toBe(200);     // cache-first branch must serve it — no network required
+  await page.context().setOffline(false);
+});
+
+// Negative leg: a boot with NO cache entry for items.json (never fetched online first) must degrade
+// exactly like the lang path's I-1 leg (b) — no crash, no unhandled rejection, DATA.items stays the
+// synchronous [] placeholder, and __mkItemsReady still resolves (it swallows the fetch failure, same
+// shape as __mkLangReady's boot catch, but with no re-render step to run since nothing consumes
+// DATA.items in production yet — see the app.js comment beside window.__mkItemsReady).
+//
+// Unlike the lang path (which naturally never fetches an untouched-language dict), items.json is
+// fetched on EVERY boot — there is no boot state that skips it. To reach "shell cached, items.json
+// never cached" the request is aborted for one ONLINE navigation (so sw.js/index.html install and
+// cache normally, exactly like a real first visit), then that route is lifted and the SECOND
+// navigation runs fully offline — items.json has no cache entry, the shell does.
+test('Task B negative: a boot with items.json never cached, offline, resolves __mkItemsReady to an empty catalogue without crashing', async ({ isolatedPage: page }) => {
+  await page.context().route('**/items.json', (r) => r.abort());
+  await page.goto('/index.html');
+  await page.evaluate(() => navigator.serviceWorker.ready);   // SW registered + shell precached; items.json aborted, never cached
+  await page.context().unroute('**/items.json');
+
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  await page.context().setOffline(true);
+  await page.reload();
+  const result = await page.evaluate(() => (window as any).__mkItemsReady.then((items: any[]) => ({ len: items.length, isArray: Array.isArray(items) })));
+  expect(result.isArray).toBe(true);
+  expect(result.len).toBe(0);
+  expect(errors).toEqual([]);   // no unhandled page error — the fetch failure was swallowed, not thrown
+  await page.context().setOffline(false);
+});
+
 test('I-1 leg (a): a stored non-Hebrew language survives an offline boot once its dict has been cached', async ({ isolatedPage: page }) => {
   await page.goto('/index.html');
   await page.evaluate(() => navigator.serviceWorker.ready);

@@ -5,6 +5,9 @@ import { test, expect, seedApp } from './_fixtures';
 // 30s timeout — `typeof DATA!=='undefined'` is the pattern that actually works).
 const boot = async (page: any) => {
   await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  // Task B: items is fetched on demand — await the readiness promise (mirrors __mkLangReady) so the
+  // fetch is genuinely exercised, not just polled for.
+  await page.evaluate(`window.__mkItemsReady`);
   await page.waitForFunction(`typeof DATA!=='undefined' && DATA.items && DATA.items.length`);
 };
 

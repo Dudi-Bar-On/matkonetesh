@@ -82,6 +82,17 @@ function langDoc(code: string): Buffer {
 }
 const LANG_JSON_RE = /\/lang-([a-z]{2})\.json($|\?)/;
 
+// SAME ROOT CAUSE, Task B (externalize `items`): app.js now fetches `items.json` UNCONDITIONALLY on
+// every boot (unlike the lang dict, which only fetches for a non-Hebrew stored language) — so this
+// fires on literally every seedApp reload across the whole suite, worse than the lang trigger above.
+// Same cure: fulfill the known dist/items.json body from an in-memory Buffer instead of a per-request
+// loopback round trip. model-safety.spec.ts's B1 test still observes a real 'response' event for this
+// route (Playwright fires 'response' for fulfilled routes too) — the fetch is genuinely exercised, only
+// the transport is short-circuited to memory, exactly like the lang-*.json precedent.
+let __itemsDoc: Buffer | null = null;
+function itemsDoc(): Buffer { return (__itemsDoc ??= readFileSync(resolve(process.cwd(), 'dist/items.json'))); }
+const ITEMS_JSON_RE = /\/items\.json($|\?)/;
+
 type WarmWorkerFixtures = { warmContext: BrowserContext; warmPage: Page };
 type WarmTestFixtures = { warm: Page; isolatedPage: Page };
 
@@ -126,6 +137,18 @@ export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
           });
         } catch {
           route.continue();   // unknown code (no dist/lang-<code>.json) — fall through to the real server
+        }
+      });
+      // Task B addition — see the itemsDoc/ITEMS_JSON_RE note above.
+      await context.route(ITEMS_JSON_RE, route => {
+        try {
+          route.fulfill({
+            status: 200,
+            headers: { 'content-type': 'application/json; charset=utf-8', 'x-mk-warm-fulfill': '1' },
+            body: itemsDoc(),
+          });
+        } catch {
+          route.continue();   // dist/items.json missing (build didn't run yet) — fall through to the real server
         }
       });
     }

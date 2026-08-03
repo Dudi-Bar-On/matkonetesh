@@ -11457,6 +11457,28 @@ function setLang(l){ if(l!=='he' && !I18N_LANGS[l]) return;
     .catch(function(){ if(myReqToken!==__setLangReqToken) return; if(typeof toast==='function') toast('⚠ '+L('טעינת השפה נכשלה — בדוק את החיבור ונסה שוב','Language download failed — check your connection and try again')); });
 }
 
+// ── items payload (Task B, 2026-08-03) — mirrors Dec-A1's lang-<code>.json split. The structured
+// item catalogue (R-75, model.py) is no longer inlined in DATA_JSON; it is fetched on demand from
+// items.json instead. Nothing in production reads DATA.items yet (consumer migration is a later
+// task) — the model-* specs are the real, exercised consumer of this load path until then
+// (docs/process/skills/no-inert-shipment/SKILL.md). Unconditional fetch (unlike the lang dict, which
+// only loads for a non-Hebrew stored language) — there is no equivalent "not needed yet" case for items.
+DATA.items = [];   // synchronous placeholder so an early reader never sees `undefined`
+// Tests await window.__mkItemsReady instead of polling DATA.items.length (DoD-11) — mirrors __mkLangReady.
+window.__mkItemsReady = fetch('items.json').then(function(r){
+  if(!r.ok) throw new Error('items-http-'+r.status);
+  return r.json();
+}).then(function(d){
+  DATA.items = d || [];
+  return DATA.items;
+}).catch(function(e){
+  // Degrades exactly like the lang path's boot catch: log, keep the placeholder, never throw into
+  // an unhandled rejection. DATA.items stays [] — no production code reads it yet, so there is
+  // nothing further to recover here (unlike applyLang(), which the lang path must re-run).
+  try{ console.warn('[items] boot load failed', e); }catch(_){}
+  return DATA.items;
+});
+
 // Boot: if the stored language is non-Hebrew, fetch its dict then repaint. Hebrew paints instantly.
 // Tests await window.__mkLangReady instead of sleeping (DoD-11).
 window.__mkLangReady = (function(){

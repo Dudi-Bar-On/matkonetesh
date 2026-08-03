@@ -1,9 +1,30 @@
 import { test, expect, seedApp } from './_fixtures';
 
+// Task B: `items` is no longer inlined in DATA_JSON — app.js fetches dist/items.json on demand and
+// resolves window.__mkItemsReady once DATA.items is hydrated (mirrors window.__mkLangReady, Dec-A1).
+// Awaiting the promise (rather than polling DATA.items.length) is what proves the fetch actually
+// happened, not merely that the value eventually appears.
 const boot = async (page: any) => {
   await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  await page.evaluate(`window.__mkItemsReady`);
   await page.waitForFunction(`typeof DATA!=='undefined' && DATA.items && DATA.items.length`);
 };
+
+// B1 · the load path is genuinely exercised: items.json is fetched over the network (not just
+// present because it was inlined), and the readiness promise resolves with every item DATA ends up
+// holding — proof the promise's resolution IS what populates DATA.items, not a coincidence of timing.
+test('B1 · items.json is actually fetched, and __mkItemsReady resolves with the loaded catalogue', async ({ page }) => {
+  const respPromise = page.waitForResponse((r: any) => /\/items\.json(\?|$)/.test(r.url()));
+  await seedApp(page, { 'mk-uilevel-asked': 'true' });
+  const resp = await respPromise;
+  expect(resp.status()).toBe(200);
+  const body = await resp.json();
+  const resolved = await page.evaluate(`window.__mkItemsReady.then(function(items){ return items.length; })`);
+  expect(resolved).toBe(body.length);
+  expect(resolved).toBeGreaterThan(0);
+  const live = await page.evaluate(`DATA.items.length`);
+  expect(live).toBe(resolved);
+});
 
 test('M1 · every produce row carries an EMPTY safety list, not a zero', async ({ page }) => {
   await boot(page);

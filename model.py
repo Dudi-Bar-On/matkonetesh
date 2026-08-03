@@ -19,12 +19,14 @@ SCHEMA_VERSION = 1
 # (headroom was ~7.9KB going in — see docs/sources/corpus and build.py's own A1 comment). Per the
 # task brief's own instruction ("if you would exceed the cap, STOP and report — do not trim
 # converted data to fit"), this is NOT trimmed to fit. The converter is fully built and correct
-# (verified directly against data.py, `.superpowers/sdd/model-task1b-report.md`); shipping it is
+# (verified directly against data.py, `.superpowers/sdd/model-task1b-report.md`); shipping it was
 # gated here, exactly like `model_paths.IMPORT_OWNER_SHEET`, pending the owner's decision between
 # (a) raising the A1 cap for this specific growth, or (b) externalizing `items` the way `lang-*.json`
-# was split out of the bundle (Dec-A1) — both are bigger calls than one task should make silently.
-# SPECIALS' cure blocks (13 items, ~1.15KB) are UNAFFECTED by this flag — cheap, and shipped now.
-SHIP_MAKES_ITEMS = False
+# was split out of the bundle (Dec-A1). The owner chose (b) — Task B (2026-08-03) moved the whole
+# `items` array out of DATA_JSON into dist/items.json, fetched on demand (mirrors Dec-A1); that
+# freed ~137KB of bundle headroom, so MAKES-as-items now ships. SPECIALS' cure blocks (13 items,
+# ~1.15KB) were never affected by this flag.
+SHIP_MAKES_ITEMS = True
 
 # Corpus source ids — docs/sources/corpus/NN-*/. Numbering matches the folder prefix exactly
 # (01-fda-food-code-2022 .. 19-serious-eats-lopez-alt); see docs/sources/corpus/00-SOURCE-MAP.md.
