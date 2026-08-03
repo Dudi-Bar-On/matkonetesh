@@ -195,6 +195,57 @@ test('P10 · salumi (whole-muscle dry-cured, e.g. speck) gets a drying block wit
   expect(r.temp_c_max).toBe(15);
 });
 
+// P11 (Task 1c-c): six MAKES items whose authored prose names fermentation carried NO
+// `fermentation` block at all -- a MECHANISM gap, not a duration gap. m-droe is the deliberate
+// NEGATIVE: its own intro states "ללא התססה" ("WITHOUT fermentation") -- it must stay
+// fermentation-free. The other five must each gain the mechanism; duration stays absent
+// (`ferment-duration-not-authored`) because the corpus states it only in the abbreviated "48ש"
+// shorthand this task deliberately does not parse. n-summer is the sharpest case: it previously
+// had `cure` only.
+test('P11 · six MAKES items gain (or correctly withhold) a fermentation mechanism', async ({ page }) => {
+  await boot(page);
+  const ids = JSON.stringify([
+    'make:m-droe', 'make:n-milano', 'make:n-finocchiona',
+    'make:n-pepperoni', 'make:n-summer', 'make:n-teewurst',
+  ]);
+  const r = await page.evaluate(`(function(){
+    var ids = ${ids};
+    var out = {};
+    ids.forEach(function(id){
+      var it = DATA.items.filter(function(x){ return x.id===id; })[0];
+      var safety = it ? (it.safety||[]) : null;
+      out[id] = {
+        kinds: safety ? safety.map(function(b){ return b.kind; }).sort() : null,
+        ferment: safety ? safety.filter(function(b){ return b.kind==='fermentation'; })[0] || null : null,
+      };
+    });
+    return out;
+  })()`) as any;
+
+  // m-droe: NEGATIVE -- explicitly "ללא התססה" in its own authored intro. No fermentation block.
+  expect(r['make:m-droe'].kinds, 'm-droe').not.toBeNull();
+  expect(r['make:m-droe'].kinds, 'm-droe').not.toContain('fermentation');
+
+  // The other five: mechanism present, duration deliberately absent + reason named via unconv
+  // (checked structurally here: duration_h must be undefined, per this task's own scope).
+  ['make:n-milano', 'make:n-finocchiona', 'make:n-pepperoni', 'make:n-summer', 'make:n-teewurst']
+    .forEach(function (id) {
+      expect(r[id].kinds, id).toContain('fermentation');
+      expect(r[id].ferment, id).toBeTruthy();
+      expect(r[id].ferment.duration_h, id).toBeUndefined();
+      expect(r[id].ferment.ph_max, id).toBe(5.3);
+      expect(r[id].ferment.degree_hours_max, id).toBeTruthy();
+    });
+
+  // n-summer is the sharpest case named in the brief: it previously carried `cure` only -- it
+  // must now carry cure + fermentation at minimum.
+  expect(r['make:n-summer'].kinds).toContain('cure');
+  expect(r['make:n-summer'].kinds).toContain('fermentation');
+  // n-milano and n-teewurst keep their existing `drying` block alongside the new one.
+  expect(r['make:n-milano'].kinds).toEqual(expect.arrayContaining(['drying', 'fermentation']));
+  expect(r['make:n-teewurst'].kinds).toEqual(expect.arrayContaining(['drying', 'fermentation']));
+});
+
 test('P6 · fermentation blocks carry the degree-hours limit; biltong (vinegar-cured, no culture) gets none', async ({ page }) => {
   await boot(page);
   const r = await page.evaluate(`(function(){

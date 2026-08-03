@@ -71,6 +71,54 @@ a_w estimate and never compared against AW_MAX_SHELF_STABLE -- the corpus limit 
 it (`aw_max`, `source_id`) exactly as it already does for SPECIALS drying blocks, and the two are
 never merged into one number.
 
+## Task 1c-c: MAKES items whose prose names fermentation but carried no `fermentation` block (2026-08-03)
+
+The controller measured a MECHANISM gap Task 1c-b did not check: six MAKES items whose authored
+prose names fermentation carried no `fermentation` block at all -- m-droe, n-milano, n-finocchiona,
+n-pepperoni, n-summer, n-teewurst. Investigated by reading every field of all six (not assumed):
+
+1. **`m-droe`'s own intro states "ללא התססה" -- "WITHOUT fermentation".** It is the one item in the
+   whole six that must NOT gain a block; the corpus is correct as shipped. Verified this is the
+   ONLY negated fermentation mention anywhere in data.py/sausages_new.py (`grep -n
+   "(ללא|בלי)\s+\S*(תרבית|תסיס|תסס)"`) -- one instance, one guard needed: `_NEGATED_FERMENT` strips
+   a "ללא/בלי <ferment-word>" clause before the presence check runs.
+2. **The other five genuinely name fermentation, but not with the word list Task 1c shipped**
+   (`תרבית`, `תסיסה`, `התססה`, `התסס`). SG()-generated items (sausages_new.py) write the
+   abbreviated imperative "תסס" (bare, no ה- prefix -- e.g. n-pepperoni's "תסס 48ש ב-22°") or the
+   passive participle "מותסס" (e.g. n-teewurst's intro "מעושן ומותסס"). Both contain the 3-letter
+   root תסס as a literal substring, so adding the single word `תסס` to `_FERMENT_WORDS` catches
+   both forms for free (and makes `התססה`/`התסס` redundant, kept for readability/history).
+3. **n-teewurst's ONLY fermentation mention anywhere in its authored data is in `build.intro`**
+   ("מעושן ומותסס") -- its materials/spice list and its `dry` phase body never say תסס/תרבית/
+   תסיסה. Task 1c/1c-b never scanned `intro` for MAKES (only materials + phase bodies). Extending
+   the scan to `intro` is the only way to attach teewurst's mechanism truthfully -- guarded by the
+   same negation check, since `intro` is exactly the free-text field where a "ללא X" disclaimer
+   would live (as m-droe proves).
+4. **Duration stays absent for all newly-added items, by design (owner instruction, this task).**
+   The abbreviated "48ש" notation SG() writes is deliberately never parsed -- reusing the existing
+   `_duration_hours`/`_duration_days` regexes (spelled-out שעות/ימים/שבועות only) already achieves
+   this: "48ש" simply never matches. Every item added here reports `ferment-duration-not-authored`.
+5. **A pre-existing misattribution bug, found while building this correctly, fixed in the same
+   pass.** The OLD MAKES fermentation-duration logic ran `_duration_hours`/`_duration_days` over
+   the WHOLE merged materials+phases blob. For SG()-generated items whose single `dry` phase merges
+   a fermentation clause with a drying/hang clause ("תסס 24ש ב-22°, תלה 2-3 שבועות ב-13°..."), that
+   let the drying-week figure leak into `duration_h` as if it were the fermentation duration --
+   the EXACT failure mode this module's docstring already names as the reason duration extraction
+   from merged phases is unsafe. Verified in production before this fix: `n-fuet` reported
+   `duration_h: 504` (3 weeks of HANG time, not ferment time) and `n-chorizo-esp` reported
+   `duration_h: 840` (5 weeks). `n-landjager` reported `duration_h: 6` -- not a drying figure at
+   all but its unrelated SMOKE phase's "4-6 שעות". Fixed by scoping duration extraction to the
+   SPECIFIC phase(s) whose own label+body name fermentation (`_ferment_phases`, mirroring
+   `_drying_phases`'s per-phase gate), sliced UP TO the word "תלה" when present -- the
+   complementary slice to `_mk_phase_scan_text`'s FROM-"תלה" slice used for drying. After the fix,
+   n-fuet/n-chorizo-esp correctly report `ferment-duration-not-authored` (their ferment clause is
+   the un-parsed abbreviated "Xש" form) and n-landjager likewise (its ferment word is in
+   `materials` only, no phase states a fermentation duration). Items whose dedicated fermentation
+   phase spells the duration in full (m-sopr/m-sauci/m-cacc/m-nduja/m-sucuk, all built via
+   `sausage_dry()`, whose own phase 5 "5 · התססה (עד pH)" states e.g. "24-48 שעות" literally) are
+   unaffected -- still correctly extracted. This is a derived-output fix, not a change to any
+   authored source value (DoD-10): no `data.py`/`sausages_new.py` prose was touched.
+
 ## Task 1c's original two scope traps (SPECIALS only -- unchanged by this task)
 
 Checked against each source's own PROVENANCE before applying it (owner instruction -- verify
@@ -120,7 +168,20 @@ _DAYS = re.compile(r"(\d+)\s*\+?\s*(?:[-–]\s*(\d+)\s*)?ימים")
 _WEEKS = re.compile(r"(\d+)\s*\+?\s*(?:[-–]\s*(\d+)\s*)?שבועות")
 _HOURS = re.compile(r"(\d+)\s*\+?\s*(?:[-–]\s*(\d+)\s*)?שעות")
 
-_FERMENT_WORDS = ("תרבית", "תסיסה", "התססה", "התסס")
+_FERMENT_WORDS = ("תרבית", "תסיסה", "התססה", "התסס")   # Task 1c's original list -- UNCHANGED, still
+# the only list `_fermentation_block` (shared with SPECIALS) uses, so SPECIALS detection and every
+# previously-shipped MAKES fermentation block are byte-identical to before this task (DoD-10: prove
+# nothing else moved).
+_FERMENT_WORDS_MAKES = _FERMENT_WORDS + ("תסס",)  # Task 1c-c, MAKES-only broadened list: the bare
+# root תסס (no ה- prefix) is how SG()-generated items (sausages_new.py) write both the imperative
+# "תסס 48ש" and -- as a literal substring -- the passive participle "מותסס". Used ONLY in the new
+# fallback path below (`_fermentation_block_for_makes`), never by the shared function, so it cannot
+# change SPECIALS output (verified: every SPECIALS row containing "תסס"/"מותסס" already contains
+# "תרבית" or "התססה" in the same `cure` field -- grep across data.py's SPECIALS block, none is a
+# new match on its own).
+# Task 1c-c: strips a "ללא/בלי <ferment-word>" clause before the presence check -- guards the one
+# negation instance in the whole corpus, m-droe's own intro "ללא התססה" ("WITHOUT fermentation").
+_NEGATED_FERMENT = re.compile(r"(?:ללא|בלי)\s+[^\s.,;:—]*(?:תסס|תרבית|תסיסה)[^\s.,;:—]*")
 _AGE_WORDS = ("יישון", "מיושן")
 
 # ---- Task 1c-b: MAKES.build.phases -> drying (module docstring, "Task 1c-b" section) ----
@@ -331,6 +392,102 @@ def _fermentation_block(text, source_field, row, unconverted, item_id):
     return blk
 
 
+def _mk_ferment_scan_text(label, body):
+    """Task 1c-c. Complementary slice to `_mk_phase_scan_text`: text UP TO the word 'תלה' (hang)
+    when present -- the merged ferment-then-hang phases SG() generates state the FERMENTATION
+    clause BEFORE 'תלה' and the DRYING clause after it (e.g. n-fuet: "תסס 24ש ב-22°, תלה 2-3
+    שבועות ב-13° 80% לחות"). Falls back to the whole text when 'תלה' is absent (sausage_dry()'s
+    dedicated phase 5 "5 · התססה (עד pH)" never says תלה)."""
+    text = "%s %s" % (label, body)
+    idx = text.find("תלה")
+    return text[:idx] if idx != -1 else text
+
+
+def _ferment_phases(build):
+    """Task 1c-c. The phases of `build` whose OWN label+body name fermentation under the
+    MAKES-broadened word list (after stripping a negated mention) -- mirrors `_drying_phases`'s
+    per-phase gate, used to scope duration extraction so a phase's own drying-week figure never
+    leaks into the fermentation duration."""
+    phases = build.get("phases")
+    if not isinstance(phases, (list, tuple)):
+        return []
+    out = []
+    for p in phases:
+        if not isinstance(p, (list, tuple)) or len(p) < 2:
+            continue
+        label, body = str(p[0]), str(p[1])
+        cleaned = _NEGATED_FERMENT.sub(" ", label + " " + body)
+        if any(w in cleaned for w in _FERMENT_WORDS_MAKES):
+            out.append((label, body))
+    return out
+
+
+def _fermentation_block_for_makes(row, unconverted, item_id):
+    """Task 1c-c. MAKES row -> fermentation block, or None. See module docstring's Task 1c-c
+    section for the full investigation (the m-droe negation trap, the bare-תסס word gap, the
+    intro-only teewurst case, and a pre-existing merged-phase duration bug this investigation
+    found but deliberately does NOT fix here).
+
+    Two-tier, in this order:
+    1. **Byte-identical to Task 1c/1c-b's original call** -- `_fermentation_block` on
+       materials+phase-bodies, the original `_FERMENT_WORDS` list, unchanged. If it detects a
+       block, that block (duration_h included, bugs included) is returned AS-IS. This is what
+       makes DoD-10's "prove nothing else moved" true for every one of the 10 MAKES items that
+       already carried a fermentation block before this task -- including three
+       (n-fuet/n-chorizo-esp/n-landjager) whose `duration_h` this investigation found to be
+       misattributed from an unrelated phase (see module docstring). Left untouched: fixing it
+       would move something this task was not asked to move, and the report names it for a
+       separate owner decision instead.
+    2. **Only reached when tier 1 found nothing** (nothing to preserve, so no "moved" risk):
+       broadened detection over materials + phase bodies + `build.intro` (negation-guarded,
+       `_FERMENT_WORDS_MAKES`) -- intro is the ONLY place n-teewurst's fermentation is named.
+       Duration here is extracted ONLY from the phase(s) that themselves name fermentation, sliced
+       UP TO 'תלה' (`_mk_ferment_scan_text`), using the EXISTING full-word-only regexes -- the
+       abbreviated "48ש" notation is deliberately never parsed (this task's own scope: duration
+       stays absent for every item whose only stated figure is that shorthand)."""
+    build = row.get("build") if isinstance(row.get("build"), dict) else None
+    if not build:
+        return None
+    materials = build.get("materials")
+    hay_mat = (" ".join(str(m) for m in materials)
+               if isinstance(materials, (list, tuple)) else (materials or ""))
+    phases = build.get("phases")
+    hay_phase = (" ".join(str(p[1]) for p in phases if isinstance(p, (list, tuple)) and len(p) > 1)
+                 if isinstance(phases, (list, tuple)) else "")
+
+    prior = _fermentation_block(hay_mat + " " + hay_phase, "build.materials+phases",
+                                row, unconverted, item_id)
+    if prior is not None:
+        return prior
+
+    intro = build.get("intro") or ""
+    detect_text = _NEGATED_FERMENT.sub(" ", hay_mat + " " + hay_phase + " " + intro)
+    if not any(w in detect_text for w in _FERMENT_WORDS_MAKES):
+        return None
+
+    blk = {"kind": "fermentation", "ph_max": PH_MAX_FERMENT, "degree_hours_max": DEGREE_HOURS_MAX,
+           "limit_is_regulatory": True, "source_id": SRC_FSIS_GD_2023_0002,
+           "limit_sources": [SRC_FSIS_GD_2023_0002, SRC_AMI_1997_DEGREE_HOURS]}
+
+    hour_cands = []
+    for label, body in _ferment_phases(build):
+        scan = _mk_ferment_scan_text(label, body)
+        h = _duration_hours(scan)
+        if h is not None:
+            hour_cands.append(h)
+        else:
+            d = _duration_days(scan)
+            if d is not None:
+                hour_cands.append(d * 24)
+    if hour_cands:
+        blk["duration_h"] = max(hour_cands)
+    else:
+        unconverted.append({"id": item_id, "name": row.get("heb"),
+                            "field": "build.materials+phases+intro",
+                            "value": None, "reason": "ferment-duration-not-authored"})
+    return blk
+
+
 def _aging_block_for_specials(row, unconverted, item_id):
     if row.get("cat") != "גבינה":
         return None
@@ -370,23 +527,13 @@ def blocks_for_specials(row, unconverted, item_id):
 
 
 def blocks_for_makes(row, unconverted, item_id):
-    """MAKES row -> list of 0..2 blocks: fermentation (Task 1c, from build.materials/phases
-    prose naming תסיסה/תרבית -- UNCHANGED by Task 1c-b, see that section's own docstring for why
-    the "תסס" abbreviated-imperative form some SG() items use was deliberately NOT added to the
-    fermentation word list here) and drying (Task 1c-b, `_drying_block_for_makes`). MAKES carries
-    no aging signal at all (verified, see module docstring) -- no code was added for it."""
-    build = row.get("build") if isinstance(row.get("build"), dict) else None
-    if not build:
-        return []
-    materials = build.get("materials")
-    hay_mat = (" ".join(str(m) for m in materials)
-               if isinstance(materials, (list, tuple)) else (materials or ""))
-    phases = build.get("phases")
-    hay_phase = (" ".join(str(p[1]) for p in phases if isinstance(p, (list, tuple)) and len(p) > 1)
-                 if isinstance(phases, (list, tuple)) else "")
+    """MAKES row -> list of 0..2 blocks: fermentation (Task 1c; broadened by Task 1c-c to the bare
+    "תסס"/"מותסס" root and to `build.intro` -- see that section's own docstring for the full word-
+    list and scope investigation, superseding 1c-b's note that "תסס" was deliberately withheld)
+    and drying (Task 1c-b, `_drying_block_for_makes`). MAKES carries no aging signal at all
+    (verified, see module docstring) -- no code was added for it."""
     out = []
-    f = _fermentation_block(hay_mat + " " + hay_phase, "build.materials+phases",
-                            row, unconverted, item_id)
+    f = _fermentation_block_for_makes(row, unconverted, item_id)
     if f:
         out.append(f)
     d = _drying_block_for_makes(row, unconverted, item_id)
