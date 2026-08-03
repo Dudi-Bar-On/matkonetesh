@@ -133,7 +133,12 @@ payload = {
     "schemaVersion": _model.SCHEMA_VERSION,
     "unconvertedReasons": sorted({u["reason"] for u in _unconverted}),
 }
-DATA_JSON = json.dumps(payload, ensure_ascii=False)
+# separators=(',',':'): compact — no functional change (JSON.parse doesn't care about
+# insignificant whitespace), but the default separators' extra space-per-comma/colon was costing
+# real bytes against the A1 bundle-size gate (Dec-A1, 2_600_000). Task 1g's `paths` addition is
+# what tipped a payload that was already at ~98% of that budget over the line; this recovers
+# headroom instead of trimming legitimately-converted data to fit.
+DATA_JSON = json.dumps(payload, ensure_ascii=False, separators=(',', ':'))
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.

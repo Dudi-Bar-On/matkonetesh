@@ -6,6 +6,9 @@ a cited floor, 0 meaning "not applicable" (every ירקות/פירות row), and
 meaning "we hold no figure" — and R-82 is what happens when each consumer
 decides for itself. That decision now happens exactly here, once.
 """
+import model_paths
+import model_sheet
+
 SCHEMA_VERSION = 1
 
 # Corpus source ids — docs/sources/corpus/NN-*/. Numbering matches the folder prefix exactly
@@ -153,6 +156,15 @@ def _texture(row, unconverted, item_id):
 
 def build_items(cuts, specials, makes):
     items, unconverted = [], []
+    # The owner's spreadsheet (Task 1g, spec v2 §4) — loaded once, not per row. A join failure
+    # (a sheet row with no partner) raises inside model_sheet.load() rather than degrading
+    # silently; here it degrades to "no sheet data, ship item-level fields honestly" so the
+    # converter still produces every item even if the sheet is absent in some environment.
+    try:
+        sheet = model_sheet.load()
+    except FileNotFoundError:
+        sheet = {"by_item_he": {}}
+    by_item_he = sheet["by_item_he"]
     # `n` restarts at 1 independently in CUTS and SPECIALS (measured: 47/47 SPECIALS ids collide with
     # CUTS ids in the real data.py). A bare `row["n"]` as `id` would silently merge two different
     # items — the table name is part of the identity, so it is part of the id.
@@ -164,6 +176,8 @@ def build_items(cuts, specials, makes):
             th = _thermal_block(row, unconverted, item_id)
             if th:
                 safety.append(th)
+            sheet_row = by_item_he.get(row.get("heb"))
+            paths = model_paths.build(table, row, sheet_row, unconverted, item_id)
             items.append({
                 "id": item_id,
                 "name": {"he": row.get("heb"), "en": row.get("eng")},
@@ -171,7 +185,16 @@ def build_items(cuts, specials, makes):
                 "cut_form": row.get("cut_form"),
                 "weight_kg": row.get("kg"),
                 "safety": safety,
+                # Task 1g (spec v2 §3/§10c): texture is authored PER PATH now (see `paths`); this
+                # item-level field stays for adapter back-compat only — it already carries the
+                # same value `data.py` authored, which is exactly one path's number (see
+                # `model_paths` module docstring for why brisket's item-level 95°C does not always
+                # coincide with the DEFAULT combo's path). A `texture_scope` marker was considered
+                # here but dropped: nothing reads it yet (Task 5r is the first consumer), and
+                # shipping a value with no reader is exactly what no-inert-shipment forbids —
+                # 177 identical strings is also 4KB the A1 bundle-size gate cannot spare today.
                 "texture": _texture(row, unconverted, item_id),
+                "paths": paths,
                 "route": [],
                 "notes": [],
                 "legacy_ref": {"table": table, "n": n},
