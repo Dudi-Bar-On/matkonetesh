@@ -1459,3 +1459,83 @@ Two process notes from the same night, both worth keeping:
    MCP browser were live during the run; the spec passed alone, and the machine was quiet for both
    green runs afterwards. §11a already says the worker count assumes an idle machine — the addition is
    that *the agent's own tooling* is part of that load, and closing it is part of preparing to measure.
+
+**L48 · A gate that does not look at a language cannot fail on it — and it will print green while
+that language is broken (2026-08-04).**
+
+A commit landed with a failing `pytest`. `check-meta` ran, printed `META GATE OK`, and let it through.
+Not a bug in any gate: **there was no gate.** Eight checkers over Markdown and `git log`, and the
+Python suite — the only thing verifying the memory layer that now holds every primary safety source —
+was outside all of them.
+
+This is the review panel's central finding one layer up. The panel diagnosed *metrics that count
+whether something happened rather than whether it is right*. This is the degenerate case: **a metric
+that does not look at the thing at all.** It had been invisible for hours precisely because the suite
+was green — a blind gate and a passing gate are indistinguishable until the first failure, and by then
+the commit is in.
+
+**The check, and it is cheap:** for every language and artefact class in the repo, name the gate that
+would go red if it broke. Where the answer is "none", that is not coverage — it is an absence that has
+not been tested yet.
+
+`check-pytest` now runs inside `check-meta` and **blocks**. It costs ~2 s because every test runs
+against `:memory:` with `MockLLM`/`MockEmbedding`. It was proven in both directions before being
+trusted — break one assertion → exit 1, restore → exit 0 — because a gate whose failure path has never
+been observed is exactly the thing this lesson is about. If `python` cannot be run it reports SKIPPED
+out loud: **a gate that could not run is not a gate that passed.**
+
+**Same shape, found the same day:** `check-h8-ledger` passes on *worsening only*, so an entire day
+absent from the register does not trip it. A full day's work — three shipped safety fixes and the
+replacement of the memory layer — existed only in commit messages until it was noticed by hand.
+
+**L49 · A number you invent for convenience becomes an argument, and then a design (2026-08-04).**
+
+Embedding input was capped at 2,000 characters. I chose that; I never checked the model. `bge-m3`
+advertises 8,192 tokens, and measurement put the real usable window near 6,000 characters — **three
+times what I had allowed.**
+
+The cap being wrong cost little. What it cost was in the *next* decision: choosing code-chunk size, I
+wrote *"bge-m3 reads only the first 2,000 characters, so a 5 KB node loses most of itself"* and picked
+a smaller chunk on that basis. **A number I had made up was now load-bearing evidence in an unrelated
+argument**, indistinguishable in the reasoning from the measured ones beside it.
+
+This is the panel's *wrong-frame measurement* class, self-inflicted. The dangerous property is not the
+error — it is that an invented constant and a measured one **look identical once written down.**
+
+**The check:** when a constant enters a *reason*, say where it came from in the same breath. "The model
+reads 2,000 chars" and "I capped it at 2,000 chars" are different claims and only one of them is
+evidence.
+
+**L50 · Two languages, one threshold: a limit measured in the convenient language is not a limit
+(2026-08-04).**
+
+Ollama applies its context window to an embedding batch *as a whole*. The obvious fix was a character
+budget. It is wrong, and the measurement says so bluntly:
+
+    synthetic ASCII      118,000 chars in one request -> accepted
+    this repo's Hebrew    96,000 chars in one request -> HTTP 400
+
+The ceiling is in **tokens**, and Hebrew costs far more tokens per character than English. **Any fixed
+character budget passes in one language and fails in the other** — silently, on exactly the mixed
+Hebrew/English content this product is made of. There is no number correct for both.
+
+The batch now **splits on failure** rather than predicting it: send, and on a context error halve and
+retry down to a single item; an item still over the line has its text halved, with the count reported
+rather than swallowed. Slower on the rare oversized batch, correct in every language, and it cannot
+rot when the corpus or the model changes.
+
+**The general rule, and it is not about embeddings:** in a bilingual product, a threshold validated on
+English is validated on the easy case. Measure it on Hebrew, or make the code discover it at runtime.
+The same trap took a different form the same day — FTS5's default `unicode61` tokeniser returns **zero
+hits** for `ניטריט` because Hebrew attaches ה/ו/ב/ל/מ/ש/כ to words, while returning the right row for
+`nitrite`. A search that works perfectly in English and silently finds nothing in Hebrew is worse than
+one that fails in both, because nobody investigates a feature that appears to work.
+
+**Adopted win from the same arc — the feasibility gate paid for itself twice.** `BM25Retriever` was
+approved *behind a stated PyStemmer feasibility check*, and the check failed exactly as the research
+predicted: no wheel for CPython 3.14, `pip` dies at build. Because it was gated rather than assumed,
+that cost minutes and the capability was delivered another way (SQLite FTS5) the same hour. The
+research pass that predicted it had read the **installed source**, not the docs site — after the
+supplied example turned out to use `Header_2` and `node.parent_node`, neither of which exists in
+llama-index-core 0.14.23.
+
