@@ -20,6 +20,7 @@
 import { readFileSync, existsSync, statSync, readdirSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import { join, dirname, relative } from 'node:path';
+import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -158,32 +159,30 @@ function nextStep() {
 }
 
 // ---------------------------------------------------------------------------
-// 6) STANDING DEBT — count only. The gate (check-graph-fresh / check-brief / check-h9, all inside
+// 6) STANDING DEBT — count only. The gate (check-memory-fresh / check-brief / check-h9, all inside
 // check-meta.mjs) already prints the per-item detail; repeating it here buries the map in noise.
-// Cheap local proxy, same signal as check-graph-fresh's local mode: docs newer than the graph
-// build stamp, by mtime — plus the size of the frozen grandfather baseline (gate-baselines.json),
-// which is the other standing-debt population the gates track but never re-surface loudly.
+// The memory-store proxy replaced a graph-mtime proxy on 2026-08-04: mtime moved on checkout and
+// on any identical rewrite, so this line reported debt that did not exist while missing real
+// drift. Content hash does neither. Plus the size of the frozen grandfather baseline
+// (gate-baselines.json), the other standing-debt population the gates track but never re-surface.
 // ---------------------------------------------------------------------------
 function standingDebt() {
   const parts = [];
   try {
-    const graphPath = join(ROOT, 'graphify-out', 'graph.json');
-    if (existsSync(graphPath)) {
-      const stamp = statSync(graphPath).mtimeMs;
-      let stale = 0;
-      const walk = (dir) => {
-        for (const e of readdirSync(dir, { withFileTypes: true })) {
-          const p = join(dir, e.name);
-          if (e.isDirectory()) walk(p);
-          else if (e.name.endsWith('.md') && statSync(p).mtimeMs > stamp) stale++;
-        }
-      };
-      walk(join(ROOT, 'docs'));
-      parts.push(`${stale} doc(s) newer than the graph`);
+    const dbPath = join(ROOT, 'agent-memory.db');
+    if (existsSync(dbPath)) {
+      const db = new DatabaseSync(dbPath, { readOnly: true });
+      const row = db.prepare(
+        "SELECT COUNT(DISTINCT file_path) AS files FROM agent_memory " +
+        "WHERE type='md_doc' AND file_path NOT LIKE 'graph://%'"
+      ).get();
+      const tools = db.prepare("SELECT COUNT(*) AS n FROM agent_memory WHERE type='tool_spec'").get();
+      db.close();
+      parts.push(`memory: ${row.files} doc(s), ${tools.n} tool spec(s) — run check-memory-fresh for drift`);
     } else {
-      parts.push('graph: not built (graphify-out/graph.json missing)');
+      parts.push('memory: not built (agent-memory.db missing — run `python scripts/memsync.py`)');
     }
-  } catch (e) { parts.push(`graph check: ${NA} (${e.message.split('\n')[0].slice(0, 60)})`); }
+  } catch (e) { parts.push(`memory check: ${NA} (${e.message.split('\n')[0].slice(0, 60)})`); }
 
   try {
     const baselinePath = join(ROOT, 'docs', 'process', 'gate-baselines.json');

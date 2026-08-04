@@ -318,7 +318,7 @@ reported. **Without one of the two, "live" is not said at all.**
 
 ---
 
-## 12. Thinking models — adopted from the graphify global `methodology` corpus (2026-07-22)
+## 12. Thinking models — adopted from the `methodology` corpus, now a tool_spec in agent memory (2026-07-22)
 
 **Where this came from.** The owner asked whether the global graph's `methodology` corpus (4,335 nodes)
 held anything worth adopting. It holds the **GSD** framework from the `matkonet` project, whose thinking
@@ -327,19 +327,15 @@ models are curated from the [thinking-partner](https://github.com/mattnowdev/thi
 
 **How to read it yourself:**
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
-G="$HOME/.graphify/global-graph.json"
-graphify god-nodes --graph "$G" --top 30                      # what the corpus is about
-graphify explain "Thinking Models: Planning Cluster" --graph "$G"
-graphify explain "Thinking Models: Execution Cluster" --graph "$G"
-graphify explain "Thinking Models: Debug Cluster" --graph "$G"
-graphify explain "Gate Prompt Patterns" --graph "$G"
-graphify query "premortem mece constraint reversibility fault tree hypothesis occam chesterton" --graph "$G"
+python scripts/memsync.py --tool methodology            # the corpus, its sections and concepts
+python scripts/memsync.py --query "thinking models"
+python scripts/memsync.py --query "gate prompt patterns"
+python scripts/memsync.py --query "premortem"
 ```
 The graph gives structure and labels; the prose lives in
 `C:\Users\dudib\source\repos\matkonet\.claude\gsd-core\references\thinking-models-{planning,execution,debug}.md`
-and `gate-prompts.md`. **That path is another local repo and may vanish — the graph is the durable
-record.** Per §10.13, the graph located the material; the source files were then read before adopting it.
+and `gate-prompts.md`. **That path is another local repo and may vanish — agent memory is the durable
+record.** Per §10.13, the store located the material; the source files were then read before adopting it.
 
 ### 12.1 What was REJECTED, and why
 
@@ -936,93 +932,101 @@ local-infrastructure flake (loopback, disk I/O, port contention) without weakeni
 test. (9) **Serena-first symbol edits** (§10.17) — precise LSP-backed edits on the ~9.5k-line `app.js` and
 the fixture/spec files beat fragile text-matching for this kind of surgical fix work.
 
-### 10.11 Query graphify GLOBAL before the internet — for ANY docs/help — then feed useful finds back
-> **Owner instruction, 2026-07-22; generalized to all documentation/help 2026-07-23.** When you need
-> documentation or any external help/reference — a tool, a framework, a methodology, an API's capabilities,
-> a vendor's model specs, *anything* — query the graphify **global** graph FIRST. Only if the answer is not
-> there, search or research the web. After a web find, apply the **usefulness gate** (below) before moving on.
-> (The Google/Gemini model-capability docs were the example that prompted this; the rule is general.)
+### 10.11 Query AGENT MEMORY before the internet — for ANY docs/help — then feed useful finds back
+> **Owner instruction, 2026-07-22; generalized to all documentation/help 2026-07-23; the store behind it
+> replaced 2026-08-04.** When you need documentation or any external help — a tool, a framework, a
+> methodology, an API's capabilities, a vendor's model specs, *anything* — query **agent memory** FIRST.
+> Only if the answer is not there, search or research the web. After a web find, apply the **usefulness
+> gate** below before moving on. The rule is unchanged; only the tool under it is.
 
-**How.** The graphify CLI lives at `~/.local/bin/graphify`; the global graph is `~/.graphify/global-graph.json`
-(~6.8 MB, two merged corpora per `global-manifest.json`: `vendor-docs` 2,435 nodes and `methodology`
-4,335 nodes). It currently holds **playwright-docs, vitest-docs, superpowers-docs, bmad-docs, serena-docs**
-plus methodology artifacts (Phase Prompt Template, Gate Prompt Patterns, Model Profiles).
+**How.**
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
-G="$HOME/.graphify/global-graph.json"
-graphify god-nodes --graph "$G" --top 25          # what the corpus is actually about
-graphify query "<expanded tokens>" --graph "$G" --budget 1500
-graphify query "<expanded tokens>" --graph "$G" --dfs      # trace a specific chain
-graphify explain "<node>" --graph "$G"
-graphify path "A" "B" --graph "$G"
+python scripts/memsync.py --status              # what is in the store, and which tool specs exist
+python scripts/memsync.py --tool <name>         # exact, indexed lookup of one tool/technology
+python scripts/memsync.py --query "<text>"      # search document chunks (content OR heading)
 ```
 
-**LOCAL vs GLOBAL.** Local = this project's own graph at `graphify-out/graph.json` (the default when
-`--graph` is omitted) — use it for questions about *our* docs and code. Global = the pre-built tool and
-methodology corpora above — use it for questions about *how a tool works*.
+Nine vendor/technology corpora are stored as `tool_spec` records, migrated from the old global graph:
+`vendor-docs` (2,429 nodes — includes the BMAD and GSD material), `methodology` (1,947),
+`playwright-official-docs`, `gemini-api-docs`, `cloudflare-workers-docs`, `nodejs-v8-docs`,
+`ollama-docs`, `semantic-search-mcp-docs`, `windows-scheduling-docs`. Each carries its sections, URLs
+and extracted concepts as queryable JSONB.
 
-**The non-optional step (learned by doing it wrong).** graphify matches node labels by case-folded
-substring + IDF: **no stemming, no synonyms, no cross-language matching.** A naive natural-language query
-returns noise — my first global query pulled 113 nodes including an eslint command and unrelated workflow
-files. Before traversing you MUST expand the question against the graph's own vocabulary and pick only
-tokens that actually exist in it (`references/query.md`, Step 0). If no vocabulary token matches, say the
-corpus has no relevant vocabulary and stop — **never invent tokens to force a hit.** This matters doubly
-here because our corpus is bilingual: a Hebrew query will not match English labels.
+**PROJECT DOCS vs TOOL SPECS.** `--query` searches this repo's own documents (302 files, ~5,100 chunks,
+current by content hash). `--tool` is for questions about *how a tool works*. Knowledge migrated from the
+old project graph lives under the `graph://` path namespace with its original relations in
+`metadata.relations` — machine-extracted, some `INFERRED`, so treat them as leads and read the source.
 
-**The feedback loop — a miss is a task, and a useful find is a deposit (owner instruction, 2026-07-22;
-the usefulness gate added 2026-07-23).** When the global graph does not hold what you need, search or
-research the web. Once you have the helpful source, ask ONE question: **"Is this source useful, and likely
-to be needed again — here or on another project sharing the global graph?"** If **yes**, you are instructed
-to **download the documentation and add it to the graphify global corpus** (as a `…-docs` tag, which merges
-into the shared `vendor-docs`/vendors family) so the next session — in THIS workspace or any other that
-shares `~/.graphify/global-graph.json` — never repeats the search. If it is a genuine one-off (a stale blog,
-a question you will not ask again), skip the deposit and say so. The gate keeps the corpus growing with
-signal instead of noise, and lets one project's research pay off for every project that shares the global.
+**The non-optional step (learned by doing it wrong, and it still applies).** Matching is case-folded
+substring: **no stemming, no synonyms, no cross-language matching.** A naive natural-language query
+returns noise — the first global query ever run here pulled 113 nodes including an eslint command and
+unrelated workflow files. Expand the question into tokens that actually exist in the corpus before
+searching. If nothing matches, say so and stop — **never invent tokens to force a hit.** This matters
+doubly because the corpus is bilingual: a Hebrew query will not match English text.
+
+**The feedback loop — a miss is a task, and a useful find is a deposit.** When the store does not hold
+what you need, research the web. Then ask ONE question: **"Is this source useful, and likely to be needed
+again?"** If **yes**, download the documentation into `docs/` (or ingest it directly) so the next session
+never repeats the search. If it is a genuine one-off, skip the deposit and say so. The gate keeps the
+corpus growing with signal instead of noise.
+
+**Honest limit:** never ingest anything containing a key or a secret.
+
+### 10.12 Keep agent memory current — the gate BLOCKS, because the fix is now cheap
 
 ```bash
-export PATH="$HOME/.local/bin:$PATH"
-# 1. Bring the docs in locally (a folder of pages, or fetch them into ./raw)
-graphify add <url>                                # fetches a URL into ./raw and graphs it
-#    ...or graph a folder of downloaded docs:  /graphify <folder> --mode deep
-# 2. Publish that graph into the global corpus under a clear tag
-graphify global add <path-to-graph.json> --as <tool-name>-docs
-graphify global list                              # verify it landed
+python scripts/memsync.py                 # delta by CONTENT HASH; unchanged files skipped (~0.3 s)
+node scripts/check-memory-fresh.mjs       # the gate: stale / never-ingested / orphaned, by name
+bash scripts/sync-docs.sh "<message>"     # syncs, verifies, stages, commits, pushes
 ```
 
-`graphify global list` / `global remove <tag>` / `global path` manage the corpus. Tag by what the docs
-*are* (`playwright-docs`, `cloudflare-workers-docs`), matching the existing convention — the global graph
-currently merges two corpora, `vendor-docs` (2,435 nodes) and `methodology` (4,335 nodes).
+**Why this replaced graphify, and why the gate changed from advisory to blocking.** The old knowledge
+graph was a 22 MB JSON artifact rebuilt by an out-of-process LLM pass. Three consequences, all measured:
 
-**Honest limit to state when you do this:** the global graph is a *shared, cross-project* resource. Only
-add documentation of general value — a vendor's API docs, a framework's guide. Never add this project's
-private documents, and never add anything containing a key or a secret.
+- Its freshness gate **never once passed** — 115 stale documents standing at the end, and
+  `graph-freshness.yml` failed **8 of its 8 runs since creation**.
+- Because it could not pass, it was marked ADVISORY inside `check-meta.mjs` — and reviewers 9 and 10 of
+  the method panel both flagged it. **A permanently amber signal is an off signal**, and worse, it
+  teaches that gates in general are noise.
+- `sync-docs.sh` step 1, the one command whose job was keeping the map current, **did not update it at
+  all**. It detected that documents had changed and printed an instruction to go run a skill by hand,
+  because a shell script cannot invoke a Claude skill.
 
-### 10.13 Reach for the graph BEFORE grepping — it is the evidence tool, not a curiosity
-> **Owner instruction, 2026-07-22.** Always try the semantic graphs first when looking for evidence and
-> references across code and documents. And keep them updated — always.
+The reasoning that made it advisory — "doc drift is a property of elapsed time, no single commit can fix
+it without a separate heavy rebuild" — was sound about graphify and **wrong about the requirement**. The
+heavy action was the thing to remove, not the gate to weaken. Ingesting a changed document now costs
+0.32 s, measured, so drift is fixable from the commit that causes it and blocking is the correct
+incentive. **A map that is never current is not a map.**
 
-The **local** graph (`graphify-out/graph.json`) now spans the documentation *and* the code, so a question
-like "what specifies this function", "what tests prove it", "where else is this value consumed", or "does
-anything actually read this" is a graph query rather than a grep. Use `graphify query`, `graphify path`
-(shortest path between two concepts), and `graphify explain` (a node and its neighbours).
+Two further changes worth stating because they were failure modes, not preferences:
+- **Content hash, not mtime.** mtime moves on checkout and on any byte-identical rewrite, so the old
+  signal reported debt that did not exist while missing real drift.
+- **The store is not committed.** `agent-memory.db` is in `.gitignore` and rebuilt from the `.md` files
+  on demand. A 22 MB generated binary in git was part of what made the old artifact unmaintainable.
+
+### 10.13 Reach for AGENT MEMORY before grepping — it is the evidence tool, not a curiosity
+> **Owner instruction, 2026-07-22.** Always try the semantic store first when looking for evidence and
+> references across code and documents. And keep it updated — always.
+
+A question like "what specifies this behaviour", "what does the discipline say about X", "where else is
+this value discussed", or "what did we decide and when" is a store query rather than a grep:
+
+```bash
+python scripts/memsync.py --query "<text>"      # returns the SECTION, with its heading path and file
+python scripts/memsync.py --tool <name>         # exact tool/technology spec
+```
 
 **Why this is a discipline rule and not a preference.** The 2026-07-22 sweep refuted **42 of 261
 findings — 16%** — and every refutation shared one shape: *a grep, a quote, or one artifact trusted
-without tracing what the program actually executes.* A grep finds a string. The graph holds the
-relationship — which is what the claim was actually about. `equipPlan` was described in a document and
-implemented in `app.js`, and for months nothing connected the two; the graph now does.
+without tracing what the program actually executes.* A grep returns a line. The store returns the section
+that contains it, with the document and heading path it belongs to — which is usually what the claim was
+actually about.
 
-**But it is a lead, not a verdict.** The graph carries `INFERRED` and `AMBIGUOUS` edges by design (deep
-mode is aggressive on purpose). An edge is a place to look, and the claim is confirmed against the source
-— §10.13 does not repeal L16 or the runtime-path skill. Query first to find the evidence; read the file
-before asserting it.
-
-**Keeping it current is the other half.** A stale graph is worse than no graph, because it is trusted and
-wrong. See §10.12 — every document change, always `--mode deep`. Note the two defaults that trip in
-opposite directions: `graphify update` is the code/AST path ("no LLM needed") and re-extracts **no**
-documents, while a **pure-code corpus skips semantic extraction entirely** and gets AST only. Overriding
-either is a deliberate choice to state out loud.
+**But it is a lead, not a verdict.** Records migrated from the old graph (`graph://` paths) carry
+machine-extracted relations, some marked `INFERRED`. A hit is a place to look; the claim is confirmed
+against the source. §10.13 does not repeal L16 or the runtime-path skill. Query first to find the
+evidence; read the file before asserting it.
 
 ### 10.14 When it's complex or the iterations aren't converging — RESEARCH, don't guess
 > **Owner instruction, 2026-07-23.** When a problem is genuinely complex, OR after a few iterations that
@@ -1051,8 +1055,7 @@ next session inherits it.
 > closing: (1) write its **lessons** into the Lessons log (§11) — both the mistakes we must not repeat AND
 > the **successful ideas that worked**, so they are adopted, not just survived; (2) apply the §10.11
 > usefulness gate to every relevant doc or info source the session found, and **deposit the keepers into
-> the graphify global knowledgebase** so the next session — on any project sharing the global — starts
-> ahead. Untracked lessons get relearned at full price; undeposited finds get re-searched at full price.
+> agent memory** so the next session starts ahead. Untracked lessons get relearned at full price; undeposited finds get re-searched at full price.
 
 **Mechanical enforcement (Phase 0, 2026-07-30):** `scripts/gate-lessons.mjs` (inside `check-meta.mjs`)
 blocks a `release(v` commit when releases exist after the newest §11 lesson/declaration date, and the
@@ -1061,8 +1064,8 @@ The §11 log froze at L22 while five paid-for lessons lived only in private memo
 
 The mechanics already exist — this rule makes them a *closing checklist*, not a when-remembered habit:
 lessons → §11 log (numbered `L`-entries for failures, an "adopted wins" note for successes; owner-behavior
-feedback also goes to the assistant's persistent memory); docs → `graphify add <url>` →
-`graphify global add <graph.json> --as <name>-docs` → verify with `graphify global list`. Research
+feedback also goes to the assistant's persistent memory); docs → save the source under `docs/` →
+`python scripts/memsync.py` → verify with `python scripts/memsync.py --status`. Research
 subagents are told to *list* deposit candidates; the controller owns running the deposit pass before the
 arc closes.
 
@@ -1167,85 +1170,21 @@ a real model name, a real recipe) · **מה אמור לקרות** (the observabl
 lacks this Hebrew script is an incomplete handoff — write it from the release's changed-feature list, not
 from memory, and keep it to the few use cases that actually exercise what changed.
 
-### 10.12 Keep the LOCAL graphify graph current — update it whenever documents change
-> **Owner instruction, 2026-07-22.** Update the local graphify graph whenever a document is added or
-> changed. Update it as part of committing and pushing — and sooner than that where practical.
+### 10.12a Historical — the graphify era, and the one hazard worth keeping
+> This section documented how to refresh the graphify knowledge graph. **The tool was removed on
+> 2026-08-04** and replaced by the SQLite/JSONB agent-memory store (§10.11 and §10.12 above). The
+> operational instructions are gone rather than updated, because none of them apply.
 
-**The catch that makes this a rule rather than a hook.** graphify's own post-commit hook
-(`graphify hook install`) re-extracts **code** files only — its documentation states plainly that
-"doc/image changes are ignored by the hook". Our graph is a **documentation** graph, so the hook would
-leave it silently stale, which is worse than having no graph: a stale map is trusted and wrong.
+One finding from that era is kept, because it is about *agents*, not about graphify, and it can recur
+with any tool that dispatches a nested model process:
 
-**What to do — always with `--mode deep` (owner standing instruction, 2026-07-22):**
-```
-/graphify docs --update --mode deep      # incremental, LLM semantic re-extraction, aggressive INFERRED edges
-```
+**Run any nested extraction backend from a NEUTRAL cwd, with absolute paths.** A nested `claude -p`
+started inside this repo **loads `CLAUDE.md` and stops being an extractor**: measured 2026-07-24, 3 of 3
+dispatched documents produced **0 nodes** while **60 nodes were invented for unrelated repo files**. An
+agent handed a project's instructions will follow them instead of its task.
 
-**⚠️ Two silent-corruption hazards proven on 2026-07-24 — read before any refresh**
-(full evidence in `docs/process/graphify-improvements.md`, "PASS 3"):
-1. **Run the `claude-cli` extraction backend from a NEUTRAL cwd, with absolute paths.** The backend
-   inherits the parent's working directory, so a nested `claude -p` started inside this repo **loads
-   `CLAUDE.md` and stops being an extractor**: measured, 3 of 3 dispatched documents produced **0 nodes**
-   while **60 nodes were invented for unrelated repo files** (`CLAUDE.md`, `build.py`, `app.js`, the SDD
-   ledger). It fails by producing confident, plausible, wrong output — never by erroring.
-2. **A document edited WHILE a refresh runs is hidden from every future incremental, permanently.** The
-   manifest stamps the hash at *save* time, not *extraction* time, so the edit is recorded as already
-   extracted. §10.17a went missing this way and was found only by noticing the node did not exist. After
-   any long refresh, diff `git log --since=<run start> --name-only -- docs/` against the manifest and
-   force re-extract anything that overlapped the run.
-
-**Do NOT use the bare CLI for documents.** `graphify update <path>` is the CODE path — its own help says
-"no LLM needed", so on a documentation corpus it re-extracts nothing semantic while appearing to succeed.
-Documents require the skill-driven flow above, which checks `code_only` and routes non-code changes through
-LLM extraction. `scripts/sync-docs.sh` therefore does not attempt the doc update itself; it detects that
-documents changed and tells you to run the skill flow, rather than reporting a success it did not achieve.
-
-**Deep mode costs more and must be chunked harder.** `--mode deep` sets DEEP_MODE in the extraction prompt
-("be aggressive with INFERRED edges — indirect deps"), so each chunk emits materially more JSON. graphify's
-default chunking is by FILE COUNT (`ceil(files / 22)`), which assumes files of ordinary size. This corpus
-averages ~5,900 words per document and ranges from 63 to 1,276 lines, so a 22-file chunk can be 5k or 60k
-words depending on which files land in it. That is what killed the first build: chunk 3 held 22 dense
-research and orchestrator specs and its extraction agent hit its own output-token cap, so the chunk file was
-never written. **Chunk by WORD BUDGET, not file count** — roughly 12k words per chunk under deep mode.
-
-- **Sooner is better.** After writing or substantially editing a document — especially an analysis,
-  spec, plan or sweep report — update the graph then, not later.
-- **At minimum, before `git push`.** A push that adds or changes documents must be accompanied by a graph
-  update in the same working session.
-- **`graphify-out/` is generated** — keep it out of git except `GRAPH_REPORT.md`, which is the
-  plain-language map worth versioning.
-- Optional: `graphify hook install` still earns its place for code changes, and
-  `graphify claude install` writes an always-on section into `CLAUDE.md`. Neither removes the need for
-  the manual doc update above.
-
-**Use the one command.** `scripts/sync-docs.sh "commit message"` does all three steps in order —
-graphify update, stage documents (plus a copy of `GRAPH_REPORT.md` into `docs/analysis/graph/`), commit and
-push. Use it instead of remembering three separate steps. It warns loudly when the graph could not be
-updated, because a silent stale graph is the failure this rule exists to prevent.
-
-**Mechanical enforcement (Phase 0, 2026-07-30):** `scripts/check-graph-fresh.mjs` compares every
-`docs/**/*.md` mtime against the `graphify-out/graph.json` build stamp and fails on any stale doc.
-`sync-docs.sh` runs it before any docs push and refuses to ship a stale graph (loud override:
-`SYNC_ALLOW_STALE=1`); it also runs inside `node scripts/check-meta.mjs` (session start · release ·
-every Phase gate and arc close). This rule previously relied on remembering — it drifted 53 documents
-behind within five days (audit §10).
-
-**`graphify watch` — the CODE-graph daemon (documented 2026-07-30, per L28).** `graphify watch <path>`
-rebuilds the CODE graph continuously as files change — this is the daemon that answers the owner's
-"עדכון שוטף" instruction for code. It does **not** cover semantic doc extraction: documents still need the
-periodic `--mode deep` refresh above, gated by `scripts/check-graph-fresh.mjs`. Deliberate choice, stated
-explicitly: start it **per work-session on the repo**, not as a system service.
-
-**Honest note on how this rule came to be written properly (2026-07-22).** The rule was added, and then six
-agent reports were committed and pushed WITHOUT ever updating the graph — the owner had to point out that
-he could not see it happening. Writing a rule is not the same as having a mechanism. Hence the script.
-
-**Why it matters here.** This project accumulated ~40 documents and ~12,000 lines of specification that
-were never reconciled; four outright contradictions and an entire unbuilt orchestrator specification were
-found only by exhaustive auditing. The graph exists to make that visible continuously instead of
-retrospectively — which only holds if it is current.
-
----
+The other lesson of that era needs no section, because it is now enforced in code: **a stale map is worse
+than no map, because it is trusted and wrong.** That is why `check-memory-fresh` blocks.
 
 ## 13. Operating Model — Main thread vs subagents (H6, adopted 2026-07-30)
 

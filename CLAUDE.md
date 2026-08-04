@@ -15,7 +15,7 @@ the discipline document, which is authoritative wherever the two differ.**
 
 **בכל פתיחת session** (המלא: `docs/process/checklists/session-start.md`): ‏(1) discipline §10→§3 ·
 (2) ה-Phase הפעיל ב-`docs/ROADMAP-2026-07-30.md` + ‏`docs/STATUS-BOARD.md` · (3) `node scripts/check-meta.mjs`
-— אדום מטופל לפני עבודה · (4) serena לסימבולי, graphify למסמכים/יחסים, grep=fallback מוצהר ·
+— אדום מטופל לפני עבודה · (4) serena לסימבולי, agent-memory (memsync.py --query) למסמכים, grep=fallback מוצהר ·
 (5) §10.5a: סדרתי; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/GPU.
 **בכל סגירת קשת/Phase:** ‏`docs/process/checklists/arc-close.md` — לקחים→§11, הפקדות, גרף, לוח+מרשם,
 check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנת את `docs/STATUS-BOARD.md`** (H10; מוצג באבני-דרך — H10a).
@@ -79,7 +79,7 @@ into a later phase without explicit owner agreement.
 **§5 — the 3-fix rule.** After 3 failed fixes, **STOP** and question the architecture with the owner.
 Do not attempt fix #4. Debugging starts with **evidence and instrumentation**, never a guess.
 
-**§12 — thinking models** (adopted from the graphify global `methodology` corpus). The four that earn
+**§12 — thinking models** (adopted from the `methodology` corpus, now a tool_spec in agent memory). The four that earn
 their keep most often here: **PREDICT → TEST → OBSERVE → CONCLUDE** — never skip PREDICT, never change two
 variables at once · **Occam's Razor** — rule out typo/stale cache/wrong path before race conditions; if
 your hypothesis needs 3+ things to go wrong at once, look for a single-point failure (this is L14) ·
@@ -141,18 +141,18 @@ refuses + 0 orphans.
 
 **§10.14** For a genuinely complex problem, or after a few non-converging iterations, STOP guessing and do
 **deep research** — read in detail the official docs, help, and blogs/issues of every product/technology
-involved (§10.11: graphify global first, then the web, deposit useful finds). This is where
+involved (§10.11: agent memory first, then the web, deposit useful finds). This is where
 systematic-debugging's 3-fix STOP hands off. **§10.15** Be skeptical: when a component *repeatedly* causes
 trouble, evaluate a **better alternative** (a different server/runner/pattern) instead of stacking band-aids —
 the correct fix is sometimes a better ingredient. Both: find by research, judge on evidence, write the answer down.
 **§10.16** Conclude every significant session/arc with its **lessons** (failures → the §11 log, successes →
-"adopted wins") **and deposit** the session's useful doc finds into the graphify global (§10.11 gate) — the
+"adopted wins") **and deposit** the session's useful doc finds into agent memory (§10.11 gate) — the
 controller runs the deposit pass before the arc closes; untracked lessons and undeposited finds are paid for twice.
 **§10.17** **Maximize Serena** (the project's `serena` MCP server) for symbol-shaped code work — find/refs/
 overview/surgical symbol edits beat grep + text edits on the **14.6k-line, 906-function** app.js
 (measured 3.8.26; this line said "~9.5k" until then). Learn it from its docs FIRST:
-the `serena-docs` corpus in the graphify global + Serena's own `initial_instructions` manual. Division of
-labor: Serena = live locate/edit-exact · graphify = cross-doc provenance + vendor docs · grep = fallback
+the `serena-docs` material in agent memory + Serena's own `initial_instructions` manual. Division of
+labor: Serena = live locate/edit-exact · agent-memory = cross-doc provenance + vendor docs · grep = fallback
 (docs/process/serena-adoption.md). Point code-editing subagents at Serena when their task is symbol-shaped.
 **§10.17a — ONE Serena server, shared by ALL subagents** (owner, 2026-07-24). The stdio config makes every
 subagent spawn its own server+dashboard (observed: 4 concurrent instances, ports 24282→24283 flapping). Run a
@@ -182,35 +182,44 @@ key, never commit one, never paste one into a report.
   claim contradicts a `REFUTED` verdict there, trace the runtime path before repeating it. That sweep
   refuted **42 of 261 findings (16%)** and every refutation had one shape: a grep, a quote, or a single
   artifact trusted without tracing what the program actually executes.
-- **The knowledge graph** — `graphify-out/graph.json`; report at `docs/analysis/graph/GRAPH_REPORT.md`.
-  Query it before grepping the corpus.
+- **Agent memory** — `agent-memory.db`, a SQLite/JSONB store built from the repo's own documents by
+  `python scripts/memsync.py`. Query it before grepping the corpus.
 
-**§10.13 — the graph is the evidence tool. Query it BEFORE grepping.** "What specifies this function",
-"what tests prove it", "does anything actually read this" are graph questions: `graphify query`,
-`graphify path "A" "B"`, `graphify explain "X"`. A grep finds a string; the graph holds the relationship,
-which is what the claim is usually about. **But an edge is a lead, not a verdict** — deep mode emits
-`INFERRED`/`AMBIGUOUS` edges on purpose. Query to find the evidence, then read the source before
-asserting it. This does not repeal L16.
+**§10.13 — agent memory is the evidence tool. Query it BEFORE grepping.**
+```
+python scripts/memsync.py --query "<text>"     # search document chunks (content OR heading)
+python scripts/memsync.py --tool <name>        # exact tool/technology spec lookup
+python scripts/memsync.py --status             # what is in the store
+```
+A grep finds a string in one file; the store returns the **section** that contains it, with its
+heading path and the document it came from — which is usually what the claim is actually about.
+**But a hit is a lead, not a verdict.** Read the source before asserting it. This does not repeal L16.
 
-**§10.11** Query the graphify **global** graph (`~/.graphify/global-graph.json`) for **any** documentation or
-external help — a tool, framework, methodology, an API's capabilities, a vendor's model specs — **before**
-searching the web. Expand your query against the graph's own vocabulary first — it matches by case-folded
-substring, with **no stemming, no synonyms, no cross-language matching**. If no vocabulary token matches, say
-so and stop; never invent tokens to force a hit.
+**Migrated knowledge from the old graph** lives under the `graph://` path namespace, each record
+carrying its original relations in `metadata.relations`. Those relations were machine-extracted and
+some are `INFERRED`; treat them as leads, never as findings.
+
+**§10.11** Query **agent memory** for **any** documentation or external help — a tool, framework,
+methodology, an API's capabilities, a vendor's model specs — **before** searching the web. Nine
+vendor/technology corpora are stored as `tool_spec` records (`vendor-docs`, `methodology`,
+`playwright-official-docs`, `gemini-api-docs`, `cloudflare-workers-docs`, `nodejs-v8-docs`,
+`ollama-docs`, `semantic-search-mcp-docs`, `windows-scheduling-docs`). Matching is case-folded
+substring — **no stemming, no synonyms, no cross-language matching**. If nothing matches, say so and
+stop; never invent tokens to force a hit.
 **A miss is a task, not a dead end:** when it isn't there, search/research the web — then apply the
-**usefulness gate**: ask *"is this source useful, and likely to be needed again — here or on another project
-sharing the global?"* If **yes**, **download the docs and add them back to the global corpus** so no session
-repeats the search: `graphify add <url>` (or graph a docs folder), then
-`graphify global add <graph.json> --as <name>-docs` (lands in the shared `vendor-docs`/vendors family);
-verify with `graphify global list`. If it's a genuine one-off, skip the deposit and say so. Only
-documentation of general cross-project value — **never this project's private documents, never anything
-containing a key.**
+**usefulness gate**: *"is this source useful, and likely to be needed again?"* If **yes**, download
+the docs and ingest them so no session repeats the search. Only documentation of general value —
+**never anything containing a key.**
 
-**§10.12** Keep the local graph current — **always `--mode deep`**. Commit and push with
-`bash scripts/sync-docs.sh "<message>"`. Chunk by **word budget (~12k)**, never by file count.
-Two defaults that trip in opposite directions: `graphify update` / `--update` is the **code/AST** path
-("no LLM needed") and re-extracts **no** documents; a **pure-code corpus skips semantic extraction
-entirely** and gets AST only. Overriding either is a deliberate choice to state out loud.
+**§10.12** Keep the store current: `python scripts/memsync.py` (delta by **content hash**, ~0.3 s —
+unchanged files are skipped). `node scripts/check-memory-fresh.mjs` is the gate and it **blocks**.
+Commit and push docs with `bash scripts/sync-docs.sh "<message>"`, which now syncs and verifies
+before it commits.
+**Why this replaced graphify (2026-08-04):** the old graph was a 22 MB JSON artifact rebuilt by an
+out-of-process LLM pass. Its freshness gate could never pass — 115 stale documents standing, and
+`graph-freshness.yml` failed **8 of its 8 runs**, so it was marked advisory and ignored. `sync-docs.sh`
+step 1 did not even update it; it printed an instruction to go run a skill by hand. **A map that is
+never current is not a map.** The rule did not change; the cost of obeying it did.
 
 ## Reporting
 

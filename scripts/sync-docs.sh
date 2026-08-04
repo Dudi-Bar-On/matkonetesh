@@ -1,10 +1,15 @@
 #!/usr/bin/env bash
 # sync-docs.sh — the documentation loop, as one command.
 #
-# Discipline §10.12: a document that is written but not graphed leaves the knowledge graph stale, and a
-# stale map is worse than no map because it is trusted and wrong. graphify's own post-commit hook
-# re-extracts CODE only ("doc/image changes are ignored by the hook"), so documentation must be updated
-# explicitly. This script makes that one step instead of three remembered ones.
+# Discipline §10.12: a document that is written but not ingested leaves the agent memory stale, and a
+# stale map is worse than no map because it is trusted and wrong. This script makes that one step
+# instead of three remembered ones.
+#
+# 2026-08-04: step 1 used to be a NON-STEP. It detected that documents had changed and then printed
+# an instruction to go run `/graphify docs --update --mode deep` by hand, because a shell script
+# cannot invoke a Claude skill. So the one command that existed to keep the map current could not
+# actually update it — which is the mechanical reason the freshness gate stood at 115 stale
+# documents and was marked advisory. It now performs the ingest itself, in milliseconds.
 #
 # Usage:  scripts/sync-docs.sh "commit message"
 #         scripts/sync-docs.sh "commit message" --no-push
@@ -17,21 +22,14 @@ PUSH=1
 
 export PATH="$HOME/.local/bin:$PATH"
 
-echo "── 1/3 · graphify update (docs, --mode deep) ────────────────"
-# HONEST LIMITATION: the bare CLI `graphify update` is the CODE path ("no LLM needed" per its own help).
-# Documents need the SKILL-driven flow (/graphify docs --update --mode deep), which runs LLM semantic
-# re-extraction — and a shell script cannot invoke a Claude skill. So this step DETECTS whether documents
-# changed and refuses to report success it did not achieve.
-DOCS_CHANGED=$(git diff --name-only HEAD -- docs/ | wc -l | tr -d ' ')
-DOCS_NEW=$(git ls-files --others --exclude-standard docs/ | wc -l | tr -d ' ')
-TOTAL_DOCS=$((DOCS_CHANGED + DOCS_NEW))
-if [ "$TOTAL_DOCS" -gt 0 ]; then
-  echo "   ! $TOTAL_DOCS document(s) changed."
-  echo "   ! The graph is NOT updated by this script. Run the skill flow, with deep mode:"
-  echo "   !     /graphify docs --update --mode deep"
-  echo "   ! (owner standing instruction 2026-07-22: always --mode deep)"
-else
-  echo "   · no document changes — graph unaffected"
+echo "── 1/3 · agent-memory sync (delta by content hash) ──────────"
+if ! python scripts/memsync.py; then
+  echo "   ! memsync FAILED — not committing on a stale memory store."
+  exit 1
+fi
+if ! node scripts/check-memory-fresh.mjs; then
+  echo "   ! the store is still not current after a sync. Investigate before committing."
+  exit 1
 fi
 
 echo "── 2/3 · stage documents ────────────────────────────────────"
@@ -39,14 +37,11 @@ echo "── 2/3 · stage documents ──────────────�
 # 2026-07-22, so three consecutive runs committed discipline updates while silently leaving
 # CLAUDE.md — the only file every subagent inherits — uncommitted. Root-level agreement files
 # are staged explicitly for that reason.
-git add docs/ .claude/skills/ scripts/ CLAUDE.md 2>/dev/null
-# graphify-out/ is generated and stays out of git, except the human-readable report
-if [ -f graphify-out/GRAPH_REPORT.md ]; then
-  mkdir -p docs/analysis/graph
-  cp graphify-out/GRAPH_REPORT.md docs/analysis/graph/GRAPH_REPORT.md
-  git add docs/analysis/graph/GRAPH_REPORT.md
-  echo "   · GRAPH_REPORT.md copied into docs/analysis/graph/ and staged"
-fi
+git add docs/ .claude/skills/ scripts/ src/ CLAUDE.md 2>/dev/null
+# agent-memory.db is a build artifact rebuilt from the .md files in seconds, so it stays out of
+# git (see .gitignore). The old flow copied graphify's GRAPH_REPORT.md into docs/ to keep a
+# human-readable trace in the repo; `python scripts/memsync.py --status` prints the equivalent on
+# demand and cannot go stale, so nothing is committed here in its place.
 
 if git diff --cached --quiet; then
   echo "   · nothing staged — no commit needed"
@@ -55,16 +50,17 @@ fi
 git diff --cached --name-only | sed 's/^/   + /'
 
 echo "── 3/3 · commit${PUSH:+ and push} ───────────────────────────"
-# Phase 0 gate (§10.12 enforcement): a docs push may not ship a stale graph.
-# SYNC_ALLOW_STALE=1 is a LOUD, deliberate mid-arc override — never the default.
+# Phase 0 gate (§10.12 enforcement): a docs push may not ship a stale memory store.
+# The escape hatch is kept but should now be effectively dead: step 1 already synced and verified,
+# so reaching here stale means something is genuinely wrong rather than merely un-run.
 if [ "$PUSH" = "1" ] && [ "${SYNC_ALLOW_STALE:-0}" != "1" ]; then
-  if ! node scripts/check-graph-fresh.mjs; then
-    echo "   ! GRAPH IS STALE — refusing to push docs. Run: /graphify docs --update --mode deep"
-    echo "   ! (mid-arc escape hatch, stated out loud: SYNC_ALLOW_STALE=1 scripts/sync-docs.sh ...)"
+  if ! node scripts/check-memory-fresh.mjs; then
+    echo "   ! MEMORY IS STALE after a sync — refusing to push docs. Investigate; do not override blindly."
+    echo "   ! (escape hatch, stated out loud: SYNC_ALLOW_STALE=1 scripts/sync-docs.sh ...)"
     exit 1
   fi
 elif [ "${SYNC_ALLOW_STALE:-0}" = "1" ]; then
-  echo "   ! SYNC_ALLOW_STALE=1 — pushing over a possibly-stale graph (deliberate override)"
+  echo "   ! SYNC_ALLOW_STALE=1 — pushing over a possibly-stale memory store (deliberate override)"
 fi
 git commit -q -m "$MSG" || { echo "   ! commit failed"; exit 1; }
 echo "   · committed $(git rev-parse --short HEAD)"

@@ -5,7 +5,7 @@
 // without saying what it covered is exactly how the §5a blind spot (audit fix #10) went unnoticed
 // for a full working day (COMPLIANCE-AUDIT-2026-08-01.md).
 //
-// Wraps: check-graph-fresh (§10.12) · gate-lessons (§10.16) · check-board-fresh (H10) ·
+// Wraps: check-memory-fresh (§10.12) · gate-lessons (§10.16) · check-board-fresh (H10) ·
 // check-shipped-closed (H10) · check-brief (§13) · check-h9 (H9) · check-h8-ledger (H8, §5 + §5a) ·
 // check-release in AUDIT mode
 // (H7 x2 / DoD-12 / L29 / H14 - reported, not blocking; see check-release.mjs's own header for why).
@@ -30,11 +30,13 @@
 // 22 historical briefs) — neither introduced nor worsened by that commit. A gate that blocks the
 // commit meant to fix it teaches the escape hatch to become routine, which is exactly as protective as
 // no gate. Per-checker ruling (argued in each script's own header, not just asserted here):
-//   - check-graph-fresh: ADVISORY, always. It never contributes to `failed` in this orchestrator - it
-//     is a property of ELAPSED TIME (doc drift since the last graph rebuild), not of any one commit;
-//     no single commit can "fix" it without a separate heavy rebuild action. Owned by the nightly
-//     graph-freshness.yml schedule (calls the script directly, blocking there) and by SessionStart
-//     visibility (this script, printed but not gating).
+//   - check-memory-fresh: BLOCKING (2026-08-04). Its predecessor, check-graph-fresh, was advisory
+//     under exactly the reasoning this paragraph sets out — doc drift is a property of elapsed time
+//     and no single commit could fix it without "a separate heavy rebuild action". That reasoning
+//     was sound about graphify and wrong about the requirement: the heavy action was the thing to
+//     remove, not the gate to weaken. Ingesting a changed document into the SQLite store costs
+//     0.32 s, so drift IS now fixable from the commit that causes it, and blocking is the correct
+//     incentive. The nightly graph-freshness.yml is gone with it (8 runs, 0 successes).
 //   - check-brief / check-h9: block only on a file NOT already grandfathered in
 //     docs/process/gate-baselines.json - see each script's own header for the mechanism.
 //   - check-h8-ledger: blocks only on a finding NOT already present at the git HEAD baseline (i.e. a
@@ -79,8 +81,18 @@ if (existsSync(SKIP_LOG)) {
 
 const SKIP_IDS = (process.env.META_SKIP_GATE || '').split(',').map(s => s.trim()).filter(Boolean);
 const SKIP_ALL = SKIP_IDS.includes('ALL');
-// Time-elapsed property, not a per-commit one - see the header block above for the full argument.
-const ADVISORY = new Set(['check-graph-fresh']);
+// 2026-08-04: this set is now EMPTY, and that is the point.
+//
+// It held exactly one member, check-graph-fresh, which was advisory because it could not pass:
+// rebuilding graphify's 22 MB graph took an out-of-process LLM run, so the gate sat at 115 stale
+// documents and its owning workflow failed 8 of 8 runs. Reviewers 9 and 10 both named it — a
+// permanently amber signal is an off signal, and worse, it teaches that gates are noise.
+//
+// check-memory-fresh replaces it and BLOCKS, because its remedy is `python scripts/memsync.py`,
+// measured at 0.32 s for a one-file change. A gate is only allowed to block when the fix is
+// cheap; the honest response to an expensive fix is to make it cheap, not to mark the gate
+// advisory and look away.
+const ADVISORY = new Set([]);
 
 function run(id, displayName, file) {
   console.log(`\n=== ${displayName} ===`);
@@ -91,14 +103,14 @@ function run(id, displayName, file) {
   const r = spawnSync(process.execPath, [join(ROOT, 'scripts', file)], { stdio: 'inherit', env: process.env });
   if (r.status !== 0) {
     if (ADVISORY.has(id)) {
-      console.log('  (STANDING DEBT — advisory only inside check-meta; does not block a commit. Owned by the nightly graph-freshness.yml schedule and SessionStart visibility. See development-discipline.md §10 / gate-scoping-report.md.)');
+      console.log('  (ADVISORY — reported, does not block. ADVISORY is currently empty by design; see the set above.)');
       return;
     }
     failed.push(displayName);
   }
 }
 
-run('check-graph-fresh', 'check-graph-fresh', 'check-graph-fresh.mjs');
+run('check-memory-fresh', 'check-memory-fresh', 'check-memory-fresh.mjs');
 run('gate-lessons', 'gate-lessons', 'gate-lessons.mjs');
 run('check-board-fresh', 'check-board-fresh', 'check-board-fresh.mjs');
 run('check-brief', 'check-brief', 'check-brief.mjs');

@@ -1,7 +1,7 @@
 #!/bin/sh
 # .githooks/pre-commit — versioned, installed via `git config core.hooksPath .githooks`.
 # COMPLIANCE-AUDIT-2026-08-01.md fix #1: check-meta.mjs existed but was wired to NO git hook all day
-# (2026-08-01) — .git/hooks held only graphify's post-checkout/post-commit, both AFTER the fact, and
+# (2026-08-01) — .git/hooks held only the old graph tool's post-checkout/post-commit, both AFTER the fact, and
 # the sole call site was scripts/sync-docs.sh:61, which no commit that day went through.
 # This is now the "mechanical enforcement" the discipline doc has been claiming since §10.12.
 #
@@ -32,7 +32,7 @@
 # per-checker ruling); this hook's only remaining job is to stay fast and to make the escape hatch
 # narrow and loud when it IS genuinely needed.
 #
-# Skip during rebase/merge/cherry-pick, same convention as the graphify hooks in this directory.
+# Skip during rebase/merge/cherry-pick, the convention this directory has always used.
 GIT_DIR=${GIT_DIR:-$(git rev-parse --git-dir 2>/dev/null)}
 [ -d "$GIT_DIR/rebase-merge" ] && exit 0
 [ -d "$GIT_DIR/rebase-apply" ] && exit 0

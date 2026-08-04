@@ -9,7 +9,7 @@
   4 concurrent Serena processes, dashboards flapping 24282 -> 24283, 8 language servers duplicated per
   instance. §10.17a: run ONE long-lived server for the machine and point `.mcp.json` at it by URL.
 
-  TRANSPORT (from Serena's own docs, `serena-docs-06.md` "Streamable HTTP Mode", mirrored in the graphify
+  TRANSPORT (from Serena's own docs, `serena-docs-06.md` "Streamable HTTP Mode", mirrored in the agent-memory
   global graph):
     "When using *Streamable HTTP* mode, you control the server lifecycle yourself, i.e. you start the
      server and provide the client with the URL to connect to it. ... serena start-mcp-server
