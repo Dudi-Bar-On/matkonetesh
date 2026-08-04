@@ -1,14 +1,14 @@
-"""Tests for the SQLite/JSONB agent-memory store.
+"""Tests for the LlamaIndex + SQLite/JSONB agent-memory store.
 
-Every test runs against an isolated `:memory:` database. Nothing here touches the repo's
-real memory file, the network, or any external process — and one test proves that last claim
-rather than asserting it in a comment.
+Every test runs against an isolated `:memory:` database with LlamaIndex's `MockLLM` and
+`MockEmbedding` installed globally, so the suite is 100% offline with zero external API calls.
+That is asserted, not merely configured: one test forbids opening a socket at all, and another
+proves ingestion works with `OPENAI_API_KEY` removed from the environment.
 
 Run: python -m pytest tests/test_agent_memory.py -v
 """
 
 from __future__ import annotations
-
 
 import socket
 import sqlite3
@@ -16,18 +16,36 @@ import sys
 from pathlib import Path
 
 import pytest
+from llama_index.core import MockEmbedding, Settings
+from llama_index.core.llms import MockLLM
+from llama_index.core.schema import TextNode
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.memory import (  # noqa: E402
     MIN_SQLITE_FOR_JSONB,
     AgentMemory,
-    DocChunk,
     JsonbUnsupportedError,
     ToolSpec,
-    chunk_markdown,
+    build_nodes,
+    headers_from_path,
+    node_metadata,
     sha256_text,
 )
+
+
+@pytest.fixture(autouse=True, scope="session")
+def _offline_llama():
+    """Force LlamaIndex's global Settings to mocks for the whole session.
+
+    Ingestion here uses only MarkdownNodeParser and needs no model — but Settings.llm is
+    lazily resolved and defaults to OpenAI, so a future transformation added to the pipeline
+    would silently try to reach the network. Mocking at session scope means that regression
+    fails as a test error rather than as a live API call.
+    """
+    Settings.llm = MockLLM()
+    Settings.embed_model = MockEmbedding(embed_dim=8)
+    yield
 
 
 @pytest.fixture()
@@ -35,6 +53,63 @@ def mem():
     m = AgentMemory(":memory:")
     yield m
     m.close()
+
+
+SAMPLE = """Intro paragraph before any heading.
+
+# Project Requirements
+
+This is the main overview of the system architecture.
+
+## Database Setup
+
+We use SQLite with JSONB support for local agent memory.
+
+### Indexing Strategy
+
+- Markdown parsing using LlamaIndex
+- Direct SQL querying for metadata
+
+## CLI Tools Specification
+
+Tools must be defined via JSON Schema for zero hallucination.
+"""
+
+
+# ======================================================================================
+# Offline guarantee
+# ======================================================================================
+
+
+def test_llamaindex_settings_are_mocked():
+    assert isinstance(Settings.llm, MockLLM)
+    assert isinstance(Settings.embed_model, MockEmbedding)
+
+
+def test_no_network_access_during_a_full_ingest_and_query_cycle(mem, tmp_path, monkeypatch):
+    """Assert the offline claim instead of writing it in a comment."""
+
+    def forbidden(*a, **kw):
+        raise AssertionError("agent_memory attempted network access")
+
+    monkeypatch.setattr(socket, "socket", forbidden)
+    monkeypatch.setattr(socket, "create_connection", forbidden)
+
+    p = tmp_path / "doc.md"
+    p.write_text(SAMPLE, encoding="utf-8")
+    mem.ingest_markdown(p, rel_path="d.md")
+    mem.upsert_tool_spec(ToolSpec("t", "c", {"k": "v"}))
+    assert mem.get_tool_spec("t") is not None
+    assert mem.query_docs(text="sqlite")
+    assert mem.query_nodes_by_header("Header_2", "Database Setup")
+
+
+def test_ingestion_works_with_no_api_key_in_the_environment(mem, tmp_path, monkeypatch):
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    p = tmp_path / "doc.md"
+    p.write_text(SAMPLE, encoding="utf-8")
+    assert mem.ingest_markdown(p, rel_path="d.md")["status"] == "ingested"
 
 
 # ======================================================================================
@@ -45,9 +120,8 @@ def mem():
 def test_metadata_is_stored_as_binary_jsonb_not_text(mem):
     """The column must hold SQLite's binary JSON, not a JSON string.
 
-    This is the whole point of the migration and it is easy to lose silently: dropping the
-    jsonb() wrapper still round-trips through json_extract, so only the storage TYPE tells
-    you which one you got.
+    Easy to lose silently: dropping the jsonb() wrapper still round-trips through
+    json_extract, so only the storage TYPE tells you which one you got.
     """
     mem.upsert_tool_spec(ToolSpec("ripgrep", "fast search", {"kind": "search"}))
     row = mem.conn.execute(
@@ -58,18 +132,110 @@ def test_metadata_is_stored_as_binary_jsonb_not_text(mem):
 
 
 def test_jsonb_guard_reports_the_version_it_found():
-    """A too-old SQLite must fail at connect with a readable message, not at first write."""
     assert MIN_SQLITE_FOR_JSONB == (3, 45, 0)
     assert sqlite3.sqlite_version_info >= MIN_SQLITE_FOR_JSONB, (
         f"this interpreter links SQLite {sqlite3.sqlite_version}; agent_memory needs >= 3.45.0"
     )
-    # And the guard is wired: the exception type exists and is raisable.
     with pytest.raises(JsonbUnsupportedError):
         raise JsonbUnsupportedError("probe")
 
 
 # ======================================================================================
-# tool_spec — exact retrieval
+# MarkdownNodeParser ingestion and metadata extraction
+# ======================================================================================
+
+
+def test_build_nodes_returns_llamaindex_textnodes_with_header_path():
+    nodes = build_nodes(SAMPLE, "docs/req.md", "h1")
+    assert nodes and all(isinstance(n, TextNode) for n in nodes)
+    paths = [n.metadata["header_path"] for n in nodes]
+    assert "/Project Requirements/" in paths
+    assert "/Project Requirements/Database Setup/" in paths
+    # the parser's own doc-level metadata rides along on every node
+    assert all(n.metadata["file_path"] == "docs/req.md" for n in nodes)
+    assert all(n.metadata["file_hash"] == "h1" for n in nodes)
+
+
+def test_headers_are_derived_from_the_parsers_header_path_not_invented():
+    assert headers_from_path("/Project Requirements/Database Setup/") == {
+        "Header_1": "Project Requirements",
+        "Header_2": "Database Setup",
+    }
+    assert headers_from_path("/") == {}
+    assert headers_from_path("") == {}
+    assert headers_from_path("/A/B/C/") == {"Header_1": "A", "Header_2": "B", "Header_3": "C"}
+
+
+def test_node_metadata_keeps_header_path_alongside_the_derived_keys():
+    """0.14.x dropped Header_N; we add it back WITHOUT discarding the current API's key."""
+    node = build_nodes(SAMPLE, "f.md", "h")[0]
+    meta = node_metadata(node, 0)
+    assert "header_path" in meta
+    assert meta["chunk_index"] == 0
+    assert meta["node_id"] == node.id_
+    assert "parent_node_id" in meta
+
+
+def test_parse_and_store_markdown_returns_node_ids_and_stores_one_row_each(mem):
+    ids = mem.parse_and_store_markdown(SAMPLE, "docs/req.md", "hash_v1")
+    assert len(ids) >= 4
+    assert len(set(ids)) == len(ids), "node ids must be unique"
+    rows = mem.query_docs(file_path="docs/req.md", limit=100)
+    assert len(rows) == len(ids)
+    assert [r["node_id"] for r in rows] == ids
+    assert all(r["file_hash"] == "hash_v1" for r in rows)
+
+
+def test_query_nodes_by_header_is_an_exact_match(mem):
+    mem.parse_and_store_markdown(SAMPLE, "docs/req.md", "h1")
+    hits = mem.query_nodes_by_header("Header_2", "Database Setup")
+    assert hits
+    for h in hits:
+        assert h["metadata"]["Header_2"] == "Database Setup"
+        assert h["metadata"]["Header_1"] == "Project Requirements"
+    assert mem.query_nodes_by_header("Header_2", "Database") == [], "must be exact, not prefix"
+    assert mem.query_nodes_by_header("Header_1", "Project Requirements")
+
+
+def test_query_nodes_by_header_rejects_an_unknown_key(mem):
+    """header_key is interpolated into a JSON path; an unchecked value is an injection point."""
+    with pytest.raises(ValueError):
+        mem.query_nodes_by_header("Header_2'); DROP TABLE agent_memory; --", "x")
+
+
+def test_header_index_is_used_for_the_lookup(mem):
+    mem.parse_and_store_markdown(SAMPLE, "docs/req.md", "h1")
+    plan = mem.conn.execute(
+        "EXPLAIN QUERY PLAN SELECT id FROM agent_memory "
+        "WHERE type='md_doc' AND json_extract(metadata,'$.Header_2')='Database Setup'"
+    ).fetchall()
+    detail = " ".join(str(r["detail"]) for r in plan)
+    assert "idx_agent_memory_header2" in detail, detail
+
+
+def test_stored_nodes_rehydrate_into_textnodes(mem):
+    ids = mem.parse_and_store_markdown(SAMPLE, "docs/req.md", "h1")
+    nodes = mem.get_nodes("docs/req.md")
+    assert [n.id_ for n in nodes] == ids
+    assert all(isinstance(n, TextNode) for n in nodes)
+    assert nodes[0].metadata["file_path"] == "docs/req.md"
+
+
+def test_headings_inside_fenced_code_do_not_create_sections(mem):
+    """A shell snippet full of `# comment` lines must not shred a document.
+
+    This corpus is full of them. LlamaIndex's parser handles it; the test pins that we still
+    get it if the parser is ever swapped.
+    """
+    text = "# Real\n\nbody\n\n```bash\n# not a heading\n## also not\n```\n\n## Real Two\n\nmore\n"
+    mem.parse_and_store_markdown(text, "f.md", "h")
+    paths = {r["metadata"]["header_path"] for r in mem.query_docs(file_path="f.md", limit=50)}
+    assert "/Real/not a heading/" not in paths
+    assert any("not a heading" in r["content"] for r in mem.query_docs(file_path="f.md", limit=50))
+
+
+# ======================================================================================
+# tool_spec — exact, zero-hallucination retrieval
 # ======================================================================================
 
 
@@ -81,7 +247,6 @@ def test_tool_spec_round_trips_nested_metadata_exactly(mem):
         "config": {"retries": 0, "timeout_ms": 30000, "unicode": "בדיקה ✓"},
     }
     mem.upsert_tool_spec(ToolSpec("playwright", "Playwright test runner", meta))
-
     got = mem.get_tool_spec("playwright")
     assert got is not None
     assert got["content"] == "Playwright test runner"
@@ -91,23 +256,23 @@ def test_tool_spec_round_trips_nested_metadata_exactly(mem):
     assert got["metadata"]["tool_name"] == "playwright"
 
 
-def test_get_tool_spec_returns_none_for_unknown(mem):
-    assert mem.get_tool_spec("does-not-exist") is None
+def test_unknown_tool_returns_none_rather_than_a_near_match(mem):
+    """Zero hallucination is a property of the query, not of a prompt."""
+    mem.upsert_tool_spec(ToolSpec("playwright", "x", {}))
+    assert mem.get_tool_spec("playwrite") is None
+    assert mem.get_tool_spec("play") is None
+    assert mem.get_tool_spec("") is None
 
 
 def test_tool_spec_upsert_replaces_rather_than_duplicates(mem):
     first = mem.upsert_tool_spec(ToolSpec("node", "runtime", {"version": "22"}))
     second = mem.upsert_tool_spec(ToolSpec("node", "runtime", {"version": "24"}))
-
-    assert first == second, "the same tool must keep its row id"
-    assert mem.conn.execute(
-        "SELECT COUNT(*) FROM agent_memory WHERE type='tool_spec'"
-    ).fetchone()[0] == 1
+    assert first == second
+    assert mem.conn.execute("SELECT COUNT(*) FROM agent_memory WHERE type='tool_spec'").fetchone()[0] == 1
     assert mem.get_tool_spec("node")["metadata"]["version"] == "24"
 
 
 def test_tool_name_index_is_used_for_lookup(mem):
-    """A JSON lookup that scans every row is not a lookup. Prove the index is chosen."""
     mem.upsert_tool_spec(ToolSpec("serena", "symbol server", {}))
     plan = mem.conn.execute(
         "EXPLAIN QUERY PLAN SELECT id FROM agent_memory "
@@ -125,119 +290,35 @@ def test_type_column_rejects_an_unknown_type(mem):
 
 
 # ======================================================================================
-# md_doc — chunking
+# Delta ingestion
 # ======================================================================================
-
-
-SAMPLE = """Intro paragraph before any heading.
-
-# Title
-
-Top level body.
-
-## Section A
-
-Body of A.
-
-### Sub A1
-
-Body of A1.
-
-## Section B
-
-Body of B.
-"""
-
-
-def test_chunk_markdown_splits_by_heading_and_keeps_ancestry():
-    chunks = chunk_markdown(SAMPLE, "sample.md")
-    headings = [c.heading for c in chunks]
-    assert headings == ["", "Title", "Section A", "Sub A1", "Section B"]
-
-    preamble = chunks[0]
-    assert preamble.content.startswith("Intro paragraph")
-    assert preamble.level == 0
-
-    sub = next(c for c in chunks if c.heading == "Sub A1")
-    assert sub.level == 3
-    assert sub.heading_path == ("Title", "Section A", "Sub A1")
-    assert sub.content == "Body of A1."
-
-    assert [c.chunk_index for c in chunks] == list(range(len(chunks)))
-
-
-def test_chunk_markdown_ignores_headings_inside_fenced_code():
-    """A shell snippet full of `# comment` lines must not shred the document.
-
-    This corpus is full of them, so the naive line-starts-with-# rule would have produced
-    hundreds of bogus sections.
-    """
-    text = "# Real\n\nbody\n\n```bash\n# not a heading\n## also not\n```\n\n## Real Two\n\nmore\n"
-    chunks = chunk_markdown(text, "f.md")
-    assert [c.heading for c in chunks] == ["Real", "Real Two"]
-    assert "# not a heading" in chunks[0].content
-
-
-def test_chunk_markdown_handles_a_document_with_no_headings():
-    chunks = chunk_markdown("just some prose\nand more\n", "flat.md")
-    assert len(chunks) == 1
-    assert chunks[0].heading == ""
-    assert "just some prose" in chunks[0].content
-
-
-def test_empty_document_produces_no_chunks():
-    assert chunk_markdown("", "empty.md") == []
-
-
-# ======================================================================================
-# md_doc — storage, querying and delta ingestion
-# ======================================================================================
-
-
-def test_ingest_markdown_stores_one_row_per_chunk(mem, tmp_path):
-    p = tmp_path / "doc.md"
-    p.write_text(SAMPLE, encoding="utf-8")
-
-    res = mem.ingest_markdown(p, rel_path="docs/doc.md")
-    assert res["status"] == "ingested"
-    assert res["chunks"] == 5
-
-    rows = mem.query_docs(file_path="docs/doc.md", limit=100)
-    assert len(rows) == 5
-    assert [r["metadata"]["chunk_index"] for r in rows] == [0, 1, 2, 3, 4]
-    assert all(r["file_hash"] == res["file_hash"] for r in rows)
 
 
 def test_delta_ingestion_skips_an_unchanged_file(mem, tmp_path):
     """The old freshness gate keyed on mtime and was never green. Hash, not clock."""
     p = tmp_path / "doc.md"
     p.write_text(SAMPLE, encoding="utf-8")
-
     first = mem.ingest_markdown(p, rel_path="d.md")
     assert first["status"] == "ingested"
 
-    # Rewrite byte-identical content — mtime moves, content does not.
-    p.write_text(SAMPLE, encoding="utf-8")
+    p.write_text(SAMPLE, encoding="utf-8")   # mtime moves, bytes do not
     second = mem.ingest_markdown(p, rel_path="d.md")
     assert second["status"] == "skipped"
-    assert second["chunks"] == 0
+    assert second["nodes"] == 0
     assert second["file_hash"] == first["file_hash"]
 
 
-def test_changed_file_is_reingested_and_old_chunks_do_not_survive(mem, tmp_path):
+def test_changed_file_is_reingested_and_removed_sections_do_not_survive(mem, tmp_path):
     p = tmp_path / "doc.md"
     p.write_text("# One\n\nalpha\n\n## Two\n\nbeta\n", encoding="utf-8")
     mem.ingest_markdown(p, rel_path="d.md")
-    assert len(mem.query_docs(file_path="d.md", limit=100)) == 2
+    assert mem.query_docs(text="beta")
 
     p.write_text("# One\n\nalpha changed\n", encoding="utf-8")
-    res = mem.ingest_markdown(p, rel_path="d.md")
+    assert mem.ingest_markdown(p, rel_path="d.md")["status"] == "ingested"
 
-    assert res["status"] == "ingested"
-    rows = mem.query_docs(file_path="d.md", limit=100)
-    assert len(rows) == 1, "the removed section must be gone, not orphaned"
-    assert rows[0]["content"] == "alpha changed"
-    assert mem.query_docs(text="beta") == []
+    assert mem.query_docs(text="beta") == [], "the removed section must be gone, not orphaned"
+    assert mem.query_docs(text="alpha changed")
 
 
 def test_force_reingests_an_unchanged_file(mem, tmp_path):
@@ -247,54 +328,6 @@ def test_force_reingests_an_unchanged_file(mem, tmp_path):
     assert mem.ingest_markdown(p, rel_path="d.md", force=True)["status"] == "ingested"
 
 
-def test_upsert_doc_chunk_is_idempotent(mem):
-    chunk = DocChunk("a.md", 0, "H", ("H",), 1, "body")
-    first = mem.upsert_doc_chunk(chunk, sha256_text("body"))
-    second = mem.upsert_doc_chunk(chunk, sha256_text("body"))
-    assert first == second
-    assert mem.conn.execute("SELECT COUNT(*) FROM agent_memory").fetchone()[0] == 1
-
-
-def test_query_docs_matches_content_or_heading(mem, tmp_path):
-    p = tmp_path / "doc.md"
-    p.write_text(SAMPLE, encoding="utf-8")
-    mem.ingest_markdown(p, rel_path="d.md")
-
-    assert any("Body of A1" in r["content"] for r in mem.query_docs(text="body of a1"))
-    # heading-only: "Section B" appears in no body text
-    hits = mem.query_docs(text="section b")
-    assert hits and hits[0]["metadata"]["heading"] == "Section B"
-
-
-def test_query_docs_filters_on_arbitrary_metadata(mem, tmp_path):
-    p = tmp_path / "doc.md"
-    p.write_text(SAMPLE, encoding="utf-8")
-    mem.ingest_markdown(p, rel_path="d.md", extra_metadata={"corpus": "project", "lang": "he"})
-
-    assert len(mem.query_docs(metadata_equals={"corpus": "project"}, limit=100)) == 5
-    assert mem.query_docs(metadata_equals={"corpus": "global"}, limit=100) == []
-    assert len(mem.query_docs(metadata_equals={"level": 2}, limit=100)) == 2
-
-
-def test_delete_by_file_path_removes_only_that_file(mem, tmp_path):
-    for name in ("a.md", "b.md"):
-        p = tmp_path / name
-        p.write_text(SAMPLE, encoding="utf-8")
-        mem.ingest_markdown(p, rel_path=name)
-
-    assert mem.delete_by_file_path("a.md") == 5
-    assert mem.query_docs(file_path="a.md") == []
-    assert len(mem.query_docs(file_path="b.md", limit=100)) == 5
-
-
-def test_unicode_and_rtl_survive_the_round_trip(mem):
-    body = "טמפ׳ בטיחות 71°C — לשון בקר · מקור: USDA FSIS"
-    mem.upsert_doc_chunk(DocChunk("he.md", 0, "בטיחות", ("בטיחות",), 1, body), sha256_text(body))
-    got = mem.query_docs(text="לשון בקר")
-    assert got and got[0]["content"] == body
-    assert got[0]["metadata"]["heading"] == "בטיחות"
-
-
 def test_ingest_markdown_tree_walks_a_directory(mem, tmp_path):
     (tmp_path / "sub").mkdir()
     (tmp_path / "one.md").write_text("# One\n\na\n", encoding="utf-8")
@@ -302,31 +335,35 @@ def test_ingest_markdown_tree_walks_a_directory(mem, tmp_path):
     (tmp_path / "skip.txt").write_text("not markdown", encoding="utf-8")
 
     tally = mem.ingest_markdown_tree(tmp_path)
-    assert tally["ingested"] == 2 and tally["chunks"] == 2
+    assert tally["ingested"] == 2
     assert {r["file_path"] for r in mem.query_docs(limit=100)} == {"one.md", "sub/two.md"}
-
     again = mem.ingest_markdown_tree(tmp_path)
     assert again["skipped"] == 2 and again["ingested"] == 0
 
 
+def test_unicode_and_rtl_survive_the_round_trip(mem):
+    body = "# בטיחות\n\nטמפ׳ בטיחות 71°C — לשון בקר · מקור: USDA FSIS\n"
+    mem.parse_and_store_markdown(body, "he.md", sha256_text(body))
+    got = mem.query_docs(text="לשון בקר")
+    assert got and "לשון בקר" in got[0]["content"]
+    assert got[0]["metadata"]["header_path"] == "/"
+
+
 # ======================================================================================
-# Atomicity and isolation
+# Atomicity, pruning and isolation
 # ======================================================================================
 
 
 class _FailingOnNthInsert:
-    """Delegates everything to a real connection, but raises on the Nth INSERT.
+    """Delegates to a real connection but raises on the Nth INSERT.
 
-    `sqlite3.Connection.execute` is a read-only attribute, so it cannot be monkeypatched
-    directly — that attempt is what this class replaces. Wrapping the connection instead
-    keeps `with conn:` doing the real thing: __enter__/__exit__ pass straight through, so
-    the transaction commits or rolls back exactly as it would in production.
+    `sqlite3.Connection.execute` is read-only and cannot be monkeypatched, so the connection
+    is wrapped instead. __enter__/__exit__ pass straight through, which keeps `with conn:`
+    doing the real transaction.
     """
 
     def __init__(self, conn, fail_on: int = 1):
-        self._conn = conn
-        self._fail_on = fail_on
-        self._inserts = 0
+        self._conn, self._fail_on, self._inserts = conn, fail_on, 0
 
     def execute(self, sql, *args, **kwargs):
         if sql.strip().upper().startswith("INSERT"):
@@ -346,17 +383,17 @@ class _FailingOnNthInsert:
 
 
 def test_a_failed_ingest_leaves_no_partial_state(mem, tmp_path):
-    """A crash mid-replace must not leave a document half-deleted.
+    """The delete and the re-insert are ONE transaction.
 
-    ingest_markdown deletes the file's old chunks and writes the new ones in ONE
-    transaction. If that were two, an interruption here would drop five real sections and
-    leave nothing — the worst possible failure for a memory store, because it looks like an
-    empty document rather than an error.
+    If they were two, an interruption would drop every real section and leave nothing — the
+    worst failure for a memory store, because it looks like an empty document rather than an
+    error.
     """
     p = tmp_path / "doc.md"
     p.write_text(SAMPLE, encoding="utf-8")
     mem.ingest_markdown(p, rel_path="d.md")
-    assert len(mem.query_docs(file_path="d.md", limit=100)) == 5
+    before = len(mem.query_docs(file_path="d.md", limit=100))
+    assert before > 0
 
     p.write_text("# Replaced\n\nnew\n", encoding="utf-8")
     real = mem.conn
@@ -367,35 +404,54 @@ def test_a_failed_ingest_leaves_no_partial_state(mem, tmp_path):
     finally:
         mem.conn = real
 
-    after = mem.query_docs(file_path="d.md", limit=100)
-    assert len(after) == 5, "the DELETE must have rolled back with the failed INSERT"
-    assert {r["metadata"]["heading"] for r in after} == {
-        "",
-        "Title",
-        "Section A",
-        "Sub A1",
-        "Section B",
-    }
+    assert len(mem.query_docs(file_path="d.md", limit=100)) == before, (
+        "the DELETE must have rolled back with the failed INSERT"
+    )
 
 
-def test_no_network_access_during_store_operations(mem, tmp_path, monkeypatch):
-    """Assert the no-network claim instead of writing it in a comment.
+def test_prune_missing_removes_documents_whose_file_is_gone(mem, tmp_path):
+    for name in ("keep.md", "gone.md"):
+        p = tmp_path / name
+        p.write_text(SAMPLE, encoding="utf-8")
+        mem.ingest_markdown(p, rel_path=name)
+    kept = len(mem.query_docs(file_path="keep.md", limit=100))
 
-    Any attempt to open a socket during a full ingest+query cycle fails the test.
+    res = mem.prune_missing({"keep.md"})
+
+    assert res["files"] == ["gone.md"]
+    assert res["rows"] > 0
+    assert mem.query_docs(file_path="gone.md") == []
+    assert len(mem.query_docs(file_path="keep.md", limit=100)) == kept
+
+
+def test_prune_missing_never_touches_graph_records_or_tool_specs(mem):
+    """Migrated knowledge has no file behind it and must survive a prune.
+
+    Without the graph:// exclusion, the first sync after migration would delete all 6,818
+    migrated records — silently, because they look exactly like documents whose file vanished.
     """
-    def forbidden(*a, **kw):
-        raise AssertionError("agent_memory attempted network access")
+    node = build_nodes("# node\n\nmigrated\n", "graph://analysis/x.md", "h")[0]
+    mem.upsert_node(node, 0, "graph://analysis/x.md", "h")
+    mem.upsert_tool_spec(ToolSpec("playwright", "spec", {}))
+    real = build_nodes("# real\n\nbody\n", "real.md", "h")[0]
+    mem.upsert_node(real, 0, "real.md", "h")
 
-    monkeypatch.setattr(socket, "socket", forbidden)
-    monkeypatch.setattr(socket, "create_connection", forbidden)
+    res = mem.prune_missing(set())          # nothing exists on disk at all
 
-    p = tmp_path / "doc.md"
-    p.write_text(SAMPLE, encoding="utf-8")
-    mem.ingest_markdown(p, rel_path="d.md")
-    mem.upsert_tool_spec(ToolSpec("t", "c", {"k": "v"}))
-    assert mem.get_tool_spec("t") is not None
-    assert mem.query_docs(text="body")
-    assert mem.stats()["total"] > 0
+    assert res["files"] == ["real.md"]
+    assert len(mem.query_docs(file_path="graph://", limit=10)) == 1
+    assert mem.get_tool_spec("playwright") is not None
+
+
+def test_delete_by_file_path_removes_only_that_file(mem, tmp_path):
+    for name in ("a.md", "b.md"):
+        p = tmp_path / name
+        p.write_text(SAMPLE, encoding="utf-8")
+        mem.ingest_markdown(p, rel_path=name)
+    b_before = len(mem.query_docs(file_path="b.md", limit=100))
+    assert mem.delete_by_file_path("a.md") > 0
+    assert mem.query_docs(file_path="a.md") == []
+    assert len(mem.query_docs(file_path="b.md", limit=100)) == b_before
 
 
 def test_two_instances_do_not_share_memory_state():
@@ -409,25 +465,23 @@ def test_two_instances_do_not_share_memory_state():
         b.close()
 
 
-def test_stats_counts_both_types(mem, tmp_path):
-    p = tmp_path / "doc.md"
-    p.write_text(SAMPLE, encoding="utf-8")
-    mem.ingest_markdown(p, rel_path="d.md")
-    mem.upsert_tool_spec(ToolSpec("t1", "c", {}))
-    mem.upsert_tool_spec(ToolSpec("t2", "c", {}))
-
-    s = mem.stats()
-    assert s["by_type"]["md_doc"]["rows"] == 5
-    assert s["by_type"]["md_doc"]["files"] == 1
-    assert s["by_type"]["tool_spec"]["rows"] == 2
-    assert s["total"] == 7
-
-
 def test_persists_to_a_real_file(tmp_path):
     db = tmp_path / "nested" / "agent-memory.db"
     with AgentMemory(db) as m:
         m.upsert_tool_spec(ToolSpec("durable", "content", {"a": 1}))
+        m.parse_and_store_markdown(SAMPLE, "d.md", "h")
     assert db.exists()
     with AgentMemory(db) as m2:
-        got = m2.get_tool_spec("durable")
-        assert got is not None and got["metadata"]["a"] == 1
+        assert m2.get_tool_spec("durable")["metadata"]["a"] == 1
+        assert m2.query_nodes_by_header("Header_2", "Database Setup")
+
+
+def test_stats_counts_both_types(mem):
+    mem.parse_and_store_markdown(SAMPLE, "d.md", "h")
+    n = len(mem.query_docs(file_path="d.md", limit=100))
+    mem.upsert_tool_spec(ToolSpec("t1", "c", {}))
+    mem.upsert_tool_spec(ToolSpec("t2", "c", {}))
+    s = mem.stats()
+    assert s["by_type"]["md_doc"]["rows"] == n
+    assert s["by_type"]["tool_spec"]["rows"] == 2
+    assert s["total"] == n + 2

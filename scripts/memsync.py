@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 """Keep the agent-memory store current with the repo's documentation.
 
-    python scripts/memsync.py            # ingest changed docs (delta by content hash)
+    python scripts/memsync.py            # ingest changed docs (LlamaIndex parse, delta by hash)
     python scripts/memsync.py --status   # what is in the store
     python scripts/memsync.py --force    # re-ingest everything
     python scripts/memsync.py --query "<text>"      # search document chunks
@@ -25,7 +25,9 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from src.memory import AgentMemory, DocChunk, ToolSpec, sha256_text  # noqa: E402
+from llama_index.core.schema import TextNode  # noqa: E402
+
+from src.memory import AgentMemory, ToolSpec, sha256_text  # noqa: E402
 
 DB = ROOT / "agent-memory.db"
 SEED_DIR = ROOT / "docs" / "agent-memory-seed"
@@ -55,19 +57,17 @@ def seed(mem: AgentMemory) -> dict:
         mem.upsert_tool_spec(ToolSpec(t["tool_name"], t["content"], t["metadata"]), file_path="seed")
 
     graph = _load_seed("graph-knowledge")
+    per_file = {}
     for r in graph:
+        key = r["file_path"]
+        idx = per_file.get(key, 0)
+        per_file[key] = idx + 1
         md = dict(r["metadata"])
-        mem.upsert_doc_chunk(
-            DocChunk(
-                file_path=r["file_path"],
-                chunk_index=md.get("chunk_index", 0),
-                heading=md.get("heading", ""),
-                heading_path=tuple(md.get("heading_path", [])),
-                level=md.get("level", 1),
-                content=r["content"],
-            ),
-            file_hash=sha256_text("seed"),
-            extra_metadata={k: v for k, v in md.items() if k not in ("chunk_index", "heading", "heading_path", "level")},
+        md.setdefault("header_path", "/")
+        md.pop("chunk_index", None)
+        mem.upsert_node(
+            TextNode(text=r["content"], metadata=md),
+            idx, key, sha256_text("seed"), extra_metadata=md,
         )
     return {"tool_specs": len(tools), "graph_records": len(graph)}
 
@@ -85,7 +85,17 @@ def sync(force: bool = False) -> dict:
             if p.exists():
                 res = mem.ingest_markdown(p, rel_path=name, force=force)
                 tally[res["status"]] += 1
-                tally["chunks"] += res["chunks"]
+                tally["nodes"] += res["nodes"]
+
+        # Prune documents that no longer exist on disk. The comparison itself lives in
+        # AgentMemory.prune_missing so it is covered by the test suite — this script only
+        # supplies the set of paths that exist.
+        on_disk = {
+            p.relative_to(ROOT).as_posix()
+            for p in (ROOT / "docs").glob("**/*.md")
+            if p.is_file()
+        } | {n for n in TOP_LEVEL_DOCS if (ROOT / n).exists()}
+        tally["pruned"] = mem.prune_missing(on_disk)["rows"]
         return tally
 
 
@@ -127,7 +137,7 @@ def main() -> int:
         return 0
 
     tally = sync(force=args.force)
-    print(f"[memsync] ingested {tally['ingested']} · skipped {tally['skipped']} · {tally['chunks']} chunks")
+    print(f"[memsync] ingested {tally['ingested']} · skipped {tally['skipped']} · pruned {tally.get('pruned',0)} · {tally['nodes']} nodes")
     return 0
 
 

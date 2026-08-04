@@ -975,6 +975,12 @@ corpus growing with signal instead of noise.
 
 ### 10.12 Keep agent memory current — the gate BLOCKS, because the fix is now cheap
 
+> **Stack (owner instruction, 2026-08-04):** LlamaIndex `MarkdownNodeParser` inside an
+> `IngestionPipeline` does the chunking; SQLite with JSONB does the storage and the querying.
+> Ingestion runs with **no LLM and no embedding model configured** — verified, not assumed — so it
+> is deterministic, offline and instant. Retrieval is `json_extract`, never generative: an unknown
+> tool name returns `None`, not a nearest neighbour.
+
 ```bash
 python scripts/memsync.py                 # delta by CONTENT HASH; unchanged files skipped (~0.3 s)
 node scripts/check-memory-fresh.mjs       # the gate: stale / never-ingested / orphaned, by name

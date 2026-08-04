@@ -182,7 +182,8 @@ key, never commit one, never paste one into a report.
   claim contradicts a `REFUTED` verdict there, trace the runtime path before repeating it. That sweep
   refuted **42 of 261 findings (16%)** and every refutation had one shape: a grep, a quote, or a single
   artifact trusted without tracing what the program actually executes.
-- **Agent memory** — `agent-memory.db`, a SQLite/JSONB store built from the repo's own documents by
+- **Agent memory** — `agent-memory.db`: **LlamaIndex** (`MarkdownNodeParser`) parses the repo's own
+  documents into `TextNode`s, stored in SQLite with **JSONB** metadata. Built by
   `python scripts/memsync.py`. Query it before grepping the corpus.
 
 **§10.13 — agent memory is the evidence tool. Query it BEFORE grepping.**
