@@ -185,8 +185,12 @@ def node_metadata(node: BaseNode, index: int, extra: dict[str, Any] | None = Non
     meta.update(headers_from_path(meta.get("header_path", "")))
     meta["chunk_index"] = index
     meta["node_id"] = node.id_
-    parent = node.parent_node
-    meta["parent_node_id"] = parent.node_id if parent is not None else None
+    # A `parent_node_id` field lived here until 2026-08-04 and was DEAD: MarkdownNodeParser sets
+    # NEXT, PREVIOUS and SOURCE relationships but never PARENT, so node.parent_node is None on
+    # every node — measured at 0 non-null across all 4,847 live nodes. A derived field nothing
+    # can read is exactly what DoD §3.5 forbids, and writing it implied a hierarchy the parser
+    # does not actually provide. Section ancestry comes from header_path / Header_N, which are
+    # real. If sibling navigation is ever wanted, node.prev_node / node.next_node DO carry it.
     if extra:
         meta.update(extra)
     return meta

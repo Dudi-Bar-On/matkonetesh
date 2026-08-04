@@ -173,7 +173,9 @@ def test_node_metadata_keeps_header_path_alongside_the_derived_keys():
     assert "header_path" in meta
     assert meta["chunk_index"] == 0
     assert meta["node_id"] == node.id_
-    assert "parent_node_id" in meta
+    # No parent_node_id: MarkdownNodeParser never sets a PARENT relationship, so the field this
+    # store used to write was null on all 4,847 nodes. Ancestry lives in header_path/Header_N.
+    assert "parent_node_id" not in meta
 
 
 def test_parse_and_store_markdown_returns_node_ids_and_stores_one_row_each(mem):
