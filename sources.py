@@ -722,10 +722,19 @@ CUT_SOURCES = {1: {'src': {'sv': {'ref': 'AmazingFoodMadeEasy (Logsdon) — sous
                         'note': 'tgt 90->70: a 70C bath equilibrates core to 70C — 90C internal impossible on SV '
                                 'path. After SV, hot smoke ~105C/2h for bark. For firmer texture 82C/12h alt (then '
                                 'internal ~82).'},
-              'safe': {'ref': 'Baldwin — pasteurization (beef floor 54.4C)',
-                       'url': 'https://douglasbaldwin.com/sous-vide.html',
-                       'note': 'Tongue at 70C for 24-48h vastly over-pasteurized. Displayed floor 63C.'},
-              'verified': '2026-07-12',
+              # A.2 (2026-08-04): was Baldwin's generic beef floor of 54.4C, carrying a displayed
+              # value of 63C — the USDA figure for beef MUSCLE. Tongue is an organ, and the FSIS
+              # article names it: "kidney, liver, stomach, tongue, and tripe, from red meats (beef,
+              # veal, pork, or lamb) ... 160 °F". Three numbers were in play (54.4 cited, 63 shown,
+              # 71.1 governing) and none of them agreed. The citation now points at the source that
+              # actually governs this item.
+              'safe': {'ref': 'USDA FSIS — organ/variety meats, 160°F (71.1°C)',
+                       'url': 'https://ask.fsis.usda.gov/article/What-is-the-safe-temperature-to-cook-organ-meat',
+                       'note': 'Article names tongue explicitly among red-meat organs at 160F = 71.1C; '
+                               'stored rounded to 71. This is the INSTANTANEOUS floor. The SV leg '
+                               '(70C for 24-48h) pasteurizes far past it on time-at-temperature '
+                               '(Baldwin), which is why the texture target sits just under the floor.'},
+              'verified': '2026-08-04',
               'grill': {'ref': 'AmazingRibs (Meathead) — tough cuts low & slow',
                         'url': 'https://amazingribs.com/more-technique-and-science/more-cooking-science/cooking-temps/',
                         'note': 'לא לגריל ישיר: לשון דורשת בישול לח ארוך ל-~70°C+ וקילוף קרום לפני כל צלייה. אש '
