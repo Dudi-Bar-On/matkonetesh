@@ -80,3 +80,56 @@ underneath anyone. Two ways forward, and this is the owner's call:
 
 Recommendation: **(1) when step B starts**, since that is the first code that needs JSONB, and it
 keeps the change inside the repo where it is reviewable. 3.10 stays installed either way.
+
+---
+
+## Consolidation to a single interpreter (2026-08-04, owner instruction)
+
+> "תשאיר רק 3.14 תסיר את 3.10 ממילא רק 14 ב path"
+
+**The premise was inverted, and saying so changed the order of work.** PATH held *only* 3.10 —
+3.14 had been installed with `PrependPath=0` precisely so nothing switched underneath anyone.
+Removing 3.10 first would have left the machine with no `python` at all: `build.py` and
+Playwright's `webServer` both invoke it by bare name. So: swap PATH, verify, *then* remove.
+
+### What was done, in order
+
+1. **User PATH swapped** — `Python310\` and `Python310\Scripts\` out, `Python314\` and
+   `Python314\Scripts\` in, prepended. Prior value backed up verbatim to
+   `~\path-user-backup-2026-08-04.txt`.
+2. **Verified in a fresh process** before deleting anything: `python` → 3.14.6, sqlite 3.50.4.
+3. **Inspected the leftovers before deleting them** — 6,171 files survived the uninstaller, and
+   `Lib\site-packages` turned out to hold real capability: `openpyxl` (the owner's spreadsheet),
+   `pymupdf`/`fitz` and `pypdf` (the corpus PDF extraction), `pillow`, `numpy`, `html2text`,
+   plus a stale copy of `graphify` and its tree-sitter grammars.
+4. **Confirmed graphify and serena were not at risk.** Both run from `uv`-managed venvs on
+   `AppData\Roaming\uv\python\cpython-3.13`, with `include-system-site-packages = false`. The
+   3.10 copies were dead weight from an old `pip install`. `graphify global list` answered
+   correctly throughout.
+5. **Reinstalled the six real packages into 3.14** — openpyxl 3.1.5, pymupdf 1.28.0, pypdf
+   6.14.2, pillow 12.3.0, numpy 2.5.1, html2text 2025.4.15 — and verified all six import.
+6. **Removed `Python310\`**, then the stale `HKCU:\SOFTWARE\Python\PythonCore\3.10` key.
+7. **Found a SECOND 3.10** the first pass missed: a Microsoft Store install,
+   `PythonSoftwareFoundation.Python.3.10_qbz5n2kfra8p0`. `py -3.10` still answered "alive" after
+   step 6, which is what exposed it. Removed via `Remove-AppxPackage`.
+
+### End state, verified
+
+```
+py -0p      : 3.14-64 only
+python      : 3.14.6  |  sqlite 3.50.4  |  C:\...\Programs\Python\Python314\python.exe
+packages    : openpyxl, pymupdf, pypdf, pillow, numpy, html2text — all import
+python.org 3.10 : gone      Store 3.10 : gone
+build.py    : exit 0, dist/index.html sha256 C8742C03CDAB2262 — IDENTICAL to the 3.10 build
+tests       : 17/17 green (organ floor, cure rate, doneness, data-integrity), exit 0
+```
+
+The earlier open question about pinning the interpreter is now moot: there is only one.
+
+### One operational note
+
+A shell started **before** the PATH change still carries the old value, and with 3.10 deleted a
+bare `python` there falls through to the WindowsApps stub — *"Python was not found; run without
+arguments to install from the Microsoft Store"*. That is a stale-environment symptom, not a
+broken install. **Any terminal opened after this change is fine.** Long-lived sessions should be
+restarted.
