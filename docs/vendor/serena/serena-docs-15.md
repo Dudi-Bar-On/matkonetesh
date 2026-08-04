@@ -1,0 +1,129 @@
+---
+name: serena-docs-15
+description: "Serena (LSP MCP: find_symbol / references) — vendor doc 15/26 (docs)"
+type: reference
+---
+
+## Memories
+
+Memories are simple, human-readable Markdown files that both you and
+your agent can create, read, reference, and edit. 
+
+Serena differentiates between 
+  * **project-specific memories**, which are stored in the `.serena/memories/` directory within your project folder, and
+  * **global memories**, which are shared across all projects and, by default, are stored in `~/.serena/memories/global/`
+
+The LLM is informed about the existence of memories and instructed to read them when appropriate, 
+inferring appropriateness from the file name.
+When the agent starts working on a project, it receives the list of available memories. 
+The agent should be instructed to update memories by the user when appropriate.
+
+### Design Rationale
+
+Serena's memory system is intentionally minimal. It was designed to satisfy the following
+criteria:
+
+1. **Human-readable and editable.** Memories must remain directly readable and editable
+   in any text editor. The agent is typically the day-to-day consumer, but a human author
+   or reviewer must always be able to step in without going through the agent.
+2. **Versionable with the project.** Project memories live alongside the code and can
+   be committed, reviewed in PRs, and reverted like any other repository artifact.
+3. **Progressive disclosure.** Agents receive the full memory *name list* up
+   front as part of their initial instructions; any further references are described inside
+   the memory content itself - typically a `mem:core` entry point pointing at focused
+   memories. The agent decides what to read based on names plus the references it has
+   already seen.
+4. **Prefer references to search.** Given an intelligent agent and well-structured references, search is
+   unnecessary - and it adds noise: any retrieval method (lexical or semantic)
+   produces both false positives and false negatives. Explicit, name-based references
+   decided by the agent are deterministic and avoid both error modes. Basic search via regex/grep
+   is sufficient to complement the references when needed and is available to any agent.
+5. **Prefer deliberate reads to triggers.** The agent decides what to read and when. The harness does
+   not inject memory content on the agent's behalf.
+6. **Framework-agnostic.** The storage format is plain Markdown files in
+   a simple directory layout. The only Serena-specific convention is the `mem:` 
+   prefix for references to memories, which does not prevent using the memory files outside
+   of Serena.
+7. **Configurable and composable.** Two orthogonal memory scopes -
+   [per-project](memories) (committed alongside the code) and [global](global-memories)
+   (shared across all your projects) - can be combined freely. Within either scope,
+   regex patterns in the global or project configuration can mark subsets as read-only
+   or [hide them entirely](ignoring-memories) from the agent. This lets a project mix
+   personal cross-project knowledge with checked-in project conventions, and selectively
+   freeze either set, without custom plumbing.
+
+Taken together, these criteria rule out several common alternatives:
+
+- **Database-backed memory** (SQLite, graph databases, vector stores) is excluded by
+  criteria 1, 4, and 6.
+- **`AGENTS.md` and similar single-file conventions** are excluded by criteria 3 and 5.
+- **Hooks and harness-internal memory systems** are excluded by criteria 5 and 6.
+
+To our knowledge, no existing system satisfies our design goal, which is
+why Serena ships its own memory layer rather than reusing one.
+The closest existing approaches are in the family of Markdown-based personal knowledge
+management tools - **Obsidian**, **Logseq**, **Foam**.
+
+### Organizing Memories
+
+Memories can be organized into **topics** by using `/` in the memory name (e.g. `modules/frontend`).
+The structure is mapped to the file system, where topics correspond to subdirectories.
+The `list_memories` tool can filter by topic, allowing the agent to explore even large numbers of memories in a structured way.
+
+(memory-references)=
+### Referencing Memories from Other Memories
+
+Memories may reference each other. Serena recognizes a reference as a memory name prefixed with
+`mem:` and wrapped in backticks, for example `` `mem:auth/login` `` or `` `mem:suggested_commands` ``.
+This convention has two practical consequences:
+
+- **Renames keep references intact.** When you rename or move a memory with the `rename_memory`
+  tool, Serena rewrites every `` `mem:OLD_NAME` `` occurrence across all memories to point to
+  the new name. References that do not use the `mem:` prefix will not be updated automatically.
+- **Integrity checks** (see [below](memory-cli)) report any `` `mem:NAME` `` whose target does
+  not resolve to an existing memory, and propose similarly-named candidates as likely intended
+  targets.
+
+The full convention - including style, add/update thresholds, and how to structure references across
+`core` memories - is shipped to every onboarded project as the `memory_maintenance` memory; see the
+[Onboarding section](onboarding) below.
+
+(global-memories)=
+### Global Memories
+
+Global memories use the top-level topic `global`, i.e. whenever a memory name starts with `global/`, 
+it is stored in the global memories directory and is shared across all projects.
+
+By default, deletion and editing of global memories is allowed.
+If you want to protect them from accidental modification by the agent,
+you can add regex patterns to `read_only_memory_patterns` in your global or
+project-level [configuration](050_configuration). For example, setting "global/.*" will mark all global memories as read-only. The agent will be informed which memories are read-only.
+
+Since global memories are not versioned alongside your project files,
+it can be helpful to track global memories with git (i.e. to make `~/.serena/memories/` a git repository)
+in order to have a history of changes and the possibility to revert them if needed.
+
+(ignoring-memories)=
+### Ignoring Memories
+
+Projects that accumulate large numbers of archived memory files can use `ignored_memory_patterns`
+to exclude them from `list_memories` and `activate_project` output. Add regex patterns to the
+global or project-level [configuration](050_configuration):
+
+```yaml
+ignored_memory_patterns: ["_archive/.*", "_episodes/.*"]
+```
+
+Ignored memories are completely excluded - they cannot be accessed via `read_memory`, `write_memory`,
+or any other memory tool. To read an ignored memory file, use the `read_file` tool on the raw file path
+(e.g., `.serena/memories/_archive/2026-03/some-topic.md`).
+
+Like `read_only_memory_patterns`, patterns from the global and project-level configurations are merged additively.
+
+### Manually Editing Memories
+
+You may edit memories directly in the file system, using your preferred text editor or IDE.
+Alternatively, access them via the [Serena Dashboard](060_dashboard), which provides a graphical interface for
+viewing, creating, editing, and deleting memories while Serena is running.
+
+(onboarding)=

@@ -6,7 +6,7 @@
       "patterns": [
         "**/*.md"
       ],
-      "note": "every project document"
+      "note": "every project document, INCLUDING docs/vendor/ — the tool and framework documentation that used to live only as an index. graphify stored node LABELS, never prose, so a query could say WHERE an answer was written and never WHAT it said. 267 files copied in from matkonet/raw on 2026-08-05 so the text itself is here, under version control, and not dependent on another repo's path surviving."
     },
     {
       "path": "docs/sources",
@@ -42,6 +42,7 @@
     "**/*.json": "325 files, mostly generated fixtures and language data. lang/*.json is enforced by the i18n guards, not by memory.",
     "agent-memory-seed/*.gz": "already IN the store; ingesting it would be circular.",
     "worker/**, scripts/**": "small enough that exact search finds them; add a root here rather than a second list if that changes.",
-    "WSL2": "Ubuntu-20.04 ships SQLite 3.31.1 — four years older than the 3.45 JSONB needs — so the memory layer cannot run there at all. The full tree-sitter language pack IS available on linux-x86_64, but the per-language Windows wheels made it unnecessary."
+    "WSL2": "Ubuntu-20.04 ships SQLite 3.31.1 — four years older than the 3.45 JSONB needs — so the memory layer cannot run there at all. The full tree-sitter language pack IS available on linux-x86_64, but the per-language Windows wheels made it unnecessary.",
+    "matkonet/raw/graphify-docs-*": "12 files, deliberately not copied. The tool was removed from this project, so its manual is an instruction rather than a record — and instructions for a tool that is gone are the thing the 2026-08-04 purge existed to remove."
   }
 }

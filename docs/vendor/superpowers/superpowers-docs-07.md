@@ -1,0 +1,264 @@
+---
+name: superpowers-docs-07
+description: "superpowers (skills library: TDD/brainstorm/SDD) — vendor doc 07/33 (README.md)"
+type: reference
+---
+
+### Task 10: Implement use_skill Tool
+
+**Files:**
+- Modify: `.opencode/plugin/superpowers.js`
+
+**Step 1: Add use_skill tool implementation**
+
+Replace the plugin return statement with:
+
+```javascript
+export const SuperpowersPlugin = async ({ project, client, $, directory, worktree }) => {
+  // Import zod for schema validation
+  const { z } = await import('zod');
+
+  return {
+    tools: [
+      {
+        name: 'use_skill',
+        description: 'Load and read a specific skill to guide your work. Skills contain proven workflows, mandatory processes, and expert techniques.',
+        schema: z.object({
+          skill_name: z.string().describe('Name of the skill to load (e.g., "superpowers:brainstorming" or "my-custom-skill")')
+        }),
+        execute: async ({ skill_name }) => {
+          // Resolve skill path (handles shadowing: personal > superpowers)
+          const resolved = skillsCore.resolveSkillPath(
+            skill_name,
+            superpowersSkillsDir,
+            personalSkillsDir
+          );
+
+          if (!resolved) {
+            return `Error: Skill "${skill_name}" not found.\n\nRun find_skills to see available skills.`;
+          }
+
+          // Read skill content
+          const fullContent = fs.readFileSync(resolved.skillFile, 'utf8');
+          const { name, description } = skillsCore.extractFrontmatter(resolved.skillFile);
+
+          // Extract content after frontmatter
+          const lines = fullContent.split('\n');
+          let inFrontmatter = false;
+          let frontmatterEnded = false;
+          const contentLines = [];
+
+          for (const line of lines) {
+            if (line.trim() === '---') {
+              if (inFrontmatter) {
+                frontmatterEnded = true;
+                continue;
+              }
+              inFrontmatter = true;
+              continue;
+            }
+
+            if (frontmatterEnded || !inFrontmatter) {
+              contentLines.push(line);
+            }
+          }
+
+          const content = contentLines.join('\n').trim();
+          const skillDirectory = path.dirname(resolved.skillFile);
+
+          // Format output similar to Claude Code's Skill tool
+          return `# ${name || skill_name}
+# ${description || ''}
+# Supporting tools and docs are in ${skillDirectory}
+# ============================================
+
+${content}`;
+        }
+      }
+    ]
+  };
+};
+```
+
+**Step 2: Verify syntax**
+
+Run: `node -c .opencode/plugin/superpowers.js`
+Expected: No output
+
+**Step 3: Commit**
+
+```bash
+git add .opencode/plugin/superpowers.js
+git commit -m "feat: implement use_skill tool for opencode"
+```
+
+---
+
+### Task 11: Implement find_skills Tool
+
+**Files:**
+- Modify: `.opencode/plugin/superpowers.js`
+
+**Step 1: Add find_skills tool to tools array**
+
+Add after the use_skill tool definition, before closing the tools array:
+
+```javascript
+      {
+        name: 'find_skills',
+        description: 'List all available skills in the superpowers and personal skill libraries.',
+        schema: z.object({}),
+        execute: async () => {
+          // Find skills in both directories
+          const superpowersSkills = skillsCore.findSkillsInDir(
+            superpowersSkillsDir,
+            'superpowers',
+            3
+          );
+          const personalSkills = skillsCore.findSkillsInDir(
+            personalSkillsDir,
+            'personal',
+            3
+          );
+
+          // Combine and format skills list
+          const allSkills = [...personalSkills, ...superpowersSkills];
+
+          if (allSkills.length === 0) {
+            return 'No skills found. Install superpowers skills to ~/.config/opencode/superpowers/skills/';
+          }
+
+          let output = 'Available skills:\n\n';
+
+          for (const skill of allSkills) {
+            const namespace = skill.sourceType === 'personal' ? '' : 'superpowers:';
+            const skillName = skill.name || path.basename(skill.path);
+
+            output += `${namespace}${skillName}\n`;
+            if (skill.description) {
+              output += `  ${skill.description}\n`;
+            }
+            output += `  Directory: ${skill.path}\n\n`;
+          }
+
+          return output;
+        }
+      }
+```
+
+**Step 2: Verify syntax**
+
+Run: `node -c .opencode/plugin/superpowers.js`
+Expected: No output
+
+**Step 3: Commit**
+
+```bash
+git add .opencode/plugin/superpowers.js
+git commit -m "feat: implement find_skills tool for opencode"
+```
+
+---
+
+### Task 12: Implement Session Start Hook
+
+**Files:**
+- Modify: `.opencode/plugin/superpowers.js`
+
+**Step 1: Add session.started hook**
+
+After the tools array, add:
+
+```javascript
+    'session.started': async () => {
+      // Read using-superpowers skill content
+      const usingSuperpowersPath = skillsCore.resolveSkillPath(
+        'using-superpowers',
+        superpowersSkillsDir,
+        personalSkillsDir
+      );
+
+      let usingSuperpowersContent = '';
+      if (usingSuperpowersPath) {
+        const fullContent = fs.readFileSync(usingSuperpowersPath.skillFile, 'utf8');
+        // Strip frontmatter
+        const lines = fullContent.split('\n');
+        let inFrontmatter = false;
+        let frontmatterEnded = false;
+        const contentLines = [];
+
+        for (const line of lines) {
+          if (line.trim() === '---') {
+            if (inFrontmatter) {
+              frontmatterEnded = true;
+              continue;
+            }
+            inFrontmatter = true;
+            continue;
+          }
+
+          if (frontmatterEnded || !inFrontmatter) {
+            contentLines.push(line);
+          }
+        }
+
+        usingSuperpowersContent = contentLines.join('\n').trim();
+      }
+
+      // Tool mapping instructions
+      const toolMapping = `
+**Tool Mapping for OpenCode:**
+When skills reference tools you don't have, substitute OpenCode equivalents:
+- \`TodoWrite\` → \`update_plan\` (your planning/task tracking tool)
+- \`Task\` tool with subagents → Use OpenCode's subagent system (@mention syntax or automatic dispatch)
+- \`Skill\` tool → \`use_skill\` custom tool (already available)
+- \`Read\`, \`Write\`, \`Edit\`, \`Bash\` → Use your native tools
+
+**Skill directories contain supporting files:**
+- Scripts you can run with bash tool
+- Additional documentation you can read
+- Utilities and helpers specific to that skill
+
+**Skills naming:**
+- Superpowers skills: \`superpowers:skill-name\` (from ~/.config/opencode/superpowers/skills/)
+- Personal skills: \`skill-name\` (from ~/.config/opencode/skills/)
+- Personal skills override superpowers skills when names match
+`;
+
+      // Check for updates (non-blocking)
+      const hasUpdates = skillsCore.checkForUpdates(
+        path.join(homeDir, '.config/opencode/superpowers')
+      );
+
+      const updateNotice = hasUpdates ?
+        '\n\n⚠️ **Updates available!** Run `cd ~/.config/opencode/superpowers && git pull` to update superpowers.' :
+        '';
+
+      // Return context to inject into session
+      return {
+        context: `<EXTREMELY_IMPORTANT>
+You have superpowers.
+
+**Below is the full content of your 'superpowers:using-superpowers' skill - your introduction to using skills. For all other skills, use the 'use_skill' tool:**
+
+${usingSuperpowersContent}
+
+${toolMapping}${updateNotice}
+</EXTREMELY_IMPORTANT>`
+      };
+    }
+```
+
+**Step 2: Verify syntax**
+
+Run: `node -c .opencode/plugin/superpowers.js`
+Expected: No output
+
+**Step 3: Commit**
+
+```bash
+git add .opencode/plugin/superpowers.js
+git commit -m "feat: implement session.started hook for opencode"
+```
+
+---
