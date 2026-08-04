@@ -108,6 +108,13 @@ def sync(force: bool = False) -> dict:
                     if p.is_file()
                 }
         tally["pruned"] = mem.prune_missing(on_disk)["rows"]
+
+        # Rebuild the BM25 index in the same breath. It is milliseconds, and an index kept in
+        # sync by a SEPARATE command is a second source of truth that drifts — which is the
+        # failure this whole arc was about.
+        from src.memory.rank import rebuild_index
+
+        tally["indexed"] = rebuild_index(mem)["indexed"]
         return tally
 
 
@@ -149,7 +156,7 @@ def main() -> int:
         return 0
 
     tally = sync(force=args.force)
-    print(f"[memsync] ingested {tally['ingested']} · skipped {tally['skipped']} · pruned {tally.get('pruned',0)} · {tally['nodes']} nodes")
+    print(f"[memsync] ingested {tally['ingested']} · skipped {tally['skipped']} · pruned {tally.get('pruned',0)} · {tally['nodes']} nodes · bm25 {tally.get('indexed',0)}")
     return 0
 
 

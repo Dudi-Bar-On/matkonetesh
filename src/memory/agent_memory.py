@@ -589,6 +589,7 @@ class AgentMemory:
         file_path: str | None = None,
         heading: str | None = None,
         metadata_equals: dict[str, Any] | None = None,
+        filters: Any = None,
         limit: int = 50,
     ) -> list[dict[str, Any]]:
         """Search document nodes. All supplied filters are ANDed.
@@ -614,6 +615,16 @@ class AgentMemory:
         for key, value in (metadata_equals or {}).items():
             sql.append(f"AND json_extract(metadata, '$.{key}') = ?")
             args.append(value)
+        # `filters` takes a LlamaIndex MetadataFilters — 14 operators and AND/OR/NOT, a
+        # vocabulary we did not have to invent. metadata_equals is kept for callers that only
+        # need equality; it is the same thing with one operator.
+        if filters is not None:
+            from .filters import to_sql
+
+            frag, params = to_sql(filters)
+            if frag:
+                sql.append(f"AND ({frag})")
+                args += params
         sql.append("ORDER BY file_path, json_extract(metadata,'$.chunk_index') LIMIT ?")
         args.append(limit)
         rows = self.conn.execute(" ".join(sql), args).fetchall()

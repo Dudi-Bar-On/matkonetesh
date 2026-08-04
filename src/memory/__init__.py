@@ -1,5 +1,6 @@
 """Agent memory package — LlamaIndex ingestion over SQLite/JSONB (replaced graphify 2026-08-04)."""
 
+from .filters import to_sql, UnsupportedFilter  # noqa: F401
 from .agent_memory import (  # noqa: F401
     AgentMemory,
     ToolSpec,

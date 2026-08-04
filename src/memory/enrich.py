@@ -283,16 +283,23 @@ def hybrid_search(mem: AgentMemory, query: str, limit: int = 10) -> dict[str, An
     `degraded` is reported, never hidden. A search that silently answers from half the system
     is the same defect class this whole arc was about.
     """
-    exact = mem.query_docs(text=query, limit=limit)
-    sem = semantic_search(mem, query, limit=limit)
+    from .rank import bm25_search
 
-    seen = {(r["file_path"], r["metadata"].get("chunk_index")) for r in exact}
-    fused: list[dict[str, Any]] = [
-        {"score": 1.0, "how": "exact", "content": r["content"],
-         "file_path": r["file_path"], "metadata": r["metadata"]}
-        for r in exact
-    ]
-    for r in sem:
+    ranked = bm25_search(mem, query, limit=limit)
+    sem = semantic_search(mem, query, limit=limit)
+    # LIKE is a FALLBACK, not a peer. BM25 is literal matching WITH ranking, so whenever it
+    # fires it strictly dominates: the first fused version put unranked LIKE hits first and
+    # they crowded out better-ranked ones purely by file order. LIKE still matters for a query
+    # under 3 characters, which a trigram index cannot match at all.
+    exact = mem.query_docs(text=query, limit=limit) if not ranked else []
+
+    fused: list[dict[str, Any]] = []
+    seen: set[tuple[str, Any]] = set()
+    for r in ranked + sem + [
+        {"score": 1.0, "how": "exact", "content": e["content"],
+         "file_path": e["file_path"], "metadata": e["metadata"]}
+        for e in exact
+    ]:
         key = (r["file_path"], r["metadata"].get("chunk_index"))
         if key not in seen:
             fused.append(r)
@@ -301,8 +308,9 @@ def hybrid_search(mem: AgentMemory, query: str, limit: int = 10) -> dict[str, An
     return {
         "query": query,
         "results": fused[:limit],
-        "exact_hits": len(exact),
+        "bm25_hits": len(ranked),
         "semantic_hits": len(sem),
+        "exact_fallback_hits": len(exact),
         "degraded": not sem,
         "note": None if sem else "semantic tier unavailable or not yet built — exact matches only",
     }

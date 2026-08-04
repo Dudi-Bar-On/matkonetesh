@@ -50,7 +50,7 @@ def main() -> int:
 
         if args.search:
             res = hybrid_search(mem, args.search, limit=args.limit)
-            print(f"query: {res['query']}   exact={res['exact_hits']} semantic={res['semantic_hits']}")
+            print(f"query: {res['query']}   bm25={res.get('bm25_hits',0)} semantic={res['semantic_hits']}")
             if res["degraded"]:
                 print(f"  ! {res['note']}")
             for r in res["results"]:

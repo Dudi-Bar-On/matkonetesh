@@ -585,3 +585,107 @@ def test_python_and_javascript_both_route_to_a_parser(mem):
     ids = mem.parse_and_store_markdown(py, "build.py", "h")
     assert ids
     assert mem.query_docs(file_path="build.py", limit=20)[0]["metadata"]["language"] == "python"
+
+
+# ======================================================================================
+# BM25 ranking (SQLite FTS5) and MetadataFilters
+# ======================================================================================
+
+
+def test_bm25_ranks_and_finds_hebrew_through_attached_prefixes(mem):
+    """The trigram tokeniser is load-bearing, not a preference.
+
+    Hebrew attaches ה/ו/ב/ל/מ/ש/כ to words, so with FTS5's default unicode61 tokeniser
+    'הניטריט' is a DIFFERENT token from 'ניטריט' and the query returns nothing while the answer
+    sits in the table. Measured: unicode61 -> 0 hits, trigram -> 2.
+    """
+    from src.memory.rank import bm25_search, rebuild_index
+
+    mem.parse_and_store_markdown("# A\n\nמינון הניטריט לבייקון הוא 2 גרם לקילו.\n", "a.md", "h")
+    mem.parse_and_store_markdown("# B\n\nובניטריט יש תקרה של 200ppm לבייקון יבש.\n", "b.md", "h")
+    mem.parse_and_store_markdown("# C\n\nPlaywright runs with workers 20.\n", "c.md", "h")
+    rebuild_index(mem)
+
+    hits = bm25_search(mem, "ניטריט", limit=10)
+    assert len(hits) == 2, "both prefixed forms must be found"
+    assert {h["file_path"] for h in hits} == {"a.md", "b.md"}
+    assert all(h["how"] == "bm25" for h in hits)
+    assert hits[0]["score"] >= hits[1]["score"], "results must be ranked, higher is better"
+
+
+def test_bm25_returns_empty_rather_than_raising_on_junk(mem):
+    from src.memory.rank import bm25_search, rebuild_index
+
+    mem.parse_and_store_markdown("# A\n\nbody text here\n", "a.md", "h")
+    rebuild_index(mem)
+    assert bm25_search(mem, 'unbalanced " quote AND (', limit=5) == []
+    assert bm25_search(mem, "ab", limit=5) == [], "a trigram index cannot match under 3 chars"
+
+
+def test_metadata_filters_translate_to_sql(mem):
+    from llama_index.core.vector_stores.types import (
+        FilterCondition,
+        FilterOperator,
+        MetadataFilter,
+        MetadataFilters,
+    )
+
+    mem.parse_and_store_markdown("thickness,time\n5,120\n", "t.csv", "h")
+    mem.parse_and_store_markdown("# Doc\n\nprose\n", "d.md", "h")
+
+    csv_only = MetadataFilters(
+        filters=[MetadataFilter(key="format", value="csv", operator=FilterOperator.EQ)]
+    )
+    got = mem.query_docs(filters=csv_only, limit=20)
+    assert got and all(g["metadata"]["format"] == "csv" for g in got)
+
+    either = MetadataFilters(
+        filters=[
+            MetadataFilter(key="chunk_index", value=0, operator=FilterOperator.EQ),
+            MetadataFilter(key="format", value="csv", operator=FilterOperator.EQ),
+        ],
+        condition=FilterCondition.OR,
+    )
+    assert len(mem.query_docs(filters=either, limit=50)) >= len(got)
+
+
+def test_metadata_filter_keys_cannot_inject_sql(mem):
+    """The key is interpolated into a JSON path. Values are bound; keys must be validated."""
+    from llama_index.core.vector_stores.types import (
+        FilterOperator,
+        MetadataFilter,
+        MetadataFilters,
+    )
+
+    from src.memory import UnsupportedFilter
+
+    mem.parse_and_store_markdown("# A\n\nbody\n", "a.md", "h")
+    evil = MetadataFilters(
+        filters=[
+            MetadataFilter(
+                key="x'); DROP TABLE agent_memory; --", value=1, operator=FilterOperator.EQ
+            )
+        ]
+    )
+    with pytest.raises(UnsupportedFilter):
+        mem.query_docs(filters=evil, limit=1)
+    assert mem.conn.execute("SELECT COUNT(*) FROM agent_memory").fetchone()[0] > 0
+
+
+def test_unsupported_operators_raise_rather_than_matching_everything(mem):
+    from llama_index.core.vector_stores.types import (
+        FilterOperator,
+        MetadataFilter,
+        MetadataFilters,
+    )
+
+    from src.memory import UnsupportedFilter
+
+    for op, value in ((FilterOperator.IS_EMPTY, None), (FilterOperator.ANY, ["a"])):
+        with pytest.raises(UnsupportedFilter):
+            mem.query_docs(filters=MetadataFilters(
+                filters=[MetadataFilter(key="format", value=value, operator=op)]), limit=1)
+    # An empty IN would match nothing and an empty NIN everything — both are caller bugs.
+    with pytest.raises(UnsupportedFilter):
+        mem.query_docs(filters=MetadataFilters(
+            filters=[MetadataFilter(key="format", value=[], operator=FilterOperator.IN)]), limit=1)
