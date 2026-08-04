@@ -42,6 +42,27 @@ USING fts5(content, file_path UNINDEXED, row_id UNINDEXED, tokenize='trigram');
 MIN_QUERY_CHARS = 3        # a trigram index cannot match anything shorter
 
 
+def as_phrase(query: str) -> str:
+    """Quote the query so FTS5 reads it as text, not as an expression.
+
+    FTS5's MATCH input is a QUERY LANGUAGE, not a search string, and its operators are
+    characters that appear constantly in technical prose:
+
+        tree-sitter   ->  parsed as `tree NOT sitter`  -> "no such column: sitter"
+        bge-m3        ->  "no such column: m3"
+        api/embed     ->  "fts5: syntax error near /"
+
+    Every one of those returned an exception that bm25_search swallowed into an empty list —
+    the search reported "no results" for terms sitting in 13, 20 and 11 rows respectively.
+    That is the failure shape this project keeps meeting: not an error, an empty answer that
+    looks like a real one. (L50 is the same lesson in another language.)
+
+    Quoting makes the whole query a phrase. Embedded double quotes are doubled, which is how
+    FTS5 escapes them, so a query can no longer break out of the string at all.
+    """
+    return '"' + query.replace('"', '""') + '"' 
+
+
 def ensure_index(mem: AgentMemory) -> None:
     mem.conn.executescript(_FTS_SCHEMA)
     mem.conn.commit()
@@ -86,10 +107,12 @@ def bm25_search(mem: AgentMemory, query: str, limit: int = 10) -> list[dict[str,
             ORDER BY score
             LIMIT ?
             """,
-            (query, limit),
+            (as_phrase(query), limit),
         ).fetchall()
     except Exception:
-        # A malformed FTS expression (a stray quote, an operator) is a bad query, not a crash.
+        # With as_phrase() there is no longer a syntax path to reach here; kept as a floor so a
+        # future change to the query builder degrades to "no results" rather than crashing a
+        # caller mid-search.
         return []
 
     import json

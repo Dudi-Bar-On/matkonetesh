@@ -689,3 +689,30 @@ def test_unsupported_operators_raise_rather_than_matching_everything(mem):
     with pytest.raises(UnsupportedFilter):
         mem.query_docs(filters=MetadataFilters(
             filters=[MetadataFilter(key="format", value=[], operator=FilterOperator.IN)]), limit=1)
+
+
+def test_bm25_query_is_a_phrase_not_an_fts5_expression(mem):
+    """FTS5's MATCH input is a QUERY LANGUAGE, and its operators are ordinary technical prose.
+
+    Unquoted, these three raised inside bm25_search and were swallowed into an empty list — the
+    search reported "no results" for terms that were sitting in the store:
+
+        tree-sitter  ->  parsed as `tree NOT sitter`  ->  "no such column: sitter"
+        bge-m3       ->  "no such column: m3"
+        api/embed    ->  "fts5: syntax error near /"
+
+    Not an error the caller could see. An empty answer that looks like a real one.
+    """
+    from src.memory.rank import as_phrase, bm25_search, rebuild_index
+
+    mem.parse_and_store_markdown(
+        "# Tools\n\nWe build a tree-sitter parser and call bge-m3 through api/embed.\n", "t.md", "h"
+    )
+    rebuild_index(mem)
+
+    for term in ("tree-sitter", "bge-m3", "api/embed"):
+        assert bm25_search(mem, term, limit=5), f"{term!r} must be findable"
+
+    # A quote in the query must not break out of the phrase.
+    assert as_phrase('say "hi"') == '"say ""hi"""'
+    assert bm25_search(mem, 'tree-sitter" OR "x', limit=5) == []
