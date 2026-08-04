@@ -570,7 +570,13 @@ def test_code_fragments_below_the_floor_are_dropped_and_counted(mem):
 def test_python_and_javascript_both_route_to_a_parser(mem):
     from src.memory import CODE_LANGUAGES
 
-    assert CODE_LANGUAGES == {".js": "javascript", ".mjs": "javascript", ".py": "python"}
+    assert CODE_LANGUAGES == {
+        ".js": "javascript",
+        ".mjs": "javascript",
+        ".py": "python",
+        ".ts": "typescript",
+        ".tsx": "typescript",
+    }
     py = "\n\n".join(
         f"def compute_{i}(value):\n    \"\"\"A docstring long enough to clear the floor.\"\"\"\n"
         f"    scaled = value * {i}\n    return scaled + {i}"
