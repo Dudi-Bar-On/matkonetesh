@@ -1,5 +1,9 @@
 # המלצת מתודולוגיה ואכיפה — 2026-07-30
 
+> ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are:
+> `python scripts/memsync.py` (ingest, delta by content hash) · `--query "<text>"` / `--tool <name>` (search) · `python scripts/memenrich.py` (embeddings, never blocking) · `node scripts/check-memory-fresh.mjs` (the gate). See discipline §10.11–§10.13.
+
+
 > **משימה 7 מתוך 7 בקשת התכנון.** המסמך משלים את מפת הדרכים (`docs/ROADMAP-2026-07-30.md`) ואת אודיט
 > הציות (`docs/process/COMPLIANCE-AUDIT-2026-07-30.md`): הוא קובע **איך** ממשיכים לפתח כך שהמשמעת
 > נאכפת מכנית ולא נשענת על זיכרון. כל מנגנון כאן שמסומן **Phase 0** הופך למשימה בפועל ב-Phase 0

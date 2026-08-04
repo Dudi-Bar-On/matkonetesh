@@ -1,5 +1,9 @@
 # Bootstrap prompt — installing this way of working on a new project
 
+> ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are:
+> `python scripts/memsync.py` (ingest, delta by content hash) · `--query "<text>"` / `--tool <name>` (search) · `python scripts/memenrich.py` (embeddings, never blocking) · `node scripts/check-memory-fresh.mjs` (the gate). See discipline §10.11–§10.13.
+
+
 > **Framing for the owner (not part of the prompt).**
 > Everything below the horizontal rule is a single self-contained English prompt, addressed to an AI
 > coding agent working on *some other* project. Copy from the line `# You are being asked to install a

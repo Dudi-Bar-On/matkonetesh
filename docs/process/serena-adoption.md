@@ -1,5 +1,9 @@
 # Serena adoption — semantic code navigation for this project
 
+> ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are:
+> `python scripts/memsync.py` (ingest, delta by content hash) · `--query "<text>"` / `--tool <name>` (search) · `python scripts/memenrich.py` (embeddings, never blocking) · `node scripts/check-memory-fresh.mjs` (the gate). See discipline §10.11–§10.13.
+
+
 > Status: **live and in daily use** (verified 2026-07-24 — see `serena-first-use.md`). Serena 1.6.1 /
 > server 1.28.1 is installed, all 8 languages activated, 39 tools exposed.
 > **Since 2026-07-24 the transport is a single shared HTTP server, not per-agent stdio** — see
@@ -26,7 +30,7 @@ is built on `multilspy` / Solid-LSP wrapping standard language servers, and the 
 downloaded/managed by Serena on demand.
 
 Sources: Serena official repo/README (github.com/oraios/serena) and docs (oraios.github.io/serena) —
-ingested into the graphify **global** graph as `serena-docs-01..26`, queried first per CLAUDE.md §10.11;
+ingested into the agent-memory **global** graph as `serena-docs-01..26`, queried first per CLAUDE.md §10.11;
 confirmed current against the live README on 2026-07-23. Claude Code MCP scopes/schema from
 code.claude.com/docs/en/mcp.
 
@@ -128,17 +132,17 @@ Run these from the repo root (`C:\Users\dudib\source\repos\matconetesh`):
 Verification once live: `claude mcp list` shows `serena … ✔ Connected`; ask the agent to
 `get_symbols_overview` on `build.py` or `find_symbol` a known function in `app.js`.
 
-## 5. graphify ↔ Serena — division of labor
+## 5. agent-memory ↔ Serena — division of labor
 
 The two tools are **complementary, not competing**, and the split cleanly resolves the standing critique of
-graphify (it's a *snapshot*, and it loses to grep for locate-exact):
+agent-memory (it's a *snapshot*, and it loses to grep for locate-exact):
 
 - **Serena owns live code** — always-fresh (live LSP), symbol-accurate. It takes over *locate-exact* and
-  *edit-exact* from both grep and graphify. This is graphify's weak axis, now covered.
-- **graphify owns everything with no LSP edge** — relationships that span *documents and code and tests*,
+  *edit-exact* from both grep and agent-memory. This is agent-memory's weak axis, now covered.
+- **agent-memory owns everything with no LSP edge** — relationships that span *documents and code and tests*,
   methodology, vendor/API docs, and spec↔code↔test provenance. A language server sees only symbols in this
   repo's code; it cannot connect a Markdown spec line to the function it governs, cannot read Serena's own
-  docs, and cannot reason across the 141-gap analysis. graphify's staleness is tolerable here because
+  docs, and cannot reason across the 141-gap analysis. agent-memory's staleness is tolerable here because
   docs/specs/methodology change slowly and are re-synced deliberately (`--mode deep`).
 - **grep** drops to a fallback: quick literal string checks and non-code text.
 
@@ -151,7 +155,7 @@ graphify (it's a *snapshot*, and it loses to grep for locate-exact):
    surgical, no whole-file rewrite.
 4. *"Give me the structure of `build.py`."* — `get_symbols_overview`, no full read.
 
-**graphify answers better** (cross-corpus relationships, provenance, docs):
+**agent-memory answers better** (cross-corpus relationships, provenance, docs):
 1. *"What spec section governs `equipPlan`, and which tests prove it?"* — spec↔code↔test provenance across
    Markdown + Python + tests (§10.13). No LSP edge exists from a doc to a function.
 2. *"Does this claim contradict a `REFUTED` verdict in the ULTIMATE gaps doc?"* — reasoning across the
@@ -162,9 +166,9 @@ graphify (it's a *snapshot*, and it loses to grep for locate-exact):
    — a provenance chain from data to citation, a cross-file *semantic* relationship, not a symbol reference.
 
 **Where they compose (the intended workflow):**
-> graphify answers *what governs `equipPlan` and what tests cover it* (provenance) → Serena jumps to the
+> agent-memory answers *what governs `equipPlan` and what tests cover it* (provenance) → Serena jumps to the
 > `equipPlan` symbol, shows its live body and every live caller, and makes the surgical edit → after the
-> change, `graphify update --mode deep` refreshes the doc/spec graph. **graphify locates the *why / what
+> change, `agent-memory update --mode deep` refreshes the doc/spec graph. **agent-memory locates the *why / what
 > governs*; Serena executes the *where / edit-now*.**
 
 ### When-to-use-which
@@ -175,14 +179,14 @@ graphify (it's a *snapshot*, and it loses to grep for locate-exact):
 | Find all references / callers of a symbol | **Serena** | Exact, live; beats grep over-matching + graph staleness |
 | Surgical edit: rename, replace body, insert near a symbol | **Serena** | Symbol-scoped edit, no whole-file rewrite |
 | Outline a file's structure | **Serena** | `get_symbols_overview` |
-| "What spec / requirement governs this code?" | **graphify** | Doc↔code provenance; no LSP edge |
-| "What tests prove this function?" (spec↔code↔test) | **graphify** | Cross-corpus relationship |
-| "Does this contradict a REFUTED verdict / prior finding?" | **graphify** | Reasoning over the analysis corpus |
-| Tool/framework/vendor-API docs | **graphify** (global graph, §10.11) | Serena only sees this repo's code |
-| Safety-value → primary-source provenance | **graphify** | Data→citation chain across files |
+| "What spec / requirement governs this code?" | **agent-memory** | Doc↔code provenance; no LSP edge |
+| "What tests prove this function?" (spec↔code↔test) | **agent-memory** | Cross-corpus relationship |
+| "Does this contradict a REFUTED verdict / prior finding?" | **agent-memory** | Reasoning over the analysis corpus |
+| Tool/framework/vendor-API docs | **agent-memory** (global graph, §10.11) | Serena only sees this repo's code |
+| Safety-value → primary-source provenance | **agent-memory** | Data→citation chain across files |
 | Quick literal string / non-code text check | **grep** (fallback) | Cheap when neither structure nor relationship is needed |
 
-> Deposit note (recommendation, not done here — graphify is owned by a separate subagent per CLAUDE.md
+> Deposit note (recommendation, not done here — agent-memory is owned by a separate subagent per CLAUDE.md
 > §10.11's usefulness gate): the Serena docs already live in the global graph as `serena-docs`; no action
 > needed. This project's private `.serena/` memories must **never** be deposited into any shared/global graph.
 
@@ -202,7 +206,7 @@ multiprocessing child) plus 8 language-server processes.
 
 ### What the docs actually say (read before implementing — §10.17/§10.11)
 
-From Serena's own docs (`serena-docs-06.md`, "Running the MCP Server", mirrored in the graphify global
+From Serena's own docs (`serena-docs-06.md`, "Running the MCP Server", mirrored in the agent-memory global
 graph as `serena-docs-01..26`; confirmed against `serena start-mcp-server --help`, Serena 1.6.1):
 
 - **Streamable HTTP is the current self-hosted transport:** *"When using Streamable HTTP mode, you control
@@ -336,7 +340,7 @@ Get-NetTCPConnection -State Listen |
 
 - Serena — repo & README: https://github.com/oraios/serena
 - Serena — docs (install, clients, contexts, language support): https://oraios.github.io/serena/
-- Serena docs mirrored in the graphify global graph: `serena-docs-01..26` (`~/.graphify/global-graph.json`)
+- Serena docs mirrored in the agent-memory global graph: `serena-docs-01..26` (`~/.agent-memory/global-graph.json`)
 - Serena — running the MCP server / Streamable HTTP mode (§6's quotes): https://oraios.github.io/serena/02-usage/020_start_mcp_server.html
 - Serena — dashboard (port 24282 base, config options): https://oraios.github.io/serena/02-usage/060_dashboard.html
 - Claude Code MCP (scopes, project `.mcp.json` schema, approval): https://code.claude.com/docs/en/mcp

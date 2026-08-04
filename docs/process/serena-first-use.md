@@ -1,5 +1,9 @@
 # Serena — first real, verified use (2026-07-24)
 
+> ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are:
+> `python scripts/memsync.py` (ingest, delta by content hash) · `--query "<text>"` / `--tool <name>` (search) · `python scripts/memenrich.py` (embeddings, never blocking) · `node scripts/check-memory-fresh.mjs` (the gate). See discipline §10.11–§10.13.
+
+
 > Status (updated 2026-07-24, see "Issues resolved" and "Full configuration + indexing" below):
 > **live and verified across ALL 8 configured languages** (typescript/python/bash/powershell/toml/
 > yaml/json/html), **cross-file TS reference search fixed** via a root `tsconfig.json`, project
@@ -37,11 +41,11 @@ mid-task, see §5 below), and this report file.
   facts, generic language knowledge, or one-off task notes).
 - Line numbers returned by all tools are **0-based**.
 
-**graphify global `serena-docs` corpus (§10.11, queried first)** — a real limitation surfaced here:
+**agent-memory global `serena-docs` corpus (§10.11, queried first)** — a real limitation surfaced here:
 the local graph holds `serena-docs-01..26` as extracted **section labels** (e.g. "Indexing", "Project
 Activation", "Onboarding & Memories", "Alternative Ways of Running Serena") with correct source
 line numbers, but the underlying `raw/serena-docs-*.md` prose is **not cached locally**
-(`~/.graphify/vendor-sources/` holds `raw/` folders for six other vendor docs sets — cloudflare-
+(`~/.agent-memory/vendor-sources/` holds `raw/` folders for six other vendor docs sets — cloudflare-
 workers, gemini-api, nodejs-v8, ollama, playwright, semantic-search-mcp — but not serena-docs, which
 was apparently merged into the global graph without keeping its raw source alongside). The graph could
 tell me *what topics* the docs cover but not their exact wording. Per §10.11's "a miss is a task, not
@@ -112,7 +116,7 @@ MCP/agent round-trip overhead.
 | `task_completion` | Pointer to CLAUDE.md §3 (the 12-point DoD) — deliberately not a duplicate, per `memory_maintenance`'s own guidance against restating what a source document already owns. |
 | `architecture/ai_registry` | Exact locations (`find_symbol`-verified line numbers) of `GEM_HOST`/`GEM_MODELS`/`AI_THINK`/`gemGen`/`gemThink`/`gemFetch`, plus the separate worker/index.js proxy surface, with an explicit "not cross-traced" caveat where true. |
 | `testing/warm_page_fixtures` | The full `warmContext`→`warmPage`→`warm`/`isolatedPage`→`page` fixture chain in `tests/_fixtures.ts`, the `addInitScript` hard-trap, `seedApp`'s 155 grep-verified call sites, and the cross-file `find_referencing_symbols` limitation with its evidence. |
-| `tooling/serena_usage` | Serena↔graphify↔grep division of labor, the manual's behavioral rules, the Dashboard as a second control surface, and both evidenced 2026-07-24 findings in full (with the corrected root cause for language activation — see §5). |
+| `tooling/serena_usage` | Serena↔agent-memory↔grep division of labor, the manual's behavioral rules, the Dashboard as a second control surface, and both evidenced 2026-07-24 findings in full (with the corrected root cause for language activation — see §5). |
 
 ## 5. Honest limits found — and one correction made mid-session
 
@@ -206,8 +210,8 @@ Paste into a subagent brief whenever the task is symbol-shaped code work on this
   genuine, generally-useful Serena documentation surface that the local `serena-docs` graph node
   labels don't capture in enough prose detail to answer questions like this session's from the graph
   alone (its raw source text isn't cached locally, unlike six other vendor doc sets under
-  `~/.graphify/vendor-sources/`). Re-ingesting Serena's docs fresh (`graphify add
-  https://oraios.github.io/serena/`, then `graphify global add ... --as serena-docs-v2`, replacing or
+  `~/.agent-memory/vendor-sources/`). Re-ingesting Serena's docs fresh (`agent-memory add
+  https://oraios.github.io/serena/`, then `agent-memory global add ... --as serena-docs-v2`, replacing or
   supplementing the existing `serena-docs` tag) would let future sessions get this from the graph
   instead of a live web fetch. Recommended, not performed here — outside this session's authorized
   write scope (memories + this one report file only).
@@ -370,7 +374,7 @@ Full per-language recipe with exact paths, commands, and reasoning: `mem:tooling
 in this repo (per `.serena/project.yml`'s own comments: TS/JS, Python, bash scripts, PowerShell
 scripts, TOML configs, YAML workflows, JSON configs, HTML mockups) has a real Serena/solidlsp language
 server, and all eight now run. `markdown` was deliberately NOT added — not a support gap, a division-
-of-labor choice (CLAUDE.md §10.17: docs relationships are graphify's job, not Serena's; see
+of-labor choice (CLAUDE.md §10.17: docs relationships are agent-memory's job, not Serena's; see
 `tech_stack` memory).
 
 ### The trust fix
@@ -421,9 +425,9 @@ document_symbols}.pkl` for all 8 languages. Ran in ~5 seconds end-to-end.
 Note on "semantic generation": Serena's own indexing is purely LSP/symbol-structural — there is no LLM
 step anywhere in `serena project index`'s pipeline (confirmed by reading the command's source path).
 If genuinely LLM-derived semantic relationships over the codebase are wanted (not just symbol
-locations/references), that is graphify's job per this project's own established division of labor
+locations/references), that is agent-memory's job per this project's own established division of labor
 (CLAUDE.md §10.17/`docs/process/serena-adoption.md`) — a related but distinctly separate, larger
-undertaking (graphify's own docs corpus currently covers documentation, not this codebase's source;
+undertaking (agent-memory's own docs corpus currently covers documentation, not this codebase's source;
 running it over ~9.6k-line `app.js` + the full Python data layer would be a substantial new task in its
 own right) — not performed here, flagged rather than silently assumed out of scope.
 
