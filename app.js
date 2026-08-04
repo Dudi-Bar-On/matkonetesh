@@ -3252,7 +3252,14 @@ function donenessSelector(cut){
       <span class="dn-l">${doneLabel(cut,k)}</span><span class="dn-c">${lv.c}°</span></button>`;
   }).join('');
   return `<div class="dn-wrap">
-    <div class="dn-head">${L('מידת עשייה','Doneness')} <small>(${L('טמפ׳ פנים = מידת עשייה; הזמן משפיע על מרקם בלבד','internal temp = doneness; time affects texture only')})</small></div>
+    <!-- A.3 (2026-08-04): this read "הזמן משפיע על מרקם בלבד" / "time affects texture only", which is
+         false and, in a safety product, expensively so. Time at temperature IS pasteurisation — the
+         second axis of the safety number, not a texture knob beside it. The catalogue disproves the
+         old wording by itself: beef tongue carries a 71C instantaneous floor (USDA/FSIS) while its
+         sous-vide leg holds 70C for 24-48h — under the floor, and safe, on time alone (Baldwin).
+         The owner's ruling keeps doneness the cook's choice: this corrects a factual claim, it does
+         not warn, gate or restrict any level. -->
+    <div class="dn-head">${L('מידת עשייה','Doneness')} <small>(${L('טמפ׳ פנים = מידת עשייה; זמן בטמפרטורה מפסטר','internal temp = doneness; time at temperature pasteurises')})</small></div>
     <div class="dn-btns">${btns}</div>
     <button class="dn-reset" data-donereset>↺ ${L('חזרה למומלץ','Back to recommended')} (${doneLabel(cut,cut.doneness.default)})</button>
   </div>`;
