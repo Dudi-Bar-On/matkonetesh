@@ -29,4 +29,4 @@ catalog fetch): `mem:tooling/serena_language_activation`. Summary status/verific
 "why not all languages activate on their own" structural findings (no project.yml watcher; a full
 restart is fail-fast/all-or-nothing; `ls_specific_settings` needs project TRUST), and the safe restart
 procedure: `mem:tooling/serena_usage`. Deliberately still EXCLUDES `markdown` (130 files) — docs are
-graphify's job per CLAUDE.md §10.17, not Serena's.
+agent-memory's job per CLAUDE.md §10.17, not Serena's (`python scripts/memsync.py --query`).

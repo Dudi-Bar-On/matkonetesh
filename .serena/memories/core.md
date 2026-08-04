@@ -36,7 +36,7 @@ The authoritative discipline is `CLAUDE.md` (repo root) and `docs/process/develo
   locations in app.js, and the worker's separate proxy surface.
 - `mem:testing/warm_page_fixtures` — the warm/warmContext/warmPage/isolatedPage/page fixture chain,
   `seedApp`, and the `addInitScript` hard-trap in `tests/_fixtures.ts`.
-- `mem:tooling/serena_usage` — Serena↔graphify↔grep division of labor; status as of 2026-07-24: ALL 8
+- `mem:tooling/serena_usage` — Serena↔agent-memory↔grep division of labor; status as of 2026-07-24: ALL 8
   configured languages (typescript/python/bash/powershell/toml/yaml/json/html) are live and verified,
   and the root `tsconfig.json` fixed cross-file TS reference search (0 → 234 real refs on `seedApp`).
 - `mem:tooling/serena_language_activation` — the exact per-language fix recipe for this sandbox's TLS

@@ -10,15 +10,14 @@
   (port collision, `reuseExistingServer:false`). After every `python build.py`, RESTART any manual
   `serve.js` — it caches `dist/` in memory at startup, so a rebuild never reaches an already-running
   manual server.
-- **Docs/graph sync**: `bash scripts/sync-docs.sh "<commit message>"` — runs `graphify update
-  --mode deep` on docs, stages, commits, pushes, in one step. Do NOT use the bare
-  `graphify update <path>` on documents — that is the code/AST-only path and silently skips semantic
-  extraction on a docs corpus.
-- **Global graphify queries** (vendor/tool docs, methodology):
-  `export PATH="$HOME/.local/bin:$PATH"; G="$HOME/.graphify/global-graph.json";
-  graphify query "<expanded vocabulary tokens>" --graph "$G" --budget 1500`. Expand the query against
-  the graph's own vocabulary FIRST (case-folded substring match, no stemming/synonyms) or it returns
-  noise.
+- **Docs/memory sync**: `bash scripts/sync-docs.sh "<commit message>"` — syncs the agent-memory
+  store, verifies it, stages docs/scripts/src + CLAUDE.md, commits and pushes. Refuses to push on a
+  stale store.
+- **Agent memory** (replaced graphify 2026-08-04 — the graph could never stay current):
+  `python scripts/memsync.py` (delta by content hash, ~0.3 s) · `--query "<text>"` to search this
+  repo's documents · `--tool <name>` for a vendor/technology spec · `--status` for what is stored.
+  `node scripts/check-memory-fresh.mjs` is the gate and it BLOCKS. Matching is case-folded substring:
+  no stemming, no synonyms, no cross-language matching — expand the query into real tokens first.
 - **Worker dev**: `cd worker` — has its own `package.json`, `vitest.config.mjs`, `worker/test/`;
   separate `node_modules` from the root.
 - **Windows shell notes** (this environment): the Bash tool is git-bash (POSIX-ish) — `find`, `wc`,
