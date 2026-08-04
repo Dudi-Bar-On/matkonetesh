@@ -210,7 +210,8 @@ def build_text_nodes(text: str, file_path: str, file_hash: str) -> list[BaseNode
 
 
 # Extension -> tree-sitter language. Only what a parser is actually installed for.
-CODE_LANGUAGES = {".js": "javascript", ".mjs": "javascript", ".py": "python"}
+CODE_LANGUAGES = {".js": "javascript", ".mjs": "javascript", ".py": "python",
+                  ".ts": "typescript", ".tsx": "typescript"}
 
 # A code node shorter than this is a fragment — `host.innerHTML=` and the like. CodeSplitter
 # cuts on AST boundaries, and some boundaries are one expression wide. Measured on app.js:
@@ -232,11 +233,19 @@ def _code_parser(language: str):
 
     if language == "javascript":
         import tree_sitter_javascript as mod
-    elif language == "python":
+
+        return Parser(Language(mod.language()))
+    if language == "python":
         import tree_sitter_python as mod
-    else:
-        raise ValueError(f"no tree-sitter parser wired for {language!r}")
-    return Parser(Language(mod.language()))
+
+        return Parser(Language(mod.language()))
+    if language == "typescript":
+        # A separate entry point, not .language() — the wheel exposes language_typescript()
+        # and language_tsx() rather than one grammar.
+        import tree_sitter_typescript as mod
+
+        return Parser(Language(mod.language_typescript()))
+    raise ValueError(f"no tree-sitter parser wired for {language!r}")
 
 
 def build_code_nodes(

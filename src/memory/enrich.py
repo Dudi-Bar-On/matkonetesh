@@ -49,6 +49,32 @@ OLLAMA_URL = "http://127.0.0.1:11434"
 EMBED_MODEL = "bge-m3"
 EMBED_DIM = 1024
 
+# Two limits, both MEASURED against this Ollama build rather than read off the model card.
+#
+# PER ITEM: bge-m3 advertises context_length 8192, but content past ~5,900 characters does not
+# change the vector — appending a unique marker beyond that point produces a delta of exactly
+# 0.00000. Passing num_ctx=8192 explicitly changes nothing. So 5,900 is what the model actually
+# reads, and anything beyond it is thrown away silently, which is the worst way to lose data.
+#
+# PER REQUEST: LlamaIndex's OllamaEmbedding sends the whole list as ONE `input=[...]` call, and
+# Ollama applies its context to the BATCH AS A WHOLE — 24 items of 4,000 chars returns HTTP 400
+# "the input length exceeds the context length".
+#
+# A character budget was tried and REJECTED on measurement. The ceiling is in TOKENS, and Hebrew
+# costs far more tokens per character than English: synthetic ASCII sailed past 118,000 chars in
+# one request, while 96,000 chars of this repo's real Hebrew prose failed. Any fixed character
+# budget therefore passes in one language and fails in the other, silently, on content nobody
+# looked at. There is no number that is correct for both.
+#
+# So the batch SPLITS ON FAILURE instead of trying to predict it: send, and on a context error
+# halve the batch and retry, down to a single item. Slower on the rare oversized batch, correct
+# in every language, and it cannot rot when the corpus or the model changes.
+#
+# Verified while measuring: inside a batch that fits, each vector is bit-identical to the same
+# text embedded alone (cosine 1.000000), so the shared request does not blend items.
+EMBED_MAX_CHARS = 5900
+EMBED_BATCH_ITEMS = 16          # opening guess only; failures split it automatically
+
 _EMBED_SCHEMA = """
 CREATE TABLE IF NOT EXISTS agent_memory_vec (
     row_id      INTEGER PRIMARY KEY REFERENCES agent_memory(id) ON DELETE CASCADE,
@@ -128,7 +154,37 @@ def pending(mem: AgentMemory, limit: int | None = None) -> list[dict[str, Any]]:
     return out[:limit] if limit else out
 
 
-def embed_pending(mem: AgentMemory, batch: int = 32, limit: int | None = None, progress=None) -> dict:
+_TRUNCATED: list[int] = []
+
+
+def _embed_texts(emb, texts: list[str]) -> list[list[float]]:
+    """Embed a list, halving and retrying whenever Ollama rejects the batch as too long.
+
+    Recurses to a single item. If ONE item is still too long for the model, that is a real
+    error and it is raised — silently dropping a node would leave a hole in the store that no
+    coverage number could see.
+    """
+    try:
+        return emb.get_text_embedding_batch(texts, show_progress=False)
+    except Exception as exc:
+        if "context" not in str(exc).lower():
+            raise
+        if len(texts) > 1:
+            mid = len(texts) // 2
+            return _embed_texts(emb, texts[:mid]) + _embed_texts(emb, texts[mid:])
+        # A single item still over the line. Hebrew costs far more tokens per character than
+        # English, so no fixed character cap is safe for both — 5,900 chars of English fits and
+        # 5,900 chars of Hebrew does not. Halve and retry rather than drop: a missing vector is
+        # a hole no coverage number can see, and the tail of a section is worth less than the
+        # section being findable at all.
+        text = texts[0]
+        if len(text) < 400:
+            raise
+        _TRUNCATED.append(len(text))
+        return _embed_texts(emb, [text[: len(text) // 2]])
+
+
+def embed_pending(mem: AgentMemory, batch: int | None = None, limit: int | None = None, progress=None) -> dict:
     """Embed everything that needs it. Safe to interrupt — each batch commits on its own."""
     from .agent_memory import sha256_text
 
@@ -137,15 +193,16 @@ def embed_pending(mem: AgentMemory, batch: int = 32, limit: int | None = None, p
         return {"status": "unavailable", "embedded": 0,
                 "reason": f"ollama at {OLLAMA_URL} has no {EMBED_MODEL}"}
 
+    _TRUNCATED.clear()
     todo = pending(mem, limit)
     if not todo:
         return {"status": "current", "embedded": 0}
 
     emb = _embedder()
     done = 0
-    for i in range(0, len(todo), batch):
-        chunk = todo[i : i + batch]
-        vecs = emb.get_text_embedding_batch([c["content"][:2000] for c in chunk], show_progress=False)
+    for i in range(0, len(todo), EMBED_BATCH_ITEMS):
+        chunk = todo[i : i + EMBED_BATCH_ITEMS]
+        vecs = _embed_texts(emb, [c["content"][:EMBED_MAX_CHARS] for c in chunk])
         with mem.conn:
             for c, v in zip(chunk, vecs):
                 mem.conn.execute(
@@ -158,7 +215,8 @@ def embed_pending(mem: AgentMemory, batch: int = 32, limit: int | None = None, p
         done += len(chunk)
         if progress:
             progress(done, len(todo))
-    return {"status": "embedded", "embedded": done, "total": len(todo)}
+    return {"status": "embedded", "embedded": done, "total": len(todo),
+            "truncated": len(_TRUNCATED)}
 
 
 def coverage(mem: AgentMemory) -> dict:

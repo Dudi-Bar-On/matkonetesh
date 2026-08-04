@@ -57,20 +57,14 @@ def seed(mem: AgentMemory) -> dict:
     for t in tools:
         mem.upsert_tool_spec(ToolSpec(t["tool_name"], t["content"], t["metadata"]), file_path="seed")
 
-    graph = _load_seed("graph-knowledge")
-    per_file = {}
-    for r in graph:
-        key = r["file_path"]
-        idx = per_file.get(key, 0)
-        per_file[key] = idx + 1
-        md = dict(r["metadata"])
-        md.setdefault("header_path", "/")
-        md.pop("chunk_index", None)
-        mem.upsert_node(
-            TextNode(text=r["content"], metadata=md),
-            idx, key, sha256_text("seed"), extra_metadata=md,
-        )
-    return {"tool_specs": len(tools), "graph_records": len(graph)}
+    # graph-knowledge.json.gz was deleted on 2026-08-04 (owner decision). It held 6,818 nodes
+    # graphify extracted from app.js, sources.py and data.py on 30 July — a photograph that
+    # could never be refreshed. Those same files are now parsed by tree-sitter on every sync,
+    # so the seed was shipping a frozen copy alongside a live one, and the frozen copy was
+    # already wrong: nitrite, beef tongue and the doneness subtitle all changed that morning.
+    # What is genuinely lost: graphify's 18,568 extracted relations. Accepted deliberately —
+    # they described the same stale snapshot.
+    return {"tool_specs": len(tools), "graph_records": 0}
 
 
 def sync(force: bool = False) -> dict:

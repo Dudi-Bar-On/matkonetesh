@@ -24,6 +24,13 @@
         "*.py"
       ],
       "note": "the source the safety data is BUILT by — app.js (14.7k lines) and the 17 Python data/build modules. Parsed with tree-sitter via CodeSplitter, AST-aligned. This is what the frozen graph:// records used to index, except current: they were extracted once on 2026-07-30 and could never be refreshed."
+    },
+    {
+      "path": "tests",
+      "patterns": [
+        "*.ts"
+      ],
+      "note": "the Playwright suite — 167 spec files. In memory so 'what proves X' is a query rather than a grep. tree_sitter_typescript has a Windows wheel; the language PACK does not, which is a different thing and cost an hour to discover."
     }
   ],
   "top_level_files": [
@@ -34,6 +41,7 @@
     "docs/research/measurements/**": "9 CPU-sampler and process-census dumps, ~1.5 MB of telemetry rows. Nobody will ever ask memory a question these answer, and ingesting them by extension would flood the store with noise — which is how a memory stops being worth querying.",
     "**/*.json": "325 files, mostly generated fixtures and language data. lang/*.json is enforced by the i18n guards, not by memory.",
     "agent-memory-seed/*.gz": "already IN the store; ingesting it would be circular.",
-    "tests/**, worker/**, scripts/**": "no tree-sitter TypeScript wheel is installed, and scripts are small enough that exact search finds them. Add a root here rather than a second list if that changes."
+    "worker/**, scripts/**": "small enough that exact search finds them; add a root here rather than a second list if that changes.",
+    "WSL2": "Ubuntu-20.04 ships SQLite 3.31.1 — four years older than the 3.45 JSONB needs — so the memory layer cannot run there at all. The full tree-sitter language pack IS available on linux-x86_64, but the per-language Windows wheels made it unnecessary."
   }
 }

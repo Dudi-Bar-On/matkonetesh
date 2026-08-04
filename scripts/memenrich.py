@@ -69,6 +69,8 @@ def main() -> int:
             print("            tier 1 is unaffected; search degrades to exact matching.")
             return 0
         print(f"[memenrich] {res['status']}: {res['embedded']} nodes")
+        if res.get("truncated"):
+            print(f"            {res['truncated']} node(s) exceeded the model window and were halved to fit")
         print(f"            coverage now {coverage(mem)['pct']}%")
     return 0
 
