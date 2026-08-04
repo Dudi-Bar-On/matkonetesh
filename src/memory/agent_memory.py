@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from llama_index.core.ingestion import IngestionPipeline
-from llama_index.core.node_parser import MarkdownNodeParser
+from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
 from llama_index.core.schema import BaseNode, Document, TextNode
 
 __all__ = [
@@ -54,6 +54,7 @@ __all__ = [
     "JsonbUnsupportedError",
     "MIN_SQLITE_FOR_JSONB",
     "build_nodes",
+    "build_text_nodes",
     "headers_from_path",
     "sha256_text",
     "sha256_file",
@@ -177,6 +178,32 @@ def build_nodes(text: str, file_path: str, file_hash: str) -> list[BaseNode]:
     pipeline = IngestionPipeline(transformations=[MarkdownNodeParser()])
     doc = Document(text=text, metadata={"file_path": file_path, "file_hash": file_hash})
     return pipeline.run(documents=[doc])
+
+
+def build_text_nodes(text: str, file_path: str, file_hash: str) -> list[BaseNode]:
+    """Parse NON-markdown text — raw extracted PDF text, CSV tables, regulatory XML.
+
+    MarkdownNodeParser is the wrong tool here: these files have no headings, so it returns one
+    node per file. The FDA fish guidance alone is 1.2 MB of extracted prose, and a single node
+    that size is unsearchable and unembeddable — bge-m3 sees only its first 2,000 characters.
+
+    A CSV is deliberately NOT split. These tables are small (most under 2 KB) and splitting one
+    separates a row from its header, which for a pasteurisation table means separating a time
+    from the temperature it belongs to. That is a safety-data integrity question, not a chunking
+    preference.
+
+    SentenceSplitter needs no LLM and no embedding model — verified before adoption.
+    """
+    if file_path.endswith(".csv"):
+        return [TextNode(text=text, metadata={"file_path": file_path, "file_hash": file_hash,
+                                              "header_path": "/", "format": "csv"})]
+    splitter = SentenceSplitter(chunk_size=900, chunk_overlap=120)
+    doc = Document(text=text, metadata={"file_path": file_path, "file_hash": file_hash})
+    nodes = splitter.get_nodes_from_documents([doc])
+    for n in nodes:
+        n.metadata.setdefault("header_path", "/")
+        n.metadata["format"] = file_path.rsplit(".", 1)[-1]
+    return nodes
 
 
 def node_metadata(node: BaseNode, index: int, extra: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -362,7 +389,11 @@ class AgentMemory:
         The whole replace runs in ONE transaction: old nodes deleted and new ones written
         together, so an interrupted ingest cannot leave a file half-present.
         """
-        nodes = build_nodes(md_content, file_path, file_hash)
+        nodes = (
+            build_nodes(md_content, file_path, file_hash)
+            if file_path.endswith(".md")
+            else build_text_nodes(md_content, file_path, file_hash)
+        )
         node_ids: list[str] = []
         with self.conn:
             self.conn.execute(

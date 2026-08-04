@@ -6,6 +6,7 @@ from .agent_memory import (  # noqa: F401
     JsonbUnsupportedError,
     MIN_SQLITE_FOR_JSONB,
     build_nodes,
+    build_text_nodes,
     headers_from_path,
     node_metadata,
     sha256_text,

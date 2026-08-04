@@ -31,7 +31,8 @@ from src.memory import AgentMemory, ToolSpec, sha256_text  # noqa: E402
 
 DB = ROOT / "agent-memory.db"
 SEED_DIR = ROOT / "docs" / "agent-memory-seed"
-TOP_LEVEL_DOCS = ["CLAUDE.md", "README.md"]
+SCOPE = json.loads((ROOT / "docs" / "process" / "memory-ingest-scope.json").read_text(encoding="utf-8"))
+TOP_LEVEL_DOCS = SCOPE["top_level_files"]
 
 
 def _load_seed(name: str) -> list:
@@ -79,7 +80,17 @@ def sync(force: bool = False) -> dict:
         if not mem.list_tool_specs():
             s = seed(mem)
             print(f"[memsync] seeded {s['tool_specs']} tool specs · {s['graph_records']} migrated records")
-        tally = mem.ingest_markdown_tree(ROOT / "docs", rel_to=ROOT, force=force)
+        # Scope comes from docs/process/memory-ingest-scope.json — ONE list, read by this
+        # script and by check-memory-fresh.mjs. It used to be duplicated, and the copies drifted:
+        # one run ingested 1,233 corpus nodes and pruned them in the same invocation because the
+        # prune input was still md-only. The pruner was right; its input was a stale copy.
+        tally = {"ingested": 0, "skipped": 0, "nodes": 0}
+        for root in SCOPE["roots"]:
+            for pattern in root["patterns"]:
+                sub = mem.ingest_markdown_tree(ROOT / root["path"], pattern, rel_to=ROOT, force=force)
+                for k in ("ingested", "skipped", "nodes"):
+                    tally[k] += sub[k]
+
         for name in TOP_LEVEL_DOCS:
             p = ROOT / name
             if p.exists():
@@ -90,11 +101,18 @@ def sync(force: bool = False) -> dict:
         # Prune documents that no longer exist on disk. The comparison itself lives in
         # AgentMemory.prune_missing so it is covered by the test suite — this script only
         # supplies the set of paths that exist.
-        on_disk = {
-            p.relative_to(ROOT).as_posix()
-            for p in (ROOT / "docs").glob("**/*.md")
-            if p.is_file()
-        } | {n for n in TOP_LEVEL_DOCS if (ROOT / n).exists()}
+        # This set MUST mirror everything ingested above, or the prune deletes what the same run
+        # just wrote. It did exactly that on the first cut: 1,233 corpus nodes were ingested and
+        # pruned in the same invocation, because on_disk was still built from **/*.md alone.
+        # The pruner was right; the input was wrong.
+        on_disk = {n for n in TOP_LEVEL_DOCS if (ROOT / n).exists()}
+        for root in SCOPE["roots"]:
+            for pattern in root["patterns"]:
+                on_disk |= {
+                    p.relative_to(ROOT).as_posix()
+                    for p in (ROOT / root["path"]).glob(pattern)
+                    if p.is_file()
+                }
         tally["pruned"] = mem.prune_missing(on_disk)["rows"]
         return tally
 

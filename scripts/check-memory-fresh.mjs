@@ -24,20 +24,25 @@ import { DatabaseSync } from 'node:sqlite';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DB = join(ROOT, 'agent-memory.db');
-const TOP_LEVEL = ['CLAUDE.md', 'README.md'];
+// Scope is shared with scripts/memsync.py through ONE file. It was duplicated until 2026-08-04,
+// and the copies drifted the moment the corpus was added: memsync ingested 1,233 nodes that this
+// gate then reported as orphans, because it was still walking **/*.md alone.
+const SCOPE = JSON.parse(readFileSync(join(ROOT, 'docs', 'process', 'memory-ingest-scope.json'), 'utf8'));
+const TOP_LEVEL = SCOPE.top_level_files;
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
-function walk(dir, out = []) {
+function walk(dir, exts, out = []) {
   if (!existsSync(dir)) return out;
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
     const st = statSync(p);
-    if (st.isDirectory()) walk(p, out);
-    else if (name.endsWith('.md')) out.push(p);
+    if (st.isDirectory()) walk(p, exts, out);
+    else if (exts.some((e) => name.endsWith(e))) out.push(p);
   }
   return out;
 }
+const extsOf = (patterns) => patterns.map((p) => p.replace('**/*', ''));
 
 if (!existsSync(DB)) {
     console.log('FAIL: agent-memory.db is missing. Build it with: python scripts/memsync.py');
@@ -55,8 +60,10 @@ for (const r of db.prepare(
 }
 
 const files = [
-  ...walk(join(ROOT, 'docs')),
-  ...TOP_LEVEL.map((n) => join(ROOT, n)).filter(existsSync),
+  ...new Set([
+    ...SCOPE.roots.flatMap((r) => walk(join(ROOT, r.path), extsOf(r.patterns))),
+    ...TOP_LEVEL.map((n) => join(ROOT, n)).filter(existsSync),
+  ]),
 ];
 
 const stale = [];
