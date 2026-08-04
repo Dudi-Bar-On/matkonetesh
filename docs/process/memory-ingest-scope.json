@@ -3,19 +3,37 @@
   "roots": [
     {
       "path": "docs",
-      "patterns": ["**/*.md"],
+      "patterns": [
+        "**/*.md"
+      ],
       "note": "every project document"
     },
     {
       "path": "docs/sources",
-      "patterns": ["**/*.csv", "**/*.txt", "**/*.xml"],
+      "patterns": [
+        "**/*.csv",
+        "**/*.txt",
+        "**/*.xml"
+      ],
       "note": "the 19 primary safety sources — Baldwin's pasteurisation tables, FSIS lethality tables 2/3/4, AMI degree-hours, D/Z values, CFIA nitrite floors, EU PAH limits, USDA organ-meat temperatures. Every safety value in this product traces to one of these, and until 2026-08-04 not one was in memory."
+    },
+    {
+      "path": ".",
+      "patterns": [
+        "app.js",
+        "*.py"
+      ],
+      "note": "the source the safety data is BUILT by — app.js (14.7k lines) and the 17 Python data/build modules. Parsed with tree-sitter via CodeSplitter, AST-aligned. This is what the frozen graph:// records used to index, except current: they were extracted once on 2026-07-30 and could never be refreshed."
     }
   ],
-  "top_level_files": ["CLAUDE.md", "README.md"],
+  "top_level_files": [
+    "CLAUDE.md",
+    "README.md"
+  ],
   "_excluded_deliberately": {
     "docs/research/measurements/**": "9 CPU-sampler and process-census dumps, ~1.5 MB of telemetry rows. Nobody will ever ask memory a question these answer, and ingesting them by extension would flood the store with noise — which is how a memory stops being worth querying.",
     "**/*.json": "325 files, mostly generated fixtures and language data. lang/*.json is enforced by the i18n guards, not by memory.",
-    "agent-memory-seed/*.gz": "already IN the store; ingesting it would be circular."
+    "agent-memory-seed/*.gz": "already IN the store; ingesting it would be circular.",
+    "tests/**, worker/**, scripts/**": "no tree-sitter TypeScript wheel is installed, and scripts are small enough that exact search finds them. Add a root here rather than a second list if that changes."
   }
 }

@@ -45,7 +45,7 @@ from pathlib import Path
 from typing import Any, Iterable
 
 from llama_index.core.ingestion import IngestionPipeline
-from llama_index.core.node_parser import MarkdownNodeParser, SentenceSplitter
+from llama_index.core.node_parser import CodeSplitter, MarkdownNodeParser, SentenceSplitter
 from llama_index.core.schema import BaseNode, Document, TextNode
 
 __all__ = [
@@ -55,6 +55,9 @@ __all__ = [
     "MIN_SQLITE_FOR_JSONB",
     "build_nodes",
     "build_text_nodes",
+    "build_code_nodes",
+    "CODE_LANGUAGES",
+    "MIN_CODE_NODE_CHARS",
     "headers_from_path",
     "sha256_text",
     "sha256_file",
@@ -204,6 +207,65 @@ def build_text_nodes(text: str, file_path: str, file_hash: str) -> list[BaseNode
         n.metadata.setdefault("header_path", "/")
         n.metadata["format"] = file_path.rsplit(".", 1)[-1]
     return nodes
+
+
+# Extension -> tree-sitter language. Only what a parser is actually installed for.
+CODE_LANGUAGES = {".js": "javascript", ".mjs": "javascript", ".py": "python"}
+
+# A code node shorter than this is a fragment — `host.innerHTML=` and the like. CodeSplitter
+# cuts on AST boundaries, and some boundaries are one expression wide. Measured on app.js:
+# 24% of nodes fall under this at the chosen settings. They are DROPPED, and the count is
+# returned rather than swallowed, because a store full of 15-character fragments answers
+# every query with noise.
+MIN_CODE_NODE_CHARS = 120
+
+
+def _code_parser(language: str):
+    """Build the tree-sitter parser directly.
+
+    `tree_sitter_language_pack`, which CodeSplitter reaches for by default, ships NO pre-built
+    parsers for windows-x86_64 — it offers linux-x86_64, macos-arm64, linux-aarch64 and
+    macos-x86_64, and raises DownloadError here. The per-language wheels do work, and
+    CodeSplitter accepts a `parser` argument, so we build it ourselves and never touch the pack.
+    """
+    from tree_sitter import Language, Parser
+
+    if language == "javascript":
+        import tree_sitter_javascript as mod
+    elif language == "python":
+        import tree_sitter_python as mod
+    else:
+        raise ValueError(f"no tree-sitter parser wired for {language!r}")
+    return Parser(Language(mod.language()))
+
+
+def build_code_nodes(
+    text: str, file_path: str, file_hash: str, language: str
+) -> tuple[list[BaseNode], int]:
+    """Parse source code into AST-aligned nodes. Returns (nodes, fragments_dropped).
+
+    Settings measured on app.js (14,718 lines), not guessed:
+        chunk_lines=60,  max_chars=2000 -> 1257 nodes, median 1010 ch, 33% fragments
+        chunk_lines=120, max_chars=4000 ->  520 nodes, median 2954 ch, 24% fragments  <- chosen
+        chunk_lines=200, max_chars=6000 ->  310 nodes, median 5025 ch, 17% fragments
+    The 200-line setting has the fewest fragments but the worst embeddings: bge-m3 sees only the
+    first 2,000 characters of a node, so a 5 KB node loses most of itself to the vector.
+    """
+    splitter = CodeSplitter(
+        language=language,
+        chunk_lines=120,
+        chunk_lines_overlap=10,
+        max_chars=4000,
+        parser=_code_parser(language),
+    )
+    doc = Document(text=text, metadata={"file_path": file_path, "file_hash": file_hash})
+    raw = splitter.get_nodes_from_documents([doc])
+    kept = [n for n in raw if len(n.get_content().strip()) >= MIN_CODE_NODE_CHARS]
+    for n in kept:
+        n.metadata.setdefault("header_path", "/")
+        n.metadata["format"] = "code"
+        n.metadata["language"] = language
+    return kept, len(raw) - len(kept)
 
 
 def node_metadata(node: BaseNode, index: int, extra: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -389,11 +451,15 @@ class AgentMemory:
         The whole replace runs in ONE transaction: old nodes deleted and new ones written
         together, so an interrupted ingest cannot leave a file half-present.
         """
-        nodes = (
-            build_nodes(md_content, file_path, file_hash)
-            if file_path.endswith(".md")
-            else build_text_nodes(md_content, file_path, file_hash)
-        )
+        ext = "." + file_path.rsplit(".", 1)[-1] if "." in file_path else ""
+        self.last_fragments_dropped = 0
+        if file_path.endswith(".md"):
+            nodes = build_nodes(md_content, file_path, file_hash)
+        elif ext in CODE_LANGUAGES:
+            nodes, dropped = build_code_nodes(md_content, file_path, file_hash, CODE_LANGUAGES[ext])
+            self.last_fragments_dropped = dropped
+        else:
+            nodes = build_text_nodes(md_content, file_path, file_hash)
         node_ids: list[str] = []
         with self.conn:
             self.conn.execute(

@@ -487,3 +487,95 @@ def test_stats_counts_both_types(mem):
     assert s["by_type"]["md_doc"]["rows"] == n
     assert s["by_type"]["tool_spec"]["rows"] == 2
     assert s["total"] == n + 2
+
+
+# ======================================================================================
+# Non-markdown: raw text, CSV tables, and source code
+# ======================================================================================
+
+
+def test_csv_is_stored_whole_and_never_split(mem):
+    """Splitting a table separates a row from its header.
+
+    In a pasteurisation table that means separating a TIME from the TEMPERATURE it belongs
+    to. This is a safety-data integrity rule, not a chunking preference.
+    """
+    csv = "thickness_mm,time_min_at_55C,time_min_at_60C\n5,120,30\n10,120,40\n15,130,50\n"
+    ids = mem.parse_and_store_markdown(csv, "docs/sources/corpus/x/pasteurization.csv", "h")
+    assert len(ids) == 1
+    row = mem.query_docs(file_path="pasteurization.csv", limit=5)[0]
+    assert row["content"] == csv
+    assert row["metadata"]["format"] == "csv"
+    assert "time_min_at_60C" in row["content"] and "15,130,50" in row["content"]
+
+
+def test_raw_text_is_split_rather_than_stored_as_one_giant_node(mem):
+    """MarkdownNodeParser returns ONE node for headingless text.
+
+    The FDA fish guidance is 1.2 MB of extracted prose; a single node that size is
+    unsearchable, and bge-m3 would see only its first 2,000 characters.
+    """
+    para = ("Cook fish to an internal temperature of 145 degrees Fahrenheit. " * 40 + "\n\n") * 6
+    ids = mem.parse_and_store_markdown(para, "docs/sources/corpus/x/extracted-text.txt", "h")
+    assert len(ids) > 1, "raw text must be chunked, not stored whole"
+    rows = mem.query_docs(file_path="extracted-text.txt", limit=50)
+    assert all(r["metadata"]["format"] == "txt" for r in rows)
+    # SentenceSplitter's chunk_size is in TOKENS, not characters — 900 tokens lands around
+    # 4,300 chars here. The property under test is "chunked at all", not an exact width.
+    assert all(len(r["content"]) < 8000 for r in rows)
+
+
+def test_code_is_parsed_by_tree_sitter_into_ast_aligned_nodes(mem):
+    """CodeSplitter with a directly-built parser.
+
+    tree_sitter_language_pack, which CodeSplitter reaches for by default, ships NO pre-built
+    parser for windows-x86_64 and raises DownloadError here. The per-language wheels do work.
+    """
+    src = "\n\n".join(
+        f"function handler{i}(a, b) {{\n  // a real body so it clears the fragment floor\n"
+        f"  const total = a + b + {i};\n  console.log('handler{i}', total);\n  return total;\n}}"
+        for i in range(12)
+    )
+    ids = mem.parse_and_store_markdown(src, "app.js", "h")
+    assert ids
+    rows = mem.query_docs(file_path="app.js", limit=50)
+    assert all(r["metadata"]["format"] == "code" for r in rows)
+    assert all(r["metadata"]["language"] == "javascript" for r in rows)
+    assert mem.query_docs(text="handler7", limit=5)
+
+
+def test_code_fragments_below_the_floor_are_dropped_and_counted(mem):
+    """AST boundaries can be one expression wide; `host.innerHTML=` is not a searchable node.
+
+    Measured against the REAL app.js rather than a synthetic fixture, because fragments are a
+    property of how a large file's AST actually splits — a hand-made file of one-line
+    statements produces a single chunk and would have made this test pass vacuously. app.js is
+    in the repo, so this is deterministic.
+    """
+    from pathlib import Path
+
+    from src.memory import MIN_CODE_NODE_CHARS, build_code_nodes
+
+    src = (Path(__file__).resolve().parents[1] / "app.js").read_text(encoding="utf-8")
+    nodes, dropped = build_code_nodes(src, "app.js", "h", "javascript")
+
+    assert nodes, "app.js must produce nodes"
+    assert dropped > 0, "a 14k-line file splits on AST boundaries that are one expression wide"
+    assert all(len(n.get_content().strip()) >= MIN_CODE_NODE_CHARS for n in nodes)
+
+    mem.parse_and_store_markdown(src, "app.js", "h")
+    assert mem.last_fragments_dropped == dropped, "the count must reach the caller, not vanish"
+
+
+def test_python_and_javascript_both_route_to_a_parser(mem):
+    from src.memory import CODE_LANGUAGES
+
+    assert CODE_LANGUAGES == {".js": "javascript", ".mjs": "javascript", ".py": "python"}
+    py = "\n\n".join(
+        f"def compute_{i}(value):\n    \"\"\"A docstring long enough to clear the floor.\"\"\"\n"
+        f"    scaled = value * {i}\n    return scaled + {i}"
+        for i in range(10)
+    )
+    ids = mem.parse_and_store_markdown(py, "build.py", "h")
+    assert ids
+    assert mem.query_docs(file_path="build.py", limit=20)[0]["metadata"]["language"] == "python"

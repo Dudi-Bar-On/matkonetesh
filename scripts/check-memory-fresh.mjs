@@ -32,17 +32,30 @@ const TOP_LEVEL = SCOPE.top_level_files;
 
 const sha256 = (buf) => createHash('sha256').update(buf).digest('hex');
 
-function walk(dir, exts, out = []) {
+// Mirror Python's pathlib glob semantics for the two shapes the scope file uses:
+//   '**/*.ext'  recursive by extension
+//   '*.ext' / 'literal.js'  the directory itself only, never recursing
+// The distinction is load-bearing: the '.' root would otherwise walk node_modules and every
+// build artefact, and report thousands of files the store was never asked to hold.
+function matchPattern(dir, pattern, out = []) {
   if (!existsSync(dir)) return out;
+  const recursive = pattern.startsWith('**/');
+  const leaf = pattern.replace(/^\*\*\//, '');
+  const isGlob = leaf.startsWith('*');
+  const suffix = isGlob ? leaf.slice(1) : leaf;
+
   for (const name of readdirSync(dir)) {
     const p = join(dir, name);
-    const st = statSync(p);
-    if (st.isDirectory()) walk(p, exts, out);
-    else if (exts.some((e) => name.endsWith(e))) out.push(p);
+    let st;
+    try { st = statSync(p); } catch { continue; }
+    if (st.isDirectory()) {
+      if (recursive && name !== 'node_modules' && !name.startsWith('.')) matchPattern(p, pattern, out);
+    } else if (isGlob ? name.endsWith(suffix) : name === leaf) {
+      out.push(p);
+    }
   }
   return out;
 }
-const extsOf = (patterns) => patterns.map((p) => p.replace('**/*', ''));
 
 if (!existsSync(DB)) {
     console.log('FAIL: agent-memory.db is missing. Build it with: python scripts/memsync.py');
@@ -61,7 +74,7 @@ for (const r of db.prepare(
 
 const files = [
   ...new Set([
-    ...SCOPE.roots.flatMap((r) => walk(join(ROOT, r.path), extsOf(r.patterns))),
+    ...SCOPE.roots.flatMap((r) => r.patterns.flatMap((pat) => matchPattern(join(ROOT, r.path), pat))),
     ...TOP_LEVEL.map((n) => join(ROOT, n)).filter(existsSync),
   ]),
 ];
