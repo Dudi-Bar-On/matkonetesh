@@ -2797,6 +2797,28 @@ function cureScaleGuardHTML(doseG, perUnitG, unitHe, unitEn){
   const cls=hard?'ai-caveat ai-caveat-strong':'calcnote';
   return `<div class="${cls}" data-cureguard="${hard?'hard':'advisory'}">${msg}</div>`;
 }
+// Cure #1 and Cure #2 are both 6.25% sodium nitrite by mass, so 1 g/kg of either delivers
+// 62.5 ppm ingoing nitrite. This is the ONLY place that conversion lives.
+const CURE_PPM_PER_G = 62.5;
+
+// The note under the salt/cure calculator. It states the rate the calculator ACTUALLY applied —
+// it used to hardcode "2.5 g/kg = 156ppm (standard and safe)" for every Cure #1 preset, which
+// put 2.5 on screen two lines under bacon's own 2.0 dose row (A.1, owner ruling 2026-08-04).
+// A missing rate is reported as missing rather than papered over with a default: a nitrite dose
+// is weighed out and eaten, so silence is the one thing this must never produce.
+function cureNoteText(cure, rate){
+  if(!cure) return '';
+  if(rate==null || isNaN(Number(rate)))
+    return L('⚠ מינון ה-Cure אינו מוגדר לסוג המוצר הזה — אל תשקלו לפי המסך.',
+             '⚠ The Cure rate is undefined for this product type — do not weigh from this screen.');
+  const ppm = Math.round(Number(rate) * CURE_PPM_PER_G);
+  const head = 'Cure #' + cure + ' — ' + rate + ' ' + L('ג׳/ק״ג','g/kg') + ' ≈ ' + ppm + 'ppm ' + L('ניטריט','nitrite');
+  // Cure #2 is the uncooked dry-cured class; its accuracy warning stays, now with the number in it.
+  return cure === '2'
+    ? head + '. ' + L('⚠ מוצר מיובש לא מבושל — דיוק ה-Cure קריטי לבטיחות.',
+                      '⚠ Dry-cured, uncooked product — Cure accuracy is critical for safety.')
+    : head + '.';
+}
 function calcBoxHTML(calc){
   if(!calc) return '';
   const brine=calc.brine;
@@ -2839,15 +2861,23 @@ function wireCalcBox(root, calc){
       note.textContent=L('תמלחת כבישה — שקלו לכסות את הנתח. שיטת שיווי-משקל (בשקית ואקום עם מעט מים) בטוחה מפני מליחות-יתר, ומינון ה-Cure מחושב לפי המשקל הכולל (בטוח). כבישה ~24ש לכל 1 ס״מ עובי.','Curing brine — weigh out to cover the cut. The equilibrium method (in a vacuum bag with a little water) is safe from over-salting, and the Cure dose is calculated from the total weight (safe). Cure ~24h per 1 cm of thickness.');
     } else {
       h+=line(L('מלח','Salt'), fmtG(x*calc.salt/1000), calc.salt+' '+gKg);
+      // A.1 — the nitrite rate is DECLARED by the preset, never defaulted. `calc.cureRate||2.5`
+      // stood here and the `smoked`/`dry` presets carried no cureRate key at all, so the dose that
+      // gets weighed out on a scale was reached by fallback. Both cure classes now state their own
+      // rate (see the R table below), and this reads it. A missing rate must surface, not silently
+      // become 2.5 — so there is no `||` here and CURE_PPM_PER_G below is the only conversion.
       if(calc.cure){
-        const doseG=x*(calc.cureRate||2.5)/1000;
-        h+=line('Cure #'+calc.cure, fmtG(doseG), (calc.cureRate||2.5)+' '+gKg);
-        g+=cureScaleGuardHTML(doseG, calc.cureRate||2.5, 'ק״ג בשר','kg meat');
+        const rate=calc.cureRate;
+        const doseG=x*rate/1000;
+        h+=line('Cure #'+calc.cure, fmtG(doseG), rate+' '+gKg);
+        g+=cureScaleGuardHTML(doseG, rate, 'ק״ג בשר','kg meat');
       }
       if(calc.sugar) h+=line(L('סוכר/דקסטרוז','Sugar/dextrose'), fmtG(x*calc.sugar/1000), calc.sugar+' '+gKg);
       if(calc.water) h+=line(L('קרח/מים','Ice/water'), fmtG(x*calc.water/100), calc.water+'%');
-      note.textContent = calc.cure==='2' ? L('⚠ מוצר מיובש לא מבושל — דיוק ה-Cure קריטי לבטיחות.','⚠ Dry-cured, uncooked product — Cure accuracy is critical for safety.')
-        : (calc.cure==='1' ? L('Cure #1 ב-2.5 ג׳/ק״ג ≈ 156ppm ניטריט (תקני ובטוח).','Cure #1 at 2.5 g/kg ≈ 156ppm nitrite (standard and safe).') : '');
+      // The note states the rate ACTUALLY applied. It used to hardcode "2.5 g/kg ≈ 156ppm
+      // (standard and safe)" for every Cure #1 preset — including bacon at 2.0, so the dose row
+      // said 2 and the sentence two lines under it called 2.5 the standard.
+      note.textContent = calc.cure ? cureNoteText(calc.cure, calc.cureRate) : '';
     }
     out.innerHTML=h;
     if(guard) guard.innerHTML=g;
@@ -2958,9 +2988,17 @@ function openCalc(){
      <div id="servHost"></div>
    </div>`;
   showPanel(html);
+  // cureRate is g of cure salt per kg of meat, and every cure-bearing preset MUST declare it —
+  // wireCalcBox has no fallback, so an omission surfaces instead of quietly becoming 2.5.
+  // Cure #1 and Cure #2 are both 6.25% sodium nitrite, hence CURE_PPM_PER_G = 62.5 ppm per g/kg.
+  //   smoked 2.5 -> 156 ppm · 9 CFR 424.21(c): nitrite in chopped meat, 0.25 oz/100 lb = 156 ppm
+  //   dry    2.5 -> 156 ppm nitrite, same ceiling; Cure #2's nitrate rides at 100 ppm, far under
+  //                 424.21(c)'s 2.75 oz/100 lb (1718 ppm). Salt is 29 g/kg = 2.9%, clearing the
+  //                 CFIA fermented-and-dried pairing of >=100 ppm nitrite WITH >=2.5% salt.
+  //   bacon  2.0 -> 125 ppm · 9 CFR 424.22(b)(3): dry cured bacon ceiling is 200 ppm ingoing.
   const R={fresh:{salt:18,cure:null,sugar:0,water:10,brine:false},
-    smoked:{salt:18,cure:'1',sugar:1,water:10,brine:false},
-    dry:{salt:29,cure:'2',sugar:3,water:0,brine:false},
+    smoked:{salt:18,cure:'1',sugar:1,water:10,brine:false,cureRate:2.5},
+    dry:{salt:29,cure:'2',sugar:3,water:0,brine:false,cureRate:2.5},
     bacon:{salt:20,cure:'1',sugar:10,water:0,brine:false,cureRate:2.0},
     brine:{brine:true,saltL:50,cureL:12,sugarL:20}};
   function paintSalt(){const c=R[$("#ptype").value];$("#saltHost").innerHTML=calcBoxHTML(c);wireCalcBox($("#saltHost"),c);}
