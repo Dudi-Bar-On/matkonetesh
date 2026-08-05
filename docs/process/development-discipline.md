@@ -1665,6 +1665,51 @@ The generalisation, which is the expensive half: any code that decides "this isn
 needs a POSITIVE test for the condition it is excusing — a marker list, an exception type, an exit
 code. `except Exception: skip()` is not a decision, it is an abdication with a docstring.
 
+**L58 · A wait that cannot fail is not a wait — `|| true` disguised as a condition (2026-08-06).**
+
+`visual-smoke.spec.ts` settled its screenshots with
+`await page.waitForFunction(() => document.fonts?.status === 'loaded' || true)`.
+It satisfies §11a by SHAPE — a `waitForFunction`, not a `waitForTimeout` — and waits for exactly
+nothing: `|| true` makes the predicate true on its first evaluation. It shipped in Phase C and
+passed review because the rule everyone was checking was "no arbitrary waits", and it has none.
+
+**The rule is now: a condition wait must be able to fail.** If no reachable state makes the
+predicate false, it is a comment with a network round-trip. The `?.` is the tell — the author wrote
+the safety navigation and then defended against it with `|| true`, which is where the assertion died.
+
+The generalisation past screenshots: this is the same shape as L54 and L57 — **a check whose failure
+path does not exist**. L54 could not fail because the stub's absence read as success; L57 could not
+fail because everything became a skip; L58 could not fail because the predicate was a tautology. When
+adding any gate, ask what input makes it red, and then produce that input.
+
+**L59 · `python` on Windows is a Store alias, and knowing that once is not knowing it everywhere
+(2026-08-06).**
+
+L54 recorded that `python` on PATH is frequently the Microsoft Store app-execution alias — a shim
+that prints "Python was not found" and exits 9009 — and fixed it in `check-pytest`. It fixed the
+CALLER, not the CLASS. `playwright.config.ts` kept a bare `python build.py` in its `webServer`, and
+when the alias won the PATH order the whole suite died with `Process from config.webServer was not
+able to start. Exit code: 9009` — an error naming the web server and never mentioning Python.
+
+**The rule: when a lesson names an environment hazard, grep for every caller that shares it in the
+same sitting.** A lesson applied to one call site is an anecdote. `resolvePython()` now probes
+`py -3` → `python3` → `python`, rejects any path under `WindowsApps`, and throws a named error rather
+than letting a stale `dist/` be tested.
+
+**L60 · A baseline that encodes the wall clock is a gate scheduled to fail (2026-08-06).**
+
+The Phase C visual baselines photographed `#cGreet`, whose text `app.js:12361` computes from
+`new Date().getHours()`. A baseline taken at 23:26 says "ערב טוב"; the identical, unchanged screen
+says "בוקר טוב" after midnight. Six of seven baselines were built to go red twice a day for reasons
+no commit caused — the precise mechanism by which a gate becomes noise and gets silenced, which this
+project has already watched happen to a permanently-amber signal.
+
+Non-reproducible regions are **masked, and the mask is justified in the file**: the greeting's
+correctness belongs to a functional test that can control the clock, not to a photograph. The broader
+rule for snapshot gates: before storing a baseline, name every pixel in it that depends on the clock,
+on focus, or on scroll position — those three produced all six failures here — and either pin the
+state or mask it.
+
 **Adopted win — attack the rule, do not assert it.** Every real defect in this arc was found by a
 test that tried to BREAK a guarantee rather than confirm it. `mk_app` was asked to `CREATE TABLE`
 and succeeded, revealing a grant that had had no user for weeks — a test that merely read the

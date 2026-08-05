@@ -1,4 +1,36 @@
 import { defineConfig, devices } from '@playwright/test';
+import { execFileSync } from 'node:child_process';
+
+// WHICH python. Not a preference — a defect this project already paid for once and did not
+// generalise. On Windows, `python` on PATH is frequently the Microsoft Store APP EXECUTION ALIAS: a
+// zero-byte shim that prints "Python was not found; run without arguments to install from the
+// Microsoft Store" and exits 9009. It is not a broken Python. It is not Python at all, and every
+// tool that assumes `python` means an interpreter fails in the same confusing way — here, as
+// `Process from config.webServer was not able to start. Exit code: 9009`, which names the web
+// server and never mentions Python's absence.
+//
+// L54 recorded exactly this after `check-pytest` reported a false accusation from the same stub,
+// and fixed it THERE by probing candidates and treating the stub as ABSENCE. The lesson was written
+// down and applied to one caller; this config kept a bare `python build.py` and stayed broken until
+// the alias happened to win the PATH order. Probing at config load costs milliseconds and turns an
+// environment-dependent 9009 into a named, fatal error at the only moment somebody can act on it.
+function resolvePython(): string {
+  const candidates: Array<[string, string[]]> = [['py', ['-3']], ['python3', []], ['python', []]];
+  for (const [exe, prefix] of candidates) {
+    try {
+      const out = execFileSync(exe, [...prefix, '-c', 'import sys; print(sys.executable)'],
+        { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], timeout: 15_000 }).trim();
+      // The stub exits non-zero (so execFileSync throws) — but belt and braces: a real interpreter
+      // prints an absolute path to itself, and WindowsApps is where the alias lives.
+      if (out && !out.includes('WindowsApps')) return prefix.length ? `${exe} ${prefix.join(' ')}` : exe;
+    } catch { /* not installed, or the Store stub: both mean "not this one" */ }
+  }
+  throw new Error(
+    'No usable Python interpreter found (tried `py -3`, `python3`, `python`). `python` on PATH may be ' +
+    'the Microsoft Store alias — disable it under Settings > Apps > Advanced app settings > App ' +
+    'execution aliases, or install Python. build.py cannot run, so the suite would test a stale dist/.');
+}
+const PYTHON = resolvePython();
 
 // Serves the freshly-built single-file app. `python build.py` regenerates index.html
 // from data.py + friends, then python's http.server serves the project root.
@@ -101,7 +133,7 @@ export default defineConfig({
   webServer: {
     // build, then serve the clean deploy folder (dist/) so tests exercise the real artifact
     // and the manifest/icons resolve (no 404 noise)
-    command: `python build.py && node serve.js ${PORT}`,
+    command: `${PYTHON} build.py && node serve.js ${PORT}`,
     url: `http://localhost:${PORT}/index.html`,
     // Always start a fresh server that Playwright tears down after the run. reuseExistingServer:true
     // (the old default locally) would silently reuse a STALE/broken leftover on :8123 → random 30s timeouts.

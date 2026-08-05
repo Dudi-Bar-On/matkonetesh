@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 import json
+import os                     # §5.8 — the conversion report needs a path to write to
 from data import CUTS, SPECIALS, GLOSSARY, BUILDS, MAKES
 from seasonings import SEASONINGS as _SEAS_BASE
 from seasonings_ext import SEASONINGS_EXT as _SEAS_EXT
@@ -137,9 +138,62 @@ payload = {
     "seasonings": SEASONINGS,
     "houseRub": HOUSE_RUB_MAP,
     "schemaVersion": _model.SCHEMA_VERSION,
+    # These two stay for the app, which reads them — but they are NOT the report, and calling them
+    # one was the defect. `sorted({...})` on each field separately DESTROYS the pairing: after this
+    # line you can say "some item failed" and "some reason occurred" and never which was which.
+    # The report with the pairing intact is written to disk below (C-6, plan §5.8).
     "unconvertedReasons": sorted({u["reason"] for u in _unconverted}),
     "unconvertedIds": sorted({u["id"] for u in _unconverted if u["id"] is not None}),
 }
+
+# ---------------------------------------------------------------------------------------------
+# §5.8 · THE CONVERSION REPORT GETS A SINK.
+#
+# C-6, called "the cheapest high-value fix in the document" by the reviewer who found it: the
+# pipeline produced 384 report lines and threw them away. 496 non-conversion records lived only in
+# memory during the build, `docs/analysis/2026-08-03-model-conversion-report.md` was NEVER written,
+# and `scripts/model-report.mjs` does not exist — so every sentence elsewhere reading "recorded in
+# the report" pointed at a file nobody had.
+#
+# What that swallowed, per the review: three fermentation-duration misattributions (n-fuet 504h,
+# n-chorizo-esp 840h, n-landjager 6h — which is a SMOKING time), four dropped columns (rub, wood,
+# diff, saved — 520 values across 130 rows) that vanished without one line of report, and 136
+# unresolvable texture citations.
+#
+# Written every build, next to the data it describes. A converter without a sink is a converter
+# whose failures are indistinguishable from its successes.
+_report_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "docs", "analysis",
+                            "model-conversion-report.md")
+os.makedirs(os.path.dirname(_report_path), exist_ok=True)
+
+_by_reason: dict[str, list] = {}
+for _u in _unconverted:
+    _by_reason.setdefault(_u.get("reason", "(no reason given)"), []).append(_u)
+
+with open(_report_path, "w", encoding="utf-8") as _fh:
+    _fh.write("# Model conversion — what did NOT convert\n\n")
+    _fh.write("Written by `build.py` on every build. Do not edit by hand: it is regenerated.\n\n")
+    _fh.write(f"**{len(_unconverted)} record(s)** across **{len(_by_reason)} distinct reason(s)**, "
+              f"out of {len(_items)} items built.\n\n")
+    _fh.write("Each row keeps the pairing that `unconvertedReasons`/`unconvertedIds` in the "
+              "payload throw away: WHICH item failed, on WHICH field, with WHICH raw value, and "
+              "WHY. A count without the pairing cannot be acted on.\n\n")
+    for _reason, _rows in sorted(_by_reason.items(), key=lambda kv: -len(kv[1])):
+        _fh.write(f"## {_reason} — {len(_rows)} record(s)\n\n")
+        _fh.write("| id | name | field | raw value |\n|---|---|---|---|\n")
+        for _r in sorted(_rows, key=lambda x: str(x.get("id") or "")):
+            _val = _r.get("value")
+            _val = "(absent)" if _val is None else str(_val).replace("|", "\\|")[:60]
+            # A field-scoped row stands for a whole retired column, not one item. Rendering it as a
+            # nameless dash next to 997 per-item rows reads as a record whose identity went missing;
+            # it says what it is instead.
+            _id = "(whole field)" if _r.get("scope") == "field" else (f"`{_r.get('id')}`" if _r.get("id") else "—")
+            _name = "(aggregate — see model.py)" if _r.get("scope") == "field" else (_r.get("name") or "—")
+            _fh.write(f"| {_id} | {_name} | {_r.get('field') or '—'} | {_val} |\n")
+        _fh.write("\n")
+
+print(f"[model] conversion report: {len(_unconverted)} record(s), {len(_by_reason)} reason(s) "
+      f"-> {os.path.relpath(_report_path)}")
 # separators=(',',':'): compact — no functional change (JSON.parse doesn't care about
 # insignificant whitespace), but the default separators' extra space-per-comma/colon was costing
 # real bytes against the A1 bundle-size gate (Dec-A1, 2_600_000). Task 1g's `paths` addition is

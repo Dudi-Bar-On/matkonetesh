@@ -206,6 +206,25 @@ def build_items(cuts, specials, makes):
                 safety.extend(model_process.blocks_for_specials(row, unconverted, item_id))
             sheet_row = by_item_he.get(row.get("heb"))
             paths, path_notes = model_paths.build(table, row, sheet_row, unconverted, item_id)
+
+            # §5.8 / C-6, the half the report's sink alone did not close. FOUR authored columns —
+            # rub, wood, diff, saved — are carried by data.py (130, 177, 178 and 130 rows) and the
+            # converter never mentions any of them. 615 authored values are dropped, and until now
+            # they vanished WITHOUT A SINGLE REPORT LINE, which is what made the loss invisible
+            # rather than merely unfixed.
+            #
+            # This does NOT convert them — deciding where `rub` or `wood` belongs in the new model
+            # is a data-model question the owner has open (R-75/R-76), and inventing a home for
+            # them here would be exactly the silent decision this report exists to prevent. It
+            # records the drop, so the count is a number somebody can act on instead of a thing
+            # somebody has to notice.
+            for _dropped in ("rub", "wood", "diff", "saved"):
+                if row.get(_dropped) not in (None, "", [], {}):
+                    unconverted.append({
+                        "id": item_id, "name": row.get("heb"), "field": _dropped,
+                        "value": row.get(_dropped),
+                        "reason": "authored-column-not-in-model",
+                    })
             items.append({
                 "id": item_id,
                 "name": {"he": row.get("heb"), "en": row.get("eng")},
@@ -258,6 +277,19 @@ def build_items(cuts, specials, makes):
         # docstring) so aging stays empty for MAKES, not a skipped scope but a checked one.
         safety.extend(model_process.blocks_for_makes(row, unconverted, item_id))
         paths, path_notes = model_paths.build("makes", row, None, unconverted, item_id)
+
+        # The same drop, on the other loop. `diff` is authored on ALL 50 MAKES rows (data.py:540
+        # builds every one of them with it) and is read by nothing here. Counting it from data.py
+        # by grep says "178 diff columns" and that number is a lie in the useful direction — line
+        # 540 is a constructor inside a loop, so one text occurrence is fifty authored values.
+        # Only MAKES' own key set is checked: rub/wood/saved are CUTS/SPECIALS columns and asking
+        # for them here would manufacture absences rather than report real ones.
+        if row.get("diff") not in (None, "", [], {}):
+            unconverted.append({
+                "id": item_id, "name": row.get("heb"), "field": "diff",
+                "value": row.get("diff"), "reason": "authored-column-not-in-model",
+            })
+
         items.append({
             "id": item_id,
             "name": {"he": row.get("heb"), "en": row.get("eng")},
@@ -276,6 +308,11 @@ def build_items(cuts, specials, makes):
     # (reconciliation §2.1). One summary line, not one per row: this is a single design decision
     # about a whole retired field, not a per-item gap.
     _wrap_count = sum(1 for row in cuts if (row.get("wrap") or "").strip())
+    # `scope: "field"` is the difference between "aggregate ON PURPOSE" and "identity was lost".
+    # Both look identical as `id: None`, and telling them apart by reading the comment above works
+    # only for someone already reading this file — the report's reader is not. Every other record
+    # is per-item and carries no scope; a consumer that wants to know whether 130 items are
+    # individually accounted for can now ask instead of infer.
     unconverted.append({"id": None, "name": None, "field": "wrap", "value": _wrap_count,
-                        "reason": "wrap-field-retired"})
+                        "reason": "wrap-field-retired", "scope": "field"})
     return items, unconverted
