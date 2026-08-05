@@ -52,6 +52,34 @@ UNAVAILABLE_MARKERS = (
 )
 
 
+@pytest.fixture(autouse=True)
+def _not_while_a_real_worker_runs():
+    """Skip — do not fail — when a genuine ingestion worker holds the singleton lock.
+
+    These tests take the lock themselves, so running them during a real migration makes
+    `with SingleWriter():` raise WorkerBusy and the suite goes red while the system is behaving
+    EXACTLY as designed. A test that fails because the product's own guarantee is in force is
+    reporting the wrong thing.
+
+    Found the honest way: a full migration was running in the background and the suite was about
+    to be run against it.
+    """
+    try:
+        probe = config.connect_writer(timeout=5)
+    except Exception:
+        return   # no database at all; the per-test skips below report that with their own reason
+    try:
+        with probe.cursor() as cur:
+            cur.execute("SELECT pg_try_advisory_lock(%s)", (worker.SINGLETON_LOCK_KEY,))
+            free = cur.fetchone()[0]
+            if free:
+                cur.execute("SELECT pg_advisory_unlock(%s)", (worker.SINGLETON_LOCK_KEY,))
+        if not free:
+            pytest.skip("an ingestion worker holds the singleton lock — these tests need it themselves")
+    finally:
+        probe.close()
+
+
 def _skip_only_if_unavailable(result):
     if result.outcome != "failed":
         return

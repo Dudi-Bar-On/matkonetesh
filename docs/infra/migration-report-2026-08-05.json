@@ -1,0 +1,31 @@
+{
+  "discovered": 846,
+  "migrated": 842,
+  "skipped": 4,
+  "skip_reasons": {
+    "ingestion failed": 3,
+    "no longer present on disk": 1
+  },
+  "revisions": 830,
+  "chunks": 10550,
+  "graph_nodes": 6872,
+  "graph_relationships": 6030,
+  "errors": [
+    "docs/analysis/sweep/VERIFY-W1-A-code.md: ValueError: A string literal cannot contain NUL (0x00) characters.",
+    "docs/research/measurements/evidence/cert-run5-test-results/active-hub-active-hub-the-✕-stops-removes-a-timer-chromium/error-context.md: SchemaViolation: 2 write(s) refused:\n  - canonical_id 'repo:docs/research/measurements/evidence/cert-run5-test-results/active-hub-active-hub-the-✕-stops-removes-a-timer-chromium/error-context.md' is malformed — expected `namespace:identifier` (lowercase namespace, then a stable identifier)\n  - canon",
+    "docs/sources/corpus/15-baldwin-sous-vide/extracted-text-2012-paper-PRIMARY.txt: ValueError: A string literal cannot contain NUL (0x00) characters."
+  ],
+  "sqlite_sha_before": "4786b0d9549630824abdd208dd97d971f3c2f9f8bf65aedac76cf054cb4b7b20",
+  "sqlite_sha_after": "4786b0d9549630824abdd208dd97d971f3c2f9f8bf65aedac76cf054cb4b7b20",
+  "backup_path": "backups\\agent-memory-20260805T121806Z.db",
+  "elapsed_seconds": 2110.708168745041,
+  "validation": {
+    "documents_in_postgres": 845,
+    "current_revisions": 842,
+    "chunks_in_postgres": 12826,
+    "chunks_without_an_embedding": 0,
+    "citations_checked_against_disk": 5,
+    "citations_matching": 5,
+    "citations_mismatched": []
+  }
+}

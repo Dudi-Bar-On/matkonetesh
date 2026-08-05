@@ -109,7 +109,17 @@ DEFAULT_CONFIDENCE_THRESHOLD = 0.75
 # `.gitattributes`. A rule that forbids ingesting a repository's own dotfiles is not a strict rule,
 # it is a wrong one. The namespace half stays strict (lowercase, letter-initial) because it is our
 # vocabulary, not the filesystem's.
-CANONICAL_ID = re.compile(r"^[a-z][a-z0-9_-]*:[A-Za-z0-9._][A-Za-z0-9._/#@+-]{0,254}$")
+# The identifier half accepts any non-control text that neither starts nor ends with whitespace.
+# That is deliberately permissive and it was narrowed to reality twice, both times by running it
+# over the actual corpus rather than over examples:
+#
+#   round 1  an alphanumeric first character refused 32 tracked files (.claude/*, .github/*)
+#   round 2  an ASCII-only class refused a real path containing `✕` (U+2715) during the migration
+#
+# The identifier is a filesystem path or a stable id WE generate — the filesystem's alphabet is
+# not ours to legislate. The NAMESPACE half stays strict (lowercase ASCII, letter-initial) because
+# that half IS our vocabulary, and it is the half that has to be typed, compared and filtered on.
+CANONICAL_ID = re.compile(r"^[a-z][a-z0-9_-]*:\S(?:[^\x00-\x1f]{0,253}\S)?$")
 
 
 class SchemaViolation(ValueError):

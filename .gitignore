@@ -49,3 +49,7 @@ docs/research/measurements/sweep-logs/
 
 # Infrastructure secrets — never committed. infra/.env.example carries the variable NAMES.
 infra/.env
+
+# Verified SQLite backups taken before a migration. Kept locally, never committed —
+# the database is 30MB+ and a backup is a point-in-time artefact, not source.
+backups/

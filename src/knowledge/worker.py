@@ -39,6 +39,7 @@ import socket
 import time
 import os
 from dataclasses import dataclass
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -184,6 +185,21 @@ def ingest_one(conn, source_path: str, namespace: str = "repo", doc_kind: str | 
 
     kind = doc_kind or ("code" if path.suffix.lower() in CODE_SUFFIXES else "markdown")
     text = path.read_text(encoding="utf-8", errors="replace")
+
+    # NUL bytes are stripped, and this is not defensive tidying — PostgreSQL's `text` type CANNOT
+    # hold 0x00 and raises `A string literal cannot contain NUL (0x00) characters`. Two real files
+    # hit it during the migration, both PDF-extracted primary sources
+    # (docs/sources/corpus/15-baldwin-sous-vide/extracted-text-2012-paper-PRIMARY.txt among them),
+    # where the extractor left NULs in the output.
+    #
+    # Stripped BEFORE the hash, so the hash describes what was actually stored. Hashing the raw
+    # text and storing the cleaned text would mean the stored content never matches its own
+    # recorded hash, and every future run would see a change that is not there.
+    if "\x00" in text:
+        removed = text.count("\x00")
+        text = text.replace("\x00", "")
+        log.info("stripped %d NUL byte(s) from %s — PostgreSQL text cannot hold them", removed, source_path)
+
     content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()   # step 5
 
     with conn.cursor() as cur:
@@ -232,13 +248,53 @@ def ingest_one(conn, source_path: str, namespace: str = "repo", doc_kind: str | 
             return IngestResult(source_path, "unchanged", revision_id=current[0],
                                 detail="content hash matches the current revision")
 
-        # step 3: the lease
+        # step 3: the lease — but first, deal with any job already holding one.
+        #
+        # This was missing, and the gap showed up the moment it mattered: a migration run was
+        # killed mid-flight, left a `running` job behind, and the next run CRASHED on
+        # one_active_job_per_document. The index was right; the worker had no answer for it.
+        #
+        # An EXPIRED lease means the holder is gone — reclaim it, recording why, so the work is
+        # not silently lost. A LIVE lease means someone is genuinely working; report that and
+        # move on rather than fighting over it.
+        cur.execute(
+            "SELECT id, lease_owner, lease_expires_at < now() AS expired FROM ingestion_jobs "
+            "WHERE document_id = %s AND state IN ('pending', 'running')",
+            (document_id,),
+        )
+        held = cur.fetchone()
+        if held:
+            job_id_held, owner, expired = held
+            if not expired:
+                return IngestResult(
+                    source_path, "debounced",
+                    detail=f"job {job_id_held} is held by {owner} with a live lease",
+                )
+            cur.execute(
+                "UPDATE ingestion_jobs SET state = 'failed', finished_at = now(), "
+                "  last_error = %s, lease_owner = NULL, lease_expires_at = NULL WHERE id = %s",
+                (f"lease expired; previous owner {owner} did not finish", job_id_held),
+            )
+            log.warning("reclaimed expired job %s for %s (was held by %s)", job_id_held, source_path, owner)
+
         cur.execute(
             """
             INSERT INTO ingestion_jobs
               (document_id, job_type, state, requested_hash, lease_owner, lease_expires_at,
                attempts, idempotency_key)
             VALUES (%s, 'ingest', 'running', %s, %s, now() + %s * interval '1 second', 1, %s)
+            -- The idempotency key IS (document, content hash) — "this exact work". Submitting it
+            -- again must REUSE the job, which is what idempotent means; the first version tried to
+            -- insert a second row and hit the unique index, turning a retry of identical work into
+            -- a crash. finished_at is cleared because a row moving back to `running` is no longer
+            -- finished, and finished_jobs_have_a_finish_time would refuse the contradiction.
+            ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO UPDATE
+              SET state = 'running',
+                  attempts = ingestion_jobs.attempts + 1,
+                  lease_owner = EXCLUDED.lease_owner,
+                  lease_expires_at = EXCLUDED.lease_expires_at,
+                  finished_at = NULL,
+                  last_error = NULL
             RETURNING id
             """,
             (document_id, content_hash, _lease_owner(), LEASE_SECONDS, f"{document_id}:{content_hash}"),
@@ -251,19 +307,43 @@ def ingest_one(conn, source_path: str, namespace: str = "repo", doc_kind: str | 
 
     try:
         with conn.cursor() as cur:
-            # step 8a: the new revision, immutable, marked processing. The old one stays current.
+            # An INCOMPLETE revision for this exact content may already exist — left by a worker
+            # that died mid-flight. (document_id, content_hash) is unique, so inserting a second
+            # one fails; the first version did exactly that and reported it as an error requiring
+            # manual review, when the correct answer is to finish the work that was started.
+            #
+            # Safe to adopt precisely because it is NOT current: nothing reads it, and its chunks
+            # may be a partial write, so they are discarded and rebuilt rather than trusted.
             cur.execute(
-                """
-                INSERT INTO document_revisions
-                  (document_id, revision_number, content_hash, byte_size, status, source_uri,
-                   source_commit, source_authority)
-                VALUES (%s, %s, %s, %s, 'processing', %s, %s, %s)
-                RETURNING id::text
-                """,
-                (document_id, revision_number, content_hash, len(text.encode("utf-8")),
-                 source_path, _git_commit(), "code" if kind == "code" else "project_doc"),
+                "SELECT id::text FROM document_revisions "
+                "WHERE document_id = %s AND content_hash = %s AND NOT is_current",
+                (document_id, content_hash),
             )
-            revision_id = cur.fetchone()[0]
+            existing = cur.fetchone()
+            if existing:
+                revision_id = existing[0]
+                cur.execute("DELETE FROM document_chunks WHERE revision_id = %s::uuid", (revision_id,))
+                cur.execute(
+                    "UPDATE document_revisions SET status = 'processing', indexed_at = NULL, "
+                    "  graph_projected_at = NULL WHERE id = %s::uuid",
+                    (revision_id,),
+                )
+                log.info("adopted incomplete revision %s for %s (%d partial chunks discarded)",
+                         revision_id[:8], source_path, cur.rowcount)
+            else:
+                # step 8a: the new revision, immutable, marked processing. The old stays current.
+                cur.execute(
+                    """
+                    INSERT INTO document_revisions
+                      (document_id, revision_number, content_hash, byte_size, status, source_uri,
+                       source_commit, source_authority)
+                    VALUES (%s, %s, %s, %s, 'processing', %s, %s, %s)
+                    RETURNING id::text
+                    """,
+                    (document_id, revision_number, content_hash, len(text.encode("utf-8")),
+                     source_path, _git_commit(), "code" if kind == "code" else "project_doc"),
+                )
+                revision_id = cur.fetchone()[0]
 
         chunks = chunk_document(path, text)                      # step 8b
         vectors = _embed([c["content"] for c in chunks])         # step 8c
@@ -318,6 +398,19 @@ def ingest_one(conn, source_path: str, namespace: str = "repo", doc_kind: str | 
                     (revision_id, current[0]),
                 )
             cur.execute("UPDATE document_revisions SET is_current = true WHERE id = %s::uuid", (revision_id,))
+            # Any OTHER revision of this document still sitting in a working state is stale the
+            # moment a different one becomes current — it describes content that is no longer
+            # what the file says, so it can never be resumed. Marked failed with the reason
+            # rather than deleted: the prompt forbids silently discarding failed work, and
+            # `graph_pending` on a dead revision would read as "retry me" forever.
+            cur.execute(
+                "UPDATE document_revisions SET status = 'failed' "
+                "WHERE document_id = %s AND id <> %s::uuid "
+                "  AND status IN ('processing', 'indexed', 'graph_pending')",
+                (document_id, revision_id),
+            )
+            if cur.rowcount:
+                log.info("marked %d stale in-flight revision(s) of %s as failed", cur.rowcount, source_path)
             cur.execute("UPDATE documents SET current_revision_id = %s::uuid WHERE id = %s", (revision_id, document_id))
             cur.execute(
                 "UPDATE ingestion_jobs SET state = 'succeeded', finished_at = now(), "
@@ -350,7 +443,13 @@ def ingest_one(conn, source_path: str, namespace: str = "repo", doc_kind: str | 
         return IngestResult(source_path, "failed", detail=detail)
 
 
+@lru_cache(maxsize=1)
 def _git_commit() -> str | None:
+    """Cached: HEAD does not move during a run, and the migration ingests 843 documents.
+
+    Uncached this was 843 subprocess spawns for one unchanging answer — invisible on a single
+    ingest and a measurable share of the migration.
+    """
     import subprocess
 
     try:
@@ -371,9 +470,46 @@ def _vector_literal(vector: list[float]) -> str:
     return "[" + ",".join(repr(float(x)) for x in vector) + "]"
 
 
+# Batching, and the constants are INHERITED from src/memory/enrich.py rather than rediscovered.
+#
+# The first version embedded one chunk per HTTP call. app.js alone produces 1,750 code chunks, so
+# a smoke test of ten documents ran past ten minutes without finishing — the migration would have
+# taken hours for a reason that has nothing to do with the work.
+#
+# The batch SIZE is a count, not a character budget, and that is also inherited: enrich.py tried a
+# character budget and it failed, because Ollama's limit is on TOKENS — 118,000 ASCII characters
+# passed while 96,000 Hebrew characters did not. A count with split-on-failure needs no model of
+# the tokeniser at all.
+EMBED_MAX_CHARS = 5900
+EMBED_BATCH_ITEMS = 16
+
+
 def _embed(texts: list[str]) -> list[list[float]]:
     model = config.embed_model()
-    return [model.get_text_embedding(t) for t in texts]
+    out: list[list[float]] = []
+    for i in range(0, len(texts), EMBED_BATCH_ITEMS):
+        batch = [t[:EMBED_MAX_CHARS] for t in texts[i : i + EMBED_BATCH_ITEMS]]
+        out.extend(_embed_batch(model, batch))
+    return out
+
+
+def _embed_batch(model, batch: list[str]) -> list[list[float]]:
+    """Embed a batch; on failure split it and retry, down to one item.
+
+    A batch can exceed the server's context for reasons no caller can predict from the text, so
+    the recovery is structural rather than predictive: halve and retry. A single item that still
+    fails is truncated once and retried, and only then does the failure propagate.
+    """
+    if not batch:
+        return []
+    try:
+        return model.get_text_embedding_batch(batch)
+    except Exception:
+        if len(batch) > 1:
+            mid = len(batch) // 2
+            return _embed_batch(model, batch[:mid]) + _embed_batch(model, batch[mid:])
+        log.warning("a single chunk failed to embed at %d chars; retrying truncated", len(batch[0]))
+        return [model.get_text_embedding(batch[0][: EMBED_MAX_CHARS // 2])]
 
 
 # --- graph projection --------------------------------------------------------------------------
