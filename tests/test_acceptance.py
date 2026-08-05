@@ -538,3 +538,99 @@ def test_D3b_a_fact_whose_cited_chunk_is_gone_is_reported_not_dropped(dependency
     assert prov["unsupported"] == len(prov["facts"])
     assert all(f["excerpt_missing"] for f in prov["facts"])
     assert all(f["excerpt"] is None for f in prov["facts"])
+
+
+# =================================================================================================
+# F. THE PGVectorStore PROJECTION (owner decision, 2026-08-05)
+# =================================================================================================
+
+def test_F1_the_vector_projection_and_the_authoritative_table_agree():
+    """The objection to PGVectorStore was DIVERGENCE. This is the test that makes it impossible
+    to reintroduce quietly: if a future change lets the projection drift from document_chunks,
+    this fails instead of the system serving stale text."""
+    _require_stack().close()
+    conn = config.connect_reader()
+    try:
+        with conn.cursor() as cur:
+            cur.execute("SELECT count(*) FROM document_chunks WHERE embedding IS NOT NULL")
+            authoritative = cur.fetchone()[0]
+            cur.execute("SELECT count(*) FROM data_chunk_vectors")
+            projected = cur.fetchone()[0]
+            cur.execute("""
+                SELECT count(*) FROM document_chunks dc
+                WHERE dc.embedding IS NOT NULL
+                  AND NOT EXISTS (SELECT 1 FROM data_chunk_vectors v
+                                  WHERE v.node_id = dc.revision_id::text || ':' || dc.node_id)
+            """)
+            unmirrored = cur.fetchone()[0]
+    finally:
+        conn.close()
+    assert authoritative == projected, f"{authoritative} authoritative chunks vs {projected} projected"
+    assert unmirrored == 0, f"{unmirrored} authoritative chunk(s) have no vector-store row"
+
+
+def test_F2_ingesting_writes_both_tables_in_one_transaction(clean):
+    """Same transaction, so there is no window in which one exists without the other."""
+    path = _write("doc.md", f"# Curing\n\n{KNOWN_FACT} at 2.5 g/kg.\n\n## More\n\nsecond section\n")
+    with SingleWriter() as conn:
+        result = worker.ingest_one(conn, path, namespace=NS)
+    assert result.outcome == "ingested", result.detail
+
+    conn = config.connect_reader()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT count(*) FROM data_chunk_vectors v "
+                "JOIN document_revisions dr ON dr.id = v.revision_id "
+                "JOIN documents d ON d.id = dr.document_id WHERE d.namespace = %s", (NS,))
+            projected = cur.fetchone()[0]
+    finally:
+        conn.close()
+    assert projected == result.chunks, f"{result.chunks} chunks written but {projected} projected"
+
+
+def test_F3_deleting_a_document_takes_its_vectors_with_it():
+    """Without the FK cascade the projection would fill with searchable text whose source is gone."""
+    conn = _require_stack()
+    conn.autocommit = True
+    try:
+        with conn.cursor() as cur:
+            cur.execute(
+                "INSERT INTO documents (source_path, doc_kind, namespace) "
+                "VALUES ('__cascade__/x.md', 'markdown', '__cascade__') RETURNING id")
+            doc = cur.fetchone()[0]
+            cur.execute(
+                "INSERT INTO document_revisions (document_id, revision_number, content_hash, byte_size) "
+                "VALUES (%s, 1, 'h', 1) RETURNING id", (doc,))
+            rev = cur.fetchone()[0]
+            vector = "[" + ",".join(["0.1"] * 1024) + "]"
+            cur.execute(
+                "INSERT INTO data_chunk_vectors (text, metadata_, node_id, embedding, revision_id) "
+                "VALUES ('x', '{}'::json, '__cascade__probe', %s::vector, %s)", (vector, rev))
+            cur.execute("SELECT count(*) FROM data_chunk_vectors WHERE revision_id = %s", (rev,))
+            assert cur.fetchone()[0] == 1
+
+            cur.execute("DELETE FROM documents WHERE id = %s", (doc,))
+            cur.execute("SELECT count(*) FROM data_chunk_vectors WHERE revision_id = %s", (rev,))
+            assert cur.fetchone()[0] == 0, "an orphan vector survived its document"
+    finally:
+        conn.close()
+
+
+def test_F4_the_llamaindex_retriever_can_query_the_projection():
+    """The capability the prompt asked to be installed, exercised through LlamaIndex itself."""
+    _require_stack().close()
+    from llama_index.core.vector_stores.types import VectorStoreQuery
+
+    try:
+        store = config.vector_store()
+        embedding = config.embed_model().get_query_embedding("nitrite curing salt")
+    except Exception as exc:
+        pytest.skip(f"the vector store or embedding model is unavailable ({type(exc).__name__})")
+
+    result = store.query(VectorStoreQuery(query_embedding=embedding, similarity_top_k=5))
+    assert result.nodes, "PGVectorStore returned nothing from a populated table"
+    assert len(result.nodes) <= 5
+    meta = result.nodes[0].metadata
+    assert meta.get("revision_id") and meta.get("source_path"), \
+        "a retrieved node cannot be traced back to its authoritative revision"

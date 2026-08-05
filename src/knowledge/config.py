@@ -154,29 +154,46 @@ def embed_model():
     return OllamaEmbedding(model_name=EMBED_MODEL, base_url=OLLAMA_URL)
 
 
-# WHY THERE IS NO PGVectorStore HERE, though it is installed and the obvious choice.
-#
-# PGVectorStore keeps its OWN table. Pointed at this database it tries to create
-# `data_chunk_vectors(id, text, metadata_, node_id, embedding vector(1024), text_search_tsv)` —
-# verified by running it, which failed with `permission denied for schema public` because mk_app
-# has no CREATE. The permission error is incidental; the duplication behind it is not.
-#
-# Using it would mean every embedding stored TWICE, in two tables, with nothing keeping them in
-# step. And the second copy would carry none of what Phase 3 exists for: no FK to a revision, no
-# is_current, no graph_projected_at, no source_authority. Retrieval reading that copy could serve
-# text from a superseded revision while the authoritative table says otherwise — which is exactly
-# the state `current_requires_both_sides` was written to make impossible.
-#
-# The prompt asks for "embedding storage and retrieval backed by PostgreSQL + pgvector". It does
-# not ask for PGVectorStore, and document_chunks.embedding IS a pgvector column with an HNSW
-# index. So the vector store is our own table, queried directly in retrieval.semantic_search().
-# LlamaIndex remains the orchestration layer for what it is genuinely better at — parsing,
-# chunking, embedding — and the Neo4j property-graph integration, which the prompt DOES name, is
-# used as given below.
-#
-# The cost of this choice, stated rather than buried: LlamaIndex's own retriever/query-engine
-# classes cannot be pointed at our table, so retrieval is SQL we maintain. That is a smaller
-# liability than two divergent copies of the truth.
+def vector_store(*, writable: bool = False):
+    """LlamaIndex's PGVectorStore, over the table migration 0007 created for it.
+
+    HISTORY, because the shape of this is a decision and not an accident. Phase 5 installed and
+    import-tested the integration and then did NOT use it: PGVectorStore keeps its own table, and
+    a second copy of every embedding can drift from the authoritative one — which is the exact
+    hazard `current_requires_both_sides` exists to prevent. The owner directed on 2026-08-05 that
+    it be wired up.
+
+    The objection was about DIVERGENCE, so the wiring removes the possibility rather than the
+    worry:
+
+      * document_chunks stays AUTHORITATIVE — the FK to a revision, is_current,
+        graph_projected_at and source_authority all live there and nowhere else.
+      * data_chunk_vectors is a PROJECTION, written by the worker in the SAME TRANSACTION as the
+        chunk it mirrors. There is no window where one exists without the other.
+      * It carries `revision_id` with an ON DELETE CASCADE, so a deleted document cannot leave
+        searchable text behind.
+      * An acceptance test asserts the two agree by count and by node_id, so a future change that
+        lets them drift fails a test instead of quietly serving stale text.
+
+    `writable` selects the ROLE, not a flag: a read-only vector store is one built on a connection
+    that has no write verb.
+    """
+    from llama_index.vector_stores.postgres import PGVectorStore
+
+    cfg = load_config()
+    user = cfg.pg_writer_user if writable else cfg.pg_reader_user
+    password = cfg.pg_writer_password if writable else cfg.pg_reader_password
+    return PGVectorStore.from_params(
+        host="127.0.0.1",
+        port=cfg.pg_port,
+        database=cfg.pg_db,
+        user=user,
+        password=password,
+        table_name="chunk_vectors",       # -> data_chunk_vectors, the library's own prefixing
+        embed_dim=EMBED_DIM,
+        hybrid_search=True,
+        text_search_config="simple",      # Hebrew-first corpus; an English stemmer would mangle it
+    )
 
 
 def graph_store(*, refresh_schema: bool = False):

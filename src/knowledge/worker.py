@@ -323,6 +323,7 @@ def ingest_one(conn, source_path: str, namespace: str = "repo", doc_kind: str | 
             if existing:
                 revision_id = existing[0]
                 cur.execute("DELETE FROM document_chunks WHERE revision_id = %s::uuid", (revision_id,))
+                cur.execute("DELETE FROM data_chunk_vectors WHERE revision_id = %s::uuid", (revision_id,))
                 cur.execute(
                     "UPDATE document_revisions SET status = 'processing', indexed_at = NULL, "
                     "  graph_projected_at = NULL WHERE id = %s::uuid",
@@ -360,6 +361,36 @@ def ingest_one(conn, source_path: str, namespace: str = "repo", doc_kind: str | 
                     (revision_id, chunk["chunk_index"], chunk["node_id"], chunk["content"],
                      chunk["content_hash"], chunk["heading_path"], chunk["start_char"],
                      chunk["end_char"], _json(chunk["metadata"]), _vector_literal(vector)),
+                )
+                # The PGVectorStore projection, in the SAME transaction as the row above. That is
+                # the whole reason this is safe: there is no window in which the authoritative
+                # chunk exists and its vector-store mirror does not, so the two cannot drift.
+                #
+                # ref_doc_id is the revision, which is what PGVectorStore's own metadata index is
+                # built on and what lets a vector hit be resolved back — and lets a retrieval path
+                # exclude superseded revisions, which a bare vector store could not do.
+                cur.execute(
+                    """
+                    INSERT INTO data_chunk_vectors (text, metadata_, node_id, embedding, revision_id)
+                    VALUES (%s, %s::json, %s, %s::vector, %s::uuid)
+                    ON CONFLICT (node_id) DO UPDATE
+                      SET text = EXCLUDED.text, metadata_ = EXCLUDED.metadata_,
+                          embedding = EXCLUDED.embedding
+                    """,
+                    (
+                        chunk["content"],
+                        _json({
+                            "ref_doc_id": revision_id,
+                            "revision_id": revision_id,
+                            "source_path": source_path,
+                            "namespace": namespace,
+                            "chunk_index": chunk["chunk_index"],
+                            "heading_path": chunk["heading_path"],
+                        }),
+                        f"{revision_id}:{chunk['node_id']}",
+                        _vector_literal(vector),
+                        revision_id,
+                    ),
                 )
             cur.execute(
                 "UPDATE document_revisions SET status = 'indexed', indexed_at = now() WHERE id = %s::uuid",
