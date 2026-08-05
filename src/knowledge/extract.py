@@ -36,6 +36,25 @@ MODEL: `mistral-small:24b` on the RTX 3090 — CHOSEN BY MEASUREMENT, after the 
     from object in an inverted clause wants full-model attention rather than a few routed experts
     — and neither is losing on throughput. Both had to be measured; neither could be reasoned out.
 
+    THEN qwen3.6:27b WAS PULLED AND MEASURED, and it wins on the number that actually matters —
+    not candidates produced, but candidates that SURVIVE the gates:
+
+        model                  survivors  rejected  survive%   per chunk   corpus
+        qwen3.6:27b                   11         0      100%       10.9s    28.4h
+        qwen3:30b-a3b                 26        17       60%       18.8s    49.2h
+        mistral-small:24b             14        15       48%       18.6s    48.4h
+
+    It produces FEWER candidates and almost no noise: it returns an empty list when a chunk states
+    no relationship, instead of filling the space. Fewer facts, each of which passed grounding —
+    and every one is reviewed by a human anyway, so precision beats volume here.
+
+    AND IT WAS NEARLY REJECTED FOR A BUG IN THIS FILE. qwen3.6 and qwen3.5 are THINKING models:
+    they return an empty `response` and put the structured output in `thinking`, so a reader that
+    looks only at `response` sees `Expecting value: line 1 column 1 (char 0)` and concludes the
+    model cannot do structured output. Three trials, three empty replies, and the obvious reading
+    was wrong. `think: False` is now requested, and the reader falls back to the field regardless,
+    because a model that ignores the flag must not silently look broken.
+
     `graphify-extract` was considered and rejected: inspecting it showed qwen3:30b-a3b with
     different sampling parameters and no system prompt — a preset, not a tuned model.
 
@@ -85,7 +104,7 @@ log = logging.getLogger("knowledge.extract")
 
 # The DEFAULT, and the choice is a trade-off with measured numbers on both sides rather than a
 # winner. `--model` on scripts/extract_graph.py overrides it.
-MODEL = "qwen3:30b-a3b-instruct-2507-q4_K_M"
+MODEL = "qwen3.6:27b"
 MODEL_ACCURATE = "mistral-small:24b"
 OLLAMA_GENERATE = f"{config.OLLAMA_URL}/api/generate"
 
@@ -96,11 +115,27 @@ MIN_CHUNK_CHARS = 200        # below this there is rarely a relationship worth t
 MAX_CHUNK_CHARS = 6000
 REQUEST_TIMEOUT = 300
 
+# maxItems 25 — a 3.4x speedup AND a correctness fix, measured together.
+#
+# Without it the model RUNS AWAY on real corpus chunks: three of eight in a benchmark generated
+# 27KB and hit the 8192-token ceiling mid-JSON, returning `Unterminated string ... line 1044`.
+# Those calls cost 72 seconds each and produced NOTHING — the whole chunk came back unparseable.
+#
+#     no cap        72.3s per chunk · 3,260 output tokens · unparseable
+#     maxItems 25   21.0s per chunk · 1,007 output tokens · 42 relationships
+#
+# The runaway WAS the cost. A chunk with more than 25 genuine relationships does not exist in this
+# corpus; a chunk that appears to have 200 is a model looping, and truncating a loop loses nothing.
+# This is not the same as capping tokens low (the policy that produced the earlier truncation bug):
+# num_predict stays at 8192, and the limit is on the STRUCTURE, where the runaway actually is.
+MAX_RELATIONSHIPS = 25
+
 RESPONSE_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "relationships": {
             "type": "array",
+            "maxItems": MAX_RELATIONSHIPS,
             "items": {
                 "type": "object",
                 "properties": {
@@ -251,6 +286,10 @@ def call_model(text: str, *, model: str = MODEL, timeout: int = REQUEST_TIMEOUT)
         "model": model,
         "prompt": PROMPT.format(types=", ".join(EXTRACTABLE), text=text[:MAX_CHUNK_CHARS]),
         "stream": False,
+        # Thinking OFF. For an extraction with a fixed schema there is nothing to reason about,
+        # and the reasoning is billed in time we do not get back. Models that ignore the flag are
+        # handled by the fallback in the reader below.
+        "think": False,
         "format": RESPONSE_SCHEMA,
         # num_predict 8192 — the owner's standing policy, and this run proved why it exists. At
         # 2048 a large chunk truncated mid-JSON and came back as `Unterminated string ... (char
@@ -265,7 +304,19 @@ def call_model(text: str, *, model: str = MODEL, timeout: int = REQUEST_TIMEOUT)
     )
     try:
         raw = json.loads(urllib.request.urlopen(request, timeout=timeout).read())
-        return json.loads(raw["response"]).get("relationships", [])
+        # THINKING MODELS PUT THE ANSWER SOMEWHERE ELSE. qwen3.6 and qwen3.5 return an EMPTY
+        # `response` and the structured output in `thinking` — so a client reading only `response`
+        # gets `Expecting value: line 1 column 1 (char 0)` and reports the model as unusable.
+        #
+        # I nearly concluded exactly that about qwen3.6:27b: three trials, three empty replies,
+        # and the obvious reading was "this model cannot do structured output". It can. The
+        # request now asks for thinking to be OFF, and the reader falls back to the field anyway,
+        # because a model that ignores the flag must not silently look broken.
+        body_text = (raw.get("response") or "").strip() or (raw.get("thinking") or "").strip()
+        if not body_text:
+            log.warning("model %s returned neither response nor thinking", model)
+            return []
+        return json.loads(body_text).get("relationships", [])
     except (urllib.error.URLError, TimeoutError) as exc:
         log.warning("extraction model unreachable: %s", exc)
         return []

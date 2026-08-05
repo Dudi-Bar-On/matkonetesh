@@ -63,6 +63,8 @@ const CANDIDATES = [['python', []], ['py', ['-3']], ['python3', []]];
 const STORE_STUB = /Python was not found;|Microsoft Store/i;
 
 let out = null;
+let usedCmd = null;
+let usedPre = [];
 const tried = [];
 for (const [cmd, pre] of CANDIDATES) {
   const r = spawnSync(cmd, [...pre, '-c', PY], {
@@ -72,6 +74,7 @@ for (const [cmd, pre] of CANDIDATES) {
   const text = `${r.stdout ?? ''}${r.stderr ?? ''}`;
   if (STORE_STUB.test(text)) { tried.push(`${cmd}: Windows Store alias stub, not an interpreter`); continue; }
   out = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
+  usedCmd = cmd; usedPre = pre;
   break;
 }
 
@@ -110,11 +113,41 @@ console.log(
 
 const problems = [...data.missing.map((p) => ['missing', p]), ...data.stale.map((p) => ['stale', p])];
 if (problems.length) {
-  console.log(`FAIL: ${problems.length} document(s) the geniza does not hold at their current content:`);
-  for (const [kind, p] of problems.slice(0, 12)) console.log(`  x ${kind.padEnd(8)} ${p}`);
+  console.log(`${problems.length} document(s) the geniza does not hold at their current content:`);
+  for (const [kind, p] of problems.slice(0, 12)) console.log(`  ~ ${kind.padEnd(8)} ${p}`);
   if (problems.length > 12) console.log(`  ... and ${problems.length - 12} more`);
-  console.log('  fix:  python scripts/ingest.py --scope     (unchanged documents are skipped by hash)');
-  process.exit(1);
+
+  // SELF-HEALING, and the asymmetry is what makes it safe: DETECTING drift costs 0.6s, and
+  // INGESTING the whole scope costs 24s — but ingesting only the drifted files costs seconds.
+  // So the gate repairs exactly what it found rather than telling a human to run a command that
+  // re-checks 845 files it already checked.
+  //
+  // It still FAILS if the repair does not work. A gate that fixes silently and passes regardless
+  // is not a gate; the guarantee is "the geniza matches the disk when this exits 0", and that has
+  // to remain true whether the repair succeeded or not.
+  //
+  // Disable with GENIZA_NO_HEAL=1 — for a run that must observe drift without changing anything.
+  if (process.env.GENIZA_NO_HEAL === '1') {
+    console.log('  GENIZA_NO_HEAL=1 — not repairing. fix: python scripts/ingest.py --scope');
+    process.exit(1);
+  }
+
+  const paths = problems.map(([, p]) => p);
+  console.log(`  repairing ${paths.length} document(s) ...`);
+  const repair = spawnSync(usedCmd, [...usedPre, join(ROOT, 'scripts', 'ingest.py'), ...paths], {
+    cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+  });
+  const stdoutLines = (repair.stdout ?? '').trim().split('\n').filter(Boolean);
+  const stderrLines = (repair.stderr ?? '').trim().split('\n').filter(Boolean);
+  const line = stdoutLines.pop() || stderrLines.pop() || 'no output';
+  console.log(`  ${line}`);
+
+  if (repair.status !== 0) {
+    console.log('FAIL: the repair did not succeed. The geniza does not match the disk.');
+    process.exit(1);
+  }
+  console.log('OK - drift detected and repaired; the geniza now matches the disk.');
+  process.exit(0);
 }
 if (data.orphaned.length) {
   console.log(`  note: ${data.orphaned.length} document(s) in the geniza are no longer on disk — history, not an error.`);

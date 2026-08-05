@@ -40,14 +40,29 @@ def fetch_chunks(paths: list[str] | None, limit: int | None, namespace: str, min
         where.append("(" + " OR ".join(["d.source_path LIKE %s"] * len(paths)) + ")")
         params.extend(p.rstrip("/") + "%" for p in paths)
 
+    # PRIORITY ORDER (owner, 2026-08-05): the project's OWN documents before vendor documentation,
+    # all in one run. A 28-hour pass that is interrupted at hour 6 should have covered what this
+    # project decided and argued, not a third of somebody else's API reference — and the ordering
+    # is the only thing that makes an interruption survivable.
+    #
+    # Within a tier, longest chunk first: the long ones carry the most relationships and are the
+    # slowest, so front-loading them means the tail of the run gets cheaper rather than dearer.
+    priority = """
+        CASE
+          WHEN d.source_path LIKE 'docs/vendor/%%'  THEN 4   -- other people's manuals
+          WHEN d.source_path LIKE 'docs/sources/%%' THEN 3   -- primary sources: prose, few relations
+          WHEN d.source_path LIKE 'tests/%%'        THEN 2   -- our code, but generated in bulk
+          ELSE 1                                             -- our documents and our source
+        END
+    """
     sql = f"""
         SELECT dc.node_id, dc.content, dr.id::text AS revision_id, d.id::text AS document_id,
-               d.source_path, length(dc.content) AS n
+               d.source_path, length(dc.content) AS n, {priority} AS tier
         FROM document_chunks dc
         JOIN document_revisions dr ON dr.id = dc.revision_id
         JOIN documents d          ON d.id  = dr.document_id
         WHERE {' AND '.join(where)}
-        ORDER BY length(dc.content) DESC
+        ORDER BY {priority}, length(dc.content) DESC
     """
     if limit:
         sql += " LIMIT %s"
@@ -160,9 +175,21 @@ def main() -> int:
         return 0
 
     known = extract.known_entities(args.namespace)
+    # dict preserves INSERTION order, and `chunks` arrives in priority order, so the documents are
+    # processed highest-priority first. That is load-bearing, not incidental: it is what makes an
+    # interrupted 28-hour run leave the project's own documents covered rather than a slice of
+    # somebody's API reference.
     by_doc: dict[str, list] = {}
     for c in chunks:
         by_doc.setdefault(c["document_id"], []).append(c)
+    TIER = {1: "project", 2: "tests", 3: "sources", 4: "vendor"}
+    order = {}
+    for c in chunks:
+        order.setdefault(c["document_id"], c["tier"])
+    from collections import Counter
+    spread = Counter(TIER.get(t, "?") for t in order.values())
+    print("  priority order: " + " -> ".join(f"{k}({v})" for k, v in
+          sorted(spread.items(), key=lambda kv: [t for t, n in TIER.items() if n == kv[0]][0])))
 
     started = time.time()
     survivors_total = written_total = 0
@@ -184,7 +211,7 @@ def main() -> int:
 
         elapsed = time.time() - started
         rate = i / max(elapsed / 60, 0.01)
-        print(f"  [{i}/{len(by_doc)}] {doc_chunks[0]['source_path'][:58]:58} "
+        print(f"  [{i}/{len(by_doc)}] {TIER.get(doc_chunks[0]['tier'],'?'):8} {doc_chunks[0]['source_path'][:48]:48} "
               f"survivors {survivors_total:4} · rejected {sum(rejected_total.values()):4} · "
               f"{rate:.1f} doc/min · eta {max(len(by_doc)-i,0)/max(rate,0.01):.0f} min", flush=True)
 
