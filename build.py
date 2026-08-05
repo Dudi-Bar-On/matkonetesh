@@ -149,7 +149,7 @@ DATA_JSON = json.dumps(payload, ensure_ascii=False, separators=(',', ':'))
 
 # footer what's-new line (owner request, 2026-07-25) — shown under the מהדורה version stamp.
 # updated in every version-bump commit, in lockstep with CHANGELOG.md.
-WHATS_NEW = "מה חדש: תיקון בטיחות — שאלה על ירק או פרי כבר לא מקבלת טמפרטורת בטיחות שאינה קיימת. בנוסף נחת מאגר המקורות: 19 מקורות ראשוניים עם ציטוט לכל ערך."
+WHATS_NEW = "מה חדש: יחידות מורכבות מוצגות עכשיו בשפת הממשק בכל 22 השפות. וגם: מינון ה-Cure מוצהר ולא מנוחש, לשון בקר עלתה ל-71°C לפי FSIS, ו«הזמן משפיע על מרקם בלבד» הוחלף ב«זמן בטמפרטורה מפסטר»."
 
 HTML = r"""<!DOCTYPE html>
 <html lang="he" dir="rtl">
@@ -359,7 +359,7 @@ HTML = r"""<!DOCTYPE html>
 </div>
 
 <footer>
-  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 290 · 3.8.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
+  <div class="footnote">מתכונת · מדריך האש — נבנה מהטבלאות של דודי. סימוני ה-checklist והנתונים שלך נשמרים בדפדפן.<br><b class="foot-stamp" style="color:var(--ember2)">מהדורה 291 · 5.8.26</b><br><span class="foot-news">__WHATS_NEW__</span></div>
 </footer>
 
 <div class="scrim" id="scrim"></div>
