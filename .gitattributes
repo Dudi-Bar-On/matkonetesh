@@ -1,0 +1,9 @@
+graphify-out/graph.json merge=graphify
+
+# Infrastructure files are read by Linux tools inside containers and WSL. A CR at the end of a
+# value is not visible in an editor and is not an error anywhere — it just makes the value
+# wrong. This happened on 2026-08-05: infra/.env was written CRLF from Windows and WSL read the
+# trailing \r as part of every password. See L53.
+infra/**            text eol=lf
+*.sh                text eol=lf
+docs/process/*.json text eol=lf

@@ -5,7 +5,7 @@
 // without saying what it covered is exactly how the §5a blind spot (audit fix #10) went unnoticed
 // for a full working day (COMPLIANCE-AUDIT-2026-08-01.md).
 //
-// Wraps: check-memory-fresh (§10.12) · check-pytest (the Python suite) · gate-lessons (§10.16) · check-board-fresh (H10) ·
+// Wraps: check-memory-fresh (§10.12) · check-pytest (the Python suite) · check-no-secrets · gate-lessons (§10.16) · check-board-fresh (H10) ·
 // check-shipped-closed (H10) · check-brief (§13) · check-h9 (H9) · check-h8-ledger (H8, §5 + §5a) ·
 // check-release in AUDIT mode
 // (H7 x2 / DoD-12 / L29 / H14 - reported, not blocking; see check-release.mjs's own header for why).
@@ -112,6 +112,7 @@ function run(id, displayName, file) {
 
 run('check-memory-fresh', 'check-memory-fresh', 'check-memory-fresh.mjs');
 run('check-pytest', 'check-pytest', 'check-pytest.mjs');
+run('check-no-secrets', 'check-no-secrets', 'check-no-secrets.mjs');
 run('gate-lessons', 'gate-lessons', 'gate-lessons.mjs');
 run('check-board-fresh', 'check-board-fresh', 'check-board-fresh.mjs');
 run('check-brief', 'check-brief', 'check-brief.mjs');

@@ -1539,3 +1539,91 @@ research pass that predicted it had read the **installed source**, not the docs 
 supplied example turned out to use `Header_2` and `node.parent_node`, neither of which exists in
 llama-index-core 0.14.23.
 
+
+**L51 · An installer that needs a password, run without a TTY, fails silently — and I have now
+walked into it three times (2026-08-05).**
+
+Three separate installs on this machine looked like nothing happened at all:
+
+| what | what it actually was |
+|---|---|
+| Python 3.14 via winget, twice | needed elevation; the UAC prompt is invisible to a non-interactive session |
+| Python 3.14 official installer | `Include_launcher` defaults to AllUsers, which makes the bundle "launch an elevated engine process" — it hung at `Apply begin` having written nothing |
+| Docker in WSL2, twice | `wsl -e bash -lc 'sudo …'` has **no TTY**, so the password prompt reads EOF and the script exits |
+
+None of them printed an error a caller could act on. Every one of them cost a round trip through
+the owner, who then reported — correctly — that the command appeared to do nothing.
+
+**The check, before asking anyone to run anything:** does this command need elevation or a
+password, and does the channel I am using have a way to supply it? If not, the command WILL fail
+quietly, and asking a human to run it changes nothing.
+
+**And the thing I should have found on the first attempt, not the fifth:** `wsl -u root` gives
+root **with no password**, because the Windows user is already authenticated. Every install that
+followed was unattended. The pattern generalises — before routing work to a human, look for the
+already-authenticated path.
+
+**A second, smaller shape from the same session.** The Docker install script died on
+`docker-model-plugin`, a package that does not exist for Ubuntu focal and that we do not want.
+`apt-get install a b c d` fails **entirely** when one name is missing — so a single irrelevant
+package took down four required ones. When a vendor's convenience script fails on one component,
+read WHICH component before concluding the platform is unsupported.
+
+**L52 · "Always take the newest" is a version policy, not a tagging policy — and the newest
+changes contracts (2026-08-05).**
+
+The owner asked, across the board, to always install the newest. Taken literally that means the
+`latest` tag; taken as intent it means the newest version number. They are not the same thing:
+`latest` is a *floating* pointer, so a future `docker compose pull` swaps the database engine
+under a running system with nothing in any diff to show it. We pin the newest version NUMBER —
+same software today, and a change that has to be written down to happen.
+
+That distinction paid within the hour, because the newest of both components had moved the
+goalposts:
+
+- **PostgreSQL 18 changed the volume mount convention.** Up to 17 the data mount is
+  `/var/lib/postgresql/data`; from 18 it must be `/var/lib/postgresql`, and 18 REFUSES to start
+  if it finds data at the old path. Every tutorial and every older compose file on the internet
+  is now wrong for 18.
+- **Neo4j moved from SemVer to CalVer in January 2025.** `5.26` is the LTS (supported to June
+  2028); `2026.06` is the mainline. Both are "newest" depending on which line you are reading.
+
+**The check:** when a pinned version moves a whole major number, read that image's own release
+notes for changed mount paths, env var names and entrypoint behaviour BEFORE debugging the
+container. Both failures here were documented upstream and cost a diagnostic cycle each.
+
+**L53 · A generated secret is an input to a command line, and it can be parsed as syntax
+(2026-08-05).**
+
+`secrets.token_urlsafe(32)` produced a password beginning with `-`. Neo4j's entrypoint calls
+`neo4j-admin dbms set-initial-password <password>`, the leading `-` was read as a **flag**, and
+the container crash-looped reporting `Missing required parameter: '<password>'` — an error that
+points at a missing value while the value is right there, being misread.
+
+Generated credentials must be safe for every channel they cross. Here that meant: start with a
+letter (no leading `-`), and contain no `/` (which would split `NEO4J_AUTH`'s `user/password`
+form). The alphabet is now `A-Za-z0-9._~`.
+
+**Same session, same class:** `.env` written from Windows carried **CRLF**, and WSL read the
+trailing `\r` as part of every value. It happened to work; it would have failed on the first
+value where a trailing carriage return mattered. Infrastructure files consumed by Linux tools are
+written **LF-only**, deliberately, not by whichever editor touched them last.
+
+**Adopted win — the diagnostic order that keeps working.** Every one of the failures above was
+found the same way and it is worth naming as a method: **read the log before forming a theory.**
+`docker logs` said `there appears to be PostgreSQL data in /var/lib/postgresql/data (unused
+mount/volume)` and `Missing required parameter: '<password>'` — each naming its own cause. The
+temptation each time was to guess (bad password? bad image? WSL networking?) and each guess would
+have cost a cycle. The habit: run it, read what it said, THEN think.
+
+**Adopted win — prove reachability at the boundary that will actually be used.** Before writing a
+line of compose, the question "can Windows reach a port opened inside WSL2?" was answered by
+opening one and fetching it from Windows: `127.0.0.1:5433 -> HTTP 200`. That is thirty seconds
+against a whole architecture resting on an assumption. The same habit later confirmed that the
+data survives a restart by writing a marker into **both** stores, restarting, and reading it
+back — rather than trusting that a named volume implies persistence.
+
+**Adopted win — check that a destructive step is destroying nothing.** Before `docker compose
+down -v` removed three volumes, each was counted: `0 files`. The teardown was safe and it was
+KNOWN to be safe, which is a different state from being lucky.
+

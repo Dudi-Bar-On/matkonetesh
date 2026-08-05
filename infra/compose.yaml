@@ -1,0 +1,79 @@
+# Knowledge stack — PostgreSQL/pgvector + Neo4j Community.
+#
+# Runs inside WSL2's Docker Engine (28.1.1). Docker Desktop is deliberately NOT used: it needs a
+# reboot to join docker-users, and the owner works remotely and cannot reboot.
+#
+# VERSIONS ARE PINNED TO THE NEWEST RELEASE, never to `latest`. The owner asked for "always the
+# newest"; a floating tag delivers that today and then silently swaps the database engine under a
+# future `docker compose pull`. Pinning the newest version number gives the same software with a
+# change that is visible in a diff.
+#
+# Both services bind to 127.0.0.1 ONLY. Nothing here is reachable from the network.
+
+name: matconetesh-knowledge
+
+services:
+  postgres:
+    # pgvector/pgvector pins BOTH components in one tag: pgvector 0.8.6 on PostgreSQL 18.
+    image: pgvector/pgvector:0.8.6-pg18
+    container_name: mk-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_SUPERUSER}
+      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
+      # Deterministic collation, so an index built here behaves the same on any other machine.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      # 127.0.0.1 prefix is load-bearing: "5433:5432" alone would publish on 0.0.0.0.
+      - "127.0.0.1:${POSTGRES_PORT}:5432"
+    volumes:
+      # PostgreSQL 18+ REQUIRES the mount one level up, at /var/lib/postgresql, and places
+      # data in a major-version subdirectory itself. Mounting /var/lib/postgresql/data — the
+      # convention for every version up to 17 — makes 18 refuse to start with "there appears to
+      # be PostgreSQL data in /var/lib/postgresql/data (unused mount/volume)".
+      - pgdata:/var/lib/postgresql
+      # Runs ONCE, on an empty data directory. Creates the vector extension and the least-
+      # privilege application role. Never re-runs against existing data.
+      - ./postgres/init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  neo4j:
+    image: neo4j:2026.06.0-community
+    container_name: mk-neo4j
+    restart: unless-stopped
+    environment:
+      NEO4J_AUTH: ${NEO4J_USER}/${NEO4J_PASSWORD}
+      NEO4J_server_default__listen__address: 0.0.0.0
+      # Bounded so a runaway traversal cannot take the machine with it.
+      NEO4J_server_memory_heap_initial__size: 512m
+      NEO4J_server_memory_heap_max__size: 2G
+      NEO4J_server_memory_pagecache_size: 1G
+      # No plugins. APOC and GDS are installed only when a concrete need is identified.
+    ports:
+      - "127.0.0.1:${NEO4J_HTTP_PORT}:7474"   # browser / HTTP API
+      - "127.0.0.1:${NEO4J_BOLT_PORT}:7687"   # Bolt driver
+    volumes:
+      - neo4jdata:/data
+      - neo4jlogs:/logs
+    healthcheck:
+      # Authenticated round-trip, not just a TCP open: a port that accepts and then refuses
+      # every query is exactly the "green but broken" shape this project keeps meeting.
+      test: ["CMD-SHELL", "cypher-shell -u ${NEO4J_USER} -p ${NEO4J_PASSWORD} 'RETURN 1' || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 60s
+
+volumes:
+  pgdata:
+    name: mk-pgdata
+  neo4jdata:
+    name: mk-neo4jdata
+  neo4jlogs:
+    name: mk-neo4jlogs

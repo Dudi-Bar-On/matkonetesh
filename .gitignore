@@ -46,3 +46,6 @@ docs/research/measurements/*.csv
 docs/research/measurements/evidence/
 docs/research/measurements/sweep-logs/
 .claude-focus
+
+# Infrastructure secrets — never committed. infra/.env.example carries the variable NAMES.
+infra/.env
