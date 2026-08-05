@@ -11603,7 +11603,12 @@ function applyI18n(root){ const d=getDict(); if(!d) return; const H=d.__html__||
 }
 function tnode(root){ const d=getDict(); if(!d) return; const U=d.__units__||{}, P=d.__pre__||{}; const r=root||document.body; if(!r) return;
   const interp=function(raw){ let nv=raw;
-    for(var u in U){ if(u.indexOf('__')===0) continue; nv=nv.replace(new RegExp('(\\d+)\\s*'+_reEsc(u),'g'), '$1 '+U[u]); }
+    // LONGEST KEY FIRST — R-93. The loop ran in object-insertion order, and the regex requires a
+    // DIGIT before the unit. For "5 ק״ג/דק׳": 'דק׳' never matched (a '/' precedes it, not a digit),
+    // 'ק״ג' did, and by the time the compound key 'ק״ג/דק׳' came round the string it needed was
+    // already gone. Result: "5 kg/דק׳" — Hebrew leaking into all 22 non-Hebrew languages.
+    // Longest-match-first is the standard rule for a replacement table and it costs one sort.
+    for(var u of Object.keys(U).sort(function(a,b){ return b.length-a.length; })){ if(u.indexOf('__')===0) continue; nv=nv.replace(new RegExp('(\\d+)\\s*'+_reEsc(u),'g'), '$1 '+U[u]); }
     for(var p in P){ if(p.indexOf('__')===0) continue; nv=nv.replace(new RegExp(_reEsc(p)+'\\s+(?=\\d)','g'), P[p]+' '); }
     return nv; };
   const set=function(node, val){ if(node._mkO===undefined) node._mkO=node.nodeValue; node.nodeValue=val; };   // non-destructive: keep the Hebrew original

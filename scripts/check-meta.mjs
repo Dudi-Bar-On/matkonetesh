@@ -114,6 +114,11 @@ run('check-memory-fresh', 'check-memory-fresh', 'check-memory-fresh.mjs');
 run('check-pytest', 'check-pytest', 'check-pytest.mjs');
 run('check-no-secrets', 'check-no-secrets', 'check-no-secrets.mjs');
 run('check-requirements', 'check-requirements', 'check-requirements.mjs');
+// R-94. Without this, check-meta could report OK while the UI suite had been red in CI for 25
+// consecutive runs — which is what happened. It READS CI rather than running the suite, because
+// §11a forbids a second concurrent Playwright run and a hook that launched one would cause the
+// very failures it was meant to catch.
+run('check-ci', 'check-ci', 'check-ci.mjs');
 run('gate-lessons', 'gate-lessons', 'gate-lessons.mjs');
 run('check-board-fresh', 'check-board-fresh', 'check-board-fresh.mjs');
 run('check-brief', 'check-brief', 'check-brief.mjs');

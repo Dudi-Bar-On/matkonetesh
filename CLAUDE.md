@@ -15,7 +15,8 @@ the discipline document, which is authoritative wherever the two differ.**
 
 **בכל פתיחת session** (המלא: `docs/process/checklists/session-start.md`): ‏(1) discipline §10→§3 ·
 (2) ה-Phase הפעיל ב-`docs/ROADMAP-2026-07-30.md` + ‏`docs/STATUS-BOARD.md` · (3) `node scripts/check-meta.mjs`
-— אדום מטופל לפני עבודה · (4) serena לסימבולי, agent-memory (memsync.py --query) למסמכים, grep=fallback מוצהר ·
+— אדום מטופל לפני עבודה · (4) serena לסימבולי, agent-memory (memsync.py --query) למסמכים,
+‏`src.knowledge.retrieval` לציטוט-עם-גרסה ולגרף (§10.13a), grep=fallback מוצהר ·
 (5) §10.5a: סדרתי; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/GPU.
 **בכל סגירת קשת/Phase:** ‏`docs/process/checklists/arc-close.md` — לקחים→§11, הפקדות, גרף, לוח+מרשם,
 check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנת את `docs/STATUS-BOARD.md`** (H10; מוצג באבני-דרך — H10a).
@@ -192,6 +193,31 @@ python scripts/memsync.py --query "<text>"     # search document chunks (content
 python scripts/memsync.py --tool <name>        # exact tool/technology spec lookup
 python scripts/memsync.py --status             # what is in the store
 ```
+
+**§10.13a — THE SHARED KNOWLEDGE STACK (5.8.26). ‏PostgreSQL הוא מקור האמת; ‏SQLite נשאר לשימוש
+המוטמע של האפליקציה בלבד.** ‏845 מסמכים · 12,860 chunks · embeddings מקומיים. **גישה לסוכנים היא
+דרך שש פעולות פרמטריות בלבד — אין SQL חופשי, אין Cypher חופשי, ואין אישורי-מסד לסוכן.**
+
+```python
+from src.knowledge import retrieval
+retrieval.search_current_docs(q, filters={"namespace":"repo"})  # לקסיקלי, גרסאות נוכחיות בלבד
+retrieval.semantic_search(q, filters=...)                        # וקטורי, אותה טבלה בדיוק
+retrieval.get_source_excerpt(revision_id, chunk_id)              # הטקסט שמאחורי ציטוט
+retrieval.get_revision_history(source_path)                      # מה השתנה ומתי
+retrieval.find_impact(canonical_id, depth=...)                   # מה מושפע
+retrieval.find_dependency_path(a, b)                             # שרשרת התלות
+retrieval.get_entity_provenance(canonical_id)                    # ומה המקור לכל טענה
+```
+צירי סינון: `namespace` `source_type` `document_status` `revision_status` `source_authority`
+`repository` `document_path` `created_after`/`created_before` — **ציר לא-מוכר נדחה, לא מושמט.**
+
+**מתי מה:** ‏`memsync.py --query` = מהיר, מקומי, בלי Docker — ברירת המחדל לשאלת מסמכים.
+‏`retrieval.*` = כשצריך **ציטוט מדויק עם מזהה גרסה**, היסטוריית שינויים, או מעבר בגרף.
+‏**‏`find_impact`/`find_dependency_path` יחזירו ריק** עד שירוץ חילוץ (`scripts/extract_graph.py`);
+כל עובדה שמודל מחלץ נכתבת `proposed` ואינה מוחזרת עד שאדם מקדם אותה.
+
+הפעלה: `docs/infra/deliverables-2026-08-05.md` §3. ‏המאגר לא רץ ⇒ הפעולות נכשלות בבירור, ואז
+‏`memsync.py` הוא הנתיב.
 A grep finds a string in one file; the store returns the **section** that contains it, with its
 heading path and the document it came from — which is usually what the claim is actually about.
 **But a hit is a lead, not a verdict.** Read the source before asserting it. This does not repeal L16.
