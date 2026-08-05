@@ -130,9 +130,24 @@ test.describe('first-run card guard — never stomps an open panel (shared by bo
   });
 
   test('maybeAskUiLevel goes through the SAME guard — also deferred behind an open panel, not lost', async ({ page }) => {
-    await seedApp(page, { 'mk-voiceintro-asked': 'true' });
+    // R-96, and the cause is NOT slowness — it is a race with the APP'S OWN timer.
+    //
+    // app.js:14696 fires `setTimeout(maybeAskUiLevel, 400)` at boot. This test called
+    // maybeAskUiLevel() by hand and raced that timer: if more than 400ms elapsed between seedApp's
+    // reload and this evaluate — which is exactly what a loaded CI machine does — the boot timer
+    // got there first, showed the card, set mk-uilevel-asked, and the test's own call became a
+    // no-op. cardAfterClose then reads false. `Expected: true · Received: false`.
+    //
+    // PROVEN, not inferred: a probe that waited 700ms after seedApp found alreadyAsked=true and
+    // the card already on screen. (My first fix was to wait for the app to be READY, which would
+    // have made this strictly worse — a longer wait gives the timer more time to win.)
+    //
+    // The fix seeds the flag so the boot timer no-ops, then clears it immediately before the
+    // manual call. The test now behaves identically whether it arrives in 10ms or 10s.
+    await seedApp(page, { 'mk-voiceintro-asked': 'true', 'mk-uilevel-asked': 'true' });
     const result = await page.evaluate(() => {
       const w = window as any;
+      w.store.del ? w.store.del('mk-uilevel-asked') : localStorage.removeItem('mk-uilevel-asked');
       openAppearance();
       w.maybeAskUiLevel();
       const stillAppearance = !document.querySelector('[data-onb]') && document.querySelector('.ap-lbl') !== null;

@@ -94,6 +94,18 @@ jobs:
         with:
           name: playwright-traces
           path: test-results/
+
+      # The flake data has to come home from the machine that actually flakes. test-intel.db is
+      # gitignored and local, so two clean local runs were recorded while the CI run that FAILED
+      # was not — flakiness measurable everywhere except where it happens (R-96).
+      - name: Upload the test-intelligence database
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-intel-${{ github.run_id }}
+          path: test-intel.db
+          if-no-files-found: ignore
+          retention-days: 30
           retention-days: 7
 
   # The Worker suite runs the Managed-AI proxy against real workerd via
