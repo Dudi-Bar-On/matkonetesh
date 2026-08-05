@@ -267,3 +267,25 @@ def test_the_uniqueness_constraint_actually_refuses_a_duplicate():
                 s.run("MATCH (n:Document {canonical_id: $c}) DETACH DELETE n", c=cid).consume()
     finally:
         driver.close()
+
+
+def test_every_real_tracked_path_produces_a_valid_canonical_id():
+    """Run the rule over the actual corpus, not over examples I chose.
+
+    The first version of CANONICAL_ID required an alphanumeric first character and refused 32
+    tracked files — every .claude/agents/*.md, .github/workflows/*, .gitattributes. Hand-picked
+    examples all passed; the repository did not. A validator for repository paths has to be tested
+    against the repository's paths.
+    """
+    import subprocess
+
+    from src.knowledge.graph_schema import CANONICAL_ID
+
+    paths = [
+        p for p in subprocess.run(
+            ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, timeout=60
+        ).stdout.split("\n") if p
+    ]
+    assert len(paths) > 500, "git ls-files returned too little to be a real check"
+    refused = [p for p in paths if not CANONICAL_ID.match(f"repo:{p}")]
+    assert not refused, f"{len(refused)} tracked path(s) refused, e.g. {refused[:5]}"

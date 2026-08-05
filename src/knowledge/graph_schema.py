@@ -102,7 +102,14 @@ DEFAULT_CONFIDENCE_THRESHOLD = 0.75
 
 # A canonical identifier is namespaced and machine-comparable. Anything else is a name, and names
 # collide — 47 id collisions between CUTS and SPECIALS is already a finding in this repo's register.
-CANONICAL_ID = re.compile(r"^[a-z][a-z0-9_-]*:[A-Za-z0-9][A-Za-z0-9._/#-]{0,254}$")
+#
+# The identifier half may begin with `.` or `_`, and that is not permissiveness for its own sake:
+# the first version required an alphanumeric first character, and running it over `git ls-files`
+# refused 32 REAL TRACKED FILES — every `.claude/agents/*.md`, `.github/workflows/*`,
+# `.gitattributes`. A rule that forbids ingesting a repository's own dotfiles is not a strict rule,
+# it is a wrong one. The namespace half stays strict (lowercase, letter-initial) because it is our
+# vocabulary, not the filesystem's.
+CANONICAL_ID = re.compile(r"^[a-z][a-z0-9_-]*:[A-Za-z0-9._][A-Za-z0-9._/#@+-]{0,254}$")
 
 
 class SchemaViolation(ValueError):
