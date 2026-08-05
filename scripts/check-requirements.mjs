@@ -94,6 +94,15 @@ const localModules = new Set(
   readdirSync(ROOT).filter((f) => f.endsWith('.py')).map((f) => f.replace(/\.py$/, ''))
 );
 for (const d of SCAN_DIRS) localModules.add(d);
+// Every module inside a scanned directory is also local. A test importing a helper from a sibling
+// test file (`from test_pg_schema import connect`) is not depending on a PyPI package called
+// test-pg-schema — which is what this gate reported, blocking a commit over a package that does
+// not exist and never could. Python resolves the sibling first, so treating it as local is not a
+// leniency; it is what the interpreter actually does.
+for (const f of files) {
+  const base = f.split(/[\\/]/).pop();
+  if (base) localModules.add(base.replace(/\.py$/, ''));
+}
 
 // An `import` at the start of a line is not necessarily an import. This file's own docstrings
 // contain the sentence "...separating a time / from the temperature it belongs to", whose second

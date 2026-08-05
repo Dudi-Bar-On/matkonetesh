@@ -80,18 +80,27 @@ def doc(db):
         cur.execute("DELETE FROM documents WHERE id = %s", (doc_id,))
 
 
-def _new_revision(db, doc_id, number, *, indexed=False, projected=False):
+def _new_revision(db, doc_id, number, *, indexed=False, projected=False, status="graph_projected"):
+    """A revision in a chosen state.
+
+    `status` defaults to graph_projected so each test below isolates ONE constraint. Migration 0006
+    added current_only_when_graph_projected, and without this default every test that makes a
+    revision current would trip that constraint first and pass for the wrong reason — green while
+    asserting nothing about the rule it names.
+    """
     with db.cursor() as cur:
         cur.execute(
             """
             INSERT INTO document_revisions
-              (document_id, revision_number, content_hash, byte_size, indexed_at, graph_projected_at)
+              (document_id, revision_number, content_hash, byte_size, indexed_at,
+               graph_projected_at, status)
             VALUES (%s, %s, %s, 10,
                     CASE WHEN %s THEN now() END,
-                    CASE WHEN %s THEN now() END)
+                    CASE WHEN %s THEN now() END,
+                    %s)
             RETURNING id
             """,
-            (doc_id, number, f"hash-{number}-{doc_id}", indexed, projected),
+            (doc_id, number, f"hash-{number}-{doc_id}", indexed, projected, status),
         )
         return cur.fetchone()[0]
 
