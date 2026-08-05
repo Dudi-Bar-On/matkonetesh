@@ -15,8 +15,7 @@ the discipline document, which is authoritative wherever the two differ.**
 
 **בכל פתיחת session** (המלא: `docs/process/checklists/session-start.md`): ‏(1) discipline §10→§3 ·
 (2) ה-Phase הפעיל ב-`docs/ROADMAP-2026-07-30.md` + ‏`docs/STATUS-BOARD.md` · (3) `node scripts/check-meta.mjs`
-— אדום מטופל לפני עבודה · (4) serena לסימבולי, agent-memory (memsync.py --query) למסמכים,
-‏`src.knowledge.retrieval` לציטוט-עם-גרסה ולגרף (§10.13a), grep=fallback מוצהר ·
+— אדום מטופל לפני עבודה · (4) serena לסימבולי, **הגניזה** (`src.knowledge.retrieval`) למסמכים ולציטוט-עם-גרסה, grep=fallback מוצהר ·
 (5) §10.5a: סדרתי; ≤3 קלים; ≤5 קשיח; 1 בזמן סוויטה/GPU.
 **בכל סגירת קשת/Phase:** ‏`docs/process/checklists/arc-close.md` — לקחים→§11, הפקדות, גרף, לוח+מרשם,
 check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנת את `docs/STATUS-BOARD.md`** (H10; מוצג באבני-דרך — H10a).
@@ -153,7 +152,7 @@ controller runs the deposit pass before the arc closes; untracked lessons and un
 overview/surgical symbol edits beat grep + text edits on the **14.6k-line, 906-function** app.js
 (measured 3.8.26; this line said "~9.5k" until then). Learn it from its docs FIRST:
 the `serena-docs` material in agent memory + Serena's own `initial_instructions` manual. Division of
-labor: Serena = live locate/edit-exact · agent-memory = cross-doc provenance + vendor docs · grep = fallback
+labor: Serena = live locate/edit-exact · הגניזה = cross-doc provenance + vendor docs · grep = fallback
 (docs/process/serena-adoption.md). Point code-editing subagents at Serena when their task is symbol-shaped.
 **§10.17a — ONE Serena server, shared by ALL subagents** (owner, 2026-07-24). The stdio config makes every
 subagent spawn its own server+dashboard (observed: 4 concurrent instances, ports 24282→24283 flapping). Run a
@@ -183,20 +182,25 @@ key, never commit one, never paste one into a report.
   claim contradicts a `REFUTED` verdict there, trace the runtime path before repeating it. That sweep
   refuted **42 of 261 findings (16%)** and every refutation had one shape: a grep, a quote, or a single
   artifact trusted without tracing what the program actually executes.
-- **Agent memory** — `agent-memory.db`: **LlamaIndex** (`MarkdownNodeParser`) parses the repo's own
+- **הגניזה** — ‏PostgreSQL: **LlamaIndex** (`MarkdownNodeParser`/`CodeSplitter`) parses the repo's own
   documents into `TextNode`s, stored in SQLite with **JSONB** metadata. Built by
-  `python scripts/memsync.py`. Query it before grepping the corpus.
+  `python scripts/ingest.py --scope`. Query it before grepping the corpus.
 
-**§10.13 — agent memory is the evidence tool. Query it BEFORE grepping.**
+**§10.13 — הַגְּנִיזָה היא כלי הראיות. שאל אותה לפני grep.**
+
+**‏`geniza`** — השם הכולל לתשתית הידע. גניזה היא חדר שבו **שומרים כתבים במקום להשמידם**, וזה
+בדיוק מה שהמערכת עושה: גרסה שהוחלפה אינה נמחקת, היא נעשית `superseded` ונשארת ניתנת לציטוט.
+השם מתאר את התכונה ולא את הטכנולוגיה, ולכן ישרוד גם החלפת מסד.
+
 ```
-python scripts/memsync.py --query "<text>"     # search document chunks (content OR heading)
-python scripts/memsync.py --tool <name>        # exact tool/technology spec lookup
-python scripts/memsync.py --status             # what is in the store
+הגניזה = PostgreSQL (מקור האמת) · Neo4j (היטל) · LlamaIndex (תזמור) · מודל מקומי (embeddings + חילוץ)
 ```
 
-**§10.13a — THE SHARED KNOWLEDGE STACK (5.8.26). ‏PostgreSQL הוא מקור האמת; ‏SQLite נשאר לשימוש
-המוטמע של האפליקציה בלבד.** ‏845 מסמכים · 12,860 chunks · embeddings מקומיים. **גישה לסוכנים היא
-דרך שש פעולות פרמטריות בלבד — אין SQL חופשי, אין Cypher חופשי, ואין אישורי-מסד לסוכן.**
+**‏⚠️ ‏`agent-memory.db` ו-`scripts/memsync.py` נמחקו ב-5.8.26.** כל הוראה שעדיין נוקבת בהם היא
+**רשומה היסטורית, לא פקודה** — הקובץ לא קיים. ‏847 המסמכים נמצאים בגניזה במלואם, אומת לפני המחיקה.
+
+**גישה לסוכנים היא דרך שש פעולות פרמטריות בלבד — אין SQL חופשי, אין Cypher חופשי, ואין
+אישורי-מסד לסוכן.**
 
 ```python
 from src.knowledge import retrieval
@@ -211,13 +215,12 @@ retrieval.get_entity_provenance(canonical_id)                    # ומה המק
 צירי סינון: `namespace` `source_type` `document_status` `revision_status` `source_authority`
 `repository` `document_path` `created_after`/`created_before` — **ציר לא-מוכר נדחה, לא מושמט.**
 
-**מתי מה:** ‏`memsync.py --query` = מהיר, מקומי, בלי Docker — ברירת המחדל לשאלת מסמכים.
-‏`retrieval.*` = כשצריך **ציטוט מדויק עם מזהה גרסה**, היסטוריית שינויים, או מעבר בגרף.
+**מדוד, לא מוערך (5.8.26):** ‏109ms לשאילתה בתהליך חם · 379ms קר · 901ms סמנטי.
 ‏**‏`find_impact`/`find_dependency_path` יחזירו ריק** עד שירוץ חילוץ (`scripts/extract_graph.py`);
 כל עובדה שמודל מחלץ נכתבת `proposed` ואינה מוחזרת עד שאדם מקדם אותה.
 
-הפעלה: `docs/infra/deliverables-2026-08-05.md` §3. ‏המאגר לא רץ ⇒ הפעולות נכשלות בבירור, ואז
-‏`memsync.py` הוא הנתיב.
+הפעלה: `docs/infra/deliverables-2026-08-05.md` §3. **הגניזה לא רצה ⇒ אין נתיב חלופי** —
+‏`docker compose up -d` ב-`infra/` הוא התנאי, ו-grep הוא ה-fallback המוצהר.
 A grep finds a string in one file; the store returns the **section** that contains it, with its
 heading path and the document it came from — which is usually what the claim is actually about.
 **But a hit is a lead, not a verdict.** Read the source before asserting it. This does not repeal L16.
@@ -226,7 +229,7 @@ heading path and the document it came from — which is usually what the claim i
 carrying its original relations in `metadata.relations`. Those relations were machine-extracted and
 some are `INFERRED`; treat them as leads, never as findings.
 
-**§10.11** Query **agent memory** for **any** documentation or external help — a tool, framework,
+**§10.11** Query **the geniza** for **any** documentation or external help — a tool, framework,
 methodology, an API's capabilities, a vendor's model specs — **before** searching the web. Nine
 vendor/technology corpora are stored as `tool_spec` records (`vendor-docs`, `methodology`,
 `playwright-official-docs`, `gemini-api-docs`, `cloudflare-workers-docs`, `nodejs-v8-docs`,
@@ -238,8 +241,8 @@ stop; never invent tokens to force a hit.
 the docs and ingest them so no session repeats the search. Only documentation of general value —
 **never anything containing a key.**
 
-**§10.12** Keep the store current: `python scripts/memsync.py` (delta by **content hash**, ~0.3 s —
-unchanged files are skipped). `node scripts/check-memory-fresh.mjs` is the gate and it **blocks**.
+**§10.12** Keep the geniza current: `python scripts/ingest.py --scope` (delta by **content hash** —
+unchanged files are skipped). `node scripts/check-geniza-fresh.mjs` is the gate and it **blocks**.
 Commit and push docs with `bash scripts/sync-docs.sh "<message>"`, which now syncs and verifies
 before it commits.
 **Why this replaced graphify (2026-08-04):** the old graph was a 22 MB JSON artifact rebuilt by an

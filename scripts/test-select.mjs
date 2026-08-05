@@ -36,7 +36,7 @@ const SOURCE_AREAS = [
   [/^tests\//, null],                       // a spec change means run that spec — handled below
   [/^src\/knowledge\//, ['__python__']],     // the knowledge stack has no UI surface at all
   [/^src\/memory\//, ['__python__']],
-  [/^scripts\/(check-|memsync|pgmigrate|neo4jmigrate|ingest|extract|test-intel)/, ['__none__']],
+  [/^scripts\/(check-|pgmigrate|neo4jmigrate|ingest|extract|test-intel)/, ['__none__']],
   [/^docs\//, ['__none__']],
   [/^infra\//, ['__none__']],
   [/^\.github\//, ['__none__']],

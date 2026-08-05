@@ -5,7 +5,7 @@
 // without saying what it covered is exactly how the §5a blind spot (audit fix #10) went unnoticed
 // for a full working day (COMPLIANCE-AUDIT-2026-08-01.md).
 //
-// Wraps: check-memory-fresh (§10.12) · check-pytest (the Python suite) · check-no-secrets · gate-lessons (§10.16) · check-board-fresh (H10) ·
+// Wraps: check-geniza-fresh (§10.12) · check-pytest (the Python suite) · check-no-secrets · gate-lessons (§10.16) · check-board-fresh (H10) ·
 // check-shipped-closed (H10) · check-brief (§13) · check-h9 (H9) · check-h8-ledger (H8, §5 + §5a) ·
 // check-release in AUDIT mode
 // (H7 x2 / DoD-12 / L29 / H14 - reported, not blocking; see check-release.mjs's own header for why).
@@ -30,13 +30,15 @@
 // 22 historical briefs) — neither introduced nor worsened by that commit. A gate that blocks the
 // commit meant to fix it teaches the escape hatch to become routine, which is exactly as protective as
 // no gate. Per-checker ruling (argued in each script's own header, not just asserted here):
-//   - check-memory-fresh: BLOCKING (2026-08-04). Its predecessor, check-graph-fresh, was advisory
+//   - check-geniza-fresh: BLOCKING. Its predecessor, check-graph-fresh, was advisory
 //     under exactly the reasoning this paragraph sets out — doc drift is a property of elapsed time
 //     and no single commit could fix it without "a separate heavy rebuild action". That reasoning
 //     was sound about graphify and wrong about the requirement: the heavy action was the thing to
-//     remove, not the gate to weaken. Ingesting a changed document into the SQLite store costs
-//     0.32 s, so drift IS now fixable from the commit that causes it, and blocking is the correct
-//     incentive. The nightly graph-freshness.yml is gone with it (8 runs, 0 successes).
+//     remove, not the gate to weaken. Re-ingesting a changed document into the geniza is seconds,
+//     so drift IS fixable from the commit that causes it, and blocking is the correct incentive.
+//     The nightly graph-freshness.yml is gone with it (8 runs, 0 successes). The SQLite store this
+//     gate originally guarded was deleted on 2026-08-05; the question it asked did not change,
+//     only which store answers it.
 //   - check-brief / check-h9: block only on a file NOT already grandfathered in
 //     docs/process/gate-baselines.json - see each script's own header for the mechanism.
 //   - check-h8-ledger: blocks only on a finding NOT already present at the git HEAD baseline (i.e. a
@@ -88,9 +90,9 @@ const SKIP_ALL = SKIP_IDS.includes('ALL');
 // documents and its owning workflow failed 8 of 8 runs. Reviewers 9 and 10 both named it — a
 // permanently amber signal is an off signal, and worse, it teaches that gates are noise.
 //
-// check-memory-fresh replaces it and BLOCKS, because its remedy is `python scripts/memsync.py`,
-// measured at 0.32 s for a one-file change. A gate is only allowed to block when the fix is
-// cheap; the honest response to an expensive fix is to make it cheap, not to mark the gate
+// check-geniza-fresh replaces it and BLOCKS, because its remedy is `python scripts/ingest.py`,
+// which skips unchanged documents by content hash. A gate is only allowed to block when the fix
+// is cheap; the honest response to an expensive fix is to make it cheap, not to mark the gate
 // advisory and look away.
 const ADVISORY = new Set([]);
 
@@ -110,7 +112,7 @@ function run(id, displayName, file) {
   }
 }
 
-run('check-memory-fresh', 'check-memory-fresh', 'check-memory-fresh.mjs');
+run('check-geniza-fresh', 'check-geniza-fresh', 'check-geniza-fresh.mjs');
 run('check-pytest', 'check-pytest', 'check-pytest.mjs');
 run('check-no-secrets', 'check-no-secrets', 'check-no-secrets.mjs');
 run('check-requirements', 'check-requirements', 'check-requirements.mjs');

@@ -59,7 +59,7 @@ function judged(value, flag, field) {
   if (!v) die(`--${flag} is required — it is field ${field}, and no parser can decide it for you.`,
     flag === 'spec'
       ? 'DoD-1: quote the exact spec line(s) this task satisfies. If there are none, the task should not exist.'
-      : 'discipline §10.17: serena for symbol-shaped code work, agent-memory (scripts/memsync.py --query) for docs. grep is a declared fallback only.');
+      : 'discipline §10.17: serena for symbol-shaped code work, the geniza (src.knowledge.retrieval) for docs. grep is a declared fallback only.');
   if (PLACEHOLDER.test(v) || /^<.*>$/.test(v)) {
     die(`--${flag} is a placeholder (${JSON.stringify(v)}), which is exactly what this tool refuses to emit.`,
       'A brief that satisfies the marker scan while saying nothing is worse than a missing brief: it reports green.');

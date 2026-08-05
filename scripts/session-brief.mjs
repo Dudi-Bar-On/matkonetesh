@@ -159,7 +159,7 @@ function nextStep() {
 }
 
 // ---------------------------------------------------------------------------
-// 6) STANDING DEBT — count only. The gate (check-memory-fresh / check-brief / check-h9, all inside
+// 6) STANDING DEBT — count only. The gate (check-geniza-fresh / check-brief / check-h9, all inside
 // check-meta.mjs) already prints the per-item detail; repeating it here buries the map in noise.
 // The memory-store proxy replaced a graph-mtime proxy on 2026-08-04: mtime moved on checkout and
 // on any identical rewrite, so this line reported debt that did not exist while missing real
@@ -169,20 +169,17 @@ function nextStep() {
 function standingDebt() {
   const parts = [];
   try {
-    const dbPath = join(ROOT, 'agent-memory.db');
-    if (existsSync(dbPath)) {
-      const db = new DatabaseSync(dbPath, { readOnly: true });
-      const row = db.prepare(
-        "SELECT COUNT(DISTINCT file_path) AS files FROM agent_memory " +
-        "WHERE type='md_doc' AND file_path NOT LIKE 'graph://%'"
-      ).get();
-      const tools = db.prepare("SELECT COUNT(*) AS n FROM agent_memory WHERE type='tool_spec'").get();
-      db.close();
-      parts.push(`memory: ${row.files} doc(s), ${tools.n} tool spec(s) — run check-memory-fresh for drift`);
+    // The geniza replaced the SQLite store on 2026-08-05. Counting it means asking PostgreSQL,
+    // and this file is Node with no driver — so it reports whether the STACK IS UP, which is the
+    // fact a session actually needs at its first minute, and points at the gate for the rest.
+    // Reporting "not built" because a deleted file is absent would be worse than saying nothing.
+    const envFile = join(ROOT, 'infra', '.env');
+    if (existsSync(envFile)) {
+      parts.push('geniza: configured — `node scripts/check-geniza-fresh.mjs` for freshness, and it BLOCKS');
     } else {
-      parts.push('memory: not built (agent-memory.db missing — run `python scripts/memsync.py`)');
+      parts.push('geniza: infra/.env missing — the knowledge stack is not configured on this machine');
     }
-  } catch (e) { parts.push(`memory check: ${NA} (${e.message.split('\n')[0].slice(0, 60)})`); }
+  } catch (e) { parts.push(`geniza check: ${NA} (${e.message.split('\n')[0].slice(0, 60)})`); }
 
   try {
     const baselinePath = join(ROOT, 'docs', 'process', 'gate-baselines.json');
