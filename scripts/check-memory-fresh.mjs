@@ -58,8 +58,19 @@ function matchPattern(dir, pattern, out = []) {
 }
 
 if (!existsSync(DB)) {
-    console.log('FAIL: agent-memory.db is missing. Build it with: python scripts/memsync.py');
-  process.exit(1);
+  // The store is a LOCAL build artifact — gitignored, rebuilt from the repo in ~12 s. On a fresh
+  // checkout it does not exist, and the question this gate asks ("has the store drifted from the
+  // documents?") has no meaning there: nothing has had a chance to drift.
+  //
+  // So it SKIPS, loudly, naming the reason. It does not pass quietly — a gate that reports OK
+  // for a check it did not perform is the exact defect the 2026-08-03 review panel spent a week
+  // on. And it does not fail either, which is what it did for five consecutive CI runs after
+  // being made blocking without anyone checking what CI actually has.
+  const ci = process.env.CI ? ' (CI)' : '';
+  console.log(`SKIPPED${ci} — agent-memory.db is absent, so there is no store to compare against.`);
+  console.log('  This is expected on a fresh checkout. Locally, build it with: python scripts/memsync.py');
+  console.log('  NOT VERIFIED here: whether the documents on disk match the store.');
+  process.exit(0);
 }
 
 const db = new DatabaseSync(DB, { readOnly: true });

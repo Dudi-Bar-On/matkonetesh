@@ -29,6 +29,26 @@ jobs:
         with:
           node-version: 22
 
+      # Python is here for ONE gate: check-pytest. The suite verifying the agent-memory layer —
+      # which holds every primary safety source — must run somewhere non-bypassable, and CI is
+      # the only authority that is. It costs ~90s against a job that was ~30s, and that is the
+      # trade being made deliberately.
+      #
+      # 3.14 specifically: agent_memory stores metadata as SQLite JSONB, which needs SQLite
+      # >= 3.45. CPython pins SQLite per branch — 3.12 links 3.37.2 on some images, where
+      # jsonb() does not exist at all.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+
+      - name: Install the Python test dependencies
+        run: python -m pip install --quiet -r requirements.txt
+
+      - name: Verify the interpreter can do what the tests need
+        run: |
+          python -c "import sys, sqlite3; print(f'python {sys.version.split()[0]} sqlite {sqlite3.sqlite_version}')"
+          python -c "import sqlite3; sqlite3.connect(':memory:').execute(\"select jsonb('{}')\"); print('jsonb: OK')"
+
       - name: Run the discipline gate (scripts/check-meta.mjs)
         run: node scripts/check-meta.mjs
 
