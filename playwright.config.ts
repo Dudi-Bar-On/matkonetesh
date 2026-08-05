@@ -34,7 +34,11 @@ export default defineConfig({
   // claim (development-discipline.md §11 L21) and this document's own prior 16-worker "16 FAILED" blip —
   // all of which were the loopback wall, now refuted by the cure. CI stays 2 (GitHub ubuntu-latest is 4-vCPU).
   workers: process.env.CI ? 2 : 20,
-  reporter: [['list']],
+  // 'list' for the human; test-intel for the questions a scrolling log cannot answer — which
+  // specs have ever failed, which passed only on RETRY (the summary line calls those a pass), and
+  // where the 192 seconds actually go. Phase B of the testing overhaul plan. It never throws:
+  // TEST_INTEL=0 disables it, and a write failure is printed, not raised.
+  reporter: [['list'], ['./scripts/test-intel-reporter.mjs']],
   use: {
     baseURL: `http://localhost:${PORT}`,
     // Navigation timeout — 20s, below the 30s test ceiling — ADOPTED PRODUCTION GEOMETRY (2026-07-24,

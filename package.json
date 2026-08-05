@@ -10,7 +10,11 @@
     "test": "playwright test",
     "eval": "playwright test --config evals/playwright.config.ts",
     "meta": "node scripts/check-meta.mjs",
-    "prepare": "git config core.hooksPath .githooks"
+    "prepare": "git config core.hooksPath .githooks",
+    "test:smoke": "node scripts/test-intel.mjs run smoke",
+    "test:area": "node scripts/test-select.mjs --run",
+    "test:full": "npx playwright test",
+    "test:intel": "node scripts/test-intel.mjs stats"
   },
   "keywords": [],
   "author": "",

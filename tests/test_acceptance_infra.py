@@ -29,11 +29,21 @@ RESTART_ENABLED = os.environ.get("MK_RESTART_TESTS") == "1"
 
 
 def wsl(command: str, timeout: int = 300) -> subprocess.CompletedProcess:
-    """Docker lives in WSL2 (no Desktop, no reboot — the owner works remotely)."""
-    return subprocess.run(
-        ["wsl", "-d", "Ubuntu-20.04", "-u", "root", "-e", "bash", "-lc", command],
-        capture_output=True, text=True, timeout=timeout, encoding="utf-8", errors="replace",
-    )
+    """Docker lives in WSL2 (no Desktop, no reboot — the owner works remotely).
+
+    On a Linux CI runner there IS no `wsl`, and subprocess.run RAISES FileNotFoundError rather
+    than returning a non-zero code — so a caller checking `returncode` never runs. That is how
+    three of these tests turned CI red on their first push: an ABSENT tool reported as a FAILED
+    one, which is L54 in its third costume. A synthetic failure is returned instead, and the
+    callers' existing skip logic then does the right thing.
+    """
+    try:
+        return subprocess.run(
+            ["wsl", "-d", "Ubuntu-20.04", "-u", "root", "-e", "bash", "-lc", command],
+            capture_output=True, text=True, timeout=timeout, encoding="utf-8", errors="replace",
+        )
+    except (FileNotFoundError, NotADirectoryError, OSError) as exc:
+        return subprocess.CompletedProcess(args=command, returncode=127, stdout="", stderr=str(exc))
 
 
 def _require_docker():
@@ -161,7 +171,13 @@ def test_A4_no_database_credential_is_present_in_a_tracked_file():
     )
     assert gate.returncode == 0, gate.stdout + gate.stderr
 
-    cfg = config.load_config()
+    # The second half needs the LIVE credentials to search for them, and CI has no infra/.env.
+    # The entropy gate above still ran — so this test is not silently weaker in CI, it is
+    # explicitly half-run and says which half.
+    try:
+        cfg = config.load_config()
+    except config.ConfigError:
+        pytest.skip("infra/.env is absent — the entropy gate ran; the live-credential search did not")
     tracked = subprocess.run(
         ["git", "ls-files"], cwd=ROOT, capture_output=True, text=True, timeout=60, encoding="utf-8"
     ).stdout.split("\n")
