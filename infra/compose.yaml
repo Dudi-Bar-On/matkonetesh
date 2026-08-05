@@ -24,6 +24,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
       # Deterministic collation, so an index built here behaves the same on any other machine.
       POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+      # Read by 02-set-role-passwords.sh at first boot. These were MISSING on the first attempt,
+      # so the script hit `MK_APP_PASSWORD: unbound variable`, the roles were created with NO
+      # password, and every application connection failed with "password authentication failed".
+      # `set -euo pipefail` in that script is why the cause was one grep away instead of a silent
+      # empty password.
+      MK_APP_PASSWORD: ${MK_APP_PASSWORD}
+      MK_READER_PASSWORD: ${MK_READER_PASSWORD}
     ports:
       # 127.0.0.1 prefix is load-bearing: "5433:5432" alone would publish on 0.0.0.0.
       - "127.0.0.1:${POSTGRES_PORT}:5432"
@@ -54,13 +61,29 @@ services:
       NEO4J_server_memory_heap_initial__size: 512m
       NEO4J_server_memory_heap_max__size: 2G
       NEO4J_server_memory_pagecache_size: 1G
-      # No plugins. APOC and GDS are installed only when a concrete need is identified.
+      # APOC Core, installed 2026-08-05 against a CONFIRMED need, not "just in case".
+      #
+      # The need, verified by reading the installed source rather than the docs:
+      # Neo4jPropertyGraphStore.upsert_nodes() calls apoc.create.addLabels and
+      # upsert_relations() calls apoc.merge.relationship. Those are exactly the idempotent graph
+      # upserts Phase 6 requires, and Cypher cannot parameterise a label or a relationship type,
+      # which is what APOC is doing here. refresh_schema()'s apoc.meta.data is avoidable; the
+      # upserts are not.
+      #
+      # Scoped deliberately: apoc.* procedures that touch the filesystem or the network are left
+      # DISABLED (the defaults), so the surface added is graph manipulation only.
+      NEO4J_PLUGINS: '["apoc"]'
+      NEO4J_apoc_import_file_enabled: "false"
+      NEO4J_apoc_export_file_enabled: "false"
+      NEO4J_dbms_security_procedures_unrestricted: "apoc.meta.*,apoc.create.*,apoc.merge.*,apoc.map.*,apoc.any.*,apoc.schema.*"
+      NEO4J_dbms_security_procedures_allowlist: "apoc.meta.*,apoc.create.*,apoc.merge.*,apoc.map.*,apoc.any.*,apoc.schema.*,apoc.coll.*"
     ports:
       - "127.0.0.1:${NEO4J_HTTP_PORT}:7474"   # browser / HTTP API
       - "127.0.0.1:${NEO4J_BOLT_PORT}:7687"   # Bolt driver
     volumes:
       - neo4jdata:/data
       - neo4jlogs:/logs
+      - neo4jplugins:/plugins
     healthcheck:
       # Authenticated round-trip, not just a TCP open: a port that accepts and then refuses
       # every query is exactly the "green but broken" shape this project keeps meeting.
@@ -77,3 +100,5 @@ volumes:
     name: mk-neo4jdata
   neo4jlogs:
     name: mk-neo4jlogs
+  neo4jplugins:
+    name: mk-neo4jplugins

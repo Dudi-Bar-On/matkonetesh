@@ -25,15 +25,48 @@ if (!pyTests.length) {
   process.exit(0);
 }
 
-const r = spawnSync('python', ['-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q'], {
-  cwd: ROOT,
-  encoding: 'utf8',
-  env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
-});
+// FINDING THE INTERPRETER, which is not as simple as calling `python`.
+//
+// This gate blocked a commit on 2026-08-05 reporting "the Python suite is red" when the suite was
+// green. In the git hook's shell, `python` resolved to the Windows Store APP EXECUTION ALIAS — a
+// stub that prints "Python was not found; run without arguments to install from the Microsoft
+// Store" and exits NON-ZERO. The gate read that exit code as a test failure.
+//
+// That is the worst shape a gate can have: not a false negative, a false ACCUSATION. It sends
+// someone to debug a suite that never ran. So the interpreter is now searched for, in order, and
+// the stub is recognised for what it is — an absence, not a failure.
+const CANDIDATES = [
+  ['python', []],
+  ['py', ['-3']],           // the Windows launcher, which ignores PATH and reads the registry
+  ['python3', []],
+];
+const STORE_STUB = /Python was not found;|Microsoft Store/i;
 
-if (r.error || r.status === null) {
-  console.log(`SKIPPED — could not run python (${r.error?.message ?? 'no exit status'}).`);
+function runPytest(cmd, pre) {
+  return spawnSync(cmd, [...pre, '-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q'], {
+    cwd: ROOT,
+    encoding: 'utf8',
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+  });
+}
+
+let r = null;
+let used = null;
+const tried = [];
+for (const [cmd, pre] of CANDIDATES) {
+  const attempt = runPytest(cmd, pre);
+  if (attempt.error || attempt.status === null) { tried.push(`${cmd}: ${attempt.error?.code ?? 'no exit status'}`); continue; }
+  if (STORE_STUB.test(`${attempt.stdout ?? ''}${attempt.stderr ?? ''}`)) { tried.push(`${cmd}: Windows Store alias stub, not an interpreter`); continue; }
+  r = attempt;
+  used = [cmd, ...pre].join(' ');
+  break;
+}
+
+if (!r) {
+  console.log('SKIPPED — no Python interpreter could be run.');
+  for (const t of tried) console.log(`  tried ${t}`);
   console.log('  This is reported, not silently passed: a gate that cannot run is not a gate that passed.');
+  console.log('  NOT VERIFIED here: the Python suite.');
   process.exit(0);
 }
 
@@ -53,7 +86,7 @@ if (/ModuleNotFoundError|No module named|error: unrecognized arguments/.test(out
   console.log('  NOT VERIFIED here: the Python suite. A gate that could not run is not a gate that passed.');
   process.exit(0);
 }
-console.log(`files scanned: ${pyTests.length} (${pyTests.join(', ')})`);
+console.log(`interpreter: ${used} · files scanned: ${pyTests.length} (${pyTests.join(', ')})`);
 console.log(out.split('\n').slice(-6).join('\n'));
 if (r.status !== 0) {
   console.log('FAIL: the Python suite is red. Run: python -m pytest tests/ -v');
