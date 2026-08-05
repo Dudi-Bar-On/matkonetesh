@@ -122,6 +122,9 @@ def main() -> int:
     ap.add_argument("--namespace", default="repo")
     ap.add_argument("--min-chars", type=int, default=extract.MIN_CHUNK_CHARS)
     ap.add_argument("--estimate", action="store_true", help="measure the cost on 3 chunks; write nothing")
+    ap.add_argument("--model", default=extract.MODEL,
+                    help=f"default {extract.MODEL} (fast); {extract.MODEL_ACCURATE} is ~5.5x slower "
+                         "with no direction errors in testing")
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args()
 
@@ -132,14 +135,14 @@ def main() -> int:
     if not chunks:
         print("  no chunks matched — nothing to extract from")
         return 0
-    print(f"  model: {extract.MODEL}")
+    print(f"  model: {args.model}")
     print(f"  in scope: {len(chunks)} chunk(s) from {len({c['source_path'] for c in chunks})} document(s)")
 
     if args.estimate:
         sample = chunks[: min(3, len(chunks))]
         t0 = time.time()
         for c in sample:
-            extract.call_model(c["content"])
+            extract.call_model(c["content"], model=args.model)
         per_call = (time.time() - t0) / len(sample)
         total = per_call * len(chunks)
         print(f"  measured: {per_call:.1f}s per chunk over {len(sample)} sample(s)")
@@ -172,6 +175,7 @@ def main() -> int:
             source_path=doc_chunks[0]["source_path"],
             namespace=args.namespace,
             known=known,
+            model=args.model,
         )
         written_total += write_proposed(survivors, document_id)
         survivors_total += len(survivors)

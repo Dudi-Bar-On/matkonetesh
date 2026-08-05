@@ -2,14 +2,41 @@
 
 Owner decision, 2026-08-05: enable LLM graph extraction, on our own GPU.
 
-MODEL: `qwen3:30b-a3b-instruct-2507-q4_K_M` on the RTX 3090.
-    30.5B parameters but a Mixture-of-Experts with ~3B ACTIVE per token, so it runs at the speed
-    of a small model with the capability of a large one — measured 167 tok/s here, which is what
-    makes 845 documents a run of hours rather than days. 18.6GB of 24GB, leaving room for bge-m3
-    alongside. Ollama's `format` takes a JSON Schema, so the structure is ENFORCED by the runtime
-    rather than requested in a prompt and hoped for.
+MODEL: `mistral-small:24b` on the RTX 3090 — CHOSEN BY MEASUREMENT, after the first choice was
+    measured and found wanting.
 
-    `graphify-extract` was considered and rejected: inspecting it showed the same base model with
+    qwen3:30b-a3b (a Mixture-of-Experts, ~3B active) was picked first for speed, and it IS fast.
+    But across three trials designed so a wrong answer is unambiguously wrong — plain prose,
+    passive voice, and Hebrew technical prose — it REVERSED the direction of 2 relationships out
+    of 15. Direction is the one error grounding cannot catch, because both endpoints are real and
+    both appear in the text, so it is the error that matters most.
+
+        model                     total    correct   REVERSED
+        qwen3:30b-a3b (MoE)         52s      11/15          2
+        gemma4:31b (dense)          84s      16/18          0
+        mistral-small:24b           55s      16/17          0
+
+    On that evidence mistral-small looked like the answer. THEN IT WAS MEASURED ON REAL CORPUS
+    CHUNKS, which are ~6,000 characters rather than the three-sentence trials above:
+
+        model                     per chunk    whole corpus (9,380 chunks)
+        qwen3:30b-a3b (MoE)           14.8s                       38.6 h
+        mistral-small:24b (dense)     81.2s                      211.7 h
+
+    5.5x slower on real input, where the MoE's few-active-experts design pays off and short
+    synthetic sentences never showed it. So there is no winner, there is a TRADE-OFF, and the
+    default is the fast one for a reason that is specific to this design: every extracted fact is
+    written as `proposed` and a human must promote it before it can be returned. A direction error
+    in a proposed fact costs one rejection at review; five extra days of GPU time costs five days.
+
+    Use MODEL_ACCURATE (`--model mistral-small:24b`) for a small, high-value pass where a human
+    will not be reviewing each edge.
+
+    A dense 24B beating a 30B MoE on direction is not surprising in hindsight — resolving subject
+    from object in an inverted clause wants full-model attention rather than a few routed experts
+    — and neither is losing on throughput. Both had to be measured; neither could be reasoned out.
+
+    `graphify-extract` was considered and rejected: inspecting it showed qwen3:30b-a3b with
     different sampling parameters and no system prompt — a preset, not a tuned model.
 
 WHY SELF-REPORTED CONFIDENCE IS NOT TRUSTED, which is the whole design of this file.
@@ -56,7 +83,10 @@ from .graph_schema import (
 
 log = logging.getLogger("knowledge.extract")
 
+# The DEFAULT, and the choice is a trade-off with measured numbers on both sides rather than a
+# winner. `--model` on scripts/extract_graph.py overrides it.
 MODEL = "qwen3:30b-a3b-instruct-2507-q4_K_M"
+MODEL_ACCURATE = "mistral-small:24b"
 OLLAMA_GENERATE = f"{config.OLLAMA_URL}/api/generate"
 
 # Structural edges are derived from PostgreSQL rows; a model has no business proposing them.
@@ -251,6 +281,7 @@ def extract_from_chunks(
     source_path: str,
     namespace: str,
     known: set[str] | None = None,
+    model: str = MODEL,
 ) -> tuple[list[Candidate], dict[str, int]]:
     """Extract from every substantial chunk, and return survivors plus a rejection tally.
 
@@ -267,7 +298,7 @@ def extract_from_chunks(
         if len(text) < MIN_CHUNK_CHARS:
             rejected["chunk too short to extract from"] = rejected.get("chunk too short to extract from", 0) + 1
             continue
-        for raw in call_model(text):
+        for raw in call_model(text, model=model):
             candidate = Candidate(
                 source=str(raw.get("source", "")),
                 type=str(raw.get("type", "")),
