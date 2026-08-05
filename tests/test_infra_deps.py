@@ -84,10 +84,19 @@ def test_override_is_still_needed():
     A workaround with no expiry becomes folklore. When this goes red, the fix is to DELETE
     requirements-overrides.txt and this test, and move neo4j into requirements.txt.
     """
-    from importlib.metadata import requires
+    from importlib.metadata import PackageNotFoundError, requires
+
+    # An absent package is an ABSENCE, not a failure — the distinction L54 was written about, and
+    # which this test got wrong on its first CI run: it reported the suite red because the
+    # integration was not installed in that environment at all.
+    declared: list[str] | None = None
+    try:
+        declared = requires("llama-index-graph-stores-neo4j")
+    except PackageNotFoundError:
+        pytest.skip("llama-index-graph-stores-neo4j is not installed — nothing to override here")
 
     constraints = [
-        r for r in (requires("llama-index-graph-stores-neo4j") or [])
+        r for r in (declared or [])
         if r.split(";")[0].strip().startswith("neo4j")
     ]
     assert constraints, "the integration no longer declares a neo4j constraint at all — re-check the override"

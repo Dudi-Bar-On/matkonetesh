@@ -11,6 +11,24 @@
 llama-index-core>=0.14.23
 llama-index-readers-file>=0.5.0
 
+# The knowledge stack (docs/infra/dependency-summary.md). PostgreSQL is the source of truth,
+# Neo4j is a projection of it, and embeddings are produced by a local Ollama model so no document
+# text leaves this machine.
+#
+# Declared here BEFORE the code that imports them exists, on purpose. check-requirements only sees
+# a package once something imports it, so a stack installed by hand during setup is invisible to
+# it — which is exactly how tree-sitter went undeclared and broke CI (c6ed4f6), and how these
+# three did it again a day later: CI could not even ask what constraint the Neo4j integration
+# declares, because the integration was not there.
+llama-index-vector-stores-postgres>=0.8.1
+llama-index-graph-stores-neo4j>=0.7.0
+llama-index-embeddings-ollama>=0.9.0
+psycopg2-binary>=2.9.12
+sqlalchemy>=2.0.51
+pgvector>=0.5.0
+python-dotenv>=1.2.2
+requests>=2.34.2
+
 # Test runner for the Python side. The Playwright/TypeScript suite is separate (package.json).
 pytest>=9.1.1
 
