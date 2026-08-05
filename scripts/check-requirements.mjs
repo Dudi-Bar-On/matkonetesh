@@ -38,6 +38,11 @@ const DIST = {
   dotenv: 'python-dotenv',
   yaml: 'pyyaml',
   psycopg: 'psycopg',
+  // The import name is psycopg2; the distribution we install is psycopg2-binary (the prebuilt
+  // wheel — the plain `psycopg2` sdist wants a local libpq and a C compiler, which Windows does
+  // not have to hand). Without this line the gate demanded a package that would then fail to
+  // build, which is a worse outcome than the omission it was reporting.
+  psycopg2: 'psycopg2-binary',
   neo4j: 'neo4j',
   sqlalchemy: 'sqlalchemy',
   pgvector: 'pgvector',

@@ -20,9 +20,16 @@ BEGIN
 END
 $$;
 
--- Own the schema so migrations can create tables, but nothing above it.
+-- Read and write the DATA, and nothing above it. Deliberately NOT `CREATE`.
+--
+-- This line granted CREATE until 2026-08-05, under the comment "Own the schema so migrations can
+-- create tables" — written before the decision that migrations run as the SUPERUSER
+-- (scripts/pgmigrate.py). Once that was settled the grant had no remaining user, and a privilege
+-- with no user is only a way to be surprised later. Caught by a test that tried to CREATE as
+-- mk_app and succeeded; migration 0005 revokes it on databases already initialised, and this line
+-- keeps it from being granted on the next fresh volume.
 GRANT CONNECT ON DATABASE mk_knowledge TO mk_app;
-GRANT USAGE, CREATE ON SCHEMA public TO mk_app;
+GRANT USAGE ON SCHEMA public TO mk_app;
 
 -- A separate READ-ONLY role. Retrieval tools used by subagents connect as this one, so a bug or
 -- a prompt injection in a retrieval path has no write verb available to it at all.
