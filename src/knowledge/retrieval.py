@@ -194,6 +194,19 @@ def get_source_excerpt(revision_id: str, chunk_id: str) -> dict[str, Any] | None
     PostgreSQL and not Neo4j, deliberately: the graph is a projection, and quoting from a
     projection is quoting from a copy whose freshness is a separate question.
     """
+    # A malformed identifier is a MISSING excerpt, not a crash. get_entity_provenance resolves
+    # every edge's cited chunk through here, so one edge carrying a bad id used to take the whole
+    # provenance report down — losing the good facts along with the bad one, and reporting an
+    # exception where the honest answer is "this claim cannot be supported".
+    import uuid as _uuid
+
+    for value in (revision_id, chunk_id):
+        try:
+            _uuid.UUID(str(value))
+        except (ValueError, AttributeError, TypeError):
+            log.info("provenance id %r is not a uuid — reporting the excerpt as missing", value)
+            return None
+
     conn = config.connect_reader()
     try:
         with conn.cursor() as cur:
