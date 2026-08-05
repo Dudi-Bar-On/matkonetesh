@@ -57,3 +57,6 @@ backups/
 # Test telemetry. Local measurement, not source — and it grows with every run.
 test-intel.db
 .smoke.tmp
+
+# The extraction run log. Local telemetry of a 12-hour job, regenerated every run.
+extraction-run.log

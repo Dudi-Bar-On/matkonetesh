@@ -55,8 +55,24 @@ finally:
 missing = sorted(set(on_disk) - set(stored))
 stale = sorted(p for p in set(on_disk) & set(stored) if on_disk[p] != stored[p])
 orphaned = sorted(set(stored) - set(on_disk))
+
+# Ingestion gives a document chunks, EMBEDDINGS (on the GPU) and the deterministic graph spine.
+# It does NOT run the extraction model. Reported here so the hole is VISIBLE: the revision reads
+# as graph_projected, which is TRUE, and the missing relationships would otherwise be invisible.
+# Not blocking and not repaired inline -- extraction is ~11s a chunk, which does not belong in a
+# commit hook.
+# (No backticks in this block: it lives inside a JS template literal, and one would close it.)
+conn2 = config.connect_reader(timeout=5)
+try:
+    with conn2.cursor() as cur:
+        cur.execute("SELECT count(*) FROM revisions_pending_extraction WHERE namespace = 'repo'")
+        pending = cur.fetchone()[0]
+finally:
+    conn2.close()
+
 print(json.dumps({"disk": len(on_disk), "stored": len(stored),
-                  "missing": missing, "stale": stale, "orphaned": orphaned}))
+                  "missing": missing, "stale": stale, "orphaned": orphaned,
+                  "pending_extraction": pending}))
 `;
 
 const CANDIDATES = [['python', []], ['py', ['-3']], ['python3', []]];
@@ -111,6 +127,18 @@ console.log(
   `stale: ${data.stale.length} · missing: ${data.missing.length} · orphaned: ${data.orphaned.length}`
 );
 
+// The chunks and their embeddings are repaired automatically above. The EXTRACTED RELATIONSHIPS
+// are not, because the model costs ~11s a chunk and a commit hook is the wrong place for that.
+// So the gap is reported instead of hidden — which is the whole point, since a revision missing
+// its relationships still reads as `graph_projected` and looks complete.
+function reportPendingExtraction(data, justRepaired = 0) {
+  const n = (data.pending_extraction ?? 0) + justRepaired;
+  if (!n) return;
+  console.log(`  ${n} revision(s) have chunks and embeddings but have NEVER been through the`);
+  console.log('  extraction model — their relationships are missing, not empty.');
+  console.log('  run:  python scripts/extract_graph.py --pending');
+}
+
 const problems = [...data.missing.map((p) => ['missing', p]), ...data.stale.map((p) => ['stale', p])];
 if (problems.length) {
   console.log(`${problems.length} document(s) the geniza does not hold at their current content:`);
@@ -146,10 +174,12 @@ if (problems.length) {
     console.log('FAIL: the repair did not succeed. The geniza does not match the disk.');
     process.exit(1);
   }
+  reportPendingExtraction(data, paths.length);
   console.log('OK - drift detected and repaired; the geniza now matches the disk.');
   process.exit(0);
 }
 if (data.orphaned.length) {
   console.log(`  note: ${data.orphaned.length} document(s) in the geniza are no longer on disk — history, not an error.`);
 }
+reportPendingExtraction(data);
 console.log('OK - every in-scope document is in the geniza at its current content hash.');

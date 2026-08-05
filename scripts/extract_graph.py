@@ -31,11 +31,19 @@ from src.knowledge import config, extract  # noqa: E402
 log = logging.getLogger("extract_graph")
 
 
-def fetch_chunks(paths: list[str] | None, limit: int | None, namespace: str, min_chars: int):
+def fetch_chunks(paths: list[str] | None, limit: int | None, namespace: str, min_chars: int,
+                 pending_only: bool = False):
     """Chunks of CURRENT revisions only — extracting from superseded text would propose facts
-    about content the corpus no longer contains."""
+    about content the corpus no longer contains.
+
+    `pending_only` narrows to revisions the model has NEVER seen (the
+    revisions_pending_extraction view). That is what makes a new or edited document get the same
+    treatment as the rest of the corpus instead of a permanent hole in the graph.
+    """
     where = ["dr.is_current", "d.namespace = %s", "length(dc.content) >= %s"]
     params: list[object] = [namespace, min_chars]
+    if pending_only:
+        where.append("dr.id IN (SELECT revision_id FROM revisions_pending_extraction)")
     if paths:
         where.append("(" + " OR ".join(["d.source_path LIKE %s"] * len(paths)) + ")")
         params.extend(p.rstrip("/") + "%" for p in paths)
@@ -130,12 +138,45 @@ def write_proposed(candidates: list[extract.Candidate], document_id: str) -> int
     return written
 
 
+def _mark_extracted(revision_id: str, model: str, kept: int, dropped: int) -> None:
+    """Record that this revision HAS been through the model, whatever it produced.
+
+    Written even when the model found nothing — that is the case the column exists for. A
+    revision whose text states no relationship would otherwise be re-extracted on every pass, at
+    ~11s a chunk, forever.
+    """
+    conn = config.connect_writer()
+    try:
+        with conn.cursor() as cur:
+            # `state` is DELIBERATELY untouched. It describes the deterministic PROJECTION, and
+            # the constraint succeeded_projections_are_counted requires projected_at and
+            # node_count alongside it — which extraction does not have and has no business
+            # inventing. My first version wrote state='succeeded' here and the constraint refused
+            # it, correctly: extraction and projection are two different facts about a revision,
+            # and collapsing them would have made `succeeded` mean two things.
+            cur.execute(
+                "INSERT INTO graph_projection_state "
+                "  (revision_id, extracted_at, extracted_model, extracted_count, extraction_rejected) "
+                "VALUES (%s::uuid, now(), %s, %s, %s) "
+                "ON CONFLICT (revision_id) DO UPDATE SET "
+                "  extracted_at = now(), extracted_model = EXCLUDED.extracted_model, "
+                "  extracted_count = EXCLUDED.extracted_count, "
+                "  extraction_rejected = EXCLUDED.extraction_rejected",
+                (revision_id, model, kept, dropped),
+            )
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--paths", nargs="*", help="restrict to chunks whose source path starts with these")
     ap.add_argument("--limit", type=int, help="take only the N largest chunks")
     ap.add_argument("--namespace", default="repo")
     ap.add_argument("--min-chars", type=int, default=extract.MIN_CHUNK_CHARS)
+    ap.add_argument("--pending", action="store_true",
+                    help="only revisions the model has never seen — new and edited documents")
     ap.add_argument("--estimate", action="store_true", help="measure the cost on 3 chunks; write nothing")
     ap.add_argument("--model", default=extract.MODEL,
                     help=f"default {extract.MODEL} (fast); {extract.MODEL_ACCURATE} is ~5.5x slower "
@@ -146,7 +187,7 @@ def main() -> int:
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
                         format="%(levelname)s %(name)s: %(message)s")
 
-    chunks = fetch_chunks(args.paths, args.limit, args.namespace, args.min_chars)
+    chunks = fetch_chunks(args.paths, args.limit, args.namespace, args.min_chars, args.pending)
     if not chunks:
         print("  no chunks matched — nothing to extract from")
         return 0
@@ -205,6 +246,7 @@ def main() -> int:
             model=args.model,
         )
         written_total += write_proposed(survivors, document_id)
+        _mark_extracted(doc_chunks[0]["revision_id"], args.model, len(survivors), sum(rejected.values()))
         survivors_total += len(survivors)
         for reason, n in rejected.items():
             rejected_total[reason] = rejected_total.get(reason, 0) + n
