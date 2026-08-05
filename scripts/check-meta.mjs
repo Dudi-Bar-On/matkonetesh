@@ -113,6 +113,7 @@ function run(id, displayName, file) {
 run('check-memory-fresh', 'check-memory-fresh', 'check-memory-fresh.mjs');
 run('check-pytest', 'check-pytest', 'check-pytest.mjs');
 run('check-no-secrets', 'check-no-secrets', 'check-no-secrets.mjs');
+run('check-requirements', 'check-requirements', 'check-requirements.mjs');
 run('gate-lessons', 'gate-lessons', 'gate-lessons.mjs');
 run('check-board-fresh', 'check-board-fresh', 'check-board-fresh.mjs');
 run('check-brief', 'check-brief', 'check-brief.mjs');
