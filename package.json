@@ -14,13 +14,18 @@
     "test:smoke": "node scripts/test-intel.mjs run smoke",
     "test:area": "node scripts/test-select.mjs --run",
     "test:full": "npx playwright test",
-    "test:intel": "node scripts/test-intel.mjs stats"
+    "test:intel": "node scripts/test-intel.mjs stats",
+    "test:visual": "npx playwright test tests/visual-smoke.spec.ts",
+    "test:a11y": "npx playwright test tests/a11y-smoke.spec.ts",
+    "test:live": "node scripts/live-smoke.mjs",
+    "coverage": "node scripts/coverage-map.mjs build && node scripts/coverage-map.mjs summary"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
   "type": "commonjs",
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.61.1",
     "@stryker-mutator/core": "^9.6.1",
     "@stryker-mutator/typescript-checker": "^9.6.1",

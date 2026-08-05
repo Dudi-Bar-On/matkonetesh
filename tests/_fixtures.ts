@@ -94,7 +94,7 @@ function itemsDoc(): Buffer { return (__itemsDoc ??= readFileSync(resolve(proces
 const ITEMS_JSON_RE = /\/items\.json($|\?)/;
 
 type WarmWorkerFixtures = { warmContext: BrowserContext; warmPage: Page };
-type WarmTestFixtures = { warm: Page; isolatedPage: Page };
+type WarmTestFixtures = { warm: Page; isolatedPage: Page; _coverage: undefined };
 
 export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
   // ONE ephemeral context per worker (W0-a: STAY-ON-A — never launchPersistentContext).
@@ -276,6 +276,41 @@ export const test = base.extend<WarmTestFixtures, WarmWorkerFixtures>({
   page: async ({ warm }, use) => {
     await use(warm);
   },
+
+  // COVERAGE, MEASURED AT RUNTIME — Phase C §4.1. Auto-runs for every test.
+  //
+  // The first attempt read the spec FILES with regexes and credited 15 of 170, producing a
+  // headline "4.3% covered" that was mostly a measurement artefact: a spec reaches a screen by
+  // clicking, not by writing its id in the source. Reporting that number would have been the
+  // "verify rendered, not the metric" mistake in a new costume.
+  //
+  // So this asks the PAGE what it actually rendered, at the end of each test, and appends one
+  // line per test. Nothing is inferred and nothing is guessed.
+  //
+  // It must never affect a verdict: everything is wrapped, and a failure to record is silent
+  // here and visible in the map's own totals instead.
+  _coverage: [async ({ page }, use, testInfo) => {
+    await use(undefined);
+    if (process.env.TEST_INTEL === '0') return;
+    try {
+      const seen = await page.evaluate(() => {
+        const on = Array.from(document.querySelectorAll('[id^="scr-"]'))
+          .filter((e) => e.classList.contains('on')).map((e) => e.id);
+        const w = window as any;
+        return {
+          screens: on,
+          lang: (typeof w.getLang === 'function' ? w.getLang() : 'he') || 'he',
+          viewport: `${window.innerWidth}x${window.innerHeight}`,
+          hasEvents: !!(localStorage.getItem('mk-events') || '').replace('[]', '').trim(),
+          firstRun: !localStorage.getItem('mk-uilevel-asked'),
+        };
+      });
+      const line = JSON.stringify({ spec: testInfo.file.split(/[\\/]/).pop(), ...seen }) + '\n';
+      const { appendFileSync, mkdirSync } = await import('node:fs');
+      mkdirSync('.coverage-obs', { recursive: true });
+      appendFileSync('.coverage-obs/observed.jsonl', line);
+    } catch { /* a test that closed its page, or navigated away — not a verdict */ }
+  }, { auto: true }],
 });
 
 /**
