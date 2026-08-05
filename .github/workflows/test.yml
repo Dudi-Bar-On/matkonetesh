@@ -44,6 +44,14 @@ jobs:
       - name: Install the Python test dependencies
         run: python -m pip install --quiet -r requirements.txt
 
+      # Two steps, and it has to be two. requirements-overrides.txt holds pins that contradict a
+      # package's own declared constraint, so installing both files together returns
+      # ResolutionImpossible. --no-deps installs the pin alone. If this step is ever dropped, CI
+      # silently reverts to the version upstream prefers — which is exactly what
+      # tests/test_infra_deps.py fails on, deliberately.
+      - name: Install the dependency overrides
+        run: python -m pip install --quiet --no-deps -r requirements-overrides.txt
+
       - name: Verify the interpreter can do what the tests need
         run: |
           python -c "import sys, sqlite3; print(f'python {sys.version.split()[0]} sqlite {sqlite3.sqlite_version}')"

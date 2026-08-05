@@ -23,6 +23,11 @@ import { fileURLToPath } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const SCAN_DIRS = ['src', 'scripts', 'tests'];
 const REQ = join(ROOT, 'requirements.txt');
+// Overrides are declarations too. requirements-overrides.txt holds pins that deliberately
+// contradict a package's own constraint (see its header); a package declared there is declared.
+// Without this the gate would demand neo4j be added to requirements.txt, where pip would then
+// refuse to resolve it — the gate pushing the repo toward an environment that cannot be built.
+const REQ_OVERRIDES = join(ROOT, 'requirements-overrides.txt');
 
 // Import name -> distribution name, where they differ. Getting this wrong in EITHER direction
 // produces a false report, so each entry is one that exists in this repo.
@@ -67,11 +72,17 @@ if (!existsSync(REQ)) {
   process.exit(0);
 }
 
-const declared = readFileSync(REQ, 'utf8')
-  .split('\n')
-  .map((l) => l.trim())
-  .filter((l) => l && !l.startsWith('#'))
-  .map((l) => l.split(/[<>=!~\[;]/)[0].trim().toLowerCase());
+function declarationsIn(file) {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, 'utf8')
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l && !l.startsWith('#'))
+    .map((l) => l.split(/[<>=!~\[;]/)[0].trim().toLowerCase());
+}
+
+const declared = [...declarationsIn(REQ), ...declarationsIn(REQ_OVERRIDES)];
+const overrideCount = declarationsIn(REQ_OVERRIDES).length;
 
 const files = SCAN_DIRS.flatMap((d) => walk(join(ROOT, d)));
 const localModules = new Set(
@@ -130,7 +141,10 @@ for (const f of files) {
   }
 }
 
-console.log(`python files scanned: ${files.length} · declared in requirements.txt: ${declared.length}`);
+console.log(
+  `python files scanned: ${files.length} · declared: ${declared.length}` +
+    (overrideCount ? ` (${declared.length - overrideCount} in requirements.txt, ${overrideCount} in requirements-overrides.txt)` : '')
+);
 console.log('  detects: a static import with no matching line in requirements.txt');
 console.log('  does NOT detect: dynamic __import__, optional deps in try/except, or transitive pulls');
 

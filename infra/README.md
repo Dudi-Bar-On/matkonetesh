@@ -68,3 +68,31 @@ Every image is pinned to an exact version, never `latest`. The owner asked for "
 newest"; a floating tag delivers that today and then silently swaps a database engine under a
 future `docker compose pull`. Pinning the newest version number gives the same software with a
 change that appears in a diff. See L52 — the newest of both components had moved its contract.
+
+The same principle runs into a wall on the **Python client**, and the wall is worth naming.
+`llama-index-graph-stores-neo4j 0.7.0` declares `neo4j<6,>=5.16.0`, so pip resolves the driver to
+5.x. The owner ruled on 2026-08-05 that we run **6.2** anyway, on the grounds that the decision is
+not only about backward compatibility — 6.x carries a `Result` iteration speed-up, two
+connection-timeout fixes, and two fixes that are specific to **Windows**, the platform this project
+develops on.
+
+Overriding a declared constraint is not free, and the cost is visible rather than hidden:
+
+```
+python -m pip install -r requirements.txt
+python -m pip install --no-deps -r requirements-overrides.txt   # NOT optional
+
+pip check   # reports: llama-index-graph-stores-neo4j 0.7.0 has requirement neo4j<6,>=5.16.0,
+            #          but you have neo4j 6.2.0
+```
+
+**That `pip check` line is expected. It is the override, not a fault.** It is left visible on
+purpose — a suppressed warning is how a deliberate exception turns into a mystery six months on.
+
+Why it is safe, established by evidence rather than hope: the integration touches four driver APIs
+(`neo4j.Query`, `execute_query`, `session`, `close`), none of which appears in driver 6.0's removal
+list; upstream shipped 0.7.0 five and a half months AFTER driver 6.0 without testing it, and tracks
+no issue about relaxing the pin; and the full graph round-trip passes identically under both
+drivers against the live server. It is held in place by `tests/test_infra_deps.py`, which fails
+when pip silently reverts the driver **and** fails once upstream relaxes the constraint — so the
+workaround cannot outlive its reason.

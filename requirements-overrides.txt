@@ -1,0 +1,33 @@
+# Dependency OVERRIDES — pins that deliberately contradict a package's declared constraint.
+#
+# Install AFTER requirements.txt, and only with --no-deps:
+#
+#     python -m pip install -r requirements.txt
+#     python -m pip install --no-deps -r requirements-overrides.txt
+#
+# --no-deps is required, not stylistic. `pip install -r` with both files together returns
+# ResolutionImpossible (verified 2026-08-05); pip has no --override, so the constraint is bypassed
+# by installing the package alone.
+#
+# EVERY line here is a decision that pip will silently undo on the next ordinary
+# `pip install -r requirements.txt`. So every line here MUST be held by a test in
+# tests/test_infra_deps.py — that is what turns a bypass into a decision.
+
+# neo4j 6.2 against llama-index-graph-stores-neo4j 0.7.0's `neo4j<6,>=5.16.0`.
+#
+# Owner ruling 2026-08-05: the deciding factor is not only backward compatibility — performance
+# and bug fixes count too. Driver 6.x carries, on the platform this project develops on:
+#   6.0.1  fix AttributeError on package import ON WINDOWS: socket.EAI_ADDRFAMILY
+#   6.0.2  fix DNS error re-write ON WINDOWS
+#   6.2.0  speed up iteration over Result
+#   6.2.0  fix connection_write_timeout config being ignored
+#   6.2.0  fix socket timeouts during connection establishment
+#
+# Safe to override, and this was established by evidence rather than optimism. The integration
+# touches four driver APIs only — neo4j.Query, driver.execute_query, driver.session,
+# driver.close — and none appears in driver 6.0's removal list. The constraint reads as "6 was
+# never tested": driver 6.0 shipped 2025-09-30, five and a half months BEFORE integration 0.7.0
+# was published, and no issue or PR upstream tracks relaxing it. Verified empirically as well —
+# the full graph round-trip (upsert_nodes, upsert_relations, get, get_triplets,
+# get_schema(refresh=True)) passes identically under 5.28.4 and 6.2.0 against the live server.
+neo4j==6.2.0

@@ -1627,3 +1627,54 @@ back — rather than trusting that a named volume implies persistence.
 down -v` removed three volumes, each was counted: `0 files`. The teardown was safe and it was
 KNOWN to be safe, which is a different state from being lucky.
 
+**L54 · A gate that accuses is worse than a gate that misses (2026-08-05).**
+
+`check-pytest` blocked a commit reporting **"the Python suite is red"** while the suite was green —
+42 passed. In the git hook's shell, `python` resolved to the Windows Store **app execution alias**,
+a stub that prints "Python was not found" and exits non-zero; the gate read that exit code as a
+test failure.
+
+Not a false negative — a **false accusation**. A gate that misses a defect costs one defect. A gate
+that invents one sends someone to debug a suite that never ran, and teaches everyone to wave it
+through, which costs every defect it would ever have caught. The review panel's finding in another
+costume.
+
+Two rules follow, and both are now implemented rather than aspired to:
+
+1. **A tool's absence and a tool's failure are different results and must never share an exit
+   path.** The stub is now recognised for what it is; the interpreter is searched for in order
+   (`python` → `py -3` → `python3`).
+2. **A gate states what it ran against.** `check-pytest` now prints the interpreter it used, the
+   way `check-requirements` prints which manifest a package was declared in. A gate that is green
+   or red about an unnamed environment has told you nothing.
+
+**Never fix this class by weakening the gate.** The tempting move was `META_SKIP_GATE=check-pytest`.
+It would have worked, and the next person meets the same accusation with one fewer clue.
+
+**L55 · An exception that pip can silently undo is a coincidence, not a decision (2026-08-05).**
+
+The owner ruled we run neo4j driver 6.2 against `llama-index-graph-stores-neo4j`'s declared
+`neo4j<6`. The obvious implementation — `pip install --no-deps neo4j==6.2.0` — *works*, and is
+worthless: pip has no override mechanism (`pip install -r` with both pins returns
+`ResolutionImpossible`, verified), so the very next ordinary `pip install -r requirements.txt`
+re-resolves the driver back to 5.x **without printing anything**. The decision would have quietly
+expired, and the first symptom would have been a Windows socket bug nobody could reproduce.
+
+The shape that holds, and it generalises to any deliberate exception:
+
+| | |
+|---|---|
+| **Declare it separately** | `requirements-overrides.txt` — a file whose whole subject is "pins that contradict upstream", with the reason for each written beside it |
+| **Test that it is in force** | a test that fails when the environment reverts, carrying the fix command in its message |
+| **Test that it is still needed** | a test that fails when upstream relaxes the constraint — so the workaround **cannot outlive its reason** |
+| **Leave the cost visible** | `pip check` now reports the conflict. Documented as expected, never suppressed: a silenced warning is how a deliberate exception becomes folklore |
+
+**Adopted win — the owner corrected a real reasoning defect, and it is worth keeping.** I
+recommended against the upgrade on the grounds that it bought nothing, having measured *functional
+parity* — the same round-trip passed under both drivers. The owner's answer: *"תמיד השיקול הוא גם
+ביצועים ותיקוני באגים לא דווקא רק תמיכה לאחור."* Correct, and my test could not have seen either.
+The changelog then showed a `Result` iteration speed-up, two connection-timeout fixes, and **two
+fixes specific to Windows** — the platform we develop on. **"I tested it and nothing changed" is
+only evidence about the axis you tested.** Before concluding a version brings nothing, read what it
+claims to bring.
+
