@@ -1623,6 +1623,63 @@ against a whole architecture resting on an assumption. The same habit later conf
 data survives a restart by writing a marker into **both** stores, restarting, and reading it
 back — rather than trusting that a named volume implies persistence.
 
+**L56 · I built a phase from my summary of the spec instead of from the spec (2026-08-05).**
+
+Phase 3 of the knowledge-stack prompt was committed and called complete. Going to read the label
+allowlist for Phase 4, I found the prompt had **never been saved to the repo** — and recovering it
+from the session transcript showed Phase 3 was missing most of what it specified: the eight
+revision statuses, `source_authority`, `idempotency_key`, `namespace`, the projection schema
+version, superseded-by, source commit.
+
+Not one was disputed, hard, or a judgement call. They were written down, in numbered lists, under
+each table. I worked from a summary because **the summary was in front of me and the prompt was
+not.**
+
+**§4 forbids narrowing an approved spec. Narrowing by FORGETTING is still narrowing** — and it is
+harder to catch than doing it on purpose, because there is no decision anywhere to point at, no
+moment where someone chose. It looks exactly like completed work.
+
+Two mechanisms, both now in place:
+- **The spec lives in the repo** (`docs/infra/owner-prompt-2026-08-05-knowledge-stack.md`). A
+  requirement you cannot re-read is a requirement you will paraphrase.
+- **A coverage test transcribes the requirement list and checks it** (`test_pg_spec_coverage.py`).
+  A dropped field fails a test instead of surviving as an absence.
+
+**The check:** before implementing from any spec, open the spec. Not the plan, not the summary,
+not the commit message that mentioned it. If it is not in the repo, put it there first.
+
+**L57 · A test helper that cannot tell "absent" from "broken" hides the bugs it was meant to
+surface (2026-08-05).**
+
+The worker tests skipped on ANY failed ingestion with the message "stack unavailable". A genuine
+`SchemaViolation` — a real bug — read as a missing environment, and **four tests went green-ish
+while the thing they exist to check had never run.** Changing the helper to skip only on
+connection-shaped failures and FAIL on everything else surfaced two real bugs within the minute.
+
+This is L54 wearing different clothes and it is worth stating as its own rule: **an absence and a
+failure are different results and must never share an exit path.** `SKIPPED` is honest and useful;
+`SKIPPED` standing in for `FAILED` is worse than either, because it consumes the budget of
+attention a red test would have earned.
+
+The generalisation, which is the expensive half: any code that decides "this isn't my problem"
+needs a POSITIVE test for the condition it is excusing — a marker list, an exception type, an exit
+code. `except Exception: skip()` is not a decision, it is an abdication with a docstring.
+
+**Adopted win — attack the rule, do not assert it.** Every real defect in this arc was found by a
+test that tried to BREAK a guarantee rather than confirm it. `mk_app` was asked to `CREATE TABLE`
+and succeeded, revealing a grant that had had no user for weeks — a test that merely read the
+grants would have reported what was there and called it correct. The canonical-id validator was
+run over `git ls-files` and refused 32 real files; hand-picked examples all passed. The port
+bindings were read from the **running containers** rather than from `compose.yaml`, because the
+file states an intention and the daemon states the fact, and only one of them is what an attacker
+meets.
+
+**Adopted win — a test that passes on first run is void, and mutation is how you discharge that.**
+Twenty-six gate tests passed immediately because the module was written first. Rather than trust
+them, three mutations were applied — a label sneaked onto the allowlist, the provenance
+requirement deleted, the confidence threshold neutered — and each killed the tests that name it.
+Two minutes, and it converts "these pass" into "these can fail".
+
 **Adopted win — check that a destructive step is destroying nothing.** Before `docker compose
 down -v` removed three volumes, each was counted: `0 files`. The teardown was safe and it was
 KNOWN to be safe, which is a different state from being lucky.
