@@ -159,15 +159,26 @@ def sync_rule(
         # 1) — never a hardcoded literal, and now (Fix round 2) never a silently-defaulted one
         # either — so sync_document's own `WHERE source_path = %s` lookup can trust what got
         # written here.
+        # Fix round 2, 2026-08-06 — review finding, Critical: `bucket`, `severity`, `mechanism`
+        # were absent from this column list entirely, so mk_rules (the source of truth) held NULL
+        # for all three on every current row regardless of what the record carried — invisible
+        # until Task 13's mirror-checksum digest started covering `bucket` and a self-heal
+        # (rebuild_mirror_from_postgres) silently overwrote a mirror that legitimately held
+        # 'process' with the NULL read back from Postgres. Written here from the SAME record
+        # fields the mirror write below already uses (`getattr(record, "bucket", None)`, and
+        # `severity`/`mechanism` as None — nothing in the extractor computes those two yet, same
+        # as the mirror write never claimed to either), so Postgres and the mirror can never again
+        # silently disagree about which of these three fields is present.
         cur.execute(
             """
             INSERT INTO rule_revisions
-                (rule_id, section, title_he, statement, source_path, source_heading, source_hash,
-                 revision_status, is_current)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, 'current', false)
+                (rule_id, section, title_he, statement, bucket, severity, mechanism,
+                 source_path, source_heading, source_hash, revision_status, is_current)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'current', false)
             RETURNING revision_id
             """,
             (record.rule_id, record.section, record.title_he, record.statement,
+             getattr(record, "bucket", None), None, None,
              source_path, record.source_heading, record.content_hash),
         )
         revision_id = cur.fetchone()[0]

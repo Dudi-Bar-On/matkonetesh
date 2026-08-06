@@ -198,6 +198,52 @@ def test_sync_rule_happy_path_activates_the_rule(tmp_path):
     pg.close()
 
 
+def test_sync_rule_writes_bucket_to_postgres_not_just_the_mirror(tmp_path):
+    """Fix round 2, 2026-08-06 — review finding, Critical: sync_rule's Postgres INSERT column
+    list never named `bucket` (nor `severity`/`mechanism`) at all, so every current row's
+    `bucket` was NULL in mk_rules — the source of truth — even though the SAME record's `bucket`
+    reached the mirror correctly (mirror_mod.write_revision already read `record.bucket`). This
+    was invisible until check-rules-mirror's digest (Task 13, fix round 1) started covering the
+    `bucket` column and a self-heal (`rebuild_mirror_from_postgres`) silently overwrote a mirror
+    that legitimately held 'process' with NULL read back from Postgres — a self-heal that
+    destroyed real data.
+
+    The assertion is on what comes BACK OUT of Postgres via a fresh SELECT, not on what was
+    passed into sync_rule — asserting the input would not have caught this: the record's `bucket`
+    field was always correct in Python, the INSERT silently dropped it on the way into the
+    database, and only a real round-trip through Postgres proves the column was actually written.
+    """
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "TEST-BUCKET")
+
+    tmp = tmp_path / "_tmp_bucket_mirror.sqlite"
+    m = mirror.open_mirror(tmp)
+
+    # bucket="content" (not the dataclass default "process") so a test that accidentally read a
+    # default-initialized value instead of a real round-trip could not pass by coincidence.
+    rec = extractor.RuleRecord(
+        rule_id="TEST-BUCKET", section="TEST", title_he="bucket round-trip test",
+        statement="bucket round-trip test rule", source_heading="test",
+        content_hash="buckethash", bucket="content",
+    )
+    revision_id = builder.sync_rule(pg, m, rec, source_path=builder.DEFAULT_SOURCE_PATH)
+
+    with pg.cursor() as cur:
+        cur.execute("SELECT bucket FROM rule_revisions WHERE revision_id = %s", (revision_id,))
+        (bucket,) = cur.fetchone()
+    assert bucket == "content", (
+        f"bucket must round-trip through Postgres, got {bucket!r} — "
+        "the INSERT must actually write the bucket column, not silently drop it"
+    )
+
+    _clean(pg, "TEST-BUCKET")
+    pg.close()
+
+
 # ---------------------------------------------------------------------------------------------
 # Task 9: sync_document — the whole-document lifecycle (added / updated / unchanged / retired)
 # built on top of Task 8's sync_rule. Each test drives sync_document through extract_rules() on a
