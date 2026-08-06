@@ -336,3 +336,88 @@ def test_sync_document_removed_from_document_is_retired_not_deleted(tmp_path):
     _clean(pg, "10.99")
     _clean(pg, "10.98")
     pg.close()
+
+
+# ---------------------------------------------------------------------------------------------
+# Fix round 1 (2026-08-06 — Critical, found by the controller against the live database, from an
+# empty rule_revisions table): sync_document's own classification (`WHERE source_path = %s`)
+# never matched a rule sync_rule had actually written, because sync_rule hardcoded source_path to
+# the discipline-doc literal regardless of what was passed in. A rule already current under ANY
+# other source_path was misclassified as "added" on the next sync, and the second sync_rule call
+# collided with the still-current first row on `one_current_revision_per_rule`
+# (psycopg2.errors.UniqueViolation). This is the controller's exact reproduction, run against a
+# source_path this file's OTHER tests never use (so it cannot be masked by them matching the old
+# hardcoded literal by coincidence).
+# ---------------------------------------------------------------------------------------------
+
+PROBE_SOURCE_PATH = "probe90.md"
+
+
+def _assert_rule_invariants(pg_conn, rule_id: str) -> None:
+    """No row for `rule_id` may have revision_status='current' while is_current=false, and at
+    most one row for `rule_id` may have is_current=true — asserted directly against Postgres,
+    the same two facts the `current_requires_mirror`/`one_current_revision_per_rule` constraints
+    are meant to make impossible to violate in a COMMITTED state."""
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current FROM rule_revisions WHERE rule_id = %s", (rule_id,)
+        )
+        rows = cur.fetchall()
+    for status, is_current in rows:
+        assert (status == "current") == bool(is_current), (
+            f"{rule_id}: revision_status/is_current disagree — {status!r}/{is_current!r}"
+        )
+    current_rows = [r for r in rows if r[1]]
+    assert len(current_rows) <= 1, f"{rule_id}: more than one current row — {rows}"
+
+
+def test_sync_document_updates_a_rule_that_is_already_current(tmp_path):
+    """The controller's exact reproduction: sync a two-rule document, then sync a second version
+    where rule 90 changed and rule 91 was removed — against an EMPTY rule_revisions table, using a
+    source_path ('probe90.md') distinct from every other test in this file."""
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "90")
+    _clean(pg, "91")
+    m = _fresh_mirror(tmp_path, "_tmp_probe90.sqlite")
+
+    d1 = "## 90. Alpha\n\nFirst body.\n\n## 91. Beta\n\nSecond body.\n"
+    d2 = "## 90. Alpha\n\nCHANGED body.\n"  # 90 updated, 91 removed
+
+    r1 = builder.sync_document(pg, m, d1, PROBE_SOURCE_PATH)
+    assert r1["added"] == ["90", "91"], r1
+    _assert_rule_invariants(pg, "90")
+    _assert_rule_invariants(pg, "91")
+
+    r2 = builder.sync_document(pg, m, d2, PROBE_SOURCE_PATH)
+    assert r2["updated"] == ["90"], r2
+    assert r2["retired"] == ["91"], r2
+    _assert_rule_invariants(pg, "90")
+    _assert_rule_invariants(pg, "91")
+
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current, statement FROM rule_revisions "
+            "WHERE rule_id = %s ORDER BY created_at",
+            ("90",),
+        )
+        rows = cur.fetchall()
+    assert len(rows) == 2, f"expected old + new revision for rule 90, got {rows}"
+    assert rows[0][0] == "superseded" and rows[0][1] is False
+    assert rows[1][0] == "current" and rows[1][1] is True and "CHANGED" in rows[1][2]
+
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current, retired_at FROM rule_revisions WHERE rule_id = %s",
+            ("91",),
+        )
+        status, is_current, retired_at = cur.fetchone()
+    assert status == "retired" and is_current is False and retired_at is not None
+
+    m.close()
+    _clean(pg, "90")
+    _clean(pg, "91")
+    pg.close()
