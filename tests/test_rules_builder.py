@@ -14,6 +14,7 @@ succeeded before the fault fired.
 """
 from __future__ import annotations
 
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -535,3 +536,95 @@ def test_sync_document_refuses_cross_document_rule_id_conflict(tmp_path):
     m.close()
     _clean(pg, "95")
     pg.close()
+
+
+# ---------------------------------------------------------------------------------------------
+# Task 10: proof — the builder derives from the working tree, never from `git HEAD`. This is a
+# PROOF task: no new production code. sync_document takes `text: str` as a parameter and never
+# shells out to git by construction (see src/rules_store/builder.py) — this test pins that
+# property so a future change that reads `source_path` off git instead of the caller-supplied
+# text would be caught red-handed.
+# ---------------------------------------------------------------------------------------------
+
+
+FIXTURE_DOC_RELPATH = "tests/fixtures/rules_builder_disk_vs_head.md"
+FIXTURE_DOC_PATH = ROOT / "tests" / "fixtures" / "rules_builder_disk_vs_head.md"
+
+
+def test_builder_reads_the_working_tree_not_head():
+    """Proves the hard requirement: an UNCOMMITTED document change is detected, distinguished by
+    STATEMENT TEXT, not by presence/absence of the record. A builder that shelled out to
+    `git show HEAD:<path>` instead of reading the caller-supplied `text` would resolve the SAME
+    real, git-tracked path used here (`tests/fixtures/rules_builder_disk_vs_head.md`, committed
+    content: "committed statement.") and so would still extract a record for rule_id "10.96" — just
+    with the WRONG (committed) statement, not "no record at all". Asserting on the statement text is
+    what makes this test distinguish "reads disk" from "reads git HEAD"; asserting only on
+    `result["added"]` (as an earlier version of this test did) cannot, because a git-reading
+    implementation given a real, resolvable path still succeeds at extracting a record.
+
+    Fix round 1 (2026-08-06, review Critical): the ORIGINAL version of this test built its own
+    throwaway git repo in a `tempfile.TemporaryDirectory()` and `chdir`'d into it so
+    `git show HEAD:<path>` would resolve there — but the code under regression-test (a
+    hypothetically broken `sync_document`) never chdirs; it runs `subprocess.run([...])` from
+    whatever cwd the CALLING PROCESS already has, which for `pytest tests/test_rules_builder.py`
+    run the normal way (from the repo root, no chdir) is the repo root. The temp-repo version's
+    `source_path` ("development-discipline.md", a bare filename with no `docs/process/` prefix)
+    therefore resolved to NOTHING from the real repo root — `git show` returned empty,
+    `extract_rules("", ...)` yielded zero records, and the test went red on `result["added"] == []`
+    for the WRONG reason (nothing extracted) rather than the intended one (wrong statement
+    extracted). The reported RED evidence came from a separate, uncommitted side script that DID
+    chdir — an artifact that never runs in CI or for a developer invoking this test directly, so it
+    proved nothing about the committed test. Fixed by using a REAL, git-tracked fixture file
+    (`tests/fixtures/rules_builder_disk_vs_head.md`, committed in the same arc as this fix) at its
+    real repo-relative path, so `git show HEAD:<path>` — run from the real repo root, exactly as
+    pytest itself runs, no chdir anywhere in this test — resolves successfully to that fixture's
+    actual committed content. The test mutates that file's bytes on disk WITHOUT committing or
+    staging (plain `Path.write_text`, no `git add`), then restores the original bytes the same way
+    in a `finally` block — never via a git command, so this test can never leave the fixture file
+    non-idempotent for the next run or racing another process's index writes.
+    """
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    committed_text = FIXTURE_DOC_PATH.read_text(encoding="utf-8")
+    assert "committed statement." in committed_text, (
+        f"fixture drift: {FIXTURE_DOC_RELPATH} no longer holds the expected committed baseline, "
+        f"got: {committed_text!r}"
+    )
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "10.96")
+    tmp = Path(tempfile.mkdtemp()) / "_tmp_disk_not_git.sqlite"
+    m = mirror.open_mirror(tmp)
+
+    try:
+        # Edit the real, git-tracked fixture ON DISK, WITHOUT committing or staging it — this is
+        # the "uncommitted working-tree change" the test's whole point rests on.
+        uncommitted_text = "### 10.96 Rule\n\nUNCOMMITTED statement, changed on disk only.\n"
+        FIXTURE_DOC_PATH.write_text(uncommitted_text, encoding="utf-8")
+
+        # Read it back the same way a real caller (a document watcher, a CLI) would: straight off
+        # disk, never through git — proving the builder itself never consults git is the point of
+        # this whole file, and `sync_document` takes `text` as a plain parameter by construction.
+        text_from_disk = FIXTURE_DOC_PATH.read_text(encoding="utf-8")
+        result = builder.sync_document(pg, m, text_from_disk, FIXTURE_DOC_RELPATH)
+        assert result["added"] == ["10.96"], result
+        with pg.cursor() as cur:
+            cur.execute(
+                "SELECT statement FROM rule_revisions WHERE rule_id = %s AND is_current",
+                ("10.96",),
+            )
+            (statement,) = cur.fetchone()
+        assert "UNCOMMITTED" in statement, (
+            f"expected the uncommitted working-tree text, got: {statement!r} — "
+            "the builder must read the file directly, never `git show HEAD:...`"
+        )
+    finally:
+        # Restore the fixture's committed bytes via a plain file write — NEVER `git checkout` /
+        # `git restore` / `git add`, which would write the shared index (forbidden during Fix
+        # round 1: a concurrent index writer is exactly what corrupted two tree builds earlier).
+        FIXTURE_DOC_PATH.write_text(committed_text, encoding="utf-8")
+        m.close()
+        _clean(pg, "10.96")
+        pg.close()
