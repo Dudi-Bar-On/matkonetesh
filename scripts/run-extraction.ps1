@@ -62,6 +62,15 @@ catch {
 #     `-u` keeps stdout unbuffered, so the log is a live progress record rather than a post-mortem.
 $py = 'C:\Users\dudib\AppData\Local\Programs\Python\Python314\python.exe'
 if (-not (Test-Path $py)) { $py = 'py' }
-Say "launching: extract_graph.py --namespace repo --pending"
+# 6.8.26 — the 06:17 run processed all 840 documents and then DIED on its own closing summary:
+#   UnicodeEncodeError: 'charmap' codec can't encode characters in position 54-55
+# Python's stdout is not a console here (it is piped into Add-Content), so it defaults to the system
+# ANSI code page — cp1252 on this machine — and the final rejected-reasons report prints entity names
+# lifted verbatim out of the corpus, which is Hebrew-first and full of typographic dashes. The work
+# was not lost, but the run ended in a traceback and exit 1 instead of a summary, which reads like a
+# failed extraction and cost an evening of doubt. Force UTF-8 so the closing report survives its own
+# contents.
+$env:PYTHONIOENCODING = 'utf-8'
+Say "launching: extract_graph.py --namespace repo --pending (PYTHONIOENCODING=utf-8)"
 & $py -u scripts/extract_graph.py --namespace repo --pending 2>&1 | ForEach-Object { Add-Content -Path $log -Value $_ }
 Say "=== extractor exited with code $LASTEXITCODE ==="
