@@ -19,6 +19,24 @@
 .PARAMETER SelfTest
   Run the three fake components instead of the real ones. Exit code and JSON-lines output are
   otherwise identical in shape to a real run.
+
+.NOTES
+  CONTRACT for every component's -Detect and -Verify scriptblocks (enforced by Invoke-BoolProbe,
+  below — read this before Tasks 16-21 add a real component):
+    - The scriptblock's LAST pipeline value is what counts. Any earlier `Write-Output`/uncaptured
+      stdout from a subcommand is discarded (`Select-Object -Last 1`) — a leaked line can never
+      pollute the answer.
+    - That last value MUST be an actual [bool] ($true/$false). If it is anything else — a string
+      (including the literal text "false", which PowerShell treats as truthy and which this engine
+      will NOT special-case or reinterpret), $null, a number, an object — the component is treated
+      as NOT OK, full stop. It is never coerced, guessed at, or given the benefit of the doubt.
+      `Detail` names the offending type and value and which scriptblock produced it, e.g.
+      `Detect returned [String] 'false', expected a boolean`.
+    - A thrown exception is likewise NOT OK, with `Detail` naming which scriptblock threw and why.
+  Rationale: a component whose Detect/Verify returns a non-boolean is an authoring bug, and
+  reporting that as "up" would be the exact silent-green failure this engine exists to prevent —
+  worse than a visibly wrong array, because nothing about it looks wrong. An unparseable answer is
+  a failure, never a pass.
 #>
 [CmdletBinding()]
 param(
@@ -28,6 +46,27 @@ param(
 $ErrorActionPreference = 'Continue'
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 $LogFile = Join-Path $RepoRoot '.superpowers\watchman-log.jsonl'
+
+function Invoke-BoolProbe {
+    # Runs a Detect/Verify scriptblock and enforces the boolean-return contract documented in the
+    # .NOTES header above. Returns @{ Ok = [bool]; Error = $null-or-[string] }. Ok is $false for
+    # anything that is not a genuine [bool] last-pipeline-value, or that throws — never coerced.
+    param(
+        [Parameter(Mandatory)] [scriptblock]$Block,
+        [Parameter(Mandatory)] [string]$RoleName
+    )
+    try {
+        $raw = & $Block | Select-Object -Last 1
+        if ($raw -is [bool]) {
+            return @{ Ok = $raw; Error = $null }
+        }
+        $typeName = if ($null -eq $raw) { 'Null' } else { $raw.GetType().Name }
+        $valueText = if ($null -eq $raw) { '$null' } else { "'$raw'" }
+        return @{ Ok = $false; Error = "$RoleName returned [$typeName] $valueText, expected a boolean" }
+    } catch {
+        return @{ Ok = $false; Error = "$RoleName threw: $($_.Exception.Message)" }
+    }
+}
 
 function Invoke-ComponentCheck {
     param(
@@ -40,41 +79,33 @@ function Invoke-ComponentCheck {
     )
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
-    $detectError = $null
-    try {
-        # Select-Object -Last 1: a Detect block that leaks stdout (e.g. an un-suppressed
-        # subcommand) must not turn its leaked lines into part of the answer — only the last
-        # pipeline value counts, and [bool] coerces it so a stray non-boolean type can never be
-        # stored as-is in InitialOk.
-        $initialOk = [bool](& $Detect | Select-Object -Last 1)
-    } catch {
-        $initialOk = $false
-        $detectError = $_.Exception.Message
-    }
+    $detectProbe = Invoke-BoolProbe -Block $Detect -RoleName 'Detect'
+    $initialOk = $detectProbe.Ok
+    $detectError = $detectProbe.Error
 
     $recovered = $false
     $finalOk = $initialOk
-    $detail = if ($initialOk) { 'already ok' } elseif ($detectError) { "detect threw: $detectError" } else { 'down at detect' }
+    $detail = if ($initialOk) { 'already ok' } elseif ($detectError) { $detectError } else { 'down at detect' }
 
     if (-not $initialOk) {
         $recoverError = $null
-        try { & $Recover | Out-Null } catch { $recoverError = $_.Exception.Message }
+        try { & $Recover | Out-Null } catch { $recoverError = "Recover threw: $($_.Exception.Message)" }
 
         $verifyError = $null
         $deadline = (Get-Date).AddSeconds($MaxRecoverWaitSeconds)
         while ((Get-Date) -lt $deadline) {
-            $verifyOk = $false
-            try { $verifyOk = [bool](& $Verify | Select-Object -Last 1) } catch { $verifyError = $_.Exception.Message; $verifyOk = $false }
-            if ($verifyOk) { $finalOk = $true; $recovered = $true; break }
+            $verifyProbe = Invoke-BoolProbe -Block $Verify -RoleName 'Verify'
+            if ($verifyProbe.Error) { $verifyError = $verifyProbe.Error }
+            if ($verifyProbe.Ok) { $finalOk = $true; $recovered = $true; break }
             Start-Sleep -Milliseconds 500
         }
         if ($recovered) {
             $detail = "recovered after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s"
         } else {
             $reasons = @()
-            if ($detectError) { $reasons += "detect threw: $detectError" }
-            if ($recoverError) { $reasons += "recover threw: $recoverError" }
-            if ($verifyError) { $reasons += "verify threw: $verifyError" }
+            if ($detectError) { $reasons += $detectError }
+            if ($recoverError) { $reasons += $recoverError }
+            if ($verifyError) { $reasons += $verifyError }
             $base = "recovery attempted, still down after ${MaxRecoverWaitSeconds}s"
             $detail = if ($reasons.Count) { "$base ($($reasons -join '; '))" } else { $base }
         }
@@ -116,7 +147,13 @@ function Get-SelfTestResults {
     $r3 = Invoke-ComponentCheck -Name 'down-forever' -Severity 'block' -MaxRecoverWaitSeconds 1 `
         -Detect { $false } -Recover { } -Verify { $false }
 
-    return @($r1, $r2, $r3)
+    # Proves the boolean-return contract (.NOTES above) is enforced, not coerced: a Detect that
+    # returns the string "false" — truthy under a naive [bool] cast — must be rejected as NOT OK,
+    # and a Verify that also returns a non-boolean during recovery must keep failing it too.
+    $r4 = Invoke-ComponentCheck -Name 'bad-return-type' -Severity 'warn' -MaxRecoverWaitSeconds 1 `
+        -Detect { "false" } -Recover { } -Verify { "still not a bool" }
+
+    return @($r1, $r2, $r3, $r4)
 }
 
 $results = if ($SelfTest) { Get-SelfTestResults } else {
