@@ -320,7 +320,67 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
             $p.ExitCode -eq 0 -and ($resultValue -eq 'already-ok' -or $resultValue -eq 'repaired')
         }
 
-    @($hooksResult, $rulesMirrorResult)
+    # mk_rules-postgres (warn): the native Windows PostgreSQL service that hosts the mk_rules
+    # database (source of truth for rules-mirror above). Severity is warn, not block: its own failure
+    # mode already has a block-severity guard one layer up (rules-mirror, which needs mk_rules to be
+    # reachable to rebuild from) -- this component's job is to notice and recover the service itself,
+    # not to be the thing that stops a commit. See this task's report for the "unreachable vs broken"
+    # reasoning: an unreachable-but-otherwise-fine service and a genuinely broken one currently look
+    # identical to this component (both burn MaxRecoverWaitSeconds and report "did not recover").
+    #
+    # pg_isready is NOT on PATH on this machine (measured: Get-Command pg_isready returns nothing) --
+    # the binary lives only under C:\Program Files\PostgreSQL\<major>\bin. A bare call would throw
+    # CommandNotFoundException, which would CRASH Invoke-ComponentCheck instead of degrading to "not
+    # ok" -- resolved defensively below by searching the install tree, never assumed to be on PATH.
+    function Get-RulesDbEnv {
+        $envFile = Join-Path $RepoRoot 'infra\rules-db\.env'
+        if (-not (Test-Path $envFile)) { return $null }
+        $vars = @{}
+        Get-Content $envFile | Where-Object { $_ -match '^[A-Z_]+=' } | ForEach-Object {
+            $k, $v = $_ -split '=', 2
+            $vars[$k] = $v
+        }
+        return $vars
+    }
+
+    function Resolve-PgIsReady {
+        $cmd = Get-Command pg_isready -ErrorAction SilentlyContinue
+        if ($cmd) { return $cmd.Source }
+        $found = Get-ChildItem -Path 'C:\Program Files\PostgreSQL' -Filter 'pg_isready.exe' -Recurse `
+                               -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+        if ($found) { return $found.FullName }
+        return $null
+    }
+
+    function Test-RulesPgUp {
+        param($env_, $exe)
+        if (-not $exe) { return $false }
+        try {
+            & $exe -h 127.0.0.1 -p $env_.RULES_POSTGRES_PORT -d $env_.RULES_POSTGRES_DB *> $null
+            return ($LASTEXITCODE -eq 0)
+        } catch { return $false }
+    }
+
+    $rulesDbEnv = Get-RulesDbEnv
+    $PgIsReady = Resolve-PgIsReady
+
+    $rulesPgResult = if ($rulesDbEnv -and $rulesDbEnv.RULES_SERVICE_NAME -and $PgIsReady) {
+        Invoke-ComponentCheck -Name 'mk_rules-postgres' -Severity 'warn' `
+            -Detect { Test-RulesPgUp $rulesDbEnv $PgIsReady } `
+            -Recover {
+                # Start-Service -ErrorAction SilentlyContinue: if the caller lacks privilege, or the
+                # service is Disabled, or the data directory is corrupt, this call fails silently and
+                # Verify (below) will correctly keep reporting NOT OK -- this component never
+                # distinguishes WHY recovery failed, only THAT it did. See task report: an honest "did
+                # not recover" is preferred over guessing at a cause this component cannot observe.
+                Start-Service -Name $rulesDbEnv.RULES_SERVICE_NAME -ErrorAction SilentlyContinue
+            } `
+            -Verify { Test-RulesPgUp $rulesDbEnv $PgIsReady }
+    } else {
+        [pscustomobject]@{ Name = 'mk_rules-postgres'; Severity = 'warn'; InitialOk = $false; Recovered = $false; FinalOk = $false; ElapsedSeconds = 0; Detail = 'infra/rules-db/.env missing, RULES_SERVICE_NAME not set, or pg_isready.exe not found'; TimestampUtc = (Get-Date).ToUniversalTime().ToString('o') }
+    }
+
+    @($hooksResult, $rulesMirrorResult, $rulesPgResult)
 })
 
 foreach ($r in $results) {
