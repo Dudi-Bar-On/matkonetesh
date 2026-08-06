@@ -170,7 +170,17 @@ function Get-SelfTestResults {
 
 $results = if ($SelfTest) { Get-SelfTestResults } else {
     # === REAL COMPONENTS === (Tasks 16-21 append @() entries here, in severity-appropriate order)
-    @()
+    $hooksResult = Invoke-ComponentCheck -Name 'hooks' -Severity 'block' `
+        -Detect {
+            $current = (git -C $RepoRoot config --get core.hooksPath 2>$null)
+            $current -eq '.githooks' -and
+                (Test-Path (Join-Path $RepoRoot '.githooks\pre-commit')) -and
+                (Test-Path (Join-Path $RepoRoot '.githooks\commit-msg'))
+        } `
+        -Recover { git -C $RepoRoot config core.hooksPath .githooks } `
+        -Verify { (git -C $RepoRoot config --get core.hooksPath 2>$null) -eq '.githooks' }
+
+    @($hooksResult)
 }
 
 foreach ($r in $results) {
