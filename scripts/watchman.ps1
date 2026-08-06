@@ -222,7 +222,35 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
                 }).Count -gt 0)
         }
 
-    @($hooksResult)
+    # rules-mirror (block): rules.sqlite is what the enforcement hooks read at commit time. A
+    # drifted/missing/corrupt mirror means the project is enforcing something other than what
+    # mk_rules (the source of truth) actually says -- no equivalent alternative exists, hence block.
+    # Detect/Verify both delegate to check-rules-mirror.mjs (Task 13), which owns the ONE checksum
+    # comparison (mirror.checksum_of_rows, shared by both sides) -- this component does not
+    # reimplement that comparison, only interprets its exit code/output as the boolean this engine
+    # requires. check-rules-mirror.mjs is itself self-healing (it rebuilds-and-rechecks inline on a
+    # mismatch/missing/corrupt file), so a first Detect call against a broken mirror may already fix
+    # it -- but its success message then reads "OK - mirror rebuilt ..." rather than "OK - rules.sqlite
+    # matches ...", so Detect (which requires the latter, exact "already fine, no repair needed"
+    # wording) still correctly reports NOT OK for that run, and the explicit -Recover below runs too.
+    # This is intentional, not a bug: it means there is exactly one recovery ACTION
+    # (--rebuild-mirror-only) shared by the gate and the watchman, so the two can never disagree about
+    # how a broken mirror gets fixed -- see this task's report for the "should Recover rewrite the
+    # tracked file" decision.
+    $rulesMirrorResult = Invoke-ComponentCheck -Name 'rules-mirror' -Severity 'block' `
+        -Detect {
+            $r = node (Join-Path $RepoRoot 'scripts\check-rules-mirror.mjs') 2>&1
+            $LASTEXITCODE -eq 0 -and $r -match 'OK - rules.sqlite matches'
+        } `
+        -Recover {
+            py -3 (Join-Path $RepoRoot 'scripts\build_rules_store.py') --rebuild-mirror-only *> $null
+        } `
+        -Verify {
+            $r = node (Join-Path $RepoRoot 'scripts\check-rules-mirror.mjs') 2>&1
+            $LASTEXITCODE -eq 0 -and $r -match 'OK'
+        }
+
+    @($hooksResult, $rulesMirrorResult)
 })
 
 foreach ($r in $results) {
