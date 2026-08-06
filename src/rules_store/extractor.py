@@ -182,6 +182,13 @@ def extract_dod_rules(text: str, source_path: str) -> list[RuleRecord]:
 # only the FIRST H-number in the heading and treated the rest of the line, including "H12", as
 # that one ruling's title, so H10/H11/H12 vanished from the store entirely and H9's title read
 # "H12 — task summaries..."). A range heading is a CONTAINER, not a ruling of its own — see below.
+#
+# Shared-assumption note (fix round 2, 2026-08-06 — review, Important): this pattern encodes the
+# document's OWN heading convention (`## <number>. H<n> — Title`); the round-trip test's
+# independently-written `_expected_h_ids` encodes the same convention (from the other direction —
+# what a reader would recognise as "an H-ruling heading"). Anything written in a style neither
+# recognises is invisible to both the extractor and its own check — that is inherent to deriving
+# "expected" from the document rather than a hand-maintained list, not a gap this fix closes.
 _H_HEADING_RE = re.compile(
     r"^#{2,4}\s+\d+(?:\.\d+)?[a-z]?\.\s+(H\d+[a-z]?(?:[–—-]H\d+[a-z]?)?)\s*[–—-]\s*(.+?)\s*$",
     re.MULTILINE,
@@ -228,14 +235,24 @@ def extract_h_rulings(text: str, source_path: str) -> list[RuleRecord]:
             for j, bm in enumerate(bullets):
                 h_id = bm.group(1)
                 title_start = bm.end()
+                next_bullet_start = bullets[j + 1].start() if j + 1 < len(bullets) else len(body)
                 close = body.find("**", title_start)
-                if close == -1:
-                    title = body[title_start:].split("\n", 1)[0].strip()
-                    rest_start = len(body)
+                # Fix round 2 (review, Important — the same asymmetry L18's guard was written to
+                # close, one instance short): a closing '**' found PAST this bullet's own next
+                # sibling belongs to that sibling (or a later one), never to this bullet's own
+                # title. Without this guard a bullet whose title fails to close on its own line
+                # would have its title bleed the next bullet's own opening "- **H<n+1> — " text
+                # into itself — the exact L18-swallowing shape, one guard short. The statement span
+                # below is already clamped to next_bullet_start independently, so a missing guard
+                # here could not merge two STATEMENTS — only corrupt a TITLE — but "cannot merge
+                # bodies" is not the same guarantee as "cannot leak text", and this arc has paid for
+                # that distinction four times already (§4, L18, H9, H8).
+                if close == -1 or close > next_bullet_start:
+                    title = body[title_start:next_bullet_start].split("\n", 1)[0].strip()
+                    rest_start = next_bullet_start
                 else:
                     title = body[title_start:close].strip()
                     rest_start = close + 2
-                next_bullet_start = bullets[j + 1].start() if j + 1 < len(bullets) else len(body)
                 statement = body[rest_start:next_bullet_start].strip()
                 if not statement:
                     statement = title

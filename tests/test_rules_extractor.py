@@ -449,6 +449,39 @@ def test_range_heading_emits_one_record_per_bullet_not_one_record_for_the_first_
     assert "/status" not in recs["H9"].statement or "command" not in recs["H9"].title_he
 
 
+# Fix round 2 (review, Important): the H-bullet loop's title-closing search had no equivalent of
+# the lesson-marker guard (`close == -1 or close > next_marker_start`). This fixture is the H-bullet
+# twin of SAME_LINE_CONTINUATION_LESSON_FIXTURE — H9's own bullet title never closes with "**"
+# before H10's bullet begins, so an unguarded `body.find("**", title_start)` finds H10's own
+# OPENING "**" (part of "- **H10 — ") instead, and that text bleeds into H9's title.
+H_BULLET_UNCLOSED_TITLE_FIXTURE = """\
+## 15. H9–H12 — task summaries, the live status board, capabilities, /status (owner rulings, 2026-07-30)
+
+- **H9 — mandatory task-summary table
+  continuing without ever closing this bold run before the next bullet begins
+- **H10 — the live status board.** THE source of truth for position.
+- **H11 — the capabilities table.** The living inventory of every capability.
+"""
+
+
+def test_h_bullet_title_that_never_closes_does_not_bleed_the_next_bullets_marker_into_its_title():
+    """The H-bullet twin of test_inline_lesson_title_ending_mid_line_does_not_swallow_the_next_lesson.
+    H9's title has no closing '**' of its own. Without the guard, `body.find("**", title_start)`
+    lands on H10's own OPENING '**' (the bold-run marker that starts every bullet), so H9's
+    "title" ends up spanning H9's own continuation line PLUS the leading "- " of H10's bullet —
+    multi-line, well past what a title is — and because the resulting statement span becomes
+    empty (rest_start lands past next_bullet_start), it falls back to that same corrupted title.
+    With the guard, H9's title is bounded to its own first line and H10 parses independently and
+    cleanly regardless."""
+    recs = {r.rule_id: r for r in extract_h_rulings(H_BULLET_UNCLOSED_TITLE_FIXTURE, "docs/x.md")}
+    assert set(recs) == {"H9", "H10", "H11"}, f"got {set(recs)}: a bullet was dropped or merged"
+    assert "\n" not in recs["H9"].title_he, f"H9's title spans multiple lines (bled past its own record): {recs['H9'].title_he!r}"
+    assert len(recs["H9"].title_he) < 60, f"H9's title is too long — it absorbed text past its own boundary: {recs['H9'].title_he!r}"
+    assert recs["H9"].statement != recs["H10"].statement
+    assert recs["H10"].title_he == "the live status board."
+    assert "source of truth" in recs["H10"].statement
+
+
 def _expected_l_ids(text: str) -> set[str]:
     """Independent derivation (deliberately not the extractor's own regex) of every L-id the
     document declares — either as a Lessons-log table row or an inline '**Ln ·' marker."""
