@@ -54,12 +54,13 @@ def _connection_params(env_file: Path) -> dict[str, str]:
 
     The superuser password is a special case, and is NOT covered by the generic pick() below.
     infra/rules-db/.env deliberately carries no superuser password of its own (see its
-    .env.example) — the native Postgres service's "postgres" role's password lives only in
-    infra/.env's POSTGRES_SUPERPASSWORD, the geniza's own superuser credential (same native
-    service hosts both databases). A blanket merge of infra/.env into env would also pull in
-    POSTGRES_SUPERUSER_PASSWORD (mk_admin's, a DIFFERENT role) and could pair the wrong password
-    with the right username or vice versa, so the fallback is this one named key, read only when
-    env_file's own file has neither RULES_SUPERUSER_PASSWORD nor POSTGRES_SUPERUSER_PASSWORD.
+    .env.example) — because the role it names, RULES_SUPERUSER=postgres, is the shared native
+    Postgres service's own "postgres" role, whose password lives only in infra/.env's
+    POSTGRES_SUPERPASSWORD (the geniza's own superuser credential; same native service hosts
+    both databases). The fallback is gated on THAT invariant — the resolved user IS "postgres" —
+    not on "which file was passed", so a hypothetical third caller naming some other role can
+    never have its password silently guessed from a different file: it fails loudly instead,
+    exactly like every other missing-value path below.
     """
     from dotenv import dotenv_values
 
@@ -77,7 +78,7 @@ def _connection_params(env_file: Path) -> dict[str, str]:
     db = pick("RULES_POSTGRES_DB", "POSTGRES_DB")
     user = pick("RULES_SUPERUSER", "POSTGRES_SUPERUSER")
     password = pick("RULES_SUPERUSER_PASSWORD", "POSTGRES_SUPERUSER_PASSWORD")
-    if password is None and env_file != DEFAULT_ENV_FILE and DEFAULT_ENV_FILE.exists():
+    if password is None and user == "postgres" and DEFAULT_ENV_FILE.exists():
         password = dotenv_values(DEFAULT_ENV_FILE).get("POSTGRES_SUPERPASSWORD")
     missing = [n for n, v in (("PORT", port), ("DB", db), ("SUPERUSER", user), ("SUPERUSER_PASSWORD", password)) if not v]
     if missing:
