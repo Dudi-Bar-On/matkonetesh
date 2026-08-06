@@ -195,3 +195,144 @@ def test_sync_rule_happy_path_activates_the_rule(tmp_path):
 
     _clean(pg, "TEST-HAPPY")
     pg.close()
+
+
+# ---------------------------------------------------------------------------------------------
+# Task 9: sync_document — the whole-document lifecycle (added / updated / unchanged / retired)
+# built on top of Task 8's sync_rule. Each test drives sync_document through extract_rules() on a
+# tiny synthetic document (never the real 14.6k-line discipline doc — fixture minimality, DoD-6),
+# using rule_ids "10.99"/"10.98" (unused section numbers, matching the extractor's own heading
+# grammar `\d+(?:\.\d+)*[a-z]?` — a "TEST-LC"-style id would never be recognised as a section
+# heading at all) so they can never collide with a real document rule.
+# ---------------------------------------------------------------------------------------------
+
+SOURCE_PATH = "docs/process/development-discipline.md"
+
+
+def _fresh_mirror(tmp_path, name: str):
+    return mirror.open_mirror(tmp_path / name)
+
+
+def test_sync_document_added_creates_revision_1_current(tmp_path):
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "10.99")
+    m = _fresh_mirror(tmp_path, "_tmp_lc_added.sqlite")
+    doc = "### 10.99 Added rule\n\nfirst statement.\n"
+    result = builder.sync_document(pg, m, doc, SOURCE_PATH)
+    assert result["added"] == ["10.99"], result
+    assert result["updated"] == [] and result["unchanged"] == [] and result["retired"] == []
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current FROM rule_revisions WHERE rule_id = %s", ("10.99",)
+        )
+        status, is_current = cur.fetchone()
+    assert status == "current" and is_current is True
+    m.close()
+    _clean(pg, "10.99")
+    pg.close()
+
+
+def test_sync_document_updated_supersedes_old_revision(tmp_path):
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "10.99")
+    m = _fresh_mirror(tmp_path, "_tmp_lc_updated.sqlite")
+    builder.sync_document(pg, m, "### 10.99 Rule\n\nfirst statement.\n", SOURCE_PATH)
+    result = builder.sync_document(
+        pg, m, "### 10.99 Rule\n\nSECOND statement, changed.\n", SOURCE_PATH
+    )
+    assert result["updated"] == ["10.99"], result
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current, statement FROM rule_revisions "
+            "WHERE rule_id = %s ORDER BY created_at",
+            ("10.99",),
+        )
+        rows = cur.fetchall()
+    assert len(rows) == 2, f"expected old + new revision, got {rows}"
+    assert rows[0][0] == "superseded" and rows[0][1] is False
+    assert rows[1][0] == "current" and rows[1][1] is True and "SECOND" in rows[1][2]
+
+    # The superseded revision must never disagree with itself (Task 8's own paid-for lesson):
+    # revision_status and is_current must always point the same way.
+    for status, is_current, _stmt in rows:
+        assert (status == "current") == bool(is_current), (
+            f"a row's revision_status and is_current must agree, got {status!r}/{is_current!r}"
+        )
+
+    # The old, superseded revision is KEPT — still queryable directly by rule_id — not deleted.
+    assert len(rows) == 2
+    m.close()
+    _clean(pg, "10.99")
+    pg.close()
+
+
+def test_sync_document_unchanged_is_a_noop(tmp_path):
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "10.99")
+    m = _fresh_mirror(tmp_path, "_tmp_lc_unchanged.sqlite")
+    doc = "### 10.99 Rule\n\nstable statement.\n"
+    builder.sync_document(pg, m, doc, SOURCE_PATH)
+    result = builder.sync_document(pg, m, doc, SOURCE_PATH)
+    assert result["unchanged"] == ["10.99"], result
+    assert result["added"] == [] and result["updated"] == [] and result["retired"] == []
+    with pg.cursor() as cur:
+        cur.execute("SELECT count(*) FROM rule_revisions WHERE rule_id = %s", ("10.99",))
+        (n,) = cur.fetchone()
+    assert n == 1, f"an unchanged sync must not create a second revision row, found {n}"
+    m.close()
+    _clean(pg, "10.99")
+    pg.close()
+
+
+def test_sync_document_removed_from_document_is_retired_not_deleted(tmp_path):
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "10.99")
+    _clean(pg, "10.98")
+    m = _fresh_mirror(tmp_path, "_tmp_lc_retired.sqlite")
+    builder.sync_document(pg, m, "### 10.99 Rule\n\nwill be removed.\n", SOURCE_PATH)
+    result = builder.sync_document(pg, m, "### 10.98 Unrelated\n\nsomething else.\n", SOURCE_PATH)
+    assert result["retired"] == ["10.99"], result
+    assert result["added"] == ["10.98"]
+
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current, retired_at FROM rule_revisions WHERE rule_id = %s",
+            ("10.99",),
+        )
+        status, is_current, retired_at = cur.fetchone()
+    assert status == "retired" and is_current is False and retired_at is not None
+
+    # The retired rule is not deleted — it stays QUERYABLE directly by rule_id, with its
+    # original statement intact, exactly the geniza guarantee this task exists to uphold: a
+    # hook meeting a reference to a retired rule can say "retired on <date>", not fail silently.
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT statement FROM rule_revisions WHERE rule_id = %s AND revision_status = 'retired'",
+            ("10.99",),
+        )
+        (statement,) = cur.fetchone()
+    assert "will be removed" in statement
+
+    # The mirror holds current rules only — a retired rule_id must be gone from it.
+    assert not [r for r in mirror.read_current(m) if r["rule_id"] == "10.99"]
+
+    m.close()
+    _clean(pg, "10.99")
+    _clean(pg, "10.98")
+    pg.close()

@@ -39,7 +39,7 @@ this function again for the same rule_id) is the recovery path, not a rollback.
 from __future__ import annotations
 
 from src.rules_store import mirror as mirror_mod
-from src.rules_store.extractor import RuleRecord
+from src.rules_store.extractor import RuleRecord, extract_rules
 
 
 class SimulatedCrash(RuntimeError):
@@ -102,3 +102,84 @@ def sync_rule(pg_conn, mirror_conn, record: RuleRecord, *, _fail_after_mirror_wr
         cur.execute("UPDATE rule_revisions SET is_current = true WHERE revision_id = %s", (revision_id,))
     pg_conn.commit()
     return str(revision_id)
+
+
+def sync_document(pg_conn, mirror_conn, text: str, source_path: str) -> dict:
+    """Syncs a WHOLE document's worth of rules against mk_rules + the mirror, in one pass — the
+    lifecycle Task 8's per-rule sync_rule does not itself decide. Extracts every rule currently in
+    `text` (extract_rules), compares each against the current revision already in Postgres for
+    `source_path`, and classifies it into exactly one of four buckets:
+
+      - added      — a rule_id with no current revision yet -> sync_rule inserts revision 1.
+      - updated    — content_hash differs from the current revision's source_hash -> the OLD
+                      revision is superseded (never deleted — see below) and sync_rule inserts a
+                      fresh one.
+      - unchanged  — content_hash is identical -> skipped, nothing written. This is what keeps a
+                      re-run over an untouched document a no-op rather than a churn generator.
+      - retired    — a rule_id that WAS current for this source_path but is no longer present in
+                      `text` at all -> marked 'retired' with retired_at set, is_current flipped
+                      false, and removed from the mirror (which holds current rules only). The row
+                      itself is NEVER deleted from Postgres: this project is named for a geniza —
+                      texts are kept, not destroyed — specifically so a retired rule stays
+                      queryable ("§X was retired on <date>") instead of a hook meeting a dangling
+                      reference and either failing silently or still enforcing something the
+                      document no longer states.
+
+    Returns {"added": [...], "updated": [...], "unchanged": [...], "retired": [...]}, each a list
+    of rule_id — the exact shape Task 12's CLI and Task 21's watchman recovery path both consume.
+    """
+    records = {r.rule_id: r for r in extract_rules(text, source_path)}
+
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            "SELECT rule_id, source_hash FROM rule_revisions WHERE is_current AND source_path = %s",
+            (source_path,),
+        )
+        existing = dict(cur.fetchall())
+
+    result = {"added": [], "updated": [], "unchanged": [], "retired": []}
+
+    for rule_id, record in records.items():
+        if rule_id not in existing:
+            sync_rule(pg_conn, mirror_conn, record)
+            result["added"].append(rule_id)
+        elif existing[rule_id] != record.content_hash:
+            _supersede(pg_conn, rule_id)
+            sync_rule(pg_conn, mirror_conn, record)
+            result["updated"].append(rule_id)
+        else:
+            result["unchanged"].append(rule_id)
+
+    for rule_id in set(existing) - set(records):
+        _retire(pg_conn, mirror_conn, rule_id)
+        result["retired"].append(rule_id)
+
+    return result
+
+
+def _supersede(pg_conn, rule_id: str) -> None:
+    """Closes out the current revision of `rule_id` as 'superseded' — KEPT, not deleted, so the
+    prior wording remains citable. Only touches is_current=true rows: a rule already superseded or
+    retired is never re-touched here, so this can never clobber a status sync_rule's own step-0
+    orphan cleanup is responsible for."""
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            "UPDATE rule_revisions SET is_current = false, revision_status = 'superseded' "
+            "WHERE rule_id = %s AND is_current",
+            (rule_id,),
+        )
+    pg_conn.commit()
+
+
+def _retire(pg_conn, mirror_conn, rule_id: str) -> None:
+    """Marks the current revision of `rule_id` 'retired' with retired_at set (never deleted — the
+    geniza guarantee), then removes it from the mirror, which holds current rules only. The
+    Postgres row stays queryable by rule_id afterwards, same as any superseded revision."""
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            "UPDATE rule_revisions SET is_current = false, revision_status = 'retired', retired_at = now() "
+            "WHERE rule_id = %s AND is_current",
+            (rule_id,),
+        )
+    pg_conn.commit()
+    mirror_mod.delete_revision(mirror_conn, rule_id)
