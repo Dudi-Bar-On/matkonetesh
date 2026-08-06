@@ -413,42 +413,56 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         [pscustomobject]@{ Name = 'mk_rules-postgres'; Severity = 'warn'; InitialOk = $false; Recovered = $false; FinalOk = $false; ElapsedSeconds = 0; Detail = 'infra/rules-db/.env missing, RULES_SERVICE_NAME not set, or pg_isready.exe not found'; TimestampUtc = (Get-Date).ToUniversalTime().ToString('o') }
     }
 
-    # geniza-postgres (warn): the geniza's own PostgreSQL, running inside the WSL Docker container
-    # mk-postgres -- NOT the native postgresql-x64-18 service used by mk_rules-postgres above. Task
-    # 18 measured that mk_rules and the geniza SHARE one Windows service (postgresql-x64-18, port
-    # 5432, different databases) -- but the geniza's own evidence store here is a separate stack
-    # entirely: WSL's Docker daemon -> `docker compose up -d` in infra/ -> the mk-postgres container.
-    # These are two genuinely different recovery actions on two genuinely different failure surfaces
-    # (a native Windows service vs. a WSL/Docker container) -- see this task's report for why that is
-    # not a case of two components covering one root cause.
-    # Adapted from run-extraction.ps1's proven sequence (wsl -u root service docker start -> docker
-    # compose up -d -> poll pg_isready inside mk-postgres), not copy-pasted procedurally: that script
-    # polls in its own foreach loop with Start-Sleep; here Invoke-ComponentCheck's own poll loop
-    # (Detect -> Recover once -> Verify in a loop up to MaxRecoverWaitSeconds) does the waiting, so
-    # Recover only ISSUES the two start commands once and Verify is what gets repeatedly re-checked.
-    # -MaxRecoverWaitSeconds 300 matches run-extraction.ps1's own proven 60x5s budget for this same
-    # operation -- WSL/Docker cold start is genuinely slower than the native service in Task 18;
-    # copying a shorter timeout here would turn a real recovery into a false FinalOk=false.
-    # Every child process here goes through Invoke-BoundedProcess (this file's contract) -- `wsl`
-    # itself can hang (e.g. a wedged WSL VM), and an unbounded call would hang the whole watchman
-    # run exactly like the unbounded node/py calls the deferred hardening above fixed. No inner
-    # try/catch around the call: on timeout Invoke-BoundedProcess throws, which flows through
-    # Invoke-BoolProbe's own catch into an honest "Detect/Verify threw: ... timed out ..." Detail,
-    # matching rules-mirror's pattern above rather than swallowing the reason into a bare $false.
-    function Test-GenizaPostgresReady {
-        $p = Invoke-BoundedProcess -FilePath 'wsl' `
-            -ArgumentList @('-e', 'bash', '-lc', 'docker exec mk-postgres pg_isready -h 127.0.0.1 -q && echo READY') `
+    # geniza-postgres (warn): REVISED after a live coordinator review found the first version was
+    # testing a superseded target. The geniza's PostgreSQL moved OFF the WSL Docker container onto
+    # the native Windows service `postgresql-x64-18` on 2026-08-06 (CLAUDE.md; confirmed by reading
+    # infra/.env, whose POSTGRES_PORT now points at 5432 -- the native service's port, the SAME port
+    # Task 18's mk_rules-postgres already monitors). The original Detect/Verify here ran `docker exec
+    # mk-postgres pg_isready`, which answers about a leftover, still-running-but-superseded container
+    # -- not the live store. That component would have reported a false OK forever regardless of the
+    # native service's real health, and its Recover ran `docker compose up -d`, which is not a
+    # recovery action for the real store at all (worse: see the compose.yaml finding below).
+    #
+    # This version tests the REAL thing: a genuine read-only SELECT against the geniza's own
+    # document_revisions table, executed through src.knowledge.config.connect_reader() -- the exact
+    # accessor every retrieval tool in this repository depends on (scripts/check-geniza-reader.py).
+    # That is deliberate: this component verifies what consumers actually read, not a TCP/exec probe
+    # of a process that could be up while the schema, credentials, or content are wrong.
+    # Every child process goes through Invoke-BoundedProcess (this file's contract); no inner
+    # try/catch -- on timeout it throws, which flows through Invoke-BoolProbe's own catch into an
+    # honest "... threw: ... timed out ..." Detail, matching rules-mirror's pattern above.
+    #
+    # RECOVERY: deliberately a NO-OP. This component and Task 18's mk_rules-postgres now watch the
+    # SAME native Windows service (postgresql-x64-18) -- confirmed by both pointing at port 5432 in
+    # their respective .env files. mk_rules-postgres already runs earlier in this array and already
+    # calls Start-Service on that exact service if it is down; by the time THIS component's Detect
+    # runs, that recovery attempt has already happened (or the service was never the problem). A
+    # second Start-Service here would be pure duplication -- exactly the "two components both
+    # restarting one service" case this task was asked to judge, and the answer is: only one of them
+    # should act. If the read still fails after mk_rules-postgres's own recovery ran, the failure is
+    # something Start-Service cannot fix anyway (bad credentials, missing schema/table, an empty
+    # database) -- so Recover here does nothing and says so, rather than pretending a second identical
+    # action might succeed where the first one already tried and failed.
+    # -MaxRecoverWaitSeconds 5 (not 300): with no recovery action to wait out, polling the same
+    # unchanging Verify for minutes buys nothing but a slow run -- same reasoning as `hooks` above,
+    # which uses 5s for the same "Recover cannot fix this specific failure" shape.
+    function Test-GenizaReaderAnswers {
+        $p = Invoke-BoundedProcess -FilePath 'py' `
+            -ArgumentList @('-3', (Join-Path $RepoRoot 'scripts\check-geniza-reader.py')) `
             -TimeoutSeconds 15
-        return ($p.Output -match 'READY')
+        $resultValue = $null
+        foreach ($line in ($p.Output -split "`r?`n")) { if ($line -match '^RESULT=(\S+)') { $resultValue = $Matches[1] } }
+        $p.ExitCode -eq 0 -and $resultValue -eq 'ok'
     }
 
-    $genizaResult = Invoke-ComponentCheck -Name 'geniza-postgres' -Severity 'warn' -MaxRecoverWaitSeconds 300 `
-        -Detect { Test-GenizaPostgresReady } `
+    $genizaResult = Invoke-ComponentCheck -Name 'geniza-postgres' -Severity 'warn' -MaxRecoverWaitSeconds 5 `
+        -Detect { Test-GenizaReaderAnswers } `
         -Recover {
-            Invoke-BoundedProcess -FilePath 'wsl' -ArgumentList @('-u', 'root', '-e', 'bash', '-lc', 'service docker start') -TimeoutSeconds 30 | Out-Null
-            Invoke-BoundedProcess -FilePath 'wsl' -ArgumentList @('-e', 'bash', '-lc', 'cd /mnt/c/Users/dudib/source/repos/matconetesh/infra && docker compose up -d') -TimeoutSeconds 60 | Out-Null
+            # Deliberately empty -- see the block comment above. mk_rules-postgres (earlier in this
+            # array) owns Start-Service for the shared native service; duplicating it here is the
+            # exact double-recovery this task was asked to judge, and the judgment is: don't.
         } `
-        -Verify { Test-GenizaPostgresReady }
+        -Verify { Test-GenizaReaderAnswers }
 
     @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult)
 })
