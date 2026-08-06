@@ -15,7 +15,6 @@ a caller that cannot tell them apart will treat one as the other.
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from pathlib import Path
@@ -25,6 +24,7 @@ sys.path.insert(0, str(ROOT))
 
 from src.knowledge import worker  # noqa: E402
 from src.knowledge.worker import WorkerBusy  # noqa: E402
+from src.knowledge.scope import ScopeError, resolve_scope  # noqa: E402
 
 SCOPE_FILE = ROOT / "docs" / "process" / "memory-ingest-scope.json"
 
@@ -33,33 +33,16 @@ def scoped_paths() -> list[str]:
     """The declared ingest scope — the same file the SQLite layer reads.
 
     One scope definition, read by both, so the two stores cannot disagree about what belongs in
-    the corpus while Phase 7's migration is comparing them.
+    the corpus while Phase 7's migration is comparing them. Resolution (including exclusion) is
+    delegated to src.knowledge.scope so this file and scripts/check-geniza-fresh.mjs cannot drift
+    apart the way the scope definition itself once did across three copies.
     """
     if not SCOPE_FILE.exists():
         raise SystemExit(f"{SCOPE_FILE} not found — it defines what may be ingested")
-    # The file's shape is `roots: [{path, patterns[]}]` — READ, not guessed. The first version of
-    # this function assumed `include`/`exclude` and returned an empty list, which the CLI then
-    # reported as "give one or more paths" rather than as "the scope resolved to nothing". An
-    # empty scope is a state worth naming, so it is named below.
-    scope = json.loads(SCOPE_FILE.read_text(encoding="utf-8"))
-    excluded = {str(x) for x in scope.get("exclude", [])}
-    out: list[str] = []
-    for root in scope.get("roots", []):
-        base = ROOT / str(root["path"])
-        for pattern in root.get("patterns", []):
-            for path in sorted(base.glob(pattern)):
-                if not path.is_file():
-                    continue
-                rel = path.relative_to(ROOT).as_posix()
-                if rel in excluded or rel in out:
-                    continue
-                out.append(rel)
-    if not out:
-        raise SystemExit(
-            f"the declared scope in {SCOPE_FILE.name} resolved to 0 files. That is a broken scope "
-            "definition, not an empty repository — check its `roots` patterns."
-        )
-    return sorted(out)
+    try:
+        return resolve_scope(SCOPE_FILE, ROOT)
+    except ScopeError as exc:
+        raise SystemExit(str(exc)) from exc
 
 
 def main() -> int:

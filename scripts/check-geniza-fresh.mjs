@@ -26,19 +26,19 @@ import hashlib, json, sys
 from pathlib import Path
 sys.path.insert(0, ${JSON.stringify(ROOT)})
 from src.knowledge import config
+from src.knowledge.scope import resolve_scope
 
-scope = json.loads((Path(${JSON.stringify(ROOT)}) / "docs/process/memory-ingest-scope.json").read_text(encoding="utf-8"))
+# Same resolver ingest.py uses (src/knowledge/scope.py) — a second independent walk here is
+# exactly how the scope definition drifted into three disagreeing copies before (see the scope
+# file's own _why). Without this, an excluded file (e.g. docs/audit/**) would still show up as
+# "on disk" here, read as "missing" from the geniza, and get repaired back in via the self-heal
+# below — reintroducing the excluded file on the very next commit.
 root = Path(${JSON.stringify(ROOT)})
+scope_file = root / "docs/process/memory-ingest-scope.json"
 on_disk = {}
-for r in scope.get("roots", []):
-    base = root / str(r["path"])
-    for pattern in r.get("patterns", []):
-        for p in sorted(base.glob(pattern)):
-            if not p.is_file():
-                continue
-            rel = p.relative_to(root).as_posix()
-            text = p.read_text(encoding="utf-8", errors="replace").replace("\\x00", "")
-            on_disk[rel] = hashlib.sha256(text.encode("utf-8")).hexdigest()
+for rel in resolve_scope(scope_file, root):
+    text = (root / rel).read_text(encoding="utf-8", errors="replace").replace("\\x00", "")
+    on_disk[rel] = hashlib.sha256(text.encode("utf-8")).hexdigest()
 
 conn = config.connect_reader(timeout=5)
 try:

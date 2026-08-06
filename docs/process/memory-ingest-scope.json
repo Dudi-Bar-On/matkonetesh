@@ -1,5 +1,9 @@
 {
   "_why": "The single definition of WHAT agent memory ingests. It exists because the scope was duplicated in three places — memsync's ingest, memsync's prune input, and check-memory-fresh's disk walk — and the moment they disagreed, one run ingested 1,233 corpus nodes and pruned them in the same invocation. The pruner was right; its input was a stale copy. Python and Node both read this file, so there is one list, not three.",
+  "exclude": [
+    "docs/audit/**"
+  ],
+  "exclude_note": "docs/audit/ holds a DERIVED projection of the session transcript (scripts/build-audit.mjs), regenerated on every commit. Ingesting it would (a) recompute embeddings for ~1.4MB of conversation on every run, and (b) pollute retrieval with the transcript of how a decision was reached instead of the document that records it. The audit is for reconstructing a session by reading it, not for querying. Added 2026-08-06 after it was ingested once and noticed. exclude is TOP-LEVEL and glob-based (src/knowledge/scope.py), matched against the repo-relative POSIX path — a per-root exclude key here would be silently ignored, so the loader now rejects one instead of accepting it inertly (that was this key's first, broken form).",
   "roots": [
     {
       "path": "docs",
