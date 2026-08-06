@@ -16,6 +16,47 @@ const EXTKEYS = new Set(Object.keys(ext).filter(k => k !== '__names__'));
 const HEB = /[֐-׿]/;
 const LANGS = ['fr', 'de', 'es', 'it', 'ru'];
 
+// DoD-11 — what these steps are actually waiting for. Most of app.js's render paths (render(),
+// catView(), showPanel()'s applyI18n/tnode/hydrateMT calls) translate synchronously via inline
+// L()/t() calls, so page.evaluate() already blocks until that work is done — no wait needed there.
+// The one genuinely async, timer-gated i18n mechanism left after a step is app.js's own fallback:
+// a MutationObserver on document.body (the "Wave 5" pass, app.js ~line 14693) that re-runs
+// applyI18n()/tnode()/hydrateMT() on ANY freshly-inserted markup a step didn't already translate
+// inline, debounced 50ms after the LAST body mutation. A step that goes through that fallback path
+// (rather than showPanel's synchronous call) needs that pass to have run at least once before a
+// leak-scan can trust what it sees. `waitForTimeout(70/80)` was a guess at "longer than 50ms" that
+// could not fail even if the pass never ran.
+//
+// The condition is deliberately "tnode() has been called at least once more since this step", NOT
+// "the DOM has gone fully quiet" — investigated and rejected the latter first (a test-side
+// MutationObserver watching for N ms of silence): app.js's `.chome-hero`/`.cat-hero` H2/H3 headings
+// turned out to re-render in a genuine, pre-existing, self-triggering loop (applyI18n's own DOM
+// write re-fires the same debounced MutationObserver that called it — confirmed with a
+// standalone repro: the pass count climbs continuously, ~13/s, with the page fully idle and no test
+// interaction at all). Waiting for silence is unsound against DOM that never truly goes silent; this
+// is a real app-level bug, out of scope for this task (Circle of Control — noted, not fixed here) but
+// worth a line for whoever picks it up next: app.js ~line 14693, the `_mo` MutationObserver, and
+// `.chome-hero`/`.cat-hero`'s `data-i18n-html="home.what"` element. tnode() running once IS the actual
+// thing a leak-scan needs — it's the same call showPanel() already makes synchronously, and the same
+// call the fallback debounce makes 50ms later for content showPanel didn't touch — so waiting for one
+// more invocation (bounded, so a genuinely-never-called case still fails rather than hanging) is both
+// correct and immune to the loop.
+async function waitForDomSettle(page: any) {
+  await page.evaluate(() => {
+    const w = window as any;
+    if (w.__mkI18nPassWatch) return;
+    w.__mkI18nPassCount = 0;
+    const orig = w.tnode;
+    if (typeof orig === 'function') w.tnode = function (...args: any[]) { w.__mkI18nPassCount++; return orig.apply(this, args); };
+    w.__mkI18nPassWatch = true;
+  });
+  const before = await page.evaluate(() => (window as any).__mkI18nPassCount || 0);
+  // Bounded (2s) so a step that genuinely never triggers a translation pass fails the wait rather than
+  // hanging — caught by the same `catch {}` that wrapped the old sleep, an honest "gave up", not a
+  // silent always-succeeding pause.
+  await page.waitForFunction((b) => ((window as any).__mkI18nPassCount || 0) > b, before, { timeout: 2000 });
+}
+
 async function driveStates(page: any, lang: string) {
   await seedApp(page, { 'mk-uilevel-asked': 'true', 'mk-lang': JSON.stringify(lang) });
   await page.evaluate(() => (window as any).__mkLangReady);   // Task 2: dict fetch is async now (Dec-A1)
@@ -45,7 +86,7 @@ async function driveStates(page: any, lang: string) {
     `typeof toast==='function'&&toast(L('נשמר','Saved'))`,                                       // fire a TOAST (localized — a raw literal here would be a test artifact, not an app leak)
     `(function(){ if(typeof setLang==='function'){ setLang('he'); setLang(${JSON.stringify(lang)}); } })()`, // language-switch while a panel is open
   ];
-  for (const code of steps) { try { await page.evaluate(code); await page.waitForTimeout(70); } catch {} }
+  for (const code of steps) { try { await page.evaluate(code); await waitForDomSettle(page); } catch {} }
 }
 
 for (const lang of LANGS) {
@@ -118,7 +159,7 @@ for (const lang of LANGS) {
     const all: Record<string, string[]> = {};
     for (const [name, drive] of SCREENS) {
       try { await page.evaluate(drive); } catch {}
-      await page.waitForTimeout(80);
+      await waitForDomSettle(page);   // same condition as driveStates() above — DOM quiet past app.js's 50ms i18n-hydration debounce
       const leaks: string[] = await page.evaluate(scan);
       if (leaks.length) all[name] = leaks;
     }

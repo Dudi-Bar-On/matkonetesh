@@ -1184,6 +1184,50 @@ a real model name, a real recipe) · **מה אמור לקרות** (the observabl
 lacks this Hebrew script is an incomplete handoff — write it from the release's changed-feature list, not
 from memory, and keep it to the few use cases that actually exercise what changed.
 
+### 10.22 Coin real Hebrew terms — never a transliteration (owner instruction, 2026-08-03)
+> **Owner instruction, 2026-08-03,** correcting "לדג'ר" to "מרשם": when a new concept needs a Hebrew name,
+> reach for a real Hebrew word, not an English word carried over in Hebrew letters.
+
+This is the forward-looking rule; §10.20's דרי→יבש / דריי-ברין→ברין יבש cleanup is the retrospective one —
+it hunts and fixes Anglicisms already sitting in the source. §10.22 is what stops the next one from being
+coined in the first place: before naming something new, check for a real Hebrew word first, and reach for
+a transliteration only when no such word exists. This governs Hebrew **body text and terminology** only —
+it does not touch the separate, already-recorded naming convention (`docs/ROADMAP-2026-07-30.md` lines
+7–8) that numbering and identifiers stay in English (Phase 0, Cooking Path, CP) while the prose around them
+is Hebrew; that half is settled and is not restated here.
+
+### 10.23 Sequential is the application's own subject, not just a scheduling limit (owner ruling, 2026-08-03)
+> **Owner ruling, 2026-08-03:** `"סדרתי ובטוח זה ליבת החכמה באפליקציה"`
+
+§10.5a caps how many agents may run at once (≤3 light, ≤5 hard, 1 during a suite/GPU run) — that ceiling
+is unchanged and stays exactly as written. §10.23 is a separate, stricter rule about what may be
+**proposed** for feature development: parallel-on-separate-files must never be offered as a speed option
+at all, regardless of whether it would fit under the §10.5a ceiling. The two are not in tension — §10.5a
+bounds concurrency when work is genuinely independent; §10.23 says feature-development work is not treated
+as independent-and-parallelizable in the first place.
+
+The reasoning is the part that makes this stick: the application's own subject matter is teaching the
+correct **order** and **safety** of handling food — a tool built to tell people the right sequence should
+not itself be built by an agent that treats sequence as an obstacle to route around. Building it out of
+order is not just a process risk here; it contradicts the product.
+
+### 10.24 Fight for the stated goal, and never self-declare final (owner feedback)
+> **Owner feedback, two halves of one ruling.** (i) When a stated goal meets an obstacle, do not quietly
+> narrow it — invent and research until the goal is met, or raise the obstacle explicitly. Settling for
+> less than what was asked, without saying so, is the failure. (ii) Never declare a solution final, or
+> accept a material or permanent trade-off, without the owner's explicit approval.
+
+§10.8 already says which decisions get raised with the owner, and §10.14/§10.15 already say to research
+instead of guessing when stuck. §10.24 is the rule that ties them together: it is the one that makes
+"quietly narrow the goal" itself a violation, not merely a bad debugging habit. Without it, a goal can be
+scaled down one small step at a time between an §10.8 decision that was never asked and an §10.14 research
+pass that was never run — each step individually reasonable, the sum a silently downgraded deliverable.
+
+In practice: when an approach hits a wall, the next move is inventing alternatives and researching them
+(§10.14/§10.15), not shipping whatever the first approach could reach. And "done" is never declared solo —
+a solution, a trade-off, or a "this is as good as it gets" is a decision under §10.8 (material scope
+change / owner preference), raised in conversation, not written into a report as settled.
+
 ### 10.12a Historical — the graphify era, and the one hazard worth keeping
 > This section documented how to refresh the graphify knowledge graph. **The tool was removed on
 > 2026-08-04** and replaced by the SQLite/JSONB agent-memory store (§10.11 and §10.12 above). The

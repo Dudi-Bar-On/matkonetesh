@@ -34,7 +34,7 @@ check-meta ירוק. **כל משימה מסתיימת בטבלת H9 ומעדכנ
 | 6 | Failure-mode → gate map (every past failure and the gate that now catches it) |
 | 7 | Reviewer discipline — two verdicts required; reviewers are never told what not to flag |
 | 9 | Settled decisions — full suite per task; **work on `main`, no worktrees**; brainstorm only when unclear |
-| 10.1–10.12 | The owner's standing instructions — **re-read before every task** |
+| 10.1–10.24 | The owner's standing instructions — **re-read before every task** |
 | 11a | Testing infrastructure — worker ceiling, the port-8123 collision, server restart after build |
 | 11 | **Lessons log L1–L21 + adopted wins** — read it before repeating a mistake someone already paid for |
 | 12 | **Thinking models** (15, three clusters) + gate-prompt shapes + **when NOT to think** |

@@ -127,6 +127,11 @@ run('check-workflows', 'check-workflows (a workflow GitHub cannot compile produc
 // telling an agent to run a scripts/ command that no longer exists. The 2026-08-05 memory-store
 // deletion left exactly three such dead references in the files agents are required to read first.
 run('check-commands-exist', 'check-commands-exist (a mandatory-read doc naming a scripts/ command that no longer exists)', 'check-commands-exist.mjs');
+// DoD-11 / TEST-AUTHORING-CONTRACT.md:55 — sits right after check-commands-exist because both are the
+// same shape of gate: a cheap, fully local, always-decidable scan of a fixed file set (there, docs
+// naming dead scripts; here, tests naming a wait that cannot fail). Two real waitForTimeout violations
+// (tests/i18n-completeness.spec.ts:48,:121) shipped before this gate existed to catch them.
+run('check-no-arbitrary-waits', 'check-no-arbitrary-waits (a page.waitForTimeout in tests/ — DoD-11, cannot fail for the right reason)', 'check-no-arbitrary-waits.mjs');
 // R-94. Without this, check-meta could report OK while the UI suite had been red in CI for 25
 // consecutive runs — which is what happened. It READS CI rather than running the suite, because
 // §11a forbids a second concurrent Playwright run and a hook that launched one would cause the
