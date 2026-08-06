@@ -81,8 +81,8 @@ extractor/builder/CLI; Node ESM (no new dependencies) for the gates; PowerShell 
 | `scripts/check-rules-mirror.mjs` | Gate: `rules.sqlite` checksum matches `mk_rules`'s current rows. |
 | `scripts/check-rules-complete.mjs` | Gate: every rule the extractor finds on disk has a row in `mk_rules`. |
 | `scripts/watchman.ps1` | Layer 0: `Invoke-ComponentCheck` engine + six components (hooks, rules mirror, `mk_rules` Postgres, geniza Docker/Postgres, ollama, serena), success reporting, `.superpowers/watchman-log.jsonl`. |
-| `scripts/tests/test-rules-extractor.py` | Unit tests for the four extractor shapes (no database needed). |
-| `scripts/tests/test-rules-builder.py` | Unit tests for write order, crash simulation, lifecycle transitions, disk-not-git (needs a live `mk_rules`; documented as such). |
+| `tests/test_rules_extractor.py` | Unit tests for the four extractor shapes (no database needed). |
+| `tests/test_rules_builder.py` | Unit tests for write order, crash simulation, lifecycle transitions, disk-not-git (needs a live `mk_rules`; documented as such). |
 | `scripts/tests/test-watchman-engine.mjs` | Node-driven test of `Invoke-ComponentCheck`'s retry/recovery loop using stub executables on a temp `PATH` — no real infrastructure touched. |
 
 ---
@@ -93,7 +93,7 @@ extractor/builder/CLI; Node ESM (no new dependencies) for the gates; PowerShell 
 - Create: `infra/rules-db/.env.example`
 - Create: `infra/rules-db/migrations/` (empty dir, populated in Task 3)
 - Create: `scripts/provision_rules_db.py`
-- Test: `scripts/tests/test-provision-rules-db.py`
+- Test: `tests/test_provision_rules_db.py`
 
 **Interfaces:**
 - Consumes: nothing (first task).
@@ -105,7 +105,7 @@ extractor/builder/CLI; Node ESM (no new dependencies) for the gates; PowerShell 
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# scripts/tests/test-provision-rules-db.py
+# tests/test_provision_rules_db.py
 """RED: before the native service exists / before provisioning has run, connecting as the
 superuser to database `mk_rules` must fail. This is the observable precondition the provisioning
 step removes."""
@@ -113,7 +113,7 @@ import socket
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 
@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Run test to verify it fails for the intended reason**
 
-Run: `py -3 scripts/tests/test-provision-rules-db.py`
+Run: `py -3 tests/test_provision_rules_db.py`
 Expected FAILURE MESSAGE (before the service is installed): `AssertionError: infra/rules-db/.env missing RULES_APP_PASSWORD — copy .env.example first` (the file does not exist yet) — this is the intended RED: the precondition script is not wired up at all.
 
 - [ ] **Step 3: Create the env template**
@@ -282,11 +282,11 @@ Run: `py -3 scripts/provision_rules_db.py`
 Expected: `created database mk_rules` · `created role rules_app` · `password set for rules_app` ·
 `created role rules_reader` · `password set for rules_reader` · `provisioning complete.`
 
-Run: `py -3 scripts/tests/test-provision-rules-db.py`
+Run: `py -3 tests/test_provision_rules_db.py`
 Expected: this specific script's assertion (`connection ... should fail`) now legitimately fails to
 raise, because the role exists — **this test's job was only to prove the RED state; it is deleted
 after Step 6**, since a permanently-green "prove absence" test is meaningless once the thing exists.
-Delete `scripts/tests/test-provision-rules-db.py` in this commit and instead prove GREEN with:
+Delete `tests/test_provision_rules_db.py` in this commit and instead prove GREEN with:
 
 ```bash
 py -3 -c "
@@ -314,8 +314,8 @@ git commit -m "feat(rules-store): provision the native mk_rules PostgreSQL servi
 **Files:**
 - Modify: `scripts/pgmigrate.py`
 - Create: `infra/rules-db/migrations/0001_rule_revisions.sql`
-- Test: `scripts/tests/test-pgmigrate-flags.py`
-- Test: `scripts/tests/test-current-requires-mirror.py`
+- Test: `tests/test_pgmigrate_flags.py`
+- Test: `tests/test_current_requires_mirror.py`
 
 **Interfaces:**
 - Consumes: `rules_app`/`rules_reader` roles from Task 1; `infra/rules-db/.env`.
@@ -328,14 +328,14 @@ git commit -m "feat(rules-store): provision the native mk_rules PostgreSQL servi
 - [ ] **Step 1: Write the failing test for the `pgmigrate.py` flags (no DB needed — argument parsing only)**
 
 ```python
-# scripts/tests/test-pgmigrate-flags.py
+# tests/test_pgmigrate_flags.py
 """RED: pgmigrate.py's discover() is hardcoded to infra/postgres/migrations today. A --migrations-dir
 flag must let it point elsewhere without touching its default behaviour."""
 import subprocess
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_migrations_dir_flag_is_recognised():
@@ -354,7 +354,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-pgmigrate-flags.py`
+Run: `py -3 tests/test_pgmigrate_flags.py`
 Expected FAILURE MESSAGE: `AssertionError: --migrations-dir not in help output:` followed by the
 current `--help` text (which only lists `--status`).
 
@@ -435,7 +435,7 @@ two lines that built `found`/`conn` above them changed.)
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3 scripts/tests/test-pgmigrate-flags.py`
+Run: `py -3 tests/test_pgmigrate_flags.py`
 Expected: `PASS`
 
 Regression check — confirm the existing default behaviour is untouched:
@@ -519,14 +519,14 @@ Expected: `applied 0001_rule_revisions` · `migrations: 1 applied · 1 total`
 - [ ] **Step 7: Write the failing constraint-proof test**
 
 ```python
-# scripts/tests/test-current-requires-mirror.py
+# tests/test_current_requires_mirror.py
 """Hard requirement (plan header): prove `current_requires_mirror` by attempting the illegal insert
 and catching the violation. RED first: run this BEFORE the constraint exists (i.e. before Step 5/6
 above) and it fails because the insert SUCCEEDS. GREEN: run it after, and the insert is refused."""
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.rules_store import config  # noqa: E402
@@ -567,7 +567,7 @@ described in the test's own docstring; both are pasted below.)
 
 - [ ] **Step 8: Run it before Task 3 exists — RED (import failure)**
 
-Run: `py -3 scripts/tests/test-current-requires-mirror.py`
+Run: `py -3 tests/test_current_requires_mirror.py`
 Expected FAILURE MESSAGE: `ModuleNotFoundError: No module named 'src.rules_store'`
 
 This task ends here with the constraint proved conceptually (the SQL exists and was applied in Step
@@ -577,7 +577,7 @@ exact file for GREEN. Task 3's "Consumes" block names this file.
 - [ ] **Step 9: Commit**
 
 ```bash
-git add scripts/pgmigrate.py infra/rules-db/migrations/0001_rule_revisions.sql scripts/tests/test-pgmigrate-flags.py scripts/tests/test-current-requires-mirror.py
+git add scripts/pgmigrate.py infra/rules-db/migrations/0001_rule_revisions.sql tests/test_pgmigrate_flags.py tests/test_current_requires_mirror.py
 git commit -m "feat(rules-store): rule_revisions schema with current_requires_mirror; pgmigrate --migrations-dir/--env-file"
 ```
 
@@ -589,7 +589,7 @@ git commit -m "feat(rules-store): rule_revisions schema with current_requires_mi
 - Create: `src/rules_store/__init__.py`
 - Create: `src/rules_store/config.py`
 - Create: `infra/rules-db/migrations/0002_roles_and_grants.sql`
-- Test: `scripts/tests/test-current-requires-mirror.py` (from Task 2 — run again here for GREEN)
+- Test: `tests/test_current_requires_mirror.py` (from Task 2 — run again here for GREEN)
 
 **Interfaces:**
 - Consumes: `rules_app`/`rules_reader` from Task 1; `rule_revisions` table from Task 2.
@@ -623,7 +623,7 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / "infra" / "rules-db" / ".env"
 
 
@@ -724,7 +724,7 @@ Expected: `applied 0002_roles_and_grants` · `migrations: 1 applied · 2 total`
 
 - [ ] **Step 4: Run the Task 2 constraint test again — GREEN**
 
-Run: `py -3 scripts/tests/test-current-requires-mirror.py`
+Run: `py -3 tests/test_current_requires_mirror.py`
 Expected: `PASS: current_requires_mirror rejects is_current without mirrored_at.`
 
 - [ ] **Step 5: Commit**
@@ -740,7 +740,7 @@ git commit -m "feat(rules-store): config.py reader/writer split; roles_and_grant
 
 **Files:**
 - Create: `src/rules_store/mirror.py`
-- Test: `scripts/tests/test-rules-mirror.py`
+- Test: `tests/test_rules_mirror.py`
 
 **Interfaces:**
 - Consumes: nothing from earlier tasks (pure SQLite, no Postgres).
@@ -753,13 +753,13 @@ git commit -m "feat(rules-store): config.py reader/writer split; roles_and_grant
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# scripts/tests/test-rules-mirror.py
+# tests/test_rules_mirror.py
 import sqlite3
 import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.rules_store import mirror  # noqa: E402
@@ -808,7 +808,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-rules-mirror.py`
+Run: `py -3 tests/test_rules_mirror.py`
 Expected FAILURE MESSAGE: `ModuleNotFoundError: No module named 'src.rules_store.mirror'`
 
 - [ ] **Step 3: Write the minimal implementation**
@@ -887,13 +887,13 @@ def checksum(conn: sqlite3.Connection) -> str:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3 scripts/tests/test-rules-mirror.py`
+Run: `py -3 tests/test_rules_mirror.py`
 Expected: `PASS`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/rules_store/mirror.py scripts/tests/test-rules-mirror.py
+git add src/rules_store/mirror.py tests/test_rules_mirror.py
 git commit -m "feat(rules-store): rules.sqlite mirror module"
 ```
 
@@ -903,7 +903,7 @@ git commit -m "feat(rules-store): rules.sqlite mirror module"
 
 **Files:**
 - Create: `src/rules_store/extractor.py`
-- Test: `scripts/tests/test-rules-extractor.py`
+- Test: `tests/test_rules_extractor.py`
 
 **Interfaces:**
 - Consumes: nothing (pure text parsing).
@@ -915,11 +915,11 @@ git commit -m "feat(rules-store): rules.sqlite mirror module"
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# scripts/tests/test-rules-extractor.py
+# tests/test_rules_extractor.py
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.rules_store.extractor import extract_section_rules  # noqa: E402
@@ -970,7 +970,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-rules-extractor.py`
+Run: `py -3 tests/test_rules_extractor.py`
 Expected FAILURE MESSAGE: `ModuleNotFoundError: No module named 'src.rules_store.extractor'`
 
 - [ ] **Step 3: Write the minimal implementation**
@@ -1047,13 +1047,13 @@ def extract_section_rules(text: str, source_path: str) -> list[RuleRecord]:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3 scripts/tests/test-rules-extractor.py`
+Run: `py -3 tests/test_rules_extractor.py`
 Expected: `PASS`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/rules_store/extractor.py scripts/tests/test-rules-extractor.py
+git add src/rules_store/extractor.py tests/test_rules_extractor.py
 git commit -m "feat(rules-store): extractor — numbered section-heading rules"
 ```
 
@@ -1090,7 +1090,7 @@ git commit -m "feat(rules-store): extractor — numbered section-heading rules"
 
 **Files:**
 - Modify: `src/rules_store/extractor.py`
-- Modify: `scripts/tests/test-rules-extractor.py`
+- Modify: `tests/test_rules_extractor.py`
 
 **Interfaces:**
 - Consumes: `RuleRecord` from Task 5.
@@ -1100,7 +1100,7 @@ git commit -m "feat(rules-store): extractor — numbered section-heading rules"
 - [ ] **Step 1: Add the failing test**
 
 ```python
-# append to scripts/tests/test-rules-extractor.py
+# append to tests/test_rules_extractor.py
 from src.rules_store.extractor import extract_dod_rules  # noqa: E402
 
 DOD_FIXTURE = """\
@@ -1136,7 +1136,7 @@ Add to the `if __name__` block:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-rules-extractor.py`
+Run: `py -3 tests/test_rules_extractor.py`
 Expected FAILURE MESSAGE: `ImportError: cannot import name 'extract_dod_rules' from 'src.rules_store.extractor'`
 
 - [ ] **Step 3: Add the minimal implementation**
@@ -1173,13 +1173,13 @@ def extract_dod_rules(text: str, source_path: str) -> list[RuleRecord]:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3 scripts/tests/test-rules-extractor.py`
+Run: `py -3 tests/test_rules_extractor.py`
 Expected: `PASS`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/rules_store/extractor.py scripts/tests/test-rules-extractor.py
+git add src/rules_store/extractor.py tests/test_rules_extractor.py
 git commit -m "feat(rules-store): extractor — DoD-N checklist items"
 ```
 
@@ -1189,7 +1189,7 @@ git commit -m "feat(rules-store): extractor — DoD-N checklist items"
 
 **Files:**
 - Modify: `src/rules_store/extractor.py`
-- Modify: `scripts/tests/test-rules-extractor.py`
+- Modify: `tests/test_rules_extractor.py`
 
 **Interfaces:**
 - Consumes: everything from Tasks 5-6.
@@ -1203,7 +1203,7 @@ git commit -m "feat(rules-store): extractor — DoD-N checklist items"
 - [ ] **Step 1: Add the failing tests**
 
 ```python
-# append to scripts/tests/test-rules-extractor.py
+# append to tests/test_rules_extractor.py
 from src.rules_store.extractor import extract_h_rulings, extract_lessons, extract_rules  # noqa: E402
 
 H_FIXTURE = """\
@@ -1265,7 +1265,7 @@ Add to the `if __name__` block:
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-rules-extractor.py`
+Run: `py -3 tests/test_rules_extractor.py`
 Expected FAILURE MESSAGE: `ImportError: cannot import name 'extract_h_rulings' from 'src.rules_store.extractor'`
 
 - [ ] **Step 3: Write the minimal implementation**
@@ -1356,7 +1356,7 @@ def extract_rules(text: str, source_path: str) -> list[RuleRecord]:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3 scripts/tests/test-rules-extractor.py`
+Run: `py -3 tests/test_rules_extractor.py`
 Expected: `PASS`
 
 - [ ] **Step 5: Run the extractor against the REAL document, as a sanity check (not an automated test — a manual eyeball per DoD-4/6, since the fixture tests already prove the mechanics)**
@@ -1380,7 +1380,7 @@ do not silently catch and ignore it.
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/rules_store/extractor.py scripts/tests/test-rules-extractor.py
+git add src/rules_store/extractor.py tests/test_rules_extractor.py
 git commit -m "feat(rules-store): extractor — H-rulings, lessons, and the extract_rules() merge point"
 ```
 
@@ -1390,7 +1390,7 @@ git commit -m "feat(rules-store): extractor — H-rulings, lessons, and the extr
 
 **Files:**
 - Create: `src/rules_store/builder.py`
-- Create: `scripts/tests/test-rules-builder.py`
+- Create: `tests/test_rules_builder.py`
 
 **Interfaces:**
 - Consumes: `config.connect_writer()` (Task 3), `mirror.open_mirror/write_revision` (Task 4),
@@ -1402,14 +1402,14 @@ git commit -m "feat(rules-store): extractor — H-rulings, lessons, and the extr
 - [ ] **Step 1: Write the failing crash-simulation test**
 
 ```python
-# scripts/tests/test-rules-builder.py
+# tests/test_rules_builder.py
 """Requires a reachable mk_rules (Task 1-3). RED here means: before sync_rule exists, this import
 fails. GREEN (Step 4) proves the crash-mid-way guarantee: a fault injected between mirror-write and
 flip-to-current leaves the row permanently is_current=false — inactive, never half-active."""
 import sys
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
 from src.rules_store import builder, config, mirror, extractor  # noqa: E402
@@ -1462,7 +1462,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-rules-builder.py`
+Run: `py -3 tests/test_rules_builder.py`
 Expected FAILURE MESSAGE: `ModuleNotFoundError: No module named 'src.rules_store.builder'`
 
 - [ ] **Step 3: Write the minimal implementation**
@@ -1535,13 +1535,13 @@ def sync_rule(pg_conn, mirror_conn, record: RuleRecord, *, _fail_after_mirror_wr
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3 scripts/tests/test-rules-builder.py`
+Run: `py -3 tests/test_rules_builder.py`
 Expected: `PASS`
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/rules_store/builder.py scripts/tests/test-rules-builder.py
+git add src/rules_store/builder.py tests/test_rules_builder.py
 git commit -m "feat(rules-store): builder.sync_rule — four-step write order, crash-mid-way proved inactive"
 ```
 
@@ -1551,7 +1551,7 @@ git commit -m "feat(rules-store): builder.sync_rule — four-step write order, c
 
 **Files:**
 - Modify: `src/rules_store/builder.py`
-- Modify: `scripts/tests/test-rules-builder.py`
+- Modify: `tests/test_rules_builder.py`
 
 **Interfaces:**
 - Consumes: `sync_rule()` from Task 8.
@@ -1562,7 +1562,7 @@ git commit -m "feat(rules-store): builder.sync_rule — four-step write order, c
 - [ ] **Step 1: Write the four failing tests**
 
 ```python
-# append to scripts/tests/test-rules-builder.py
+# append to tests/test_rules_builder.py
 def _fresh(pg_conn, mirror_path: Path):
     if mirror_path.exists():
         mirror_path.unlink()
@@ -1573,11 +1573,11 @@ def test_lifecycle_added_creates_revision_1_current():
     pg = config.connect_writer(); pg.autocommit = False
     _clean(pg, "TEST-LC")
     m = _fresh(pg, Path(__file__).parent / "_tmp_lc_added.sqlite")
-    doc = "### 10.LC Added rule\n\nfirst statement.\n"
+    doc = "### 10.90 Added rule\n\nfirst statement.\n"
     result = builder.sync_document(pg, m, doc, "docs/process/development-discipline.md")
-    assert result["added"] == ["10.LC"], result
+    assert result["added"] == ["10.90"], result
     with pg.cursor() as cur:
-        cur.execute("SELECT revision_status, is_current FROM rule_revisions WHERE rule_id = %s", ("10.LC",))
+        cur.execute("SELECT revision_status, is_current FROM rule_revisions WHERE rule_id = %s", ("10.90",))
         status, is_current = cur.fetchone()
     assert status == "current" and is_current is True
     _clean(pg, "TEST-LC"); pg.close()
@@ -1587,13 +1587,13 @@ def test_lifecycle_updated_supersedes_old_revision():
     pg = config.connect_writer(); pg.autocommit = False
     _clean(pg, "TEST-LC")
     m = _fresh(pg, Path(__file__).parent / "_tmp_lc_updated.sqlite")
-    builder.sync_document(pg, m, "### 10.LC Rule\n\nfirst statement.\n", "docs/process/development-discipline.md")
-    result = builder.sync_document(pg, m, "### 10.LC Rule\n\nSECOND statement, changed.\n", "docs/process/development-discipline.md")
-    assert result["updated"] == ["10.LC"], result
+    builder.sync_document(pg, m, "### 10.90 Rule\n\nfirst statement.\n", "docs/process/development-discipline.md")
+    result = builder.sync_document(pg, m, "### 10.90 Rule\n\nSECOND statement, changed.\n", "docs/process/development-discipline.md")
+    assert result["updated"] == ["10.90"], result
     with pg.cursor() as cur:
         cur.execute(
             "SELECT revision_status, is_current, statement FROM rule_revisions WHERE rule_id = %s ORDER BY created_at",
-            ("10.LC",),
+            ("10.90",),
         )
         rows = cur.fetchall()
     assert len(rows) == 2, f"expected old + new revision, got {rows}"
@@ -1606,12 +1606,12 @@ def test_lifecycle_unchanged_is_a_noop():
     pg = config.connect_writer(); pg.autocommit = False
     _clean(pg, "TEST-LC")
     m = _fresh(pg, Path(__file__).parent / "_tmp_lc_unchanged.sqlite")
-    doc = "### 10.LC Rule\n\nstable statement.\n"
+    doc = "### 10.90 Rule\n\nstable statement.\n"
     builder.sync_document(pg, m, doc, "docs/process/development-discipline.md")
     result = builder.sync_document(pg, m, doc, "docs/process/development-discipline.md")
-    assert result["unchanged"] == ["10.LC"], result
+    assert result["unchanged"] == ["10.90"], result
     with pg.cursor() as cur:
-        cur.execute("SELECT count(*) FROM rule_revisions WHERE rule_id = %s", ("10.LC",))
+        cur.execute("SELECT count(*) FROM rule_revisions WHERE rule_id = %s", ("10.90",))
         (n,) = cur.fetchone()
     assert n == 1, f"an unchanged sync must not create a second revision row, found {n}"
     _clean(pg, "TEST-LC"); pg.close()
@@ -1621,21 +1621,21 @@ def test_lifecycle_removed_from_document_is_retired_not_deleted():
     pg = config.connect_writer(); pg.autocommit = False
     _clean(pg, "TEST-LC")
     m = _fresh(pg, Path(__file__).parent / "_tmp_lc_retired.sqlite")
-    builder.sync_document(pg, m, "### 10.LC Rule\n\nwill be removed.\n", "docs/process/development-discipline.md")
-    result = builder.sync_document(pg, m, "### 10.OTHER Unrelated\n\nsomething else.\n", "docs/process/development-discipline.md")
-    assert result["retired"] == ["10.LC"], result
+    builder.sync_document(pg, m, "### 10.90 Rule\n\nwill be removed.\n", "docs/process/development-discipline.md")
+    result = builder.sync_document(pg, m, "### 10.91 Unrelated\n\nsomething else.\n", "docs/process/development-discipline.md")
+    assert result["retired"] == ["10.90"], result
     with pg.cursor() as cur:
         cur.execute(
             "SELECT revision_status, is_current, retired_at FROM rule_revisions WHERE rule_id = %s",
-            ("10.LC",),
+            ("10.90",),
         )
         status, is_current, retired_at = cur.fetchone()
     assert status == "retired" and is_current is False and retired_at is not None
     # the mirror holds current rules only — a retired rule_id must be gone from it
-    assert not [r for r in mirror.read_current(m) if r["rule_id"] == "10.LC"]
+    assert not [r for r in mirror.read_current(m) if r["rule_id"] == "10.90"]
     _clean(pg, "TEST-LC")
     with pg.cursor() as cur:
-        cur.execute("DELETE FROM rule_revisions WHERE rule_id = %s", ("10.OTHER",))
+        cur.execute("DELETE FROM rule_revisions WHERE rule_id = %s", ("10.91",))
     pg.commit()
     pg.close()
 ```
@@ -1644,7 +1644,7 @@ Add all four to the `if __name__` block.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-rules-builder.py`
+Run: `py -3 tests/test_rules_builder.py`
 Expected FAILURE MESSAGE: `AttributeError: module 'src.rules_store.builder' has no attribute 'sync_document'`
 
 - [ ] **Step 3: Write the minimal implementation**
@@ -1707,13 +1707,13 @@ def _retire(pg_conn, mirror_conn, rule_id: str) -> None:
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3 scripts/tests/test-rules-builder.py`
+Run: `py -3 tests/test_rules_builder.py`
 Expected: `PASS` (all five tests in the file, including Task 8's crash test)
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/rules_store/builder.py scripts/tests/test-rules-builder.py
+git add src/rules_store/builder.py tests/test_rules_builder.py
 git commit -m "feat(rules-store): sync_document — added/updated/unchanged/retired lifecycle"
 ```
 
@@ -1722,7 +1722,7 @@ git commit -m "feat(rules-store): sync_document — added/updated/unchanged/reti
 ## Task 10: Builder derives from disk, not git
 
 **Files:**
-- Modify: `scripts/tests/test-rules-builder.py`
+- Modify: `tests/test_rules_builder.py`
 
 **Interfaces:**
 - Consumes: `sync_document()` from Task 9.
@@ -1731,7 +1731,7 @@ git commit -m "feat(rules-store): sync_document — added/updated/unchanged/reti
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# append to scripts/tests/test-rules-builder.py
+# append to tests/test_rules_builder.py
 import subprocess
 import tempfile
 
@@ -1752,15 +1752,15 @@ def test_builder_reads_the_working_tree_not_head():
         _git(d, "config", "user.name", "Test")
         _git(d, "config", "commit.gpgsign", "false")
         doc_path = Path(d) / "development-discipline.md"
-        doc_path.write_text("### 10.DISK Rule\n\ncommitted statement.\n", encoding="utf-8")
+        doc_path.write_text("### 10.96 Rule\n\ncommitted statement.\n", encoding="utf-8")
         _git(d, "add", ".")
         _git(d, "commit", "-q", "-m", "initial")
 
         # Edit on disk WITHOUT committing or staging.
-        doc_path.write_text("### 10.DISK Rule\n\nUNCOMMITTED statement, changed on disk only.\n", encoding="utf-8")
+        doc_path.write_text("### 10.96 Rule\n\nUNCOMMITTED statement, changed on disk only.\n", encoding="utf-8")
 
         pg = config.connect_writer(); pg.autocommit = False
-        _clean(pg, "TEST-DISK".replace("TEST-DISK", "10.DISK"))
+        _clean(pg, "TEST-DISK".replace("TEST-DISK", "10.96"))
         m = _fresh(pg, Path(__file__).parent / "_tmp_disk_not_git.sqlite")
 
         # First sync (against the committed version) happens implicitly never — this is a fresh
@@ -1768,22 +1768,22 @@ def test_builder_reads_the_working_tree_not_head():
         # off disk_path, proving the builder never consults git at all.
         text_from_disk = doc_path.read_text(encoding="utf-8")
         result = builder.sync_document(pg, m, text_from_disk, "development-discipline.md")
-        assert result["added"] == ["10.DISK"]
+        assert result["added"] == ["10.96"]
         with pg.cursor() as cur:
-            cur.execute("SELECT statement FROM rule_revisions WHERE rule_id = %s AND is_current", ("10.DISK",))
+            cur.execute("SELECT statement FROM rule_revisions WHERE rule_id = %s AND is_current", ("10.96",))
             (statement,) = cur.fetchone()
         assert "UNCOMMITTED" in statement, (
             f"expected the uncommitted working-tree text, got: {statement!r} — "
             "the builder must read the file directly, never `git show HEAD:...`"
         )
-        _clean(pg, "10.DISK"); pg.close()
+        _clean(pg, "10.96"); pg.close()
 ```
 
 Add to the `if __name__` block.
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-rules-builder.py`
+Run: `py -3 tests/test_rules_builder.py`
 Expected: this test is written against the CURRENT (correct) implementation, so it should already
 pass — `sync_document` takes `text: str` as a parameter and never touches git, by construction.
 **RED here is deliberately obtained by TEMPORARILY breaking the implementation to prove the test can
@@ -1795,13 +1795,13 @@ Then revert that temporary edit.
 
 - [ ] **Step 3: Confirm GREEN with the real (disk-reading) implementation**
 
-Run: `py -3 scripts/tests/test-rules-builder.py`
+Run: `py -3 tests/test_rules_builder.py`
 Expected: `PASS`
 
 - [ ] **Step 4: Commit**
 
 ```bash
-git add scripts/tests/test-rules-builder.py
+git add tests/test_rules_builder.py
 git commit -m "test(rules-store): prove the builder derives from disk, never git HEAD"
 ```
 
@@ -1823,19 +1823,19 @@ git commit -m "test(rules-store): prove the builder derives from disk, never git
 - [ ] **Step 1: Write the failing test**
 
 ```python
-# scripts/tests/test-build-rules-store-cli.py
+# tests/test_build_rules_store_cli.py
 import subprocess
 import sys
 import tempfile
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent
 
 
 def test_cli_reports_lifecycle_counts():
     with tempfile.TemporaryDirectory() as d:
         doc = Path(d) / "fixture.md"
-        doc.write_text("### 10.CLI CLI test rule\n\nfrom the CLI.\n", encoding="utf-8")
+        doc.write_text("### 10.97 CLI test rule\n\nfrom the CLI.\n", encoding="utf-8")
         mirror_path = Path(d) / "rules.sqlite"
         r = subprocess.run(
             [sys.executable, str(ROOT / "scripts" / "build_rules_store.py"),
@@ -1851,7 +1851,7 @@ def test_cli_reports_lifecycle_counts():
         from src.rules_store import config
         pg = config.connect_writer(); pg.autocommit = True
         with pg.cursor() as cur:
-            cur.execute("DELETE FROM rule_revisions WHERE rule_id = %s", ("10.CLI",))
+            cur.execute("DELETE FROM rule_revisions WHERE rule_id = %s", ("10.97",))
         pg.close()
 
 
@@ -1862,7 +1862,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `py -3 scripts/tests/test-build-rules-store-cli.py`
+Run: `py -3 tests/test_build_rules_store_cli.py`
 Expected FAILURE MESSAGE: `FileNotFoundError` / non-zero exit — `scripts/build_rules_store.py` does not exist yet.
 
 - [ ] **Step 3: Write `builder.rebuild_mirror_from_postgres` and the CLI**
@@ -1955,7 +1955,7 @@ if __name__ == "__main__":
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `py -3 scripts/tests/test-build-rules-store-cli.py`
+Run: `py -3 tests/test_build_rules_store_cli.py`
 Expected: `PASS`
 
 - [ ] **Step 5: Run it against the real document once, for real**
@@ -1966,7 +1966,7 @@ Expected: `added: <N> · updated: 0 · unchanged: 0 · retired: 0` with `<N>` ma
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/rules_store/builder.py scripts/build_rules_store.py scripts/tests/test-build-rules-store-cli.py rules.sqlite
+git add src/rules_store/builder.py scripts/build_rules_store.py tests/test_build_rules_store_cli.py rules.sqlite
 git commit -m "feat(rules-store): build_rules_store.py CLI; first real sync of development-discipline.md"
 ```
 
@@ -2307,11 +2307,11 @@ process.exit(0);
 
 ```bash
 cp docs/process/development-discipline.md /tmp/dd-backup.md
-printf '\n### 10.X Rule\n\nstatement one.\n\n### 10.X Rule again\n\nstatement two.\n' >> docs/process/development-discipline.md
+printf '\n### 10.98 Rule\n\nstatement one.\n\n### 10.98 Rule again\n\nstatement two.\n' >> docs/process/development-discipline.md
 node scripts/check-rules-complete.mjs
 ```
-Expected: the builder's `extract_rules()` raises `ValueError: rule_id '10.X' claimed by more than one
-shape ...`, so `build_rules_store.py` prints `FAILED: ValueError: rule_id '10.X' claimed by more than
+Expected: the builder's `extract_rules()` raises `ValueError: rule_id '10.98' claimed by more than one
+shape ...`, so `build_rules_store.py` prints `FAILED: ValueError: rule_id '10.98' claimed by more than
 one shape...` and exits 1; the gate then prints `FAIL: build_rules_store.py did not complete — see FAILED
 line above.`, exit 1.
 Restore: `cp /tmp/dd-backup.md docs/process/development-discipline.md`
