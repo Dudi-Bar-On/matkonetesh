@@ -1841,6 +1841,29 @@ to promise that its safety citations do not.**
 rests on what another file says, the quoted words must appear in that file verbatim — and if you
 find yourself adding a clause to make the quote fit the argument, the argument is what is wrong.
 
+**L64 · "The geniza has it" is not "git has it" — and I read one as the other (2026-08-06).**
+
+L62 and L63 were written, quoted in four commit messages, cited in dispatches to subagents, and
+verified findable in the geniza by direct query. **Neither had ever been committed.** They existed
+only in the working tree for most of a day.
+
+**How it hid.** `check-geniza-fresh` ingests from DISK, deliberately — that is exactly what lets it
+repair drift in a file that has changed but not been committed, and it did so repeatedly today,
+reporting `stale: 0` each time. So a document can be fully present in the knowledge store and absent
+from the repository simultaneously, and every signal I checked said "present".
+
+**What caught it.** A test in the rules extractor that derives its expected lesson population FROM
+the document at test time — written that way so it could not rot when L64 was added. It passed
+locally against 63 lessons and failed in CI against 61, because the two checkouts were not the same
+document. **A hardcoded expected list would have passed in both places and reported nothing.** The
+test was not broken; it was doing precisely its job.
+
+**The rule.** Presence in a derived store is never evidence of presence in the source. When the
+question is "did this land", the answer comes from `git show HEAD:<path>` or from CI — never from a
+projection that was built by reading the disk. And the corollary, which is the more useful half:
+**prefer a test that derives its expectation from the artefact over one that pins a number**, because
+only the first can notice that your artefact and everyone else's have diverged.
+
 **Adopted win — attack the rule, do not assert it.** Every real defect in this arc was found by a
 test that tried to BREAK a guarantee rather than confirm it. `mk_app` was asked to `CREATE TABLE`
 and succeeded, revealing a grant that had had no user for weeks — a test that merely read the
