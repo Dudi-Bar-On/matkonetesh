@@ -219,8 +219,17 @@ retrieval.get_entity_provenance(canonical_id)                    # ומה המק
 ‏**‏`find_impact`/`find_dependency_path` יחזירו ריק** עד שירוץ חילוץ (`scripts/extract_graph.py`);
 כל עובדה שמודל מחלץ נכתבת `proposed` ואינה מוחזרת עד שאדם מקדם אותה.
 
-הפעלה: `docs/infra/deliverables-2026-08-05.md` §3. **הגניזה לא רצה ⇒ אין נתיב חלופי** —
-‏`docker compose up -d` ב-`infra/` הוא התנאי, ו-grep הוא ה-fallback המוצהר.
+**⚠️ ‏6.8.26 — ‏PostgreSQL עבר מ-Docker להתקנה מקומית.** ‏`postgresql-x64-18` הוא **שירות Windows**
+בהפעלה אוטומטית על **פורט 5432**, עם `pgvector 0.8.6` שהודר מהמקור מול MSVC (אותה גרסה בדיוק
+כמו התמונה שהוחלפה). ‏**‏Neo4j עדיין בקונטיינר** — הוא מחזיק 7,941 צמתים ואין נתיב בנייה-מחדש
+המוני, ולכן הזזתו תמתין לסיום החילוץ. הסיבה למעבר: המכונה אתחלה את עצמה ב-02:27 ולקחה איתה את
+‏Docker, ש-WSL אינו מעלה לבד — ‏17 שעות עבודה על הרצפה. שירות Windows עולה באתחול בלי איש.
+‏**הנתונים לא נגעו:** ‏`pg_dump` מלא + התפקידים ב-`backups/`, ה-volumes של Docker שלמים,
+ושמונה מדדים אומתו זהים משני הצדדים (‏853 מסמכים · 877 גרסאות · 15,192 chunks · 1024 ממדים).
+
+הפעלה: `docs/infra/deliverables-2026-08-05.md` §3. ‏**‏Postgres עולה לבד; ‏Neo4j עדיין דורש
+`docker compose up -d` ב-`infra/`** — ו-`scripts/run-extraction.ps1` עושה זאת בעצמו (כולל
+‏`wsl -u root service docker start`, כי ‏`sudo` נתקע בהמתנה לסיסמה). ‏grep הוא ה-fallback המוצהר.
 A grep finds a string in one file; the store returns the **section** that contains it, with its
 heading path and the document it came from — which is usually what the claim is actually about.
 **But a hit is a lead, not a verdict.** Read the source before asserting it. This does not repeal L16.
