@@ -33,8 +33,8 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-MIGRATIONS = ROOT / "infra" / "postgres" / "migrations"
-ENV_FILE = ROOT / "infra" / ".env"
+DEFAULT_MIGRATIONS = ROOT / "infra" / "postgres" / "migrations"
+DEFAULT_ENV_FILE = ROOT / "infra" / ".env"
 
 LEDGER = """
 CREATE TABLE IF NOT EXISTS schema_migrations (
@@ -45,51 +45,76 @@ CREATE TABLE IF NOT EXISTS schema_migrations (
 """
 
 
-def _connection_params() -> dict[str, str]:
-    """Read connection details from infra/.env. Never from a literal in this file."""
+def _connection_params(env_file: Path) -> dict[str, str]:
+    """Read connection details from the given env file. Never from a literal in this file.
+
+    Both env layouts (infra/.env's POSTGRES_* and infra/rules-db/.env's RULES_POSTGRES_*) are
+    accepted by trying the RULES_-prefixed name first, falling back to the bare name — so this
+    one function serves both callers without a --env-prefix flag to keep synchronised.
+
+    The superuser password is a special case, and is NOT covered by the generic pick() below.
+    infra/rules-db/.env deliberately carries no superuser password of its own (see its
+    .env.example) — the native Postgres service's "postgres" role's password lives only in
+    infra/.env's POSTGRES_SUPERPASSWORD, the geniza's own superuser credential (same native
+    service hosts both databases). A blanket merge of infra/.env into env would also pull in
+    POSTGRES_SUPERUSER_PASSWORD (mk_admin's, a DIFFERENT role) and could pair the wrong password
+    with the right username or vice versa, so the fallback is this one named key, read only when
+    env_file's own file has neither RULES_SUPERUSER_PASSWORD nor POSTGRES_SUPERUSER_PASSWORD.
+    """
     from dotenv import dotenv_values
 
-    if not ENV_FILE.exists():
-        raise SystemExit(f"{ENV_FILE} not found — copy infra/.env.example and fill it in.")
-    env = dotenv_values(ENV_FILE)
-    missing = [k for k in ("POSTGRES_PORT", "POSTGRES_DB", "POSTGRES_SUPERUSER", "POSTGRES_SUPERUSER_PASSWORD") if not env.get(k)]
+    if not env_file.exists():
+        raise SystemExit(f"{env_file} not found — copy its .env.example and fill it in.")
+    env = dotenv_values(env_file)
+
+    def pick(*names: str) -> str | None:
+        for n in names:
+            if env.get(n):
+                return str(env[n])
+        return None
+
+    port = pick("RULES_POSTGRES_PORT", "POSTGRES_PORT")
+    db = pick("RULES_POSTGRES_DB", "POSTGRES_DB")
+    user = pick("RULES_SUPERUSER", "POSTGRES_SUPERUSER")
+    password = pick("RULES_SUPERUSER_PASSWORD", "POSTGRES_SUPERUSER_PASSWORD")
+    if password is None and env_file != DEFAULT_ENV_FILE and DEFAULT_ENV_FILE.exists():
+        password = dotenv_values(DEFAULT_ENV_FILE).get("POSTGRES_SUPERPASSWORD")
+    missing = [n for n, v in (("PORT", port), ("DB", db), ("SUPERUSER", user), ("SUPERUSER_PASSWORD", password)) if not v]
     if missing:
-        raise SystemExit(f"infra/.env is missing: {', '.join(missing)}")
-    return {
-        "host": "127.0.0.1",
-        "port": str(env["POSTGRES_PORT"]),
-        "dbname": str(env["POSTGRES_DB"]),
-        "user": str(env["POSTGRES_SUPERUSER"]),
-        "password": str(env["POSTGRES_SUPERUSER_PASSWORD"]),
-    }
+        raise SystemExit(f"{env_file} is missing: {', '.join(missing)}")
+    return {"host": "127.0.0.1", "port": port, "dbname": db, "user": user, "password": password}
 
 
-def discover() -> list[tuple[str, Path, str]]:
+def discover(migrations_dir: Path) -> list[tuple[str, Path, str]]:
     """Every .sql file, ordered by filename, with its checksum.
 
     Ordering is by NAME, which is why the names are zero-padded. Ordering by mtime would make
     the sequence depend on which machine checked the repo out.
     """
-    if not MIGRATIONS.is_dir():
-        raise SystemExit(f"{MIGRATIONS} not found")
+    if not migrations_dir.is_dir():
+        raise SystemExit(f"{migrations_dir} not found")
     out = []
-    for path in sorted(MIGRATIONS.glob("*.sql")):
+    for path in sorted(migrations_dir.glob("*.sql")):
         body = path.read_text(encoding="utf-8")
         out.append((path.stem, path, hashlib.sha256(body.encode("utf-8")).hexdigest()))
     if not out:
-        raise SystemExit(f"no .sql files in {MIGRATIONS}")
+        raise SystemExit(f"no .sql files in {migrations_dir}")
     return out
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--status", action="store_true", help="report what is applied and pending; change nothing")
+    ap.add_argument("--migrations-dir", type=Path, default=DEFAULT_MIGRATIONS,
+                     help="directory of .sql migrations (default: infra/postgres/migrations)")
+    ap.add_argument("--env-file", type=Path, default=DEFAULT_ENV_FILE,
+                     help="env file with connection details (default: infra/.env)")
     args = ap.parse_args()
 
     import psycopg2
 
-    found = discover()
-    conn = psycopg2.connect(**_connection_params())
+    found = discover(args.migrations_dir)
+    conn = psycopg2.connect(**_connection_params(args.env_file))
     conn.autocommit = False
     try:
         with conn.cursor() as cur:
