@@ -168,20 +168,37 @@ function Get-SelfTestResults {
     return @($r1, $r2, $r3, $r4, $r5)
 }
 
-$results = if ($SelfTest) { Get-SelfTestResults } else {
+$results = @(if ($SelfTest) { Get-SelfTestResults } else {
     # === REAL COMPONENTS === (Tasks 16-21 append @() entries here, in severity-appropriate order)
     $hooksResult = Invoke-ComponentCheck -Name 'hooks' -Severity 'block' `
         -Detect {
+            # Not just "is core.hooksPath wired and the files present" (a proxy the pre-commit file
+            # could satisfy while gutted) -- also that pre-commit still contains a live (non-comment)
+            # call to the meta gate. Keep this specific and simple: it proves the call line is still
+            # there, not that the gate runs correctly or produces the right verdict.
+            $preCommitPath = Join-Path $RepoRoot '.githooks\pre-commit'
             $current = (git -C $RepoRoot config --get core.hooksPath 2>$null)
             $current -eq '.githooks' -and
-                (Test-Path (Join-Path $RepoRoot '.githooks\pre-commit')) -and
-                (Test-Path (Join-Path $RepoRoot '.githooks\commit-msg'))
+                (Test-Path $preCommitPath) -and
+                (Test-Path (Join-Path $RepoRoot '.githooks\commit-msg')) -and
+                ((Get-Content $preCommitPath -Raw) -match '(?m)^\s*node\s+scripts/check-meta\.mjs\b')
         } `
         -Recover { git -C $RepoRoot config core.hooksPath .githooks } `
-        -Verify { (git -C $RepoRoot config --get core.hooksPath 2>$null) -eq '.githooks' }
+        -Verify {
+            # Recover only fixes core.hooksPath (git config) -- it cannot rewrite a gutted hook
+            # file's content, and it must not claim to. Mirror Detect's full check here: if the
+            # meta-gate call line is still missing after Recover ran, Verify must keep saying NOT
+            # OK so the component honestly reports "recovery attempted, still down" and BLOCKs,
+            # rather than a false "recovered" that only checked the one thing Recover *could* fix.
+            $preCommitPath = Join-Path $RepoRoot '.githooks\pre-commit'
+            (git -C $RepoRoot config --get core.hooksPath 2>$null) -eq '.githooks' -and
+                (Test-Path $preCommitPath) -and
+                (Test-Path (Join-Path $RepoRoot '.githooks\commit-msg')) -and
+                ((Get-Content $preCommitPath -Raw) -match '(?m)^\s*node\s+scripts/check-meta\.mjs\b')
+        }
 
     @($hooksResult)
-}
+})
 
 foreach ($r in $results) {
     if ($r.Recovered) {

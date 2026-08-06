@@ -73,5 +73,23 @@ check('recover-throws-but-verifies-ok: Detail still carries the Recover error on
   typeof byName['recover-throws-but-verifies-ok']?.Detail === 'string'
     && byName['recover-throws-but-verifies-ok'].Detail.includes('Recover threw: boom in recover'));
 
+// Real-path check (fix round 1): the self-test path returns 5 objects and is genuinely an array on
+// its own, so it never exercised the real (non -SelfTest) path, where `Invoke-ComponentCheck`
+// currently returns exactly ONE component ('hooks'). A single [pscustomobject] is not a collection
+// in Windows PowerShell 5.1 -- `.Count` on a bare object returns nothing, not 1 -- so the summary
+// line's "N component(s) checked" silently loses its number the moment exactly one real component
+// is registered. This self-heals the instant a second real component is added (Task 17), which is
+// exactly the kind of latent bug that must be caught by a test that runs the real path, not just
+// -SelfTest.
+const rReal = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', SCRIPT], {
+  encoding: 'utf8', cwd: ROOT,
+});
+const realLines = (rReal.stdout || '').trim().split('\n').filter((l) => l.trim().startsWith('{'));
+const realCountMatch = (rReal.stdout || '').match(/(\d+) component\(s\) checked/);
+check('real path: watchman.ps1 stdout reports a component-checked count (not blank)',
+  realCountMatch !== null);
+check(`real path: summary count matches parsed JSON row count (summary says ${realCountMatch ? realCountMatch[1] : 'MISSING'}, parsed ${realLines.length} row(s))`,
+  realCountMatch !== null && Number(realCountMatch[1]) === realLines.length && realLines.length >= 1);
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);
