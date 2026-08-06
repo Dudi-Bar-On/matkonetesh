@@ -39,19 +39,45 @@ function Invoke-ComponentCheck {
         [int]$MaxRecoverWaitSeconds = 60
     )
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
-    $initialOk = & $Detect
+
+    $detectError = $null
+    try {
+        # Select-Object -Last 1: a Detect block that leaks stdout (e.g. an un-suppressed
+        # subcommand) must not turn its leaked lines into part of the answer — only the last
+        # pipeline value counts, and [bool] coerces it so a stray non-boolean type can never be
+        # stored as-is in InitialOk.
+        $initialOk = [bool](& $Detect | Select-Object -Last 1)
+    } catch {
+        $initialOk = $false
+        $detectError = $_.Exception.Message
+    }
+
     $recovered = $false
     $finalOk = $initialOk
-    $detail = if ($initialOk) { 'already ok' } else { 'down at detect' }
+    $detail = if ($initialOk) { 'already ok' } elseif ($detectError) { "detect threw: $detectError" } else { 'down at detect' }
 
     if (-not $initialOk) {
-        & $Recover
+        $recoverError = $null
+        try { & $Recover | Out-Null } catch { $recoverError = $_.Exception.Message }
+
+        $verifyError = $null
         $deadline = (Get-Date).AddSeconds($MaxRecoverWaitSeconds)
         while ((Get-Date) -lt $deadline) {
-            if (& $Verify) { $finalOk = $true; $recovered = $true; break }
+            $verifyOk = $false
+            try { $verifyOk = [bool](& $Verify | Select-Object -Last 1) } catch { $verifyError = $_.Exception.Message; $verifyOk = $false }
+            if ($verifyOk) { $finalOk = $true; $recovered = $true; break }
             Start-Sleep -Milliseconds 500
         }
-        $detail = if ($recovered) { "recovered after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s" } else { "recovery attempted, still down after ${MaxRecoverWaitSeconds}s" }
+        if ($recovered) {
+            $detail = "recovered after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s"
+        } else {
+            $reasons = @()
+            if ($detectError) { $reasons += "detect threw: $detectError" }
+            if ($recoverError) { $reasons += "recover threw: $recoverError" }
+            if ($verifyError) { $reasons += "verify threw: $verifyError" }
+            $base = "recovery attempted, still down after ${MaxRecoverWaitSeconds}s"
+            $detail = if ($reasons.Count) { "$base ($($reasons -join '; '))" } else { $base }
+        }
     }
     $sw.Stop()
 
@@ -108,10 +134,20 @@ foreach ($r in $results) {
 }
 Write-WatchmanLog $results
 
-$blocked = $results | Where-Object { $_.Severity -eq 'block' -and -not $_.FinalOk }
-if ($blocked) {
-    Write-Output "`nWATCHMAN BLOCK: $($blocked.Name -join ', ') did not recover."
+$checkedCount = $results.Count
+if ($checkedCount -eq 0) {
+    # A component-free run must never read like a healthy one — this is the exact shape the
+    # pre-flight audit caught elsewhere in this arc (a bare-assignment bug that silently checked
+    # zero components and printed a reassuring OK). Distinct wording, and a non-zero exit: "ran
+    # clean" and "ran nothing" must never look the same on a screen someone skims.
+    Write-Output "`nWATCHMAN: 0 COMPONENTS CHECKED - THIS IS NOT A HEALTH CONFIRMATION. No infrastructure was verified in this run."
     exit 1
 }
-Write-Output "`nWATCHMAN OK (warn-severity failures, if any, are reported above but do not block)."
+
+$blocked = $results | Where-Object { $_.Severity -eq 'block' -and -not $_.FinalOk }
+if ($blocked) {
+    Write-Output "`nWATCHMAN BLOCK: $($blocked.Name -join ', ') did not recover ($checkedCount component(s) checked)."
+    exit 1
+}
+Write-Output "`nWATCHMAN OK - $checkedCount component(s) checked, all healthy or recovered (warn-severity failures, if any, are reported above but do not block)."
 exit 0

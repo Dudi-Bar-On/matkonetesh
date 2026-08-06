@@ -28,6 +28,15 @@ const lines = (r.stdout || '').trim().split('\n').filter((l) => l.trim().startsW
 const rows = lines.map((l) => JSON.parse(l));
 const byName = Object.fromEntries(rows.map((row) => [row.Name, row]));
 
+// L66: a filter that only accepts well-shaped lines can silently shrink a count instead of
+// failing loudly — that is exactly how the pipeline-pollution bug went unnoticed (3 rows parsed
+// instead of 5, no assertion ever said "expected 3"). Pin the parsed count to the number of
+// components self-test registers, so an unparseable/missing/malformed row fails this check
+// directly instead of only failing indirectly via a later per-name lookup.
+const EXPECTED_COMPONENT_COUNT = 3;
+check(`parsed exactly ${EXPECTED_COMPONENT_COUNT} JSON component row(s) (got ${rows.length})`,
+  rows.length === EXPECTED_COMPONENT_COUNT);
+
 check('always-ok: InitialOk true, Recovered false, FinalOk true',
   byName['always-ok']?.InitialOk === true && byName['always-ok']?.Recovered === false && byName['always-ok']?.FinalOk === true);
 check('down-then-recovers: InitialOk false, Recovered true, FinalOk true',
