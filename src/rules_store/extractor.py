@@ -177,33 +177,91 @@ def extract_dod_rules(text: str, source_path: str) -> list[RuleRecord]:
 # extract_section_rules SKIP these, so the two extractors agree on exactly one owner per heading).
 # ---------------------------------------------------------------------------------------------
 
+# The heading token allows an optional RANGE suffix ("H9–H12") — some headings name several
+# rulings at once (fix round 1, 2026-08-06 — review finding, Critical: the old pattern captured
+# only the FIRST H-number in the heading and treated the rest of the line, including "H12", as
+# that one ruling's title, so H10/H11/H12 vanished from the store entirely and H9's title read
+# "H12 — task summaries..."). A range heading is a CONTAINER, not a ruling of its own — see below.
 _H_HEADING_RE = re.compile(
-    r"^#{2,4}\s+\d+(?:\.\d+)?[a-z]?\.\s+(H\d+[a-z]?)\s*[–—-]\s*(.+?)\s*$", re.MULTILINE
+    r"^#{2,4}\s+\d+(?:\.\d+)?[a-z]?\.\s+(H\d+[a-z]?(?:[–—-]H\d+[a-z]?)?)\s*[–—-]\s*(.+?)\s*$",
+    re.MULTILINE,
 )
+
+# A per-item bullet inside a range heading's body: "- **H9 — mandatory task-summary table.** ...".
+# Only 4 lines in the whole document match this shape today (all inside the H9–H12 body), so its
+# presence in a heading's body is itself the signal that the heading is a range container.
+_H_BULLET_RE = re.compile(r"^- \*\*(H\d+[a-z]?)\s*[–—-]\s*", re.MULTILINE)
+
+# Any markdown heading of the levels this module recognises — used to find where an H-ruling's
+# (or a range container's) body ends: at the next heading line, full stop.
+_ANY_HEADING_RE = re.compile(r"^#{2,4}\s+", re.MULTILINE)
+
+
+def _h_body_span(text: str, body_start: int, next_top_level_start: int) -> int:
+    """The end offset of a heading's body: bounded by the next H_HEADING_RE match (if any) AND
+    by the next markdown heading of any kind — whichever comes first."""
+    body_end = next_top_level_start
+    next_heading = _ANY_HEADING_RE.search(text, body_start)
+    if next_heading:
+        body_end = min(body_end, next_heading.start())
+    return body_end
 
 
 def extract_h_rulings(text: str, source_path: str) -> list[RuleRecord]:
     matches = list(_H_HEADING_RE.finditer(text))
     out: list[RuleRecord] = []
     for i, m in enumerate(matches):
-        h_id, title = m.group(1), m.group(2)
+        h_token, heading_title = m.group(1), m.group(2)
         body_start = m.end()
-        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
-        # Bounded to the next heading OF ANY of the three families this module recognises, found
-        # via the generic markdown heading marker '#{2,4} ' — an H-ruling's body ends at the next
-        # heading line, full stop.
-        next_heading = re.search(r"^#{2,4}\s+", text[body_start:], re.MULTILINE)
-        if next_heading:
-            body_end = min(body_end, body_start + next_heading.start())
-        body = text[body_start:body_end].strip()
-        paragraph = body.split("\n\n", 1)[0].strip()
+        next_top = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body_end = _h_body_span(text, body_start, next_top)
+        body = text[body_start:body_end]
+
+        bullets = list(_H_BULLET_RE.finditer(body))
+        if bullets:
+            # A range heading (e.g. "H9–H12 — ...") is a container: emit one record PER bullet,
+            # each parsed independently so a bullet's own body cannot bleed into its neighbour's —
+            # bounded by the NEXT bullet's own start offset, never by a lazy pattern searching
+            # forward for a convenient-looking closing marker (that lazy search is exactly what
+            # made the old inline-lesson parser swallow multiple lessons into one record; see
+            # extract_lessons below for the identical fix applied there).
+            for j, bm in enumerate(bullets):
+                h_id = bm.group(1)
+                title_start = bm.end()
+                close = body.find("**", title_start)
+                if close == -1:
+                    title = body[title_start:].split("\n", 1)[0].strip()
+                    rest_start = len(body)
+                else:
+                    title = body[title_start:close].strip()
+                    rest_start = close + 2
+                next_bullet_start = bullets[j + 1].start() if j + 1 < len(bullets) else len(body)
+                statement = body[rest_start:next_bullet_start].strip()
+                if not statement:
+                    statement = title
+                out.append(RuleRecord(
+                    rule_id=h_id,
+                    section=h_id,
+                    title_he=title,
+                    statement=statement,
+                    source_heading=f"{h_id} — {title} (bullet under {h_token} — {heading_title})",
+                    content_hash=_hash(f"{title}\n{statement}"),
+                ))
+            continue
+
+        # A single-ruling heading (no bullets in its body): capture the FULL body, verbatim — not
+        # merely its first paragraph. The identical first-paragraph-only bug already cost this arc
+        # a Critical finding once (extract_section_rules, Task 5); H8's own body here (a
+        # blockquoted ruling that follows an intro sentence) reproduced it a second time until this
+        # fix, so the whole body is now kept, matching extract_section_rules' own fix.
+        statement = body.strip()
         out.append(RuleRecord(
-            rule_id=h_id,
-            section=h_id,
-            title_he=title,
-            statement=paragraph if paragraph else title,
-            source_heading=f"{h_id} — {title}",
-            content_hash=_hash(f"{title}\n{paragraph}"),
+            rule_id=h_token,
+            section=h_token,
+            title_he=heading_title,
+            statement=statement if statement else heading_title,
+            source_heading=f"{h_token} — {heading_title}",
+            content_hash=_hash(f"{heading_title}\n{statement}"),
         ))
     return out
 
@@ -211,31 +269,76 @@ def extract_h_rulings(text: str, source_path: str) -> list[RuleRecord]:
 # ---------------------------------------------------------------------------------------------
 # Task 7: the Lessons log — both the summary table's rows (L1..L13, terse) and the later inline
 # "**Ln · Title (date).**" blocks (L14 onward, prose with a title + elaborating paragraph).
+#
+# Fix round 1 (2026-08-06 — review finding, Critical, x2): both original regexes crossed record
+# boundaries.
+#   - The table pattern let `\s*` (which matches newlines) carry group 4's lazy `.+?` from one row
+#     into the NEXT row's cells whenever a row had fewer than 4 columns (L12/L13 in the live
+#     document are malformed — 3 cells, not 4) — L13 vanished and L12's own cells were mislabelled.
+#     Fixed below by matching ONE LINE AT A TIME (`.` never crosses a newline) and splitting that
+#     line's own cells in Python, so a short row is detected and handled per-row, never bled into
+#     its neighbour.
+#   - The inline pattern's title capture demanded a newline immediately after the closing `**`;
+#     in the real document most lessons continue prose on the SAME line, so that boundary never
+#     matched and the lazy title capture ran on past several other lessons' own markers (L18 ate
+#     L19+L20; L21 ate L22; L32 ate L33; L36 ate L37+L38+L39) before finding one that happened to
+#     satisfy it. Fixed below by finding each `**Ln ·` marker's position directly, then finding its
+#     title's closing `**` with a plain forward search (no backtracking to hunt for a "convenient"
+#     later occurrence), then bounding the body by the NEXT marker's OWN position — a boundary that
+#     cannot run away because it does not depend on matching anything past it.
 # ---------------------------------------------------------------------------------------------
 
-_LESSON_TABLE_ROW_RE = re.compile(
-    r"^\|\s*(L\d+)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*$", re.MULTILINE
-)
-_LESSON_INLINE_RE = re.compile(
-    r"^\*\*(L\d+)\s*·\s*(.+?)\*\*\s*\n(.+?)(?=\n\*\*L\d+\s*·|\n##|\Z)", re.MULTILINE | re.DOTALL
-)
+_LESSON_TABLE_ROW_RE = re.compile(r"^\|\s*(L\d+)\s*\|(.*)\|\s*$", re.MULTILINE)
+_LESSON_MARKER_RE = re.compile(r"^\*\*(L\d+)\s*·\s*", re.MULTILINE)
 
 
 def extract_lessons(text: str, source_path: str) -> list[RuleRecord]:
     out: list[RuleRecord] = []
+
+    # Table rows — matched one line at a time (the trailing `.*` cannot cross a newline), then the
+    # captured middle is split on '|' in Python so a row with fewer than 3 cells (malformed:
+    # Lesson/Root-cause/Gate collapsed to fewer columns) is still emitted as its OWN record with
+    # whatever cells it actually has, rather than bleeding into the next row's match.
     for m in _LESSON_TABLE_ROW_RE.finditer(text):
-        l_id, lesson, root_cause, gate = m.group(1), m.group(2), m.group(3), m.group(4)
-        statement = f"{lesson} — root cause: {root_cause} — gate: {gate}"
+        l_id = m.group(1)
+        cells = [c.strip() for c in m.group(2).split("|")]
+        if len(cells) >= 3:
+            lesson, root_cause, gate = cells[0], cells[1], "; ".join(cells[2:])
+            statement = f"{lesson} — root cause: {root_cause} — gate: {gate}"
+        elif len(cells) == 2:
+            # Malformed row (L12/L13 in the live document): only 2 cells present after the id —
+            # cope rather than merge into a neighbour. root_cause is genuinely absent, not guessed.
+            lesson, gate = cells[0], cells[1]
+            statement = f"{lesson} — gate: {gate} (row malformed in source: only 2 of 3 cells present)"
+        else:
+            lesson = cells[0] if cells else ""
+            statement = f"{lesson} (row malformed in source: only {len(cells)} cell(s) present)"
         out.append(RuleRecord(
-            rule_id=l_id, section="Lessons", title_he=lesson, statement=statement,
+            rule_id=l_id, section="Lessons", title_he=cells[0] if cells else l_id, statement=statement,
             source_heading=f"Lessons log table row {l_id}", content_hash=_hash(statement),
         ))
-    for m in _LESSON_INLINE_RE.finditer(text):
-        l_id, title, body = m.group(1), m.group(2).strip(), m.group(3).strip()
-        paragraph = body.split("\n\n", 1)[0].strip()
+
+    # Inline "**Ln · Title.**" blocks — per-marker, not per-regex-sweep (see fix note above).
+    markers = list(_LESSON_MARKER_RE.finditer(text))
+    for i, mk in enumerate(markers):
+        l_id = mk.group(1)
+        title_start = mk.end()
+        close = text.find("**", title_start)
+        next_marker_start = markers[i + 1].start() if i + 1 < len(markers) else len(text)
+        if close == -1 or close > next_marker_start:
+            # No closing "**" before the next lesson marker at all — cope, don't guess: take the
+            # rest of the opening line as the title and leave the body empty rather than reaching
+            # into the next record.
+            title = text[title_start:next_marker_start].split("\n", 1)[0].strip()
+            body_start = next_marker_start
+        else:
+            title = text[title_start:close].strip()
+            body_start = close + 2
+        body_end = _h_body_span(text, body_start, next_marker_start)
+        body = text[body_start:body_end].strip()
         out.append(RuleRecord(
-            rule_id=l_id, section="Lessons", title_he=title, statement=paragraph,
-            source_heading=f"Lessons log — {l_id} · {title}", content_hash=_hash(f"{title}\n{paragraph}"),
+            rule_id=l_id, section="Lessons", title_he=title, statement=body if body else title,
+            source_heading=f"Lessons log — {l_id} · {title}", content_hash=_hash(f"{title}\n{body}"),
         ))
     return out
 

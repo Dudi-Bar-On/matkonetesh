@@ -8,6 +8,7 @@ matters.
 """
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from src.rules_store.extractor import (
@@ -360,3 +361,145 @@ def test_real_document_extract_rules_merges_all_shapes_without_raising():
     assert "L1" in ids
     assert "L63" in ids
     assert "DoD-10" in ids
+
+
+# ---------------------------------------------------------------------------------------------
+# Fix round 1 (2026-08-06 — review finding, Critical x2): both `extract_lessons` and
+# `extract_h_rulings` lost/merged real records. Regression fixtures below reproduce the EXACT
+# failing shapes (same-line title continuation; a range heading with per-item bullets), and the
+# round-trip tests derive the expected population FROM THE DOCUMENT at test time — via a regex
+# deliberately written independently of the extractor's own — rather than hardcoding today's ids,
+# so the test does not rot the moment a future L64/H16 is written but still catches drops/merges.
+# ---------------------------------------------------------------------------------------------
+
+SAME_LINE_CONTINUATION_LESSON_FIXTURE = """\
+**L18 · Never kill a suite mid-flight — the respawning zombie server (2026-07-23).** Repeated
+kill-and-restart of suite runs left a zombie server, wedging the port for every later run.
+
+**L19 · A "fix" whose mechanism never fires is a placebo (2026-07-23).** A timeout above the hard
+ceiling is dead config; the clean runs were lucky, not proof.
+
+**L20 · Verify the measurement before trusting the measurement (2026-07-23).** A probe wrapper that
+does not exist on the platform makes every "run" execute nothing.
+"""
+
+
+def test_inline_lesson_title_ending_mid_line_does_not_swallow_the_next_lesson():
+    """Reproduces Finding 1: when a lesson's closing '**' is followed by more prose on the SAME
+    line (the real document's actual shape for most lessons, not a newline), the old regex's
+    title capture ran on past it looking for a '**' immediately followed by '\\n', swallowing
+    L19 and L20 into L18's own record."""
+    recs = {r.rule_id: r for r in extract_lessons(SAME_LINE_CONTINUATION_LESSON_FIXTURE, "docs/x.md")}
+    assert set(recs) == {"L18", "L19", "L20"}, f"got {set(recs)}: a lesson was dropped or merged"
+    assert recs["L18"].title_he == 'Never kill a suite mid-flight — the respawning zombie server (2026-07-23).'
+    assert "Repeated" in recs["L18"].statement
+    assert "L19" not in recs["L18"].statement and "L20" not in recs["L18"].statement
+    assert "mechanism never fires" in recs["L19"].title_he
+    assert "Verify the measurement" in recs["L20"].title_he
+
+
+MALFORMED_TABLE_ROW_FIXTURE = """\
+## 11. Lessons log
+
+| # | Lesson | Root cause | Gate |
+|---|---|---|---|
+| L11 | Server was the bottleneck | Not the tests | Clustered server |
+| L12 | A UI check verified a stale build | Restart the manual server before checking |
+| L13 | A floor marker rendered flipped in RTL | Numeric readouts need LTR islands |
+"""
+
+
+def test_malformed_three_cell_table_row_does_not_swallow_the_next_row():
+    """Reproduces Finding 1's table half: L12/L13 in the real document have 3 cells, not 4. The
+    old regex's cross-row `\\s*` let L12's match bleed into L13's row, dropping L13 entirely."""
+    recs = {r.rule_id: r for r in extract_lessons(MALFORMED_TABLE_ROW_FIXTURE, "docs/x.md")}
+    assert set(recs) == {"L11", "L12", "L13"}, f"got {set(recs)}: a row was dropped or merged"
+    assert "stale build" in recs["L12"].statement
+    assert "L13" not in recs["L12"].statement
+    assert "floor marker" in recs["L13"].statement
+
+
+H_RANGE_HEADING_FIXTURE = """\
+## 15. H9–H12 — task summaries, the live status board, capabilities, /status (owner rulings, 2026-07-30)
+
+- **H9 — mandatory task-summary table.** Every task ends with the fixed 5-row table.
+- **H10 — the live status board, `docs/STATUS-BOARD.md`.** THE source of truth for position.
+- **H11 — the capabilities table, `docs/CAPABILITIES.md`.** The living inventory of every capability.
+- **H12 — the `/status` command** (`.claude/commands/status.md`): `/status` = the board.
+
+## 16. H13 — next section
+"""
+
+
+def test_range_heading_emits_one_record_per_bullet_not_one_record_for_the_first_id():
+    """Reproduces Finding 2: 'H9–H12 — title' must yield four records (H9, H10, H11, H12), each
+    with its OWN title and statement — not one record under 'H9' carrying H12's title and nothing
+    for H10/H11/H12."""
+    recs = {r.rule_id: r for r in extract_h_rulings(H_RANGE_HEADING_FIXTURE, "docs/x.md")}
+    assert set(recs) == {"H9", "H10", "H11", "H12", "H13"}, f"got {set(recs)}"
+    assert recs["H9"].title_he == "mandatory task-summary table."
+    assert "5-row table" in recs["H9"].statement
+    assert recs["H10"].title_he.startswith("the live status board")
+    assert "STATUS-BOARD" in recs["H10"].title_he
+    assert recs["H11"].title_he.startswith("the capabilities table")
+    assert recs["H12"].title_he.startswith("the `/status` command")
+    assert "/status" in recs["H12"].statement
+    # None of H9's title/statement leaked H12's content (the exact old bug).
+    assert "H12" not in recs["H9"].title_he
+    assert "/status" not in recs["H9"].statement or "command" not in recs["H9"].title_he
+
+
+def _expected_l_ids(text: str) -> set[str]:
+    """Independent derivation (deliberately not the extractor's own regex) of every L-id the
+    document declares — either as a Lessons-log table row or an inline '**Ln ·' marker."""
+    ids = set(re.findall(r"^\|\s*(L\d+)\s*\|", text, re.MULTILINE))
+    ids.update(re.findall(r"^\*\*(L\d+)\s*·", text, re.MULTILINE))
+    return ids
+
+
+def _expected_h_ids(text: str) -> set[str]:
+    """Independent derivation of every H-id the document declares: a single-ruling heading's own
+    token (when NOT a range), plus every per-item bullet inside a range heading's body."""
+    ids: set[str] = set()
+    for m in re.finditer(
+        r"^#{2,4}\s+\d+(?:\.\d+)?[a-z]?\.\s+(H\d+[a-z]?)(?:[–—-](H\d+[a-z]?))?\s*[–—-]",
+        text, re.MULTILINE,
+    ):
+        if not m.group(2):  # not a range heading
+            ids.add(m.group(1))
+    ids.update(re.findall(r"^- \*\*(H\d+[a-z]?)\s*[–—-]", text, re.MULTILINE))
+    return ids
+
+
+def test_real_document_every_declared_lesson_id_is_extracted_exactly_once():
+    text = (ROOT / "docs" / "process" / "development-discipline.md").read_text(encoding="utf-8")
+    expected = _expected_l_ids(text)
+    recs = extract_lessons(text, "docs/process/development-discipline.md")
+    ids = [r.rule_id for r in recs]
+    got = set(ids)
+    assert got == expected, (
+        f"missing: {sorted(expected - got, key=lambda x: int(x[1:]))}, "
+        f"unexpected: {sorted(got - expected, key=lambda x: int(x[1:]))}"
+    )
+    assert len(ids) == len(set(ids)), f"duplicate lesson ids extracted: {ids}"
+
+
+def test_real_document_every_declared_h_ruling_id_is_extracted_exactly_once():
+    text = (ROOT / "docs" / "process" / "development-discipline.md").read_text(encoding="utf-8")
+    expected = _expected_h_ids(text)
+    recs = extract_h_rulings(text, "docs/process/development-discipline.md")
+    ids = [r.rule_id for r in recs]
+    got = set(ids)
+    assert got == expected, f"missing: {sorted(expected - got)}, unexpected: {sorted(got - expected)}"
+    assert len(ids) == len(set(ids)), f"duplicate H-ruling ids extracted: {ids}"
+
+
+def test_real_document_no_title_he_is_absurdly_long():
+    """A title_he running into the hundreds-to-thousands of characters is a swallowed record by
+    construction (a title is a short heading phrase, not a lesson's whole body) — the exact shape
+    Finding 2 measured (1635 chars) before the fix."""
+    text = (ROOT / "docs" / "process" / "development-discipline.md").read_text(encoding="utf-8")
+    recs = extract_lessons(text, "docs/process/development-discipline.md") + \
+        extract_h_rulings(text, "docs/process/development-discipline.md")
+    offenders = {r.rule_id: len(r.title_he) for r in recs if len(r.title_he) > 250}
+    assert not offenders, f"title_he too long (record swallowed another): {offenders}"
