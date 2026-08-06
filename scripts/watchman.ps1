@@ -100,7 +100,12 @@ function Invoke-ComponentCheck {
             Start-Sleep -Milliseconds 500
         }
         if ($recovered) {
+            # Recovered/FinalOk are honest -- Verify really did say OK. But a Recover that threw and
+            # merely happened not to prevent recovery this time is still a real bug in the recovery
+            # path, and it must not vanish from the record just because this run got lucky: fold it
+            # into Detail on the happy path too, or nobody ever learns Recover itself is broken.
             $detail = "recovered after $([math]::Round($sw.Elapsed.TotalSeconds, 1))s"
+            if ($recoverError) { $detail = "$detail ($recoverError)" }
         } else {
             $reasons = @()
             if ($detectError) { $reasons += $detectError }
@@ -153,7 +158,14 @@ function Get-SelfTestResults {
     $r4 = Invoke-ComponentCheck -Name 'bad-return-type' -Severity 'warn' -MaxRecoverWaitSeconds 1 `
         -Detect { "false" } -Recover { } -Verify { "still not a bool" }
 
-    return @($r1, $r2, $r3, $r4)
+    # Fix round 3: a Recover that throws but doesn't stop Verify from succeeding must still leave a
+    # trace — Recovered/FinalOk stay honest (Verify really did say OK), but Detail must carry the
+    # Recover error on this happy path too, or a broken recovery script reports as an unremarkable
+    # clean success and nobody learns it's broken until the day recovery is all that's left.
+    $r5 = Invoke-ComponentCheck -Name 'recover-throws-but-verifies-ok' -Severity 'warn' `
+        -Detect { $false } -Recover { throw 'boom in recover' } -Verify { $true }
+
+    return @($r1, $r2, $r3, $r4, $r5)
 }
 
 $results = if ($SelfTest) { Get-SelfTestResults } else {
