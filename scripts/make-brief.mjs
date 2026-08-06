@@ -48,7 +48,7 @@ const planPath = arg('plan'), taskNo = arg('task'), outPath = arg('out');
 const spec = arg('spec'), tool = arg('tool');
 
 if (!planPath || !taskNo || !outPath) {
-  die('usage: --plan <plan.md> --task <N> --out <brief.md> --spec "<quoted spec lines>" --tool <serena|memory|אחר>');
+  die('usage: --plan <plan.md> --task <N> --out <brief.md> --spec "<quoted spec lines>" --tool <serena|geniza|אחר>');
 }
 if (!existsSync(planPath)) die(`plan not found: ${planPath}`);
 
@@ -67,7 +67,7 @@ function judged(value, flag, field) {
   return v;
 }
 const specText = judged(spec, 'spec', '(א)');
-const TOOLS = ['serena', 'memory', 'אחר', 'other', 'grep'];
+const TOOLS = ['serena', 'geniza', 'memory', 'אחר', 'other', 'grep'];
 const toolText = judged(tool, 'tool', '(ה)');
 if (!TOOLS.includes(toolText)) {
   die(`--tool must be one of: ${TOOLS.join(' | ')} (got ${JSON.stringify(toolText)}).`,

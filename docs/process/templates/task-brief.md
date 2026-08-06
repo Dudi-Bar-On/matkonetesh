@@ -10,7 +10,7 @@ GREEN output + exit code, screenshot paths (UI); **ends with the H9 5-row table*
 [vNNN · date+time] · מה נשאר · איפה אנחנו [from docs/STATUS-BOARD.md] · הבא בתור).
 **Verification guidance:** exit codes נלכדים ישירות (`cmd; ec=$?`) — **לעולם לא דרך pipe**
 (`cmd | tail; $?` מודד את tail, לא את cmd).
-**(ה) Primary tool:** <serena | graphify | אחר> ; grep = fallback מוצהר בלבד.
+**(ה) Primary tool:** <serena | geniza | אחר> ; grep = fallback מוצהר בלבד.
 **(ו) Test-authoring contract (חובה בכל משימה שנוגעת בבדיקות):** הסוכן קורא את
 `tests/TEST-AUTHORING-CONTRACT.md` **לפני** שהוא כותב או משנה בדיקה. תמצית מחייבת: ‏`test`/`seedApp`
 מ-`./_fixtures` בלבד (הדף החם) · ‏`addInitScript` אסור בדף החם · ‏`isolatedPage` לשעון/SW/`test.use` ·

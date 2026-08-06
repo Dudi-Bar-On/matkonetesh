@@ -10,14 +10,17 @@
   (port collision, `reuseExistingServer:false`). After every `python build.py`, RESTART any manual
   `serve.js` — it caches `dist/` in memory at startup, so a rebuild never reaches an already-running
   manual server.
-- **Docs/memory sync**: `bash scripts/sync-docs.sh "<commit message>"` — syncs the agent-memory
-  store, verifies it, stages docs/scripts/src + CLAUDE.md, commits and pushes. Refuses to push on a
+- **Docs/geniza sync**: `bash scripts/sync-docs.sh "<commit message>"` — syncs the geniza,
+  verifies it, stages docs/scripts/src + CLAUDE.md, commits and pushes. Refuses to push on a
   stale store.
-- **Agent memory** (replaced graphify 2026-08-04 — the graph could never stay current):
-  `python scripts/memsync.py` (delta by content hash, ~0.3 s) · `--query "<text>"` to search this
-  repo's documents · `--tool <name>` for a vendor/technology spec · `--status` for what is stored.
-  `node scripts/check-memory-fresh.mjs` is the gate and it BLOCKS. Matching is case-folded substring:
-  no stemming, no synonyms, no cross-language matching — expand the query into real tokens first.
+- **The geniza** (replaced graphify 2026-08-04, then replaced the SQLite/`agent-memory.db` store
+  2026-08-05 — `agent-memory.db`/`scripts/memsync.py` are deleted): in Python,
+  `from src.knowledge import retrieval` then `retrieval.search_current_docs(q, filters={"namespace":"repo"})`
+  to search this repo's documents (lexical) · `retrieval.semantic_search(q, filters=...)` (vector) ·
+  `retrieval.get_source_excerpt(revision_id, chunk_id)` for the text behind a citation. Ingest with
+  `python scripts/ingest.py --scope` (delta by content hash). `node scripts/check-geniza-fresh.mjs` is
+  the gate and it BLOCKS. Matching is case-folded substring: no stemming, no synonyms, no
+  cross-language matching — expand the query into real tokens first.
 - **Worker dev**: `cd worker` — has its own `package.json`, `vitest.config.mjs`, `worker/test/`;
   separate `node_modules` from the root.
 - **Windows shell notes** (this environment): the Bash tool is git-bash (POSIX-ish) — `find`, `wc`,

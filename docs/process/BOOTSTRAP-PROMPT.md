@@ -1,7 +1,7 @@
 # Bootstrap prompt — installing this way of working on a new project
 
-> ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are:
-> `python scripts/memsync.py` (ingest, delta by content hash) · `--query "<text>"` / `--tool <name>` (search) · `python scripts/memenrich.py` (embeddings, never blocking) · `node scripts/check-memory-fresh.mjs` (the gate). See discipline §10.11–§10.13.
+> ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalent is **the geniza** (`src.knowledge.retrieval`):
+> `retrieval.search_current_docs(q, filters=...)` / `retrieval.semantic_search(q, filters=...)` (search) · `python scripts/ingest.py --scope` (ingest, delta by content hash) · `node scripts/check-geniza-fresh.mjs` (the gate). See discipline §10.11–§10.13.
 
 
 > **Framing for the owner (not part of the prompt).**

@@ -1,7 +1,7 @@
 # Methodology Compliance Audit — 2026-07-30
 
 > ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are:
-> `python scripts/memsync.py` (ingest, delta by content hash) · `--query "<text>"` / `--tool <name>` (search) · `python scripts/memenrich.py` (embeddings, never blocking) · `node scripts/check-memory-fresh.mjs` (the gate). See discipline §10.11–§10.13.
+> `from src.knowledge import retrieval` → `search_current_docs(q, filters=…)` / `semantic_search(q, filters=…)` (query) · `python scripts/ingest.py --scope` (ingest, delta by content hash) · `node scripts/check-geniza-fresh.mjs` (the gate, and it BLOCKS). See discipline §10.11–§10.13. **`agent-memory.db`, `scripts/memsync.py` and `scripts/memenrich.py` were themselves deleted 2026-08-05** — this banner used to point at them, which made its own redirect dead two levels deep.
 
 
 **Scope:** actual practice as recorded in artifacts (git history, `.superpowers/sdd/`, `docs/superpowers/{specs,plans}/`, `docs/analysis/`, configs) audited against `docs/process/development-discipline.md` (§1–§12), `CLAUDE.md`, and the two project skills. The auditor cannot read past conversations; items verifiable only from conversation are marked **owner-attested** and are included because the owner supplied them as seed evidence — they were checked for artifact corroboration, not assumed.

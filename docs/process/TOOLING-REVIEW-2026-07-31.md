@@ -1,7 +1,7 @@
 # Tooling Review — 2026-07-31
 
 > ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are:
-> `python scripts/memsync.py` (ingest, delta by content hash) · `--query "<text>"` / `--tool <name>` (search) · `python scripts/memenrich.py` (embeddings, never blocking) · `node scripts/check-memory-fresh.mjs` (the gate). See discipline §10.11–§10.13.
+> `from src.knowledge import retrieval` → `search_current_docs(q, filters=…)` / `semantic_search(q, filters=…)` (query) · `python scripts/ingest.py --scope` (ingest, delta by content hash) · `node scripts/check-geniza-fresh.mjs` (the gate, and it BLOCKS). See discipline §10.11–§10.13. **`agent-memory.db`, `scripts/memsync.py` and `scripts/memenrich.py` were themselves deleted 2026-08-05** — this banner used to point at them, which made its own redirect dead two levels deep.
 
 
 סקירת עומק של כל הכלים, שרתי ה-MCP, ה-plugins וה-skills המותקנים בסביבה: מה מסוגל לשפר את תהליך הפיתוח באופן מדיד, ומה רעש. כל המלצה נבדקה **מול נקודות הכאב המתועדות שלנו** (discipline §5/§10/§11, L1–L28, TEST-AUTHORING-CONTRACT, לוג ה-Phase 1 ב-`.superpowers/sdd/progress.md`), לא באופן גנרי.

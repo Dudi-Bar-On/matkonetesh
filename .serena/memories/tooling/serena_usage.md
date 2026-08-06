@@ -5,11 +5,12 @@
 - **Serena** = live locate-exact/edit-exact on THIS repo's own code across ALL 8 configured languages
   (`find_symbol`, `get_symbols_overview`, `find_referencing_symbols`, `replace_symbol_body`,
   `rename_symbol`) — always fresh (live LSP), no full-file reads needed to navigate.
-- **agent-memory** (`python scripts/memsync.py --query` / `--tool`) = documentation: spec/decision
+- **the geniza** (`retrieval.search_current_docs(q, ...)` / `retrieval.semantic_search(q, ...)` from
+  `src.knowledge.retrieval`) = documentation: spec/decision
   provenance, vendor and API docs, the
   141-gap analysis corpus. Serena cannot read anything outside this repo's own code, and its own
   indexing (`serena project index`) is pure LSP/symbol-structural — there is no LLM/semantic step
-  inside Serena itself; that is specifically what the agent-memory store adds.
+  inside Serena itself; that is specifically what the geniza adds.
 - **Grep** = fallback for literal/non-code text.
 
 ## Version: 1.6.1 (upgraded from 1.6.0 same session — see `mem:tooling/serena_language_activation`'s

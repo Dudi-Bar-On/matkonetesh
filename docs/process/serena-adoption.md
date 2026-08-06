@@ -1,7 +1,6 @@
 # Serena adoption — semantic code navigation for this project
 
-> ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are:
-> `python scripts/memsync.py` (ingest, delta by content hash) · `--query "<text>"` / `--tool <name>` (search) · `python scripts/memenrich.py` (embeddings, never blocking) · `node scripts/check-memory-fresh.mjs` (the gate). See discipline §10.11–§10.13.
+> ⚠️ **2026-08-05 — `graphify` was removed from this project.** Any instruction below that names it, `graphify-out/`, `/graphify` or `check-graph-fresh` is a **record of what was done at the time**, not something to run. The live equivalents are the **geniza** (`src.knowledge.retrieval`): `retrieval.search_current_docs(q, ...)` / `retrieval.semantic_search(q, ...)` (search) · `python scripts/ingest.py --scope` (ingest, delta by content hash) · `node scripts/check-geniza-fresh.mjs` (the gate). See discipline §10.11–§10.13.
 
 
 > Status: **live and in daily use** (verified 2026-07-24 — see `serena-first-use.md`). Serena 1.6.1 /
@@ -132,18 +131,18 @@ Run these from the repo root (`C:\Users\dudib\source\repos\matconetesh`):
 Verification once live: `claude mcp list` shows `serena … ✔ Connected`; ask the agent to
 `get_symbols_overview` on `build.py` or `find_symbol` a known function in `app.js`.
 
-## 5. agent-memory ↔ Serena — division of labor
+## 5. הגניזה (geniza) ↔ Serena — division of labor
 
 The two tools are **complementary, not competing**, and the split cleanly resolves the standing critique of
-agent-memory (it's a *snapshot*, and it loses to grep for locate-exact):
+a documentation store (it's a *snapshot*, and it loses to grep for locate-exact):
 
 - **Serena owns live code** — always-fresh (live LSP), symbol-accurate. It takes over *locate-exact* and
-  *edit-exact* from both grep and agent-memory. This is agent-memory's weak axis, now covered.
-- **agent-memory owns everything with no LSP edge** — relationships that span *documents and code and tests*,
+  *edit-exact* from both grep and the geniza. This is the geniza's weak axis, now covered.
+- **The geniza owns everything with no LSP edge** — relationships that span *documents and code and tests*,
   methodology, vendor/API docs, and spec↔code↔test provenance. A language server sees only symbols in this
   repo's code; it cannot connect a Markdown spec line to the function it governs, cannot read Serena's own
-  docs, and cannot reason across the 141-gap analysis. agent-memory's staleness is tolerable here because
-  docs/specs/methodology change slowly and are re-synced deliberately (`--mode deep`).
+  docs, and cannot reason across the 141-gap analysis. The geniza's revisions are versioned and superseded
+  rather than deleted, and are kept current via `python scripts/ingest.py --scope` (delta by content hash).
 - **grep** drops to a fallback: quick literal string checks and non-code text.
 
 **Serena answers better** (live, symbol-level):
@@ -155,20 +154,23 @@ agent-memory (it's a *snapshot*, and it loses to grep for locate-exact):
    surgical, no whole-file rewrite.
 4. *"Give me the structure of `build.py`."* — `get_symbols_overview`, no full read.
 
-**agent-memory answers better** (cross-corpus relationships, provenance, docs):
+**The geniza answers better** (cross-corpus relationships, provenance, docs):
 1. *"What spec section governs `equipPlan`, and which tests prove it?"* — spec↔code↔test provenance across
-   Markdown + Python + tests (§10.13). No LSP edge exists from a doc to a function.
-2. *"Does this claim contradict a `REFUTED` verdict in the ULTIMATE gaps doc?"* — reasoning across the
-   141-gap analysis + sources.
-3. *"How do Serena / Playwright / a vendor API work?"* — the global docs graph (§10.11). Serena can't read
-   anything outside this repo's code.
+   Markdown + Python + tests (§10.13), via `retrieval.search_current_docs` / `retrieval.get_entity_provenance`.
+   No LSP edge exists from a doc to a function.
+2. *"Does this claim contradict a `REFUTED` verdict in the ULTIMATE gaps doc?"* — `retrieval.semantic_search`
+   / `retrieval.search_current_docs` reasoning across the 141-gap analysis + sources.
+3. *"How do Serena / Playwright / a vendor API work?"* — the geniza's `tool_spec` corpora (§10.11). Serena
+   can't read anything outside this repo's code.
 4. *"Which `safe` values in `data.py` trace to which primary source in `sources.py` + `baldwin-backbone.md`?"*
-   — a provenance chain from data to citation, a cross-file *semantic* relationship, not a symbol reference.
+   — `retrieval.get_entity_provenance` / `retrieval.get_revision_history`, a provenance chain from data to
+   citation, a cross-file *semantic* relationship, not a symbol reference.
 
 **Where they compose (the intended workflow):**
-> agent-memory answers *what governs `equipPlan` and what tests cover it* (provenance) → Serena jumps to the
-> `equipPlan` symbol, shows its live body and every live caller, and makes the surgical edit → after the
-> change, `agent-memory update --mode deep` refreshes the doc/spec graph. **agent-memory locates the *why / what
+> The geniza answers *what governs `equipPlan` and what tests cover it* (provenance, via
+> `retrieval.search_current_docs`/`get_entity_provenance`) → Serena jumps to the `equipPlan` symbol, shows
+> its live body and every live caller, and makes the surgical edit → after the change,
+> `python scripts/ingest.py --scope` refreshes the geniza. **The geniza locates the *why / what
 > governs*; Serena executes the *where / edit-now*.**
 
 ### When-to-use-which
@@ -179,16 +181,16 @@ agent-memory (it's a *snapshot*, and it loses to grep for locate-exact):
 | Find all references / callers of a symbol | **Serena** | Exact, live; beats grep over-matching + graph staleness |
 | Surgical edit: rename, replace body, insert near a symbol | **Serena** | Symbol-scoped edit, no whole-file rewrite |
 | Outline a file's structure | **Serena** | `get_symbols_overview` |
-| "What spec / requirement governs this code?" | **agent-memory** | Doc↔code provenance; no LSP edge |
-| "What tests prove this function?" (spec↔code↔test) | **agent-memory** | Cross-corpus relationship |
-| "Does this contradict a REFUTED verdict / prior finding?" | **agent-memory** | Reasoning over the analysis corpus |
-| Tool/framework/vendor-API docs | **agent-memory** (global graph, §10.11) | Serena only sees this repo's code |
-| Safety-value → primary-source provenance | **agent-memory** | Data→citation chain across files |
+| "What spec / requirement governs this code?" | **הגניזה (geniza)** | Doc↔code provenance; no LSP edge |
+| "What tests prove this function?" (spec↔code↔test) | **הגניזה (geniza)** | Cross-corpus relationship |
+| "Does this contradict a REFUTED verdict / prior finding?" | **הגניזה (geniza)** | Reasoning over the analysis corpus |
+| Tool/framework/vendor-API docs | **הגניזה (geniza)** (`tool_spec` corpora, §10.11) | Serena only sees this repo's code |
+| Safety-value → primary-source provenance | **הגניזה (geniza)** | Data→citation chain across files |
 | Quick literal string / non-code text check | **grep** (fallback) | Cheap when neither structure nor relationship is needed |
 
-> Deposit note (recommendation, not done here — agent-memory is owned by a separate subagent per CLAUDE.md
-> §10.11's usefulness gate): the Serena docs already live in the global graph as `serena-docs`; no action
-> needed. This project's private `.serena/` memories must **never** be deposited into any shared/global graph.
+> Deposit note (recommendation, not done here — ingestion is owned by a separate subagent per CLAUDE.md
+> §10.11's usefulness gate): the Serena docs already live in the geniza as `tool_spec` records; no action
+> needed. This project's private `.serena/` memories must **never** be deposited into any shared/global store.
 
 ## 6. §10.17a — ONE shared server (streamable-HTTP), not per-agent stdio
 

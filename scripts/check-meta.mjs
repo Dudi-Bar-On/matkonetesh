@@ -122,6 +122,11 @@ run('check-requirements', 'check-requirements', 'check-requirements.mjs');
 // pushes over eleven hours (a duplicate `retention-days` key introduced in 1a9f844). Ordering the
 // cheap, local, decidable check first means the answer arrives before the symptom.
 run('check-workflows', 'check-workflows (a workflow GitHub cannot compile produces zero jobs and no logs)', 'check-workflows.mjs');
+// Same shape of bug as check-workflows, one document layer up: a mandatory-read doc (CLAUDE.md,
+// the discipline doc, both checklists, the task-brief template, enforce.md, Serena's own memories)
+// telling an agent to run a scripts/ command that no longer exists. The 2026-08-05 memory-store
+// deletion left exactly three such dead references in the files agents are required to read first.
+run('check-commands-exist', 'check-commands-exist (a mandatory-read doc naming a scripts/ command that no longer exists)', 'check-commands-exist.mjs');
 // R-94. Without this, check-meta could report OK while the UI suite had been red in CI for 25
 // consecutive runs — which is what happened. It READS CI rather than running the suite, because
 // §11a forbids a second concurrent Playwright run and a hook that launched one would cause the

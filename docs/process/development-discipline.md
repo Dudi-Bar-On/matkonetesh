@@ -318,7 +318,7 @@ reported. **Without one of the two, "live" is not said at all.**
 
 ---
 
-## 12. Thinking models — adopted from the `methodology` corpus, now a tool_spec in agent memory (2026-07-22)
+## 12. Thinking models — adopted from the `methodology` corpus, now a `tool_spec` record in the geniza (2026-07-22)
 
 **Where this came from.** The owner asked whether the global graph's `methodology` corpus (4,335 nodes)
 held anything worth adopting. It holds the **GSD** framework from the `matkonet` project, whose thinking
@@ -326,15 +326,16 @@ models are curated from the [thinking-partner](https://github.com/mattnowdev/thi
 (150+ models). **Fifteen models across three clusters are adopted below. The rest is deliberately not.**
 
 **How to read it yourself:**
-```bash
-python scripts/memsync.py --tool methodology            # the corpus, its sections and concepts
-python scripts/memsync.py --query "thinking models"
-python scripts/memsync.py --query "gate prompt patterns"
-python scripts/memsync.py --query "premortem"
+```python
+from src.knowledge import retrieval
+retrieval.search_current_docs("methodology", filters={"source_type": "tool_spec"})  # the corpus, its sections and concepts
+retrieval.search_current_docs("thinking models")
+retrieval.search_current_docs("gate prompt patterns")
+retrieval.search_current_docs("premortem")
 ```
-The graph gives structure and labels; the prose lives in
+The store gives structure and labels; the prose lives in
 `C:\Users\dudib\source\repos\matkonet\.claude\gsd-core\references\thinking-models-{planning,execution,debug}.md`
-and `gate-prompts.md`. **That path is another local repo and may vanish — agent memory is the durable
+and `gate-prompts.md`. **That path is another local repo and may vanish — the geniza is the durable
 record.** Per §10.13, the store located the material; the source files were then read before adopting it.
 
 ### 12.1 What was REJECTED, and why
@@ -932,19 +933,21 @@ local-infrastructure flake (loopback, disk I/O, port contention) without weakeni
 test. (9) **Serena-first symbol edits** (§10.17) — precise LSP-backed edits on the ~9.5k-line `app.js` and
 the fixture/spec files beat fragile text-matching for this kind of surgical fix work.
 
-### 10.11 Query AGENT MEMORY before the internet — for ANY docs/help — then feed useful finds back
+### 10.11 Query THE GENIZA before the internet — for ANY docs/help — then feed useful finds back
 > **Owner instruction, 2026-07-22; generalized to all documentation/help 2026-07-23; the store behind it
-> replaced 2026-08-04.** When you need documentation or any external help — a tool, a framework, a
-> methodology, an API's capabilities, a vendor's model specs, *anything* — query **agent memory** FIRST.
-> Only if the answer is not there, search or research the web. After a web find, apply the **usefulness
-> gate** below before moving on. The rule is unchanged; only the tool under it is.
+> replaced 2026-08-04; migrated to the geniza (PostgreSQL + LlamaIndex + Neo4j) — `agent-memory.db` and
+> `scripts/memsync.py` deleted 2026-08-05.** When you need documentation or any external help — a tool, a
+> framework, a methodology, an API's capabilities, a vendor's model specs, *anything* — query **the geniza**
+> FIRST. Only if the answer is not there, search or research the web. After a web find, apply the
+> **usefulness gate** below before moving on. The rule is unchanged; only the tool under it is.
 
 **How.**
 
-```bash
-python scripts/memsync.py --status              # what is in the store, and which tool specs exist
-python scripts/memsync.py --tool <name>         # exact, indexed lookup of one tool/technology
-python scripts/memsync.py --query "<text>"      # search document chunks (content OR heading)
+```python
+from src.knowledge import retrieval
+retrieval.search_current_docs(q, filters={"namespace": "repo"})  # lexical, current revisions only
+retrieval.semantic_search(q, filters=...)                        # vector, same table
+retrieval.get_source_excerpt(revision_id, chunk_id)               # exact, indexed lookup of one source
 ```
 
 Nine vendor/technology corpora are stored as `tool_spec` records, migrated from the old global graph:
@@ -953,10 +956,11 @@ Nine vendor/technology corpora are stored as `tool_spec` records, migrated from 
 `ollama-docs`, `semantic-search-mcp-docs`, `windows-scheduling-docs`. Each carries its sections, URLs
 and extracted concepts as queryable JSONB.
 
-**PROJECT DOCS vs TOOL SPECS.** `--query` searches this repo's own documents (302 files, ~5,100 chunks,
-current by content hash). `--tool` is for questions about *how a tool works*. Knowledge migrated from the
-old project graph lives under the `graph://` path namespace with its original relations in
-`metadata.relations` — machine-extracted, some `INFERRED`, so treat them as leads and read the source.
+**PROJECT DOCS vs TOOL SPECS.** `retrieval.search_current_docs` searches this repo's own documents (302
+files, ~5,100 chunks, current by content hash) when filtered to `namespace: "repo"`; filter to
+`source_type: "tool_spec"` for questions about *how a tool works*. Knowledge migrated from the old project
+graph lives under the `graph://` path namespace with its original relations in `metadata.relations` —
+machine-extracted, some `INFERRED`, so treat them as leads and read the source.
 
 **The non-optional step (learned by doing it wrong, and it still applies).** Matching is case-folded
 substring: **no stemming, no synonyms, no cross-language matching.** A naive natural-language query
@@ -973,7 +977,7 @@ corpus growing with signal instead of noise.
 
 **Honest limit:** never ingest anything containing a key or a secret.
 
-### 10.12 Keep agent memory current — the gate BLOCKS, because the fix is now cheap
+### 10.12 Keep the geniza current — the gate BLOCKS, because the fix is now cheap
 
 > **Stack (owner instruction, 2026-08-04):** LlamaIndex `MarkdownNodeParser` inside an
 > `IngestionPipeline` does the chunking; SQLite with JSONB does the storage and the querying.
@@ -982,8 +986,8 @@ corpus growing with signal instead of noise.
 > tool name returns `None`, not a nearest neighbour.
 
 ```bash
-python scripts/memsync.py                 # delta by CONTENT HASH; unchanged files skipped (~0.3 s)
-node scripts/check-memory-fresh.mjs       # the gate: stale / never-ingested / orphaned, by name
+python scripts/ingest.py --scope           # delta by CONTENT HASH; unchanged files skipped
+node scripts/check-geniza-fresh.mjs       # the gate: stale / never-ingested / orphaned, by name
 bash scripts/sync-docs.sh "<message>"     # syncs, verifies, stages, commits, pushes
 ```
 
@@ -1008,19 +1012,23 @@ incentive. **A map that is never current is not a map.**
 Two further changes worth stating because they were failure modes, not preferences:
 - **Content hash, not mtime.** mtime moves on checkout and on any byte-identical rewrite, so the old
   signal reported debt that did not exist while missing real drift.
-- **The store is not committed.** `agent-memory.db` is in `.gitignore` and rebuilt from the `.md` files
-  on demand. A 22 MB generated binary in git was part of what made the old artifact unmaintainable.
+- **The store is not a generated binary in git.** The SQLite/`agent-memory.db` store described above was
+  itself superseded 2026-08-05 by the geniza (PostgreSQL as source of truth, Neo4j as a projection,
+  LlamaIndex for orchestration) — `agent-memory.db` and `scripts/memsync.py` were deleted; see §10.11/§10.13
+  for the live API. A 22 MB generated binary in git was part of what made the original graphify artifact
+  unmaintainable, and the current store is not committed either.
 
-### 10.13 Reach for AGENT MEMORY before grepping — it is the evidence tool, not a curiosity
+### 10.13 Reach for THE GENIZA before grepping — it is the evidence tool, not a curiosity
 > **Owner instruction, 2026-07-22.** Always try the semantic store first when looking for evidence and
 > references across code and documents. And keep it updated — always.
 
 A question like "what specifies this behaviour", "what does the discipline say about X", "where else is
 this value discussed", or "what did we decide and when" is a store query rather than a grep:
 
-```bash
-python scripts/memsync.py --query "<text>"      # returns the SECTION, with its heading path and file
-python scripts/memsync.py --tool <name>         # exact tool/technology spec
+```python
+from src.knowledge import retrieval
+retrieval.search_current_docs(q, filters={"namespace": "repo"})  # returns the SECTION, with its heading path and file
+retrieval.semantic_search(q, filters=...)                        # vector search, same table
 ```
 
 **Why this is a discipline rule and not a preference.** The 2026-07-22 sweep refuted **42 of 261
@@ -1038,8 +1046,8 @@ evidence; read the file before asserting it.
 > **Owner instruction, 2026-07-23.** When a problem is genuinely complex, OR after a few iterations that
 > did not solve it, STOP guessing and do **deep research**: read *in detail* the official documentation,
 > help, and the blogs / forums / issue trackers of **every product, technology, and adjacent subject
-> involved**. §10.11 applies (query the graphify **global** graph first — it holds `playwright-docs`,
-> `vitest-docs`, etc. — then the web; deposit useful finds back per the usefulness gate). Only *then*
+> involved**. §10.11 applies (query **the geniza** first — its `tool_spec` corpora hold `playwright-official-docs`,
+> `nodejs-v8-docs`, etc. — then the web; deposit useful finds back per the usefulness gate). Only *then*
 > converge on the best, correct solution.
 
 This is the escalation that **systematic-debugging's 3-fix STOP** hands off to: after failed fixes the next
@@ -1061,7 +1069,7 @@ next session inherits it.
 > closing: (1) write its **lessons** into the Lessons log (§11) — both the mistakes we must not repeat AND
 > the **successful ideas that worked**, so they are adopted, not just survived; (2) apply the §10.11
 > usefulness gate to every relevant doc or info source the session found, and **deposit the keepers into
-> agent memory** so the next session starts ahead. Untracked lessons get relearned at full price; undeposited finds get re-searched at full price.
+> the geniza** so the next session starts ahead. Untracked lessons get relearned at full price; undeposited finds get re-searched at full price.
 
 **Mechanical enforcement (Phase 0, 2026-07-30):** `scripts/gate-lessons.mjs` (inside `check-meta.mjs`)
 blocks a `release(v` commit when releases exist after the newest §11 lesson/declaration date, and the
@@ -1071,14 +1079,14 @@ The §11 log froze at L22 while five paid-for lessons lived only in private memo
 The mechanics already exist — this rule makes them a *closing checklist*, not a when-remembered habit:
 lessons → §11 log (numbered `L`-entries for failures, an "adopted wins" note for successes; owner-behavior
 feedback also goes to the assistant's persistent memory); docs → save the source under `docs/` →
-`python scripts/memsync.py` → verify with `python scripts/memsync.py --status`. Research
+`python scripts/ingest.py --scope` → verify with `node scripts/check-geniza-fresh.mjs`. Research
 subagents are told to *list* deposit candidates; the controller owns running the deposit pass before the
 arc closes.
 
 ### 10.17 Maximize the use of Serena for code work — and learn it from its docs first
 > **Owner instruction, 2026-07-24.** Whenever possible, maximize the use of **Serena** (the LSP-backed
 > semantic code toolkit, live as this project's `serena` MCP server). Read its documentation **carefully**
-> to learn how to best use it — it is in the graphify **global** knowledgebase (`serena-docs` corpus), and
+> to learn how to best use it — it is in **the geniza** as the `serena-docs` `tool_spec` corpus, and
 > Serena's own `initial_instructions` tool serves its usage manual (its MCP server says to call it before
 > coding tasks — do).
 
@@ -1087,10 +1095,10 @@ symbol-shaped code work on live sources — *find this function* (`find_symbol`)
 (`find_referencing_symbols`), *map this file's structure* (`get_symbols_overview`), *edit exactly this
 symbol* (`replace_symbol_body` / `insert_after_symbol`), *rename safely* (`rename_symbol`) — is Serena's
 home turf, and on a ~9.5k-line `app.js` a surgical symbol edit beats a fragile text-match edit. The split
-stands: **Serena** = live locate-exact/edit-exact (always fresh, LSP-accurate) · **graphify** = cross-doc
+stands: **Serena** = live locate-exact/edit-exact (always fresh, LSP-accurate) · **the geniza** = cross-doc
 provenance, spec↔code↔test relationships, vendor docs · **grep** = fallback for literal/non-code text.
 Dispatch prompts for code-editing subagents should point them at Serena's tools where the task is
-symbol-shaped. Learning it is not optional polish: query `serena-docs` in the global graph (§10.11
+symbol-shaped. Learning it is not optional polish: query `serena-docs` in the geniza (§10.11
 vocabulary rules apply) and the `initial_instructions` manual before leaning on conventions from memory —
 tools evolve, and a mis-used symbol edit on a monolith is worse than a careful text one.
 
@@ -1211,10 +1219,10 @@ Authoritative form of METHODOLOGY-2026-07-30 §2, written here so every subagent
 `docs/process/templates/task-brief.md`) carrying (a) the exact spec lines the task satisfies (DoD-1),
 (b) the exact code from the plan, (c) the relevant DoD checklist, (d) the report contract — report file
 name and what must be pasted in it (RED output, GREEN output, exit code, screenshot paths) **including
-the H9 5-row summary table**, and (e) a "primary tool" field: serena for symbol work, graphify for
+the H9 5-row summary table**, and (e) a "primary tool" field: serena for symbol work, the geniza for
 docs/relationship questions, grep only as a declared fallback. A missing field = an invalid brief.
 **Build it with `node scripts/make-brief.mjs --plan <plan> --task <N> --out <brief> --spec "<quoted spec
-lines>" --tool <serena|graphify|אחר>`** — it derives (b)(c)(d)(f) and the plan's Global Constraints, and
+lines>" --tool <serena|geniza|אחר>`** — it derives (b)(c)(d)(f) and the plan's Global Constraints, and
 **refuses** when (a) or (e) is missing or a placeholder. That refusal is the whole design: a slice of
 plan text is the raw material of a brief, not a brief, and five such slices sent `check-brief` red and
 taught the escape hatch to become routine (2026-08-02, owner decision — see `gate-baselines.json`
