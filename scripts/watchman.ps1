@@ -464,7 +464,72 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         } `
         -Verify { Test-GenizaReaderAnswers }
 
-    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult)
+    # serena (warn): the ONE shared Serena MCP server (§10.17a) that symbol-shaped code-editing
+    # subagents are pointed at. Its own failure mode has an equivalent alternative (grep/manual read,
+    # slower but correct), hence warn not block, matching the spec's severity table.
+    #
+    # NOTE on scope: the spec's severity table (§8.1) also names an `ollama` component (Task 20 in the
+    # plan). It is NOT present anywhere in this file as written (grepped before adding this component)
+    # -- the plan and the file have diverged; Task 20 was never actually landed here. Out of scope for
+    # this task (serena only); flagged in this task's report rather than silently added or silently
+    # ignored.
+    #
+    # Detect/Verify both delegate to serena-server.ps1's own `-Action status`, which already does the
+    # real work this component needs (§10.17a): counts processes matching the shared-server command
+    # line (start-mcp-server + streamable-http + --port), counts listeners on the port, AND performs a
+    # real MCP `initialize` handshake over HTTP -- not just "a socket is open". `Show-Status` sets
+    # $script:StatusOk from all three and the switch's `status` branch exits 1 when not ok (0
+    # otherwise, since PowerShell exits a script with the last-set exit code, or 0 if none was ever
+    # set) -- so this component reads that exit code rather than re-deriving the check inline, keeping
+    # exactly one place that knows what "serena is healthy" means.
+    #
+    # Routed through Invoke-BoundedProcess (this file's own contract, restated in its .NOTES header):
+    # a hung serena-server.ps1 invocation must not hang this entire watchman run. -Action status calls
+    # out to Invoke-WebRequest with its own 20s bound, so 30s here is generous headroom, not the
+    # primary defense. -Action restart internally stops (bounded, a few seconds) then starts, and
+    # start itself polls for up to 90s (serena-server.ps1's own -TimeoutSec default) for the port to
+    # come up -- possibly the first boot of a language server. Bounded at 110s here (90 + headroom for
+    # the stop half and process spin-up), matching -MaxRecoverWaitSeconds 90 below so the engine's own
+    # post-recover Verify-polling window is not shorter than the action it is waiting on.
+    #
+    # `pwsh`, NOT `powershell`, invokes serena-server.ps1: found live, not assumed. serena-server.ps1
+    # is UTF-8-without-BOM and its strings contain literal em-dash characters (e.g. "no parent shell,
+    # survives this session"). Windows PowerShell 5.1 has no BOM to tell it the file is UTF-8, so it
+    # reads it under the system code page instead -- the multi-byte em-dash then splits into bytes
+    # that are not valid inside a double-quoted string, and 5.1 fails with "Array index expression is
+    # missing or not valid." / "Missing closing '}'" (the multi-byte sequence corrupts the parser's
+    # view of the quotes downstream of it), before Show-Status ever runs. Confirmed both ways in this
+    # task: `powershell -File scripts\serena-server.ps1 -Action status` throws that parse error;
+    # `pwsh -File scripts\serena-server.ps1 -Action status` (pwsh defaults to UTF-8) runs clean and
+    # returns the real exit code. This is a pre-existing encoding bug in serena-server.ps1 itself
+    # (out of scope for this task, not touched here — Chesterton's Fence plus §12 Circle of Control);
+    # what IS in scope is that THIS component must not silently inherit it, so the child is invoked
+    # with the interpreter that actually parses that file correctly.
+    #
+    # WHAT THIS COMPONENT CANNOT DETECT: "up, and exactly one instance of it" only insofar as
+    # serena-server.ps1's own process-count line reports it -- if a rogue STDIO Serena instance were
+    # somehow also running (the exact failure §10.17a exists to prevent), this component's Detect
+    # would still report OK on the shared server alone; it does not independently enumerate ALL serena
+    # processes on the machine, only the ones matching the shared-server command-line fence
+    # (Get-SharedServerProcesses's own three-way match). It also cannot detect a shared server that is
+    # up and answering MCP but pointed at the WRONG project path (ProjectPath is not compared here).
+    function Test-SerenaUp {
+        $p = Invoke-BoundedProcess -FilePath 'pwsh' `
+            -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $RepoRoot 'scripts\serena-server.ps1'), '-Action', 'status') `
+            -TimeoutSeconds 30
+        $p.ExitCode -eq 0
+    }
+
+    $serenaResult = Invoke-ComponentCheck -Name 'serena' -Severity 'warn' -MaxRecoverWaitSeconds 90 `
+        -Detect { Test-SerenaUp } `
+        -Recover {
+            Invoke-BoundedProcess -FilePath 'pwsh' `
+                -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $RepoRoot 'scripts\serena-server.ps1'), '-Action', 'restart') `
+                -TimeoutSeconds 110 | Out-Null
+        } `
+        -Verify { Test-SerenaUp }
+
+    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $serenaResult)
 })
 
 foreach ($r in $results) {
