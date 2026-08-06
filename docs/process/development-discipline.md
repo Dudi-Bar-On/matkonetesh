@@ -1890,6 +1890,31 @@ verdict** — open the file and read the lines the explanation names. A diagnosi
 is exactly the one to check, and "the retry passed" is a symptom report, never a mechanism. The tell to
 listen for is a *specific* code claim offered in support of a *convenient* conclusion.
 
+**L66 · In PowerShell the pipeline IS the return value, and this plan has now been bitten by that
+twice, in opposite directions (2026-08-06).**
+
+**Two defects, one root.** In the watchman work:
+- Task 21's real-run branch ended with `$results = @($hooksResult, ...)`. A bare assignment **emits
+  nothing**, so the `else` branch of `$results = if ($SelfTest) {...} else {...}` produced `$null`.
+  Every real run would have iterated an empty set and printed **WATCHMAN OK while checking zero
+  components** — the exact failure the watchman exists to prevent, inside the watchman.
+- Task 15's `Invoke-ComponentCheck` called `Write-Output` to narrate **and** `return $result`. Both go
+  to the pipeline, so `$r = Invoke-ComponentCheck ...` captured a **two-element array**, not the object.
+
+One rule emits too little, the other too much. Both come from the same fact: **a PowerShell function
+returns everything that reaches the pipeline, and an assignment reaches nothing.**
+
+**What made the second one survive its own test.** The Node self-test parsed the script's output with a
+`startsWith('{')` filter, so the array-shaped lines were **silently discarded** and the run reported
+3 of 5 passing rather than failing on the malformed output. **A test that drops what it cannot parse
+reports a smaller number instead of an error**, and a smaller number reads as "not everything is
+implemented yet". The defect hid inside the discard.
+
+**The rule.** In PowerShell, treat every statement in a function as a potential return value. Narrate
+from the caller, never from inside a function whose value someone captures. And in any harness that
+parses another process's output: **an unparseable line is a failure, never a skip.** If the count is
+allowed to shrink silently, the count is not evidence.
+
 **Adopted win — attack the rule, do not assert it.** Every real defect in this arc was found by a
 test that tried to BREAK a guarantee rather than confirm it. `mk_app` was asked to `CREATE TABLE`
 and succeeded, revealing a grant that had had no user for weeks — a test that merely read the
