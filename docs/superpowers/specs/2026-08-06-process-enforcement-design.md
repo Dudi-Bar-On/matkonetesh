@@ -184,7 +184,16 @@ rule_revisions(
   section          text,
   title_he         text,
   statement        text NOT NULL,          -- הציטוט מהמסמך, לא פרפרזה
-  bucket           text CHECK (bucket IN ('A','B','C')),
+  bucket           text CHECK (bucket IN ('process','content')),
+  -- ⚠️ תוקן 6.8.26 בהכרעת בעלים. השורה הזו אמרה `CHECK (bucket IN ('A','B','C'))` וסתרה את §1
+  -- של המפרט הזה עצמו ("‏DoD-10 נשמר עם bucket = 'content'"). אלה **שני צירים שונים**:
+  --   bucket      = גבול התוכן — process מול content (§1). זה מה שהעמודה מחזיקה.
+  --   קבוצה A/B/C = מנגנון האכיפה — hook דטרמיניסטי · מצב+מונה · שופט LLM (§5-§7).
+  -- ‏`_classify_bucket` מחזיר process/content בלבד ומעולם לא אות, ולכן שום שורה אמיתית לא
+  -- הייתה יכולה לעמוד באילוץ הישן: העמודה יכלה רק להיות NULL או להפיל את ה-INSERT. וכך היה —
+  -- ‏132 מתוך 132 שורות NULL, בלי שאיש שם לב, עד ששער המראה (משימה 13) קיבל ראייה לעמודה.
+  -- ‏**לציר A/B/C אין עמודה, בכוונה** — אין לו כותב בשום מקום בקוד. הוא נוחת בשלב 5 עם השופט,
+  -- שהוא גם הרכיב שיסווג. עמודה שקיימת ואיש אינו כותב אליה היא בדיוק המחלה שהפסקה הזו מתעדת.
   severity         text CHECK (severity IN ('warn','block')),
   mechanism        text,
   source_path      text NOT NULL,
