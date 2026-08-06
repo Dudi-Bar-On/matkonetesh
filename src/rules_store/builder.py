@@ -312,3 +312,22 @@ def _retire(pg_conn, mirror_conn, rule_id: str, *, _fail_after_mirror_delete: bo
             (rule_id,),
         )
     pg_conn.commit()
+
+
+def rebuild_mirror_from_postgres(pg_conn, mirror_conn) -> int:
+    """Rewrites the mirror from Postgres's current rows only — no document parsing, no writes to
+    Postgres. Used when rules.sqlite is missing or corrupt but mk_rules is healthy (watchman
+    recovery, Task 18)."""
+    mirror_conn.execute("DELETE FROM rule_revisions")
+    mirror_conn.commit()
+    with pg_conn.cursor() as cur:
+        cur.execute(
+            "SELECT rule_id, section, title_he, statement, bucket, severity, mechanism, "
+            "source_path, source_heading, source_hash, revision_status "
+            "FROM rule_revisions WHERE is_current"
+        )
+        rows = cur.fetchall()
+        cols = [d.name for d in cur.description]
+    for row in rows:
+        mirror_mod.write_revision(mirror_conn, dict(zip(cols, row)))
+    return len(rows)
