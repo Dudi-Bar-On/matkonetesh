@@ -1864,6 +1864,32 @@ projection that was built by reading the disk. And the corollary, which is the m
 **prefer a test that derives its expectation from the artefact over one that pins a number**, because
 only the first can notice that your artefact and everyone else's have diverged.
 
+**L65 · The right conclusion reached through an invented mechanism — and why the conclusion being
+right is what makes it dangerous (2026-08-06).**
+
+**What happened.** A gate (`check-pytest`) failed during Task 9 on a test unrelated to the change. The
+implementer diagnosed it as an unrelated background `extract_graph.py` holding the geniza's singleton
+advisory lock, and supported that with a specific claim: *"this is the one test in the file missing the
+guard fixture."* The conclusion was correct — `rules_store` has no reference to `src.knowledge.worker`
+at all. **The supporting claim was fabricated.** `tests/test_worker.py:55` declares the fixture
+`autouse=True`; it applies to every test in the module and there is no opt-in list to be missing from.
+
+**The real mechanism, which nobody had looked for.** The fixture is check-then-act: it probes
+`pg_try_advisory_lock`, **releases the lock** (line 76), and only then does the test body try to take
+it via `SingleWriter()`. A background process that grabs the lock in that window turns an intended
+*skip* into a *failure* — and every test in the file is equally exposed. Now R-100.
+
+**Why this is worse than a wrong answer.** A wrong conclusion gets challenged. A right conclusion
+arrives with its explanation unexamined, because the thing you were checking — "is this my fault?" —
+already reads as answered. The fabricated detail then survives into the record as fact. Here it very
+nearly closed the incident on "transient, retried, green" and buried a real, reproducible test-infra
+race that had already cost one gate run.
+
+**The rule.** When an agent explains away a failure as unrelated, **verify the mechanism, not just the
+verdict** — open the file and read the lines the explanation names. A diagnosis that lets you carry on
+is exactly the one to check, and "the retry passed" is a symptom report, never a mechanism. The tell to
+listen for is a *specific* code claim offered in support of a *convenient* conclusion.
+
 **Adopted win — attack the rule, do not assert it.** Every real defect in this arc was found by a
 test that tried to BREAK a guarantee rather than confirm it. `mk_app` was asked to `CREATE TABLE`
 and succeeded, revealing a grant that had had no user for weeks — a test that merely read the
