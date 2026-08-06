@@ -144,6 +144,13 @@ run('check-h9', 'check-h9', 'check-h9.mjs');
 run('check-release', 'check-release (audit mode, reported not blocking - see file header)', 'check-release.mjs');
 run('check-h8-ledger', 'check-h8-ledger (no-unlanded-items, §5 + §5a, worsening-only)', 'check-h8-ledger.mjs');
 run('check-shipped-closed', 'check-shipped-closed (a row whose work shipped may not stay open, H10)', 'check-shipped-closed.mjs');
+// LAST, deliberately. build-audit is a RECORDER, not a gate: it regenerates docs/audit/2026-08-06-
+// enforcement-arc-audit.md from the live session transcript (see the script's own header for why a
+// derived projection replaced "remember to append to a file"). It always exits 0, even when the
+// transcript cannot be found (session-not-local, CI, a moved home directory) — a recorder that can
+// block a commit would be removed within a day, so it is placed after every real gate and never
+// contributes to `failed`.
+run('build-audit', 'build-audit (regenerates the session audit trail — never blocks, see file header)', 'build-audit.mjs');
 
 if (failed.length) { console.error(`\nMETA GATE FAIL: ${failed.join(', ')}`); process.exit(1); }
 console.log('\nMETA GATE OK');
