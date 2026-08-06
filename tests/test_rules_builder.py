@@ -97,6 +97,72 @@ def test_crash_between_mirror_write_and_flip_leaves_rule_inactive(tmp_path):
     pg.close()
 
 
+def test_recovers_to_single_active_row_after_a_crash(tmp_path):
+    """Fix round 1 (review, Important): the crash test above proves the row stays INACTIVE, but
+    never proves the system can RECOVER from that crash — a claim this project treats as distinct
+    (recoverable and leaves-no-garbage are different claims, and only one was tested). Crash once
+    via the same fault injection, then call sync_rule again for the SAME rule_id and assert the
+    rule ends up genuinely active: exactly one is_current=true row with mirrored_at set, the crashed
+    orphan re-labelled 'superseded' (not left contradicting itself as revision_status='current'
+    while is_current=false), and the mirror agreeing with Postgres."""
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "TEST-RECOVER")
+
+    tmp = tmp_path / "_tmp_recover_mirror.sqlite"
+    m = mirror.open_mirror(tmp)
+
+    rec = extractor.RuleRecord(
+        rule_id="TEST-RECOVER", section="TEST", title_he="recover test", statement="recover test rule",
+        source_heading="test", content_hash="recoverhash",
+    )
+
+    # Crash once — leaves the orphan (is_current=false, revision_status='current').
+    try:
+        builder.sync_rule(pg, m, rec, _fail_after_mirror_write=True)
+        assert False, "expected the injected fault to raise"
+    except builder.SimulatedCrash:
+        pass
+
+    # Recover: a plain re-run for the same rule_id, no special recovery call.
+    revision_id = builder.sync_rule(pg, m, rec)
+    assert isinstance(revision_id, str) and revision_id
+
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_id, revision_status, is_current, mirrored_at FROM rule_revisions "
+            "WHERE rule_id = %s ORDER BY created_at",
+            ("TEST-RECOVER",),
+        )
+        rows = cur.fetchall()
+    assert len(rows) == 2, f"expected the crashed orphan plus the recovered row, got {rows}"
+
+    orphan, recovered = rows
+    assert orphan[1] == "superseded", (
+        f"the crashed orphan must be relabelled 'superseded' so its status stops contradicting "
+        f"is_current=false, got revision_status={orphan[1]!r}"
+    )
+    assert orphan[2] is False
+
+    assert str(recovered[0]) == revision_id
+    assert recovered[1] == "current"
+    assert recovered[2] is True, "the recovered row must be genuinely active (is_current=true)"
+    assert recovered[3] is not None, "the recovered row must have mirrored_at set"
+
+    active_rows = [r for r in rows if r[2] is True]
+    assert len(active_rows) == 1, f"exactly one active row must exist after recovery, got {active_rows}"
+
+    mirror_rows = [r for r in mirror.read_current(m) if r["rule_id"] == "TEST-RECOVER"]
+    assert len(mirror_rows) == 1, "the mirror must agree: exactly one current row for this rule_id"
+    assert mirror_rows[0]["source_hash"] == "recoverhash"
+
+    _clean(pg, "TEST-RECOVER")
+    pg.close()
+
+
 def test_sync_rule_happy_path_activates_the_rule(tmp_path):
     if not ENV_FILE.exists():
         pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")

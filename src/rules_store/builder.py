@@ -6,9 +6,35 @@ mandates (§4.5):
     3. mark mirrored_at
     4. flip is_current=true
 
-A crash between steps 2 and 4 leaves the Postgres row exactly where step 1 left it: is_current=
-false. The row is inert, never half-active, and current_requires_mirror (0001 migration) makes the
-illegal state unreachable even if this ordering were violated by a bug.
+Every crash window in that order is accounted for, not just the one this file's test exercises:
+
+  - BEFORE step 1 (nothing committed yet): no state change at all — there is nothing to clean up
+    or recover, the caller simply retries.
+  - BETWEEN step 1's commit and step 2 (mirror write not yet attempted): the only committed state
+    is the fresh is_current=false row from step 1. Same shape as the step-2-to-3/4 window below —
+    inert, recoverable the same way.
+  - BETWEEN step 2 (mirror write, committed) and steps 3/4 (not yet run) — this is the window
+    `_fail_after_mirror_write` simulates: the Postgres row is stuck at is_current=false,
+    revision_status='current' even though the mirror already has the data. The row is INACTIVE
+    (never read as current by anything), so it does not wedge the system — a later call to this
+    function for the same rule_id inserts a fresh revision and activates it cleanly, because
+    step 0 below (added in Fix round 1) actively cleans up exactly this shape of orphan before
+    inserting. Without step 0 the orphan would still be harmless to correctness but would sit
+    forever with a self-contradictory label (revision_status='current' says active,
+    is_current=false says not) — recoverable is not the same claim as leaves-no-garbage, and this
+    module now makes both true.
+  - BETWEEN steps 3 and 4: not actually a reachable crash window, because both statements run
+    inside the SAME transaction (one `with pg_conn.cursor()` block, one `commit()`). A crash there
+    rolls both back — the row is left exactly as step 1/2 left it (is_current=false, mirrored_at
+    NULL), the identical inert shape as the window above. Transactional atomicity is the actual
+    defence here; the `current_requires_mirror` CHECK constraint (0001 migration) is the backstop
+    that would refuse the half-applied state even if this ordering were violated by a bug, but it
+    is never the ONLY thing standing between here and that state.
+
+A caller catching an exception from this function (including SimulatedCrash) must NOT roll back or
+delete the step-1 insert if it already committed — an inactive, uncleaned row is the intended
+outcome of a real crash mid-sync, not an error condition to reverse. The unconditional retry (call
+this function again for the same rule_id) is the recovery path, not a rollback.
 """
 from __future__ import annotations
 
@@ -24,6 +50,21 @@ class SimulatedCrash(RuntimeError):
 
 def sync_rule(pg_conn, mirror_conn, record: RuleRecord, *, _fail_after_mirror_write: bool = False) -> str:
     with pg_conn.cursor() as cur:
+        # Step 0 (Fix round 1) — clean up any orphan left by a previous crashed sync of this same
+        # rule_id: a row stuck at is_current=false with revision_status still 'current' (the
+        # step-2-to-3/4 crash window above) is a self-contradictory label — 'current' says active,
+        # is_current says not. It cannot be confused with a live current row (is_current=false
+        # excludes that) and it cannot be confused with an already-superseded/retired row (this
+        # UPDATE only touches revision_status='current' rows), so re-labelling it 'superseded' here
+        # is safe and makes the label agree with the boolean before this sync proceeds. Task 9's
+        # own supersede path only ever touches is_current=true rows, so it never sees or handles
+        # this shape — this step is what actually closes it, kept local to sync_rule because every
+        # caller of sync_rule (Task 9's sync_document included) goes through this exact insert path.
+        cur.execute(
+            "UPDATE rule_revisions SET revision_status = 'superseded' "
+            "WHERE rule_id = %s AND is_current = false AND revision_status = 'current'",
+            (record.rule_id,),
+        )
         # Step 1 — Postgres, is_current=false.
         cur.execute(
             """
