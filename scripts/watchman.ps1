@@ -170,18 +170,39 @@ function Get-SelfTestResults {
 
 $results = @(if ($SelfTest) { Get-SelfTestResults } else {
     # === REAL COMPONENTS === (Tasks 16-21 append @() entries here, in severity-appropriate order)
-    $hooksResult = Invoke-ComponentCheck -Name 'hooks' -Severity 'block' `
+    # Fix round 2: bounded to 5s (not the 60s default). Recover here is a single `git config` write
+    # -- it either lands in well under a second or it never will, and if content is the reason
+    # Verify keeps failing (Recover cannot rewrite a gutted hook file), waiting the full 60s buys
+    # nothing but a slow test/run on a fresh checkout with hooks unwired. 5s still gives ~10 poll
+    # cycles at the engine's 500ms interval, which is generous for a config write.
+    $hooksResult = Invoke-ComponentCheck -Name 'hooks' -Severity 'block' -MaxRecoverWaitSeconds 5 `
         -Detect {
             # Not just "is core.hooksPath wired and the files present" (a proxy the pre-commit file
             # could satisfy while gutted) -- also that pre-commit still contains a live (non-comment)
             # call to the meta gate. Keep this specific and simple: it proves the call line is still
             # there, not that the gate runs correctly or produces the right verdict.
+            # Fix round 2: matched anywhere on the line, NOT anchored to line-start -- a line-start
+            # anchor false-alarmed on a benign reformat (`cd "$ROOT" && node scripts/check-meta.mjs`)
+            # for a block-severity component, a false DOWN is worse than a false OK: it is how a
+            # legitimate refactor trips a spurious BLOCK, someone calls the check noisy, and removes
+            # it. The comment-exclusion still does real work: a line that is ONLY a comment restating
+            # the call does not count as live. Also excludes lines starting with `echo` -- found
+            # empirically: THIS FILE has `echo "[pre-commit] running node scripts/check-meta.mjs
+            # ..."` right above the real call, and an unqualified anywhere-on-line match would treat
+            # that message text as a live invocation even when the real call below it is commented
+            # out. Known remaining gap: text mentioning the call inside some other non-echo string
+            # (e.g. a heredoc, a different message-printing command) would still false-positive; this
+            # stays a targeted, disclosed heuristic, not a shell parser.
             $preCommitPath = Join-Path $RepoRoot '.githooks\pre-commit'
             $current = (git -C $RepoRoot config --get core.hooksPath 2>$null)
             $current -eq '.githooks' -and
                 (Test-Path $preCommitPath) -and
                 (Test-Path (Join-Path $RepoRoot '.githooks\commit-msg')) -and
-                ((Get-Content $preCommitPath -Raw) -match '(?m)^\s*node\s+scripts/check-meta\.mjs\b')
+                (@(Get-Content $preCommitPath | Where-Object {
+                    $t = $_.TrimStart()
+                    -not $t.StartsWith('#') -and -not $t.StartsWith('echo') -and
+                        $_ -match 'node\s+scripts/check-meta\.mjs\b'
+                }).Count -gt 0)
         } `
         -Recover { git -C $RepoRoot config core.hooksPath .githooks } `
         -Verify {
@@ -194,7 +215,11 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
             (git -C $RepoRoot config --get core.hooksPath 2>$null) -eq '.githooks' -and
                 (Test-Path $preCommitPath) -and
                 (Test-Path (Join-Path $RepoRoot '.githooks\commit-msg')) -and
-                ((Get-Content $preCommitPath -Raw) -match '(?m)^\s*node\s+scripts/check-meta\.mjs\b')
+                (@(Get-Content $preCommitPath | Where-Object {
+                    $t = $_.TrimStart()
+                    -not $t.StartsWith('#') -and -not $t.StartsWith('echo') -and
+                        $_ -match 'node\s+scripts/check-meta\.mjs\b'
+                }).Count -gt 0)
         }
 
     @($hooksResult)
