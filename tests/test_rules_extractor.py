@@ -10,7 +10,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.rules_store.extractor import extract_section_rules
+from src.rules_store.extractor import extract_dod_rules, extract_section_rules
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -193,3 +193,93 @@ def test_real_document_section6_statement_contains_the_failure_mode_table():
     recs = {r.rule_id: r for r in extract_section_rules(text, "docs/process/development-discipline.md")}
     assert "equipPlan` waived silently" in recs["6"].statement, recs["6"].statement
     assert "§4 Waiver Gate" in recs["6"].statement, recs["6"].statement
+
+
+# ---------------------------------------------------------------------------------------------
+# Task 6: extract_dod_rules — the DoD-N checklist items inside §3, plus the process/content
+# boundary ruling (controller, 2026-08-06): DoD-10 (Safety invariance) is a CONTENT rule — it
+# would not exist in a system that was not about fire and meat — and must be classified as
+# bucket='content', never bucket='process', driven by the rule's own text (domain vocabulary),
+# never by a hardcoded rule_id check. See docs/process/development-discipline.md §3.
+# ---------------------------------------------------------------------------------------------
+
+DOD_FIXTURE = """\
+### Per-task DoD checklist
+
+- [ ] **1 · Spec requirement traced.** The exact spec line(s) this task satisfies, quoted.
+- [ ] **2 · RED witnessed.** Test written first, run, and observed failing.
+- [ ] **12 · Full suite green (H7).** Run `npx playwright test` plain.
+
+### Per-phase DoD gate
+
+- [ ] Every DoD line in the governing spec's "Definition of Done" section quoted and marked MET.
+"""
+
+# A second fixture, close to the real §3 shape, carrying a generic process item alongside the
+# real DoD-10 text verbatim — used to prove the content-vocabulary classifier without depending
+# on the live document (which is proven separately below).
+DOD_BUCKET_FIXTURE = """\
+### Per-task DoD checklist
+
+- [ ] **9 · Hebrew check.** Any user-facing string rendered in Hebrew, no English leak.
+- [ ] **10 · Safety invariance.** No `bcheck` stage, `temp`, `safe` value, or cook duration altered. Where the task touches the plan, the assertion that proves this is named.
+- [ ] **11 · No arbitrary waits.** Tests wait on conditions, not setTimeout guesses.
+"""
+
+
+def test_extracts_only_numbered_dod_items_inside_the_checklist_section():
+    recs = extract_dod_rules(DOD_FIXTURE, "docs/process/development-discipline.md")
+    ids = {r.rule_id for r in recs}
+    assert ids == {"DoD-1", "DoD-2", "DoD-12"}, f"got {ids}"
+
+
+def test_per_phase_gate_bullets_are_not_dod_items():
+    # the unnumbered "Per-phase DoD gate" bullet must NOT become a DoD-N row
+    recs = extract_dod_rules(DOD_FIXTURE, "docs/process/development-discipline.md")
+    assert not any("Every DoD line" in r.statement for r in recs)
+
+
+def test_dod_10_is_classified_as_content_bucket_not_process():
+    """The controller's binding addition: DoD-10 is content (bcheck/temp/safe/cook duration are
+    app-domain vocabulary — this sentence would not be true for a team building an accounting
+    system), so it must carry bucket='content', never the default bucket='process'."""
+    recs = {r.rule_id: r for r in extract_dod_rules(DOD_BUCKET_FIXTURE, "docs/process/development-discipline.md")}
+    assert recs["DoD-10"].bucket == "content", recs["DoD-10"].bucket
+
+
+def test_dod_10_is_not_dropped_only_reclassified():
+    """Requirement 1 of the binding addition: DoD-10 is NOT dropped from extraction — it is a
+    real rule that belongs to the content store once that is built (spec §11)."""
+    recs = {r.rule_id: r for r in extract_dod_rules(DOD_BUCKET_FIXTURE, "docs/process/development-discipline.md")}
+    assert "DoD-10" in recs
+
+
+def test_generic_process_dod_items_default_to_process_bucket():
+    recs = {r.rule_id: r for r in extract_dod_rules(DOD_BUCKET_FIXTURE, "docs/process/development-discipline.md")}
+    assert recs["DoD-9"].bucket == "process", recs["DoD-9"].bucket
+    assert recs["DoD-11"].bucket == "process", recs["DoD-11"].bucket
+
+
+def test_process_only_view_excludes_dod_10():
+    """Requirement 2 of the binding addition: a test that FAILS if DoD-10 is ingested as a
+    process rule. A process-only filter over the extractor's output must exclude it."""
+    recs = extract_dod_rules(DOD_BUCKET_FIXTURE, "docs/process/development-discipline.md")
+    process_ids = {r.rule_id for r in recs if r.bucket == "process"}
+    assert "DoD-10" not in process_ids, "DoD-10 (Safety invariance) must never be ingested as a process rule"
+    assert process_ids == {"DoD-9", "DoD-11"}
+
+
+def test_real_document_extracts_all_twelve_dod_items():
+    text = (ROOT / "docs" / "process" / "development-discipline.md").read_text(encoding="utf-8")
+    recs = {r.rule_id: r for r in extract_dod_rules(text, "docs/process/development-discipline.md")}
+    assert {f"DoD-{n}" for n in range(1, 13)} == set(recs), sorted(recs)
+
+
+def test_real_document_dod_10_is_bucket_content_and_all_others_are_process():
+    """Proves the classifier against the LIVE document, not only a fixture that avoids the
+    failing shape — an extractor.py docstring rule from Task 5, carried forward here."""
+    text = (ROOT / "docs" / "process" / "development-discipline.md").read_text(encoding="utf-8")
+    recs = {r.rule_id: r for r in extract_dod_rules(text, "docs/process/development-discipline.md")}
+    assert recs["DoD-10"].bucket == "content", recs["DoD-10"].statement
+    non_content = {rid: r.bucket for rid, r in recs.items() if rid != "DoD-10"}
+    assert all(bucket == "process" for bucket in non_content.values()), non_content

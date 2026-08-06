@@ -45,6 +45,7 @@ class RuleRecord:
     statement: str
     source_heading: str
     content_hash: str
+    bucket: str = "process"
 
 
 def _hash(text: str) -> str:
@@ -109,5 +110,62 @@ def extract_section_rules(text: str, source_path: str) -> list[RuleRecord]:
             statement=statement,
             source_heading=f"{rule_id}. {title}",
             content_hash=_hash(f"{title}\n{statement}"),
+        ))
+    return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Task 6: the DoD-N checklist items inside §3 ("### Per-task DoD checklist"), PLUS the
+# process/content classification the controller's binding addition (2026-08-06) requires.
+#
+# The section is delimited by its own heading and the next `###`/`##` heading, so the sibling
+# "### Per-phase DoD gate" bullets (unnumbered) are excluded by construction — they never match
+# `_DOD_ITEM_RE`, which requires the `**N · Title.**` shape.
+# ---------------------------------------------------------------------------------------------
+
+_DOD_SECTION_RE = re.compile(
+    r"### Per-task DoD checklist\s*\n(.*?)(?=\n###|\n##|\Z)", re.DOTALL
+)
+_DOD_ITEM_RE = re.compile(
+    r"^- \[ \] \*\*(\d+)\s*·\s*([^*]+?)\.\*\*\s*(.*)$", re.MULTILINE
+)
+
+# The process/content boundary (owner ruling, 2026-08-06): a DoD item is CONTENT — not process —
+# when its own statement text is stated in app-domain vocabulary that would not be true for a
+# team building an unrelated system (spec §1's own test: "would this sentence be true for a team
+# building an accounting system?"). This match list is the operationalisation of that test: the
+# handful of terms that only mean something inside a live-fire-cooking safety plan. It is
+# deliberately NOT a rule_id (`DoD-10`) check — a fixed id list rots the moment a future edit adds
+# a new content-flavoured DoD item under a different number; a vocabulary check still classifies
+# it correctly without this file being touched again. `temp` and `safe` are matched only inside
+# backticks (`` `temp` ``, `` `safe` ``) because as bare English words they are common outside
+# this domain (e.g. "temporary", "safe to assume") and would over-match; `bcheck` and
+# "cook duration" have no meaning outside this product at all, so they are matched as plain text.
+_CONTENT_VOCAB_RE = re.compile(
+    r"`bcheck`|`temp`|`safe`|\bcook duration\b", re.IGNORECASE
+)
+
+
+def _classify_bucket(statement: str) -> str:
+    return "content" if _CONTENT_VOCAB_RE.search(statement) else "process"
+
+
+def extract_dod_rules(text: str, source_path: str) -> list[RuleRecord]:
+    section_match = _DOD_SECTION_RE.search(text)
+    if not section_match:
+        return []
+    body = section_match.group(1)
+    out: list[RuleRecord] = []
+    for m in _DOD_ITEM_RE.finditer(body):
+        n, title, rest = m.group(1), m.group(2).strip(), m.group(3).strip()
+        statement = f"{title}. {rest}".strip()
+        out.append(RuleRecord(
+            rule_id=f"DoD-{n}",
+            section="DoD",
+            title_he=title,
+            statement=statement,
+            source_heading=f"Per-task DoD checklist item {n}",
+            content_hash=_hash(statement),
+            bucket=_classify_bucket(statement),
         ))
     return out
