@@ -75,10 +75,22 @@ function Invoke-BoundedProcess {
     # worse than a wrong answer because a wrong answer at least reports. The Postgres *connect* is
     # already bounded elsewhere (5s in the gate, 10s in the builder) -- this is the layer above that,
     # bounding the process as a whole regardless of where inside it a hang happens.
+    #
+    # Fix round 4 (post-Task-18 review, deferred hardening 1a): the comment used to claim "a killed
+    # node/py process here has no long-running children of its own to orphan." That was false --
+    # check-rules-mirror.mjs (invoked by the rules-mirror component's Detect/Verify, above) itself
+    # calls spawnSync('py'/'python3', ...) with NO timeout of its own. In exactly the scenario this
+    # bound exists for -- a query that hangs AFTER a successful Postgres connect -- killing node.exe
+    # on Windows left the py.exe grandchild running, still holding a live Postgres connection (see
+    # R-100/R-107 in the roadmap register for what that then costs). Process.Kill() with no argument
+    # only ever killed the immediate child; it never walked the tree.
+    # Fixed with process-TREE termination via `taskkill /T /F /PID <pid>`, which works identically
+    # under both Windows PowerShell 5.1 and pwsh 7 (it shells out to the same OS binary either way,
+    # unlike Process.Kill(entireProcessTree), which is a .NET-Core-only overload and would silently
+    # not exist under 5.1). taskkill is tried first; Process.Kill() on the parent is kept as a
+    # best-effort fallback in case taskkill itself is unavailable or the parent already exited.
     # Compatible with both Windows PowerShell 5.1 and PowerShell 7 (this file runs under both):
-    # ProcessStartInfo.ArgumentList and Process.WaitForExit(ms) are available on both; Process.Kill()
-    # (no entireProcessTree overload, which is Core-only) is used so behaviour doesn't diverge --
-    # a killed `node`/`py` process here has no long-running children of its own to orphan.
+    # ProcessStartInfo.ArgumentList and Process.WaitForExit(ms) are available on both.
     # On timeout this THROWS rather than returning a sentinel, so it flows through the existing
     # Invoke-BoolProbe try/catch into Detail as "<RoleName> threw: ... timed out ...", not a silent
     # true and not a hang.
@@ -89,11 +101,21 @@ function Invoke-BoundedProcess {
     )
     # .ArgumentList (the collection property) is unreliable across the two PowerShell/.NET runtimes
     # this file must support -- observed $null on a fresh ProcessStartInfo under Windows PowerShell
-    # 5.1 / .NET Framework 4.8 in this environment. Build a single quoted argument string instead,
-    # which both runtimes have supported unchanged since .NET Framework 2.0.
+    # 5.1 / .NET Framework 4.8 in this environment. Build a single argument string instead, which
+    # both runtimes have supported unchanged since .NET Framework 2.0.
+    # Fix round 4 (Task 19, RED found live): only quote a token when it actually needs it (contains
+    # whitespace or a double quote). Blanket-quoting EVERY token -- including bare single-word flags
+    # like `-e` -- broke `wsl.exe` specifically: wsl does its own raw-command-line sniffing for `-e`
+    # (so it can forward the remainder byte-for-byte to Linux) rather than reading parsed argv, and
+    # it only recognizes `-e` as its own flag when that token appears unquoted. Quoted, wsl silently
+    # fell through to running the whole quoted line via the default shell instead, and bash then
+    # tried to execute the literal token `-e` as a command ("/bin/bash: -e: command not found") --
+    # a real, observed failure (see this task's report), not a hypothetical. Confirmed node/py calls
+    # are unaffected: their arguments either contain no whitespace (flags, script paths without
+    # spaces) or already need quoting and still get it under the new rule.
     $psi = New-Object System.Diagnostics.ProcessStartInfo
     $psi.FileName = $FilePath
-    $psi.Arguments = ($ArgumentList | ForEach-Object { '"' + ($_ -replace '"', '\"') + '"' }) -join ' '
+    $psi.Arguments = ($ArgumentList | ForEach-Object { if ($_ -match '[\s"]') { '"' + ($_ -replace '"', '\"') + '"' } else { $_ } }) -join ' '
     $psi.WorkingDirectory = $RepoRoot
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
@@ -104,8 +126,10 @@ function Invoke-BoundedProcess {
         $stderrTask = $proc.StandardError.ReadToEndAsync()
         $exited = $proc.WaitForExit($TimeoutSeconds * 1000)
         if (-not $exited) {
-            try { $proc.Kill() } catch { }
-            throw "$FilePath $($ArgumentList -join ' ') timed out after ${TimeoutSeconds}s and was killed"
+            $procId = $proc.Id
+            try { & taskkill.exe /T /F /PID $procId *> $null } catch { }
+            try { if (-not $proc.HasExited) { $proc.Kill() } } catch { }
+            throw "$FilePath $($ArgumentList -join ' ') timed out after ${TimeoutSeconds}s and was killed (process tree, PID $procId)"
         }
         $stdout = $stdoutTask.GetAwaiter().GetResult()
         $stderr = $stderrTask.GetAwaiter().GetResult()
@@ -353,11 +377,20 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
     }
 
     function Test-RulesPgUp {
+        # Fix round 4 (deferred hardening 1b, Task 18 implementer's own flag): pg_isready was the
+        # only child-process invocation in this file not routed through Invoke-BoundedProcess.
+        # pg_isready's own internal timeout is short, so the risk was low -- but "the one call we
+        # left unbounded" is exactly how the next hang gets found the hard way. Bounded to 10s here
+        # (generous vs. pg_isready's own sub-second internal timeout; this bound exists for the
+        # pathological case where the process itself hangs before even reaching its own timeout
+        # logic, e.g. a stuck DNS/name resolution on `-h`).
         param($env_, $exe)
         if (-not $exe) { return $false }
         try {
-            & $exe -h 127.0.0.1 -p $env_.RULES_POSTGRES_PORT -d $env_.RULES_POSTGRES_DB *> $null
-            return ($LASTEXITCODE -eq 0)
+            $p = Invoke-BoundedProcess -FilePath $exe `
+                -ArgumentList @('-h', '127.0.0.1', '-p', $env_.RULES_POSTGRES_PORT, '-d', $env_.RULES_POSTGRES_DB) `
+                -TimeoutSeconds 10
+            return ($p.ExitCode -eq 0)
         } catch { return $false }
     }
 
@@ -380,7 +413,44 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         [pscustomobject]@{ Name = 'mk_rules-postgres'; Severity = 'warn'; InitialOk = $false; Recovered = $false; FinalOk = $false; ElapsedSeconds = 0; Detail = 'infra/rules-db/.env missing, RULES_SERVICE_NAME not set, or pg_isready.exe not found'; TimestampUtc = (Get-Date).ToUniversalTime().ToString('o') }
     }
 
-    @($hooksResult, $rulesMirrorResult, $rulesPgResult)
+    # geniza-postgres (warn): the geniza's own PostgreSQL, running inside the WSL Docker container
+    # mk-postgres -- NOT the native postgresql-x64-18 service used by mk_rules-postgres above. Task
+    # 18 measured that mk_rules and the geniza SHARE one Windows service (postgresql-x64-18, port
+    # 5432, different databases) -- but the geniza's own evidence store here is a separate stack
+    # entirely: WSL's Docker daemon -> `docker compose up -d` in infra/ -> the mk-postgres container.
+    # These are two genuinely different recovery actions on two genuinely different failure surfaces
+    # (a native Windows service vs. a WSL/Docker container) -- see this task's report for why that is
+    # not a case of two components covering one root cause.
+    # Adapted from run-extraction.ps1's proven sequence (wsl -u root service docker start -> docker
+    # compose up -d -> poll pg_isready inside mk-postgres), not copy-pasted procedurally: that script
+    # polls in its own foreach loop with Start-Sleep; here Invoke-ComponentCheck's own poll loop
+    # (Detect -> Recover once -> Verify in a loop up to MaxRecoverWaitSeconds) does the waiting, so
+    # Recover only ISSUES the two start commands once and Verify is what gets repeatedly re-checked.
+    # -MaxRecoverWaitSeconds 300 matches run-extraction.ps1's own proven 60x5s budget for this same
+    # operation -- WSL/Docker cold start is genuinely slower than the native service in Task 18;
+    # copying a shorter timeout here would turn a real recovery into a false FinalOk=false.
+    # Every child process here goes through Invoke-BoundedProcess (this file's contract) -- `wsl`
+    # itself can hang (e.g. a wedged WSL VM), and an unbounded call would hang the whole watchman
+    # run exactly like the unbounded node/py calls the deferred hardening above fixed. No inner
+    # try/catch around the call: on timeout Invoke-BoundedProcess throws, which flows through
+    # Invoke-BoolProbe's own catch into an honest "Detect/Verify threw: ... timed out ..." Detail,
+    # matching rules-mirror's pattern above rather than swallowing the reason into a bare $false.
+    function Test-GenizaPostgresReady {
+        $p = Invoke-BoundedProcess -FilePath 'wsl' `
+            -ArgumentList @('-e', 'bash', '-lc', 'docker exec mk-postgres pg_isready -h 127.0.0.1 -q && echo READY') `
+            -TimeoutSeconds 15
+        return ($p.Output -match 'READY')
+    }
+
+    $genizaResult = Invoke-ComponentCheck -Name 'geniza-postgres' -Severity 'warn' -MaxRecoverWaitSeconds 300 `
+        -Detect { Test-GenizaPostgresReady } `
+        -Recover {
+            Invoke-BoundedProcess -FilePath 'wsl' -ArgumentList @('-u', 'root', '-e', 'bash', '-lc', 'service docker start') -TimeoutSeconds 30 | Out-Null
+            Invoke-BoundedProcess -FilePath 'wsl' -ArgumentList @('-e', 'bash', '-lc', 'cd /mnt/c/Users/dudib/source/repos/matconetesh/infra && docker compose up -d') -TimeoutSeconds 60 | Out-Null
+        } `
+        -Verify { Test-GenizaPostgresReady }
+
+    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult)
 })
 
 foreach ($r in $results) {
