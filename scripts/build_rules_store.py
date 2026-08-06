@@ -4,7 +4,9 @@
     py -3 scripts/build_rules_store.py --doc docs/process/development-discipline.md
     py -3 scripts/build_rules_store.py --rebuild-mirror-only
 
-Exit codes: 0 on success, 1 on any failure (connection, constraint violation, parse error).
+Exit codes: 0 on success, 1 on a runtime failure (connection, constraint violation, parse error),
+2 on a bad invocation (argparse's own exit code — e.g. neither --doc nor --rebuild-mirror-only
+given).
 """
 from __future__ import annotations
 
@@ -29,7 +31,10 @@ def main() -> int:
     if not args.doc and not args.rebuild_mirror_only:
         ap.error("give --doc <path> or --rebuild-mirror-only")
 
-    pg = config.connect_writer()
+    # Fix round 1, MINOR 3: --rebuild-mirror-only only ever SELECTs from mk_rules — the reader
+    # connection (config.connect_reader(), no write verb at the Postgres role level) is least
+    # privilege for that path. A full --doc sync writes, so it still needs connect_writer().
+    pg = config.connect_reader() if args.rebuild_mirror_only else config.connect_writer()
     pg.autocommit = False
     try:
         m = mirror.open_mirror(args.mirror_path)
@@ -39,7 +44,13 @@ def main() -> int:
             return 0
 
         text = args.doc.read_text(encoding="utf-8")
-        source_path = str(args.doc)
+        # Fix round 1, IMPORTANT 2: str(Path(...)) renders with backslashes on Windows.
+        # sync_document's cross-document rule_id-ownership check compares source_path as a raw
+        # string, so an un-normalized Windows path and the POSIX form of the SAME document are two
+        # different "documents" to that check — a real sync from a different OS would hard-refuse
+        # every rule in it as a false name collision. .as_posix() makes the stored value stable
+        # across platforms.
+        source_path = args.doc.as_posix()
         result = builder.sync_document(pg, m, text, source_path)
         print(
             f"added: {len(result['added'])} · updated: {len(result['updated'])} · "

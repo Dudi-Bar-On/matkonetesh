@@ -108,7 +108,13 @@ def test_rebuild_mirror_only_does_not_write_to_postgres():
 
 def test_cli_requires_doc_or_rebuild_flag():
     """Negative case (DoD-6): neither --doc nor --rebuild-mirror-only given -> argparse error,
-    non-zero exit, and no mirror file is created — the CLI must refuse before touching anything."""
+    non-zero exit, and no mirror file is created — the CLI must refuse before touching anything.
+
+    Fix round 1: asserting only `returncode != 0` and `not mirror_path.exists()` cannot
+    distinguish "the script ran and correctly refused" from "the script does not exist at all" —
+    both produce a non-zero exit and no mirror file (proven directly: this exact assertion set
+    passed even with scripts/build_rules_store.py deleted, see task-11-report.md Fix round 1).
+    Pinned to the CLI's own refusal message text so only a real, running refusal can pass."""
     with tempfile.TemporaryDirectory() as d:
         mirror_path = Path(d) / "should-not-exist.sqlite"
         r = subprocess.run(
@@ -117,11 +123,57 @@ def test_cli_requires_doc_or_rebuild_flag():
             capture_output=True, text=True,
         )
         assert r.returncode != 0, r.stdout + r.stderr
+        assert "give --doc <path> or --rebuild-mirror-only" in r.stderr, (
+            f"expected the CLI's own refusal message in stderr, got: {r.stderr!r}"
+        )
         assert not mirror_path.exists(), "a refused invocation must not create the mirror file"
+
+
+def test_source_path_is_stored_posix_never_backslash():
+    """Fix round 1, IMPORTANT 2: str(Path(...)) renders with backslashes on Windows. If the CLI
+    stored that raw form, the SAME document synced later from a POSIX path would be a different
+    `source_path` string to sync_document's lookup — misclassifying a real update as a
+    cross-document rule_id collision (ValueError, whole document refused). Pins that the CLI
+    normalizes to POSIX (`.as_posix()`) before the value ever reaches Postgres."""
+    sys.path.insert(0, str(ROOT))
+    from src.rules_store import config
+
+    rule_id = "10.97"
+    pg = config.connect_writer(); pg.autocommit = True
+    with pg.cursor() as cur:
+        cur.execute("DELETE FROM rule_revisions WHERE rule_id = %s", (rule_id,))
+
+    with tempfile.TemporaryDirectory() as d:
+        sub = Path(d) / "nested"
+        sub.mkdir()
+        doc = sub / "fixture.md"
+        doc.write_text("### 10.97 Posix path rule\n\nfrom the CLI.\n", encoding="utf-8")
+        mirror_path = Path(d) / "rules.sqlite"
+        r = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "build_rules_store.py"),
+             "--doc", str(doc), "--mirror-path", str(mirror_path)],
+            capture_output=True, text=True,
+        )
+        assert r.returncode == 0, r.stdout + r.stderr
+
+        with pg.cursor() as cur:
+            cur.execute(
+                "SELECT source_path FROM rule_revisions WHERE rule_id = %s", (rule_id,)
+            )
+            (stored_source_path,) = cur.fetchone()
+        assert "\\" not in stored_source_path, (
+            f"source_path must be stored POSIX-normalized (no backslash), got: "
+            f"{stored_source_path!r}"
+        )
+
+    with pg.cursor() as cur:
+        cur.execute("DELETE FROM rule_revisions WHERE rule_id = %s", (rule_id,))
+    pg.close()
 
 
 if __name__ == "__main__":
     test_cli_reports_lifecycle_counts()
     test_rebuild_mirror_only_does_not_write_to_postgres()
     test_cli_requires_doc_or_rebuild_flag()
+    test_source_path_is_stored_posix_never_backslash()
     print("PASS")
