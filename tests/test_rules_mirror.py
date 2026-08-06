@@ -72,6 +72,67 @@ def test_checksum_changes_when_a_row_changes():
             conn.close()
 
 
+def test_checksum_changes_when_statement_changes_but_source_hash_does_not():
+    """Fix round 1, 2026-08-06 — review finding, Critical: the original digest covered only
+    (rule_id, source_hash), so a row whose STATEMENT (the text the enforcement hooks actually
+    read) was corrupted while source_hash stayed put reported as healthy. This is the regression
+    test for that exact blind spot — same source_hash, different statement, must move the digest."""
+    with tempfile.TemporaryDirectory() as d:
+        conn = mirror.open_mirror(Path(d) / "rules.sqlite")
+        try:
+            mirror.write_revision(conn, _sample(source_hash="abc123", statement="Maximize Serena."))
+            c1 = mirror.checksum(conn)
+            mirror.write_revision(conn, _sample(source_hash="abc123", statement="Something else entirely."))
+            c2 = mirror.checksum(conn)
+            assert c1 != c2, (
+                "checksum must change when statement changes even though source_hash is unchanged "
+                "(the exact blind spot fix round 1 closed)"
+            )
+        finally:
+            conn.close()
+
+
+def test_checksum_changes_when_severity_or_bucket_changes_but_source_hash_does_not():
+    with tempfile.TemporaryDirectory() as d:
+        conn = mirror.open_mirror(Path(d) / "rules.sqlite")
+        try:
+            mirror.write_revision(conn, _sample(source_hash="abc123", severity="warn", bucket="A"))
+            c1 = mirror.checksum(conn)
+            mirror.write_revision(conn, _sample(source_hash="abc123", severity="block", bucket="A"))
+            c2 = mirror.checksum(conn)
+            assert c1 != c2, "checksum must change when severity changes even though source_hash is unchanged"
+
+            mirror.write_revision(conn, _sample(source_hash="abc123", severity="block", bucket="C"))
+            c3 = mirror.checksum(conn)
+            assert c3 != c2, "checksum must change when bucket changes even though source_hash is unchanged"
+        finally:
+            conn.close()
+
+
+def test_checksum_of_rows_is_the_single_shared_formula():
+    """The digest formula lives in ONE function so the SQLite side (checksum(), via conn) and the
+    Postgres side (check-rules-mirror.mjs's inline query, via a plain list of tuples) cannot desync
+    from each other by a format-string edit landing on only one of them. This proves checksum()
+    IS checksum_of_rows() under the hood, not a parallel re-implementation of it."""
+    with tempfile.TemporaryDirectory() as d:
+        conn = mirror.open_mirror(Path(d) / "rules.sqlite")
+        try:
+            mirror.write_revision(conn, _sample(rule_id="A", source_hash="h1", statement="s1", severity="warn", bucket="A"))
+            mirror.write_revision(conn, _sample(rule_id="B", source_hash="h2", statement="s2", severity=None, bucket=None))
+            from_conn = mirror.checksum(conn)
+        finally:
+            conn.close()
+
+        # The exact same tuples, fed straight to the shared formula — as a Postgres cursor's
+        # fetchall() would hand them, no sqlite3.Row involved.
+        rows = [
+            ("A", "h1", "s1", "warn", "A"),
+            ("B", "h2", "s2", None, None),
+        ]
+        from_rows = mirror.checksum_of_rows(rows)
+        assert from_conn == from_rows, "checksum() must delegate to checksum_of_rows(), not re-implement it"
+
+
 def test_checksum_is_stable_for_identical_content():
     with tempfile.TemporaryDirectory() as d:
         path = Path(d) / "rules.sqlite"

@@ -86,10 +86,39 @@ def read_current(conn: sqlite3.Connection) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def checksum(conn: sqlite3.Connection) -> str:
-    """sha256 over the sorted, concatenated (rule_id, source_hash) pairs — this is what
-    check-rules-mirror.mjs (Task 12) compares against the equivalent computation over Postgres, to
-    catch silent divergence between the two stores."""
-    rows = conn.execute("SELECT rule_id, source_hash FROM rule_revisions ORDER BY rule_id").fetchall()
-    body = "\n".join(f"{r['rule_id']}:{r['source_hash']}" for r in rows)
+def checksum_of_rows(rows) -> str:
+    """The ONE digest formula — sha256 over rows already ordered by the caller (both call sites
+    `ORDER BY rule_id` in SQL; this function does not re-sort, so it never masks an ordering bug in
+    either caller).
+
+    Fix round 1, 2026-08-06 — review finding, Critical: the original digest covered only
+    (rule_id, source_hash). `source_hash` traces the ON-DISK DOCUMENT's content hash; it does NOT
+    change when a write to the mirror or to Postgres corrupts/loses the row's own body — a bad
+    `write_revision`, a partial rebuild, a hand-edit of `statement`/`severity`/`bucket` all left
+    `source_hash` untouched and the checksum reported healthy. This is the field the enforcement
+    hooks actually read (`rules.sqlite` is what they consult, never Postgres), so the digest now
+    covers `statement`, `severity`, and `bucket` alongside `rule_id`/`source_hash`.
+
+    Takes `(rule_id, source_hash, statement, severity, bucket)` tuples so both the SQLite side
+    (`checksum()` below) and check-rules-mirror.mjs's inline Postgres query go through this exact
+    same code — a future change to the format string can no longer desync the two computations,
+    because there is only one format string.
+    """
+    body = "\n".join(
+        f"{rule_id}:{source_hash}:{statement}:{severity or ''}:{bucket or ''}"
+        for rule_id, source_hash, statement, severity, bucket in rows
+    )
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
+
+
+def checksum(conn: sqlite3.Connection) -> str:
+    """sha256 over the sorted, concatenated (rule_id, source_hash, statement, severity, bucket)
+    tuples — this is what check-rules-mirror.mjs (Task 12/13) compares against the equivalent
+    computation over Postgres, to catch silent divergence between the two stores. See
+    checksum_of_rows() for why these five columns and not just the first two."""
+    rows = conn.execute(
+        "SELECT rule_id, source_hash, statement, severity, bucket FROM rule_revisions ORDER BY rule_id"
+    ).fetchall()
+    return checksum_of_rows(
+        (r["rule_id"], r["source_hash"], r["statement"], r["severity"], r["bucket"]) for r in rows
+    )
