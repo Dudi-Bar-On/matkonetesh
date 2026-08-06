@@ -87,26 +87,48 @@ def test_checksum_is_stable_for_identical_content():
         assert c1 == c2, "checksum must be deterministic across connections for the same content"
 
 
-def test_open_mirror_never_leaves_an_empty_invalid_file_on_partial_write():
-    """A crash mid-write must not leave a mirror file that LOOKS usable but silently has a broken
-    or half-applied schema. write_revision runs inside its own transaction and open_mirror commits
-    schema creation atomically — so a killed process either has the old committed state or none."""
+def test_an_abandoned_uncommitted_write_does_not_reach_the_mirror():
+    """Simulates a process that crashes mid-write: a SECOND connection opens a transaction, writes
+    a row, and is abandoned (closed) without ever calling commit(). The first connection's view —
+    and a completely fresh connection's view — must show the abandoned row is simply absent, the
+    schema and prior committed data are intact, and the mirror is still fully usable afterwards
+    (both readable and writable), not merely "unchanged"."""
     with tempfile.TemporaryDirectory() as d:
         path = Path(d) / "rules.sqlite"
         conn = mirror.open_mirror(path)
-        mirror.write_revision(conn, _sample(rule_id="ok", source_hash="h1"))
-        conn.commit()
+        mirror.write_revision(conn, _sample(rule_id="committed", source_hash="h0"))
+        baseline_checksum = mirror.checksum(conn)
+
+        # A second connection begins an implicit transaction on INSERT and is closed without
+        # commit() — this is what a killed process leaves behind.
+        second = sqlite3.connect(str(path))
+        second.execute(
+            "INSERT INTO rule_revisions (rule_id, statement, source_path, source_hash, revision_status) "
+            "VALUES (?, ?, ?, ?, ?)",
+            ("abandoned", "must never be visible", "x.md", "deadbeef", "current"),
+        )
+        second.close()  # no commit() — the write is abandoned, exactly like a killed process
+
+        rows = mirror.read_current(conn)
+        assert [r["rule_id"] for r in rows] == ["committed"], (
+            f"an abandoned, uncommitted write leaked into the mirror: {[r['rule_id'] for r in rows]}"
+        )
+        assert mirror.checksum(conn) == baseline_checksum, "checksum moved from an uncommitted write"
+
+        # Prove the mirror is still USABLE, not merely unchanged: write and read again.
+        mirror.write_revision(conn, _sample(rule_id="after", source_hash="h1"))
+        rows_after = mirror.read_current(conn)
+        assert sorted(r["rule_id"] for r in rows_after) == ["after", "committed"]
         conn.close()
 
-        # Simulate a consumer reopening after a hard crash between commits: reading the file with
-        # a fresh sqlite3 connection must still find the schema AND the previously committed row —
-        # never an empty, schema-less file.
+        # And a completely fresh connection (simulating the next process to open the file) sees
+        # exactly the same thing — schema intact, abandoned row absent, later write present.
         fresh = sqlite3.connect(str(path))
         fresh.row_factory = sqlite3.Row
         tables = [r[0] for r in fresh.execute(
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()]
         assert "rule_revisions" in tables, "schema must be present, never a schema-less shell"
-        rows = fresh.execute("SELECT rule_id FROM rule_revisions").fetchall()
-        assert [r["rule_id"] for r in rows] == ["ok"]
+        fresh_rows = fresh.execute("SELECT rule_id FROM rule_revisions ORDER BY rule_id").fetchall()
+        assert [r["rule_id"] for r in fresh_rows] == ["after", "committed"]
         fresh.close()
