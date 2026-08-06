@@ -116,6 +116,12 @@ run('check-geniza-fresh', 'check-geniza-fresh', 'check-geniza-fresh.mjs');
 run('check-pytest', 'check-pytest', 'check-pytest.mjs');
 run('check-no-secrets', 'check-no-secrets', 'check-no-secrets.mjs');
 run('check-requirements', 'check-requirements', 'check-requirements.mjs');
+// BEFORE check-ci, on purpose. check-ci reads what CI DID; this reads whether CI can run at all.
+// When a workflow file does not compile, GitHub produces a run with zero jobs and no logs, so
+// check-ci reports a red it cannot explain — which is precisely what happened for six consecutive
+// pushes over eleven hours (a duplicate `retention-days` key introduced in 1a9f844). Ordering the
+// cheap, local, decidable check first means the answer arrives before the symptom.
+run('check-workflows', 'check-workflows (a workflow GitHub cannot compile produces zero jobs and no logs)', 'check-workflows.mjs');
 // R-94. Without this, check-meta could report OK while the UI suite had been red in CI for 25
 // consecutive runs — which is what happened. It READS CI rather than running the suite, because
 // §11a forbids a second concurrent Playwright run and a hook that launched one would cause the

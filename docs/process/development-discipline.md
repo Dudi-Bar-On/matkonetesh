@@ -1710,6 +1710,33 @@ rule for snapshot gates: before storing a baseline, name every pixel in it that 
 on focus, or on scroll position — those three produced all six failures here — and either pin the
 state or mask it.
 
+**L61 · A duplicate YAML key is silent locally and fatal remotely — and a red nobody can explain
+gets treated as weather (2026-08-06).**
+
+Commit `1a9f844` added an `upload-artifact` step to `test.yml` and left the previous step's
+`retention-days: 7` dangling, so it landed inside the NEW step's `with:` beside
+`retention-days: 30`. Every local check stayed green: YAML's reference behaviour for a duplicate key
+is last-one-wins, and PyYAML does not even warn. GitHub's parser refuses it, so **the workflow never
+compiled** — six consecutive pushes produced runs with ZERO jobs, a `failure` conclusion, no logs,
+and a display name that silently degraded from `tests` to the file's own path. **CI was dark for
+eleven hours.**
+
+Two failures, and the second is the expensive one:
+
+1. **No gate looked at the workflow files.** They are the only files in the repo whose parser lives
+   on someone else's server, and nothing local ever read them. `scripts/check-workflows.mjs` now
+   does, with a `SafeLoader` subclass that rejects duplicate keys, and it BLOCKS — this failure is
+   fully decidable locally and costs milliseconds to catch.
+2. **`check-ci` reported RED every single time and I read past it six times.** Advisory was the
+   right design for a failing TEST (§10.10a: the fix for a red CI is a commit that does not exist
+   yet). It is the wrong response to a red with **zero jobs and no logs**, which is not a failing
+   test at all — it is the service saying it could not read the file.
+
+**The rule: a CI failure that produces no logs is not a test failure, and must never be filed as
+one.** Zero jobs means the workflow did not compile. Check that before anything else, and never let
+a red you have not explained become part of the scenery — "CI is red again" is the sentence that
+cost eleven hours here.
+
 **Adopted win — attack the rule, do not assert it.** Every real defect in this arc was found by a
 test that tried to BREAK a guarantee rather than confirm it. `mk_app` was asked to `CREATE TABLE`
 and succeeded, revealing a grant that had had no user for weeks — a test that merely read the
