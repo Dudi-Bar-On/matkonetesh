@@ -1789,6 +1789,58 @@ one.** Zero jobs means the workflow did not compile. Check that before anything 
 a red you have not explained become part of the scenery — "CI is red again" is the sentence that
 cost eleven hours here.
 
+**L62 · An unplanned reboot can corrupt an index, and only a full suite will tell you (2026-08-06).**
+
+The machine restarted itself at 02:27 (System event 1074). Hours later, while implementing an
+unrelated task, an agent's `check-meta` run failed on `test_acceptance.py::test_F4` — and the cause
+was a **corrupted HNSW index** on the geniza's `data_chunk_vectors_embedding_idx`, almost certainly
+from that reboot. `REINDEX INDEX CONCURRENTLY` repaired it; the data behind it was intact
+(855 documents, 15,857 chunks, all embedded) and semantic search returned sane hits afterwards.
+
+Three things this teaches, in ascending order of cost:
+
+1. **A corrupted vector index does not announce itself.** Postgres answered, the geniza connected,
+   `check-geniza-fresh` was green — that gate asks whether documents are present at their current
+   hash, not whether the index over them still works. The failure surfaced only because the full
+   Python suite runs inside `check-meta`, and one acceptance test exercises the real query path.
+   **A store that answers is not a store that answers correctly.**
+2. **The agent proved it was pre-existing before repairing it** — `git stash`, reproduce, unstash.
+   That is the difference between fixing a problem and adopting one. Without it the repair would
+   have looked like a symptom of the change it interrupted.
+3. **It was fixed rather than skipped.** `META_SKIP_GATE` was available and would have made the
+   commit go through in seconds. Repairing the index took longer and left the project better.
+
+**The gap this exposes:** nothing checks index health on a schedule. It belongs in the watchman
+(the enforcement spec's layer 0) as a component with a real recovery action — `REINDEX
+CONCURRENTLY` — verified the way every other recovery there is verified: by asking the component to
+answer, not by watching the command exit 0.
+
+**L63 · A citation that grants more than its source does — twice in two consecutive tasks
+(2026-08-06).**
+
+Two agents, two tasks, the same shape:
+
+* A migration comment justified restating grants "for the same reason the geniza keeps
+  `0005_revoke_create_from_mk_app.sql` separate". Measured: `0005` contains **0 GRANT** statements
+  and 2 REVOKEs. The precedent is real; what it was cited for is the opposite of what it does.
+* A task report justified using the superuser credential by quoting `infra/.env.example` — *"used
+  ONLY by the container entrypoint for initialisation"* — and appending **"/ manual DBA use"**,
+  three words the source does not contain.
+
+Neither was a lie and neither caused damage. Both are the same failure: **the citation was written
+from memory of what the source ought to say, and nobody re-read it before leaning on it.** Both were
+caught by a reviewer who opened the cited file.
+
+This matters here more than in most projects, because citation integrity is the product's own
+subject: `docs/sources/baldwin-backbone.md` requires every `safe` value to trace to a cited primary
+source, and §5.3 spent a whole task discovering that 62 of 103 thermal blocks carried an
+attribution nobody had checked. **A team that lets its own internal citations drift has no standing
+to promise that its safety citations do not.**
+
+**The rule: quote, do not paraphrase, and open the file while you quote it.** If a justification
+rests on what another file says, the quoted words must appear in that file verbatim — and if you
+find yourself adding a clause to make the quote fit the argument, the argument is what is wrong.
+
 **Adopted win — attack the rule, do not assert it.** Every real defect in this arc was found by a
 test that tried to BREAK a guarantee rather than confirm it. `mk_app` was asked to `CREATE TABLE`
 and succeeded, revealing a grant that had had no user for weeks — a test that merely read the
