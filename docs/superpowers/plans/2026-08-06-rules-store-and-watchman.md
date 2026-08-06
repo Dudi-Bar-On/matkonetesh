@@ -387,8 +387,12 @@ def _connection_params(env_file: Path) -> dict[str, str]:
     db = pick("RULES_POSTGRES_DB", "POSTGRES_DB")
     user = pick("RULES_SUPERUSER", "POSTGRES_SUPERUSER")
     password = pick("RULES_SUPERUSER_PASSWORD", "POSTGRES_SUPERPASSWORD")
-    # POSTGRES_SUPERPASSWORD is the real key in infra/.env — verified 2026-08-06.
-    # "POSTGRES_SUPERUSER_PASSWORD" was invented by the plan and exists nowhere.
+    # Both keys exist in infra/.env — verified by listing its key names, 2026-08-06.
+    # CONTROLLER CORRECTION, 2026-08-06: an earlier note here claimed "POSTGRES_SUPERUSER_PASSWORD
+    # exists nowhere". That was WRONG — it is in infra/.env and is mk_admin's password, which is
+    # what the geniza's own migrations connect with. I asserted its absence after grepping only
+    # for POSTGRES_SUPERPASSWORD, never for the name I ruled out. Both keys are real and belong
+    # to different roles: POSTGRES_SUPERUSER_PASSWORD = mk_admin, POSTGRES_SUPERPASSWORD = postgres.
     missing = [n for n, v in (("PORT", port), ("DB", db), ("SUPERUSER", user), ("SUPERUSER_PASSWORD", password)) if not v]
     if missing:
         raise SystemExit(f"{env_file} is missing: {', '.join(missing)}")
@@ -1056,6 +1060,33 @@ git commit -m "feat(rules-store): extractor — numbered section-heading rules"
 ---
 
 ## Task 6: Extractor — DoD checklist items
+
+> ### ⚠️ BINDING ADDITION — the process/content boundary (controller, 2026-08-06)
+>
+> The owner's ruling of this morning splits enforcement into two planes that must never be mixed:
+> **process** (how work is done) and **content** (what the application asserts). This task is the
+> first place in the code where that boundary is actually load-bearing, and the plan as written
+> would have crossed it silently.
+>
+> **`DoD-10 · Safety invariance** — *"No `bcheck` stage, `temp`, `safe` value, or cook duration
+> altered"* — is a CONTENT rule. It would not exist in a system that was not about fire and meat.
+> Every other DoD item is process and belongs here.
+>
+> Required of this task:
+> 1. `DoD-10` is stored with **`bucket = 'content'`** and marked outside this store's enforcement
+>    scope. **It is NOT dropped** — it is a real rule and belongs to the content store when that
+>    is built (spec §11).
+> 2. **A test that FAILS if `DoD-10` is ingested as a process rule.** A stated boundary with no
+>    test is the exact shape of failure this whole arc is correcting.
+> 3. The classification must follow the RULE'S OWN TEXT, not a hardcoded id list — a fixed list
+>    rots the moment a new content-flavoured rule is written. The workable test, from spec §1:
+>    would this sentence be true for a team building an accounting system?
+>
+> Measured basis: of the 47 rules extracted from the live document, four carry app-domain
+> vocabulary (§3, §4, §6, §11). In three of them it is an EXAMPLE — §4's `equipPlan` illustrates
+> the Waiver Gate, whose rule ("a plan may never waive, defer, or reinterpret a requirement from
+> an approved spec") is true verbatim for any project. Only `DoD-10` is content in its own right.
+
 
 **Files:**
 - Modify: `src/rules_store/extractor.py`
