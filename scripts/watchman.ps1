@@ -464,15 +464,86 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         } `
         -Verify { Test-GenizaReaderAnswers }
 
+    # Read EMBED_MODEL / OLLAMA_URL / EMBED_DIM straight out of src/knowledge/config.py rather than
+    # hardcoding them here -- config.py is the one place that is allowed to know these values (this
+    # task's brief: "read them from there, never hardcode"). A plain-text regex read (not a python
+    # subprocess) keeps this component's own cost near zero; the file's constants are simple
+    # `NAME = "value"` / `NAME = 123` assignments, not expressions, so a regex is a faithful read, not
+    # a reimplementation of a Python parser.
+    function Get-OllamaConfig {
+        $cfgPath = Join-Path $RepoRoot 'src\knowledge\config.py'
+        $text = Get-Content $cfgPath -Raw
+        $model = if ($text -match '(?m)^EMBED_MODEL\s*=\s*"([^"]+)"') { $Matches[1] } else { $null }
+        $url = if ($text -match '(?m)^OLLAMA_URL\s*=\s*"([^"]+)"') { $Matches[1] } else { $null }
+        $dim = if ($text -match '(?m)^EMBED_DIM\s*=\s*(\d+)') { [int]$Matches[1] } else { $null }
+        return @{ Model = $model; Url = $url; Dim = $dim }
+    }
+    $ollamaCfg = Get-OllamaConfig
+
+    # ollama (warn): serves the local embedding model (EMBED_MODEL/OLLAMA_URL, read from
+    # src/knowledge/config.py, never hardcoded here) that every geniza ingest/query depends on. Its
+    # own failure mode has an equivalent alternative one layer up -- ingestion/retrieval simply cannot
+    # run until it is back, but nothing else in this repo is blocked by it (no commit, no build, no
+    # release gate reads it directly) -- hence warn, matching the spec's severity table, not block.
+    #
+    # WHY A REAL EMBED, NOT A PORT PROBE: this project has been bitten repeatedly by checks that test a
+    # proxy for the property instead of the property itself (the hooks component above learned this the
+    # hard way with prose-matching; rules-mirror with a checksum-shaped but wrong comparison). A TCP
+    # connect or `/api/ps` only proves ollama's HTTP listener is up -- it says nothing about whether the
+    # bge-m3 model is actually loaded and answering, which is the one thing every consumer of this
+    # component (scripts/ingest.py, src/knowledge/retrieval.semantic_search) actually needs. So Detect
+    # and Verify are the SAME real POST to /api/embeddings, and the check is not just "did it respond"
+    # but "did it respond with a 1024-dim vector" -- the exact dimensionality the corpus was built with
+    # (src/knowledge/config.py EMBED_MODEL='bge-m3'; the geniza's pgvector columns are dimensioned to
+    # match). A response with the wrong model loaded, or a truncated/malformed vector, fails this check
+    # even though the port was open the whole time.
+    #
+    # MEASURED COST (this task, this machine, ollama already warm with bge-m3 loaded): 254ms cold-ish
+    # first call, 185ms on a second immediate call. That is cheap enough to run on every watchman
+    # invocation as currently scoped (a developer running this by hand, not yet a schedule). If this
+    # component is ever put on a tight schedule (e.g. every few seconds) the model-load state could
+    # regress that cost significantly on a machine where bge-m3 has been evicted from memory -- worth
+    # re-measuring cold if/when a schedule is added, but not a reason to downgrade to a port check now.
+    #
+    # RECOVERY DECISION: unlike geniza-postgres (deliberately a no-op because mk_rules-postgres already
+    # owns Start-Service for the one shared native Postgres service both watch), nothing else in this
+    # file recovers ollama -- there is no other component with an overlapping recovery action to
+    # duplicate. ollama is not installed as a Windows service on this machine (confirmed: `Get-Service`
+    # has no ollama entry); it runs as `ollama.exe` plus a tray helper `ollama app.exe`. So Recover here
+    # does the only thing that can actually fix a down/wedged ollama: kill any `ollama*` processes
+    # (a hung server that is up-but-not-answering needs to be replaced, not left running alongside a
+    # new one) and relaunch `ollama serve`. This mirrors the brief's own worked recovery and was
+    # exercised live in this task's RED witness (see this task's report): killing ollama and re-running
+    # this script relaunched it and Verify passed within seconds.
+    #
+    # WHAT THIS COMPONENT CANNOT DETECT: a model that answers with a plausible-looking 1024-dim vector
+    # that is nonetheless semantically wrong (e.g. the wrong model swapped in under the same name, or a
+    # corrupted weights file that still produces syntactically valid output) -- this checks shape, not
+    # content quality. It also does not detect ollama serving a DIFFERENT embedding model correctly
+    # while bge-m3 itself is missing/unpulled (that would surface as the API call itself erroring, which
+    # IS caught -- Test-OllamaEmbeds returns $false on any exception, including "model not found").
+    function Test-OllamaEmbeds {
+        if (-not ($ollamaCfg.Model -and $ollamaCfg.Url -and $ollamaCfg.Dim)) { return $false }
+        try {
+            $body = @{ model = $ollamaCfg.Model; prompt = 'watchman health probe' } | ConvertTo-Json -Compress
+            $r = Invoke-RestMethod -Uri "$($ollamaCfg.Url)/api/embeddings" -Method Post -Body $body -ContentType 'application/json' -TimeoutSec 15
+            return [bool]($r.embedding -and $r.embedding.Count -eq $ollamaCfg.Dim)
+        } catch { return $false }
+    }
+
+    $ollamaResult = Invoke-ComponentCheck -Name 'ollama' -Severity 'warn' -MaxRecoverWaitSeconds 60 `
+        -Detect { Test-OllamaEmbeds } `
+        -Recover {
+            Get-Process -Name 'ollama*' -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue
+            Start-Sleep -Seconds 2
+            try { Invoke-RestMethod -Uri "$($ollamaCfg.Url)/api/ps" -TimeoutSec 5 | Out-Null }
+            catch { Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden }
+        } `
+        -Verify { Test-OllamaEmbeds }
+
     # serena (warn): the ONE shared Serena MCP server (§10.17a) that symbol-shaped code-editing
     # subagents are pointed at. Its own failure mode has an equivalent alternative (grep/manual read,
     # slower but correct), hence warn not block, matching the spec's severity table.
-    #
-    # NOTE on scope: the spec's severity table (§8.1) also names an `ollama` component (Task 20 in the
-    # plan). It is NOT present anywhere in this file as written (grepped before adding this component)
-    # -- the plan and the file have diverged; Task 20 was never actually landed here. Out of scope for
-    # this task (serena only); flagged in this task's report rather than silently added or silently
-    # ignored.
     #
     # Detect/Verify both delegate to serena-server.ps1's own `-Action status`, which already does the
     # real work this component needs (§10.17a): counts processes matching the shared-server command
@@ -529,7 +600,7 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         } `
         -Verify { Test-SerenaUp }
 
-    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $serenaResult)
+    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $ollamaResult, $serenaResult)
 })
 
 foreach ($r in $results) {
