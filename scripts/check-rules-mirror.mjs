@@ -140,6 +140,38 @@ if (repair.status !== 0) {
   console.log('RESULT=fail');
   process.exit(1);
 }
-console.log('OK - mirror rebuilt from mk_rules and now matches.');
+
+// Fix round 2 (Task 17 review): "the rebuild command exited 0" is not "the mirror now matches" —
+// it was previously asserted, not verified, and once Verify (watchman.ps1) started trusting
+// RESULT=repaired as equivalent to an independently-confirmed RESULT=already-ok, an unverified
+// claim became load-bearing. Re-run the SAME comparison (not a new one) and require the checksums
+// to actually match before printing "repaired". A rebuild that "succeeds" but leaves the mirror
+// still wrong must FAIL loudly, never claim success — that is worse than erroring, because it
+// looks like a fix.
+const recheck = spawnSync(usedCmd, [...usedPre, '-c', PY], { cwd: ROOT, encoding: 'utf8' });
+if (recheck.error || recheck.status !== 0) {
+  console.log(`FAIL: rebuild ran, but the post-rebuild comparison could not run — ${(recheck.stderr ?? '').trim().split('\n').pop().slice(0, 200)}`);
+  console.log('RESULT=fail');
+  process.exit(1);
+}
+let recheckData;
+try {
+  recheckData = JSON.parse(recheck.stdout.trim().split('\n').pop());
+} catch (e) {
+  console.log(`FAIL: rebuild ran, but the post-rebuild comparison output could not be parsed — ${e.message}`);
+  console.log('RESULT=fail');
+  process.exit(1);
+}
+if (!recheckData.mirror_exists || !recheckData.mirror_readable) {
+  console.log(`FAIL: rebuild ran, but ${MIRROR_PATH} is still missing or unreadable afterward.`);
+  console.log('RESULT=fail');
+  process.exit(1);
+}
+if (recheckData.mirror_checksum !== recheckData.pg_checksum) {
+  console.log(`FAIL: rebuild ran (exit 0) but rules.sqlite still does not match mk_rules afterward (checksum ${recheckData.mirror_checksum.slice(0, 12)}... != ${recheckData.pg_checksum.slice(0, 12)}...). The rebuild did not actually repair the mirror.`);
+  console.log('RESULT=fail');
+  process.exit(1);
+}
+console.log(`OK - mirror rebuilt from mk_rules and now matches (${recheckData.pg_rows} current rule(s), checksum ${recheckData.pg_checksum.slice(0, 12)}..., re-verified post-rebuild).`);
 console.log('RESULT=repaired');
 process.exit(0);
