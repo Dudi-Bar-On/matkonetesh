@@ -12,44 +12,31 @@
 
 name: matconetesh-knowledge
 
-services:
-  postgres:
-    # pgvector/pgvector pins BOTH components in one tag: pgvector 0.8.6 on PostgreSQL 18.
-    image: pgvector/pgvector:0.8.6-pg18
-    container_name: mk-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: ${POSTGRES_DB}
-      POSTGRES_USER: ${POSTGRES_SUPERUSER}
-      POSTGRES_PASSWORD: ${POSTGRES_SUPERUSER_PASSWORD}
-      # Deterministic collation, so an index built here behaves the same on any other machine.
-      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
-      # Read by 02-set-role-passwords.sh at first boot. These were MISSING on the first attempt,
-      # so the script hit `MK_APP_PASSWORD: unbound variable`, the roles were created with NO
-      # password, and every application connection failed with "password authentication failed".
-      # `set -euo pipefail` in that script is why the cause was one grep away instead of a silent
-      # empty password.
-      MK_APP_PASSWORD: ${MK_APP_PASSWORD}
-      MK_READER_PASSWORD: ${MK_READER_PASSWORD}
-    ports:
-      # 127.0.0.1 prefix is load-bearing: "5433:5432" alone would publish on 0.0.0.0.
-      - "127.0.0.1:${POSTGRES_PORT}:5432"
-    volumes:
-      # PostgreSQL 18+ REQUIRES the mount one level up, at /var/lib/postgresql, and places
-      # data in a major-version subdirectory itself. Mounting /var/lib/postgresql/data — the
-      # convention for every version up to 17 — makes 18 refuse to start with "there appears to
-      # be PostgreSQL data in /var/lib/postgresql/data (unused mount/volume)".
-      - pgdata:/var/lib/postgresql
-      # Runs ONCE, on an empty data directory. Creates the vector extension and the least-
-      # privilege application role. Never re-runs against existing data.
-      - ./postgres/init:/docker-entrypoint-initdb.d:ro
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_SUPERUSER} -d ${POSTGRES_DB}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 30s
+# ⚠️ PostgreSQL IS NOT HERE ANY MORE — DO NOT ADD IT BACK (owner ruling, 2026-08-07, R-108).
+#
+# The geniza's PostgreSQL moved to a NATIVE Windows service on 2026-08-06: `postgresql-x64-18`,
+# automatic startup, port 5432, pgvector 0.8.6 compiled against MSVC. The reason was availability,
+# not preference — the machine rebooted itself at 02:27 and took Docker with it, WSL does not bring
+# Docker back on its own, and seventeen hours of extraction were lost. A Windows service comes up at
+# boot with nobody present.
+#
+# The `postgres` service stayed declared here for a day after that migration, and it mattered:
+# `scripts/run-extraction.ps1` runs `docker compose up -d` to bring Neo4j up, so EVERY extraction run
+# also resurrected the superseded database beside the live one. Measured 2026-08-06: the container
+# held 853 documents / 877 revisions / 15,192 chunks, frozen at the migration; the native service held
+# 855 / 921 / 16,526 and was what every tool actually talked to. A watchman component written from the
+# stale plan text probed `docker exec mk-postgres` and would have reported the geniza healthy on the
+# strength of a copy nobody had written to in a day.
+#
+# Retired properly, not deleted: `backups/mk_knowledge-container-retired-2026-08-07.dump` (174 MB,
+# byte-identical in size to the migration's own final dump) plus `roles-container-retired-…sql`, both
+# verified restorable via `pg_restore --list` — 114 entries, no errors, all three core tables present
+# as TABLE DATA — BEFORE the container and its `mk-pgdata` volume were removed.
+#
+# Neo4j remains here, and remains in Docker: it holds 7,941 nodes with no bulk rebuild path, so moving
+# it waits for the extraction work to finish.
 
+services:
   neo4j:
     image: neo4j:2026.06.0-community
     container_name: mk-neo4j
@@ -94,8 +81,8 @@ services:
       start_period: 60s
 
 volumes:
-  pgdata:
-    name: mk-pgdata
+  # `pgdata` / `mk-pgdata` removed with the postgres service (R-108). Its contents were dumped and the
+  # dump verified restorable before the volume was deleted; see the header above for the file names.
   neo4jdata:
     name: mk-neo4jdata
   neo4jlogs:

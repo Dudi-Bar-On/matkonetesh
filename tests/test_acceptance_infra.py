@@ -214,6 +214,35 @@ def test_A5_the_env_file_carrying_the_secrets_is_not_tracked():
     assert ignored.returncode == 0, "infra/.env is not gitignored"
 
 
+def _compose_container_names():
+    """The containers this compose project actually declares, asked of the daemon, never hardcoded.
+
+    A6 and A7 used to name `mk-postgres mk-neo4j` literally. When the superseded PostgreSQL container
+    was retired on 2026-08-07 (R-108), both tests failed with `No such object: mk-postgres` — they were
+    not wrong about security, they were wrong about the inventory, and a test that pins an inventory
+    fails every time the inventory legitimately changes. Worse, the obvious "fix" is to edit the name
+    list, which quietly teaches that these tests are a chore rather than a check.
+
+    Derived instead from the compose project label, so adding or retiring a service needs no edit here
+    and a NEW service is covered the moment it starts — which is the direction that matters, since an
+    unchecked new container is exactly what A6 exists to catch.
+    """
+    result = wsl(
+        "docker ps --filter label=com.docker.compose.project=matconetesh-knowledge "
+        "--format '{{.Names}}'",
+        timeout=60,
+    )
+    assert result.returncode == 0, result.stderr
+    names = [n.strip() for n in result.stdout.split("\n") if n.strip()]
+    # An empty list would make both tests pass by checking nothing — the failure mode this whole
+    # repository keeps paying for. If the stack is down, that is a skip, not a green.
+    if not names:
+        import pytest
+
+        pytest.skip("no containers from this compose project are running — nothing to inspect")
+    return names
+
+
 def test_A6_services_are_not_exposed_beyond_loopback():
     """A: "Services are not publicly exposed by default."
 
@@ -227,10 +256,11 @@ def test_A6_services_are_not_exposed_beyond_loopback():
     # string that was never meant to be parsed.
     import json
 
-    result = wsl("docker inspect mk-postgres mk-neo4j", timeout=60)
+    names = _compose_container_names()
+    result = wsl("docker inspect " + " ".join(names), timeout=60)
     assert result.returncode == 0, result.stderr
     containers = json.loads(result.stdout)
-    assert len(containers) == 2, f"expected two containers, got {len(containers)}"
+    assert len(containers) == len(names), f"expected {len(names)} container(s), got {len(containers)}"
 
     described = []
     for c in containers:
@@ -256,7 +286,11 @@ def test_A7_no_container_uses_a_floating_latest_tag():
     without a recreate, and then the file and the fact disagree.
     """
     _require_docker()
-    result = wsl("docker inspect mk-postgres mk-neo4j --format '{{.Name}} {{.Config.Image}}'", timeout=60)
+    result = wsl(
+        "docker inspect " + " ".join(_compose_container_names())
+        + " --format '{{.Name}} {{.Config.Image}}'",
+        timeout=60,
+    )
     assert result.returncode == 0, result.stderr
     for line in [l.strip() for l in result.stdout.split("\n") if l.strip()]:
         image = line.split()[-1]
