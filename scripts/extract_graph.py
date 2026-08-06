@@ -86,6 +86,74 @@ def fetch_chunks(paths: list[str] | None, limit: int | None, namespace: str, min
         conn.close()
 
 
+def count_pending(namespace: str, paths: list[str] | None) -> int:
+    """The cheap probe (R-101): `SELECT count(*)` on `revisions_pending_extraction`, scoped the
+    same way `fetch_chunks` is. Measured 0.7ms warm / 3.5ms cold on a machine already loaded by a
+    running extraction — against ~2.5 minutes per document that is 0.0005% overhead, which is why
+    `drain()` below can afford to ask this after EVERY document rather than sampling in strides.
+    """
+    where = ["namespace = %s"]
+    params: list[object] = [namespace]
+    if paths:
+        where.append("(" + " OR ".join(["source_path LIKE %s"] * len(paths)) + ")")
+        params.extend(p.rstrip("/") + "%" for p in paths)
+    sql = f"SELECT count(*) FROM revisions_pending_extraction WHERE {' AND '.join(where)}"
+
+    conn = config.connect_reader()
+    try:
+        with conn.cursor() as cur:
+            cur.execute(sql, params)
+            return cur.fetchone()[0]
+    finally:
+        conn.close()
+
+
+def _group_by_document(chunks: list[dict]) -> list[tuple[str, list[dict]]]:
+    """Groups a tier-ordered chunk list into (document_id, chunks) pairs, preserving the arrival
+    order — `chunks` comes from `fetch_chunks`'s `ORDER BY tier, length DESC`, and dict preserves
+    insertion order, so the documents come out highest-priority first."""
+    by_doc: dict[str, list[dict]] = {}
+    for c in chunks:
+        by_doc.setdefault(c["document_id"], []).append(c)
+    return list(by_doc.items())
+
+
+def drain(fetch_fn, count_fn, process_one) -> int:
+    """R-101: the consumer the extraction queue was missing.
+
+    `fetch_chunks(...)` used to be called ONCE, and the loop iterated that snapshot to
+    completion — a revision that became pending in `revisions_pending_extraction` WHILE the loop
+    was running sat there until some future invocation happened to start. Priority ordering could
+    not help either, because the tiering is an `ORDER BY` *inside* that one snapshot.
+
+    This asks again after EVERY document (owner ruling, 2026-08-06), not at the end of a pass:
+      1. `fetch_fn()` — a tier-ordered snapshot, exactly what `fetch_chunks` returns.
+      2. Pop and process the FIRST document (highest priority first).
+      3. `count_fn()` — the cheap probe. If the pending count now exceeds what is left in the
+         local queue, something NEW appeared (an edit landed mid-run) — throw the queue away and
+         re-fetch, which naturally re-sorts by tier so a freshly-edited project document lands
+         ahead of vendor documents still waiting, not behind them. If the count matches what is
+         left, nothing changed and the existing queue is used as-is — no wasted re-fetch.
+    Repeats until a fetch returns nothing in scope.
+
+    NOTE what this cannot do: a revision that becomes pending strictly AFTER the final empty
+    `fetch_fn()` call (i.e., after this function has already decided the view holds nothing more
+    in scope and returned) is not seen by this run — closing that gap needs a next invocation, or
+    an asynchronous LISTEN/NOTIFY layered on top. A revision outside the run's scope (a
+    `--paths`/`--namespace` filter that excludes it) is likewise never picked up, by design — the
+    scope argument is deliberately explicit, never a silent default.
+    """
+    queue = _group_by_document(fetch_fn())
+    processed = 0
+    while queue:
+        document_id, doc_chunks = queue.pop(0)
+        process_one(document_id, doc_chunks)
+        processed += 1
+        if count_fn() > len(queue):
+            queue = _group_by_document(fetch_fn())
+    return processed
+
+
 def write_proposed(candidates: list[extract.Candidate], document_id: str) -> int:
     """MERGE the survivors into Neo4j as proposed facts, with full provenance.
 
@@ -216,13 +284,6 @@ def main() -> int:
         return 0
 
     known = extract.known_entities(args.namespace)
-    # dict preserves INSERTION order, and `chunks` arrives in priority order, so the documents are
-    # processed highest-priority first. That is load-bearing, not incidental: it is what makes an
-    # interrupted 28-hour run leave the project's own documents covered rather than a slice of
-    # somebody's API reference.
-    by_doc: dict[str, list] = {}
-    for c in chunks:
-        by_doc.setdefault(c["document_id"], []).append(c)
     TIER = {1: "project", 2: "tests", 3: "sources", 4: "vendor"}
     order = {}
     for c in chunks:
@@ -235,8 +296,13 @@ def main() -> int:
     started = time.time()
     survivors_total = written_total = 0
     rejected_total: dict[str, int] = {}
+    chunks_processed = 0
+    doc_i = [0]  # mutable cell — process_one is called from inside drain()
 
-    for i, (document_id, doc_chunks) in enumerate(by_doc.items(), 1):
+    def process_one(document_id: str, doc_chunks: list[dict]) -> None:
+        nonlocal survivors_total, written_total, chunks_processed
+        doc_i[0] += 1
+        i = doc_i[0]
         survivors, rejected = extract.extract_from_chunks(
             [{"content": c["content"], "node_id": c["node_id"]} for c in doc_chunks],
             revision_id=doc_chunks[0]["revision_id"],
@@ -248,20 +314,40 @@ def main() -> int:
         written_total += write_proposed(survivors, document_id)
         _mark_extracted(doc_chunks[0]["revision_id"], args.model, len(survivors), sum(rejected.values()))
         survivors_total += len(survivors)
+        chunks_processed += len(doc_chunks)
         for reason, n in rejected.items():
             rejected_total[reason] = rejected_total.get(reason, 0) + n
 
         elapsed = time.time() - started
         rate = i / max(elapsed / 60, 0.01)
-        print(f"  [{i}/{len(by_doc)}] {TIER.get(doc_chunks[0]['tier'],'?'):8} {doc_chunks[0]['source_path'][:48]:48} "
+        print(f"  [{i}] {TIER.get(doc_chunks[0]['tier'],'?'):8} {doc_chunks[0]['source_path'][:48]:48} "
               f"survivors {survivors_total:4} · rejected {sum(rejected_total.values()):4} · "
-              f"{rate:.1f} doc/min · eta {max(len(by_doc)-i,0)/max(rate,0.01):.0f} min", flush=True)
+              f"{rate:.1f} doc/min", flush=True)
+
+    if args.pending:
+        # R-101: the view IS the queue — re-checked after EVERY document (owner ruling,
+        # 2026-08-06), not only at the end of a pass, so a document edited mid-run is picked up
+        # in this same run instead of waiting for a future invocation. Scoped to --pending
+        # deliberately: without it `fetch_chunks` returns every current revision regardless of
+        # extraction state on every call (there is no "already done" to exclude), so re-querying
+        # would just reprocess the same documents forever rather than draining a queue.
+        def fetch_fn():
+            return fetch_chunks(args.paths, args.limit, args.namespace, args.min_chars, True)
+
+        def count_fn():
+            return count_pending(args.namespace, args.paths)
+
+        doc_count = drain(fetch_fn=fetch_fn, count_fn=count_fn, process_one=process_one)
+    else:
+        for document_id, doc_chunks in _group_by_document(chunks):
+            process_one(document_id, doc_chunks)
+        doc_count = doc_i[0]
 
     print("\n" + "=" * 74)
     print("EXTRACTION SUMMARY")
     print("=" * 74)
-    print(f"  documents processed ....... {len(by_doc)}")
-    print(f"  chunks processed .......... {len(chunks)}")
+    print(f"  documents processed ....... {doc_count}")
+    print(f"  chunks processed .......... {chunks_processed}")
     print(f"  proposed facts written .... {written_total}")
     print(f"  candidates rejected ....... {sum(rejected_total.values())}")
     for reason, n in sorted(rejected_total.items(), key=lambda kv: -kv[1]):
