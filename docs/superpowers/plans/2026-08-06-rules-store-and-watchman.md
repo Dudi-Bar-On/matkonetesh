@@ -2306,7 +2306,7 @@ process.exit(0);
 - [ ] **Step 2: RED — witness it fail on an unparseable document**
 
 ```bash
-cp docs/process/development-discipline.md /tmp/dd-backup.md
+cp docs/process/development-discipline.md .dd-backup.md   # repo-relative: /tmp has no meaning in native PowerShell here
 printf '\n### 10.98 Rule\n\nstatement one.\n\n### 10.98 Rule again\n\nstatement two.\n' >> docs/process/development-discipline.md
 node scripts/check-rules-complete.mjs
 ```
@@ -2314,7 +2314,7 @@ Expected: the builder's `extract_rules()` raises `ValueError: rule_id '10.98' cl
 shape ...`, so `build_rules_store.py` prints `FAILED: ValueError: rule_id '10.98' claimed by more than
 one shape...` and exits 1; the gate then prints `FAIL: build_rules_store.py did not complete — see FAILED
 line above.`, exit 1.
-Restore: `cp /tmp/dd-backup.md docs/process/development-discipline.md`
+Restore: `cp .dd-backup.md docs/process/development-discipline.md && rm .dd-backup.md`
 
 - [ ] **Step 3: GREEN**
 
@@ -2377,7 +2377,9 @@ const r = spawnSync('powershell', ['-NoProfile', '-ExecutionPolicy', 'Bypass', '
 });
 
 let failures = 0;
+let total = 0;
 function check(label, cond) {
+  total++;
   if (!cond) { failures++; console.error(`FAIL  ${label}`); } else { console.log(`PASS  ${label}`); }
 }
 
@@ -2396,7 +2398,7 @@ check('down-forever: InitialOk false, FinalOk false, Severity block',
 check('down-then-recovers reports a "recovered:" line with elapsed seconds',
   /recovered: down-then-recovers after \d/.test(r.stdout));
 
-console.log(`\n${3 - Math.min(3, failures)}/3+ checks passed.`);
+console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);
 ```
 
@@ -2495,7 +2497,6 @@ function Write-WatchmanLog($results) {
 }
 
 function Get-SelfTestResults {
-    $script:downThenRecoversCalls = 0
     $script:downThenRecoversFixed = $false
 
     $r1 = Invoke-ComponentCheck -Name 'always-ok' -Severity 'warn' `
@@ -2532,8 +2533,14 @@ exit 0
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `node scripts/tests/test-watchman-engine.mjs`
-Expected: `PASS` on all four checks, `4/3+ checks passed.` (harmless off-by-label in the summary line —
-4 checks ran, 3 named plus the exit-code check), process exit 0.
+Expected: `PASS` on every check, and a summary line whose denominator equals the number of `check()`
+calls that ran — `5/5 checks passed.` for the five in this script — with process exit 0.
+The old text here read `4/3+ checks passed.` and called the mismatch a "harmless off-by-label". It was
+neither harmless nor a label: the summary hardcoded a base of 3 while the script ran 5 checks, so with
+zero failures it always printed `3/3+` and could never print the `4/3+` the plan told the implementer
+to expect. A DoD gate that says "paste the exact observed output" against documented output that the
+code cannot produce teaches the implementer that the two are allowed to disagree. `total` is now a
+real counter, so the denominator cannot drift from the number of checks again.
 
 - [ ] **Step 5: Commit**
 
@@ -2680,7 +2687,7 @@ git commit -m "feat(watchman): rules-mirror component (block) — rebuild-mirror
 - Modify: `scripts/watchman.ps1`
 
 **Interfaces:**
-- Consumes: `RULES_SERVICE_NAME` from `infra/rules-db/.env` (Task 1, Step 4); `pg_isready.exe` (installed
+- Consumes: `RULES_SERVICE_NAME` from `infra/rules-db/.env` (Task 1, Step 4); `pg_isready.exe` (NOT on PATH on this machine — measured; resolved defensively under C:\Program Files\PostgreSQL. Installed
   alongside PostgreSQL, on PATH after install).
 - Produces: one more `# === REAL COMPONENTS ===` entry.
 
@@ -2702,21 +2709,39 @@ function Get-RulesDbEnv {
 }
 
 $rulesDbEnv = Get-RulesDbEnv
-$rulesPgResult = if ($rulesDbEnv -and $rulesDbEnv.RULES_SERVICE_NAME) {
+
+# pg_isready is NOT on PATH on this machine — measured, not assumed: `Get-Command pg_isready`
+# returns nothing and the binary lives only under C:\Program Files\PostgreSQL\<major>\bin. Calling
+# the bare name throws CommandNotFoundException, which would CRASH Invoke-ComponentCheck instead of
+# degrading to "not ok" — a watchman that dies while checking is worse than one that reports red.
+function Resolve-PgIsReady {
+    $cmd = Get-Command pg_isready -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    $found = Get-ChildItem -Path 'C:\Program Files\PostgreSQL' -Filter 'pg_isready.exe' -Recurse `
+                           -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+    if ($found) { return $found.FullName }
+    return $null
+}
+$PgIsReady = Resolve-PgIsReady
+
+function Test-RulesPgUp {
+    param($env_, $exe)
+    if (-not $exe) { return $false }
+    try {
+        & $exe -h 127.0.0.1 -p $env_.RULES_POSTGRES_PORT -d $env_.RULES_POSTGRES_DB *> $null
+        return ($LASTEXITCODE -eq 0)
+    } catch { return $false }
+}
+
+$rulesPgResult = if ($rulesDbEnv -and $rulesDbEnv.RULES_SERVICE_NAME -and $PgIsReady) {
     Invoke-ComponentCheck -Name 'mk_rules-postgres' -Severity 'warn' `
-        -Detect {
-            $r = & pg_isready -h 127.0.0.1 -p $rulesDbEnv.RULES_POSTGRES_PORT -d $rulesDbEnv.RULES_POSTGRES_DB 2>&1
-            $LASTEXITCODE -eq 0
-        } `
+        -Detect { Test-RulesPgUp $rulesDbEnv $PgIsReady } `
         -Recover {
             Start-Service -Name $rulesDbEnv.RULES_SERVICE_NAME -ErrorAction SilentlyContinue
         } `
-        -Verify {
-            $r = & pg_isready -h 127.0.0.1 -p $rulesDbEnv.RULES_POSTGRES_PORT -d $rulesDbEnv.RULES_POSTGRES_DB 2>&1
-            $LASTEXITCODE -eq 0
-        }
+        -Verify { Test-RulesPgUp $rulesDbEnv $PgIsReady }
 } else {
-    [pscustomobject]@{ Name = 'mk_rules-postgres'; Severity = 'warn'; InitialOk = $false; Recovered = $false; FinalOk = $false; ElapsedSeconds = 0; Detail = 'infra/rules-db/.env missing or RULES_SERVICE_NAME not set'; TimestampUtc = (Get-Date).ToUniversalTime().ToString('o') }
+    [pscustomobject]@{ Name = 'mk_rules-postgres'; Severity = 'warn'; InitialOk = $false; Recovered = $false; FinalOk = $false; ElapsedSeconds = 0; Detail = 'infra/rules-db/.env missing, RULES_SERVICE_NAME not set, or pg_isready.exe not found'; TimestampUtc = (Get-Date).ToUniversalTime().ToString('o') }
 }
 
 @($hooksResult, $rulesMirrorResult, $rulesPgResult)
@@ -2725,7 +2750,12 @@ $rulesPgResult = if ($rulesDbEnv -and $rulesDbEnv.RULES_SERVICE_NAME) {
 - [ ] **Step 2: RED — witness it live**
 
 ```powershell
-Stop-Service -Name $env:RULES_SERVICE_NAME   # the exact name recorded in infra/rules-db/.env
+# $env:RULES_SERVICE_NAME is NOT set by anything in this plan — the value lives only as a KEY=VALUE
+# line inside infra/rules-db/.env, read by Get-RulesDbEnv into a plain variable. Read it here too,
+# or this line stops nothing and the RED is a false green.
+$svc = ((Get-Content infraules-db\.env | Where-Object { $_ -match '^RULES_SERVICE_NAME=' }) -replace '^RULES_SERVICE_NAME=','').Trim()
+if (-not $svc) { throw 'RULES_SERVICE_NAME missing from infra/rules-db/.env — fix that before running this RED' }
+Stop-Service -Name $svc
 powershell -NoProfile -ExecutionPolicy Bypass -File scripts/watchman.ps1
 ```
 Expected: `recovered: mk_rules-postgres after <N>s` — `pg_isready` fails immediately after `Stop-Service`,
@@ -2891,7 +2921,13 @@ $serenaResult = Invoke-ComponentCheck -Name 'serena' -Severity 'warn' -MaxRecove
     } `
     -Verify { Test-SerenaUp }
 
-$results = @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $ollamaResult, $serenaResult)
+@($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $ollamaResult, $serenaResult)
+# ^ NO `$results =` prefix. This line is the last expression of the `else` branch of
+# `$results = if ($SelfTest) {...} else {...}`, so it must EMIT the array. In PowerShell a bare
+# assignment emits nothing, so writing `$results = @(...)` here makes the branch produce $null and
+# the watchman then checks zero components and prints WATCHMAN OK on every real run regardless of
+# state. Verified live: `if ($false) {'a'} else { $x = @(1,2) }` evaluates to $null; the same
+# expression without the prefix yields a 2-element array. Tasks 16-20 already have this shape.
 ```
 
 Replace the `# === REAL COMPONENTS ===` block's final line (`@($hooksResult, ...)` from Task 20) with the
