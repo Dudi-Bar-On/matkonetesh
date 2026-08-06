@@ -14,6 +14,8 @@ succeeded before the fault fired.
 """
 from __future__ import annotations
 
+import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -535,3 +537,76 @@ def test_sync_document_refuses_cross_document_rule_id_conflict(tmp_path):
     m.close()
     _clean(pg, "95")
     pg.close()
+
+
+# ---------------------------------------------------------------------------------------------
+# Task 10: proof — the builder derives from the working tree, never from `git HEAD`. This is a
+# PROOF task: no new production code. sync_document takes `text: str` as a parameter and never
+# shells out to git by construction (see src/rules_store/builder.py) — this test pins that
+# property so a future change that reads `source_path` off git instead of the caller-supplied
+# text would be caught red-handed.
+# ---------------------------------------------------------------------------------------------
+
+
+def _git(cwd, *args):
+    r = subprocess.run(["git", *args], cwd=cwd, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    return r.stdout
+
+
+def test_builder_reads_the_working_tree_not_head(tmp_path):
+    """Proves the hard requirement: an UNCOMMITTED document change is detected. A builder that
+    shelled out to `git show HEAD:<path>` instead of reading the file would see the OLD content and
+    report 'unchanged' here — this test fails exactly that way if the implementation regresses.
+
+    Deviation from the brief (reported, not silent): the brief's literal fixture used rule_id
+    "10.DISK". The real extractor's heading grammar (`_SECTION_HEADING_RE`,
+    `\\d+(?:\\.\\d+)*[a-z]?`) requires a numeric id with at most one trailing lowercase LETTER, not
+    a word — "10.DISK" is never recognised as a heading at all, so `extract_rules` returns zero
+    records regardless of git-vs-disk behaviour and the test would prove nothing. Using "10.96" (an
+    unused section number, matching this file's own established convention for "10.99"/"10.98"/
+    "90"/"91"/"95"/"96"/"97" above) keeps the test's actual point — disk content, not git HEAD —
+    while making it recognisable by the real grammar.
+    """
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    with tempfile.TemporaryDirectory() as d:
+        _git(d, "init", "-q")
+        _git(d, "config", "user.email", "test@example.com")
+        _git(d, "config", "user.name", "Test")
+        _git(d, "config", "commit.gpgsign", "false")
+        doc_path = Path(d) / "development-discipline.md"
+        doc_path.write_text("### 10.96 Rule\n\ncommitted statement.\n", encoding="utf-8")
+        _git(d, "add", ".")
+        _git(d, "commit", "-q", "-m", "initial")
+
+        # Edit on disk WITHOUT committing or staging.
+        doc_path.write_text(
+            "### 10.96 Rule\n\nUNCOMMITTED statement, changed on disk only.\n", encoding="utf-8"
+        )
+
+        pg = _writer_conn()
+        pg.autocommit = False
+        _clean(pg, "10.96")
+        m = _fresh_mirror(tmp_path, "_tmp_disk_not_git.sqlite")
+
+        # First sync (against the committed version) happens implicitly never — this is a fresh
+        # DB, so the very first sync already reads the UNCOMMITTED working-tree content directly
+        # off disk_path, proving the builder never consults git at all.
+        text_from_disk = doc_path.read_text(encoding="utf-8")
+        result = builder.sync_document(pg, m, text_from_disk, "development-discipline.md")
+        assert result["added"] == ["10.96"]
+        with pg.cursor() as cur:
+            cur.execute(
+                "SELECT statement FROM rule_revisions WHERE rule_id = %s AND is_current",
+                ("10.96",),
+            )
+            (statement,) = cur.fetchone()
+        assert "UNCOMMITTED" in statement, (
+            f"expected the uncommitted working-tree text, got: {statement!r} — "
+            "the builder must read the file directly, never `git show HEAD:...`"
+        )
+        m.close()
+        _clean(pg, "10.96")
+        pg.close()
