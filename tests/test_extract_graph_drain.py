@@ -21,6 +21,8 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -138,3 +140,37 @@ def test_a_steady_pending_count_does_not_trigger_a_wasted_refetch():
 
     assert store.fetch_calls == 1, f"expected exactly one fetch (no new work ever appeared); got {store.fetch_calls}"
     assert store.count_calls == 2, f"expected one count check per processed document; got {store.count_calls}"
+
+
+def test_a_non_shrinking_fetch_fn_raises_loudly_instead_of_looping_forever():
+    """Fix round 1 (review feedback). `fetch_fn` is caller-supplied; nothing in drain()'s
+    signature stops someone wiring it to a query that never excludes completed work (the mistake
+    `main()` avoids today only by convention: passing `pending_only=True`). Simulate exactly that
+    mistake — a store whose `count()` never reflects what was processed and whose `fetch()`
+    always returns the SAME two documents, forever.
+
+    Without the guard this hangs the process. With it, drain() must raise instead of looping,
+    the moment it can prove non-progress (the re-fetch handing back a revision_id it already
+    processed) rather than after some arbitrary iteration count.
+    """
+    ALWAYS = {"A": _row("A", tier=1), "B": _row("B", tier=4)}
+
+    class NonShrinkingStore:
+        def fetch(self):
+            rows = list(ALWAYS.values())
+            rows.sort(key=lambda r: (r["tier"], -r["n"]))
+            return rows
+
+        def count(self):
+            return len(ALWAYS)  # never drops, however many times something is "processed"
+
+    store = NonShrinkingStore()
+    processed = []
+
+    with pytest.raises(RuntimeError, match="already-processed"):
+        extract_graph.drain(fetch_fn=store.fetch, count_fn=store.count,
+                            process_one=lambda d, c: processed.append(d))
+
+    # It must fire on the FIRST re-fetch after A — not after looping through the whole store
+    # some large number of times first.
+    assert processed == ["A"], f"expected the guard to fire immediately after A; got {processed}"

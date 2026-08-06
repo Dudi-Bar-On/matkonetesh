@@ -142,15 +142,45 @@ def drain(fetch_fn, count_fn, process_one) -> int:
     an asynchronous LISTEN/NOTIFY layered on top. A revision outside the run's scope (a
     `--paths`/`--namespace` filter that excludes it) is likewise never picked up, by design — the
     scope argument is deliberately explicit, never a silent default.
+
+    NON-PROGRESS GUARD (fix round 1, review feedback): `fetch_fn` is a caller-supplied closure,
+    and nothing in the type signature stops someone from wiring it to a query that is NOT
+    pending-scoped — `main()`'s only call site passes `pending_only=True`, but that is a
+    convention held in place by a comment, not by this function. A `fetch_fn` that never excludes
+    completed work makes `count_fn() > len(queue)` true forever (every already-done document is
+    still "pending" from that query's point of view), and this loops until the process is killed
+    — silently, with nothing in the output naming the cause.
+    So every revision_id this function hands to `process_one` is remembered for the life of this
+    call. If a re-fetch ever returns a revision_id already processed IN THIS RUN, that is
+    definitive proof `fetch_fn` is not shrinking — a genuinely new edit to the same document
+    produces a NEW revision_id (that is what ingest.py's content-hash versioning is FOR), so this
+    can only fire on a non-excluding fetch_fn, never on a legitimate re-edit. It raises rather
+    than looping, naming the offending revision and the fix, on the SAME turn the mistake would
+    otherwise start an infinite loop.
+
+    A flag/marker argument was considered and rejected: it would just be a second convention next
+    to the comment this guard replaces, and R-101 itself is the argument against trusting a
+    second thing to stay in sync with the source of truth. Checking observed non-progress directly
+    against what `process_one` actually did needs nothing to be declared correctly upstream.
     """
     queue = _group_by_document(fetch_fn())
     processed = 0
+    seen_revisions: set[str] = set()
     while queue:
         document_id, doc_chunks = queue.pop(0)
         process_one(document_id, doc_chunks)
         processed += 1
+        seen_revisions.add(doc_chunks[0]["revision_id"])
         if count_fn() > len(queue):
             queue = _group_by_document(fetch_fn())
+            repeats = {c["revision_id"] for c in (row for pair in queue for row in pair[1])} & seen_revisions
+            if repeats:
+                raise RuntimeError(
+                    f"drain(): fetch_fn returned already-processed revision(s) {sorted(repeats)} "
+                    "after a re-fetch. fetch_fn must exclude completed work (e.g. "
+                    "fetch_chunks(..., pending_only=True)) — a fetch_fn whose result never "
+                    "shrinks as work completes makes this loop forever."
+                )
     return processed
 
 
@@ -297,12 +327,12 @@ def main() -> int:
     survivors_total = written_total = 0
     rejected_total: dict[str, int] = {}
     chunks_processed = 0
-    doc_i = [0]  # mutable cell — process_one is called from inside drain()
+    doc_i = 0
 
     def process_one(document_id: str, doc_chunks: list[dict]) -> None:
-        nonlocal survivors_total, written_total, chunks_processed
-        doc_i[0] += 1
-        i = doc_i[0]
+        nonlocal survivors_total, written_total, chunks_processed, doc_i
+        doc_i += 1
+        i = doc_i
         survivors, rejected = extract.extract_from_chunks(
             [{"content": c["content"], "node_id": c["node_id"]} for c in doc_chunks],
             revision_id=doc_chunks[0]["revision_id"],
@@ -341,7 +371,7 @@ def main() -> int:
     else:
         for document_id, doc_chunks in _group_by_document(chunks):
             process_one(document_id, doc_chunks)
-        doc_count = doc_i[0]
+        doc_count = doc_i
 
     print("\n" + "=" * 74)
     print("EXTRACTION SUMMARY")
