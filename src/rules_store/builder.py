@@ -45,8 +45,7 @@ other than that one literal (the controller's repro used `'probe90.md'`) could n
 prior row, misclassified a genuine UPDATE as an ADD, and called sync_rule a second time for a
 rule_id that was already current — which the unique partial index `one_current_revision_per_rule`
 correctly refused (`UniqueViolation`). `source_path` is now a real parameter, threaded through from
-sync_document, defaulting to the old literal only so Task 8's own tests (which call `sync_rule`
-directly, without a document, and never inspect `source_path`) keep working unchanged.
+sync_document.
 
 The demotion of a rule's previous current revision — previously a separate `_supersede()` call made
 by sync_document BEFORE calling sync_rule, in its OWN transaction — is now done HERE, inside
@@ -66,6 +65,64 @@ sync_rule's own final transaction, atomically with the flip. Two reasons, not on
      flip new" one atomic unit; keeping sync_rule "single-purpose" was the alternative and it loses
      specifically because it cannot satisfy this requirement no matter where the caller-side call is
      placed.
+
+Fix round 2 (2026-08-06 — review findings against Fix round 1):
+
+  FINDING 1 — `_retire`'s two writes (Postgres commit, then mirror delete) were NOT self-healing if
+  a crash landed between them: a crash after the Postgres commit but before the mirror delete left
+  Postgres saying 'retired' while the mirror — what hooks actually read — still held the row
+  forever, because sync_document's existing-rules lookup filters `WHERE is_current`, and the row is
+  now `is_current=false`, so it can never reappear in `set(existing) - set(records)` and `_retire`
+  is never re-invoked for it again. This is the MIRROR IMAGE of the invariant
+  `current_requires_mirror` was built to make unrepresentable (Postgres current + mirror missing);
+  nothing guarded the opposite direction (Postgres retired + mirror still present) — and that
+  direction is the dangerous one, because it means still enforcing a rule the owner removed.
+
+  Fixed by REVERSING the order: the mirror delete now runs FIRST, the Postgres UPDATE+commit
+  second. Reasoned through, not assumed:
+    - A crash BEFORE the Postgres commit (whether it happens before or after the mirror delete)
+      leaves the Postgres row completely untouched — still `is_current=true`, still
+      `revision_status='current'`. The SAME rule_id therefore reappears in
+      `set(existing) - set(records)` on the very next `sync_document` call (as long as the document
+      still doesn't contain it, which is the whole reason it was being retired), and `_retire` runs
+      again. `mirror.delete_revision` is a plain `DELETE WHERE rule_id = ?` — deleting an
+      already-absent row is a no-op, not an error — so retrying is always safe. This is the same
+      "the LAST committed write is the point of no return, and it is chosen so the state before it
+      is legal" principle `sync_rule` already uses for its own step 1 (which commits
+      `is_current=false` — inert, not "half current").
+    - Does reversing the order reopen the window `current_requires_mirror` was built to close (a
+      Postgres row claiming `is_current=true` while the mirror lacks it)? No: that CHECK only tests
+      `mirrored_at IS NOT NULL`, a timestamp set once when the rule was first activated — it never
+      re-verifies that the mirror STILL holds the row at read time. Deleting the mirror row while
+      Postgres still says `is_current=true` does not violate that constraint; it produces an
+      ordinary (non-crash) window, milliseconds long in practice, where the mirror is briefly behind
+      Postgres — the same SHAPE `sync_rule`'s own step 2 already has (mirror write happens BEFORE
+      the Postgres flip, in the opposite direction), not a new class of risk this module hasn't
+      already accepted once.
+  Proved with an injected fault (`_retire(..., _fail_after_mirror_delete=True)`,
+  `test_retire_crash_before_pg_commit_is_self_healing`): the crash leaves the mirror already
+  cleaned but Postgres still `is_current=true`/`'current'`; a subsequent normal `sync_document` call
+  over the same (rule-still-absent) document text completes the retirement correctly.
+
+  FINDING 2 (Minor, but the shape that caused Fix round 1's bug) — `sync_rule`'s `source_path` used
+  to default to `DEFAULT_SOURCE_PATH`. `sync_document` always passed it explicitly, so nothing broke
+  today, but the DEFAULT was exactly the value that made Fix round 1's bug invisible to every test
+  that (like all of them, before the fix) happened to use that literal. `source_path` is now
+  KEYWORD-ONLY with NO DEFAULT: an omission is a loud `TypeError`, not a silent fallback to the one
+  literal that already hid one Critical bug from this file's own test suite.
+
+  FINDING 3 (named, previously unexercised) — the unique index `one_current_revision_per_rule` is
+  scoped to `rule_id` ALONE; `sync_document`'s existing-rows lookup is scoped to `(is_current,
+  source_path)`. So a `rule_id` already current under source_path A, re-appearing in a SECOND
+  document under source_path B, was classified `added` by B's own sync_document call, and
+  `sync_rule`'s demotion step would silently supersede A's row — technically correct (only one
+  current row survives, no constraint violated), but reported as an ordinary `added` with no signal
+  that another document's rule had just been demoted. `rule_id` is documented (0001 migration) as "a
+  stable, human, already-in-the-doc" key — the design intent is ONE global owner per rule_id, not
+  per-document namespacing — so silent cross-document supersession is treated as a NAME COLLISION,
+  not a legitimate handoff: `sync_document` now refuses it with a `ValueError` naming both
+  source_paths, the same "fail loud on an authoring inconsistency" precedent `extract_rules` already
+  set for a duplicate `rule_id` claimed by two shapes within one document.
 """
 from __future__ import annotations
 
@@ -76,14 +133,14 @@ DEFAULT_SOURCE_PATH = "docs/process/development-discipline.md"
 
 
 class SimulatedCrash(RuntimeError):
-    """Raised only when a test asks for it — see sync_rule's _fail_after_mirror_write parameter.
-    Never raised in a real run; it exists so Task 8's test can inject the fault deterministically
-    rather than trying to time a real crash, which no test can do reliably."""
+    """Raised only when a test asks for it — see sync_rule's `_fail_after_mirror_write` and
+    _retire's `_fail_after_mirror_delete` parameters. Never raised in a real run; it exists so a
+    test can inject a fault deterministically rather than trying to time a real crash, which no
+    test can do reliably."""
 
 
 def sync_rule(
-    pg_conn, mirror_conn, record: RuleRecord, source_path: str = DEFAULT_SOURCE_PATH,
-    *, _fail_after_mirror_write: bool = False,
+    pg_conn, mirror_conn, record: RuleRecord, *, source_path: str, _fail_after_mirror_write: bool = False,
 ) -> str:
     with pg_conn.cursor() as cur:
         # Step 0 (Fix round 1) — clean up any orphan left by a previous crashed sync of this same
@@ -99,8 +156,9 @@ def sync_rule(
             (record.rule_id,),
         )
         # Step 1 — Postgres, is_current=false. source_path is the CALLER's real value (Fix round
-        # 1) — never a hardcoded literal — so sync_document's own `WHERE source_path = %s` lookup
-        # can trust what got written here.
+        # 1) — never a hardcoded literal, and now (Fix round 2) never a silently-defaulted one
+        # either — so sync_document's own `WHERE source_path = %s` lookup can trust what got
+        # written here.
         cur.execute(
             """
             INSERT INTO rule_revisions
@@ -175,10 +233,12 @@ def sync_document(pg_conn, mirror_conn, text: str, source_path: str) -> dict:
     Returns {"added": [...], "updated": [...], "unchanged": [...], "retired": [...]}, each a list
     of rule_id — the exact shape Task 12's CLI and Task 21's watchman recovery path both consume.
 
-    Fix round 1 (2026-08-06): `source_path` is now threaded through to every `sync_rule` call
-    below, and the demotion of a rule's previous current revision moved INTO sync_rule's own final
-    transaction (no more `_supersede()` call made here, separately, before sync_rule runs) — see
-    builder.py's module docstring for why both changes were required together, not either alone.
+    Fix round 2 (2026-08-06, FINDING 3) — BEFORE any write, refuses (`ValueError`) if any rule_id in
+    this document is currently owned by a DIFFERENT source_path: a rule_id is a single global key
+    (0001 migration's own comment), so a second document silently taking over another document's
+    rule is treated as a name collision to report, not a handoff to perform quietly. This check runs
+    for the WHOLE document up front, so a conflict on one rule_id blocks the entire call rather than
+    partially applying the rest.
     """
     records = {r.rule_id: r for r in extract_rules(text, source_path)}
 
@@ -189,14 +249,34 @@ def sync_document(pg_conn, mirror_conn, text: str, source_path: str) -> dict:
         )
         existing = dict(cur.fetchall())
 
+        # Fix round 2, FINDING 3 — cross-document rule_id collision check, up front, before any
+        # write this call might make.
+        if records:
+            cur.execute(
+                "SELECT rule_id, source_path FROM rule_revisions "
+                "WHERE is_current AND rule_id = ANY(%s) AND source_path != %s",
+                (list(records.keys()), source_path),
+            )
+            conflicts = cur.fetchall()
+            if conflicts:
+                detail = ", ".join(
+                    f"{rid!r} (currently current under {other!r})" for rid, other in conflicts
+                )
+                raise ValueError(
+                    f"sync_document({source_path!r}): refusing to silently supersede another "
+                    f"document's rule — rule_id is meant to be a single global key: {detail}. "
+                    "If this document is meant to own it now, retire it from its previous "
+                    "source_path first."
+                )
+
     result = {"added": [], "updated": [], "unchanged": [], "retired": []}
 
     for rule_id, record in records.items():
         if rule_id not in existing:
-            sync_rule(pg_conn, mirror_conn, record, source_path)
+            sync_rule(pg_conn, mirror_conn, record, source_path=source_path)
             result["added"].append(rule_id)
         elif existing[rule_id] != record.content_hash:
-            sync_rule(pg_conn, mirror_conn, record, source_path)
+            sync_rule(pg_conn, mirror_conn, record, source_path=source_path)
             result["updated"].append(rule_id)
         else:
             result["unchanged"].append(rule_id)
@@ -208,10 +288,23 @@ def sync_document(pg_conn, mirror_conn, text: str, source_path: str) -> dict:
     return result
 
 
-def _retire(pg_conn, mirror_conn, rule_id: str) -> None:
+def _retire(pg_conn, mirror_conn, rule_id: str, *, _fail_after_mirror_delete: bool = False) -> None:
     """Marks the current revision of `rule_id` 'retired' with retired_at set (never deleted — the
-    geniza guarantee), then removes it from the mirror, which holds current rules only. The
-    Postgres row stays queryable by rule_id afterwards, same as any superseded revision."""
+    geniza guarantee), and removes it from the mirror, which holds current rules only. The Postgres
+    row stays queryable by rule_id afterwards, same as any superseded revision.
+
+    Fix round 2, FINDING 1 — the mirror delete runs FIRST, the Postgres commit SECOND (reversed from
+    the original shipped order). See the module docstring for the full reasoning: this ordering is
+    what makes a crash between the two self-healing on the next `sync_document` call, because a
+    crash before the Postgres commit leaves the Postgres row untouched (still `is_current=true`),
+    so the same rule_id is classified for retirement again next time, and `mirror.delete_revision`
+    is idempotent against an already-absent row.
+    """
+    mirror_mod.delete_revision(mirror_conn, rule_id)
+
+    if _fail_after_mirror_delete:
+        raise SimulatedCrash("fault injected between mirror delete and the Postgres retire commit")
+
     with pg_conn.cursor() as cur:
         cur.execute(
             "UPDATE rule_revisions SET is_current = false, revision_status = 'retired', retired_at = now() "
@@ -219,4 +312,3 @@ def _retire(pg_conn, mirror_conn, rule_id: str) -> None:
             (rule_id,),
         )
     pg_conn.commit()
-    mirror_mod.delete_revision(mirror_conn, rule_id)

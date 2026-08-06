@@ -69,7 +69,7 @@ def test_crash_between_mirror_write_and_flip_leaves_rule_inactive(tmp_path):
         source_heading="test", content_hash="crashhash",
     )
     try:
-        builder.sync_rule(pg, m, rec, _fail_after_mirror_write=True)
+        builder.sync_rule(pg, m, rec, source_path=builder.DEFAULT_SOURCE_PATH, _fail_after_mirror_write=True)
         assert False, "expected the injected fault to raise"
     except builder.SimulatedCrash:
         pass
@@ -122,13 +122,13 @@ def test_recovers_to_single_active_row_after_a_crash(tmp_path):
 
     # Crash once — leaves the orphan (is_current=false, revision_status='current').
     try:
-        builder.sync_rule(pg, m, rec, _fail_after_mirror_write=True)
+        builder.sync_rule(pg, m, rec, source_path=builder.DEFAULT_SOURCE_PATH, _fail_after_mirror_write=True)
         assert False, "expected the injected fault to raise"
     except builder.SimulatedCrash:
         pass
 
     # Recover: a plain re-run for the same rule_id, no special recovery call.
-    revision_id = builder.sync_rule(pg, m, rec)
+    revision_id = builder.sync_rule(pg, m, rec, source_path=builder.DEFAULT_SOURCE_PATH)
     assert isinstance(revision_id, str) and revision_id
 
     with pg.cursor() as cur:
@@ -178,7 +178,7 @@ def test_sync_rule_happy_path_activates_the_rule(tmp_path):
         rule_id="TEST-HAPPY", section="TEST", title_he="happy path", statement="happy path rule",
         source_heading="test", content_hash="happyhash",
     )
-    revision_id = builder.sync_rule(pg, m, rec)
+    revision_id = builder.sync_rule(pg, m, rec, source_path=builder.DEFAULT_SOURCE_PATH)
     assert isinstance(revision_id, str) and revision_id
 
     with pg.cursor() as cur:
@@ -420,4 +420,118 @@ def test_sync_document_updates_a_rule_that_is_already_current(tmp_path):
     m.close()
     _clean(pg, "90")
     _clean(pg, "91")
+    pg.close()
+
+
+# ---------------------------------------------------------------------------------------------
+# Fix round 2 (2026-08-06) — review findings against Fix round 1.
+# ---------------------------------------------------------------------------------------------
+
+
+def test_retire_crash_before_pg_commit_is_self_healing(tmp_path):
+    """FINDING 1: the old order (Postgres commit THEN mirror delete) left a permanently stuck
+    state if the mirror delete never ran — the row is_current=false forever, excluded from
+    sync_document's own `WHERE is_current` lookup, so _retire is never re-invoked for it again.
+    The fixed order (mirror delete THEN Postgres commit) must leave the Postgres row UNTOUCHED
+    (still is_current=true, still 'current') after an injected crash between the two — proving the
+    same rule_id will be picked up for retirement again on the very next sync_document call, which
+    this test then performs for real."""
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "96")
+    m = _fresh_mirror(tmp_path, "_tmp_retire_crash.sqlite")
+
+    d1 = "## 96. Doomed\n\nwill be retired.\n"
+    d2 = "## 97. Unrelated\n\nsomething else.\n"  # 96 absent from d2 -> up for retirement
+
+    r1 = builder.sync_document(pg, m, d1, PROBE_SOURCE_PATH)
+    assert r1["added"] == ["96"], r1
+    assert any(r["rule_id"] == "96" for r in mirror.read_current(m)), "mirror must hold 96 before the crash"
+
+    # Inject the fault directly on _retire — mirror delete succeeds, then the crash fires BEFORE
+    # the Postgres commit.
+    try:
+        builder._retire(pg, m, "96", _fail_after_mirror_delete=True)
+        assert False, "expected the injected fault to raise"
+    except builder.SimulatedCrash:
+        pass
+
+    # Post-crash: mirror already lacks the rule (delete committed before the fault)...
+    assert not [r for r in mirror.read_current(m) if r["rule_id"] == "96"], (
+        "the mirror delete should have succeeded before the injected fault"
+    )
+    # ...but Postgres must be COMPLETELY UNTOUCHED — still current, not half-retired.
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current, retired_at FROM rule_revisions WHERE rule_id = %s",
+            ("96",),
+        )
+        status, is_current, retired_at = cur.fetchone()
+    assert status == "current" and is_current is True and retired_at is None, (
+        f"a crash before the Postgres commit must leave the row exactly as it was — "
+        f"got status={status!r} is_current={is_current!r} retired_at={retired_at!r}"
+    )
+    _assert_rule_invariants(pg, "96")
+
+    # Self-healing: a plain sync_document call over the SAME document (96 still absent) must pick
+    # 96 up for retirement again and complete it cleanly — no special recovery call, same as
+    # sync_rule's own crash-recovery precedent (Task 8).
+    r2 = builder.sync_document(pg, m, d2, PROBE_SOURCE_PATH)
+    assert r2["retired"] == ["96"], r2
+
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current, retired_at, statement FROM rule_revisions WHERE rule_id = %s",
+            ("96",),
+        )
+        status, is_current, retired_at, statement = cur.fetchone()
+    assert status == "retired" and is_current is False and retired_at is not None
+    assert "will be retired" in statement, "the retired row is kept, queryable, statement intact"
+    assert not [r for r in mirror.read_current(m) if r["rule_id"] == "96"]
+    _assert_rule_invariants(pg, "96")
+
+    m.close()
+    _clean(pg, "96")
+    _clean(pg, "97")
+    pg.close()
+
+
+def test_sync_document_refuses_cross_document_rule_id_conflict(tmp_path):
+    """FINDING 3: the unique index is scoped to rule_id alone, but sync_document's own lookup is
+    scoped to (is_current, source_path) — so the same rule_id arriving from a SECOND document was
+    classified 'added' and silently superseded the first document's current row. rule_id is a
+    single global key (0001 migration), so this is now refused as a name collision, not performed
+    quietly. Also proves no partial write happened: document A's row survives untouched."""
+    if not ENV_FILE.exists():
+        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+
+    pg = _writer_conn()
+    pg.autocommit = False
+    _clean(pg, "95")
+    m = _fresh_mirror(tmp_path, "_tmp_crossdoc.sqlite")
+
+    doc_a = "## 95. Shared\n\nFrom document A.\n"
+    doc_b = "## 95. Shared\n\nFrom document B — a totally different claimant.\n"
+
+    r1 = builder.sync_document(pg, m, doc_a, "docA.md")
+    assert r1["added"] == ["95"], r1
+
+    with pytest.raises(ValueError, match="currently current under"):
+        builder.sync_document(pg, m, doc_b, "docB.md")
+
+    # No partial write: document A's row is exactly as it was, and it is the ONLY row for 95.
+    with pg.cursor() as cur:
+        cur.execute(
+            "SELECT revision_status, is_current, source_path FROM rule_revisions WHERE rule_id = %s",
+            ("95",),
+        )
+        rows = cur.fetchall()
+    assert rows == [("current", True, "docA.md")], rows
+    _assert_rule_invariants(pg, "95")
+
+    m.close()
+    _clean(pg, "95")
     pg.close()
