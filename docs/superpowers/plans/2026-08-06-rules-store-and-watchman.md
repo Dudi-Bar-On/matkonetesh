@@ -153,9 +153,10 @@ Expected FAILURE MESSAGE (before the service is installed): `AssertionError: inf
 # Copy to infra/rules-db/.env and fill in. infra/rules-db/.env is gitignored and must never be
 # committed. Generate passwords with:  py -3 -c "import secrets;print(secrets.token_urlsafe(32))"
 #
-# This is a SEPARATE PostgreSQL instance from infra/.env's geniza database — a native Windows
-# service, not the WSL/Docker container. See the plan header for why: mk_rules must survive a
-# Docker/WSL outage that takes the geniza down.
+# A SEPARATE DATABASE on the SAME native PostgreSQL 18.4 Windows service that already hosts the
+# geniza's mk_knowledge (port 5432). NOT a separate server: the geniza was migrated off Docker onto
+# this service on 2026-08-06, so "survives a Docker outage" is already true for both. Independence
+# from a Postgres outage comes from rules.sqlite — that is the mirror's entire purpose.
 
 RULES_POSTGRES_PORT=5432
 RULES_POSTGRES_DB=mk_rules
@@ -163,7 +164,7 @@ RULES_POSTGRES_DB=mk_rules
 # Superuser: used ONLY by provision_rules_db.py to create the database and roles. The application
 # must never connect as this role.
 RULES_SUPERUSER=postgres
-RULES_SUPERUSER_PASSWORD=CHANGE_ME_generate_a_random_value
+# RULES_SUPERUSER_PASSWORD is NOT set here — read from infra/.env's POSTGRES_SUPERPASSWORD.
 
 # Least-privilege application role — the builder (src/rules_store/builder.py) writes as this.
 RULES_APP_PASSWORD=CHANGE_ME_generate_a_random_value
@@ -172,15 +173,23 @@ RULES_APP_PASSWORD=CHANGE_ME_generate_a_random_value
 RULES_READER_PASSWORD=CHANGE_ME_generate_a_random_value
 ```
 
-- [ ] **Step 4: Install PostgreSQL 18.4 as a native Windows service and provision it**
+- [ ] **Step 4: VERIFY the existing service, then provision — do NOT install anything**
 
-Manual, one-time (not scriptable end-to-end — the installer is interactive):
+**CORRECTED by the controller before dispatch.** PostgreSQL 18.4 was installed as a native Windows
+service on 2026-08-06 (`postgresql-x64-18`, Automatic, port 5432) and already hosts the geniza's
+`mk_knowledge`. Installing again would stand up a second server nobody asked for.
 
-1. Install PostgreSQL 18.4 for Windows (the official EDB installer), choosing port **5432**, and note
-   the superuser (`postgres`) password set during install.
-2. `copy infra\rules-db\.env.example infra\rules-db\.env` and fill in `RULES_SUPERUSER_PASSWORD` (the
-   password from step 1) and generate `RULES_APP_PASSWORD` / `RULES_READER_PASSWORD` with the command in
-   the template's comment.
+1. Verify, do not install:
+   ```powershell
+   Get-Service postgresql-x64-18 | Select-Object Name,Status,StartType
+   ```
+   Expect `Running` / `Automatic`. If it is absent, STOP and report — do not run an installer.
+   The superuser password ALREADY EXISTS as `POSTGRES_SUPERPASSWORD` in `infra/.env` (gitignored).
+   **Read it from there. Never create a second copy of a credential.**
+2. Copy `infra/rules-db/.env.example` to `infra/rules-db/.env` and generate `RULES_APP_PASSWORD` /
+   `RULES_READER_PASSWORD` with the command in the template's comment. **`RULES_SUPERUSER_PASSWORD`
+   is NOT stored here** — `provision_rules_db.py` reads `POSTGRES_SUPERPASSWORD` from `infra/.env`,
+   so the superuser credential exists in exactly one place.
 3. Confirm the Windows service name: `Get-Service | Where-Object Name -like 'postgresql*'` (record the
    exact name — it varies by installer version, e.g. `postgresql-x64-18`; `scripts/watchman.ps1` in Task
    19 needs it and will read it from `infra/rules-db/.env` as `RULES_SERVICE_NAME` rather than hardcode a
@@ -218,7 +227,9 @@ def _env() -> dict[str, str]:
         raise SystemExit(f"{ENV_FILE} not found — copy infra/rules-db/.env.example and fill it in.")
     env = dotenv_values(ENV_FILE)
     required = ("RULES_POSTGRES_PORT", "RULES_POSTGRES_DB", "RULES_SUPERUSER",
-                "RULES_SUPERUSER_PASSWORD", "RULES_APP_PASSWORD", "RULES_READER_PASSWORD")
+                "RULES_APP_PASSWORD", "RULES_READER_PASSWORD")
+    # RULES_SUPERUSER_PASSWORD is deliberately ABSENT here: the superuser credential is read
+    # from infra/.env's POSTGRES_SUPERPASSWORD (see Step 2). One credential, one place.
     missing = [k for k in required if not env.get(k)]
     if missing:
         raise SystemExit(f"infra/rules-db/.env missing: {', '.join(missing)}")
@@ -375,7 +386,9 @@ def _connection_params(env_file: Path) -> dict[str, str]:
     port = pick("RULES_POSTGRES_PORT", "POSTGRES_PORT")
     db = pick("RULES_POSTGRES_DB", "POSTGRES_DB")
     user = pick("RULES_SUPERUSER", "POSTGRES_SUPERUSER")
-    password = pick("RULES_SUPERUSER_PASSWORD", "POSTGRES_SUPERUSER_PASSWORD")
+    password = pick("RULES_SUPERUSER_PASSWORD", "POSTGRES_SUPERPASSWORD")
+    # POSTGRES_SUPERPASSWORD is the real key in infra/.env — verified 2026-08-06.
+    # "POSTGRES_SUPERUSER_PASSWORD" was invented by the plan and exists nowhere.
     missing = [n for n, v in (("PORT", port), ("DB", db), ("SUPERUSER", user), ("SUPERUSER_PASSWORD", password)) if not v]
     if missing:
         raise SystemExit(f"{env_file} is missing: {', '.join(missing)}")
