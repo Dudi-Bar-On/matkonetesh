@@ -2,7 +2,7 @@
 
 Written by `build.py` on every build. Do not edit by hand: it is regenerated.
 
-**1100 record(s)** across **17 distinct reason(s)**, out of 279 items built.
+**1136 record(s)** across **20 distinct reason(s)**, out of 279 items built.
 
 Each row keeps the pairing that `unconvertedReasons`/`unconvertedIds` in the payload throw away: WHICH item failed, on WHICH field, with WHICH raw value, and WHY. A count without the pairing cannot be acted on.
 
@@ -881,7 +881,7 @@ Each row keeps the pairing that `unconvertedReasons`/`unconvertedIds` in the pay
 | `specials:8` | סרוולט | safe | (absent) |
 | `specials:9` | סאמר סוסג' | safe | (absent) |
 
-## cure-source-unmapped — 60 record(s)
+## cure-source-unmapped — 62 record(s)
 
 | id | name | field | raw value |
 |---|---|---|---|
@@ -936,11 +936,13 @@ Each row keeps the pairing that `unconvertedReasons`/`unconvertedIds` in the pay
 | `make:sal-lonzino` | לונזינו | cure | Gastrochemist whole-muscle basics / EatCuredMeat EQ curing |
 | `make:sal-pancetta` | פנצ'טה | cure | Gastrochemist whole-muscle basics / EatCuredMeat EQ curing |
 | `make:sal-speck` | שפק | cure | Gastrochemist whole-muscle basics / EatCuredMeat EQ curing |
+| `specials:1` | ג'רקי בקר | cure | USDA FSIS Jerky + meatsandsausages Cure Calculator |
 | `specials:10` | קבנוס | cure | meatsandsausages (Marianski) — Kabanosy |
 | `specials:11` | סלמי | cure | meatsandsausages (Marianski) — fermented (dry) sausage |
 | `specials:12` | צ'וריסו מיובש | cure | meatsandsausages (Marianski) — Spanish Chorizo |
 | `specials:13` | לנדיגר | cure | meatsandsausages (Marianski) — Landjäger |
 | `specials:14` | פפרוני | cure | meatsandsausages (Marianski) — Pepperoni (slow-fermented dry |
+| `specials:2` | ג'רקי הודו | cure | USDA FSIS Jerky (poultry) + Cure Calculator |
 | `specials:6` | קילבסה | cure | meatsandsausages (Marianski) — curing for sausages |
 | `specials:7` | אנדוי | cure | meatsandsausages (Marianski) — curing for sausages / Cure Ca |
 | `specials:8` | סרוולט | cure | meatsandsausages (Marianski) — Cervelat |
@@ -1085,6 +1087,26 @@ Each row keeps the pairing that `unconvertedReasons`/`unconvertedIds` in the pay
 | `cuts:64` | ריבס אמריקאי | tgt:c:smoke | 93 |
 | `cuts:65` | אוזן חזיר | tgt:c:smoke | 75 |
 
+## safe-source-document-absent — 15 record(s)
+
+| id | name | field | raw value |
+|---|---|---|---|
+| `cuts:13` | כתף חזיר | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:15` | כתף טלה | safe | AmazingRibs — Food Temperature Guide (lamb) |
+| `cuts:31` | צוואר חזיר | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:32` | רגל חזיר | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:34` | צלעות טלה | safe | AmazingRibs — Food Temperature Guide (lamb) |
+| `cuts:37` | חזה טלה | safe | AmazingRibs — Food Temperature Guide (lamb) |
+| `cuts:58` | אסאדו טלה | safe | AmazingRibs — Food Temperature Guide (lamb) |
+| `cuts:59` | צוואר טלה | safe | AmazingRibs — Food Temperature Guide (lamb) |
+| `cuts:61` | לחי חזיר | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:62` | פרק חזיר | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:63` | חזה חזיר עם עצם | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:64` | ריבס אמריקאי | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:65` | אוזן חזיר | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:66` | זנב חזיר | safe | AmazingRibs — Food Temperature Guide |
+| `cuts:8` | בטן חזיר | safe | AmazingRibs — Food Temperature Guide |
+
 ## cure-dose-not-authored — 14 record(s)
 
 | id | name | field | raw value |
@@ -1103,6 +1125,24 @@ Each row keeps the pairing that `unconvertedReasons`/`unconvertedIds` in the pay
 | `specials:7` | אנדוי | cure | תיבול קייג'ן + Cure #1 |
 | `specials:8` | סרוולט | cure | Cure #1 |
 | `specials:9` | סאמר סוסג' | cure | תרבית התססה + Cure #1 |
+
+## safe-source-ambiguous — 13 record(s)
+
+| id | name | field | raw value |
+|---|---|---|---|
+| `cuts:113` | חסילון ג'מבו | safe | FDA shellfish cooked to opaque; Baldwin |
+| `cuts:114` | חסילון טייגר | safe | FDA shellfish / Baldwin fish 55–60°C |
+| `cuts:115` | גמברי / חסילון ענק | safe | FDA shellfish / Baldwin fish 55–60°C |
+| `cuts:116` | סקלופס | safe | FDA shellfish / Baldwin |
+| `cuts:117` | זנב לובסטר | safe | FDA shellfish / Baldwin |
+| `cuts:118` | לובסטר שלם | safe | FDA shellfish / Baldwin |
+| `cuts:119` | לנגוסטין | safe | FDA shellfish / Baldwin |
+| `cuts:49` | סלמון | safe | FDA cooked-fish 145°F / Baldwin fish pasteurization 55–60°C |
+| `cuts:50` | פורל | safe | FDA cooked-fish 145°F / Baldwin fish pasteurization 55–60°C |
+| `cuts:72` | כבד בקר | safe | USDA — variety/organ meats 160°F/71°C |
+| `cuts:73` | כבד טלה | safe | USDA — variety/organ meats 160°F/71°C |
+| `cuts:78` | כליות בקר | safe | USDA — variety/organ meats 160°F/71°C |
+| `cuts:79` | כליות טלה | safe | USDA — variety/organ meats 160°F/71°C |
 
 ## drying-weight-loss-not-authored — 12 record(s)
 
@@ -1135,6 +1175,17 @@ Each row keeps the pairing that `unconvertedReasons`/`unconvertedIds` in the pay
 | `specials:13` | לנדיגר | cure | תרבית + Cure #2 |
 | `specials:14` | פפרוני | cure | פפריקה+צ'ילי + תרבית + Cure #2 |
 | `specials:9` | סאמר סוסג' | cure | תרבית התססה + Cure #1 |
+
+## safe-value-not-stated-by-citation — 6 record(s)
+
+| id | name | field | raw value |
+|---|---|---|---|
+| `cuts:114` | חסילון טייגר | safe | ships 63°C; citation states 60 |
+| `cuts:115` | גמברי / חסילון ענק | safe | ships 63°C; citation states 60 |
+| `cuts:72` | כבד בקר | safe | ships 72°C; citation states 71, 71.1 |
+| `cuts:73` | כבד טלה | safe | ships 72°C; citation states 71, 71.1 |
+| `cuts:78` | כליות בקר | safe | ships 72°C; citation states 71, 71.1 |
+| `cuts:79` | כליות טלה | safe | ships 72°C; citation states 71, 71.1 |
 
 ## cure-dose-not-comparable — 5 record(s)
 

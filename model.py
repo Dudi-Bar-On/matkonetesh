@@ -6,6 +6,8 @@ a cited floor, 0 meaning "not applicable" (every ירקות/פירות row), and
 meaning "we hold no figure" — and R-82 is what happens when each consumer
 decides for itself. That decision now happens exactly here, once.
 """
+import re as _re
+
 import model_cure
 import model_paths
 import model_process
@@ -99,19 +101,141 @@ _SOURCE_KEYWORDS = [
 ]
 
 
-def _classify_source(ref_text):
-    """Resolve a free-text citation to a corpus id, or None if nothing matches.
+# The floors an authority OWNS, in °C. Used only to break a tie between authorities a single
+# citation names together — never to invent an attribution where none was cited.
+#
+# 63 / 71 / 74 are 145°F / 160°F / 165°F: the USDA FSIS Safe Minimum Internal Temperature Chart
+# (corpus #3). Baldwin has no such floors — he publishes time-temperature pasteurisation tables, and
+# where his text carries 74 for poultry he is QUOTING the USDA. Reviewer 6 checked that subset
+# explicitly (17 blocks) and said so; quoting a number is not being its source.
+#
+# #4 (AskUSDA, variety/organ meats) owns 71°C = 160°F for exactly that class. Without this line the
+# tie-break handed all seven variety-meat citations to the generic chart, because #3 lists 160°F too
+# — measured: it erased every AskUSDA attribution in the catalogue. The specific document about
+# organ meats is the better answer for a citation that says "variety/organ meats 160°F".
+_AUTHORITY_FLOORS = {
+    SRC_FSIS_SAFE_MIN_TEMP: {63, 71, 74},
+    SRC_ASKUSDA_VARIETY_MEATS: {71},
+}
 
-    Deliberately conservative: refs naming sources outside the 19-document corpus (Marianski/
-    meatsandsausages, Wikipedia, ChefSteps, EatCuredMeat, Turkish Food Codex, Gastrochemist, Nem Chua
-    literature, or house craft notes like "Protocol — produce") fall through to None on purpose —
-    inventing a corpus pointer for them would be a false citation, which is worse than none.
+# Documents cited by name that the corpus DOES NOT HOLD. Verified on disk, not assumed:
+# docs/sources/corpus/18-amazingribs-blonder/ contains combustion-stages, stall-experiment,
+# wood-type, wood-smoking-parameters, pork-shoulder-wrap-trial and resting-meat data — and nothing
+# called a Food Temperature Guide. 27 citations point at it.
+#
+# This is not a blocklist of a source; corpus #18 is a legitimate source for the stall and wood
+# questions it actually answers. It is a refusal to cite ONE document that is not there. A citation
+# a reader cannot follow is not provenance, and model.py's own standing instruction is that a wrong
+# source_id is worse than a missing one.
+_ABSENT_DOCUMENTS = (
+    (SRC_AMAZINGRIBS_BLONDER, "food temperature guide"),
+)
+
+# Segment separators. "Baldwin — SV floor 54.4C; USDA 145F/63C" is two claims by two authorities in
+# one string, and reading it as one blob is what let the wrong half win.
+_SEGMENT_SPLIT = _re.compile(r"[;·|]|\s+\+\s+")
+_TEMP_C = _re.compile(r"(\d+(?:\.\d+)?)\s*°?\s*C\b", _re.I)
+_TEMP_F = _re.compile(r"(\d+(?:\.\d+)?)\s*°?\s*F\b", _re.I)
+
+
+def _candidates(text):
+    """Every corpus id this text names, in keyword order, without duplicates.
+
+    The defect this replaces was `return` inside this loop: first-match-wins with ("baldwin", …) at
+    index 0 meant any string mentioning Baldwin was Baldwin's, whatever the number said. Collecting
+    all of them is what makes the ambiguity visible enough to resolve — or to report.
+
+    A matched needle is BLANKED OUT before the later, more generic ones are tried, and that detail
+    is load-bearing. `_SOURCE_KEYWORDS` is ordered most-specific-first and ends with the catch-alls
+    ("usda", "fsis") — but "usda" is a substring of "AskUSDA", so a plain scan reads
+    "AskUSDA — variety meats" as naming TWO authorities, calls it ambiguous, and drops a citation
+    that was never in doubt. Measured: it erased all five AskUSDA attributions. Blanking preserves
+    the ordering's original meaning while still letting a string that genuinely names two
+    authorities — "Baldwin … ; USDA 145F/63C" — produce two candidates.
     """
-    low = (ref_text or "").lower()
+    low = (text or "").lower()
+    out = []
     for needle, sid in _SOURCE_KEYWORDS:
         if needle in low:
-            return sid
-    return None
+            low = low.replace(needle, " " * len(needle))
+            if sid not in out:
+                out.append(sid)
+    return out
+
+
+def _states_value(segment, value_c):
+    """Does this segment state `value_c`, in either unit?
+
+    145°F is 62.78°C and the catalogue ships 63, so an exact comparison would reject the very case
+    this exists for. The tolerance is half a degree — wide enough for °F→°C rounding, far too narrow
+    to accidentally match a different authority's floor (the floors are 63/71/74, degrees apart).
+    """
+    if value_c is None:
+        return False
+    for raw in _TEMP_C.findall(segment):
+        if abs(float(raw) - value_c) <= 0.6:
+            return True
+    for raw in _TEMP_F.findall(segment):
+        if abs((float(raw) - 32.0) * 5.0 / 9.0 - value_c) <= 0.6:
+            return True
+    return False
+
+
+def _resolve_source(ref_text, value_c=None):
+    """Resolve a citation to (corpus_id, reason). `reason` is None when the answer is clean.
+
+    THE RULE, in the order a person would apply it:
+      1. drop any candidate whose cited DOCUMENT the corpus does not hold
+      2. if the string states numbers, the authority that states THIS number owns it
+      3. if several authorities remain and exactly one owns the value as a published floor, it wins
+      4. one candidate left → that one; several → refuse and say so; none → refuse and say so
+
+    Still deliberately conservative about what it will not touch: refs naming sources outside the
+    19-document corpus (Marianski/meatsandsausages, Wikipedia, ChefSteps, EatCuredMeat, Turkish Food
+    Codex, Gastrochemist, Nem Chua literature, or house notes like "Protocol — produce") match no
+    keyword and resolve to None on purpose. Inventing a corpus pointer for them would be a false
+    citation, which is the thing this whole function exists to stop.
+    """
+    text = ref_text or ""
+    low = text.lower()
+    cands = _candidates(text)
+    if not cands:
+        return None, ("safe-source-unmapped" if text else None)
+
+    # 1 — a citation to a document nobody can open is not a citation.
+    dropped = [sid for sid, phrase in _ABSENT_DOCUMENTS if sid in cands and phrase in low]
+    if dropped:
+        cands = [c for c in cands if c not in dropped]
+        if not cands:
+            return None, "safe-source-document-absent"
+
+    if len(cands) == 1:
+        return cands[0], None
+
+    # 2 — the number decides. Segment first: a claim belongs to the authority named beside it.
+    for segment in _SEGMENT_SPLIT.split(text):
+        seg_cands = [c for c in _candidates(segment) if c in cands]
+        if len(seg_cands) == 1 and _states_value(segment, value_c):
+            return seg_cands[0], None
+
+    # 3 — a shared citation the numbers did not settle ("Baldwin/USDA poultry floor"): whoever OWNS
+    # the value as a published floor. `cands` is in `_SOURCE_KEYWORDS` order, which is
+    # most-specific-first, so when more than one authority owns the figure the specific document
+    # wins over the general chart — "USDA — variety/organ meats 160°F/71°C" belongs to the AskUSDA
+    # variety-meats page (#4), not to the catch-all Safe Minimum Internal Temperature chart (#3),
+    # even though both list 160°F.
+    owners = [c for c in cands if value_c is not None
+              and value_c in _AUTHORITY_FLOORS.get(c, ())]
+    if owners:
+        return owners[0], None
+
+    # 4 — genuinely undecidable. The whole defect class was a classifier that always had an answer.
+    return None, "safe-source-ambiguous"
+
+
+def _classify_source(ref_text, value_c=None):
+    """Back-compatible wrapper — `model_cure` passes this as a one-argument callable."""
+    return _resolve_source(ref_text, value_c)[0]
 
 
 def _thermal_block(row, unconverted, item_id):
@@ -133,12 +257,38 @@ def _thermal_block(row, unconverted, item_id):
                             "field": "safe", "value": 0, "reason": "safe-not-applicable"})
         return None
     ref = ((row.get("src") or {}).get("safe") or {}).get("ref") or ""
-    sid = _classify_source(ref)
-    if sid is None:
+    # THE VALUE IS PASSED IN, and that is the whole of §5.3. Resolving a citation without knowing
+    # which number it is meant to support is what let `"Baldwin — SV floor 54.4C; USDA 145F/63C"`
+    # credit Baldwin for a 63 the string itself attributes to the USDA. The citation and the value
+    # are one fact; they are now decided together.
+    sid, reason = _resolve_source(ref, int(round(v)))
+    if sid is None and reason:
         # The number is real and must not be dropped (DoD-10) — but its citation cannot be honestly
-        # resolved to a corpus folder from the text we have. Ship the number, flag the gap by name.
+        # resolved to a corpus folder from the text we have. Ship the number, flag the gap by name,
+        # and say WHICH kind of gap: nothing matched, the cited document is absent from the corpus,
+        # or two authorities remain and nothing in the text decides between them. The old single
+        # `safe-source-unmapped` counted only the first, which is why the metric read green while
+        # 62 blocks carried an attribution nobody had checked.
         unconverted.append({"id": item_id, "name": row.get("heb"),
-                            "field": "safe", "value": ref, "reason": "safe-source-unmapped"})
+                            "field": "safe", "value": ref, "reason": reason})
+
+    # And the sharper fact the binding exposes on its way past: a citation that STATES a temperature
+    # which is not the one shipped. Six blocks (measured): four organ meats ship 72°C against a
+    # citation reading "160°F/71°C", and two shrimp ship 63°C against "Baldwin fish 55–60°C".
+    #
+    # The value is NOT touched. Changing a safety number because its citation disagrees would be a
+    # safety change wearing a provenance fix's clothes, and DoD-10 forbids it — either the number is
+    # right and the citation is wrong, or the reverse, and only the owner can say which. What this
+    # does is make the disagreement countable instead of invisible, which is the entire point of the
+    # arc: the old classifier could not have noticed, because it never compared the two at all.
+    _stated = [float(x) for x in _TEMP_C.findall(ref)]
+    _stated += [(float(x) - 32.0) * 5.0 / 9.0 for x in _TEMP_F.findall(ref)]
+    if _stated and not any(abs(t - v) <= 0.6 for t in _stated):
+        unconverted.append({
+            "id": item_id, "name": row.get("heb"), "field": "safe",
+            "value": "ships %g°C; citation states %s" % (v, ", ".join("%g" % t for t in sorted(set(round(x, 1) for x in _stated)))),
+            "reason": "safe-value-not-stated-by-citation",
+        })
     return {"kind": "thermal", "instant_c": int(round(v)), "curve": None,
             "basis": None, "basis_ref": None, "source_id": sid}
 
