@@ -62,13 +62,23 @@ if (!out) {
 }
 
 if (out.status !== 0) {
-  if (/ConfigError|OperationalError|could not connect|connection refused/i.test(out.stderr)) {
+  // Fix round 1, CRITICAL 1: psycopg2 raises the SAME exception class, OperationalError, for
+  // "the server is not there" AND "the server is there but your credentials/role/database are
+  // wrong" — the class name cannot distinguish them, so matching on the class name (as this used
+  // to) turns a real, fixable misconfiguration (a wrong password) into a silent SKIP/exit 0. Only
+  // messages that specifically mean "nothing is listening" may SKIP; everything else — a bad
+  // password, a missing role, a missing database — is a configuration error and must FAIL loudly.
+  // ConfigError (raised by src.rules_store.config.load_config) is the one legitimate case that is
+  // NOT a misconfiguration in this sense: it means mk_rules has never been set up here at all
+  // (infra/rules-db/.env absent), which is the same "not present" shape as the service being down.
+  const ABSENT = /ConfigError|could not connect to server|Connection refused|Is the server running|timeout expired|No route to host|Network is unreachable|could not translate host name/i;
+  if (ABSENT.test(out.stderr)) {
     console.log('SKIPPED — mk_rules is not reachable (start the native PostgreSQL 18.4 service, port 5432).');
-    console.log(`  ${out.stderr.trim().split('\n').pop().slice(0, 140)}`);
+    console.log(`  ${out.stderr.trim().split('\n').pop()}`);
     console.log('  NOT VERIFIED here: whether mk_rules matches the document.');
     process.exit(0);
   }
-  console.log(`FAIL: the freshness check could not run — ${out.stderr.trim().split('\n').pop().slice(0, 200)}`);
+  console.log(`FAIL: the freshness check could not run — ${out.stderr.trim().split('\n').pop()}`);
   process.exit(1);
 }
 

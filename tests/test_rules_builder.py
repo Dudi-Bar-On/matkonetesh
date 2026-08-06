@@ -207,7 +207,16 @@ def test_sync_rule_happy_path_activates_the_rule(tmp_path):
 # heading at all) so they can never collide with a real document rule.
 # ---------------------------------------------------------------------------------------------
 
-SOURCE_PATH = "docs/process/development-discipline.md"
+# Fix round 1 (2026-08-06, review Critical 2): this USED to be the real
+# "docs/process/development-discipline.md" — but sync_document treats a call against a
+# source_path as a FULL sync of everything currently stored under that path, so running these
+# tests against the real document's own path would retire every real current rule not present in
+# that test's tiny synthetic fixture the moment any real sync had already populated mk_rules (the
+# gate's self-heal does exactly that). A fixture-only path — never written to disk, never synced
+# by the real document, so it can never collide with production rows in either direction — closes
+# that hole structurally rather than by convention. Same shape as PROBE_SOURCE_PATH below, which
+# already established this precedent for exactly this reason.
+SOURCE_PATH = "tests/fixtures/synthetic-rules-doc.md"
 
 
 def _fresh_mirror(tmp_path, name: str):
