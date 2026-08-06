@@ -169,3 +169,103 @@ def extract_dod_rules(text: str, source_path: str) -> list[RuleRecord]:
             bucket=_classify_bucket(statement),
         ))
     return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Task 7: H-ruling headings (rule_id is the H-number itself, e.g. "H8" — NOT the section number
+# "14" that _SECTION_HEADING_RE would otherwise capture; _H_RULING_RE above is what makes
+# extract_section_rules SKIP these, so the two extractors agree on exactly one owner per heading).
+# ---------------------------------------------------------------------------------------------
+
+_H_HEADING_RE = re.compile(
+    r"^#{2,4}\s+\d+(?:\.\d+)?[a-z]?\.\s+(H\d+[a-z]?)\s*[–—-]\s*(.+?)\s*$", re.MULTILINE
+)
+
+
+def extract_h_rulings(text: str, source_path: str) -> list[RuleRecord]:
+    matches = list(_H_HEADING_RE.finditer(text))
+    out: list[RuleRecord] = []
+    for i, m in enumerate(matches):
+        h_id, title = m.group(1), m.group(2)
+        body_start = m.end()
+        body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        # Bounded to the next heading OF ANY of the three families this module recognises, found
+        # via the generic markdown heading marker '#{2,4} ' — an H-ruling's body ends at the next
+        # heading line, full stop.
+        next_heading = re.search(r"^#{2,4}\s+", text[body_start:], re.MULTILINE)
+        if next_heading:
+            body_end = min(body_end, body_start + next_heading.start())
+        body = text[body_start:body_end].strip()
+        paragraph = body.split("\n\n", 1)[0].strip()
+        out.append(RuleRecord(
+            rule_id=h_id,
+            section=h_id,
+            title_he=title,
+            statement=paragraph if paragraph else title,
+            source_heading=f"{h_id} — {title}",
+            content_hash=_hash(f"{title}\n{paragraph}"),
+        ))
+    return out
+
+
+# ---------------------------------------------------------------------------------------------
+# Task 7: the Lessons log — both the summary table's rows (L1..L13, terse) and the later inline
+# "**Ln · Title (date).**" blocks (L14 onward, prose with a title + elaborating paragraph).
+# ---------------------------------------------------------------------------------------------
+
+_LESSON_TABLE_ROW_RE = re.compile(
+    r"^\|\s*(L\d+)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*$", re.MULTILINE
+)
+_LESSON_INLINE_RE = re.compile(
+    r"^\*\*(L\d+)\s*·\s*(.+?)\*\*\s*\n(.+?)(?=\n\*\*L\d+\s*·|\n##|\Z)", re.MULTILINE | re.DOTALL
+)
+
+
+def extract_lessons(text: str, source_path: str) -> list[RuleRecord]:
+    out: list[RuleRecord] = []
+    for m in _LESSON_TABLE_ROW_RE.finditer(text):
+        l_id, lesson, root_cause, gate = m.group(1), m.group(2), m.group(3), m.group(4)
+        statement = f"{lesson} — root cause: {root_cause} — gate: {gate}"
+        out.append(RuleRecord(
+            rule_id=l_id, section="Lessons", title_he=lesson, statement=statement,
+            source_heading=f"Lessons log table row {l_id}", content_hash=_hash(statement),
+        ))
+    for m in _LESSON_INLINE_RE.finditer(text):
+        l_id, title, body = m.group(1), m.group(2).strip(), m.group(3).strip()
+        paragraph = body.split("\n\n", 1)[0].strip()
+        out.append(RuleRecord(
+            rule_id=l_id, section="Lessons", title_he=title, statement=paragraph,
+            source_heading=f"Lessons log — {l_id} · {title}", content_hash=_hash(f"{title}\n{paragraph}"),
+        ))
+    return out
+
+
+def extract_rules(text: str, source_path: str) -> list[RuleRecord]:
+    """The single entry point every builder/gate calls. Merges the four shapes; a rule_id claimed
+    by more than one shape (or more than once within one shape) is treated as a document
+    inconsistency, not silently deduplicated — silently picking a winner would let a real
+    authoring mistake pass unnoticed, and rule_id is the primary key downstream in both Postgres
+    and the SQLite mirror."""
+    groups = {
+        "section": extract_section_rules(text, source_path),
+        "dod": extract_dod_rules(text, source_path),
+        "h_ruling": extract_h_rulings(text, source_path),
+        "lesson": extract_lessons(text, source_path),
+    }
+    print(
+        "extract_rules() per-extractor counts: "
+        + ", ".join(f"{name}={len(recs)}" for name, recs in groups.items())
+    )
+    seen: dict[str, str] = {}
+    out: list[RuleRecord] = []
+    for name, group in groups.items():
+        for rec in group:
+            if rec.rule_id in seen:
+                raise ValueError(
+                    f"rule_id {rec.rule_id!r} claimed by more than one shape in {source_path} "
+                    f"({seen[rec.rule_id]} and {name}: {rec.source_heading!r}) — "
+                    "the document is internally inconsistent."
+                )
+            seen[rec.rule_id] = f"{name}: {rec.source_heading}"
+            out.append(rec)
+    return out

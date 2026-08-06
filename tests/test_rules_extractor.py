@@ -10,7 +10,13 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.rules_store.extractor import extract_dod_rules, extract_section_rules
+from src.rules_store.extractor import (
+    extract_dod_rules,
+    extract_h_rulings,
+    extract_lessons,
+    extract_rules,
+    extract_section_rules,
+)
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -283,3 +289,74 @@ def test_real_document_dod_10_is_bucket_content_and_all_others_are_process():
     assert recs["DoD-10"].bucket == "content", recs["DoD-10"].statement
     non_content = {rid: r.bucket for rid, r in recs.items() if rid != "DoD-10"}
     assert all(bucket == "process" for bucket in non_content.values()), non_content
+
+
+# ---------------------------------------------------------------------------------------------
+# Task 7: extract_h_rulings (rule_id = the H-number, e.g. "H8", not the section number "14"),
+# extract_lessons (both the Lessons-log table rows AND the inline "**Ln ·**" blocks), and the
+# extract_rules() merge point that every later task (builder, gates) calls.
+# ---------------------------------------------------------------------------------------------
+
+H_FIXTURE = """\
+## 14. H8 — The Full-Landing Rule ("nothing in the air"; owner ruling, 2026-07-30)
+
+Nothing may be left unlanded: named phase, trigger-anchored deferral, or registered brainstorm task.
+
+## 16. H13 — שער רלוונטיות לפריט משוחזר (Recovery Relevance Gate; owner ruling, 2026-07-30)
+
+בירור → המלצה → החלטת בעלים → עדכון → בצע/בטל.
+"""
+
+LESSON_FIXTURE = """\
+## 11. Lessons log
+
+| # | Lesson | Root cause | Gate |
+|---|---|---|---|
+| L1 | equipPlan never built | Waived in a plan file | §4 Waiver Gate |
+| L2 | hooksOver shipped unread | A derived value had no consumer | DoD 5 |
+
+**L14 · A push is not a release; a deploy takes minutes (v255, 2026-07-21).**
+I announced "v255 is shipped" the moment `git push` returned. The owner looked, still saw 254.
+"""
+
+
+def test_extracts_h_rulings_by_their_h_number_not_their_section_number():
+    recs = extract_h_rulings(H_FIXTURE, "docs/process/development-discipline.md")
+    ids = {r.rule_id for r in recs}
+    assert ids == {"H8", "H13"}, f"got {ids}"
+
+
+def test_extracts_table_lessons_and_inline_lessons():
+    recs = {r.rule_id: r for r in extract_lessons(LESSON_FIXTURE, "docs/process/development-discipline.md")}
+    assert set(recs) == {"L1", "L2", "L14"}, f"got {set(recs)}"
+    assert "equipPlan" in recs["L1"].statement
+    assert "deploy takes minutes" in recs["L14"].title_he or "push is not a release" in recs["L14"].title_he
+
+
+def test_extract_rules_merges_all_four_shapes_and_rejects_duplicate_ids():
+    combined = DOD_FIXTURE + H_FIXTURE + LESSON_FIXTURE
+    recs = extract_rules(combined, "docs/process/development-discipline.md")
+    ids = {r.rule_id for r in recs}
+    assert {"DoD-1", "H8", "L1", "L14"} <= ids, f"got {ids}"
+
+    dup = combined + "\n### 10.17 Duplicate on purpose\n\nSecond copy.\n" + "\n### 10.17 Again\n\nThird copy.\n"
+    try:
+        extract_rules(dup, "docs/process/development-discipline.md")
+        assert False, "expected ValueError for duplicate rule_id '10.17'"
+    except ValueError as exc:
+        assert "10.17" in str(exc)
+
+
+def test_real_document_extract_rules_merges_all_shapes_without_raising():
+    """Sanity check against the LIVE document (DoD-4/6): the real document must not contain a
+    duplicate rule_id across the four shapes, and the merge must produce a substantial count."""
+    text = (ROOT / "docs" / "process" / "development-discipline.md").read_text(encoding="utf-8")
+    recs = extract_rules(text, "docs/process/development-discipline.md")
+    ids = {r.rule_id for r in recs}
+    assert len(recs) == len(ids), "extract_rules produced duplicate rule_ids without raising"
+    assert len(recs) > 100, f"expected well over 100 combined rules, got {len(recs)}"
+    assert "H8" in ids
+    assert "H13" in ids
+    assert "L1" in ids
+    assert "L63" in ids
+    assert "DoD-10" in ids
