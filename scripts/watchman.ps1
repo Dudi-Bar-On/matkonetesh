@@ -68,6 +68,53 @@ function Invoke-BoolProbe {
     }
 }
 
+function Invoke-BoundedProcess {
+    # Fix round 1 (Task 17 review): every Detect/Verify/Recover that shells out to a child process
+    # (node, py) must be bounded -- an unbounded child that hangs (a stuck query after a successful
+    # Postgres connect, e.g.) would hang the whole watchman run and NEVER return a boolean, which is
+    # worse than a wrong answer because a wrong answer at least reports. The Postgres *connect* is
+    # already bounded elsewhere (5s in the gate, 10s in the builder) -- this is the layer above that,
+    # bounding the process as a whole regardless of where inside it a hang happens.
+    # Compatible with both Windows PowerShell 5.1 and PowerShell 7 (this file runs under both):
+    # ProcessStartInfo.ArgumentList and Process.WaitForExit(ms) are available on both; Process.Kill()
+    # (no entireProcessTree overload, which is Core-only) is used so behaviour doesn't diverge --
+    # a killed `node`/`py` process here has no long-running children of its own to orphan.
+    # On timeout this THROWS rather than returning a sentinel, so it flows through the existing
+    # Invoke-BoolProbe try/catch into Detail as "<RoleName> threw: ... timed out ...", not a silent
+    # true and not a hang.
+    param(
+        [Parameter(Mandatory)] [string]$FilePath,
+        [Parameter(Mandatory)] [string[]]$ArgumentList,
+        [int]$TimeoutSeconds = 30
+    )
+    # .ArgumentList (the collection property) is unreliable across the two PowerShell/.NET runtimes
+    # this file must support -- observed $null on a fresh ProcessStartInfo under Windows PowerShell
+    # 5.1 / .NET Framework 4.8 in this environment. Build a single quoted argument string instead,
+    # which both runtimes have supported unchanged since .NET Framework 2.0.
+    $psi = New-Object System.Diagnostics.ProcessStartInfo
+    $psi.FileName = $FilePath
+    $psi.Arguments = ($ArgumentList | ForEach-Object { '"' + ($_ -replace '"', '\"') + '"' }) -join ' '
+    $psi.WorkingDirectory = $RepoRoot
+    $psi.RedirectStandardOutput = $true
+    $psi.RedirectStandardError = $true
+    $psi.UseShellExecute = $false
+    $proc = [System.Diagnostics.Process]::Start($psi)
+    try {
+        $stdoutTask = $proc.StandardOutput.ReadToEndAsync()
+        $stderrTask = $proc.StandardError.ReadToEndAsync()
+        $exited = $proc.WaitForExit($TimeoutSeconds * 1000)
+        if (-not $exited) {
+            try { $proc.Kill() } catch { }
+            throw "$FilePath $($ArgumentList -join ' ') timed out after ${TimeoutSeconds}s and was killed"
+        }
+        $stdout = $stdoutTask.GetAwaiter().GetResult()
+        $stderr = $stderrTask.GetAwaiter().GetResult()
+        return @{ ExitCode = $proc.ExitCode; Output = "$stdout`n$stderr" }
+    } finally {
+        $proc.Dispose()
+    }
+}
+
 function Invoke-ComponentCheck {
     param(
         [Parameter(Mandatory)] [string]$Name,
@@ -227,27 +274,50 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
     # mk_rules (the source of truth) actually says -- no equivalent alternative exists, hence block.
     # Detect/Verify both delegate to check-rules-mirror.mjs (Task 13), which owns the ONE checksum
     # comparison (mirror.checksum_of_rows, shared by both sides) -- this component does not
-    # reimplement that comparison, only interprets its exit code/output as the boolean this engine
-    # requires. check-rules-mirror.mjs is itself self-healing (it rebuilds-and-rechecks inline on a
+    # reimplement that comparison, only interprets its result as the boolean this engine requires.
+    # check-rules-mirror.mjs is itself self-healing (it rebuilds-and-rechecks inline on a
     # mismatch/missing/corrupt file), so a first Detect call against a broken mirror may already fix
-    # it -- but its success message then reads "OK - mirror rebuilt ..." rather than "OK - rules.sqlite
-    # matches ...", so Detect (which requires the latter, exact "already fine, no repair needed"
-    # wording) still correctly reports NOT OK for that run, and the explicit -Recover below runs too.
-    # This is intentional, not a bug: it means there is exactly one recovery ACTION
+    # it -- but Detect requires the machine-readable RESULT=already-ok line specifically (see below),
+    # so a run that needed repair still correctly reports NOT OK, and the explicit -Recover below
+    # runs too. This is intentional, not a bug: it means there is exactly one recovery ACTION
     # (--rebuild-mirror-only) shared by the gate and the watchman, so the two can never disagree about
     # how a broken mirror gets fixed -- see this task's report for the "should Recover rewrite the
     # tracked file" decision.
+    #
+    # Fix round 1 (Task 17 review): the original Detect/Verify matched on the gate's human-facing
+    # prose ('OK - rules.sqlite matches' / 'OK'). That coupling breaks the WRONG way if the healthy
+    # message is ever reworded: Detect's exact-string match fails while Verify's loose 'OK' match
+    # still passes, so a perfectly healthy mirror reports "recovered" on every single watchman run --
+    # meaning --rebuild-mirror-only actually fires and rewrites the tracked, non-byte-deterministic
+    # rules.sqlite on every invocation, silently churning the working tree. check-rules-mirror.mjs
+    # now prints one machine-readable `RESULT=<already-ok|repaired|skipped|fail>` line (additive --
+    # its exit codes and existing human-readable output are unchanged, confirmed by running it in the
+    # healthy case and a broken case before this change and after). Detect and Verify match on THAT
+    # line, never on prose, so the human-facing message stays free to change. Verify is intentionally
+    # a superset of Detect (also accepts 'repaired'), never a subset -- Task 16 shipped a Verify
+    # weaker than its Detect once already and it produced a false Recovered:true.
+    #
+    # Also fix round 1: both calls go through Invoke-BoundedProcess (30s) instead of a bare `node`
+    # invocation with no timeout -- an unbounded child process that hangs (e.g. a stuck query after a
+    # successful Postgres connect; the CONNECT itself is bounded elsewhere but query execution and the
+    # child process as a whole were not) would hang this entire watchman run and never return a
+    # boolean. A timeout now throws, which Invoke-BoolProbe turns into an honest "Detect/Verify threw:
+    # ... timed out ..." NOT-OK result, never a hang and never a silent true.
     $rulesMirrorResult = Invoke-ComponentCheck -Name 'rules-mirror' -Severity 'block' `
         -Detect {
-            $r = node (Join-Path $RepoRoot 'scripts\check-rules-mirror.mjs') 2>&1
-            $LASTEXITCODE -eq 0 -and $r -match 'OK - rules.sqlite matches'
+            $p = Invoke-BoundedProcess -FilePath 'node' -ArgumentList @((Join-Path $RepoRoot 'scripts\check-rules-mirror.mjs')) -TimeoutSeconds 30
+            $resultValue = $null
+            foreach ($line in ($p.Output -split "`r?`n")) { if ($line -match '^RESULT=(\S+)') { $resultValue = $Matches[1] } }
+            $p.ExitCode -eq 0 -and $resultValue -eq 'already-ok'
         } `
         -Recover {
-            py -3 (Join-Path $RepoRoot 'scripts\build_rules_store.py') --rebuild-mirror-only *> $null
+            Invoke-BoundedProcess -FilePath 'py' -ArgumentList @('-3', (Join-Path $RepoRoot 'scripts\build_rules_store.py'), '--rebuild-mirror-only') -TimeoutSeconds 60 | Out-Null
         } `
         -Verify {
-            $r = node (Join-Path $RepoRoot 'scripts\check-rules-mirror.mjs') 2>&1
-            $LASTEXITCODE -eq 0 -and $r -match 'OK'
+            $p = Invoke-BoundedProcess -FilePath 'node' -ArgumentList @((Join-Path $RepoRoot 'scripts\check-rules-mirror.mjs')) -TimeoutSeconds 30
+            $resultValue = $null
+            foreach ($line in ($p.Output -split "`r?`n")) { if ($line -match '^RESULT=(\S+)') { $resultValue = $Matches[1] } }
+            $p.ExitCode -eq 0 -and ($resultValue -eq 'already-ok' -or $resultValue -eq 'repaired')
         }
 
     @($hooksResult, $rulesMirrorResult)

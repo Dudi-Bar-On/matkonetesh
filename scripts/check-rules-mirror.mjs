@@ -82,6 +82,10 @@ for (const [cmd, pre] of CANDIDATES) {
 if (!out) {
   console.log('SKIPPED — no Python interpreter could be run (tried py -3, python3).');
   console.log('  NOT VERIFIED here: whether rules.sqlite matches mk_rules.');
+  // Fix round 1 (Task 17 review): a machine-readable RESULT= line, additive only — human-facing
+  // text above is free to be reworded without breaking a consumer (watchman.ps1) that matches on
+  // this line instead of on prose. Exit code and existing output are unchanged.
+  console.log('RESULT=skipped');
   process.exit(0);
 }
 
@@ -97,9 +101,11 @@ if (out.status !== 0) {
     console.log('SKIPPED — mk_rules is not reachable; cannot compare against the mirror.');
     console.log(`  ${out.stderr.trim().split('\n').pop()}`);
     console.log('  NOT VERIFIED here: whether rules.sqlite matches mk_rules.');
+    console.log('RESULT=skipped');
     process.exit(0);
   }
   console.log(`FAIL: the mirror check could not run — ${out.stderr.trim().split('\n').pop().slice(0, 200)}`);
+  console.log('RESULT=fail');
   process.exit(1);
 }
 
@@ -116,10 +122,12 @@ if (!data.mirror_exists) {
     unlinkSync(MIRROR_PATH);
   } catch (e) {
     console.log(`FAIL: could not remove the corrupt mirror file — ${e.message}`);
+    console.log('RESULT=fail');
     process.exit(1);
   }
 } else if (data.mirror_checksum === data.pg_checksum) {
   console.log(`OK - rules.sqlite matches mk_rules (${data.pg_rows} current rule(s), checksum ${data.pg_checksum.slice(0, 12)}...).`);
+  console.log('RESULT=already-ok');
   process.exit(0);
 } else {
   console.log(`FAIL: rules.sqlite checksum (${data.mirror_checksum.slice(0, 12)}...) != mk_rules (${data.pg_checksum.slice(0, 12)}...). repairing ...`);
@@ -129,7 +137,9 @@ const repair = spawnSync(usedCmd, [...usedPre, join(ROOT, 'scripts', 'build_rule
 console.log(`  ${(repair.stdout ?? '').trim().split('\n').pop() || (repair.stderr ?? '').trim().split('\n').pop()}`);
 if (repair.status !== 0) {
   console.log('FAIL: the mirror could not be rebuilt.');
+  console.log('RESULT=fail');
   process.exit(1);
 }
 console.log('OK - mirror rebuilt from mk_rules and now matches.');
+console.log('RESULT=repaired');
 process.exit(0);
