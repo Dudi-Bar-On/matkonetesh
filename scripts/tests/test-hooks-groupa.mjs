@@ -260,5 +260,117 @@ export function evaluate(input) {
   console.log(`IN-PROCESS PIPELINE TIMING (no node spawn, rules dir missing, ${N} samples): median ${median.toFixed(3)}ms, min ${samples[0].toFixed(3)}ms, max ${samples[samples.length - 1].toFixed(3)}ms`);
 }
 
+// ---------------------------------------------------------------------------------------------
+// TASK 3 — §9 `main` rule: `git worktree add` and `git checkout -b`/`-B` are blocked; everything
+// else, including the innocent checkout/worktree forms a naive regex would also catch, passes.
+// This exercises the REAL rule file under the REAL default rules dir (scripts/hooks/rules/),
+// not a synthetic writeRule() fixture — the point is to prove the shipped rule, not a stand-in.
+// ---------------------------------------------------------------------------------------------
+function runCliRealRules({ stdin, logPath }) {
+  return runCli({ stdin, logPath }); // no rulesDir override -> pipeline.mjs DEFAULT_RULES_DIR
+}
+
+function decisionFor(command) {
+  const work = tempDir('hooks-groupa-mainrule-');
+  const logPath = join(work, 'log.jsonl');
+  const r = runCliRealRules({
+    stdin: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
+    logPath,
+  });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  return { r, stdoutJson, logPath };
+}
+
+// --- blocked: the two commands §9 names explicitly -------------------------------------------
+{
+  const { r, stdoutJson } = decisionFor('git worktree add ../mk-side feature-branch');
+  check('§9 rule: exit code 0 for `git worktree add ...`', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+  check('§9 rule: `git worktree add ...` is DENIED', stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${r.stdout}`);
+  check('§9 rule: the deny reason names §9 main and gives an alternative way to do the work',
+    typeof stdoutJson?.hookSpecificOutput?.permissionDecisionReason === 'string'
+    && /main/i.test(stdoutJson.hookSpecificOutput.permissionDecisionReason)
+    && /instead/i.test(stdoutJson.hookSpecificOutput.permissionDecisionReason),
+    `reason=${stdoutJson?.hookSpecificOutput?.permissionDecisionReason}`);
+}
+{
+  const { stdoutJson } = decisionFor('git checkout -b my-branch');
+  check('§9 rule: `git checkout -b my-branch` is DENIED', stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  const { stdoutJson } = decisionFor('git checkout -B my-branch');
+  check('§9 rule: `git checkout -B my-branch` (force-create variant) is also DENIED', stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // compound command: the leading segment after `&&` is still a git-worktree-add invocation.
+  const { stdoutJson } = decisionFor('cd /tmp && git worktree add ../x branch');
+  check('§9 rule: `git worktree add` after `&&` is still DENIED (segment split, not naive substring)', stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// --- RED #2, the one that matters more: innocent lookalikes MUST pass ------------------------
+for (const innocent of [
+  'git checkout -- file.txt',
+  'git checkout main',
+  'git switch main',
+  'git worktree list',
+]) {
+  const { r, stdoutJson } = decisionFor(innocent);
+  check(`§9 rule: innocent \`${innocent}\` is NOT denied`, r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// --- brief step 3 decision: a string literal containing the blocked phrase, run through `echo`,
+// never invokes git at all, so it must NOT be denied. The rule inspects each shell segment's own
+// leading command; `echo "..."` is a segment whose leading command is `echo`, not `git`.
+{
+  const { stdoutJson } = decisionFor('echo "git checkout -b x"');
+  check('§9 rule (brief step 3 decision): `echo "git checkout -b x"` is NOT denied — echo never runs git', stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  const { stdoutJson } = decisionFor('git commit -m "did a checkout -b thing"');
+  check('§9 rule: a commit message merely mentioning "checkout -b" is NOT denied', stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// --- non-Bash tool calls and missing/empty command text must never be touched by this rule ----
+{
+  const work = tempDir('hooks-groupa-mainrule-nonbash-');
+  const logPath = join(work, 'log.jsonl');
+  const r = runCliRealRules({ stdin: JSON.stringify({ tool_name: 'Read', tool_input: { file_path: 'x' } }), logPath });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  check('§9 rule: a non-Bash tool call is untouched (allow)', stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// FIX ROUND 1 (review finding, Important): a git GLOBAL OPTION between `git` and the subcommand
+// must not defeat the rule. `git -C . checkout -b x`, `git --no-pager checkout -b x`, and
+// `git -c k=v worktree add ../w` all genuinely create a branch/worktree and must still be DENIED.
+// Matching negative cases (global option + an innocent subcommand) must still pass.
+// `bash -c "..."` remains a documented, accepted gap — not shell parsing, not attempted here.
+// ---------------------------------------------------------------------------------------------
+for (const guilty of [
+  'git -C . checkout -b x',
+  'git --no-pager checkout -b x',
+  'git -c core.pager=cat worktree add ../w',
+  'git -c k=v worktree add ../w',
+]) {
+  const { r, stdoutJson } = decisionFor(guilty);
+  check(`§9 rule (fix round 1): guilty \`${guilty}\` (global option before subcommand) is DENIED`, r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+for (const innocent of [
+  'git -C . checkout main',
+  'git -C . status',
+  'git --no-pager worktree list',
+]) {
+  const { r, stdoutJson } = decisionFor(innocent);
+  check(`§9 rule (fix round 1): innocent \`${innocent}\` (global option before subcommand) is NOT denied`, r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // Documented, accepted gap — not a regression to fix here. Asserted explicitly so a future
+  // change that silently starts blocking this (via a shell-parsing rewrite, say) is a deliberate
+  // decision, not an accidental side effect nobody noticed.
+  const { stdoutJson } = decisionFor('bash -c "git checkout -b x"');
+  check('§9 rule (documented gap, not fixed here): `bash -c "git checkout -b x"` still evades the rule (allow) — real shell parsing is out of scope', stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);
