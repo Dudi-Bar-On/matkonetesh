@@ -1,0 +1,343 @@
+---
+name: 43-clauses-index
+description: "Neo4j 2026.06.0 — Clauses overview (31/60, cypher)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-cypher/blob/2026.06.0/modules/ROOT/pages/clauses/index.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-cypher/2026.06.0/modules/ROOT/pages/clauses/index.adoc -->
+<!-- repo: neo4j/docs-cypher  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: This section contains information on all the clauses in the Cypher query language.
+
+[[query-clause]]
+= Clauses
+
+This section contains information on all the clauses in the Cypher query language.
+
+[[reading-clauses]]
+== Reading clauses
+
+These comprise clauses that read data from the database.
+
+The flow of data within a Cypher query is an unordered sequence of maps with key-value pairs -- a set of possible bindings between the variables in the query and values derived from the database.
+This set is refined and augmented by subsequent parts of the query.
+
+[options="header"]
+|===
+| Clause | Description
+
+
+m| xref::clauses/filter.adoc[FILTER]
+| Adds filters to queries.
+label:cypher[Cypher 25 only] label:new[Introduced in Neo4j 2025.06]
+
+m| xref::clauses/match.adoc[MATCH]
+| Specify the patterns to search for in the database.
+
+m| xref::clauses/optional-match.adoc[OPTIONAL MATCH]
+| Specify the patterns to search for in the database while using `nulls` for missing parts of the pattern.
+
+|===
+
+[[projecting-clauses]]
+== Projecting clauses
+
+These comprise clauses that define which expressions to return in the result set.
+The returned expressions may all be aliased using `AS`.
+
+[options="header"]
+|===
+| Clause | Description
+
+m| xref::clauses/finish.adoc[FINISH]
+| Defines a query to have no result.
+
+m| xref::clauses/let.adoc[LET]
+| Binds values to variables.
+ label:cypher[Cypher 25 only] label:new[Introduced in Neo4j 2025.06]
+
+m| xref::clauses/return.adoc[RETURN ... [AS]]
+| Defines what to include in the query result set.
+
+m| xref::clauses/unwind.adoc[UNWIND ... [AS]]
+| Expands a list into a sequence of rows.
+
+m| xref::clauses/for.adoc[FOR]
+| Expands a list into a sequence of rows (GQL-aligned syntax; same semantics as `UNWIND`).
+label:cypher[Cypher 25 only] label:new[Introduced in Neo4j 2026.04]
+
+m| xref::clauses/with.adoc[WITH ... [AS]]
+| Allows query parts to be chained together, piping the results from one to be used as starting points or criteria in the next.
+
+|===
+
+[[reading-sub-clauses]]
+== Reading sub-clauses
+
+These comprise sub-clauses that must operate as part of reading clauses.
+
+[options="header"]
+|===
+| Sub-clause | Description
+
+m| xref::clauses/where.adoc[WHERE]
+| Adds constraints to the patterns in a `MATCH` or `OPTIONAL MATCH` clause or filters the results of a `WITH` clause.
+
+m| xref::clauses/search.adoc[SEARCH]
+| A subclause following `MATCH` or `OPTIONAL MATCH`, filtering the results based on approximate nearest neighbor (ANN) vector search.
+
+m| xref::clauses/order-by.adoc[ORDER BY [ASC[ENDING\] \| DESC[ENDING\]\]]
+| A subclause following `RETURN` or `WITH`, specifying that the output should be sorted in either ascending (the default) or descending order.
+
+m| xref::clauses/skip.adoc[SKIP] / xref::clauses/skip.adoc#offset-synonym[`OFFSET`]
+| Defines from which row to start including the rows in the output.
+
+m| xref::clauses/limit.adoc[LIMIT]
+| Constrains the number of rows in the output.
+
+|===
+
+[[writing-clauses]]
+== Writing clauses
+
+These comprise clauses that write the data to the database.
+
+[options="header"]
+|===
+| Clause | Description
+
+m| xref::clauses/create.adoc[CREATE]
+| Create nodes and relationships.
+
+m| xref::clauses/delete.adoc[DELETE]
+a|
+Delete nodes, relationships or paths.
+Any node to be deleted must also have all associated relationships explicitly deleted.
+
+m| xref::clauses/delete.adoc[DETACH DELETE]
+a|
+Delete a node or set of nodes.
+All associated relationships will automatically be deleted.
+
+m| xref::clauses/set.adoc[SET]
+| Update labels on nodes and properties on nodes and relationships.
+
+m| xref::clauses/remove.adoc[REMOVE]
+| Remove properties and labels from nodes and relationships.
+
+m| xref::clauses/foreach.adoc[FOREACH]
+| Update data within a list, whether components of a path, or the result of aggregation.
+
+|===
+
+[[reading-writing-clauses]]
+== Reading/Writing clauses
+
+These comprise clauses that both read data from and write data to the database.
+
+[options="header"]
+|===
+| Clause | Description
+
+m| xref::clauses/merge.adoc[MERGE]
+| Ensures that a pattern exists in the graph. Either the pattern already exists, or it needs to be created.
+
+m| --- xref::clauses/merge.adoc#on-match-and-on-create[ON CREATE]
+| Used in conjunction with `MERGE`, this write sub-clause specifies the actions to take if the pattern needs to be created.
+
+m| --- xref::clauses/merge.adoc#on-match-and-on-create[ON MATCH]
+| Used in conjunction with `MERGE`, this write sub-clause specifies the actions to take if the pattern already exists.
+
+m| xref::clauses/call.adoc[CALL ... [YIELD ... ]]
+| Invokes a procedure deployed in the database and return any results.
+
+|===
+
+[[subquery-clauses]]
+== Subquery clauses
+
+[options="header"]
+|===
+|Clause |Description
+
+m| xref::subqueries/call-subquery.adoc[CALL { ... }]
+| Evaluates a subquery, typically used for post-union processing or aggregations.
+
+m| xref::subqueries/subqueries-in-transactions.adoc[CALL { ... } IN TRANSACTIONS]
+a|
+Evaluates a subquery in separate transactions.
+Typically used when modifying or importing large amounts of data.
+
+|===
+
+[[set-operations-clauses]]
+== Set operations
+
+[options="header"]
+|===
+|Clause |Description
+
+m| xref::queries/composed-queries/combined-queries.adoc[UNION]
+a|
+Combines the result of multiple queries into a single result set.
+Duplicates are removed.
+
+m| xref::queries/composed-queries/combined-queries.adoc[UNION ALL]
+a|
+Combines the result of multiple queries into a single result set.
+Duplicates are retained.
+
+|===
+
+[[multiple-graphs-clauses]]
+== Multiple graphs
+
+[options="header"]
+|===
+| Clause | Description
+
+m| xref::clauses/use.adoc[USE]
+| Determines which graph a query, or query part, is executed against.
+
+|===
+
+[[importing-clauses]]
+== Importing data
+
+[options="header"]
+|===
+| Clause | Description
+
+m| xref::clauses/load-csv.adoc[LOAD CSV]
+| Use when importing data from CSV files.
+
+m| xref::subqueries/subqueries-in-transactions.adoc[CALL { ... } IN TRANSACTIONS]
+| This clause may be used to prevent an out-of-memory error from occurring when importing large amounts of data using `LOAD CSV`.
+
+|===
+
+[[index-and-schema-clauses]]
+== Index and schema clauses
+
+These comprise clauses to manage indexes, constraints, and graph types.
+
+[options="header"]
+|===
+| Clause | Description
+
+m| xref:indexes/syntax.adoc[CREATE \| SHOW  \| DROP INDEX]
+| Create, show or drop an index.
+
+m| xref::schema/syntax.adoc#constraints[CREATE \| SHOW \| DROP CONSTRAINT]
+| Create, show or drop a constraint.
+
+m| xref::schema/syntax.adoc#graph-types[ALTER CURRENT GRAPH TYPE SET \| ADD \| ALTER \|DROP]
+| Set, extend, alter or drop elements in a graph type.
+
+m| xref::schema/syntax.adoc#list-graph-types[SHOW CURRENT GRAPH TYPE]
+| Show the full graph type.
+
+|===
+
+[[reading-hints]]
+== Reading hints
+
+These comprise clauses used to specify planner hints when tuning a query.
+More details regarding the usage of these -- and query tuning in general -- can be found in xref::indexes/search-performance-indexes/index-hints.adoc[Planner hints and the USING keyword].
+
+[options="header"]
+|===
+| Hint | Description
+
+m| xref::indexes/search-performance-indexes/index-hints.adoc#query-using-index-hint[USING INDEX]
+| Index hints are used to specify which index, if any, the planner should use as a starting point.
+
+m| xref::indexes/search-performance-indexes/index-hints.adoc#query-using-index-hint[USING INDEX SEEK]
+| Index seek hint instructs the planner to use an index seek for this clause.
+
+m| xref::indexes/search-performance-indexes/index-hints.adoc#query-using-scan-hint[USING SCAN]
+| Scan hints are used to force the planner to do a label scan (followed by a filtering operation) instead of using an index.
+
+m| xref::indexes/search-performance-indexes/index-hints.adoc#query-using-join-hint[USING JOIN]
+| Join hints are used to enforce a join operation at specified points.
+
+|===
+
+
+[[show-commands]]
+== SHOW commands
+
+For information about the `SHOW` command in general, see xref:clauses/show.adoc[].
+
+[options="header"]
+|===
+| Clause | Description
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/authentication-authorization/attribute-based-access-control/#_showing_auth_rules[`SHOW AUTH RULES` (Operations Manual)]
+| Show all auth rules.
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/database-administration/syntax/#_show_aliases[`SHOW ALIASES` (Operations Manual)]
+| Show local and remote database aliases.
+
+m| xref:schema/constraints/list-constraints.adoc[SHOW CONSTRAINTS].
+| Show the constraints set on database.
+
+m| xref:schema/graph-types/list-graph-types.adoc[SHOW CURRENT GRAPH TYPE]
+| Show the graph type for a database. label:cypher[Cypher 25 only] label:new[Introduced in Neo4j 2026.02]
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/database-administration/standard-databases/listing-databases/[`SHOW DATABASES` (Operations Manual)]
+| Show the databases available in a Neo4j instance.
+
+m| xref::functions/show-functions.adoc[SHOW FUNCTIONS]
+| Show the available functions.
+
+m| xref:indexes/search-performance-indexes/list-indexes.adoc[SHOW INDEXES]
+| Show the indexes set on a database.
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/authentication-authorization/manage-privileges/#access-control-list-privileges[`SHOW PRIVILEGES` (Operations Manual)]
+| Show privileges assigned or revoked from a role.
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/procedures/show-procedures/[`SHOW PROCEDURES` (Operations Manual)]
+| Show the available procedures.
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/authentication-authorization/manage-roles/#access-control-list-roles[`SHOW ROLES` (Operations Manual)]
+| Show the available roles.
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/clustering/server-syntax/#_show_servers[`SHOW SERVERS` (Operations Manual)]
+| Show all servers visible to a cluster.
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/configuration/show-settings/[`SHOW SETTINGS` (Operations Manual)]
+| Show all configuration settings.
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/database-internals/show-and-terminate-transactions/#show-transactions[`SHOW TRANSACTIONS`(Operations Manual)]
+| Show all currently running transactions across an instance.
+
+| link:{neo4j-docs-base-uri}/operations-manual/current/authentication-authorization/manage-users/#access-control-list-users[`SHOW USERS` (Operations Manual)]
+| Show all users.
+
+|===
+
+
+[[terminate-commands]]
+== TERMINATE Commands
+
+[options="header"]
+|===
+| Clause | Description
+m| link:{neo4j-docs-base-uri}/operations-manual/current/database-internals/show-and-terminate-transactions/#terminate-transactions[`TERMINATE TRANSACTIONS` (Operations Manual)]
+| Terminate transactions by their IDs.
+
+|===
+
+[[administration-clauses]]
+== Administration clauses
+
+Cypher includes commands to manage databases, aliases, servers, and role-based access control.
+To learn more about each of these, see:
+
+* link:{neo4j-docs-base-uri}/operations-manual/current/database-administration[Operations Manual -> Database administration]
+* link:{neo4j-docs-base-uri}/operations-manual/current/authentication-authorization/[Operations Manual -> Authentication and authorization]
+* link:{neo4j-docs-base-uri}/operations-manual/current/clustering/[Operations Manual -> Clustering]

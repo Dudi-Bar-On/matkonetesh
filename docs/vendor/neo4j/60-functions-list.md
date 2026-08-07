@@ -1,0 +1,1056 @@
+---
+name: 60-functions-list
+description: "Neo4j 2026.06.0 — List functions (48/60, cypher)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-cypher/blob/2026.06.0/modules/ROOT/pages/functions/list.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-cypher/2026.06.0/modules/ROOT/pages/functions/list.adoc -->
+<!-- repo: neo4j/docs-cypher  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: List functions return lists of things -- nodes in a path, and so on.
+:table-caption!:
+
+[[query-functions-list]]
+= List functions
+
+List functions return lists of different data entities.
+
+For more information about working with `LIST` values, see:
+
+* xref:values-and-types/lists.adoc[Values and types -> Lists]
+* xref:expressions/predicates/list-operators.adoc[Predicates -> List operators]
+* xref:expressions/list-expressions.adoc[List expressions]
+
+[[example-graph]]
+== Example graph
+
+The following graph is used for the examples below:
+
+image::graph-list-functions.svg[Example graph connecting people after their roles as administrator, designer, and developer,role=popup,width=600]
+
+To recreate the graph, run the following query against an empty Neo4j database:
+
+[source, cypher, role=test-setup]
+----
+CREATE
+  (alice:Developer {name:'Alice', age: 38, eyes: 'Brown'}),
+  (bob:Administrator {name: 'Bob', age: 25, eyes: 'Blue'}),
+  (charlie:Administrator {name: 'Charlie', age: 53, eyes: 'Green'}),
+  (daniel:Administrator {name: 'Daniel', age: 54, eyes: 'Brown'}),
+  (eskil:Designer {name: 'Eskil', age: 41, eyes: 'blue', likedColors: ['Pink', 'Yellow', 'Black']}),
+  (alice)-[:KNOWS]->(bob),
+  (alice)-[:KNOWS]->(charlie),
+  (bob)-[:KNOWS]->(daniel),
+  (charlie)-[:KNOWS]->(daniel),
+  (bob)-[:MARRIED]->(eskil)
+----
+
+[role=label--new-Neo4j-2025.11 label--cypher-25-only]
+[[functions-coll-distinct]]
+== coll.distinct()
+
+.Details
+|===
+| *Syntax* 3+| `coll.distinct(list)`
+| *Description* 3+| Returns the given list with all duplicate values removed.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `list` | `LIST<ANY>` | A list to be deduplicated.
+| *Returns* 3+| `LIST<ANY>`
+|===
+
+.Considerations
+|===
+| `coll.distinct(null)` returns `null`.
+| The order of the first occurrences of the distinct values is preserved.
+|===
+
+.+coll.distinct()+
+======
+
+.Deduplicate a list of integer values
+[source, cypher]
+----
+RETURN coll.distinct([1, 3, 2, 4, 2, 3, 1])
+----
+
+A `LIST<ANY>` containing only unique values is returned.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.distinct([1, 3, 2, 4, 2, 3, 1])
+| [1, 3, 2, 4]
+1+d|Rows: 1
+|===
+
+.Deduplicate a list of mixed values, including null
+// tag::functions_list_distinct[]
+[source, cypher]
+----
+RETURN coll.distinct([1, true, true, null, 'a', false, true, 1, null])
+----
+// end::functions_list_distinct[]
+
+A `LIST<ANY>` containing only unique values is returned.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.distinct([1, true, true, null, 'a', false, true, 1, null])
+| [1, true, null, 'a', false]
+1+d|Rows: 1
+|===
+
+======
+
+[role=label--new-Neo4j-2025.11 label--cypher-25-only]
+[[functions-coll-flatten]]
+== coll.flatten()
+
+.Details
+|===
+| *Syntax* 3+| `coll.flatten(list [, depth])`
+| *Description* 3+| Returns a list flattened to the given nesting depth.
+.3+| *Arguments* | *Name* | *Type* | *Description*
+| `list` | `LIST<ANY>` | A nested list to be flattened.
+| `depth` | `INTEGER` | The maximum depth to flatten to (default value: 1).
+| *Returns* 3+| `LIST<ANY>`
+|===
+
+.Considerations
+|===
+| Preserves the original order of non-list items.
+| If `depth` is 0, the input list is returned unchanged.
+| `depth` must be a non-negative integer.
+| `coll.flatten(null)` returns `null`.
+| `coll.flatten(list, null)` returns `null`.
+| `coll.flatten(null, depth)` returns `null`.
+| `coll.flatten(null, null)` returns `null`.
+
+|===
+
+
+.+coll.flatten()+
+======
+
+.Flatten a list containing nesting to level 2
+// tag::functions_list_flatten[]
+[source, cypher]
+----
+RETURN coll.flatten(['a', ['b', ['c']]], 2)
+----
+// end::functions_list_flatten[]
+
+A `LIST<ANY>` with any inner lists up to a nesting depth of 2 flattened.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.flatten(['a', ['b', ['c']]], 2)
+| ['a', 'b', 'c']
+1+d|Rows: 1
+|===
+
+.Flatten a list to default of depth 1
+[source, cypher]
+----
+RETURN coll.flatten(['a', ['b', ['c']]])
+----
+
+A `LIST<ANY>` with any inner lists up to a nesting depth of 1 (default depth) flattened.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.flatten(['a', ['b', ['c']]])
+| ['a', 'b', ['c']]
+1+d|Rows: 1
+|===
+======
+
+[role=label--new-Neo4j-2025.11 label--cypher-25-only]
+[[functions-coll-indexOf]]
+== coll.indexOf()
+
+.Details
+|===
+| *Syntax* 3+| `coll.indexOf(list, value)`
+| *Description* 3+| Returns the index of the first match of a value in the given list or -1 if the value is not present.
+.3+| *Arguments* | *Name* | *Type* | *Description*
+| `list` | `LIST<ANY>` | A list to be searched.
+| `value` | `ANY` | A value to search for.
+| *Returns* 3+| `INTEGER`
+|===
+
+.Considerations
+|===
+
+| Indexing is 0-based.
+| Returns -1 if the value is not present in the list.
+| `coll.indexOf(null, null)` returns `null`.
+| `coll.indexOf(null, value)` returns `null`.
+| `coll.indexOf(list, null)` returns `null`.
+
+|===
+
+
+.+coll.indexOf()+ 
+======
+
+.Find the first index of a given value
+// tag::functions_list_indexOf[]
+[source, cypher]
+----
+RETURN coll.indexOf(['a', 'b', 'c', 'c'], 'c')
+----
+// end::functions_list_indexOf[]
+
+An `INTEGER` representing the index of the item in the list.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.indexOf(['a', 'b', 'c', 'c'], 'c')
+| 2
+1+d|Rows: 1
+|===
+
+.Search for a value not present in the given list
+[source, cypher]
+----
+RETURN coll.indexOf([1, 'b', false], 4.3)
+----
+
+The `INTEGER` -1 representing that the value is not found.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.indexOf([1, 'b', false], 4.3)
+| -1
+1+d|Rows: 1
+|===
+======
+
+[role=label--new-Neo4j-2025.11 label--cypher-25-only]
+[[functions-coll-insert]]
+== coll.insert()
+
+.Details
+|===
+| *Syntax* 3+| `coll.insert(list, index, value)`
+| *Description* 3+| Returns a list with the given value inserted at the given index.
+.4+| *Arguments* | *Name* | *Type* | *Description*
+| `list` | `LIST<ANY>` | A list to add to.
+| `index` | `INTEGER` | The index to add the given value at.
+| `value` | `ANY` | The value to add into the list.
+| *Returns* 3+| `LIST<ANY>`
+|===
+
+.Considerations
+|===
+| Indexing is 0-based.
+| `coll.insert(null, null, value)` returns `null`.
+| `coll.insert(list, null, value)` returns `null`.
+| `coll.insert(null, 1, value)` returns `null`.
+| If the given `index` is negative or larger than the size of the given list, an error is returned.
+
+|===
+
+
+.+coll.insert()+
+======
+
+.Query
+// tag::functions_list_insert[]
+[source, cypher]
+----
+RETURN coll.insert([true, 'a', 1, 5.4], 1, false)
+----
+// end::functions_list_insert[]
+
+The original list with a new value inserted at the given index, shifting all the values following by 1.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.insert([true, 'a', 1, 5.4], 1, false)
+| [true, false, 'a', 1, 5.4]
+1+d|Rows: 1
+
+|===
+======
+
+[role=label--new-Neo4j-2025.11 label--cypher-25-only]
+[[functions-coll-max]]
+== coll.max()
+
+.Details
+|===
+| *Syntax* 3+| `coll.max(list)`
+| *Description* 3+| Returns the largest value present in the given list.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `list` | `LIST<ANY>` | A list to be searched.
+| *Returns* 3+| `ANY`
+|===
+
+.Considerations
+|===
+| `coll.max(null)` returns `null`.
+| `coll.max([])` returns `null`.
+| The maximum is determined using Cypher's standard value ordering; see xref:values-and-types/ordering-equality-comparison.adoc[].
+|===
+
+
+.+coll.max()+
+======
+
+.Query
+// tag::functions_list_max[]
+[source, cypher]
+----
+RETURN coll.max([true, 'a', 1, 5.4])
+----
+// end::functions_list_max[]
+
+The maximum value found in the given list based on Cypher's ordering.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.max([true, 'a', 1, 5.4])
+| 5.4
+1+d|Rows: 1
+|===
+
+======
+
+[role=label--new-Neo4j-2025.11 label--cypher-25-only]
+[[functions-coll-min]]
+== coll.min()
+
+.Details
+|===
+| *Syntax* 3+| `coll.min(list)`
+| *Description* 3+| Returns the smallest value present in the given list.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `list` | `LIST<ANY>` | A list to be searched.
+| *Returns* 3+| `ANY`
+|===
+
+.Considerations
+|===
+| `coll.min(null)` returns `null`.
+| `coll.min([])` returns `null`.
+| The minimum is determined using Cypher's standard value ordering; see xref:values-and-types/ordering-equality-comparison.adoc[].
+|===
+
+
+.+coll.min()+ 
+======
+
+.Query
+// tag::functions_list_min[]
+[source, cypher]
+----
+RETURN coll.min([true, 'a', 1, 5.4])
+----
+// end::functions_list_min[]
+
+The minimum value found in the given list based on Cypher's ordering.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| coll.min([true, 'a', 1, 5.4])
+| true
+1+d|Rows: 1
+|===
+
+======
+
+[role=label--new-Neo4j-2025.11 label--cypher-25-only]
+[[functions-coll-remove]]
+== coll.remove()
+
+.Details
+|===
+| *Syntax* 3+| `coll.remove(list, index)`
+| *Description* 3+| Returns a list with the value at the given index removed.
+.3+| *Arguments* | *Name* | *Type* | *Description*
+| `list` | `LIST<ANY>` | A list to remove a value from.
+| `index` | `INTEGER` | The index of the value to be removed.
+| *Returns* 3+| `LIST<ANY>`
+|===
+
+.Considerations
+|===
+| Indexing is 0-based.
+| `coll.remove(null, null)` returns `null`.
+| `coll.remove(null, index)` returns `null`.
+| `coll.remove(list, null)` returns `null`.
+| If the given `index` is negative or larger than the size of the given list, an error is returned.
+
+|===
+
+
+.+coll.remove()+
+======
+
+.Query
+// tag::functions_list_remove[]
+[source, cypher]
+----
+RETURN coll.remove([true, 'a', 1, 5.4], 1)
+----
+// end::functions_list_remove[]
+
+The original list with the value at the given index removed and all values following shifted by 1.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.remove([true, 'a', 1, 5.4], 1)
+| [true, 1, 5.4]
+1+d|Rows: 1
+
+|===
+======
+
+[role=label--new-Neo4j-2025.11 label--cypher-25-only]
+[[functions-coll-sort]]
+== coll.sort()
+
+.Details
+|===
+| *Syntax* 3+| `coll.sort(list)`
+| *Description* 3+| Returns a sorted list.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `list` | `LIST<ANY>` | A list to be sorted.
+| *Returns* 3+| `LIST<ANY>`
+|===
+
+.Considerations
+|===
+| Sorting follows Cypher's standard value ordering; see xref:values-and-types/ordering-equality-comparison.adoc[].
+| `coll.sort(null)` returns `null`.
+
+|===
+
+
+.+coll.sort()+
+======
+
+.Query
+// tag::functions_list_sort[]
+[source, cypher]
+----
+RETURN coll.sort([true, 'a', 1, 2])
+----
+// end::functions_list_sort[]
+
+The list sorted using Cypher's ordering in ascending order.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| coll.sort([true, 'a', 1, 2])
+| ['a', true, 1, 2]
+1+d|Rows: 1
+
+|===
+
+======
+
+[[functions-keys]]
+== keys()
+
+.Details
+|===
+| *Syntax* 3+| `keys(input)`
+| *Description* 3+| Returns a `LIST<STRING>` containing the `STRING` representations for all the property names of a `NODE`, `RELATIONSHIP` or `MAP`.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `NODE \| RELATIONSHIP \| MAP` | A node or relationship from which the names of all properties will be returned.
+| *Returns* 3+| `LIST<STRING>`
+|===
+
+.Considerations
+|===
+
+| `keys(null)` returns `null`.
+
+|===
+
+
+.+keys()+
+======
+
+.Query
+// tag::functions_list_keys[]
+[source, cypher]
+----
+MATCH (a) WHERE a.name = 'Alice'
+RETURN keys(a)
+----
+// end::functions_list_keys[]
+
+A `LIST<STRING>` containing the names of all the properties on the node bound to `a` is returned.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| keys(a)
+| ["eyes", "name", "age"]
+1+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-labels]]
+== labels()
+
+.Details
+|===
+| *Syntax* 3+| `labels(input)`
+| *Description* 3+| Returns a `LIST<STRING>` containing the `STRING` representations for all the labels of a `NODE`.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `NODE` | A node whose labels will be returned.
+| *Returns* 3+| `LIST<STRING>`
+|===
+
+
+.Considerations
+|===
+
+| `labels(null)` returns `null`.
+| The order of the returned labels is not guaranteed when using the `labels()` function.
+
+|===
+
+
+.+labels()+
+======
+
+.Query
+// tag::functions_list_labels[]
+[source, cypher]
+----
+MATCH (a) WHERE a.name = 'Alice'
+RETURN labels(a)
+----
+// end::functions_list_labels[]
+
+A `LIST<STRING>` containing all the labels of the node bound to `a` is returned.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| labels(a)
+| ["Developer"]
+1+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-nodes]]
+== nodes()
+
+.Details
+|===
+| *Syntax* 3+| `nodes(input)`
+| *Description* 3+| Returns a `LIST<NODE>` containing all the `NODE` values in a `PATH`.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `PATH` | A path whose nodes will be returned.
+| *Returns* 3+| `LIST<NODE>`
+|===
+
+.Considerations
+|===
+
+| The `NODE` values in the returned `LIST` are guaranteed to be in the exact order they appear along the path traversal, from the starting node to the end node.
+| `nodes(null)` returns `null`.
+
+|===
+
+
+.+nodes()+
+======
+
+.Query
+// tag::functions_list_nodes[]
+[source, cypher]
+----
+MATCH p = (a)-->(b)-->(c)
+WHERE a.name = 'Alice' AND c.name = 'Eskil'
+RETURN nodes(p)
+----
+// end::functions_list_nodes[]
+
+A `LIST<NODE>` containing all the nodes in the path `p` is returned.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| nodes(p)
+| [(:Developer {name: "Alice", eyes: "Brown", age: 38}), (:Administrator {name: "Bob", eyes: "Blue", age: 25}), (:Designer {name: "Eskil", likedColors: ["Pink", "Yellow", "Black"], eyes: "blue", age: 41})]
+1+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-range]]
+== range()
+
+.Details
+|===
+| *Syntax* 3+| `range(start, end [, step])`
+| *Description* 3+| Returns a `LIST<INTEGER>` comprising all `INTEGER` values within a specified range created with step length, optionally specifying a step length.
+.4+| *Arguments* | *Name* | *Type* | *Description*
+| `start` | `INTEGER` | The start value of the range.
+| `end` | `INTEGER` | The end value of the range.
+| `step` | `INTEGER` | The size of the increment (default value: 1).
+| *Returns* 3+| `LIST<INTEGER>`
+|===
+
+.Considerations
+|===
+| To create ranges with decreasing `INTEGER` values, use a negative value `step`.
+| The range is inclusive for non-empty ranges, and the arithmetic progression will therefore always contain `start` and -- depending on the values of `start`, `step` and `end` -- `end`.
+The only exception where the range does not contain `start` are empty ranges.
+| An empty range will be returned if the value `step` is negative and `start - end` is positive, or vice versa, e.g. `range(0, 5, -1)`.
+|===
+
+
+.+range()+
+======
+
+.Query
+// tag::functions_list_range[]
+[source, cypher]
+----
+RETURN range(0, 10), range(2, 18, 3), range(0, 5, -1)
+----
+// end::functions_list_range[]
+
+Three lists of numbers in the given ranges are returned.
+
+.Result
+[role="queryresult",options="header,footer",cols="3*<m"]
+|===
+
+| range(0, 10) | range(2, 18, 3) | range(0, 5, -1)
+| [0,1,2,3,4,5,6,7,8,9,10] | [2,5,8,11,14,17] | []
+3+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-reduce]]
+== reduce()
+
+.Details
+|===
+| *Syntax* 3+| `reduce(accumulator = initial, variable IN list \| expression)`
+| *Description* 3+| Runs an expression against individual elements of a `LIST<ANY>`, storing the result of the expression in an accumulator.
+.6+| *Arguments* | *Name* | *Type* | *Description*
+| `accumulator` | `ANY` | A variable that holds the result as the `list` is iterated.
+Starts with an `initial` value.
+| `initial` | `ANY` | The starting value of the `accumulator`.
+| `variable` | `ANY` | A variable that represents each element in the `list` during iteration.
+| `list` | `LIST<ANY>` | The `list` that is being iterated over.
+| `expression` | `ANY` | An expression that updates the `accumulator` with each iteration.
+| *Returns* 3+| `ANY`
+|===
+
+.Considerations
+|===
+|`reduce()` differs from most Cypher functions because it iterates over a list, incrementally updating an accumulator with each element based on an expression, rather than returning a result from a single evaluation.
+As such, Cypher's `reduce()` is analogous to the `fold` or `reduce` methods in functional languages such as Lisp and Scala.
+|===
+
+.+reduce()+
+======
+
+.Query
+// tag::functions_list_reduce[]
+[source, cypher]
+----
+MATCH p = (a)-->(b)-->(c)
+WHERE a.name = 'Alice' AND b.name = 'Bob' AND c.name = 'Daniel'
+RETURN reduce(totalAge = 0, n IN nodes(p) | totalAge + n.age) AS reduction
+----
+// end::functions_list_reduce[]
+
+The `age` property of all `NODE` values in the `PATH` are summed and returned as a single value.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| reduction
+| 117
+1+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-relationships]]
+== relationships()
+
+.Details
+|===
+| *Syntax* 3+| `relationships(input)`
+| *Description* 3+| Returns a `LIST<RELATIONSHIP>` containing all the `RELATIONSHIP` values in a `PATH`.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `PATH` | The path from which all relationships will be returned.
+| *Returns* 3+| `LIST<RELATIONSHIP>`
+|===
+
+.Considerations
+|===
+
+| `relationships(null)` returns `null`.
+
+|===
+
+
+.+relationships()+
+======
+
+.Query
+// tag::functions_list_relationships[]
+[source, cypher]
+----
+MATCH p = (a)-->(b)-->(c)
+WHERE a.name = 'Alice' AND c.name = 'Eskil'
+RETURN relationships(p)
+----
+// end::functions_list_relationships[]
+
+A `LIST<RELATIONSHIP>` containing all the `RELATIONSHIP` values in the `PATH` `p` is returned.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| relationships(p)
+| [[:KNOWS], [:MARRIED]]
+1+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-reverse-list]]
+== reverse()
+
+.Details
+|===
+| *Syntax* 3+| `reverse(input)`
+| *Description* 3+| Returns a `STRING` or `LIST<ANY>` in which the order of all characters or elements in the given `STRING` or `LIST<ANY>` have been reversed.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `STRING \| LIST<ANY>` | The string or list to be reversed.
+| *Returns* 3+| `STRING \| LIST<ANY>`
+|===
+
+.Considerations
+|===
+
+| Any `null` element in `original` is preserved.
+| See also xref:functions/string.adoc#functions-reverse[String functions -> `reverse()`].
+
+|===
+
+
+.+reverse()+
+======
+
+.Query
+// tag::functions_list_reverse[]
+[source, cypher]
+----
+WITH [4923,'abc',521, null, 487] AS ids
+RETURN reverse(ids)
+----
+// end::functions_list_reverse[]
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+
+| reverse(ids)
+| [487,<null>,521,"abc",4923]
+1+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-tail]]
+== tail()
+
+.Details
+|===
+| *Syntax* 3+| `tail(input)`
+| *Description* 3+| Returns all but the first element in a `LIST<ANY>`.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `LIST<ANY>` | A list from which all but the first element will be returned.
+| *Returns* 3+| `LIST<ANY>`
+|===
+
+.+tail()+
+======
+
+.Query
+// tag::functions_list_tail[]
+[source, cypher]
+----
+MATCH (a) WHERE a.name = 'Eskil'
+RETURN a.likedColors, tail(a.likedColors)
+----
+// end::functions_list_tail[]
+
+The property named `likedColors` and a `LIST<ANY>` comprising all but the first element of the `likedColors` property are returned.
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+
+| a.likedColors | tail(a.likedColors)
+| ["Pink", "Yellow", "Black"] | ["Yellow", "Black"]
+2+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-tobooleanlist]]
+== toBooleanList()
+
+.Details
+|===
+| *Syntax* 3+| `toBooleanList(input)`
+| *Description* 3+| Converts a `LIST<ANY>` of values to a `LIST<BOOLEAN>` values. If any values are not convertible to `BOOLEAN` they will be null in the `LIST<BOOLEAN>` returned.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `LIST<ANY>` | A list of values to be converted into a list of booleans.
+| *Returns* 3+| `LIST<BOOLEAN>`
+|===
+
+.Considerations
+|===
+
+| Any `null` element in `input` is preserved.
+| Any `BOOLEAN` value in `input` is preserved.
+| If the `input` is `null`, `null` will be returned.
+| If the `input` is not a `LIST<ANY>`, an error will be returned.
+| The conversion for each value in `input` is done according to the xref::functions/scalar.adoc#functions-tobooleanornull[`toBooleanOrNull()` function].
+
+|===
+
+
+.+toBooleanList()+
+======
+
+.Query
+// tag::functions_list_to_boolean_list[]
+[source, cypher, indent=0]
+----
+RETURN toBooleanList(null) as noList,
+toBooleanList([null, null]) as nullsInList,
+toBooleanList(['a string', true, 'false', null, ['A','B']]) as mixedList
+----
+// end::functions_list_to_boolean_list[]
+
+.Result
+[role="queryresult",options="header,footer",cols="3*<m"]
+|===
+
+| noList | nullsInList | mixedList
+| <null> | [<null>,<null>] | [<null>,true,false,<null>,<null>]
+3+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-tofloatlist]]
+== toFloatList()
+
+.Details
+|===
+| *Syntax* 3+| `toFloatList(input)`
+| *Description* 3+| Converts a `LIST<ANY>` or a `VECTOR` to a `LIST<FLOAT>` values. If any values are not convertible to `FLOAT` they will be null in the `LIST<FLOAT>` returned.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `VECTOR` \| `LIST<ANY>` | A list of values or a vector value to be converted into a list of floats.
+| *Returns* 3+| `LIST<FLOAT>`
+|===
+
+.Considerations
+|===
+
+| Any `null` element in `input` is preserved.
+| Any `FLOAT` value in `input` is preserved.
+| If the `input` is `null`, `null` will be returned.
+| If the `input` is not a `VECTOR` or `LIST<ANY>`, an error will be returned.
+| `input` accepts `VECTOR` values as of Neo4j 2025.10
+| The conversion for each value in `input` is done according to the xref::functions/scalar.adoc#functions-tofloatornull[`toFloatOrNull()` function].
+
+|===
+
+
+.+toFloatList()+
+======
+
+.Query
+// tag::functions_list_to_float_list[]
+[source, cypher]
+----
+RETURN toFloatList(null) as noList,
+toFloatList([null, null]) as nullsInList,
+toFloatList(['a string', 2.5, '3.14159', null, ['A','B']]) as mixedList
+----
+// end::functions_list_to_float_list[]
+
+.Result
+[role="queryresult",options="header,footer",cols="3*<m"]
+|===
+
+| noList | nullsInList | mixedList
+| <null> | [<null>,<null>] | [<null>,2.5,3.14159,<null>,<null>]
+3+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-tointegerlist]]
+== toIntegerList()
+
+.Details
+|===
+| *Syntax* 3+| `toIntegerList(input)`
+| *Description* 3+| Converts a `LIST<ANY>` or a `VECTOR` to a `LIST<INTEGER>` values. If any values are not convertible to `INTEGER` they will be null in the `LIST<INTEGER>` returned.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `VECTOR` \| `LIST<ANY>` | A list of values or a vector value to be converted into a list of integers.
+| *Returns* 3+| `LIST<INTEGER>`
+|===
+
+.Considerations
+|===
+
+| Any `null` element in `input` is preserved.
+| Any `INTEGER` value in `input` is preserved.
+| If the `input` is `null`, `null` will be returned.
+| If the `input` is not a `VECTOR` or a `LIST<ANY>`, an error will be returned.
+| `input` accepts `VECTOR` values as of Neo4j 2025.10
+| The conversion for each value in `list` is done according to the xref::functions/scalar.adoc#functions-tointegerornull[`toIntegerOrNull()` function].
+
+|===
+
+
+.+toIntegerList()+
+======
+
+.Query
+// tag::functions_list_to_integer_list[]
+[source, cypher]
+----
+RETURN toIntegerList(null) as noList,
+toIntegerList([null, null]) as nullsInList,
+toIntegerList(['a string', 2, '5', null, ['A','B']]) as mixedList
+----
+// end::functions_list_to_integer_list[]
+
+.Result
+[role="queryresult",options="header,footer",cols="3*<m"]
+|===
+
+| noList | nullsInList | mixedList
+| <null> | [<null>,<null>] | [<null>,2,5,<null>,<null>]
+3+d|Rows: 1
+
+|===
+
+======
+
+
+[[functions-tostringlist]]
+== toStringList()
+
+.Details
+|===
+| *Syntax* 3+| `toStringList(input)`
+| *Description* 3+| Converts a `LIST<ANY>` to a `LIST<STRING>` values. If any values are not convertible to `STRING` they will be null in the `LIST<STRING>` returned.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `LIST<ANY>` | A list of values to be converted into a list of strings.
+| *Returns* 3+| `LIST<STRING>`
+|===
+
+.Considerations
+|===
+
+| Any `null` element in `input` is preserved.
+| Any `STRING` value in `input` is preserved.
+| If the `input` is `null`, `null` will be returned.
+| If the `input` is not a `LIST<ANY>`, an error will be returned.
+| The conversion for each value in `input` is done according to the xref::functions/string.adoc#functions-tostringornull[`toStringOrNull()` function].
+
+|===
+
+
+.+toStringList()+
+======
+
+.Query
+// tag::functions_list_to_string_list[]
+[source, cypher]
+----
+RETURN toStringList(null) as noList,
+toStringList([null, null]) as nullsInList,
+toStringList(['already a string', 2, date({year:1955, month:11, day:5}), null, ['A','B']]) as mixedList
+----
+// end::functions_list_to_string_list[]
+
+.Result
+[role="queryresult",options="header,footer",cols="3*<m"]
+|===
+
+| noList | nullsInList | mixedList
+| <null> | [<null>,<null>] | ["already a string","2","1955-11-05",<null>,<null>]
+3+d|Rows: 1
+
+|===
+
+======
+

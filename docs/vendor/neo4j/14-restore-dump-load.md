@@ -1,0 +1,219 @@
+---
+name: 14-restore-dump-load
+description: "Neo4j 2026.06.0 — neo4j-admin database load (restore from dump) (10/60, backup)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-operations/blob/2026.06.0/modules/ROOT/pages/backup-restore/restore-dump.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-operations/2026.06.0/modules/ROOT/pages/backup-restore/restore-dump.adoc -->
+<!-- repo: neo4j/docs-operations  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: This section describes how to restore a database dump in a live Neo4j deployment.
+[[restore-dump]]
+= Restore a database dump
+
+The `neo4j-admin database load` command can be used to load a database from an archive created with the xref:backup-restore/offline-backup.adoc#offline-backup-command[`neo4j-admin database dump`] command or a full backup artifact created by the xref:backup-restore/online-backup.adoc[`neo4j-admin database backup`] command from Neo4j Enterprise.
+
+If you are replacing an existing database on a standalone server, you have to shut it down before running the command and use the `--overwrite-destination` option. +
+label:enterprise-edition[] If you are not replacing an existing database, you must create the database (using `CREATE DATABASE` against the `system` database) after the load operation finishes.
+
+The command can be run from either an online or offline Neo4j DBMS on Enterprise edition.
+For Community edition, the command can be run only on an offline Neo4j DBMS.
+The command must be executed as the `neo4j` user to ensure the appropriate file permissions.
+
+[NOTE]
+====
+Change Data Capture does **not** capture any data changes resulting from the use of `neo4j-admin database load`.
+See link:{neo4j-docs-base-uri}/cdc/current/get-started/self-managed/#non-tx-log-changes[Change Data Capture -> Key considerations] for more information.
+====
+
+
+
+[[restore-dump-syntax]]
+== Syntax
+
+[source,role=noheader]
+----
+neo4j-admin database load [-h] [--expand-commands] [--info] [--verbose] [--overwrite-destination[=true|false]]
+                          [--additional-config=<file>] [--from-path=<path> | --from-stdin] <database>
+----
+
+== Description
+
+Load a database from an archive.
+_<archive-path>_ must be a directory containing an archive(s).
+Archive can be a database dump created with the dump command, or can be a full backup artifact created by the backup command from Neo4j Enterprise.
+If neither `--from-path` or `--from-stdin` is supplied `server.directories.dumps.root` setting will be searched for the archive.
+Existing databases can be replaced by specifying `--overwrite-destination`.
+It is not possible to replace a database that is mounted in a running Neo4j server.
+If `--info` is specified, then the database is not loaded, but information (i.e. file count, byte count, and format of load file) about the archive is printed instead.
+
+== Parameters
+
+.`neo4j-admin database load` parameters
+[options="header", cols="5m,10a"]
+|===
+| Parameter
+| Description
+|<database>
+|Name of the database to load. Can contain * and ? for globbing. Note that * and ? have special meaning in some shells and might need to be escaped or used with quotes.
+|===
+
+== Options
+
+.`neo4j-admin database load` options
+[options="header", cols="5m,10a,2m"]
+|===
+| Option
+| Description
+| Default
+
+|--additional-config=<file>footnote:[See xref:neo4j-admin-neo4j-cli.adoc#_configuration[Neo4j Admin and Neo4j CLI -> Configuration] for details.]
+|Configuration file with additional configuration.
+|
+
+|--expand-commands
+|Allow command expansion in config value evaluation.
+|
+
+|--from-path=<path>
+|Path to directory containing archive(s).
+It is possible to load databases from AWS S3 buckets, Google Cloud storage buckets, and Azure bucket using the appropriate URI as the path.
+|
+
+|--from-stdin
+|Read archive from standard input.
+|
+
+|-h, --help
+|Show this help message and exit.
+|
+
+|--info
+|Print meta-data information about the archive file, instead of loading the contained database.
+|
+
+|--overwrite-destination[=true\|false]
+|If an existing database should be replaced.
+|false
+
+|--verbose
+|Enable verbose output.
+|
+|===
+
+[NOTE]
+====
+The `--from-path=<path>` option can also load databases from AWS S3 buckets, Google Cloud storage buckets, and Azure buckets.
+For more information, see <<load-dump-cloud-storage>>.
+====
+
+[[restore-dump-example]]
+== Examples
+
+The following examples demonstrate how to load a database dump (_database.dump_) created by the xref:backup-restore/offline-backup.adoc#offline-backup-example[`neo4j-admin database dump`] command, or a full backup artifact created by the xref:backup-restore/online-backup.adoc[`neo4j-admin database backup`] command.
+
+When replacing an existing database, you have to shut it down before running the command.
+The `--overwrite-destination` option is required because you are replacing the existing database.
+
+If you are not replacing an existing database in Enterprise Edition, you must create the database (using `CREATE DATABASE` against the `system` database) after the load operation finishes.
+
+
+[IMPORTANT]
+====
+`neo4j-admin database load` cannot be applied to xref:scalability/composite-databases/concepts.adoc[Composite databases].
+It must be run directly on the databases that are associated with that Composite database.
+====
+
+=== Load a dump from a local directory
+
+You can load a dump from a local directory using the following command:
+
+[source,shell, role="nocopy"]
+----
+bin/neo4j-admin database load --from-path=/full-path/data/dumps neo4j --overwrite-destination=true
+----
+
+You can use the same command to load the database from its full backup artifact:
+
+[source,shell, role="nocopy"]
+----
+bin/neo4j-admin database load --from-path=/full-path/to/backups neo4j --overwrite-destination=true
+----
+
+The following example shows how to designate a specific archive for the `load` command.
+
+[source,shell, role="nocopy"]
+----
+cat foo.dump | neo4j-admin database load --from-stdin mydatabase
+----
+
+[role=enterprise-edition]
+[[load-dump-cloud-storage]]
+=== Load a dump from a cloud storage
+
+In Neo4j 2025.03, new cloud integration settings are introduced to provide better support for deployment and management in cloud ecosystems.
+For details, refer to xref:configuration/configuration-settings.adoc#_cloud_storage_integration_settings[Configuration settings -> Cloud storage integration settings].
+
+The following examples show how to load a database dump located in a cloud storage bucket using the `--from-path` option.
+
+[.tabbed-example]
+=====
+[role=include-with-AWS-S3]
+======
+
+include::partial$/aws-s3-overrides.adoc[]
+
+include::partial$/aws-s3-credentials.adoc[]
+
+. Run the `neo4j-admin database load` command to load a dump from your AWS S3 storage.
+The example assumes that you have dump artifacts located in the `myBucket/myDirectory` folder in your bucket.
++
+[source,shell, role="nocopy"]
+----
+bin/neo4j-admin database load mydatabase --from-path=s3://myBucket/myDirectory/ --overwrite-destination=true
+----
+======
+
+[role=include-with-Google-cloud-storage]
+======
+
+include::partial$/gcs-credentials.adoc[]
+
+. Run the `neo4j-admin database load` command to load a dump from your Google storage bucket.
+The example assumes that you have dump artifacts located in the `myBucket/myDirectory` folder in your bucket.
++
+[source,shell]
+----
+bin/neo4j-admin database load mydatabase --from-path=gs://myBucket/myDirectory/ --overwrite-destination=true
+----
+======
+[role=include-with-Azure-cloud-storage]
+======
+
+include::partial$/azb-credentials.adoc[]
+
+. Run the `neo4j-admin database load` command to load a dump from your Azure blob storage container.
+The example assumes that you have dump artifacts located in the `myStorageAccount/myContainer/myDirectory` folder in your Azure account.
++
+[source,shell]
+----
+bin/neo4j-admin database load mydatabase --from-path=azb://myStorageAccount/myContainer/myDirectory --overwrite-destination=true
+----
+======
+=====
+
+
+[role=label--enterprise-edition]
+[[restore-dump-in-cluster]]
+=== Restore a clustered database from a dump 
+
+It is recommended to restore a clustered database from a dump using a URI approach.
+See xref:database-administration/standard-databases/seed-from-uri.adoc[] for details.
+
+When using the `neo4j-admin database load` command to seed a cluster, and a previous version of the database exists, you must delete it (using `DROP DATABASE`) first.
+If you fail to `DROP` the database, that database’s store files will be out of sync with its cluster state, potentially leading to logical corruptions.
+For more information, see xref:clustering/databases.adoc#cluster-designated-seeder[Restore a database using a designated seeder].
+

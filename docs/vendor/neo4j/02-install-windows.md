@@ -1,0 +1,286 @@
+---
+name: 02-install-windows
+description: "Neo4j 2026.06.0 — Install Neo4j on Windows (02/60, install)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-operations/blob/2026.06.0/modules/ROOT/pages/installation/windows.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-operations/2026.06.0/modules/ROOT/pages/installation/windows.adoc -->
+<!-- repo: neo4j/docs-operations  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: How to install Neo4j on Windows.
+[[windows-installation]]
+= Windows installation
+
+Before you install Neo4j on Windows, check xref:installation/requirements.adoc[System Requirements] to see if your setup is suitable.
+If it is not already installed, get link:https://www.oracle.com/java/technologies/downloads/?er=221886[OracleJDK 21] or link:https://www.azul.com/downloads/[ZuluJDK 21].
+Starting with Neo4j 2025.10, Java 25 is also supported.
+
+Use the default filesystem with its default settings.
+Do not use a FAT filesystem.
+
+[[windows-console]]
+== Install and start Neo4j
+
+You can install Neo4j on Windows either by downloading and extracting a ZIP archive, by running it as a Windows service, or by using the Windows PowerShell module.
+
+=== Install Neo4j using a zip archive
+
+. Download the Windows Executable {neo4j-version-exact} (zip) release from link:{neo4j-download-center-uri}[Neo4j Deployment Center].
+. Right-click the downloaded file and select *Extract All* to extract the contents of the archive.
+. Place the extracted files in a permanent home on your server and set the environment variable `NEO4J_HOME` to point to the extracted directory, for example, `setx NEO4J_HOME "C:\neo4j\neo4j-<NEO4J_VERSION>"` to make it easier to refer to it later.
+. (Recommended) xref:configuration/file-locations.adoc#file-locations-file-locations[Change the default locations] of the _data_, _conf_, _certificates_, _licenses_, and _plugins_ (if you plan to use custom plugins) directories by setting the environment variable `NEO4J_CONF` and the respective xref:configuration/configuration-settings.adoc#_server_directories_settings[`server.directories.*`] settings to point to the desired locations.
++
+[NOTE]
+====
+Storing your Neo4j files outside `NEO4J_HOME` will simplify the upgrade process later because you will be able to replace the DBMS binaries without affecting the configuration and state.
+Otherwise, these Neo4j files will remain in the old installation folder and may be accidentally overwritten during an upgrade or deleted during a subsequent uninstall.
+====
+. label:enterprise[Enterprise Edition] Accept either the commercial or the evaluation license agreement.
+If you are using Community Edition, you can skip this step.
+* Use one of the following options to accept the commercial license agreement.
+See the link:https://legal.neo4j.com/[Neo4j licensing] page for details on the available agreements.
+** Set the environment variable `NEO4J_ACCEPT_LICENSE_AGREEMENT=yes`.
+** Run `%NEO4J_HOME%\bin\neo4j-admin server license --accept-commercial`
+* Use one of the following options to accept the link:https://neo4j.com/terms/enterprise_us/[Neo4j Evaluation Agreement for Neo4j Software]:
+** Set the environment variable `NEO4J_ACCEPT_LICENSE_AGREEMENT=eval`.
+** Run `%NEO4J_HOME%\bin\neo4j-admin server license --accept-evaluation`.
+. Before starting up the database for the first time, it is recommended to use the `set-initial-password` command of `neo4j-admin` to define the password for the native user `neo4j`.
++
+If the password is not set explicitly using this method, it will be set to the default password `neo4j`.
+In that case, you will be prompted to change the default password at first login. +
+For more information, see xref:configuration/set-initial-password.adoc[].
+. Start Neo4j as a console application by running `%NEO4J_HOME%\bin\neo4j console` in your command prompt.
+
+
+[[windows-service]]
+=== Install Neo4j as a Windows service
+
+You can install Neo4j as a Windows service.
+
+[WARNING]
+====
+By default, the Neo4j Windows service runs as the LocalSystem account, which has full access to the system.
+This is a security risk, and it is recommended to run the service as a user without full LocalSystem privileges.
+====
+
+. Create a user account that the Neo4j service will run as using using services.msc, or the sc (Service Control) command.
+You can use an existing user account, but it must have the `Log on as a service` right.
+. Follow the steps in the <<_install_neo4j_using_a_zip_archive, Install Neo4j using a zip archive>> section to download and extract the ZIP archive and set up the environment variables.
+. Run the following command in your command prompt to install the service:
++
+[source, bash]
+----
+%NEO4J_HOME%\bin\neo4j windows-service install
+----
+. Start the Neo4j service by running `%NEO4J_HOME%\bin\neo4j start`.
+
+[NOTE]
+====
+When installing a new release of Neo4j, you must first run `%NEO4J_HOME%\bin\neo4j windows-service uninstall` on any previously installed versions.
+Then, install the new version using the `install` command as described above.
+====
+
+[[windows-update-service]]
+=== Change the Neo4j Windows service configuration
+
+When Neo4j is installed as a service, the Java options are stored in the service configuration file.
+If you want to change any of these options or environment variables after the service is installed, you must update and restart the service for the changes to take effect.
+For example, updating the value of `server.memory.heap.initial_size` in the default xref:configuration/file-locations.adoc[_neo4j.conf_] file or by using the `NEO4J_CONF` environment variable will not automatically apply the changes.
+The service needs to be updated and restarted to pick them up.
+To update the service, run `%NEO4J_HOME%\bin\neo4j windows-service update`.
+Then restart the service to run it with the new configuration.
+
+The same applies to the path to where Java is installed on the system.
+If the path changes, for example when upgrading to a new version of Java, it is necessary to run the `%NEO4J_HOME%\bin\neo4j windows-service update` command and restart the service.
+Then, the new Java location will be used by the service.
+
+.Update service example
+====
+. Install service
++
+----
+%NEO4J_HOME%\bin\neo4j windows-service install
+----
+
+. Change memory configuration
++
+----
+echo server.memory.heap.initial_size=8g >> conf\neo4j.conf
+echo server.memory.heap.initial_size=16g >> conf\neo4j.conf
+----
+
+. Update service
++
+----
+%NEO4J_HOME%\bin\neo4j windows-service update
+----
+
+. Restart service
++
+----
+%NEO4J_HOME%\bin\neo4j restart
+----
+====
+
+[[powershell]]
+=== Install Neo4j using PowerShell
+
+The Neo4j PowerShell module allows administrators to install, start, and stop Neo4j Windows® Services, as well as perform various administrative tasks using `Neo4j Admin` and `Cypher Shell`.
+The PowerShell module is installed as part of the https://neo4j.com/deployment-center/[ZIP file] distributions of Neo4j.
+It requires PowerShell 5.1 or later (PowerShell 7.x recommended) and is supported on 64-bit Windows operating systems.
+
+. Unblock the downloaded Neo4j ZIP file if necessary to be able to import the module:
+.. Right-click on the ZIP file and choose *Properties*. +
+A dialog appears with an *Unblock* button.
+.. Click the *Unblock* button to enable the import of the module.
+.. Click *Apply* and then *OK* to close the dialog.
+. Right-click the downloaded file and select *Extract All* to extract the contents of the archive.
+. Run the following command from an elevated PowerShell prompt to enable script execution:
++
+[source,powershell]
+----
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned
+----
++
+For more information, see https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-7.5[About execution policies].
++
+[NOTE]
+====
+The PowerShell module displays a warning if it detects that you do not have administrative rights.
+====
+
+. Set the environment variable `NEO4J_HOME` to point to the directory where you have installed Neo4j.
+For example, you can run the following command in your PowerShell session, assuming you have installed Neo4j in `C:\Neo4j`:
++
+[source,powershell]
+----
+$env:NEO4J_HOME = "C:\Neo4j"
+----
+. Import the Neo4j PowerShell module by running the following command:
++
+[source,powershell]
+----
+Import-Module $env:NEO4J_HOME\bin\Neo4j-Management.psd1
+----
++
+This adds the module to the current session.
+
+. Once the module is imported, you can start an interactive console version of a Neo4j Server:
++
+[source,powershell]
+----
+Invoke-Neo4j console
+----
+
+[TIP]
+====
+To stop the server, use `Ctrl-C` in the console window, created by the command.
+====
+
+
+[[powershell-help]]
+==== Inspect the module
+
+. Get all available commands in the module by running the following command:
++
+[source,powershell]
+----
+Get-Command -Module Neo4j-Management
+----
++
+The output should be similar to the following:
++
+[source, shell, subs="attributes"]
+----
+CommandType  Name              Version    Source
+-----------  ----              -------    ------
+Function     Get-Args          3.0.0      Neo4j-Management
+Function     Invoke-Neo4j      3.0.0      Neo4j-Management
+Function     Invoke-Neo4jAdmin 3.0.0      Neo4j-Management
+----
+
+. See what each command does by running the following command, replacing `<command-name>` with the name of the command you want to inspect, for example, `Invoke-Neo4j`:
++
+[source,powershell]
+----
+Get-Help <command-name>
+----
+
+. Run the following to see some usage examples of that command:
++
+[source,powershell]
+----
+Get-Help <command-name> -examples
+----
++
+.Usage examples
+[options="header", cols="3m,1a"]
+|====
+| Command
+| Description
+
+| Invoke-Neo4j
+| Outputs the available commands.
+
+| Invoke-Neo4j status
+| Current status of the Neo4j service.
+
+| Invoke-Neo4j windows-service
+| Install the service.
+
+| Invoke-Neo4jAdmin
+| Available commands for administrative tasks.
+|====
+
+[TIP]
+====
+The module commands support the common PowerShell parameter of `Verbose`.
+You can add `-Verbose` to any command to get more detailed output.
+====
+
+== Access Neo4j
+
+By default, Neo4j Community Edition does not include graph tools such as visualization, data exploration, and monitoring.
+However, you can use the Neo4j Aura console to access these features for free.
+No subscription is required.
+
+. Sign up or log in to the link:https://console.neo4j.io/ce[Aura Console].
+. On the *Instances* page, click the *Self-managed* tab and then *+ Add deployment* button.
+. Select *URL Connection*.
+. Provide a *Name* and *Connection URL*.
+If you have installed Neo4j locally on your system, you can connect to _bolt://localhost:7687_.
+. Click the *Connect* dropdown to launch various graph tools such as *Query*, *Explore*, and *Dashboards*.
+. Type the username `neo4j` and your password or the default password `neo4j`.
+You will be prompted to change the latter upon first login.
++
+image::aura-add-deployment.png[width=800,alt=Aura add self-managed deployment]
+
+You are now connected and can use the Aura Console to run Cypher queries, visualize graphs, and optionally monitor your local Neo4j database in Neo4j Aura.
+For details, see link:https://neo4j.com/docs/getting-started/#_work_with_data[Get started with Neo4j].
+
+Alternatively, you can use the Neo4j Browser, a web-based user interface for interacting with Neo4j that is included with the Neo4j installation.
+To access the Neo4j Browser, open a web browser and navigate to _\http://localhost:7474_.
+Connect using the username `neo4j` with your password or the default password `neo4j`.
+If the default password is used, you will be prompted to change it upon first login.
+
+== Uninstall Neo4j
+
+Here are the steps to uninstall Neo4j on Windows:
+
+. (Optional) Create a xref:/backup-restore/index.adoc[backup] to avoid losing your data.
+. Stop all Neo4j processes by using the Task Manager.
+. Uninstall the Neo4j Windows service:
++
+[source, shell]
+----
+%NEO4J_HOME%\bin\neo4j windows-service uninstall
+----
+. Delete _NEO4J_HOME_:
++
+[source, shell]
+----
+rmdir NEO4J_HOME
+----

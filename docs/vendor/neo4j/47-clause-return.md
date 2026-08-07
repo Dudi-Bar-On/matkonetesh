@@ -1,0 +1,283 @@
+---
+name: 47-clause-return
+description: "Neo4j 2026.06.0 — RETURN clause (35/60, cypher)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-cypher/blob/2026.06.0/modules/ROOT/pages/clauses/return.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-cypher/2026.06.0/modules/ROOT/pages/clauses/return.adoc -->
+<!-- repo: neo4j/docs-cypher  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: The `RETURN` clause defines what to include in the query result set.
+
+[[query-return]]
+= RETURN
+
+[[return-introduction]]
+== Introduction
+The `RETURN` clause defines the parts of a pattern (nodes, relationships, and/or properties) to be included in the query result.
+
+[[return-example-graph]]
+== Example graph
+
+The following graph is used for the examples below:
+
+image::graph-return-clause.svg[Example graph connecting a person node to a movie node via acted in and directed relationships,width=400,role=popup]
+
+To recreate the graph, run the following query against an empty Neo4j database.
+
+[source, cypher, role=test-setup]
+----
+CREATE
+  (keanu:Person {name: 'Keanu Reeves', bornIn: 'Beirut', nationality: 'Canadian'}),
+  (taiChi:Movie {title: 'Man of Tai Chi', released: 2013}),
+  (keanu)-[:ACTED_IN]->(taiChi),
+  (keanu)-[:DIRECTED]->(taiChi)
+----
+
+
+[[return-nodes]]
+== Return nodes
+
+To return a node, list it in the `RETURN` clause:
+
+.Query
+// tag::clauses_return_node[]
+[source, cypher]
+----
+MATCH (p:Person {name: 'Keanu Reeves'})
+RETURN p
+----
+// end::clauses_return_node[]
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| p
+| {"bornIn":"Beirut","nationality":"Canadian","name":"Keanu Reeves"}
+d|Rows: 1
+|===
+
+
+[[return-relationships]]
+== Return relationships
+
+To return a relationship type, list it in the `RETURN` clause:
+
+.Query
+// tag::clauses_return_relationship_type[]
+[source, cypher]
+----
+MATCH (p:Person {name: 'Keanu Reeves'})-[r:ACTED_IN]->(m)
+RETURN type(r)
+----
+// end::clauses_return_relationship_type[]
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| type(r)
+| "ACTED_IN"
+d|Rows: 1
+|===
+
+
+[[return-property]]
+== Return property
+
+To return a specific property, use the dot separator:
+
+.Query
+// tag::clauses_return_property[]
+[source, cypher]
+----
+MATCH (p:Person {name: 'Keanu Reeves'})
+RETURN p.bornIn
+----
+// end::clauses_return_property[]
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| p.bornIn
+| "Beirut"
+d|Rows: 1
+|===
+
+[TIP]
+It is more performant to return properties rather than the full node or relationship.
+
+
+[[return-all-elements]]
+== Return all elements
+
+To return all nodes, relationships and paths found in a query, use the `*` symbol:
+
+.Query
+// tag::clauses_return_all_elements[]
+[source, cypher]
+----
+MATCH p = (keanu:Person {name: 'Keanu Reeves'})-[r]->(m)
+RETURN *
+----
+// end::clauses_return_all_elements[]
+
+This returns the two nodes, and the two possible paths between them.
+
+.Result
+[role="queryresult",options="header,footer",cols="4*<m"]
+|===
+| keanu | m | p | r
+| {"bornIn":"Beirut","nationality":"Canadian","name":"Keanu Reeves"} | {"title":"Man of Tai Chi","released":2013} | (:Person {bornIn: "Beirut",nationality: "Canadian",name: "Keanu Reeves"})-[:ACTED_IN]->(:Movie {title: "Man of Tai Chi",released: 2013}) | {:ACTED_IN}
+| {"bornIn":"Beirut","nationality":"Canadian","name":"Keanu Reeves"} | {"title":"Man of Tai Chi","released":2013} | (:Person {bornIn: "Beirut",nationality: "Canadian",name: "Keanu Reeves"})-[:DIRECTED]->(:Movie {title: "Man of Tai Chi",released: 2013}) | {:DIRECTED}
+4+d|Rows: 1
+|===
+
+
+[[return-variable-with-uncommon-characters]]
+== Variable with uncommon characters
+
+To introduce a variable made up of characters not contained in the English alphabet, use ``` to enclose the variable:
+
+.Query
+[source, cypher]
+----
+MATCH (`/uncommon variable\`)
+WHERE `/uncommon variable\`.name = 'Keanu Reeves'
+RETURN `/uncommon variable\`.bornIn
+----
+
+The `bornIn` property of the node with the `name` property set to `'Keanu Reeves'` is returned:
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| `/uncommon variable\`.bornIn
+| "Beirut"
+d|Rows: 1
+|===
+
+
+[[return-column-alias]]
+== Column alias
+
+Names of returned columns can be renamed using the `AS` operator:
+
+.Query
+// tag::clauses_return_with_column_alias[]
+[source, cypher]
+----
+MATCH (p:Person {name: 'Keanu Reeves'})
+RETURN p.nationality AS citizenship
+----
+// end::clauses_return_with_column_alias[]
+
+Returns the `nationality` property of `'Keanu Reeves'`, but the column is renamed to `citizenship`.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| citizenship
+| "Canadian"
+d|Rows: 1
+|===
+
+
+[[return-optional-properties]]
+== Optional properties
+
+If the existence of a property is unknown, it can still be included in a `RETURN` clause.
+It will be treated as `null` if it is missing.
+
+.Query
+[source, cypher]
+----
+MATCH (n)
+RETURN n.bornIn
+----
+
+This example returns the `bornIn` properties for nodes that has that property, and `null` for  those nodes missing the property.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| n.bornIn
+| "Beirut"
+| <null>
+d|Rows: 2
+|===
+
+
+[[return-other-expressions]]
+== Other expressions
+
+Any expression can be used as a return item -- literals, predicates, properties, functions, and so on.
+
+.Query
+[source, cypher]
+----
+MATCH (m:Movie {title: 'Man of Tai Chi'})
+RETURN m.released < 2012, "I'm a literal",[p=(m)--() | p] AS `(m)--()`
+----
+
+Returns a predicate, a literal and function call with a pattern expression parameter:
+
+.Result
+[role="queryresult",options="header,footer",cols="3*<m"]
+|===
+| m.released < 2012 | "I'm a literal" | (m)--()
+| false | "I'm a literal" | [(:Movie {title: "Man of Tai Chi",released: 2013})<-[:DIRECTED]-(:Person {bornIn: "Beirut",nationality: "Canadian",name: "Keanu Reeves"}), (:Movie {title: "Man of Tai Chi",released: 2013})<-[:ACTED_IN]-(:Person {bornIn: "Beirut",nationality: "Canadian",name: "Keanu Reeves"})]
+3+d|Rows: 1
+|===
+
+
+[[return-unique-results]]
+== Unique results
+
+`DISTINCT` retrieves only unique rows for the columns that have been selected for output.
+
+.Query
+// tag::clauses_return_distinct[]
+[source, cypher]
+----
+MATCH (p:Person {name: 'Keanu Reeves'})-->(m)
+RETURN DISTINCT m
+----
+// end::clauses_return_distinct[]
+
+The `Movie` node `'Man of Tai Chi'` is returned by the query, but only once (without the `DISTINCT` operator it would have been returned twice because there are two relationships going to it from `'Keanu Reeves'`):
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| m
+| {"title":"Man of Tai Chi","released":2013}+
+d|Rows: 1
+|===
+
+[role=label--new-2025.06]
+[[return-all-results]]
+== RETURN ALL
+
+Returning all results can also be accomplished by explicitly including `ALL` in the `RETURN`.
+The `RETURN ALL` keyword was introduced as part of Cypher's xref:appendix/gql-conformance/index.adoc[], and using it is functionally the same as using simple `RETURN`.
+
+.Query
+[source, cypher]
+----
+MATCH (p:Person {name: 'Keanu Reeves'})-->(m)
+RETURN ALL m
+----
+
+The same node is returned twice, as there are two relationships connecting to it from `'Keanu Reeves'`.
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| m
+| {"title":"Man of Tai Chi","released":2013}+
+| {"title":"Man of Tai Chi","released":2013}+
+d|Rows: 1
+|===

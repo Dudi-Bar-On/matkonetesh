@@ -1,0 +1,44 @@
+---
+name: 10-backup-restore-index
+description: "Neo4j 2026.06.0 — Backup and restore overview (06/60, backup)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-operations/blob/2026.06.0/modules/ROOT/pages/backup-restore/index.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-operations/2026.06.0/modules/ROOT/pages/backup-restore/index.adoc -->
+<!-- repo: neo4j/docs-operations  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+[[backup-restore]]
+= Backup and restore
+:description: This chapter describes how to back up and restore Neo4j.
+
+This chapter describes the following:
+
+* xref:backup-restore/planning.adoc[Backup and restore planning] -- What to consider when designing your backup and restore strategy.
+* xref:backup-restore/modes.adoc[Backup modes] -- The supported backup modes.
+
+* **Neo4j Community Edition includes the following commands:**
+** xref:backup-restore/consistency-checker.adoc[Check database consistency] -- How to check the consistency of a database, backup, or a dump.
+** xref:backup-restore/offline-backup.adoc[Back up an offline database] -- How to back up an offline database.
+** xref:backup-restore/restore-dump.adoc[Restore a database dump] -- How to restore a database dump in a live Neo4j deployment.
+
+* **In the Neo4j Enterprise Edition, the following commands are available in addition to those in the Community Edition:**
+** xref:backup-restore/online-backup.adoc[Back up an online database] -- How to back up an online database.
+** xref:backup-restore/aggregate.adoc[Aggregate a database backup chain] - How to aggregate a backup chain into a single backup.
+** xref:backup-restore/inspect.adoc[Inspect the metadata of a database backup file] -- How to inspect the metadata of a database backup file.
+** xref:backup-restore/restore-backup.adoc[Restore a database backup] -- How to restore a database backup in a live Neo4j deployment.
+** xref:backup-restore/copy-database.adoc[Copy a database store] -- How to copy data store from an existing database to a new database.
+** label:infinigraph[Infinigraph] xref:backup-restore/validate.adoc[Validate a sharded property database backup] -- How to validate a sharded property database backup using the `neo4j-admin backup validate` command.
+
+
+
+
+
+//* <<backup-restore-single, Backup and restore a single database>>
+//* <<backup-restore-cluster-member, Backup and restore a cluster member>>
+//* <<backup-restore-cluster, Backup and restore a Causal cluster>>
+//include::backup-restore-single.adoc[leveloffset=+1]
+//include::backup-restore-cluster-member.adoc[leveloffset=+1]
+//include::backup-restore-cluster.adoc[leveloffset=+1]

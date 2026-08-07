@@ -1,0 +1,564 @@
+---
+name: 63-functions-predicate
+description: "Neo4j 2026.06.0 — Predicate functions (51/60, cypher)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-cypher/blob/2026.06.0/modules/ROOT/pages/functions/predicate.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-cypher/2026.06.0/modules/ROOT/pages/functions/predicate.adoc -->
+<!-- repo: neo4j/docs-cypher  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: Predicates are boolean functions that return `true` or `false` for a given set of non-`null` input.
+:table-caption!:
+
+[[query-functions-predicate]]
+= Predicate functions
+
+== Introduction
+
+Predicates are boolean functions that return `true` or `false` for a given set of non-`null` input.
+They are most commonly used to filter out paths in the `WHERE` part of a query.
+
+== Example graph
+
+The following graph is used for the examples below:
+
+image::graph-predicate-functions.svg[Graph example connecting Person nodes among themselves and with a Movie node,width=600,role=popup]
+
+To recreate it, run the following query against an empty Neo4j database:
+
+[source, cypher, role=test-setup]
+----
+CREATE
+  (keanu:Person {name:'Keanu Reeves', age:58, nationality:'Canadian'}),
+  (carrie:Person {name:'Carrie Anne Moss', age:55, nationality:'American'}),
+  (liam:Person {name:'Liam Neeson', age:70, nationality:'Northern Irish'}),
+  (guy:Person {name:'Guy Pearce', age:55, nationality:'Australian'}),
+  (kathryn:Person {name:'Kathryn Bigelow', age:71, nationality:'American'}),
+  (jessica:Person {name:'Jessica Chastain', age:45, address:''}),
+  (theMatrix:Movie {title:'The Matrix'}),
+  (keanu)-[:KNOWS {since: 1999}]->(carrie),
+  (keanu)-[:KNOWS {since: 2005}]->(liam),
+  (keanu)-[:KNOWS {since: 2010}]->(kathryn),
+  (kathryn)-[:KNOWS {since: 2012}]->(jessica),
+  (carrie)-[:KNOWS {since: 2008}]->(guy),
+  (liam)-[:KNOWS {since: 2009}]->(guy),
+  (keanu)-[:ACTED_IN]->(theMatrix),
+  (carrie)-[:ACTED_IN]->(theMatrix)
+----
+
+[[functions-all]]
+== all()
+
+.Details
+|===
+| *Syntax* 3+| `all(variable IN list WHERE predicate)`
+| *Description* 3+| Returns true if the predicate holds for all elements in the given `LIST<ANY>`.
+.4+| *Arguments* | *Name* | *Type* | *Description*
+| `variable` | `ANY` | A variable that can be used within the `WHERE` clause.
+| `list` | `LIST<ANY>` | A predicate must hold for all elements in this list for the function to return `true`.
+| `predicate` | `ANY` | A predicate that is tested against all items in the given list.
+| *Returns* 3+| `BOOLEAN`
+|===
+
+.Considerations
+|===
+| `all()` differs from most Cypher functions because it iterates over a list, evaluating an expression for each element, rather than returning a result from a single evaluation.
+| `null` is returned if the `list` is `null` or if the `predicate` evaluates to `null` for at least one element and does not evaluate to false for any other element.
+| `all()` returns `true` if `list` is empty because there are no elements to falsify the `predicate`.
+|===
+
+.all()
+======
+
+.Find paths where all nodes meet a given property value
+// tag::functions_predicate_all[]
+[source, cypher, indent=0]
+----
+MATCH p = (a:Person {name: 'Keanu Reeves'})-[]-{2,}()
+WHERE all(x IN nodes(p) WHERE x.age < 60)
+RETURN [n IN nodes(p) | n.name] AS actorsList
+----
+// end::functions_predicate_all[]
+
+All nodes in the returned paths have an `age`property below `60`:
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| actorsList
+
+| ["Keanu Reeves", "Carrie Anne Moss", "Guy Pearce"]
+
+1+d|Rows: 2
+|===
+
+.`all()` on an empty `LIST`
+[source, cypher]
+----
+WITH [] as emptyList
+RETURN all(i in emptyList WHERE true) as allTrue, all(i in emptyList WHERE false) as allFalse
+----
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+| allTrue | allFalse
+
+| TRUE  | TRUE
+
+2+d|Rows: 1
+|===
+
+======
+
+[[functions-allreduce]]
+[role=label--new-2025.08 label--cypher-25-only]
+== allReduce()
+
+.Details
+|===
+| *Syntax* 3+| `allReduce(accumulator = initial, stepVariable IN list \| reductionFunction, predicate)`
+| *Description* 3+| Returns true if, during the stepwise evaluation of a value across the elements in a given `LIST<ANY>`, the accumulated result satisfies a specified predicate at every step.
+If that list is a xref:patterns/variable-length-paths.adoc#group-variables[group variable] defined in a xref:patterns/variable-length-paths.adoc#quantified-path-patterns[quantified path pattern], its predicate is inlined where applicable.
+This inlining allows for early pruning of the search space by discarding paths as soon as the predicate is not satisfied.
+Note that `allReduce()` predicates are not inlined when used in a xref:patterns/shortest-paths.adoc[shortest path pattern], and therefore do not benefit from this pruning.
+.7+| *Arguments* | *Name* | *Type* | *Description*
+| `accumulator` | `ANY` | A variable that holds the result of the `reductionFunction` as the `list` is iterated.
+It is initialized with the value of `initial`.
+| `initial` | `ANY` | The value of the `accumulator` for the first evaluation of `reductionFunction`.
+| `stepVariable` | `ANY` | A variable that holds the value of each element of `list` during iteration.
+| `list` | `LIST<ANY>` | The list that is being iterated over.
+| `reductionFunction` | `ANY` | An expression whose return value becomes the next value of the `accumulator`.
+The return type must match the return type of `initial`.
+| `predicate` | `BOOLEAN` | A predicate that is evaluated for each iteration.
+It has access to both the `accumulator` and `stepVariable` variables.
+| *Returns* 3+| `BOOLEAN`
+|===
+
+.Considerations
+|===
+| `allReduce()` differs from most Cypher functions because it iterates over a list, evaluating an expression for each element, rather than returning a result from a single evaluation.
+| `allReduce()` combines the functionality of the xref:functions/predicate.adoc#functions-all[`all()`] and xref:functions/list.adoc#functions-reduce[`reduce()`] functions.
+| If all evaluations of `predicate` are `true`, `allReduce()` will return `true`.
+| If any evaluations of `predicate` are `false`, `allReduce()` will return `false`.
+| `allReduce()` returns `true` if `list` is empty because there are no elements to falsify the `predicate`.
+| `null` is returned if the `list` is `null` or if the `predicate` evaluates to `null` for at least one element and does not evaluate to `false` for any other element.
+|===
+
+.allReduce()
+======
+
+The below query finds `KNOWS` paths with a length of `3` where the `accumulator` begins with first node's `age` and the accumulated `age` values of all nodes in the path never exceeds `230`.
+Paths that do not meet this requirement are excluded, such as the path with the sequence `["Keanu Reeves (58)", "Carrie Anne Moss (55)", "Guy Pearce (55)", "Liam Neeson (70)"]` which has an aggregated `age` value of `238`.
+
+.Find aggregated ages within a boundary
+// tag::functions_predicate_allreduce[]
+[source, cypher]
+----
+MATCH (s) (()-[:KNOWS]-(n)){3}
+WHERE allReduce(
+  acc = s.age,
+  node IN n | acc + node.age,
+  acc < 230
+)
+RETURN [i IN [s] + n | i.name || " (" + toString(i.age) || ")"] AS ageSequence,
+      reduce(acc = 0, node IN [s] + n | acc + node.age) AS aggregatedAges
+ORDER BY aggregatedAges
+----
+// end::functions_predicate_allreduce[]
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+| ageSequence | aggregatedAges
+
+| ["Carrie Anne Moss (55)", "Keanu Reeves (58)", "Kathryn Bigelow (71)", "Jessica Chastain (45)"] | 229
+| ["Jessica Chastain (45)", "Kathryn Bigelow (71)", "Keanu Reeves (58)", "Carrie Anne Moss (55)"] | 229 
+
+2+d|Rows: 2
+|===
+
+The next query uses `allReduce()` to compare neighboring relationships.
+It finds `KNOWS` paths with a length of at least `3` where each relationship’s `since` value is greater than the previous one and above `2000`.
+
+.Find paths where a relationship property must be above a value and increase along a path
+[source, cypher]
+----
+MATCH path = ()-[r:KNOWS]-{3,}()
+WHERE allReduce(
+  span = {},
+  rel IN r | { previous: span.current, current: rel.since },
+  (span.previous IS NULL OR span.previous < span.current) AND span.current > 2000
+)
+LET people = nodes(path)
+RETURN [actor IN people | actor.name] AS connectedActors,
+       [rel IN r | rel.since] AS sinceYears
+ORDER BY sinceYears
+----
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+| connectedActors | sinceYears
+
+| ["Liam Neeson", "Keanu Reeves", "Kathryn Bigelow", "Jessica Chastain"] | [2005, 2010, 2012]
+
+2+d|Rows: 1
+|===
+
+======
+[[functions-any]]
+== any()
+
+.Details
+|===
+| *Syntax* 3+| `any(variable IN list WHERE predicate)`
+| *Description* 3+| Returns true if the predicate holds for at least one element in the given `LIST<ANY>`.
+.4+| *Arguments* | *Name* | *Type* | *Description*
+| `variable` | `ANY` | A variable that can be used within the `WHERE` clause.
+| `list` | `LIST<ANY>` | A predicate must hold for all elements in this list for the function to return `true`.
+| `predicate` | `ANY` | A predicate that is tested against all items in the given list.
+| *Returns* 3+| `BOOLEAN`
+|===
+
+.Considerations
+|===
+| `any()` differs from most Cypher functions because it iterates over a list, evaluating an expression for each element, rather than returning a result from a single evaluation.
+| `null` is returned if the `list` is `null` or if the `predicate` evaluates to `null` for at least one element and does not evaluate to false for any other element.
+| `any()` returns `false` if `list` is empty because there are no elements to satisfy the `predicate`.
+|===
+
+.+any()+
+======
+
+.Find paths where at least one relationship property is above a given threshold
+// tag::functions_predicate_any[]
+[source, cypher, indent=0]
+----
+MATCH p = (n:Person {name: 'Keanu Reeves'})-[:KNOWS]-{3}()
+WHERE any(rel IN relationships(p) WHERE rel.since < 2000)
+RETURN [person IN nodes(p) | person.name] AS connectedActors,
+       [rel IN relationships(p) | rel.since] AS sinceYears
+----
+// end::functions_predicate_any[]
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+| connectedActors | sinceYears
+
+| ["Keanu Reeves", "Carrie Anne Moss", "Guy Pearce", "Liam Neeson"] | [1999, 2008, 2009]
+
+2+d|Rows: 1
+|===
+
+
+.`any()` on an empty `LIST`
+[source, cypher]
+----
+WITH [] as emptyList
+RETURN any(i IN emptyList WHERE true) as anyTrue, any(i IN emptyList WHERE false) as anyFalse
+----
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+| anyTrue | anyFalse
+
+| false  | false
+
+2+d|Rows: 1
+|===
+
+======
+
+
+[[functions-exists]]
+== exists()
+
+.Details
+|===
+| *Syntax* 3+| `exists(input)`
+| *Description* 3+| Returns true if a match for the pattern exists in the graph.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `ANY` | A pattern to verify the existence of.
+| *Returns* 3+| `BOOLEAN`
+|===
+
+.Considerations
+|===
+| `null` is returned if `input` is `null`.
+|===
+
+[NOTE]
+====
+To check if a property is not `null` use the xref:expressions/predicates/comparison-operators.adoc[`IS NOT NULL` predicate].
+====
+
+.+exists()+
+======
+
+.Query
+// tag::functions_predicate_exists[]
+[source, cypher, indent=0]
+----
+MATCH (p:Person)
+RETURN p.name AS name,
+       exists((p)-[:ACTED_IN]->()) AS has_acted_in_rel
+----
+// end::functions_predicate_exists[]
+
+This query returns the `name` property of every `Person` node, along with a boolean (`true` or `false`) indicating if those nodes have an `ACTED_IN` relationship in the graph.
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+
+| name | has_acted_in_rel
+| "Carrie Anne Moss" | true
+| "Keanu Reeves" | true
+| "Liam Neeson" | false
+| "Guy Pearce" | false
+| "Kathryn Bigelow" | false
+| "Jessica Chastain" | false
+2+d|Rows: 6
+
+|===
+
+======
+
+[NOTE]
+====
+For information about the `EXISTS` subquery, which is more versatile than the `exists()` function, see xref::subqueries/existential.adoc[].
+====
+
+
+[[functions-isempty]]
+== isEmpty()
+
+.Details
+|===
+| *Syntax* 3+| `isEmpty(input)`
+| *Description* 3+| Checks whether a `STRING`, `MAP` or `LIST<ANY>` is empty.
+.2+| *Arguments* | *Name* | *Type* | *Description*
+| `input` | `STRING \| MAP \| LIST<ANY>` | A value to be checked for emptiness.
+| *Returns* 3+| `BOOLEAN`
+|===
+
+.+isEmpty(list)+
+======
+
+.Query
+// tag::functions_predicate_is_empty[]
+[source, cypher]
+----
+MATCH (p:Person)
+WHERE NOT isEmpty(p.nationality)
+RETURN p.name, p.nationality
+----
+// end::functions_predicate_is_empty[]
+
+This query returns every `Person` node in the graph with a set `nationality` property value (i.e., all `Person` nodes except for `Jessica Chastain`):
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+| p.name | p.nationality
+| "Keanu Reeves" | "Canadian"
+| "Carrie Anne Moss" | "American"
+| "Liam Neeson" | "Northern Irish"
+| "Guy Pearce" | "Australian"
+| "Kathryn Bigelow" | "American"
+2+d|Rows: 5
+|===
+
+======
+
+.+isEmpty(map)+
+======
+
+.Query
+[source, cypher, indent=0]
+----
+MATCH (n)
+WHERE isEmpty(properties(n))
+RETURN n
+----
+
+Because the example graph contains no empty nodes, nothing is returned:
+
+.Result
+----
+(no changes, no records)
+----
+
+======
+
+
+.+isEmpty(string)+
+======
+
+.Query
+[source, cypher, indent=0]
+----
+MATCH (p:Person)
+WHERE isEmpty(p.address)
+RETURN p.name AS name
+----
+
+The `name` property of each node that has an empty `STRING` `address` property is returned:
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| name
+
+| "Jessica Chastain"
+
+1+d|Rows: 1
+|===
+
+======
+
+[NOTE]
+====
+The function `isEmpty()`, like most other Cypher functions, returns `null` if `null` is passed in to the function.
+That means that a predicate `isEmpty(n.address)` will filter out all nodes where the `address` property is not set.
+Thus, `isEmpty()` is not suited to test for `null`-values.
+xref:expressions/predicates/comparison-operators.adoc[`IS NULL` or `IS NOT NULL`] should be used for that purpose.
+====
+
+
+[[functions-none]]
+== none()
+
+.Details
+|===
+| *Syntax* 3+| `none(variable IN list WHERE predicate)`
+| *Description* 3+| Returns true if the predicate holds for no element in the given `LIST<ANY>`.
+.4+| *Arguments* | *Name* | *Type* | *Description*
+| `variable` | `ANY` | A variable that can be used within the `WHERE` clause.
+| `list` | `LIST<ANY>` | A predicate must hold for all elements in this list for the function to return `true`.
+| `predicate` | `ANY` | A predicate that is tested against all items in the given list.
+| *Returns* 3+| `BOOLEAN`
+|===
+
+.Considerations
+|===
+| `none()` differs from most Cypher functions because it iterates over a list, evaluating an expression for each element, rather than returning a result from a single evaluation.
+| `null` is returned if the `list` is `null`, or if the `predicate` evaluates to `null` for at least one element and does not evaluate to `true` for any other element.
+| `none()` returns `true` if `list` is empty because there are no elements to violate the `predicate`.
+|===
+
+.+none()+
+======
+
+.Find paths where no node exceeds a given property value
+// tag::functions_predicate_none[]
+[source, cypher, indent=0]
+----
+MATCH p = (n:Person {name: 'Keanu Reeves'})-[]-{2}()
+WHERE none(x IN nodes(p) WHERE x.age > 60)
+RETURN [x IN nodes(p) | x.name] AS connectedActors
+----
+// end::functions_predicate_none[]
+
+No nodes in the returned paths have an `age` property with a greater value than `60`:
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| connectedActors
+
+| ["Keanu Reeves", "Carrie Anne Moss", "Guy Pearce"]
+
+1+d|Rows: 1
+|===
+
+.`none()` on an empty `LIST`
+[source, cypher]
+----
+WITH [] as emptyList
+RETURN none(i IN emptyList WHERE true) as noneTrue, none(i IN emptyList WHERE false) as noneFalse
+----
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+| noneTrue | noneFalse
+
+| TRUE  | TRUE
+
+2+d|Rows: 1
+|===
+
+======
+
+
+[[functions-single]]
+== single()
+
+.Details
+|===
+| *Syntax* 3+| `single(variable IN list WHERE predicate)`
+| *Description* 3+| Returns true if the predicate holds for exactly one of the elements in the given `LIST<ANY>`.
+.4+| *Arguments* | *Name* | *Type* | *Description*
+| `variable` | `ANY` | A variable that can be used within the `WHERE` clause.
+| `list` | `LIST<ANY>` | A predicate must hold for all elements in this list for the function to return `true`.
+| `predicate` | `ANY` | A predicate that is tested against all items in the given list.
+| *Returns* 3+| `BOOLEAN`
+|===
+
+.Considerations
+|===
+| `single()` differs from most Cypher functions because it iterates over a list, evaluating an expression for each element, rather than returning a result from a single evaluation.
+| `null` is returned if the `list` is `null`, or if the `predicate` evaluates to `null` for at least one element and does not evaluate to `true` for any other element.
+| `single()` returns `false` if `list` is empty because there is not exactly one element satisfying the `predicate`.
+|===
+
+.+single()+
+======
+
+.Find paths where exactly one node has a given property value
+// tag::functions_predicate_single[]
+[source, cypher, indent=0]
+----
+MATCH p = (n:Person {name: 'Keanu Reeves'})-[:KNOWS]-+(b)
+WHERE single(x IN [b] WHERE x.nationality = 'Northern Irish')
+RETURN [person IN nodes(p) | person.name + " (" + person.nationality + ")"] AS northernIrishPaths
+ORDER BY length(p)
+----
+// end::functions_predicate_single[]
+
+.Result
+[role="queryresult",options="header,footer",cols="1*<m"]
+|===
+| northernIrishPaths
+
+| ["Keanu Reeves (Canadian)", "Liam Neeson (Northern Irish)"]
+| ["Keanu Reeves (Canadian)", "Carrie Anne Moss (American)", "Guy Pearce (Australian)", "Liam Neeson (Northern Irish)"]
+
+1+d|Rows: 2
+|===
+
+.`single()` on an empty `LIST`
+[source, cypher]
+----
+WITH [] as emptyList
+RETURN single(i IN emptyList WHERE true) as singleTrue, single(i IN emptyList WHERE false) as singleFalse
+----
+
+.Result
+[role="queryresult",options="header,footer",cols="2*<m"]
+|===
+| singleTrue | singleFalse
+
+| false  | false
+
+2+d|Rows: 1
+|===
+
+======

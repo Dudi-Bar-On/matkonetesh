@@ -1,0 +1,107 @@
+---
+name: 24-set-initial-password
+description: "Neo4j 2026.06.0 — Set the initial admin password (19/60, config)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-operations/blob/2026.06.0/modules/ROOT/pages/configuration/set-initial-password.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-operations/2026.06.0/modules/ROOT/pages/configuration/set-initial-password.adoc -->
+<!-- repo: neo4j/docs-operations  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: How to set an initial password for Neo4j.
+[[post-installation-set-initial-password]]
+= Set an initial password
+
+You can use the `set-initial-password` command of `neo4j-admin` to define the password for the native user `neo4j`.
+If not set explicitly, the password defaults to `neo4j` and must be changed at first login.
+This command is intended to be used only once, before the first startup of the database.
+
+The default minimum password length is 8 characters.
+To change it, use the xref:configuration/configuration-settings.adoc#config_config_dbms.security.auth_minimum_password_length[`dbms.security.auth_minimum_password_length`] configuration setting.
+
+== Syntax
+
+The `neo4j-admin dbms set-initial-password` has the following syntax:
+
+[source,role=noheader]
+----
+neo4j-admin dbms set-initial-password [-h] [--expand-commands] [--verbose] [--require-password-change[=true|false]]
+                                      [--additional-config=<file>] <password>
+----
+
+=== Parameters
+
+.`neo4j-admin dbms set-initial-password` parameters
+[options="header", cols="1m,3a"]
+|===
+| Parameter
+| Description
+
+|<password>
+|
+|===
+
+=== Options
+
+The `neo4j-admin dbms set-initial-password` command has the following options:
+
+.`neo4j-admin dbms set-initial-password` options
+[options="header", cols="5m,6a,1m"]
+|===
+| Option
+| Description
+| Default
+
+|--additional-config=<file>footnote:[See xref:neo4j-admin-neo4j-cli.adoc#_configuration[Neo4j Admin and Neo4j CLI -> Configuration] for details.]
+|Configuration file with additional configuration.
+|
+
+|--expand-commands
+|Allow command expansion in config value evaluation.
+|
+
+|-h, --help
+|Show this help message and exit.
+|
+
+|--require-password-change[=true\|false]
+|Require the user to change their password on first login.
+|false
+
+|--verbose
+|Enable verbose output.
+|
+|===
+
+== Example
+
+You can set the password for the native `neo4j` user before starting the database for the first time. +
+For example, to set the password to `mySecretPassword`, run the following command in your terminal:
+
+[source, bash]
+----
+neo4j-admin dbms set-initial-password mySecretPassword
+----
+
+To enforce a password change at first login, use the `--require-password-change` flag.
+This is particularly useful when setting a temporary password during initial setup.
+
+[CAUTION]
+====
+For security reasons, it is not recommended to pass passwords as command-line arguments to avoid them being stored in the command-line history.
+One way to achieve this is by using Bash scripting (e.g., `whiptail` or `dialog`) to prompt for the password securely:
+
+.Prompt for password using `whiptail`
+[source, bash]
+----
+neo4j-admin dbms set-initial-password "$(whiptail --passwordbox "Enter password" 10 50 2>&1 >/dev/tty)"
+----
+
+.Prompt for password using `dialog`
+[source, bash]
+----
+neo4j-admin dbms set-initial-password "$(dialog --passwordbox "Enter password" 10 50 2>&1 >/dev/tty)"
+----
+====

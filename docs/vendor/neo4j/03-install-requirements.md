@@ -1,0 +1,185 @@
+---
+name: 03-install-requirements
+description: "Neo4j 2026.06.0 — System requirements (JDK, hardware, OS) (03/60, install)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-operations/blob/2026.06.0/modules/ROOT/pages/installation/requirements.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-operations/2026.06.0/modules/ROOT/pages/installation/requirements.adoc -->
+<!-- repo: neo4j/docs-operations  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: An overview of the system requirements for running Neo4j in a production environment.
+[[deployment-requirements]]
+= System requirements
+
+Neo4j can be installed in many environments and for different scopes, therefore system requirements largely depend on the use of the software.
+This section distinguishes between a personal/development installation and a server-based installation used for production workloads.
+
+
+[TIP]
+====
+*Neo4j AuraDB* is a fully managed Neo4j database, hosted in the cloud and requires no installation.
+For more information, see the link:https://neo4j.com/aura/[AuraDB product page] and link:https://neo4j.com/docs/aura/current/[AuraDB documentation].
+====
+
+
+[[deployment-requirements-platforms]]
+== Supported platforms
+
+Neo4j is supported on systems with x86_64 and ARM architectures on physical, virtual, or containerized platforms.
+
+
+[[deployment-requirements-hardware]]
+== Hardware requirements
+
+In terms of minimum hardware requirements, follow these guidelines:
+
+.Hardware requirement guidelines
+[cols="1,3a"]
+|===
+| *CPU*     | Performance is generally memory or I/O bound for large graphs, and compute-bound for graphs that fit in memory.
+| *Memory*  | More memory allows for larger graphs, but it needs to be configured properly to avoid disruptive garbage collection operations.
+
+| *Storage* | Aside from capacity, the performance characteristics of the disk are the most important when selecting storage:
+
+* Neo4j workloads tend significantly toward random reads.
+* Select media with low average seek time: SSD over spinning disks.
+|===
+
+For personal use and software development:
+
+.Hardware requirement guidelines for personal use and software development
+[cols="1,3a"]
+|===
+| *CPU*     | Intel x86-x64 Core i3 minimum, Core i7 recommended. AMD x86-x64, ARM64 (such as Apple Silicon,  Graviton).
+| *Memory*  | 2GB minimum, 16GB or more recommended.
+| *Storage* | 10GB SATA Minimum, SSD with SATA Express or NVMe recommended.
+|===
+
+For cloud environments:
+
+.Hardware requirement guidelines for cloud environments
+[cols="1,3a"]
+|===
+| *CPU*     | 2vCPU minimum, 16+ recommended.
+| *Memory*  | 2GB minimum.
+Actual requirements depend on workloads.
+In some cases, it is recommended to use instances with memory that fits the size of the graph in use.
+| *Storage* | 10GB minimum block storage, attached NVMe SSD recommended.
+Storage size depends on the size of the databases.
+|===
+
+For server-based, on-premises environments:
+
+.Hardware requirement guidelines for server-based, on-premises environments
+[cols="1,3a"]
+|===
+| *CPU*     | Intel/AMD x86-x64. ARM64.
+| *Memory*  | 8GB minimum.
+Actual requirements depend on workloads.
+In some cases, it is recommended to use instances with memory that fits the size of the graph in use.
+| *Storage* | RAID/SAN or SSD with greater than 5000 IOPS.
+NVMe SSD is recommended.
+Storage size depends on the size of the databases.
+|===
+
+[TIP]
+====
+For more information, see xref:performance/index.adoc[Performance], and more specifically xref:performance/memory-configuration.adoc[Memory Configuration] and xref:performance/gc-tuning.adoc[Tuning of the garbage collector], and xref:performance/disks-ram-and-other-tips.adoc[Disks, RAM and other tips].
+====
+
+[[deployment-requirements-software]]
+== Software requirements
+
+For cloud and on-premises production environments:
+
+.Software requirements for cloud and on-premises production environments
+[options="header"]
+|===
+| Operating System                                       | Supported JDK
+| *Amazon Linux 2023 AMI*                                | Amazon Corretto 21/25 and OracleJDK 21/25
+| *CentOS Stream 8, 9, 10*                               | OpenJDK 21/25, OracleJDK 21/25, and ZuluJDK 21/25
+| *Debian 11, 12, 13*                                    | OpenJDK 21/25, OracleJDK 21/25, and ZuluJDK 21/25
+| *Red Hat Enterprise Linux Server 8.x, 9.x, 10.x*       | Red Hat OpenJDK 21/25,  Oracle JDK 21/25, and ZuluJDK 21/25
+| *Ubuntu Server 22.04, 24.04*                           | OpenJDK 21/25, OracleJDK 21/25, and ZuluJDK 21/25
+| *Windows Server 2022, 2025*                            | OracleJDK 21/25, ZuluJDK 21/25
+|===
+
+For more information on Red Hat Enterprise Linux Life Cycle, refer to their link:https://access.redhat.com/support/policy/updates/errata/#RHEL8_and_9_Life_Cycle[official documentation].
+
+Neo4j {neo4j-version-exact} is built and tested against RHEL 8.10, 9.6, and 10.0, and assumes compatibility across other minor releases within the RHEL 8.x, 9.x, and 10.x major versions.
+
+For personal use and software development:
+
+.Software requirements for personal use and software development
+[options="header"]
+|===
+| Operating System                        | Supported JDK
+| *Debian 11, 12, 13*                     | OpenJDK 21/25, OracleJDK 21/25, and ZuluJDK 21/25
+| *macOS 13, 14, 15, 26*                  | OpenJDK 21/25, ZuluJDK 21/25
+| *SuSE Enterprise Desktop 15*            | OpenJDK 21/25, OracleJDK 21/25
+| *Ubuntu Desktop 22.04, 24.04*           | OpenJDK 21/25, OracleJDK 21/25, and ZuluJDK 21/25
+| *Windows 11*                            | OracleJDK 21/25, ZuluJDK 21/25
+|===
+
+Java 25 is supported starting from Neo4j 2025.10.
+
+[NOTE]
+====
+* Ubuntu Server 22.04,  macOS 15 (Sequoia), and CentOS Stream 9 are deprecated as of 2026.05, with support for these platforms being removed in a future release.
+* CentOS Stream 8.x is deprecated as of 2026.01, with support for this platform being removed in a future release.
+* Red Hat Enterprise Linux 8.x, Debian 11.x, Windows Server 2022, macOS 13 Ventura, and macOS 14 Sonoma are deprecated as of Neo4j 2025.10.
+
+They will continue to be supported along with the next LTS release in 2026, but new releases after the 2026 LTS will no longer support these platforms.
+It is recommended to upgrade to a supported OS version before the next LTS release.
+====
+
+[[deployment-requirements-filesystem]]
+== Filesystem
+
+For proper ACID behavior, the filesystem must support flush operations such as _fsync_ and _fdatasync_.
+Since databases can place a high and consistent load on a storage system for long periods, it is recommended to use a filesystem with strong aging characteristics.
+
+On Linux systems, a POSIX-compliant filesystem is required.
+Network shares such as NFS do not meet this POSIX requirement.
+The only supported filesystems on Linux are EXT4 and XFS.
+
+See xref:performance/linux-file-system-tuning.adoc[Linux file system tuning] for details on how to configure the filesystem in Linux for optimal performance.
+
+[NOTE]
+====
+If  _tmp_ is set to `noexec`, it is recommended to set `server.jvm.additional=-Djava.io.tmpdir=/home/neo4j` in _conf/neo4j.conf_ and replace _/home/neo4j_ with a path that has `exec` permissions.
+
+For _/bin/cypher-shell_, set this via an environment variable: `export JAVA_OPTS=-Djava.io.tmpdir=/home/neo4j` and replace `/home/neo4j` with a path that has `exec` permissions.
+
+For the Neo4j's uses of the Java Native Access (JNA) library, set `server.jvm.additional=-Djna.tmpdir=/tmp` in _conf/neo4j.conf_ and replace `/tmp` with a path that has `exec` permissions.
+====
+
+On Windows, use the default filesystem with its default settings.
+Do not use a FAT filesystem.
+
+[[deployment-requirements-java]]
+== Java
+
+It is required to have a pre-installed, compatible Java Virtual Machine (JVM) to run a Neo4j instance.
+The minimum requirement is Java Runtime Environment (JRE).
+
+.Neo4j version and JVM requirements
+[cols="20%,80%", options="header"]
+|===
+| Neo4j Version | JVM compliancy
+| 2025.10       | Java SE 21 and Java SE 25 Platform Specification
+| 2025.01       | Java SE 21 Platform Specification
+| 5.26 LTS      | Java SE 17 and Java SE 21 Platform Specification
+| 5.14          | Java SE 17 and Java SE 21 Platform Specification
+| 5.x           | Java SE 17 Platform Specification
+| 4.x           | Java SE 11 Platform Specification
+| 3.x           | Java SE 8 Platform Specification
+|===
+
+xref:installation/neo4j-desktop.adoc[Neo4j Desktop] is available for developers and personal users.
+Neo4j Desktop is bundled with a JVM.
+For more information on how to use Neo4j Desktop and its capabilities, see the link:https://neo4j.com/docs/desktop-manual/current/[Neo4j Desktop documentation].
+

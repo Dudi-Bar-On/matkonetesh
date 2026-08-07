@@ -1,0 +1,1444 @@
+---
+name: 65-schema-create-constraints
+description: "Neo4j 2026.06.0 — CREATE CONSTRAINT (53/60, cypher)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-cypher/blob/2026.06.0/modules/ROOT/pages/schema/constraints/create-constraints.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-cypher/2026.06.0/modules/ROOT/pages/schema/constraints/create-constraints.adoc -->
+<!-- repo: neo4j/docs-cypher  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+:description: Information about creating Neo4j's constraints.
+= Create constraints
+
+Constraints are created with the `CREATE CONSTRAINT` command.
+When creating a constraint, it is recommended to provide a constraint name.
+This name must be unique among both indexes and constraints.
+If a name is not explicitly given, a unique name will be auto-generated.
+
+[NOTE]
+Creating a constraint requires the link:{neo4j-docs-base-uri}/operations-manual/current/authentication-authorization/database-administration/#access-control-database-administration-constraints[`CREATE CONSTRAINT` privilege].
+
+[NOTE]
+Adding constraints is an atomic operation that can take a while -- all existing data has to be scanned before a Neo4j DBMS can use a constraint.
+
+[[create-property-uniqueness-constraints]]
+== Create property uniqueness constraints
+
+Property uniqueness constraints ensure that the property values are unique for all nodes with a specific label or all relationships with a specific type.
+For composite property uniqueness constraints on multiple properties, it is the combination of property values that must be unique.
+Queries that try to add duplicated property values will fail.
+
+Property uniqueness constraints do not require all nodes or relationships to have values for the properties listed in the constraint.
+Only nodes or relationships that contain all properties specified in the constraint are subject to the uniqueness rule.
+Nodes or relationships missing one or more of the specified properties are not subject to this rule.
+
+[[create-single-property-uniqueness-constraint]]
+=== Create a single property uniqueness constraint
+
+Single property uniqueness constraints are created with the following commands:
+
+* Node property uniqueness constraints: `CREATE CONSTRAINT constraint_name FOR (n:Label) REQUIRE n.property IS UNIQUE`.
+* Relationship property uniqueness constraints: `CREATE CONSTRAINT constraint_name
+FOR ()-[r:REL_TYPE]-() REQUIRE r.property IS UNIQUE`.
+
+For the full command syntax to create a property uniqueness constraint, see xref:schema/syntax.adoc#create-property-uniqueness-constraints[Syntax -> Create property uniqueness constraints].
+
+.Create a node property uniqueness constraint on a single property
+======
+
+.Create a constraint requiring `Book` nodes to have unique `isbn` properties
+// tag::schema_constraints_create_property_uniqueness[]
+[source, cypher]
+----
+CREATE CONSTRAINT book_isbn
+FOR (book:Book) REQUIRE book.isbn IS UNIQUE
+----
+// end::schema_constraints_create_property_uniqueness[]
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+
+======
+
+
+.Create a relationship property uniqueness constraint on a single property
+======
+
+.Create a constraint requiring `SEQUEL_OF` relationships to have unique `order` properties
+[source, cypher]
+----
+CREATE CONSTRAINT sequels
+FOR ()-[sequel:SEQUEL_OF]-() REQUIRE sequel.order IS UNIQUE
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[create-composite-property-uniqueness-constraint]]
+=== Create a composite property uniqueness constraint
+
+Constraints created for multiple properties are called composite constraints.
+Note that the constrained properties must be parenthesized when creating composite property uniqueness constraints.
+
+* Node property uniqueness constraints: `CREATE CONSTRAINT constraint_name FOR (n:Label) REQUIRE (n.propertyName_1, ..., n.propertyName_n) IS UNIQUE`.
+* Relationship property uniqueness constraints: `CREATE CONSTRAINT constraint_name FOR ()-[r:REL_TYPE]-() REQUIRE (r.propertyName_1, ..., r.propertyName_n) IS UNIQUE`.
+
+For the full command syntax to create a property uniqueness constraint, see xref:schema/syntax.adoc#create-property-uniqueness-constraints[Syntax -> Create property uniqueness constraints].
+
+.Create a composite node property uniqueness constraint on several properties
+======
+
+.Create a constraint requiring `Book` nodes to have unique combinations of `title` and `publicationYear` properties
+[source, cypher]
+----
+CREATE CONSTRAINT book_title_year
+FOR (book:Book) REQUIRE (book.title, book.publicationYear) IS UNIQUE
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+
+.Create a composite relationship property uniqueness constraint on several properties
+======
+
+.Create a constraint requiring `PREQUEL_OF` relationships to have unique combinations of `order` and `author` properties
+// tag::schema_constraints_create_composite_property_uniqueness[]
+[source, cypher]
+----
+CREATE CONSTRAINT prequels
+FOR ()-[prequel:PREQUEL_OF]-() REQUIRE (prequel.order, prequel.author) IS UNIQUE
+----
+// end::schema_constraints_create_composite_property_uniqueness[]
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[create-property-uniqueness-constraint-compliant-data]]
+=== Create data that complies with existing property uniqueness constraints
+
+.Create a node that complies with existing property uniqueness constraints
+======
+
+.Create a `Book` node with a unique `isbn` property
+[source, cypher]
+----
+CREATE (book:Book {isbn: '1449356265', title: 'Graph Databases'})
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 label, created 1 node, set 2 properties
+----
+
+======
+
+
+.Create a relationship that complies with existing property uniqueness constraints
+======
+
+.Create a `SEQUEL_OF` relationship with a unique `order` property
+[source, cypher]
+----
+CREATE (:Book {title: 'Spirit Walker'})-[:SEQUEL_OF {order: 1, seriesTitle: 'Chronicles of Ancient Darkness'}]->(:Book {title: 'Wolf Brother'})
+----
+
+.Result
+[source, queryresult]
+----
+Added 2 labels, created 2 nodes, set 4 properties, created 1 relationship.
+----
+
+======
+
+[role=label--enterprise-edition]
+[[create-property-existence-constraints]]
+== Create property existence constraints
+
+Property existence constraints ensure that a property exists either for all nodes with a specific label or for all relationships with a specific type.
+Queries that try to create new nodes of the specified label, or relationships of the specified type, without the constrained property will fail.
+The same is true for queries that try to remove the mandatory property.
+
+[[create-single-property-existence-constraint]]
+=== Create a single property existence constraint
+
+Property existence constraints on single properties are created with the following commands:
+
+* Node property existence constraint: `CREATE CONSTRAINT constraint_name FOR (n:Label) REQUIRE n.property IS NOT NULL`.
+* Relationship property existence constraint: `CREATE CONSTRAINT constraint_name FOR ()-[r:REL_TYPE]-() REQUIRE r.property IS NOT NULL`.
+
+For the full command syntax to create an existence constraint, see xref:schema/syntax.adoc#create-property-existence-constraints[Syntax -> Create property existence constraints].
+
+[NOTE]
+It is not possible to create composite existence constraints on several properties.
+
+.Create a node property existence constraint
+======
+
+.Create a constraint requiring `Author` nodes to have a `name` property
+// tag::schema_constraints_create_property_existence[]
+[source, cypher]
+----
+CREATE CONSTRAINT author_name
+FOR (author:Author) REQUIRE author.name IS NOT NULL
+----
+// end::schema_constraints_create_property_existence[]
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+
+.Create a relationship property existence constraint
+======
+
+.Create a constraint requiring `WROTE` relationships to have a `year` property
+[source, cypher]
+----
+CREATE CONSTRAINT wrote_year
+FOR ()-[wrote:WROTE]-() REQUIRE wrote.year IS NOT NULL
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[create-property-existence-constraint-compliant-data]]
+=== Create data that complies with existing property existence constraints
+
+.Create a node that complies with existing node property existence constraints
+======
+
+.Create an `Author` node with a `name` property:
+[source, cypher]
+----
+CREATE (author:Author {name:'Virginia Woolf', surname: 'Woolf'})
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 label, created 1 node, set 2 properties
+----
+
+======
+
+
+.Create a relationship that complies with existing relationship property existence constraints
+======
+
+.Create a `WROTE` relationship with a `year` property
+[source, cypher]
+----
+CREATE (author:Author {name: 'Emily Brontë', surname: 'Brontë'})-[wrote:WROTE {year: 1847, location: 'Haworth, United Kingdom', published: true}]->(book:Book {title:'Wuthering Heights', isbn: 9789186579296})
+----
+
+.Result
+[source, queryresult]
+----
+Added 2 labels, created 2 nodes, set 7 properties, created 1 relationship
+----
+
+======
+
+
+[role=label--enterprise-edition]
+[[create-property-type-constraints]]
+== Create property type constraints
+
+Property type constraints ensure that a property has the required data type for all nodes with a specific label or for all relationships with a specific type.
+Queries that attempt to add this property with the wrong data type or modify this property in a way that changes its data type for nodes of the specified label or relationships of the specified type will fail.
+
+Property type constraints do not require all nodes or relationships to have the property.
+Nodes or relationships without the constrained property are not subject to this rule.
+
+[[create-single-property-type-constraint]]
+=== Create a single property type constraint
+
+Property type constraints are created with the following commands:
+
+* Node property type constraints: `CREATE CONSTRAINT constraint_name FOR (n:Label) REQUIRE n.property IS :: <TYPE>`.
+* Relationship property type constraints: `CREATE CONSTRAINT constraint_name FOR ()-[r:REL_TYPE]-() REQUIRE r.property IS :: <TYPE>`.
+
+`<TYPE>` refers to a specific Cypher data type, such as `STRING` or `INTEGER`.
+For the types that properties can be constrained by, see xref:schema/constraints/create-constraints.adoc#type-constraints-allowed-properties[], and for information about different data types in Cypher, see xref:values-and-types/index.adoc[].
+For the full command syntax to create a property type constraint, see xref:schema/syntax.adoc#create-property-type-constraints[Syntax -> Create property type constraints].
+
+[NOTE]
+It is not possible to create composite property type constraints on several properties.
+
+.Create a node property type constraint
+======
+
+.Create a constraint requiring `title` properties on `Movie` nodes to be of type `STRING`
+[source, cypher]
+----
+CREATE CONSTRAINT movie_title
+FOR (movie:Movie) REQUIRE movie.title IS :: STRING
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+======
+
+.Create a relationship property type constraint
+======
+
+.Create a constraint requiring `order` properties on `PART_OF` relationships to be of type `INTEGER`
+// tag::schema_constraints_create_property_type[]
+[source, cypher]
+----
+CREATE CONSTRAINT part_of
+FOR ()-[part:PART_OF]-() REQUIRE part.order IS :: INTEGER
+----
+// end::schema_constraints_create_property_type[]
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[vector-type-constraints]]
+.Create `VECTOR` property type constraints label:cypher[Cypher 25 only] label:new[Introduced in Neo4j 2025.10]
+======
+
+It is necessary to specify both the dimension and the coordinate type of any constrained `VECTOR` properties.
+The dimension must be greater than `0` and less or equal to `4096`.
+For more information, see xref:values-and-types/vector.adoc[Values and types -> Vectors].
+
+.Create a constraint requiring `embedding` properties on `Movie` nodes to be of type `VECTOR<INT32>(42)`
+[source, cypher]
+----
+CREATE CONSTRAINT node_vector_constraint
+FOR (n:Movie) REQUIRE n.embedding IS :: VECTOR<INT32>(42)
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+.Create a constraint requiring `embedding` properties on `CONTAINS` relationships to be of type `VECTOR<FLOAT32>(1536)`
+[source, cypher]
+----
+CREATE CONSTRAINT rel_vector_constraint
+FOR ()-[r:CONTAINS]->() REQUIRE r.embedding IS :: VECTOR<FLOAT32>(1536)
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[create-property-type-constraint-union-type]]
+=== Create property type constraints with a union type
+
+A closed dynamic union allows a node or relationship property to maintain some type flexibility whilst preventing unexpected values from being stored.
+
+.Create a node property type constraint with a union type
+======
+
+.Create a constraint requiring `tagline` properties on `Movie` nodes to be either of type `STRING` or `LIST<STRING NOT NULL>`
+// tag::schema_constraints_create_property_type_dynamic_union[]
+[source, cypher]
+----
+CREATE CONSTRAINT movie_tagline
+FOR (movie:Movie) REQUIRE movie.tagline IS :: STRING | LIST<STRING NOT NULL>
+----
+// end::schema_constraints_create_property_type_dynamic_union[]
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+.Create a relationship property type constraint with a union type
+======
+
+.Create a constraint requiring `tags` properties on `PART_OF` relationships to either of type `STRING` or `LIST<STRING NOT NULL>`
+[source, cypher]
+----
+CREATE CONSTRAINT part_of_tags
+FOR ()-[part:PART_OF]-() REQUIRE part.tags IS :: STRING | LIST<STRING NOT NULL>
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[type-constraints-allowed-properties]]
+=== Allowed types
+
+The allowed property types for property type constraints are:
+
+* `BOOLEAN`
+* `STRING`
+* `INTEGER`
+* `FLOAT`
+* `DATE`
+* `LOCAL TIME`
+* `ZONED TIME`
+* `LOCAL DATETIME`
+* `ZONED DATETIME`
+* `DURATION`
+* `POINT`
+* `VECTOR<TYPE>(DIMENSION)` label:cypher[Cypher 25 only] label:new[Introduced in Neo4j 2025.10]
+* `LIST<BOOLEAN NOT NULL>`
+* `LIST<STRING NOT NULL>`
+* `LIST<INTEGER NOT NULL>`
+* `LIST<FLOAT NOT NULL>`
+* `LIST<DATE NOT NULL>`
+* `LIST<LOCAL TIME NOT NULL>`
+* `LIST<ZONED TIME NOT NULL>`
+* `LIST<LOCAL DATETIME NOT NULL>`
+* `LIST<ZONED DATETIME NOT NULL>`
+* `LIST<DURATION NOT NULL>`
+* `LIST<POINT NOT NULL>`
+* Any closed dynamic union of the above types, e.g. `INTEGER | FLOAT | STRING`.
+
+[NOTE]
+Because storing lists of xref:values-and-types/vector.adoc[`VECTOR`] values is not supported, property type constraints cannot be created for `LIST<VECTOR<TYPE>(DIMENSION) NOT NULL>`.
+Additionally, `VECTOR` property type constraints must be created with a specific dimension and coordinate value, where the dimension must be greater than `0` and less than or equal to `4096`.
+For more information, see xref:values-and-types/vector.adoc[Values and types -> Vectors].
+
+For a complete reference describing all types available in Cypher, see the section on xref::values-and-types/property-structural-constructed.adoc#types-synonyms[types and their synonyms].
+
+[[fail-to-create-property-type-constraint-invalid-type]]
+=== Creating property type constraints on invalid types will fail
+
+.Create a node property type constraint with an invalid type
+======
+
+.Create a constraint requiring `imdbScore` properties on `Movie` nodes to be of type `MAP`
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT score FOR (movie:Movie) REQUIRE movie.imdbScore IS :: MAP
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N90/[22N90]: error: data exception - property type unsupported in constraint. MAP is not supported in property type constraints.
+
+link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/50N11/[50N11]: error: general processing exception - constraint creation failed. Unable to create 'node property type constraint'.
+|===
+
+======
+
+[[create-property-type-constraint-compliant-data]]
+=== Create data that complies with existing property type constraints
+
+.Create a node that complies with existing node property type constraint
+======
+
+.Create an `Movie` node with a `STRING` `title` property
+[source, cypher]
+----
+CREATE (movie:Movie {title:'Iron Man'})
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 label, created 1 node, set 1 properties
+----
+
+======
+
+.Create a relationship that complies with existing relationship property type constraint
+======
+
+.Create a `PART_OF` relationship with an `INTEGER` `order` property
+[source, cypher]
+----
+MATCH (movie:Movie {title:'Iron Man'})
+CREATE (movie)-[part:PART_OF {order: 3}]->(franchise:Franchise {name:'MCU'})
+----
+
+.Result
+[queryresult]
+----
+Added 1 label, added 1 node, created 1 relationship, set 2 properties
+----
+
+======
+
+
+
+[role=label--enterprise-edition]
+[[create-key-constraints]]
+== Create key constraints
+
+Key constraints ensure that the property exist and the property value is unique for all nodes with a specific label or all relationships with a specific type.
+For composite key constraints on multiple properties, all properties must exists and the combination of property values must be unique.
+
+Queries that try to create new nodes of the specified label, or relationships of the specified type, without the constrained property will fail.
+The same is true for queries that try to remove the mandatory property or add duplicated property values.
+
+[[create-single-property-key-constraint]]
+=== Create a single property key constraint
+
+Single property key constraints are created with the following commands:
+
+* Node key constraints: `CREATE CONSTRAINT constraint_name FOR (n:Label) REQUIRE n.property IS NODE KEY`.
+* Relationship key constraints: `CREATE CONSTRAINT constraint_name FOR ()-[r:REL_TYPE]-() REQUIRE r.property IS RELATIONSHIP KEY`.
+
+For the full command syntax to create a key constraint, see xref:schema/syntax.adoc#create-key-constraints[Syntax -> Create key constraints].
+
+.Create a node key constraint on a single property
+======
+
+.Create a constraint requiring `Director` nodes to have a unique `imdbId` property as a node key.
+// tag::schema_constraints_create_key[]
+[source, cypher]
+----
+CREATE CONSTRAINT director_imdbId
+FOR (director:Director) REQUIRE (director.imdbId) IS NODE KEY
+----
+// end::schema_constraints_create_key[]
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+
+.Create a relationship key constraint on a single property
+======
+
+.Create a constraint requiring `OWNS` relationships to have a unique `ownershipId` property as a relationship key
+[source, cypher]
+----
+CREATE CONSTRAINT ownershipId
+FOR ()-[owns:OWNS]-() REQUIRE owns.ownershipId IS RELATIONSHIP KEY
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[create-composite-key-constraint]]
+=== Create a composite key constraint
+
+Constraints created for multiple properties are called composite constraints.
+Note that the constrained properties must be parenthesized when creating composite key constraints.
+
+Composite key constraints are created with the following commands:
+
+* Node key constraints: `CREATE CONSTRAINT constraint_name FOR (n:Label) REQUIRE (n.propertyName_1, ..., n.propertyName_n) IS NODE KEY`.
+* Relationship key constraints: `CREATE CONSTRAINT constraint_name FOR ()-[r:REL_TYPE]-() REQUIRE (r.propertyName_1, ..., r.propertyName_n) IS RELATIONSHIP KEY`.
+
+For the full command syntax to create a key constraint, see xref:schema/syntax.adoc#create-key-constraints[Syntax -> Create key constraints].
+
+.Create a composite node key constraint on multiple properties
+======
+
+.Create a constraint requiring `Actor` nodes to have a unique combination of `firstname` and `surname` properties as a node key
+[source, cypher]
+----
+CREATE CONSTRAINT actor_fullname
+FOR (actor:Actor) REQUIRE (actor.firstname, actor.surname) IS NODE KEY
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+.Create a composite relationship key constraint label on multiple properties
+======
+
+.Create a constraint requiring `KNOWS` relationships to have a unique combination of `since` and `how` properties as a relationship key
+// tag::schema_constraints_create_composite_key[]
+[source, cypher]
+----
+CREATE CONSTRAINT knows_since_how
+FOR ()-[knows:KNOWS]-() REQUIRE (knows.since, knows.how) IS RELATIONSHIP KEY
+----
+// end::schema_constraints_create_composite_key[]
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[create-key-constraint-compliant-data]]
+=== Create data that complies with existing key constraints
+
+.Create a node that complies with existing node key constraints
+======
+
+.Create an `Actor` node with unique `firstname` and `surname` properties
+[source, cypher]
+----
+CREATE (actor:Actor {firstname: 'Keanu', surname: 'Reeves'})
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 label, created 1 node, set 2 properties.
+----
+
+======
+
+
+.Create a relationship that complies with existing relationship key constraints
+======
+
+.Create a `KNOWS` relationship with unique `since` and `how` properties
+[source, cypher]
+----
+CREATE (:Actor {firstname: 'Jensen', surname: 'Ackles'})-[:KNOWS {since: 2008, how: 'coworkers', friend: true}]->(:Actor {firstname: 'Misha', surname: 'Collins'})
+----
+
+.Result
+[source, queryresult]
+----
+Added 2 labels, created 2 nodes, set 7 properties, created 1 relationship.
+----
+
+======
+
+
+[[create-constraint-with-parameter]]
+== Create a constraint with a parameter
+
+All constraint types can be created with a parameterized name.
+
+.Create a node property uniqueness constraint using a parameter
+======
+
+.Parameters
+[source, parameters]
+----
+{
+  "name": "node_uniqueness_param"
+}
+----
+
+.Create a node property uniqueness constraint with a parameterized name
+// tag::schema_constraints_create_parameter[]
+[source, cypher]
+----
+CREATE CONSTRAINT $name
+FOR (book:Book) REQUIRE book.prop1 IS UNIQUE
+----
+// end::schema_constraints_create_parameter[]
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+.Create a relationship property existence constraint using a parameter
+======
+
+.Parameters
+[source, parameters]
+----
+{
+  "name": "rel_exist_param"
+}
+----
+
+.Create a relationship property existence constraint with a parameterized name
+[source, cypher]
+----
+CREATE CONSTRAINT $name
+FOR ()-[wrote:WROTE]-() REQUIRE wrote.published IS NOT NULL
+----
+
+.Result
+[source, queryresult]
+----
+Added 1 constraint.
+----
+
+======
+
+[[handling-multiple-constraints]]
+== Handling multiple constraints
+
+Creating an already existing constraint will fail.
+This includes the following scenarios:
+
+* Creating a constraint identical to an already existing constraint.
+* Creating a constraint with a different name but on the same constraint type and same label/relationship type and property combination as an already existing constraint.
+For property type constraints the property type also needs to be the same.
+* Creating a constraint with the same name as an already existing constraint, regardless of what that constraint is.
+
+Additionally, some constraints cannot coexist and attempting to create them together will therefore fail as well.
+This includes:
+
+* Property type constraints on the same label/relationship type and property but with different property types.
+This includes `VECTOR` types with different dimensions or coordinate types.
+* Property uniqueness and key constraints on the same label/relationship type and property combination.
+
+However, some constraint types are allowed on the same label/relationship type and property combination.
+For example, it is possible to have a property uniqueness and a property existence constraint on the same label/relationship type and property combination, though this would be the equivalent of having a node or relationship key constraint.
+A more useful example would be to combine a property type and a property existence constraint to ensure that the property exists and has the given type.
+
+[[create-a-constraint-if-not-exist]]
+=== Handling existing constraints when creating a constraint
+
+To avoid failing on existing constraints, `IF NOT EXISTS` can be added to the `CREATE` command.
+This will ensure that no error is thrown and that no constraint is created if any other constraint with the given name, or another constraint on the same constraint type and schema, or both, already exists.
+For property type constraints the property type also needs to be the same.
+Instead, an informational notification is returned showing the existing constraint which blocks the creation.
+
+.Create a constraint identical to an existing constraint
+======
+
+.Create a constraint requiring all `SEQUEL_OF` relationships to have unique `order` properties
+// tag::schema_constraints_create_if_not_exists[]
+[source, cypher]
+----
+CREATE CONSTRAINT sequels IF NOT EXISTS
+FOR ()-[sequel:SEQUEL_OF]-() REQUIRE sequel.order IS UNIQUE
+----
+// end::schema_constraints_create_if_not_exists[]
+
+Because the same constraint already exists, nothing will happen:
+
+.Result
+[source, queryresult]
+----
+(no changes, no records)
+----
+
+.Notification
+[source]
+----
+`CREATE CONSTRAINT sequels IF NOT EXISTS FOR ()-[e:SEQUEL_OF]-() REQUIRE (e.order) IS UNIQUE` has no effect.
+`CONSTRAINT sequels FOR ()-[e:SEQUEL_OF]-() REQUIRE (e.order) IS UNIQUE` already exists.
+----
+
+======
+
+.Create a relationship property uniqueness constraint when the same constraint with a different name already exists
+======
+
+.Create a constraint requiring all `SEQUEL_OF` relationships to have unique `order` properties
+[source, cypher]
+----
+CREATE CONSTRAINT new_sequels IF NOT EXISTS
+FOR ()-[sequel:SEQUEL_OF]-() REQUIRE sequel.order IS UNIQUE
+----
+
+Because a constraint with a different name (`sequels`) on the same schema exists, nothing will happen:
+
+.Result
+[source, queryresult]
+----
+(no changes, no records)
+----
+
+.Notification
+[source]
+----
+`CREATE CONSTRAINT new_sequels IF NOT EXISTS FOR ()-[e:SEQUEL_OF]-() REQUIRE (e.order) IS UNIQUE` has no effect.
+`CONSTRAINT sequels FOR ()-[e:SEQUEL_OF]-() REQUIRE (e.order) IS UNIQUE` already exists.
+----
+
+======
+
+.Create a relationship property uniqueness constraint with the same name as an existing constraint of a different type
+======
+
+.Create a constraint requiring all `AUTHORED` relationships to have unique `name` properties
+[source, cypher]
+----
+CREATE CONSTRAINT author_name IF NOT EXISTS
+FOR ()-[a:AUTHORED]-() REQUIRE a.name IS UNIQUE
+----
+
+Because a node property existence constraint named `author_name` already exists, nothing will happen:
+
+.Result
+[source, queryresult]
+----
+(no changes, no records)
+----
+
+.Notification
+[source]
+----
+`CREATE CONSTRAINT author_name IF NOT EXISTS FOR ()-[e:AUTHORED]-() REQUIRE (e.name) IS UNIQUE` has no effect.
+`CONSTRAINT author_name FOR (e:Author) REQUIRE (e.name) IS NOT NULL` already exists.
+----
+
+======
+
+[[create-an-already-existing-constraint]]
+=== Creating an already existing constraint will fail
+
+Creating a constraint with the same name or on the same node label or relationship type and properties that are already constrained by a constraint of the same type will fail.
+Property uniqueness and key constraints are also not allowed on the same schema.
+
+.Create a constraint identical to an existing constraint
+======
+
+.Create a constraint requiring all `SEQUEL_OF` relationships to have unique `order` properties, given an identical constraint already exists
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT sequels
+FOR ()-[sequel:SEQUEL_OF]-() REQUIRE sequel.order IS UNIQUE
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N65/[22N65]: error: data exception - equivalent constraint already exists. An equivalent constraint already exists: 'sequels'
+|===
+
+======
+
+.Create a constraint with a different name but on the same schema as an existing constraint
+======
+
+.Create a constraint requiring all `Book` nodes to have unique `isbn` properties, given that a constraint on that schema already exists
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT new_book_isbn
+FOR (book:Book) REQUIRE book.isbn IS UNIQUE
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N65/[22N65]: error: data exception - equivalent constraint already exists. An equivalent constraint already exists: 'Constraint( id=3, name='book_isbn', type='NODE PROPERTY UNIQUENESS', schema=(:Book \{isbn}), ownedIndex=2 )'
+|===
+
+======
+
+.Creating a constraint with the same name but on a different schema as an existing constraint
+======
+
+.Create a constraint requiring all `AUTHORED` relationships to have unique `name` properties, given that a constraint on a different schema with the same name already exists
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT author_name
+FOR ()-[a:AUTHORED]-() REQUIRE a.name IS UNIQUE
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N67/[22N67]: error: data exception - duplicated constraint name. A constraint with the same name already exists: `author_name`
+|===
+
+======
+
+.Creating a property type constraint on a property when a property type constraint constraining the property to a different type already exist
+======
+
+.Create a constraint requiring `order` properties on `PART_OF` relationships to be of type `FLOAT`, given a constraint requiring the same properties to be of type `INTEGER` already exists
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT new_part_of
+FOR ()-[part:PART_OF]-() REQUIRE part.order IS :: FLOAT
+----
+
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N66/[22N66]: error: data exception - conflicting constraint already exists. A conflicting constraint already exists: 'Constraint( id=13, name='part_of', type='RELATIONSHIP PROPERTY TYPE', schema=()-[:PART_OF \{order}]-(), propertyType=INTEGER )'
+|===
+
+======
+
+.Creating a node key constraint on the same schema as an existing property uniqueness constraint
+======
+
+.Create a node key constraint on the properties `title` and `publicationYear` on nodes with the `Book` label, when a property uniqueness constraint already exists on the same label and property combination
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT book_titles FOR (book:Book) REQUIRE (book.title, book.publicationYear) IS NODE KEY
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N66/[22N66]: error: data exception - conflicting constraint already exists. A conflicting constraint already exists: 'Constraint( id=7, name='book_title_year', type='NODE PROPERTY UNIQUENESS', schema=(:Book {title, publicationYear}), ownedIndex=6 )'
+|===
+
+======
+
+[[constraints-and-indexes]]
+== Constraints and indexes
+
+[[constraints-and-backing-indexes]]
+=== Constraints and backing indexes
+
+Property uniqueness constraints and key constraints are backed by xref:indexes/search-performance-indexes/create-indexes.adoc#create-range-index[range indexes].
+This means that creating a property uniqueness or key constraint will create a range index with the same name, node label/relationship type and property combination as its owning constraint.
+Single property constraints will create single property indexes and multiple property composite constraints will create xref:indexes/search-performance-indexes/using-indexes.adoc#composite-indexes[composite indexes].
+
+[NOTE]
+Indexes of the same index type, label/relationship type, and property combination cannot be added separately.
+However, dropping a property uniqueness or key constraint will also drop its backing index.
+If the backing index is still required, the index needs to be explicitly re-created.
+
+Property uniqueness and key constraints require an index because it allows the system to quickly check if a node with the same label and property value or a relationship with the same type and property value already exists.
+Without an index, the system would need to scan all nodes with the same label, which would be slow and inefficient, especially as the graph grows.
+The index makes these checks much faster by enabling direct lookups instead of scanning the entire graph.
+Cypher will use the indexes with an owning constraint in the same way that it utilizes other search-performance indexes.
+For more information about how indexes impact query performance, see xref:indexes/search-performance-indexes/using-indexes.adoc[].
+
+These indexes are listed in the `owningConstraint` column returned by the xref:indexes/search-performance-indexes/list-indexes.adoc[`SHOW INDEX`] command, and the `ownedIndex` column returned by the xref:schema/constraints/list-constraints.adoc[`SHOW CONSTRAINT`] command.
+
+.Show constraints with backing indexes
+======
+
+.Query
+[source, cypher, test-exclude-cols=id]
+----
+SHOW CONSTRAINTS WHERE ownedIndex IS NOT NULL
+----
+
+.Result
+[source, queryresult]
+----
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| id | name                    | type                               | entityType     | labelsOrTypes  | properties                   | ownedIndex              | propertyType |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| 21 | "actor_fullname"        | "NODE_KEY"                         | "NODE"         | ["Actor"]      | ["firstname", "surname"]     | "actor_fullname"        | NULL         |
+| 3  | "book_isbn"             | "NODE_PROPERTY_UNIQUENESS"         | "NODE"         | ["Book"]       | ["isbn"]                     | "book_isbn"             | NULL         |
+| 7  | "book_title_year"       | "NODE_PROPERTY_UNIQUENESS"         | "NODE"         | ["Book"]       | ["title", "publicationYear"] | "book_title_year"       | NULL         |
+| 17 | "director_imdbId"       | "NODE_KEY"                         | "NODE"         | ["Director"]   | ["imdbId"]                   | "director_imdbId"       | NULL         |
+| 23 | "knows_since_how"       | "RELATIONSHIP_KEY"                 | "RELATIONSHIP" | ["KNOWS"]      | ["since", "how"]             | "knows_since_how"       | NULL         |
+| 25 | "node_uniqueness_param" | "NODE_PROPERTY_UNIQUENESS"         | "NODE"         | ["Book"]       | ["prop1"]                    | "node_uniqueness_param" | NULL         |
+| 19 | "ownershipId"           | "RELATIONSHIP_KEY"                 | "RELATIONSHIP" | ["OWNS"]       | ["ownershipId"]              | "ownershipId"           | NULL         |
+| 9  | "prequels"              | "RELATIONSHIP_PROPERTY_UNIQUENESS" | "RELATIONSHIP" | ["PREQUEL_OF"] | ["order", "author"]          | "prequels"              | NULL         |
+| 5  | "sequels"               | "RELATIONSHIP_PROPERTY_UNIQUENESS" | "RELATIONSHIP" | ["SEQUEL_OF"]  | ["order"]                    | "sequels"               | NULL         |
++-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+----
+
+======
+
+.Show indexes with owning constraints
+======
+
+.Query
+[source, cypher, test-exclude-cols=id]
+----
+SHOW INDEXES WHERE owningConstraint IS NOT NULL
+----
+
+.Result
+[source, queryresult]
+----
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| id | name                    | state    | populationPercent | type    | entityType     | labelsOrTypes  | properties                   | indexProvider | owningConstraint        | lastRead                 | readCount |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+| 20 | "actor_fullname"        | "ONLINE" | 100.0             | "RANGE" | "NODE"         | ["Actor"]      | ["firstname", "surname"]     | "range-1.0"   | "actor_fullname"        | 2024-10-07T12:12:51.893Z | 3         |
+| 2  | "book_isbn"             | "ONLINE" | 100.0             | "RANGE" | "NODE"         | ["Book"]       | ["isbn"]                     | "range-1.0"   | "book_isbn"             | 2024-10-07T11:58:09.252Z | 2         |
+| 6  | "book_title_year"       | "ONLINE" | 100.0             | "RANGE" | "NODE"         | ["Book"]       | ["title", "publicationYear"] | "range-1.0"   | "book_title_year"       | NULL                     | 0         |
+| 16 | "director_imdbId"       | "ONLINE" | 100.0             | "RANGE" | "NODE"         | ["Director"]   | ["imdbId"]                   | "range-1.0"   | "director_imdbId"       | NULL                     | 0         |
+| 22 | "knows_since_how"       | "ONLINE" | 100.0             | "RANGE" | "RELATIONSHIP" | ["KNOWS"]      | ["since", "how"]             | "range-1.0"   | "knows_since_how"       | 2024-10-07T12:12:51.894Z | 1         |
+| 24 | "node_uniqueness_param" | "ONLINE" | 100.0             | "RANGE" | "NODE"         | ["Book"]       | ["prop1"]                    | "range-1.0"   | "node_uniqueness_param" | NULL                     | 0         |
+| 18 | "ownershipId"           | "ONLINE" | 100.0             | "RANGE" | "RELATIONSHIP" | ["OWNS"]       | ["ownershipId"]              | "range-1.0"   | "ownershipId"           | NULL                     | 0         |
+| 8  | "prequels"              | "ONLINE" | 100.0             | "RANGE" | "RELATIONSHIP" | ["PREQUEL_OF"] | ["order", "author"]          | "range-1.0"   | "prequels"              | NULL                     | 0         |
+| 4  | "sequels"               | "ONLINE" | 100.0             | "RANGE" | "RELATIONSHIP" | ["SEQUEL_OF"]  | ["order"]                    | "range-1.0"   | "sequels"               | 2024-10-07T11:57:12.999Z | 1         |
++-------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------+
+----
+
+======
+
+[NOTE]
+Property existence and property type constraints are not backed by indexes.
+
+[[constraint-failures-and-indexes]]
+=== Constraint failures and indexes
+
+Attempting to create any type of constraint with the same name as an existing index will fail.
+
+.Creating a node property type constraint with the same name as an existing index
+======
+
+.Create an index with the name `directors`
+[source, cypher]
+----
+CREATE INDEX directors FOR (director:Director) ON (director.name)
+----
+
+.Create a node property type constraint with the name `directors`
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT directors FOR (movie:Movie) REQUIRE movie.director IS :: STRING
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N71/[22N71]: error: data exception - duplicated index name. An index with the same name already exists: `directors`
+|===
+
+======
+
+Creating key or property uniqueness constraints on the same schema as an existing index will fail.
+
+.Creating a node property uniqueness constraint on the same schema as an existing index
+======
+
+.Create an index for `wordCount` properties on `Book` nodes
+[source, cypher]
+----
+CREATE INDEX book_word_count FOR (book:Book) ON (book.wordCount)
+----
+
+.Create a constraint requiring all `Book` nodes to have unique `wordCount` properties
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT word_count FOR (book:Book) REQUIRE book.wordCount IS UNIQUE
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N73/[22N73]: error: data exception - constraint conflicts with existing index. Constraint conflicts with already existing index '(:Book \{wordCount})'.
+|===
+
+======
+
+
+[[constraints-and-data-violation-scenarios]]
+== Constraints and data violation scenarios
+
+[[create-data-that-violates-a-constraint]]
+=== Creating data that violates existing constraints will fail
+
+.Existing constraints preventing data creation
+[cols="4", options="header"]
+|===
+| Constraint type
+| Create nodes and relationships without an existence constrained property
+| Create nodes and relationships with non-unique properties/property combinations
+| Create nodes and relationships with the wrong property type
+
+| *Property uniqueness constraint*
+|
+^| &#x274C;
+|
+
+| *Property existence constraint*
+^| &#x274C;
+|
+|
+
+| *Property type constraint*
+|
+|
+^| &#x274C;
+
+| *Key constraint*
+^| &#x274C;
+^| &#x274C;
+|
+
+|===
+
+
+.Create a node that violates a node property uniqueness constraint
+======
+
+.Create a `Book` node with an `isbn` property that already exists
+[source, cypher, role=test-fail]
+----
+CREATE (book:Book {isbn: '1449356265', title: 'Graph Databases'})
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N80/[22N80]: error: data exception - index entry conflict. Index entry conflict: Node(0) already exists with label `Book` and property `isbn` = '1449356265'.
+
+link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N79/[22N79]: error: data exception - property uniqueness constraint violated. Property uniqueness constraint violated: Node(0) already exists with label `Book` and property `isbn` = '1449356265'.
+|===
+
+======
+
+.Create a node that violates an existing node property existence constraint
+======
+
+.Create an `Author` node without a `name` property, given a property existence constraint on `:Author(name)`
+[source, cypher, role=test-fail]
+----
+CREATE (author:Author {surname: 'Austen'})
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N77/[22N77]: error: data exception - property presence verification failed. NODE (11) with label 'Author' must have the following properties: `name`.
+|===
+
+======
+
+.Create a relationship that violates an existing relationship property type constraint
+======
+
+
+.Create a `PART_OF` relationship with a `STRING` `order` property, given a property type constraint on the relationship type `PART_OF` restricting the `order` property to `INTEGER` values
+[source, cypher, role=test-fail]
+----
+MATCH (movie:Movie {title:'Iron Man'}), (franchise:Franchise {name:'MCU'})
+CREATE (movie)-[part:PART_OF {order: '1'}]->(franchise)
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N78/[22N78]: error: data exception - property type verification failed. RELATIONSHIP (1155176602955415558) with type 'PART_OF' must have the property `order` with value type INTEGER.
+|===
+
+======
+
+
+.Create a node that violates an existing node key constraint
+======
+
+.Create an `Actor` node without a `firstname` property, given a node key constraint on `:Actor(firstname, surname)`
+[source, cypher, role=test-fail]
+----
+CREATE (actor:Actor {surname: 'Wood'})
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N77/[22N77]: error: data exception - property presence verification failed. NODE (11) with label 'Actor' must have the following properties: `firstname`, `surname`.
+|===
+
+======
+
+[[removing-an-existing-constrained-property-will-fail]]
+=== Removing existence and key constrained properties will fail
+
+.Remove a node property existence constrained property
+======
+
+.Remove the `name` property from an existing `Author` node, given a property existence constraint on `:Author(name)`
+[source, cypher, role=test-fail]
+----
+MATCH (author:Author {name: 'Virginia Woolf'})
+REMOVE author.name
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N77/[22N77]: error: data exception - property presence verification failed. NODE (3) with label 'Author' must have the following properties: `name`.
+|===
+
+======
+
+
+.Remove a node key constrained property
+======
+
+.Remove the `firstname` property from an existing node `Actor`, given a node key constraint on `:Actor(firstname, surname)`
+[source, cypher, role=test-fail]
+----
+MATCH (actor:Actor {firstname: 'Keanu', surname: 'Reeves'})
+REMOVE actor.firstname
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N77/[22N77]: error: data exception - property presence verification failed. NODE (8) with label 'Actor' must have the following properties: `firstname`, `surname`.
+|===
+
+======
+
+[[modifying-property-constrained-property-will-fail]]
+=== Modifying type constrained properties will fail
+
+.Modify a type constrained property
+======
+
+.Modify the `title` for the `Movie` 'Iron Man' to an `INTEGER` value, given a constraint requiring `title` properties to be of type `STRING`
+[source, cypher, role=test-fail]
+----
+MATCH (m:Movie {title: 'Iron Man'})
+SET m.title = 13
+----
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N78/[22N78]: error: data exception - property type verification failed. NODE (6) with label 'Movie' must have the property `title` with value type STRING.
+|===
+
+======
+
+
+[[fail-to-create-constraint-due-to-existing-data]]
+=== Creating constraints when there exists conflicting data will fail
+
+.Existing data preventing constraint creation
+[cols="4", options="header"]
+|===
+| Constraint type
+| Non-existing property
+| Non-unique property/property combination
+| Property of wrong type
+
+| *Property uniqueness constraint*
+|
+^| &#x274C;
+|
+
+| *Property existence constraint*
+^| &#x274C;
+|
+|
+
+| *Property type constraint*
+|
+|
+^| &#x274C;
+
+| *Key constraint*
+^| &#x274C;
+^| &#x274C;
+|
+
+|===
+
+.Create a node property uniqueness constraint when conflicting nodes exist
+======
+
+.Create two `Book` nodes with the same `name` property value
+[source, cypher]
+----
+CREATE (:Book {isbn: '9780393972832', title: 'Moby Dick'}),
+       (:Book {isbn: '9780763630188', title: 'Moby Dick'})
+----
+
+
+.Create a constraint requiring `Book` nodes to have unique `title` properties, when there already exists two `Book` nodes with the same `title`
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT book_title FOR (book:Book) REQUIRE book.title IS UNIQUE
+----
+
+In this case, the constraint cannot be created because it is in conflict with the existing graph.
+Either use xref:indexes/search-performance-indexes/create-indexes.adoc[indexes] instead, or remove/correct the offending nodes and then re-apply the constraint.
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N80/[22N80]: error: data exception - index entry conflict. Index entry conflict: Both Node(11) and Node(12) have the label `Book` and property `title` = 'Moby Dick'.
+
+link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N79/[22N79]: error: data exception - property uniqueness constraint violated. Property uniqueness constraint violated: Both Node(11) and Node(12) have the label `Book` and property `title` = 'Moby Dick'.
+
+link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/50N11/[50N11]: error: general processing exception - constraint creation failed. Unable to create 'book_title'.
+|===
+
+The constraint creation fails on the first offending nodes that are found.
+This does not guarantee that there are no other offending nodes in the graph.
+Therefore, all the data should be checked and cleaned up before re-attempting the constraint creation.
+
+.Find all offending nodes with the non-unique property values for the constraint above
+[source, cypher]
+----
+MATCH (book1:Book), (book2:Book)
+WHERE book1.title = book2.title AND NOT book1 = book2
+RETURN book1, book2
+----
+
+======
+
+
+.Create a relationship property existence constraint when conflicting relationships exist
+======
+
+.Create a constraint requiring all `WROTE` relationships to have a `language` property, when there already exists a `WROTE` relationship without a `language` property
+[source, cypher, role=test-fail]
+----
+CREATE CONSTRAINT wrote_language FOR ()-[wrote:WROTE]-() REQUIRE wrote.language IS NOT NULL
+----
+
+In this case, the constraint cannot be created because it is in conflict with the existing graph.
+Remove or correct the offending relationships and then re-apply the constraint.
+
+.GQLSTATUS error chain
+[role="queryresult",stripes="all",cols="1"]
+|===
+| link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/22N77/[22N77]: error: data exception - property presence verification failed. RELATIONSHIP (1152923703630102532) with type 'WROTE' must have the following properties: `language`.
+
+link:https://neo4j.com/docs/status-codes/current/errors/gql-errors/50N11/[50N11]: error: general processing exception - constraint creation failed. Unable to create 'Constraint( type='RELATIONSHIP PROPERTY EXISTENCE', schema=()-[:WROTE \{language}]-() )'.
+|===
+
+The constraint creation fails on the first offending relationship that is found.
+This does not guarantee that there are no other offending relationships in the graph.
+Therefore, all the data should be checked and cleaned up before re-attempting the constraint creation.
+
+
+.Find all offending relationships missing the property for the constraint above
+[source, cypher]
+----
+MATCH ()-[wrote:WROTE]-()
+WHERE wrote.language IS NULL
+RETURN wrote
+----
+
+======
+
+.Generic `MATCH` queries to find the properties preventing the creation of particular constraints:
+[options="header", cols="1,1m"]
+|===
+| Constraint
+| Query
+
+| Node property uniqueness constraint
+a|
+[source]
+----
+MATCH (n1:Label), (n2:Label)
+WHERE n1.prop = n2.prop AND NOT n1 = n2
+RETURN n1, n2
+----
+
+| Relationship property uniqueness constraint
+a|
+[source]
+----
+MATCH ()-[r1:REL_TYPE]->(), ()-[r2:REL_TYPE]->()
+WHERE r1.prop = r2.prop AND NOT r1 = r2
+RETURN r1, r2
+----
+
+| Node property existence constraint
+a|
+[source]
+----
+MATCH (n:Label)
+WHERE n.prop IS NULL
+RETURN n
+----
+
+| Relationship property existence constraint
+a|
+[source]
+----
+MATCH ()-[r:REL_TYPE]->()
+WHERE r.prop IS NULL
+RETURN r
+----
+
+| Node property type constraint
+a|
+[source]
+----
+MATCH (n:Label)
+WHERE n.prop IS NOT :: <TYPE>
+RETURN n
+----
+
+| Relationship property type constraint
+a|
+[source]
+----
+MATCH ()-[r:REL_TYPE]->()
+WHERE r.prop IS NOT :: <TYPE>
+RETURN r
+----
+
+| Node key constraint
+a|
+[source]
+----
+MATCH (n1:Label), (n2:Label)
+WHERE n1.prop = n2.prop AND NOT n1 = n2
+UNWIND [n1, n2] AS node
+RETURN node, 'non-unique' AS reason
+UNION
+MATCH (n:Label)
+WHERE n.prop IS NULL
+RETURN n AS node, 'non-existing' AS reason
+----
+
+| Relationship key constraint
+a|
+[source]
+----
+MATCH ()-[r1:REL_TYPE]->(), ()-[r2:REL_TYPE]->()
+WHERE r1.prop = r2.prop AND NOT r1 = r2
+UNWIND [r1, r2] AS relationship
+RETURN relationship, 'non-unique' AS reason
+UNION
+MATCH ()-[r:REL_TYPE]->()
+WHERE r.prop IS NULL
+RETURN r AS relationship, 'non-existing' AS reason
+----
+
+|===

@@ -1,0 +1,40 @@
+---
+name: 20-configuration-index
+description: "Neo4j 2026.06.0 — Configuration overview (15/60, config)"
+type: reference
+---
+
+<!-- source: https://github.com/neo4j/docs-operations/blob/2026.06.0/modules/ROOT/pages/configuration/index.adoc -->
+<!-- source (raw): https://raw.githubusercontent.com/neo4j/docs-operations/2026.06.0/modules/ROOT/pages/configuration/index.adoc -->
+<!-- repo: neo4j/docs-operations  ref: 2026.06.0 -->
+<!-- retrieved: 2026-08-07 -->
+<!-- fidelity: VERBATIM — fetched as raw AsciiDoc from GitHub, unmodified except for this header. -->
+
+[[configuration]]
+= Configuration
+:description: This chapter describes the configuration of Neo4j components.
+
+The topics described are:
+
+* xref:configuration/neo4j-conf.adoc[The _neo4j.conf_ file] -- An introduction to the primary configuration file in Neo4j.
+* xref:configuration/command-expansion.adoc[Command expansion] -- How to provide an additional capability to configure Neo4j by allowing to specify scripts that set values sourced from external files.
+* xref:configuration/file-locations.adoc[Default file locations] -- An overview of where files are stored in the different Neo4j distributions and the necessary file permissions for running Neo4j.
+//* <<network-architecture, Network architecture>> -- A visual representation of the Neo4j network architecture.
+* xref:configuration/ports.adoc[Ports] -- An overview of the ports relevant to a Neo4j installation.
+* xref:configuration/cypher-version-configuration.adoc[Configure the Cypher default version] -- How to configure the Cypher version.
+* xref:configuration/connectors.adoc[Configure network connectors] -- How to configure network connectors for Neo4j.
+* xref:configuration/set-initial-password.adoc[Set initial password] -- How to set an initial password.
+* xref:configuration/neo4j-admin-memrec.adoc[Get initial memory recommendations] -- How to get initial memory recommendations for Neo4j.
+* xref:configuration/plugins.adoc[Configure Neo4j plugins] -- How to load plugins into a Neo4j deployment.
+* xref:configuration/dynamic-settings.adoc[Update dynamic settings] -- How to configure certain Neo4j parameters while Neo4j is running.
+* xref:configuration/migrate-configuration.adoc[Migrate configurations] -- How to migrate configuration settings from a previous version of Neo4j to a new version.
+* xref:configuration/validate-config.adoc[Validate configurations] -- How to validate Neo4j and Log4j configurations.
+* xref:configuration/show-settings.adoc[Show configuration settings] -- How to list all available configuration settings using the `SHOW SETTINGS` command.
+* xref:configuration/configuration-settings.adoc[Configuration settings] -- A complete reference of all configuration settings.
+
+For a complete reference of Neo4j configuration settings, see xref:configuration/configuration-settings.adoc[All configuration settings].
+
+
+//include::network-architecture.adoc[leveloffset=+1]
+
+
