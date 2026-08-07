@@ -6,20 +6,22 @@
 #   * 02:27  — winlogon initiated a machine restart (System event 1074) and took everything with it.
 # A 17-hour job cannot depend on a session, and it cannot depend on someone being awake to notice.
 #
-# It also cannot depend on its dependencies being up: after a reboot the Docker daemon inside WSL is
-# NOT running (it has no init that starts it), so PostgreSQL is absent and the extractor would fail
-# instantly on connect. `sudo service docker start` prompts for a password and hangs forever with no
-# stdin — which is exactly how the first attempt to recover wedged. `wsl -u root` needs no password.
+# It also cannot depend on its dependencies being up. UPDATED 2026-08-07 (docker-exit Tasks 4/6):
+# both PostgreSQL (`postgresql-x64-18`) and Neo4j (`neo4j`) are now native Windows services —
+# `mk-postgres` was retired (R-108) and the Neo4j container is stopped, kept only as a rollback
+# until Task 12. There is no daemon to start and no `docker compose up -d` to issue any more; a
+# Windows service starts at boot on its own, and `Start-Service` below is a defensive no-op belt
+# for the case it was ever stopped by hand. Readiness is proved the same way the rest of this repo
+# now proves it (`scripts/check-geniza-reader.py`, `watchman.ps1`'s mk_rules-postgres component):
+# a real read through `src.knowledge.config.connect_reader()`, not a container exec.
 #
 # So this script brings up what it needs, waits for it to actually answer, and only then runs.
 # Scheduled via Task Scheduler with an at-startup trigger, it recovers from a reboot on its own.
 #
 #   powershell -ExecutionPolicy Bypass -File scripts\run-extraction.ps1
 
-# NOT 'Stop'. `wsl.exe` writes "your 131072x1 screen size is bogus" to stderr on EVERY invocation,
-# and under ErrorActionPreference='Stop' a native command's stderr becomes a terminating error — so
-# the script died one line in, having "started docker" and nothing else, with exit code 1. Errors
-# here are handled by checking results (does postgres answer?), which is the honest test anyway.
+# 'Continue', not 'Stop': Start-Service on an already-running service, or one this account cannot
+# administer, should not abort the script — the readiness loop below is the honest test either way.
 $ErrorActionPreference = 'Continue'
 $repo = Split-Path -Parent $PSScriptRoot
 Set-Location $repo
@@ -29,25 +31,28 @@ function Say($m) { $line = "[{0}] {1}" -f (Get-Date -Format 'yyyy-MM-dd HH:mm:ss
 
 Say "=== run-extraction.ps1 starting ==="
 
-# 1 · the Docker daemon. `wsl -u root` avoids the sudo password prompt that hangs a headless run.
-wsl -u root -e bash -lc "service docker start" *> $null
-Say "docker daemon: start requested"
+# 1 · the native services. Both start automatically at boot; this is a defensive nudge in case
+#     either was stopped by hand. -ErrorAction SilentlyContinue: lacking privilege to (re)start a
+#     service that is already running is not a failure worth aborting for — the readiness check
+#     below is what actually gates the run.
+Start-Service -Name 'postgresql-x64-18' -ErrorAction SilentlyContinue
+Start-Service -Name 'neo4j' -ErrorAction SilentlyContinue
+Say "native services: start requested (postgresql-x64-18, neo4j)"
 
-# 2 · the containers. `up -d` is idempotent — already-running containers are left alone.
-wsl -e bash -lc "cd /mnt/c/Users/dudib/source/repos/matconetesh/infra && docker compose up -d" *> $null
-Say "compose up -d issued"
-
-# 3 · WAIT for PostgreSQL to actually answer. A container reported 'Running' is not a database
-#     accepting connections, and starting the extractor a second too early costs the whole run.
+# 2 · WAIT for PostgreSQL to actually answer, through the real reader path, not a service-status
+#     flag — a service reported 'Running' is not a database accepting connections, and starting
+#     the extractor a second too early costs the whole run.
+$py = 'C:\Users\dudib\AppData\Local\Programs\Python\Python314\python.exe'
+if (-not (Test-Path $py)) { $py = 'py' }
 $ready = $false
 foreach ($i in 1..60) {
-  $r = wsl -e bash -lc "docker exec mk-postgres pg_isready -h 127.0.0.1 -q && echo READY" 2>$null
-  if ($r -match 'READY') { $ready = $true; Say "postgres answered after $($i*5)s"; break }
+  & $py scripts/check-geniza-reader.py *> $null
+  if ($LASTEXITCODE -eq 0) { $ready = $true; Say "postgres answered after $($i*5)s"; break }
   Start-Sleep -Seconds 5
 }
 if (-not $ready) { Say "FAIL: postgres never answered in 300s — not starting the extractor"; exit 1 }
 
-# 4 · ollama. The desktop app starts it at login; if this runs at boot before that, start it here.
+# 3 · ollama. The desktop app starts it at login; if this runs at boot before that, start it here.
 try { Invoke-RestMethod -Uri 'http://127.0.0.1:11434/api/ps' -TimeoutSec 8 | Out-Null; Say "ollama already answering" }
 catch {
   Start-Process -FilePath 'ollama' -ArgumentList 'serve' -WindowStyle Hidden
@@ -57,11 +62,9 @@ catch {
   }
 }
 
-# 5 · the run itself. `--pending` is the resume: extraction state is a COLUMN (migration 0008), so a
+# 4 · the run itself. `--pending` is the resume: extraction state is a COLUMN (migration 0008), so a
 #     document already extracted is skipped and an interrupted run costs only its current document.
 #     `-u` keeps stdout unbuffered, so the log is a live progress record rather than a post-mortem.
-$py = 'C:\Users\dudib\AppData\Local\Programs\Python\Python314\python.exe'
-if (-not (Test-Path $py)) { $py = 'py' }
 # 6.8.26 — the 06:17 run processed all 840 documents and then DIED on its own closing summary:
 #   UnicodeEncodeError: 'charmap' codec can't encode characters in position 54-55
 # Python's stdout is not a console here (it is piped into Add-Content), so it defaults to the system

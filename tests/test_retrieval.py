@@ -159,7 +159,7 @@ def _require_pg():
     try:
         conn = config.connect_reader(timeout=5)
     except Exception as exc:
-        pytest.skip(f"PostgreSQL is not reachable ({type(exc).__name__}) — docker compose up -d")
+        pytest.skip(f"PostgreSQL is not reachable ({type(exc).__name__}) — start it with: Start-Service postgresql-x64-18")
     return conn
 
 
@@ -199,7 +199,7 @@ def test_find_impact_runs_against_the_live_graph():
     try:
         rows = retrieval.find_impact("repo:__no_such_entity__", depth=2, limit=5)
     except Exception as exc:
-        pytest.skip(f"Neo4j is not reachable ({type(exc).__name__}) — docker compose up -d")
+        pytest.skip(f"Neo4j is not reachable ({type(exc).__name__}) — start it with: Start-Service neo4j")
     assert rows == []
 
 

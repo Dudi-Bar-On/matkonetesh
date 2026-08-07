@@ -1,12 +1,21 @@
 """Phase 8 acceptance, category A — infrastructure.
 
-SEPARATE FILE, and separate on purpose: two of these RESTART the database containers. Running that
+SEPARATE FILE, and separate on purpose: two of these RESTART the database services. Running that
 inside the main suite would break every other test's connection mid-flight and produce failures
 that look like product bugs. The restart tests are opt-in via MK_RESTART_TESTS=1 and SKIP LOUDLY
 otherwise — "not verified here" is information, and a suite that quietly omits them while
 reporting green is the failure mode this project keeps paying for.
 
     MK_RESTART_TESTS=1 python -m pytest tests/test_acceptance_infra.py -v
+
+UPDATED 2026-08-07 (docker-exit Tasks 4/6): PostgreSQL (`postgresql-x64-18`) and Neo4j (`neo4j`)
+are both native Windows services now — `mk-postgres` was retired (R-108) and the Neo4j container
+is stopped, kept only as a rollback until Task 12. A1 and A2 below restart the SERVICES
+(`Restart-Service`), not containers; the property each protects — the database survives a restart
+with its data intact — is unchanged by the move. A6 and A7 still read the Docker daemon
+(`_require_docker`/`_compose_container_names`) — that is deliberate, not an oversight: rewriting
+them for native Windows is a separate task (7/8), and until then they SKIP LOUDLY rather than
+silently pass once nothing Docker-shaped is left running.
 """
 
 from __future__ import annotations
@@ -24,8 +33,23 @@ sys.path.insert(0, str(ROOT))
 
 from src.knowledge import config  # noqa: E402
 
-COMPOSE_DIR = "/mnt/c/Users/dudib/source/repos/matconetesh/infra"
 RESTART_ENABLED = os.environ.get("MK_RESTART_TESTS") == "1"
+
+
+def _restart_windows_service(name: str) -> subprocess.CompletedProcess:
+    """Restart-Service against a native Windows service, by name.
+
+    Needs elevation (an unelevated caller gets an `AccessDenied`-shaped failure, surfaced through
+    `returncode`/`stderr` like every other failure here — no special-casing). Routed through
+    PowerShell rather than a hypothetical direct API call because `Restart-Service` already IS the
+    documented, supported way to do this and every other native-service interaction in this repo
+    (`watchman.ps1`'s mk_rules-postgres component) goes through the same cmdlet.
+    """
+    return subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+         f"Restart-Service -Name '{name}' -Force"],
+        capture_output=True, text=True, timeout=120,
+    )
 
 
 def wsl(command: str, timeout: int = 300) -> subprocess.CompletedProcess:
@@ -64,13 +88,17 @@ def _require_stack():
 # --- persistence across a restart --------------------------------------------------------------
 
 @pytest.mark.skipif(not RESTART_ENABLED, reason="restart tests are opt-in: set MK_RESTART_TESTS=1")
-def test_A1_postgres_survives_a_container_restart_with_its_data():
+def test_A1_postgres_survives_a_service_restart_with_its_data():
     """A: "PostgreSQL survives container restart" + "Persistent data remains available."
+
+    REWRITTEN 2026-08-07 (docker-exit Task 4): `mk-postgres` was retired (R-108); PostgreSQL is
+    now the native Windows service `postgresql-x64-18`. The property this test protects — the
+    database survives a restart with its data intact — is exactly as valid for a Windows service
+    as it was for a container, so the test is rewritten against `Restart-Service`, not deleted.
 
     The count is taken BEFORE and compared AFTER. Checking only that the service comes back would
     pass on an empty volume, which is the failure this test exists to catch.
     """
-    _require_docker()
     conn = _require_stack()
     try:
         with conn.cursor() as cur:
@@ -82,7 +110,7 @@ def test_A1_postgres_survives_a_container_restart_with_its_data():
         conn.close()
     assert before > 0, "nothing is stored, so surviving a restart would prove nothing"
 
-    result = wsl(f"cd {COMPOSE_DIR} && docker compose restart postgres")
+    result = _restart_windows_service("postgresql-x64-18")
     assert result.returncode == 0, result.stderr
 
     for _ in range(60):
@@ -107,9 +135,14 @@ def test_A1_postgres_survives_a_container_restart_with_its_data():
 
 
 @pytest.mark.skipif(not RESTART_ENABLED, reason="restart tests are opt-in: set MK_RESTART_TESTS=1")
-def test_A2_neo4j_survives_a_container_restart_with_its_data():
-    """A: "Neo4j survives container restart" + "Persistent data remains available." """
-    _require_docker()
+def test_A2_neo4j_survives_a_service_restart_with_its_data():
+    """A: "Neo4j survives container restart" + "Persistent data remains available."
+
+    REWRITTEN 2026-08-07 (docker-exit Task 6): Neo4j is now the native Windows service `neo4j`
+    (the `mk-neo4j` container is stopped, kept only as a rollback until Task 12). Same rationale
+    as A1: the property survives the move from container to service, so the test is rewritten
+    against `Restart-Service`, not deleted.
+    """
     driver = config.neo4j_driver()
     try:
         before = driver.execute_query("MATCH (n) RETURN count(n) AS c").records[0]["c"]
@@ -117,7 +150,7 @@ def test_A2_neo4j_survives_a_container_restart_with_its_data():
         driver.close()
     assert before > 0, "the graph is empty, so surviving a restart would prove nothing"
 
-    result = wsl(f"cd {COMPOSE_DIR} && docker compose restart neo4j")
+    result = _restart_windows_service("neo4j")
     assert result.returncode == 0, result.stderr
 
     after = None

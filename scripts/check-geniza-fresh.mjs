@@ -11,8 +11,8 @@
 // the Store alias stub, which prints "Python was not found" and exits non-zero — an ABSENCE, not
 // a failure).
 //
-// SKIPS LOUDLY when the stack is not running. A developer without Docker up is not a developer
-// with a stale corpus, and blocking them would only teach the skip hatch.
+// SKIPS LOUDLY when the stack is not running. A developer whose native PostgreSQL service is down
+// is not a developer with a stale corpus, and blocking them would only teach the skip hatch.
 
 import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
@@ -104,7 +104,7 @@ if (!out) {
 if (out.status !== 0) {
   const why = out.stderr.trim().split('\n').pop() ?? '';
   if (/ConfigError|OperationalError|could not connect|connection refused/i.test(out.stderr)) {
-    console.log('SKIPPED — the geniza is not reachable (start it: docker compose up -d in infra/).');
+    console.log('SKIPPED — the geniza is not reachable (start it: Start-Service postgresql-x64-18).');
     console.log(`  ${why.slice(0, 140)}`);
     console.log('  NOT VERIFIED here: whether the geniza matches the disk.');
     process.exit(0);

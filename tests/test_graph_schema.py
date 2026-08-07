@@ -206,7 +206,7 @@ def _session():
         )
         driver.verify_connectivity()
     except Exception as exc:
-        pytest.skip(f"Neo4j is not reachable ({type(exc).__name__}) — start it with: docker compose up -d")
+        pytest.skip(f"Neo4j is not reachable ({type(exc).__name__}) — start it with: Start-Service neo4j")
     return driver
 
 

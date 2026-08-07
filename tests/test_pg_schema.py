@@ -1,6 +1,7 @@
 """The PostgreSQL schema does what the owner's prompt says it must — asserted against a live DB.
 
-These tests need the stack running (`docker compose up -d` in infra/). Where it is absent — CI,
+These tests need the stack running (the native Windows services `postgresql-x64-18` and `neo4j`).
+Where it is absent — CI,
 a fresh checkout — they SKIP and say so. An absent database is an absence, not a failure; that
 distinction is L54 and this project has now paid for it three times in one day.
 
@@ -55,7 +56,7 @@ def connect(role: str = "superuser"):
     try:
         return psycopg2.connect(**_params(role))
     except psycopg2.OperationalError as exc:
-        pytest.skip(f"PostgreSQL is not reachable ({str(exc).strip()[:80]}) — start it with: docker compose up -d")
+        pytest.skip(f"PostgreSQL is not reachable ({str(exc).strip()[:80]}) — start it with: Start-Service postgresql-x64-18")
 
 
 @pytest.fixture

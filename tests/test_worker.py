@@ -35,7 +35,7 @@ def _require_stack():
     try:
         conn = config.connect_writer(timeout=5)
     except Exception as exc:
-        pytest.skip(f"PostgreSQL is not reachable ({type(exc).__name__}) — docker compose up -d")
+        pytest.skip(f"PostgreSQL is not reachable ({type(exc).__name__}) — start it with: Start-Service postgresql-x64-18")
     return conn
 
 
