@@ -127,6 +127,12 @@ function Invoke-BoundedProcess {
         $exited = $proc.WaitForExit($TimeoutSeconds * 1000)
         if (-not $exited) {
             $procId = $proc.Id
+            # Reviewer minor (coordinator review, this task, not fixed -- comment only): if
+            # taskkill.exe is unavailable, this silently degrades to $proc.Kill() below, which kills
+            # only the immediate process, not its tree -- the exact orphan-grandchild gap fix round 4
+            # (this file's earlier comment, ~line 84) already documented and fixed FOR the normal case
+            # by switching to taskkill in the first place. taskkill.exe ships with Windows and is not
+            # expected to be missing here; noted as a latent gap, not treated as reachable today.
             try { & taskkill.exe /T /F /PID $procId *> $null } catch { }
             try { if (-not $proc.HasExited) { $proc.Kill() } } catch { }
             throw "$FilePath $($ArgumentList -join ' ') timed out after ${TimeoutSeconds}s and was killed (process tree, PID $procId)"
@@ -516,21 +522,54 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
     # exercised live in this task's RED witness (see this task's report): killing ollama and re-running
     # this script relaunched it and Verify passed within seconds.
     #
-    # WHAT THIS COMPONENT CANNOT DETECT: a model that answers with a plausible-looking 1024-dim vector
-    # that is nonetheless semantically wrong (e.g. the wrong model swapped in under the same name, or a
-    # corrupted weights file that still produces syntactically valid output) -- this checks shape, not
-    # content quality. It also does not detect ollama serving a DIFFERENT embedding model correctly
-    # while bge-m3 itself is missing/unpulled (that would surface as the API call itself erroring, which
-    # IS caught -- Test-OllamaEmbeds returns $false on any exception, including "model not found").
+    # Fix round 1 (coordinator review, this task): the shape check above (right model, right
+    # dimensionality) does not rule out a degenerate all-zero or near-zero vector -- 1024 zeros passes
+    # the count check and would report `already ok` while every downstream semantic_search silently
+    # returns garbage. Guard with a magnitude floor. Measured a real bge-m3 embedding on this machine
+    # (this task, same prompt used below): L2 magnitude ~26.5. The floor is set at 1.0 -- roughly 26x
+    # below the measured real value, comfortably clear of normal per-prompt variance, while still far
+    # enough above zero to catch an all-zero or near-zero response outright. This is a floor, not a
+    # tuned quality threshold: it exists to catch "the model returned nothing meaningful", not to
+    # judge embedding quality.
+    $script:OllamaMinMagnitude = 1.0
+
+    # WHAT THIS COMPONENT CANNOT DETECT: a model that answers with a plausible-looking, non-degenerate
+    # 1024-dim vector that is nonetheless semantically wrong (e.g. the wrong model swapped in under the
+    # same name, or corrupted weights that still produce syntactically valid, non-zero output) -- this
+    # checks shape and magnitude, not embedding content/quality. It also does not detect ollama serving
+    # a DIFFERENT embedding model correctly while bge-m3 itself is missing/unpulled (that would surface
+    # as the API call itself erroring, which IS caught -- Test-OllamaEmbeds returns $false on any
+    # exception, including "model not found").
     function Test-OllamaEmbeds {
         if (-not ($ollamaCfg.Model -and $ollamaCfg.Url -and $ollamaCfg.Dim)) { return $false }
         try {
             $body = @{ model = $ollamaCfg.Model; prompt = 'watchman health probe' } | ConvertTo-Json -Compress
             $r = Invoke-RestMethod -Uri "$($ollamaCfg.Url)/api/embeddings" -Method Post -Body $body -ContentType 'application/json' -TimeoutSec 15
-            return [bool]($r.embedding -and $r.embedding.Count -eq $ollamaCfg.Dim)
+            if (-not ($r.embedding -and $r.embedding.Count -eq $ollamaCfg.Dim)) { return $false }
+            $sumSquares = 0.0
+            foreach ($v in $r.embedding) { $sumSquares += [double]$v * [double]$v }
+            $magnitude = [math]::Sqrt($sumSquares)
+            return [bool]($magnitude -ge $script:OllamaMinMagnitude)
         } catch { return $false }
     }
 
+    # RECOVER RISK JUDGEMENT (coordinator review, this task; deliberately NOT changed, per instruction
+    # -- written down instead): this Recover force-kills every `ollama*` process with no coordination
+    # check first. That can interrupt a model call another process has in flight -- an in-progress
+    # ingest embed batch (scripts/ingest.py) or a live retrieval.semantic_search call from a concurrent
+    # session. Judged acceptable TODAY for two reasons, both narrow: (1) the watchman is manual-only
+    # right now (no schedule wired -- Phase 6 is where scheduling lands), so an operator runs it
+    # deliberately and can see what else is running; (2) the geniza's extraction/ingest writes are
+    # documented idempotent (R-102/R-107) -- a killed-and-restarted embed batch can be safely re-run
+    # from where it left off, it does not corrupt or duplicate state. NEITHER reason survives a
+    # schedule: an unattended timer has no operator to notice a collision, and "idempotent on retry"
+    # is not the same as "safe to interrupt with no signal to the caller who was mid-request" -- a
+    # caller blocked on the killed HTTP call gets a bare connection failure, not a clean retry signal.
+    # BEFORE this runs on a timer (Phase 6), this Recover needs either: a check for ollama activity
+    # (e.g. `/api/ps` reporting a model with recent request activity) before killing, or a
+    # coordination lock shared with scripts/ingest.py so a scheduled watchman run defers instead of
+    # killing mid-batch. Not built here -- flagged for whoever wires Phase 6 scheduling to read this
+    # comment before reusing this Recover unattended.
     $ollamaResult = Invoke-ComponentCheck -Name 'ollama' -Severity 'warn' -MaxRecoverWaitSeconds 60 `
         -Detect { Test-OllamaEmbeds } `
         -Recover {

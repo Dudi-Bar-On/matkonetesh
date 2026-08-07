@@ -91,14 +91,22 @@ function Get-SerenaExe {
 }
 
 # Every process belonging to THIS shared server (cmd wrapper + serena.exe + python children).
-# The triple match is the teardown safety fence: a stdio instance matches none of --port/streamable-http.
+# The quadruple match is the teardown/identity safety fence: a stdio instance matches none of
+# --port/streamable-http, and (fix round 1, coordinator review, watchman Task 20) a shared server
+# answering MCP but pointed at a DIFFERENT project now fails the --project match too. Before this,
+# a server up-and-answering-MCP for some OTHER repo satisfied all three original tokens and reported
+# healthy -- exactly the gap the owner's §10.17a one-server-one-project ruling exists to prevent.
+# $ProjectPath is wildcard-escaped before matching -- it is a filesystem path, not a pattern, and
+# could in principle contain characters -like treats as wildcards ([, ], *, ?).
 function Get-SharedServerProcesses {
+    $projectPattern = [System.Management.Automation.WildcardPattern]::Escape($ProjectPath)
     Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
         Where-Object {
             $_.CommandLine -and
             $_.CommandLine -like '*start-mcp-server*' -and
             $_.CommandLine -like '*streamable-http*' -and
-            $_.CommandLine -like "*--port $Port*"
+            $_.CommandLine -like "*--port $Port*" -and
+            $_.CommandLine -like "*--project `"$projectPattern`"*"
         }
 }
 
