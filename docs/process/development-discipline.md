@@ -1915,6 +1915,38 @@ from the caller, never from inside a function whose value someone captures. And 
 parses another process's output: **an unparseable line is a failure, never a skip.** If the count is
 allowed to shrink silently, the count is not evidence.
 
+**L67 · Consistency with another artefact is not correctness — and two stale things agree perfectly
+(2026-08-07).**
+
+**What happened.** Before dispatching the last ten tasks of the watchman plan, I had a pre-flight audit
+read them against the real repository. It found three blockers and saved three review rounds. It also
+marked Task 19 **clean**, with this reasoning: its `wsl -u root … service docker start` sequence "is a
+verbatim match to the proven `scripts/run-extraction.ps1`."
+
+That sentence is true and the conclusion was wrong. The geniza's PostgreSQL had moved off Docker to a
+native Windows service the day before. `run-extraction.ps1` still started Docker — legitimately, for
+Neo4j — so the two files agreed with each other while both were stale with respect to the machine. The
+component shipped probing `docker exec mk-postgres`, a container holding a superseded copy of the
+evidence store, and would have **reported the geniza healthy on the strength of a database nobody had
+written to in a day.**
+
+**What it exposed underneath.** Chasing it found the container still running beside the live service,
+still declared in `infra/compose.yaml`, and therefore resurrected by every `docker compose up -d` —
+including the one inside the extraction runner. Measured: the container held 853 documents frozen at
+the migration; the native service held 855 and growing. Any document, script or agent naming
+`mk-postgres` was reading a different database and would never be told.
+
+**Why the audit could not have caught it as instructed.** I asked it to check that paths exist,
+commands exist, interfaces line up, and tests are not vacuous. Every one of those questions is answered
+**inside the repository**. Staleness against the world is not visible from inside the repository at
+all — the repository is exactly where the stale copy lives.
+
+**The rule.** When verifying a claim about infrastructure, the oracle is the **machine**, never another
+file. `Get-Service`, `docker ps`, `Get-Command`, an actual connection — those are evidence. "It matches
+the other script" is a statement about two texts. And when a check is asked to prove something about
+the world, add the explicit question: *what would this look like if the world had changed and both
+files had not?* Two artefacts that agree are not two witnesses; often they are one witness copied.
+
 **Adopted win — attack the rule, do not assert it.** Every real defect in this arc was found by a
 test that tried to BREAK a guarantee rather than confirm it. `mk_app` was asked to `CREATE TABLE`
 and succeeded, revealing a grant that had had no user for weeks — a test that merely read the
