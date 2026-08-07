@@ -18,6 +18,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const PIPELINE_MODULE = pathToFileURL(join(ROOT, 'scripts', 'hooks', 'pipeline.mjs')).href;
 const CLI = join(ROOT, 'scripts', 'hooks', 'pretooluse.mjs');
+const SUBAGENTSTOP_CLI = join(ROOT, 'scripts', 'hooks', 'subagentstop.mjs'); // Task 5, Fix Round 1
 
 let failures = 0;
 let total = 0;
@@ -55,6 +56,18 @@ function runCli({ stdin, rulesDir, logPath, env: extraEnv }) {
   if (logPath) env.PRETOOLUSE_LOG_PATH = logPath;
   return spawnSync(process.execPath, [CLI], {
     input: stdin,
+    encoding: 'utf8',
+    env,
+    cwd: ROOT,
+    timeout: 15000,
+  });
+}
+
+// Task 5, Fix Round 1 — runs the REAL subagentstop.mjs entry point (releases one ledger slot).
+function runSubagentStop({ stdin, env: extraEnv } = {}) {
+  const env = { ...process.env, ...(extraEnv || {}) };
+  return spawnSync(process.execPath, [SUBAGENTSTOP_CLI], {
+    input: stdin ?? JSON.stringify({ hook_event_name: 'SubagentStop', agent_id: 'test-agent', agent_transcript_path: '/tmp/x.jsonl' }),
     encoding: 'utf8',
     env,
     cwd: ROOT,
@@ -611,6 +624,368 @@ function navigateInput() {
   } finally {
     await holder.stop();
   }
+}
+
+// ---------------------------------------------------------------------------------------------
+// TASK 5 — agent-concurrency-ceiling.mjs: §10.5a "≤3 קלים; ≤5 קשיח" on `PreToolUse:Agent`.
+// Exercises the REAL shipped rule under the REAL default rules dir, like every rule above.
+//
+// HOW THE OVER-CEILING CONDITION IS CONSTRUCTED HONESTLY WITHOUT SPAWNING REAL SUBAGENTS (brief
+// constraint): the rule's own ledger format is {dispatchedAt, hostPid} — this is REAL evidence the
+// rule itself would have written, just seeded directly instead of produced by N real Agent
+// dispatches. Two disciplines keep this honest rather than a fabricated stand-in:
+//   1. Where "still alive" matters, the seeded hostPid is a REAL, currently-running OS pid
+//      (this test process's own `process.pid`, alive for the test's whole duration) — the rule's
+//      real `tasklist` liveness check runs against it for real, not a mocked answer.
+//   2. Where "the owning process crashed" matters, a REAL child process is spawned (reusing the
+//      already-proven `spawnRealPortHolder` helper from Task 4's tests above) and then REALLY
+//      killed — the rule's liveness check observes a genuine pid disappearing from the OS
+//      process table, exactly the mechanism it would use against a real crashed session.
+// ---------------------------------------------------------------------------------------------
+const AGENT_TEST_PORT = 18925;
+
+function agentInput(description) {
+  return JSON.stringify({
+    tool_name: 'Agent',
+    tool_input: { description: description || 'test dispatch', prompt: 'x', subagent_type: 'general-purpose' },
+  });
+}
+
+function decisionForAgent({ seedLedger, env } = {}) {
+  const work = tempDir('hooks-groupa-agentceiling-');
+  const logPath = join(work, 'log.jsonl');
+  const ledgerPath = join(work, 'ledger.json');
+  if (seedLedger) writeFileSync(ledgerPath, JSON.stringify(seedLedger), 'utf8');
+  const r = runCliRealRules({
+    stdin: agentInput(),
+    logPath,
+    env: { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath, ...env },
+  });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  let ledgerAfter;
+  try { ledgerAfter = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch { ledgerAfter = null; }
+  return { r, stdoutJson, ledgerAfter };
+}
+
+// --- non-Agent tool call is untouched, even with a full ledger present ------------------------
+{
+  const work = tempDir('hooks-groupa-agentceiling-nonagent-');
+  const logPath = join(work, 'log.jsonl');
+  const r = runCliRealRules({ stdin: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'ls' } }), logPath });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  check('§10.5a ceiling rule: a non-Agent tool call is untouched (allow)',
+    r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// --- REQUIRED PROOF: a SINGLE agent dispatch, empty ledger, MUST pass ---------------------------
+{
+  const { r, stdoutJson, ledgerAfter } = decisionForAgent({ env: { PRETOOLUSE_HOST_PID: String(process.pid) } });
+  check('§10.5a ceiling rule: exit code 0 for a single agent dispatch', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+  check('§10.5a ceiling rule: a SINGLE agent dispatch with nothing else live is NOT blocked and NOT warned',
+    stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny' && stdoutJson?.systemMessage === undefined,
+    `stdout=${JSON.stringify(stdoutJson)}`);
+  check('§10.5a ceiling rule: the ledger now records exactly 1 live entry after the single dispatch',
+    Array.isArray(ledgerAfter) && ledgerAfter.length === 1, `ledgerAfter=${JSON.stringify(ledgerAfter)}`);
+}
+
+// --- under both ceilings: 2 already live (real, alive pid) -> 3rd dispatch is a plain allow ----
+{
+  const seed = [
+    { dispatchedAt: Date.now(), hostPid: process.pid },
+    { dispatchedAt: Date.now(), hostPid: process.pid },
+  ];
+  const { stdoutJson, ledgerAfter } = decisionForAgent({ seedLedger: seed, env: { PRETOOLUSE_HOST_PID: String(process.pid) } });
+  check('§10.5a ceiling rule: 2 live + this dispatch = 3, at the soft ceiling, still a plain allow (no warn)',
+    stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny' && stdoutJson?.systemMessage === undefined,
+    `stdout=${JSON.stringify(stdoutJson)}`);
+  check('§10.5a ceiling rule: ledger now has 3 entries', Array.isArray(ledgerAfter) && ledgerAfter.length === 3, `ledgerAfter=${JSON.stringify(ledgerAfter)}`);
+}
+
+// --- RED — over the SOFT ceiling (3): 3 already live -> 4th dispatch WARNS, is still allowed ---
+{
+  const seed = [0, 1, 2].map(() => ({ dispatchedAt: Date.now(), hostPid: process.pid }));
+  const { r, stdoutJson, ledgerAfter } = decisionForAgent({ seedLedger: seed, env: { PRETOOLUSE_HOST_PID: String(process.pid) } });
+  check('§10.5a ceiling rule: exit code 0 over the soft ceiling', r.status === 0, `status=${r.status}`);
+  check('§10.5a ceiling rule: 3 live + this dispatch = 4, over the soft ceiling of 3 -> WARN (allow + systemMessage), never a deny',
+    stdoutJson?.hookSpecificOutput?.permissionDecision === 'allow' && typeof stdoutJson?.systemMessage === 'string',
+    `stdout=${JSON.stringify(stdoutJson)}`);
+  check('§10.5a ceiling rule: the warn names §10.5a and both ceiling numbers',
+    typeof stdoutJson?.systemMessage === 'string' && /10\.5a/.test(stdoutJson.systemMessage) && /\b3\b/.test(stdoutJson.systemMessage) && /\b5\b/.test(stdoutJson.systemMessage),
+    `systemMessage=${stdoutJson?.systemMessage}`);
+  check('§10.5a ceiling rule: the warned dispatch IS still recorded in the ledger (it went through)',
+    Array.isArray(ledgerAfter) && ledgerAfter.length === 4, `ledgerAfter=${JSON.stringify(ledgerAfter)}`);
+}
+
+// --- RED — over the HARD ceiling (5): 5 already live -> 6th dispatch is BLOCKED ----------------
+{
+  const seed = [0, 1, 2, 3, 4].map(() => ({ dispatchedAt: Date.now(), hostPid: process.pid }));
+  const { r, stdoutJson, ledgerAfter } = decisionForAgent({ seedLedger: seed, env: { PRETOOLUSE_HOST_PID: String(process.pid) } });
+  check('§10.5a ceiling rule: exit code 0 over the hard ceiling', r.status === 0, `status=${r.status}`);
+  check('§10.5a ceiling rule: 5 live + this dispatch = 6, over the hard ceiling of 5 -> BLOCKED (deny)',
+    stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+  check('§10.5a ceiling rule: the deny reason names §10.5a and the hard ceiling',
+    typeof stdoutJson?.hookSpecificOutput?.permissionDecisionReason === 'string'
+    && /10\.5a/.test(stdoutJson.hookSpecificOutput.permissionDecisionReason)
+    && /hard ceiling of 5/.test(stdoutJson.hookSpecificOutput.permissionDecisionReason),
+    `reason=${stdoutJson?.hookSpecificOutput?.permissionDecisionReason}`);
+  check('§10.5a ceiling rule: a BLOCKED dispatch is NOT added to the ledger — it stays at 5, not 6 (proves a blocked call never counts as a live agent)',
+    Array.isArray(ledgerAfter) && ledgerAfter.length === 5, `ledgerAfter=${JSON.stringify(ledgerAfter)}`);
+}
+
+// --- crash self-clearing: entries owned by a REAL process that is then REALLY killed are pruned,
+// so the very next dispatch after the "crash" is NOT blocked even though 5 were "live" a moment
+// before — this is the brief's central demand: a hard crash mid-run must not block work forever. -
+{
+  const holder = await spawnRealPortHolder(AGENT_TEST_PORT); // a real OS process, real pid
+  const seed = [0, 1, 2, 3, 4].map(() => ({ dispatchedAt: Date.now(), hostPid: holder.pid }));
+  await holder.stop(); // the "crash": the owning process is really gone before the next dispatch
+  try {
+    const { r, stdoutJson, ledgerAfter } = decisionForAgent({ seedLedger: seed, env: { PRETOOLUSE_HOST_PID: String(process.pid) } });
+    check('§10.5a ceiling rule: exit code 0 after the simulated crash', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+    check('§10.5a ceiling rule: after the owning process is confirmed dead, its 5 "live" entries are NOT counted — the next dispatch is allowed, not blocked forever',
+      stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny' && stdoutJson?.systemMessage === undefined,
+      `stdout=${JSON.stringify(stdoutJson)}`);
+    check('§10.5a ceiling rule: the dead process\'s 5 stale entries were pruned from the ledger, leaving only this one live dispatch',
+      Array.isArray(ledgerAfter) && ledgerAfter.length === 1, `ledgerAfter=${JSON.stringify(ledgerAfter)}`);
+  } finally {
+    // already stopped above; nothing further to tear down.
+  }
+}
+
+// --- TTL self-clearing: entries owned by a STILL-ALIVE pid (this test process) but older than the
+// configured TTL are ALSO pruned — the same-session "agent finished normally, no crash, no signal"
+// case, which pid-liveness alone can never retire (see rule file header, point 3). -----------------
+{
+  const ttlMs = 5000;
+  const seed = [0, 1, 2, 3, 4].map(() => ({ dispatchedAt: Date.now() - ttlMs - 1000, hostPid: process.pid }));
+  const { r, stdoutJson, ledgerAfter } = decisionForAgent({
+    seedLedger: seed,
+    env: { PRETOOLUSE_HOST_PID: String(process.pid), PRETOOLUSE_AGENT_TTL_MS: String(ttlMs) },
+  });
+  check('§10.5a ceiling rule: exit code 0 for TTL-expired entries', r.status === 0, `status=${r.status}`);
+  check('§10.5a ceiling rule: 5 entries older than the TTL, owned by a LIVE pid, are still pruned as expired -> allow, not blocked',
+    stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny' && stdoutJson?.systemMessage === undefined,
+    `stdout=${JSON.stringify(stdoutJson)}`);
+  check('§10.5a ceiling rule: TTL-expired entries are dropped from the ledger, leaving only this one live dispatch',
+    Array.isArray(ledgerAfter) && ledgerAfter.length === 1, `ledgerAfter=${JSON.stringify(ledgerAfter)}`);
+}
+
+// --- counter-proof: entries owned by the SAME live pid and still within TTL DO still count -------
+// (proves the TTL test above is meaningfully red, not vacuously green because nothing ever counts)
+{
+  const ttlMs = 5000;
+  const seed = [0, 1, 2, 3, 4].map(() => ({ dispatchedAt: Date.now(), hostPid: process.pid })); // fresh, not expired
+  const { stdoutJson, ledgerAfter } = decisionForAgent({
+    seedLedger: seed,
+    env: { PRETOOLUSE_HOST_PID: String(process.pid), PRETOOLUSE_AGENT_TTL_MS: String(ttlMs) },
+  });
+  check('§10.5a ceiling rule (counter-proof): 5 FRESH entries under the same TTL are still counted as live -> blocked',
+    stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+  check('§10.5a ceiling rule (counter-proof): ledger unchanged at 5 (blocked dispatch not appended)',
+    Array.isArray(ledgerAfter) && ledgerAfter.length === 5, `ledgerAfter=${JSON.stringify(ledgerAfter)}`);
+}
+
+// --- malformed ledger (corrupt JSON) is treated as empty, never a crash, never a block -----------
+{
+  const work = tempDir('hooks-groupa-agentceiling-corrupt-');
+  const logPath = join(work, 'log.jsonl');
+  const ledgerPath = join(work, 'ledger.json');
+  writeFileSync(ledgerPath, '{ not valid json at all', 'utf8');
+  const r = runCliRealRules({
+    stdin: agentInput(),
+    logPath,
+    env: { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath, PRETOOLUSE_HOST_PID: String(process.pid) },
+  });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  check('§10.5a ceiling rule: exit code 0 for a corrupt ledger', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+  check('§10.5a ceiling rule: a corrupt ledger file is treated as empty, not a crash, not a block',
+    stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny' && stdoutJson?.systemMessage === undefined,
+    `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// TASK 5, FIX ROUND 1 (owner review finding, Critical) — SubagentStop closes the loop.
+//
+// THE REGRESSION THIS SECTION PROVES CLOSED: the reviewer measured 6 STRICTLY SEQUENTIAL
+// dispatches (each one's agent already finished before the next began — no more than 1 ever truly
+// live) producing 2 warns and 2 blocks under the TTL-only design, because nothing told the ledger
+// an agent had finished. `subagentstop.mjs` is the fix: it releases one ledger slot per
+// `SubagentStop` event. This section tests the entry point directly AND proves the end-to-end
+// regression the reviewer's own measurement encodes.
+// ---------------------------------------------------------------------------------------------
+
+// --- subagentstop.mjs releases exactly the OLDEST live entry (FIFO — see agent-ledger.mjs's
+// header for why identity-matching isn't available, and oldest-first is the honest next-best) ----
+{
+  const work = tempDir('hooks-groupa-subagentstop-release-');
+  const ledgerPath = join(work, 'ledger.json');
+  // Recent, realistic timestamps (relative to now) — NOT small literals like 1000/2000/3000ms,
+  // which would be 1970-era epoch times and get pruned as TTL-expired before the FIFO pick even
+  // runs, silently testing the prune path instead of the release path.
+  const t0 = Date.now() - 3000;
+  const seed = [
+    { dispatchedAt: t0, hostPid: process.pid },
+    { dispatchedAt: t0 + 2000, hostPid: process.pid },
+    { dispatchedAt: t0 + 1000, hostPid: process.pid }, // deliberately out of order on disk
+  ];
+  writeFileSync(ledgerPath, JSON.stringify(seed), 'utf8');
+  const r = runSubagentStop({ env: { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath } });
+  check('subagentstop.mjs: exit code 0', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+  let after;
+  try { after = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch { after = null; }
+  check('subagentstop.mjs: releases exactly the OLDEST entry regardless of on-disk order, leaving the other 2',
+    Array.isArray(after) && after.length === 2 && after.every((e) => e.dispatchedAt !== t0),
+    `after=${JSON.stringify(after)}`);
+}
+
+// --- no-op on an empty/missing ledger: never throws, exit 0 -----------------------------------
+{
+  const work = tempDir('hooks-groupa-subagentstop-empty-');
+  const ledgerPath = join(work, 'ledger-does-not-exist.json');
+  const r = runSubagentStop({ env: { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath } });
+  check('subagentstop.mjs: exit code 0 on an empty/missing ledger (no-op, never throws)', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+}
+
+// --- malformed stdin JSON still releases a slot (fail-open, and the release doesn't depend on
+// the event payload parsing, since no reliable per-agent identifier is available anyway) --------
+{
+  const work = tempDir('hooks-groupa-subagentstop-malformed-');
+  const ledgerPath = join(work, 'ledger.json');
+  writeFileSync(ledgerPath, JSON.stringify([{ dispatchedAt: Date.now(), hostPid: process.pid }]), 'utf8');
+  const r = runSubagentStop({ stdin: '{ not valid json at all', env: { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath } });
+  check('subagentstop.mjs: exit code 0 for malformed stdin JSON (fail-open, never a crash)', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+  let after;
+  try { after = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch { after = null; }
+  check('subagentstop.mjs: still releases a slot even when its own stdin JSON is malformed',
+    Array.isArray(after) && after.length === 0, `after=${JSON.stringify(after)}`);
+}
+
+// --- opportunistic cleanup: a dead-pid entry is pruned as part of the SAME release pass, not left
+// for a future PreToolUse:Agent call to find -----------------------------------------------------
+{
+  const work = tempDir('hooks-groupa-subagentstop-prune-');
+  const ledgerPath = join(work, 'ledger.json');
+  const seed = [
+    { dispatchedAt: Date.now(), hostPid: 999999 }, // a pid that does not exist
+    { dispatchedAt: Date.now(), hostPid: process.pid }, // the only genuinely live one
+  ];
+  writeFileSync(ledgerPath, JSON.stringify(seed), 'utf8');
+  const r = runSubagentStop({ env: { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath } });
+  check('subagentstop.mjs: exit code 0 with a mixed dead/live ledger', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+  let after;
+  try { after = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch { after = null; }
+  check('subagentstop.mjs: the dead-pid entry is pruned AND the one live entry is released (oldest of what remains) -> empty, not 1',
+    Array.isArray(after) && after.length === 0, `after=${JSON.stringify(after)}`);
+}
+
+// --- THE REGRESSION ITSELF: N STRICTLY SEQUENTIAL dispatches (each one's SubagentStop fires
+// before the next dispatch begins) must ALL be a plain allow — no warning, no block, no matter how
+// many. N is chosen deliberately larger than the hard ceiling (5) to prove sequential work is
+// genuinely unbounded, not just "under the ceiling by luck." ------------------------------------
+{
+  const work = tempDir('hooks-groupa-agentceiling-sequential-');
+  const ledgerPath = join(work, 'ledger.json');
+  const env = { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath, PRETOOLUSE_HOST_PID: String(process.pid) };
+  const N = 10;
+  let allClean = true;
+  const details = [];
+  for (let i = 0; i < N; i++) {
+    const dLog = join(work, `dispatch-log-${i}.jsonl`);
+    const r = runCliRealRules({ stdin: agentInput(`sequential dispatch #${i + 1}`), logPath: dLog, env });
+    let stdoutJson;
+    try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+    const clean = r.status === 0
+      && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny'
+      && stdoutJson?.systemMessage === undefined;
+    details.push(`#${i + 1}: ${JSON.stringify(stdoutJson)}`);
+    if (!clean) allClean = false;
+
+    // This agent "finishes" before the next dispatch begins — exactly the reviewer's measurement.
+    const sr = runSubagentStop({ env: { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath } });
+    if (sr.status !== 0) allClean = false;
+  }
+  check(`§10.5a ceiling rule (Fix Round 1 regression): ${N} STRICTLY SEQUENTIAL dispatches (each one's stop fires before the next begins) are ALL a plain allow, no warning, no block`,
+    allClean, details.join(' | '));
+  let finalLedger;
+  try { finalLedger = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch { finalLedger = null; }
+  check('§10.5a ceiling rule (Fix Round 1 regression): the ledger is empty after the last stop — every dispatch was properly retired, none left dangling',
+    Array.isArray(finalLedger) && finalLedger.length === 0, `finalLedger=${JSON.stringify(finalLedger)}`);
+}
+
+// --- counter-proof: WITHOUT the stop calls, the same 10 sequential dispatches still hit the
+// ceilings exactly as before Fix Round 1 — proves the regression test above is meaningfully red,
+// not vacuously green because the ceiling logic itself stopped enforcing anything. ----------------
+{
+  const work = tempDir('hooks-groupa-agentceiling-sequential-nostop-');
+  const ledgerPath = join(work, 'ledger.json');
+  const env = { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath, PRETOOLUSE_HOST_PID: String(process.pid) };
+  let sawWarn = false;
+  let sawBlock = false;
+  for (let i = 0; i < 6; i++) {
+    const dLog = join(work, `dispatch-log-${i}.jsonl`);
+    const r = runCliRealRules({ stdin: agentInput(`no-stop dispatch #${i + 1}`), logPath: dLog, env });
+    let stdoutJson;
+    try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+    if (stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny') sawBlock = true;
+    if (typeof stdoutJson?.systemMessage === 'string') sawWarn = true;
+  }
+  check('§10.5a ceiling rule (counter-proof): WITHOUT any stop events, 6 dispatches still produce at least one warn and one block — the ceiling logic itself is unchanged, only the retirement path is new',
+    sawWarn && sawBlock, `sawWarn=${sawWarn} sawBlock=${sawBlock}`);
+}
+
+// --- suite-busy ceiling: "1 בזמן סוויטה/GPU" (owner ruling on Fix Round 1 — implemented for the
+// suite half, reusing no-concurrent-suite-run.mjs's own port probe; GPU-busy is explicitly stated
+// unimplemented in agent-concurrency-ceiling.mjs's own header, no reusable signal exists). --------
+const AGENT_SUITE_BUSY_PORT = 18926;
+{
+  const holder = await openRealListener(AGENT_SUITE_BUSY_PORT); // simulates a live suite run
+  try {
+    const work = tempDir('hooks-groupa-agentceiling-suitebusy-');
+    const ledgerPath = join(work, 'ledger.json');
+    const env = {
+      PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath,
+      PRETOOLUSE_HOST_PID: String(process.pid),
+      MK_TEST_PORT: String(AGENT_SUITE_BUSY_PORT),
+    };
+
+    const first = runCliRealRules({ stdin: agentInput('first, suite busy'), logPath: join(work, 'l1.jsonl'), env });
+    let firstJson;
+    try { firstJson = first.stdout.trim() === '' ? {} : JSON.parse(first.stdout); } catch { firstJson = undefined; }
+    check('§10.5a ceiling rule (suite busy): the FIRST agent (0 live) is still allowed even while the suite is busy — the ceiling is 1, not 0',
+      firstJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(firstJson)}`);
+
+    const second = runCliRealRules({ stdin: agentInput('second, suite busy'), logPath: join(work, 'l2.jsonl'), env });
+    let secondJson;
+    try { secondJson = second.stdout.trim() === '' ? {} : JSON.parse(second.stdout); } catch { secondJson = undefined; }
+    check('§10.5a ceiling rule (suite busy): the SECOND agent (1 already live) is BLOCKED — "1 בזמן סוויטה/GPU" enforced',
+      secondJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(secondJson)}`);
+    check('§10.5a ceiling rule (suite busy): the block reason names the suite-busy reason, not just the numeric ceiling',
+      typeof secondJson?.hookSpecificOutput?.permissionDecisionReason === 'string'
+      && /suite/i.test(secondJson.hookSpecificOutput.permissionDecisionReason),
+      `reason=${secondJson?.hookSpecificOutput?.permissionDecisionReason}`);
+  } finally {
+    await holder();
+  }
+}
+{
+  // Once the suite finishes (port freed), the SAME ledger reverts to the normal ceiling — real
+  // state, not a leftover flag, same discipline as no-concurrent-suite-run.mjs's own proof.
+  const work = tempDir('hooks-groupa-agentceiling-suitefreed-');
+  const ledgerPath = join(work, 'ledger.json');
+  const env = {
+    PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath,
+    PRETOOLUSE_HOST_PID: String(process.pid),
+    MK_TEST_PORT: String(AGENT_SUITE_BUSY_PORT), // same port, now free
+  };
+  writeFileSync(ledgerPath, JSON.stringify([{ dispatchedAt: Date.now(), hostPid: process.pid }]), 'utf8');
+  const r = runCliRealRules({ stdin: agentInput('after suite freed'), logPath: join(work, 'l.jsonl'), env });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  check('§10.5a ceiling rule (suite busy): once the port is freed, a 2nd live agent is allowed again under the NORMAL ceiling (not stuck at 1)',
+    stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
 }
 
 console.log(`\n${total - failures}/${total} checks passed.`);

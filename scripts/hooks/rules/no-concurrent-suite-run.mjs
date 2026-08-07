@@ -69,7 +69,10 @@ function isPlaywrightTestInvocation(tokens) {
 // Resolves true/false — never rejects. A connect succeeding means something is listening; refused
 // or timed out means the port is free. 300ms is generous for a loopback probe and still fast
 // enough to pay on every matching Bash call without being felt.
-function portInUse(port, host = '127.0.0.1', timeoutMs = 300) {
+// EXPORTED (Task 5, Fix Round 1, owner ruling): agent-concurrency-ceiling.mjs reuses this EXACT
+// probe for its own "suite busy -> ceiling of 1" clause, rather than duplicating a second TCP
+// probe against the same port. Purely additive — no behavior of this rule changed.
+export function portInUse(port, host = '127.0.0.1', timeoutMs = 300) {
   return new Promise((resolve) => {
     const socket = new net.Socket();
     let settled = false;
