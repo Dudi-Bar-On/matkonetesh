@@ -18,6 +18,11 @@
             "type": "command",
             "command": "node scripts/session-rules.mjs",
             "timeout": 10
+          },
+          {
+            "type": "command",
+            "command": "powershell -NoProfile -ExecutionPolicy Bypass -File scripts/watchman.ps1",
+            "timeout": 30
           }
         ]
       }
