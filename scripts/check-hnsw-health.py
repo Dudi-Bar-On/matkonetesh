@@ -1,0 +1,156 @@
+"""Detect a SILENTLY corrupt HNSW index on the geniza's vector projection.
+
+WHY THIS EXISTS (2026-08-07). `data_chunk_vectors_embedding_idx` was found returning ZERO rows for a
+query with no WHERE clause at all, on a table holding 17,126 rows. Every ordinary health signal said
+the index was fine:
+
+    pg_index.indisvalid = true, indisready = true
+    SELECT count(*)                -> 17126
+    SELECT count(embedding)        -> 17126, all 1024 dims
+    the planner happily chose it   -> "Index Scan using data_chunk_vectors_embedding_idx"
+
+Only a query that actually ORDERED BY the vector distance came back empty, and only because a test
+happened to travel the dense path. Lexical search kept working, hybrid search kept returning rows
+through its text half, and count(*) is answered by a different index entirely -- so the corruption was
+invisible to every check this repository had. This is the fourth recorded occurrence (register R-102).
+
+WHAT IT CHECKS, and why it is shaped this way:
+
+    Take a row that already exists, use ITS OWN embedding as the query vector, and demand the index
+    return that row at distance ~0.
+
+That makes the probe deterministic and self-contained. It needs no embedding model, so it cannot fail
+because Ollama is down -- a probe that reports "corrupt index" when the real problem is a stopped model
+server is worse than no probe. And the expected answer is not a judgement call: a vector's nearest
+neighbour is itself, at distance zero, or the index is not answering.
+
+The comparison is index-path versus sequential-path on the same query. A healthy HNSW is APPROXIMATE
+and will legitimately disagree with exact search on the tail of a result list -- measured here at 94%
+distance-recall@10 right after a clean rebuild. It must never disagree about a vector's own identity.
+
+BOTH VECTOR INDEXES ARE CHECKED, and the second one is the one that matters more. The first version of
+this probe covered only data_chunk_vectors -- the LlamaIndex projection, where the corruption was
+found. Then `retrieval.semantic_search` turned out to read `document_chunks` instead, with its own
+`document_chunks_embedding_idx`: the path every agent-facing semantic query actually travels, and an
+index the register records as having been corrupted in an earlier occurrence too. A monitor aimed at
+the projection alone would have watched the quieter half of the problem.
+
+RESULT=ok | RESULT=fail | RESULT=skip  is printed as the last line, for scripts/watchman.ps1.
+`skip` means the store could not be reached at all -- absence, not corruption, and the geniza-postgres
+component is what speaks to that.
+"""
+from __future__ import annotations
+
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
+
+
+def _emit(result: str, detail: str) -> int:
+    print(detail)
+    print(f"RESULT={result}")
+    return 0 if result == "ok" else 1
+
+
+# (table, identity column, index name). document_chunks comes first deliberately: it is what
+# retrieval.semantic_search reads, so a failure there is the one that costs agents their evidence tool.
+TARGETS = [
+    ("public.document_chunks", "id", "public.document_chunks_embedding_idx"),
+    ("public.data_chunk_vectors", "node_id", "public.data_chunk_vectors_embedding_idx"),
+]
+
+
+def _probe(cur, table: str, id_column: str, index_name: str, forced_missing: bool) -> tuple[str, str]:
+    """Return (result, detail) for one table. Never raises for a data condition."""
+    cur.execute(
+        f"SELECT {id_column}, embedding FROM {table} WHERE embedding IS NOT NULL LIMIT 1"
+    )
+    row = cur.fetchone()
+    if row is None:
+        return "skip", f"{table} holds no embedded rows yet - nothing to probe"
+    identity, vector = row
+    if forced_missing:
+        identity = "00000000-0000-0000-0000-000000000000" if id_column == "id" else "__no_such_node_id__"
+
+    query = (
+        f"SELECT {id_column}, embedding <=> %s::vector AS d FROM {table} ORDER BY d ASC LIMIT 5"
+    )
+    cur.execute(query, (vector,))
+    via_index = cur.fetchall()
+
+    cur.execute("SET enable_indexscan = off")
+    cur.execute("SET enable_indexonlyscan = off")
+    cur.execute(query, (vector,))
+    via_seqscan = cur.fetchall()
+    cur.execute("RESET enable_indexscan")
+    cur.execute("RESET enable_indexonlyscan")
+
+    repair = f"REINDEX INDEX CONCURRENTLY {index_name} (as its owner role)."
+
+    if not via_seqscan:
+        return "skip", f"{table}: even a sequential scan returned nothing - not an index problem"
+    if not via_index:
+        return "fail", (
+            f"{index_name} returned NO rows for a query with no WHERE clause, while a sequential scan "
+            f"returned {len(via_seqscan)}. The index is corrupt. Repair: {repair}"
+        )
+    found = [r for r in via_index if str(r[0]) == str(identity)]
+    if not found:
+        return "fail", (
+            f"{index_name} did not return {identity} when queried with that row's OWN embedding (it "
+            f"returned {len(via_index)} other row(s)). A vector's nearest neighbour is itself. "
+            f"Repair: {repair}"
+        )
+    distance = float(found[0][1])
+    if distance > 1e-6:
+        return "fail", (
+            f"{index_name} returned {identity} at distance {distance:.6g} when queried with that row's "
+            f"own embedding - it should be 0. The index is answering with stale vectors. Repair: {repair}"
+        )
+    return "ok", (
+        f"{index_name}: identity found at distance {distance:.6g} via the index path, "
+        f"{len(via_index)} row(s), sequential scan agrees ({len(via_seqscan)})."
+    )
+
+
+def main(argv: list[str]) -> int:
+    # A deliberate escape hatch for proving the FAIL branch reachable: it asks the same question about
+    # a row that does not exist, so the identical comparison must report failure. Nothing in the
+    # production path passes it.
+    forced_missing = "--probe-missing-node" in argv
+
+    try:
+        from src.knowledge import config
+    except Exception as exc:  # import-time failure is absence, not corruption
+        return _emit("skip", f"cannot import the geniza config ({type(exc).__name__}: {exc})")
+
+    try:
+        conn = config.connect_reader()
+    except Exception as exc:
+        return _emit("skip", f"cannot reach the geniza store ({type(exc).__name__}: {exc})")
+
+    results = []
+    try:
+        cur = conn.cursor()
+        for table, id_column, index_name in TARGETS:
+            results.append((table, *_probe(cur, table, id_column, index_name, forced_missing)))
+    except Exception as exc:
+        return _emit("skip", f"the probe query could not run ({type(exc).__name__}: {exc})")
+    finally:
+        try:
+            conn.close()
+        except Exception:
+            pass
+
+    failures = [d for _, r, d in results if r == "fail"]
+    if failures:
+        return _emit("fail", " | ".join(failures))
+    if all(r == "skip" for _, r, _ in results):
+        return _emit("skip", " | ".join(d for _, _, d in results))
+    return _emit("ok", " | ".join(d for _, _, d in results))
+
+
+if __name__ == "__main__":
+    raise SystemExit(main(sys.argv[1:]))

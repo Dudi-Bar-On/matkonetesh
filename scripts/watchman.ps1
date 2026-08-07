@@ -533,6 +533,65 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         -Recover { Start-Service -Name 'neo4j' -ErrorAction SilentlyContinue } `
         -Verify { Test-Neo4jAnswers }
 
+    # hnsw-index (warn): added 2026-08-07 after the geniza's vector index was found returning ZERO rows
+    # for a query carrying no WHERE clause, on a table holding 17,126 rows -- while pg_index reported
+    # indisvalid/indisready true, count(*) answered 17,126, and the planner cheerfully chose the index.
+    # Register R-102, fourth occurrence. NOTHING in this file could see it: geniza-postgres reads
+    # document_revisions (a row count, answered by a different index entirely), ollama proves the
+    # embedding model answers, and lexical search never travels the dense path at all. The corruption
+    # was found by a pytest acceptance test that happened to use it, which is luck, not coverage.
+    #
+    # IT WATCHES BOTH VECTOR INDEXES, and the second discovery mattered more than the first: the
+    # corruption was found on data_chunk_vectors (the LlamaIndex projection), but
+    # retrieval.semantic_search -- the path every agent-facing semantic query travels -- reads
+    # document_chunks, with its own document_chunks_embedding_idx. A monitor aimed only at where the
+    # fault happened to surface would have watched the quieter half.
+    #
+    # WHY THE PROBE NEEDS NO EMBEDDING MODEL: it takes a row that already exists and queries with THAT
+    # ROW'S OWN embedding, demanding the index return it at distance 0. A vector's nearest neighbour is
+    # itself -- so the expected answer is not a judgement call and there is no threshold to tune. It
+    # also means this component cannot report "corrupt index" when the real fault is a stopped ollama,
+    # which would be a false alarm pointing at the wrong subsystem. The ollama component owns that.
+    #
+    # WARN, NOT BLOCK, and the owner's rule decides it: block is for what damages substance or removes
+    # an action with no equivalent path; warn is for what costs efficiency. A dead vector index costs
+    # semantic search, while search_current_docs (lexical, the same table, same revisions) keeps
+    # answering -- slower and less forgiving of phrasing, but it is a real alternative. No commit,
+    # build, or release gate reads the vector path.
+    #
+    # RECOVER GENUINELY REPAIRS: REINDEX INDEX CONCURRENTLY, measured at 2.7s for 17,126 vectors at
+    # 1024 dimensions (5.9s for both indexes), taking no exclusive lock so a live extraction is not blocked. It needs the index
+    # OWNER role (mk_admin) -- mk_app, the writer, gets "permission denied for index"; measured, not
+    # assumed -- so the credential is read inside repair-hnsw-index.py from infra/.env and never
+    # crosses into this file, a Detail string, or the JSONL log. -MaxRecoverWaitSeconds 30 covers a
+    # rebuild an order of magnitude slower than the measured one.
+    #
+    # WHAT IT STILL CANNOT SEE: partial corruption. The probe proves the index can find one specific
+    # vector; an index that answers identity correctly while losing recall on the rest of the corpus
+    # would pass. Full recall measurement means an exact scan per query, which is too expensive to run
+    # every thirty minutes -- so this catches the catastrophic shape that actually occurred, not every
+    # degradation. Measured recall right after a clean rebuild, for the record: 94% distance-recall@10.
+    function Test-HnswIndexAnswers {
+        $p = Invoke-BoundedProcess -FilePath 'py' `
+            -ArgumentList @('-3', (Join-Path $RepoRoot 'scripts\check-hnsw-health.py')) `
+            -TimeoutSeconds 60
+        $resultValue = $null
+        foreach ($line in ($p.Output -split "`r?`n")) { if ($line -match '^RESULT=(\S+)') { $resultValue = $Matches[1] } }
+        # 'skip' means the store is unreachable or empty -- absence, not corruption. Reporting OK there
+        # is deliberate: geniza-postgres already speaks to an unreachable store, and two components
+        # blaming one outage buries which subsystem is actually broken.
+        $p.ExitCode -eq 0 -and ($resultValue -eq 'ok' -or $resultValue -eq 'skip')
+    }
+
+    $hnswResult = Invoke-ComponentCheck -Name 'hnsw-index' -Severity 'warn' -MaxRecoverWaitSeconds 30 `
+        -Detect { Test-HnswIndexAnswers } `
+        -Recover {
+            Invoke-BoundedProcess -FilePath 'py' `
+                -ArgumentList @('-3', (Join-Path $RepoRoot 'scripts\repair-hnsw-index.py')) `
+                -TimeoutSeconds 300 | Out-Null
+        } `
+        -Verify { Test-HnswIndexAnswers }
+
     # Read EMBED_MODEL / OLLAMA_URL / EMBED_DIM straight out of src/knowledge/config.py rather than
     # hardcoding them here -- config.py is the one place that is allowed to know these values (this
     # task's brief: "read them from there, never hardcode"). A plain-text regex read (not a python
@@ -726,7 +785,7 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         } `
         -Verify { Test-SerenaUp }
 
-    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $neo4jResult, $ollamaResult, $serenaResult)
+    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $neo4jResult, $hnswResult, $ollamaResult, $serenaResult)
 })
 
 foreach ($r in $results) {
