@@ -155,6 +155,24 @@ def sync_rule(
             "WHERE rule_id = %s AND is_current = false AND revision_status = 'current'",
             (record.rule_id,),
         )
+        # rule_group (0005 migration, R-103-aware) is a HUMAN classification, not something the
+        # extractor derives from vocabulary the way `bucket` is — there is no `_classify_rule_group`
+        # regex, by design (spec §1.1's own regex-vs-judgement lesson: a mechanism axis that needs
+        # judgement should not be faked with a word list). So a re-sync triggered only by the
+        # document's TEXT changing (a rewording, a typo fix) must not silently null out a prior
+        # human classification just because the extractor never set one on the new record — that is
+        # exactly R-103's shape (a column with real data getting overwritten by a write path that
+        # doesn't carry it) one level up. If the incoming record carries no rule_group, inherit
+        # the PREVIOUS current revision's value (if any); an explicit rule_group on the record
+        # (e.g. a future classifier) always wins.
+        cur.execute(
+            "SELECT rule_group FROM rule_revisions WHERE rule_id = %s AND is_current",
+            (record.rule_id,),
+        )
+        prev_row = cur.fetchone()
+        inherited_rule_group = prev_row[0] if prev_row else None
+        rule_group = getattr(record, "rule_group", None) or inherited_rule_group
+
         # Step 1 — Postgres, is_current=false. source_path is the CALLER's real value (Fix round
         # 1) — never a hardcoded literal, and now (Fix round 2) never a silently-defaulted one
         # either — so sync_document's own `WHERE source_path = %s` lookup can trust what got
@@ -172,22 +190,24 @@ def sync_rule(
         cur.execute(
             """
             INSERT INTO rule_revisions
-                (rule_id, section, title_he, statement, bucket, severity, mechanism,
+                (rule_id, section, title_he, statement, bucket, rule_group, severity, mechanism,
                  source_path, source_heading, source_hash, revision_status, is_current)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'current', false)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'current', false)
             RETURNING revision_id
             """,
             (record.rule_id, record.section, record.title_he, record.statement,
-             getattr(record, "bucket", None), None, None,
+             getattr(record, "bucket", None), rule_group, None, None,
              source_path, record.source_heading, record.content_hash),
         )
         revision_id = cur.fetchone()[0]
     pg_conn.commit()
 
-    # Step 2 — the mirror.
+    # Step 2 — the mirror. rule_group is the SAME value just written to Postgres above (including
+    # the inheritance), never re-derived here — one computation, not two that could disagree.
     mirror_mod.write_revision(mirror_conn, {
         "rule_id": record.rule_id, "section": record.section, "title_he": record.title_he,
-        "statement": record.statement, "bucket": getattr(record, "bucket", None), "severity": None,
+        "statement": record.statement, "bucket": getattr(record, "bucket", None),
+        "rule_group": rule_group, "severity": None,
         "mechanism": None, "source_path": source_path,
         "source_heading": record.source_heading, "source_hash": record.content_hash,
         "revision_status": "current",
@@ -333,7 +353,7 @@ def rebuild_mirror_from_postgres(pg_conn, mirror_conn) -> int:
     mirror_conn.commit()
     with pg_conn.cursor() as cur:
         cur.execute(
-            "SELECT rule_id, section, title_he, statement, bucket, severity, mechanism, "
+            "SELECT rule_id, section, title_he, statement, bucket, rule_group, severity, mechanism, "
             "source_path, source_heading, source_hash, revision_status "
             "FROM rule_revisions WHERE is_current"
         )

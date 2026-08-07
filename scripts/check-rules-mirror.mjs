@@ -6,7 +6,8 @@
 //   gate additionally covers the aggregate case (e.g. rules.sqlite edited or replaced by hand, or a
 //   stale committed copy from before a document change was synced). Fix round 1, 2026-08-06 —
 //   review finding, Critical: the digest now covers (rule_id, source_hash, statement, severity,
-//   bucket) — the fields the enforcement hooks actually read from the mirror — via the ONE shared
+//   bucket, rule_group [added 2026-08-07, R-103]) — the fields the enforcement hooks actually read
+//   from the mirror — via the ONE shared
 //   function `mirror.checksum_of_rows()` (src/rules_store/mirror.py) that both this script's
 //   Postgres-side query and mirror.checksum()'s SQLite-side query call, so the two sides cannot
 //   desync by a format-string edit landing on only one of them. A corrupt/unreadable mirror file
@@ -55,7 +56,7 @@ else:
         try:
             with conn.cursor() as cur:
                 cur.execute(
-                    "SELECT rule_id, source_hash, statement, severity, bucket "
+                    "SELECT rule_id, source_hash, statement, severity, bucket, rule_group "
                     "FROM rule_revisions WHERE is_current ORDER BY rule_id"
                 )
                 rows = cur.fetchall()

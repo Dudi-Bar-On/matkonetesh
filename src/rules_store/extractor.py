@@ -46,6 +46,7 @@ class RuleRecord:
     source_heading: str
     content_hash: str
     bucket: str = "process"
+    rule_group: str | None = None
 
 
 def _hash(text: str) -> str:

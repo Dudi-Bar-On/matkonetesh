@@ -22,6 +22,7 @@ def _sample(rule_id="10.17", source_hash="abc123", **overrides):
         "title_he": "Serena",
         "statement": "Maximize Serena.",
         "bucket": None,
+        "rule_group": None,
         "severity": None,
         "mechanism": None,
         "source_path": "docs/process/development-discipline.md",
@@ -109,6 +110,22 @@ def test_checksum_changes_when_severity_or_bucket_changes_but_source_hash_does_n
             conn.close()
 
 
+def test_checksum_changes_when_rule_group_changes_but_source_hash_does_not():
+    """0005 migration (2026-08-07, R-103-driven): rule_group must be covered by the digest exactly
+    like bucket is — a column added and not folded into checksum_of_rows() would reproduce R-103's
+    invisible-drift failure on day one."""
+    with tempfile.TemporaryDirectory() as d:
+        conn = mirror.open_mirror(Path(d) / "rules.sqlite")
+        try:
+            mirror.write_revision(conn, _sample(source_hash="abc123", rule_group="A"))
+            c1 = mirror.checksum(conn)
+            mirror.write_revision(conn, _sample(source_hash="abc123", rule_group="C"))
+            c2 = mirror.checksum(conn)
+            assert c1 != c2, "checksum must change when rule_group changes even though source_hash is unchanged"
+        finally:
+            conn.close()
+
+
 def test_checksum_of_rows_is_the_single_shared_formula():
     """The digest formula lives in ONE function so the SQLite side (checksum(), via conn) and the
     Postgres side (check-rules-mirror.mjs's inline query, via a plain list of tuples) cannot desync
@@ -117,8 +134,8 @@ def test_checksum_of_rows_is_the_single_shared_formula():
     with tempfile.TemporaryDirectory() as d:
         conn = mirror.open_mirror(Path(d) / "rules.sqlite")
         try:
-            mirror.write_revision(conn, _sample(rule_id="A", source_hash="h1", statement="s1", severity="warn", bucket="A"))
-            mirror.write_revision(conn, _sample(rule_id="B", source_hash="h2", statement="s2", severity=None, bucket=None))
+            mirror.write_revision(conn, _sample(rule_id="A", source_hash="h1", statement="s1", severity="warn", bucket="A", rule_group="A"))
+            mirror.write_revision(conn, _sample(rule_id="B", source_hash="h2", statement="s2", severity=None, bucket=None, rule_group=None))
             from_conn = mirror.checksum(conn)
         finally:
             conn.close()
@@ -126,8 +143,8 @@ def test_checksum_of_rows_is_the_single_shared_formula():
         # The exact same tuples, fed straight to the shared formula — as a Postgres cursor's
         # fetchall() would hand them, no sqlite3.Row involved.
         rows = [
-            ("A", "h1", "s1", "warn", "A"),
-            ("B", "h2", "s2", None, None),
+            ("A", "h1", "s1", "warn", "A", "A"),
+            ("B", "h2", "s2", None, None, None),
         ]
         from_rows = mirror.checksum_of_rows(rows)
         assert from_conn == from_rows, "checksum() must delegate to checksum_of_rows(), not re-implement it"
