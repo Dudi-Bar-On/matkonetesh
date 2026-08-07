@@ -71,3 +71,11 @@ extraction-run.log
 # See docs/audit/README.md for the full reasoning. The README itself IS tracked (negated below).
 docs/audit/*.md
 !docs/audit/README.md
+
+# Layer-0 runtime output. These are APPEND-ONLY logs and a per-session snapshot: the watchman writes
+# one JSON line per component per run (8 lines every 30 minutes), the hook pipeline and the gate
+# orchestrator likewise. Tracking them was a slip on 2026-08-07 that put 452 log lines into a commit
+# about an index repair, and would have added churn to every commit after it. The evidence they carry
+# is local and current-state, never history a clone needs.
+.superpowers/*.jsonl
+.superpowers/state/
