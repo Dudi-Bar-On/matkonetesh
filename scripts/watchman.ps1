@@ -686,8 +686,32 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
     # processes on the machine, only the ones matching the shared-server command-line fence
     # (Get-SharedServerProcesses's own three-way match). It also cannot detect a shared server that is
     # up and answering MCP but pointed at the WRONG project path (ProjectPath is not compared here).
+    # 2026-08-07: resolve pwsh by PATH *and then by disk*, because the first live run of the 30-minute
+    # scheduled task reported serena DOWN when it was up. Task Scheduler runs with a much thinner PATH
+    # than an interactive shell, `pwsh` did not resolve there, and the component reported the thing it
+    # checks as broken because its own environment was incomplete — the identical mistake
+    # verify-neo4j-native.ps1 made with JAVA_HOME earlier the same day. It also cost ~90 seconds per
+    # run hitting the bound. A component that cries wolf every half hour is a component that gets
+    # switched off, which is exactly how this layer dies.
+    function Resolve-Pwsh {
+        $cmd = Get-Command pwsh -ErrorAction SilentlyContinue
+        if ($cmd) { return $cmd.Source }
+        foreach ($p in @("$env:ProgramFiles\PowerShell\7\pwsh.exe",
+                         "$env:ProgramFiles\PowerShell\7-preview\pwsh.exe")) {
+            if (Test-Path $p) { return $p }
+        }
+        $found = Get-ChildItem "$env:ProgramFiles\PowerShell" -Filter 'pwsh.exe' -Recurse `
+                               -ErrorAction SilentlyContinue | Select-Object -First 1
+        if ($found) { return $found.FullName }
+        return $null
+    }
+    $PwshExe = Resolve-Pwsh
+
     function Test-SerenaUp {
-        $p = Invoke-BoundedProcess -FilePath 'pwsh' `
+        # No pwsh anywhere is an honest not-ok with a named reason, not a silent false and not a
+        # 30-second timeout: the engine rejects anything that is not a real boolean, so say it plainly.
+        if (-not $PwshExe) { return $false }
+        $p = Invoke-BoundedProcess -FilePath $PwshExe `
             -ArgumentList @('-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', (Join-Path $RepoRoot 'scripts\serena-server.ps1'), '-Action', 'status') `
             -TimeoutSeconds 30
         $p.ExitCode -eq 0
