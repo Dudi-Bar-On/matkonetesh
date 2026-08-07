@@ -8,8 +8,9 @@
 // leave a named record of what went wrong. A hook that receives bad input and returns something
 // that looks like approval — or that blocks legitimate work because IT broke — is the exact
 // failure this file exists to rule out before Task 3 adds anything for it to enforce.
-import { spawnSync } from 'node:child_process';
+import { spawnSync, spawn } from 'node:child_process';
 import { mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync, rmSync } from 'node:fs';
+import net from 'node:net';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -48,8 +49,8 @@ function writeRule(dir, filename, body) {
   writeFileSync(join(dir, filename), body, 'utf8');
 }
 
-function runCli({ stdin, rulesDir, logPath }) {
-  const env = { ...process.env };
+function runCli({ stdin, rulesDir, logPath, env: extraEnv }) {
+  const env = { ...process.env, ...(extraEnv || {}) };
   if (rulesDir) env.PRETOOLUSE_RULES_DIR = rulesDir;
   if (logPath) env.PRETOOLUSE_LOG_PATH = logPath;
   return spawnSync(process.execPath, [CLI], {
@@ -59,6 +60,69 @@ function runCli({ stdin, rulesDir, logPath }) {
     cwd: ROOT,
     timeout: 15000,
   });
+}
+
+// --- small real-process/real-socket helpers for Task 4's two §11a rules -----------------------
+// Both rules are contracted to read REAL OS state (a bound TCP port; a process's OS-reported
+// start time), never a flag file. These helpers construct that real state honestly: an actual
+// listening socket, an actual child process with an actual OS start time — never a stand-in that
+// merely LOOKS like the shape the rule reads.
+
+// Opens a real TCP listener on `port` and resolves once it is actually accepting connections.
+// Returns a close() function. Used to simulate "a suite/manual server already holds this port"
+// without spawning Playwright itself (forbidden by the task brief — it takes minutes and §11a
+// bars competing load during a real suite run; this is a one-line net.Server, not a suite).
+function openRealListener(port) {
+  return new Promise((resolve, reject) => {
+    const server = net.createServer((sock) => sock.end());
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => {
+      resolve(() => new Promise((res) => server.close(() => res())));
+    });
+  });
+}
+
+// Polls (bounded, no arbitrary sleep-and-hope) until something answers on `port`, or throws.
+function waitForPortOpen(port, timeoutMs = 5000) {
+  const deadline = Date.now() + timeoutMs;
+  const tryOnce = () => new Promise((resolve) => {
+    const sock = new net.Socket();
+    sock.setTimeout(200);
+    sock.once('connect', () => { sock.destroy(); resolve(true); });
+    sock.once('timeout', () => { sock.destroy(); resolve(false); });
+    sock.once('error', () => { sock.destroy(); resolve(false); });
+    sock.connect(port, '127.0.0.1');
+  });
+  return (async () => {
+    while (Date.now() < deadline) {
+      // eslint-disable-next-line no-await-in-loop
+      if (await tryOnce()) return true;
+    }
+    throw new Error(`nothing answered on port ${port} within ${timeoutMs}ms`);
+  })();
+}
+
+// Spawns a REAL separate node process that does nothing but hold `port` open, so the stale-
+// dev-server rule can query its ACTUAL OS process start time via Get-Process — the same source
+// the rule itself reads. Returns { pid, stop() }. This stands in for `node serve.js` honestly:
+// same mechanism (a node process holding a port), just without loading dist/ into memory.
+async function spawnRealPortHolder(port) {
+  const child = spawn(process.execPath, ['-e', `
+    const net = require('net');
+    const s = net.createServer(sock => sock.end());
+    s.listen(${port}, '127.0.0.1', () => {});
+    setInterval(() => {}, 1000);
+  `], { stdio: 'ignore' });
+  await waitForPortOpen(port);
+  return {
+    pid: child.pid,
+    stop: () => new Promise((res) => {
+      child.once('exit', () => res());
+      child.kill();
+      // Windows sometimes needs a nudge for a plain SIGTERM-equivalent on a busy loop process.
+      setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* already gone */ } }, 500).unref();
+    }),
+  };
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -266,8 +330,8 @@ export function evaluate(input) {
 // This exercises the REAL rule file under the REAL default rules dir (scripts/hooks/rules/),
 // not a synthetic writeRule() fixture — the point is to prove the shipped rule, not a stand-in.
 // ---------------------------------------------------------------------------------------------
-function runCliRealRules({ stdin, logPath }) {
-  return runCli({ stdin, logPath }); // no rulesDir override -> pipeline.mjs DEFAULT_RULES_DIR
+function runCliRealRules({ stdin, logPath, env }) {
+  return runCli({ stdin, logPath, env }); // no rulesDir override -> pipeline.mjs DEFAULT_RULES_DIR
 }
 
 function decisionFor(command) {
@@ -276,6 +340,21 @@ function decisionFor(command) {
   const r = runCliRealRules({
     stdin: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
     logPath,
+  });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  return { r, stdoutJson, logPath };
+}
+
+// Same as decisionFor(), but forwards extra env vars (MK_TEST_PORT, PRETOOLUSE_DIST_DIR) through
+// to the real CLI/rules — needed by Task 4's two §11a rules, which read those directly.
+function decisionFor2(command, env) {
+  const work = tempDir('hooks-groupa-task4rule-');
+  const logPath = join(work, 'log.jsonl');
+  const r = runCliRealRules({
+    stdin: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
+    logPath,
+    env,
   });
   let stdoutJson;
   try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
@@ -370,6 +449,168 @@ for (const innocent of [
   // decision, not an accidental side effect nobody noticed.
   const { stdoutJson } = decisionFor('bash -c "git checkout -b x"');
   check('§9 rule (documented gap, not fixed here): `bash -c "git checkout -b x"` still evades the rule (allow) — real shell parsing is out of scope', stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// TASK 4, RULE 1 — no-concurrent-suite-run.mjs: block `playwright test` while the target port is
+// already held by a live process; a plain `npx playwright test` with NOTHING in flight must pass.
+// Exercises the REAL shipped rule under the REAL default rules dir, like the §9 tests above.
+// ---------------------------------------------------------------------------------------------
+const CONCURRENCY_TEST_PORT = 18923; // arbitrary, unused port — not the real suite's 8123
+
+{
+  // --- baseline: nothing listening on the port -> `npx playwright test` is NOT blocked ---------
+  // This is brief requirement #3: "A plain `npx playwright test` with NO run in flight MUST pass."
+  const { r, stdoutJson } = decisionFor2('npx playwright test', { MK_TEST_PORT: String(CONCURRENCY_TEST_PORT) });
+  check('§11a concurrency rule: `npx playwright test` with nothing on the port is NOT blocked',
+    r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny',
+    `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+{
+  // --- a REAL listener is holding the port -> BLOCKED, with the port/reason named ---------------
+  const close = await openRealListener(CONCURRENCY_TEST_PORT);
+  try {
+    const { r, stdoutJson } = decisionFor2('npx playwright test', { MK_TEST_PORT: String(CONCURRENCY_TEST_PORT) });
+    check('§11a concurrency rule: exit code 0 while port is busy', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+    check('§11a concurrency rule: `npx playwright test` while the port is held IS blocked',
+      stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+    check('§11a concurrency rule: the deny reason names §11a and the phantom-failure history',
+      typeof stdoutJson?.hookSpecificOutput?.permissionDecisionReason === 'string'
+      && /11a/.test(stdoutJson.hookSpecificOutput.permissionDecisionReason)
+      && /ERR_CONNECTION_REFUSED/.test(stdoutJson.hookSpecificOutput.permissionDecisionReason),
+      `reason=${stdoutJson?.hookSpecificOutput?.permissionDecisionReason}`);
+
+    // Other invocation shapes that also launch the suite must be caught too.
+    for (const guilty of ['playwright test', 'npm test', 'npm run test:full', 'npm run test:visual']) {
+      const { stdoutJson: sj2 } = decisionFor2(guilty, { MK_TEST_PORT: String(CONCURRENCY_TEST_PORT) });
+      check(`§11a concurrency rule: \`${guilty}\` while port busy is also blocked`,
+        sj2?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(sj2)}`);
+    }
+
+    // Lookalikes that never actually launch the suite must NOT be blocked, even with the port busy —
+    // same discipline as the §9 rule's echo/commit-message cases.
+    for (const innocent of ['npx playwright --version', 'npx playwright show-report', 'git commit -m "playwright test flaky again"']) {
+      const { stdoutJson: sj3 } = decisionFor2(innocent, { MK_TEST_PORT: String(CONCURRENCY_TEST_PORT) });
+      check(`§11a concurrency rule: lookalike \`${innocent}\` is NOT blocked even with the port busy`,
+        sj3?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(sj3)}`);
+    }
+  } finally {
+    await close();
+  }
+}
+
+{
+  // --- REAL STATE, not a stuck flag: after the listener closes, the SAME command is allowed again
+  // (no leftover marker to clear by hand) ---------------------------------------------------------
+  const { stdoutJson } = decisionFor2('npx playwright test', { MK_TEST_PORT: String(CONCURRENCY_TEST_PORT) });
+  check('§11a concurrency rule: once the port is freed, the same command is allowed again (proves real-state, not a leftover flag)',
+    stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// TASK 4, RULE 2 — stale-dev-server.mjs: dist/ newer than the serving process's own OS start time
+// -> WARN (never block — a UI-check cost, not a lost capability).
+// ---------------------------------------------------------------------------------------------
+const STALE_TEST_PORT = 18924;
+
+function navigateInput() {
+  return JSON.stringify({
+    tool_name: 'mcp__plugin_playwright_playwright__browser_navigate',
+    tool_input: { url: 'http://localhost/index.html' },
+  });
+}
+
+{
+  // non-navigation tool call is untouched, even with nothing set up at all.
+  const work = tempDir('hooks-groupa-stale-nonnav-');
+  const logPath = join(work, 'log.jsonl');
+  const r = runCliRealRules({ stdin: JSON.stringify({ tool_name: 'Bash', tool_input: { command: 'ls' } }), logPath });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  check('stale-dev-server rule: a non-navigation tool call is untouched (allow)',
+    r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+{
+  // navigation, but no dist/ build at the (overridden) dist dir -> allow, nothing to compare.
+  const work = tempDir('hooks-groupa-stale-nobuild-');
+  const logPath = join(work, 'log.jsonl');
+  const distDir = join(work, 'dist-does-not-exist');
+  const r = runCliRealRules({ stdin: navigateInput(), logPath, env: { PRETOOLUSE_DIST_DIR: distDir, MK_TEST_PORT: String(STALE_TEST_PORT) } });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  check('stale-dev-server rule: no dist/index.html at all -> allow (nothing to compare)',
+    r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+{
+  // navigation, dist/ exists, but nothing is listening on the port -> allow, nothing to warn about.
+  const work = tempDir('hooks-groupa-stale-noserver-');
+  const logPath = join(work, 'log.jsonl');
+  const distDir = join(work, 'dist');
+  mkdirSync(distDir, { recursive: true });
+  writeFileSync(join(distDir, 'index.html'), '<html>fresh</html>', 'utf8');
+  const r = runCliRealRules({ stdin: navigateInput(), logPath, env: { PRETOOLUSE_DIST_DIR: distDir, MK_TEST_PORT: String(STALE_TEST_PORT + 1) } });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  check('stale-dev-server rule: dist/ exists but no process on the port -> allow',
+    r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+{
+  // --- the actual stale case: a REAL process holds the port, THEN dist/ is (re)written --------
+  // The file's natural mtime (now, after the process's OS start time) makes it stale honestly —
+  // no fabricated timestamps, just real ordering of real events.
+  const holder = await spawnRealPortHolder(STALE_TEST_PORT);
+  try {
+    const work = tempDir('hooks-groupa-stale-yes-');
+    const logPath = join(work, 'log.jsonl');
+    const distDir = join(work, 'dist');
+    mkdirSync(distDir, { recursive: true });
+    writeFileSync(join(distDir, 'index.html'), '<html>rebuilt after server started</html>', 'utf8');
+
+    const r = runCliRealRules({ stdin: navigateInput(), logPath, env: { PRETOOLUSE_DIST_DIR: distDir, MK_TEST_PORT: String(STALE_TEST_PORT) } });
+    let stdoutJson;
+    try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+    check('stale-dev-server rule: exit code 0 for the stale case', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+    check('stale-dev-server rule: dist/ rebuilt after the server started -> WARN (allow + systemMessage), never a deny',
+      stdoutJson?.hookSpecificOutput?.permissionDecision === 'allow' && typeof stdoutJson?.systemMessage === 'string',
+      `stdout=${JSON.stringify(stdoutJson)}`);
+    check('stale-dev-server rule: the warn names §11a and tells the fix (restart the server)',
+      typeof stdoutJson?.systemMessage === 'string'
+      && /11a/.test(stdoutJson.systemMessage)
+      && /[Rr]estart/.test(stdoutJson.systemMessage),
+      `systemMessage=${stdoutJson?.systemMessage}`);
+    check(`stale-dev-server rule: the warn names the real pid ${holder.pid} it queried`,
+      typeof stdoutJson?.systemMessage === 'string' && stdoutJson.systemMessage.includes(String(holder.pid)),
+      `systemMessage=${stdoutJson?.systemMessage}`);
+  } finally {
+    await holder.stop();
+  }
+}
+
+{
+  // --- the negative of the stale case: dist/ was built BEFORE the server started (server is
+  // fresh relative to the build on disk) -> allow, not stale. Same mechanism, opposite ordering. --
+  const work = tempDir('hooks-groupa-stale-no-');
+  const logPath = join(work, 'log.jsonl');
+  const distDir = join(work, 'dist');
+  mkdirSync(distDir, { recursive: true });
+  writeFileSync(join(distDir, 'index.html'), '<html>built before server started</html>', 'utf8');
+
+  const port = STALE_TEST_PORT + 2;
+  const holder = await spawnRealPortHolder(port); // spawned AFTER the file write above
+  try {
+    const r = runCliRealRules({ stdin: navigateInput(), logPath, env: { PRETOOLUSE_DIST_DIR: distDir, MK_TEST_PORT: String(port) } });
+    let stdoutJson;
+    try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+    check('stale-dev-server rule: server started AFTER the build on disk -> allow (not stale)',
+      r.status === 0 && stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny',
+      `stdout=${JSON.stringify(stdoutJson)}`);
+  } finally {
+    await holder.stop();
+  }
 }
 
 console.log(`\n${total - failures}/${total} checks passed.`);
