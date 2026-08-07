@@ -988,5 +988,326 @@ const AGENT_SUITE_BUSY_PORT = 18926;
     stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
 }
 
+// ---------------------------------------------------------------------------------------------
+// TASK 6, RULE 1 — symbolic-grep-use-serena.mjs: §10.17/§5.1's three-condition conjunction.
+// Exercises the REAL rule file under the REAL default rules dir, same discipline as Task 3/4/5.
+// ---------------------------------------------------------------------------------------------
+// A minimal, REAL local HTTP server that answers ANY POST with 200 — stands in honestly for the
+// shared Serena MCP server's /mcp endpoint: isSerenaLive() only checks "did something answer",
+// exactly what serena-server.ps1's own Invoke-McpProbe checks (see serena-probe.mjs's header).
+//
+// MUST be a genuinely SEPARATE OS process, not an in-process http.createServer() in THIS test
+// process — this test process later calls runCliRealRules(), which uses spawnSync() and BLOCKS
+// this entire process (including its own event loop) until the spawned CLI child exits. An
+// in-process server could never accept that child's connection while blocked, which is exactly
+// the Windows loopback-serialization deadlock this project already hit once (see
+// warm-page-loopback-arc in agent memory) — proven here again by hand before writing it down:
+// the in-process version measured a hard ~2000ms timeout-and-fail on every call. A real separate
+// process has no such dependency on this process's event loop.
+async function startFakeSerenaServer() {
+  const child = spawn(process.execPath, ['-e', `
+    const http = require('http');
+    const server = http.createServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ jsonrpc: '2.0', id: 1, result: { ok: true } }));
+    });
+    server.listen(0, '127.0.0.1', () => {
+      process.stdout.write('PORT=' + server.address().port + '\\n');
+    });
+    setInterval(() => {}, 1000);
+  `], { stdio: ['ignore', 'pipe', 'ignore'] });
+
+  const port = await new Promise((resolve, reject) => {
+    let buf = '';
+    child.stdout.on('data', (chunk) => {
+      buf += chunk.toString();
+      const m = buf.match(/PORT=(\d+)/);
+      if (m) resolve(Number(m[1]));
+    });
+    child.once('error', reject);
+  });
+
+  return {
+    url: `http://127.0.0.1:${port}/mcp`,
+    close: () => new Promise((res) => {
+      child.once('exit', () => res());
+      child.kill();
+      setTimeout(() => { try { child.kill('SIGKILL'); } catch { /* already gone */ } }, 500).unref();
+    }),
+  };
+}
+
+// A URL that is guaranteed to be unreachable (nothing listens here), for the serena-down cases —
+// deterministic regardless of whether this dev machine happens to have a real serena instance up
+// on its usual port.
+const DEAD_SERENA_URL = 'http://127.0.0.1:18929/mcp';
+
+function grepDecision(toolInput, serenaUrl) {
+  const work = tempDir('hooks-groupa-symgrep-');
+  const logPath = join(work, 'log.jsonl');
+  const env = { PRETOOLUSE_SERENA_URL: serenaUrl, PRETOOLUSE_SERENA_TIMEOUT_MS: '400' };
+  const r = runCliRealRules({
+    stdin: JSON.stringify({ tool_name: 'Grep', tool_input: toolInput }),
+    logPath,
+    env,
+  });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  return { r, stdoutJson, logPath };
+}
+
+{
+  const fake = await startFakeSerenaServer();
+  try {
+    // --- THE POSITIVE CASE: all three §5.1 conditions true -> warn (never block) ---------------
+    {
+      const { r, stdoutJson } = grepDecision({ pattern: 'computeEquipPlan', type: 'js' }, fake.url);
+      check('symbolic-grep rule: exit code 0 for the all-three-true case', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+      check('symbolic-grep rule: code target + bare identifier + serena live -> WARN (allow + systemMessage), never deny',
+        stdoutJson?.hookSpecificOutput?.permissionDecision === 'allow' && typeof stdoutJson.systemMessage === 'string',
+        `stdout=${JSON.stringify(stdoutJson)}`);
+      check('symbolic-grep rule: the warn names §10.17/§5.1 and points at Serena',
+        /§10\.17|§5\.1/.test(stdoutJson.systemMessage) && /[Ss]erena/.test(stdoutJson.systemMessage),
+        `systemMessage=${stdoutJson.systemMessage}`);
+    }
+    // --- FIX ROUND 1 (coordinator review, §4): §5.1's condition (ב) is a BARE identifier, full
+    // stop — no def/function/class widening. `function renderWorkplan` contains a space, which
+    // is the brief's OWN named silent case ("ביטוי עם רווחים"); it must be silent even though it
+    // also happens to look like a declaration. Measured directly against the real hook, matching
+    // the reviewer's own findings: -----------------------------------------------------------
+    for (const pattern of [
+      'function renderWorkplan',
+      'export function renderWorkplan',
+      'def renderWorkplan',
+      'class RenderWorkplan',
+      'renderWorkplan ', // trailing space
+      ' renderWorkplan', // leading space
+    ]) {
+      const { stdoutJson } = grepDecision({ pattern, type: 'js' }, fake.url);
+      check(`symbolic-grep rule COUNTER (fix round 1): pattern "${pattern}" is NOT a bare identifier -> silent`,
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    {
+      // Exact boundary: the SAME identifier with no surrounding text still warns — proves the
+      // fix narrowed condition (ב) correctly rather than breaking bare-identifier matching itself.
+      const { stdoutJson } = grepDecision({ pattern: 'renderWorkplan', type: 'js' }, fake.url);
+      check('symbolic-grep rule: the bare identifier alone ("renderWorkplan", no surrounding text) still WARNS',
+        typeof stdoutJson?.systemMessage === 'string', `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+
+    // --- THE COUNTER-CASES: exactly one condition fails at a time -> total silence, no warn ----
+    {
+      // (א) fails: not a code target (no type/glob/path at all).
+      const { stdoutJson } = grepDecision({ pattern: 'computeEquipPlan' }, fake.url);
+      check('symbolic-grep rule COUNTER: bare identifier with NO code target at all -> silent (no systemMessage)',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    {
+      // (א) fails: docs/** sweep — the brief's own named example.
+      const { stdoutJson } = grepDecision({ pattern: 'computeEquipPlan', path: 'docs/**' }, fake.url);
+      check('symbolic-grep rule COUNTER: docs/** sweep (brief\'s own example) -> silent',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    {
+      // (ב) fails: pattern contains spaces (a phrase, not an identifier) — brief's own example.
+      const { stdoutJson } = grepDecision({ pattern: 'equip plan derivation', type: 'js' }, fake.url);
+      check('symbolic-grep rule COUNTER: a pattern with spaces (brief\'s own example) -> silent',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    {
+      // (ב) fails: Hebrew search — brief's own example.
+      const { stdoutJson } = grepDecision({ pattern: 'ציוד בישול', type: 'js' }, fake.url);
+      check('symbolic-grep rule COUNTER: Hebrew search (brief\'s own example) -> silent',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+  } finally {
+    await fake.close();
+  }
+}
+{
+  // --- (ג) fails: serena down -> TOTAL silence, even though (א) and (ב) both match -------------
+  const work = tempDir('hooks-groupa-symgrep-serenadown-');
+  const logPath = join(work, 'log.jsonl');
+  const { stdoutJson, r } = grepDecision({ pattern: 'computeEquipPlan', type: 'js' }, DEAD_SERENA_URL);
+  check('symbolic-grep rule COUNTER: serena disconnected -> exit code 0, still allow', r.status === 0);
+  check('symbolic-grep rule COUNTER: serena disconnected -> total silence (no systemMessage, no warning demanded of an unavailable tool)',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // non-Grep tool calls must never be touched by this rule, even with serena reachable.
+  const fake = await startFakeSerenaServer();
+  try {
+    const work = tempDir('hooks-groupa-symgrep-nongrep-');
+    const logPath = join(work, 'log.jsonl');
+    const env = { PRETOOLUSE_SERENA_URL: fake.url };
+    const r = runCliRealRules({ stdin: JSON.stringify({ tool_name: 'Read', tool_input: { file_path: 'app.js' } }), logPath, env });
+    let stdoutJson;
+    try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+    check('symbolic-grep rule: a non-Grep tool call is untouched', stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+  } finally {
+    await fake.close();
+  }
+}
+
+// ---------------------------------------------------------------------------------------------
+// TASK 6, RULE 2 — geniza-fallback-declaration.mjs: §10.13's grep/web-search fallback record.
+// ---------------------------------------------------------------------------------------------
+
+// Builds a synthetic transcript JSONL file with one assistant-turn line per entry. Each entry is
+// { command, minutesAgo } (a Bash tool_use) or { none: true, minutesAgo } (a turn with no Bash
+// tool_use at all, to prove noise doesn't accidentally count as a consult).
+function writeTranscript(dir, entries) {
+  const path = join(dir, 'transcript.jsonl');
+  const now = Date.now();
+  const lines = entries.map((e) => {
+    const ts = new Date(now - e.minutesAgo * 60 * 1000).toISOString();
+    const content = e.none
+      ? [{ type: 'text', text: 'just thinking' }]
+      : [{ type: 'tool_use', name: 'Bash', input: { command: e.command } }];
+    return JSON.stringify({ type: 'assistant', timestamp: ts, message: { content } });
+  });
+  writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
+  return path;
+}
+
+function grepDocsDecision({ toolInput, toolName, transcriptPath, windowMs, logPath }) {
+  const work = tempDir('hooks-groupa-genizafallback-');
+  const finalLogPath = logPath || join(work, 'log.jsonl');
+  // Isolates these tests from whatever serena state happens to be real on this dev machine (a
+  // shared serena instance IS often live here) — these tests are about the geniza-fallback rule
+  // only, and must not incidentally also trip symbolic-grep-use-serena.mjs's own warning.
+  const env = { PRETOOLUSE_SERENA_URL: DEAD_SERENA_URL };
+  if (windowMs !== undefined) env.PRETOOLUSE_GENIZA_WINDOW_MS = String(windowMs);
+  const stdinObj = { tool_name: toolName, tool_input: toolInput };
+  if (transcriptPath !== undefined) stdinObj.transcript_path = transcriptPath;
+  const r = runCliRealRules({ stdin: JSON.stringify(stdinObj), logPath: finalLogPath, env });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  return { r, stdoutJson, logPath: finalLogPath };
+}
+
+const RETRIEVAL_CMD = 'python -c "from src.knowledge import retrieval; print(retrieval.search_current_docs(\'x\'))"';
+
+// --- THE POSITIVE CASE: docs-targeted Grep, transcript readable, no consult found -> WARN + the
+// declaration is recorded automatically (no separate ask, no separate file). ---------------------
+{
+  const work = tempDir('hooks-groupa-genizafallback-warn-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 2 }]);
+  const logPath = join(work, 'log.jsonl');
+  const { r, stdoutJson } = grepDocsDecision({
+    toolInput: { pattern: 'baldwin', glob: '**/*.md' },
+    toolName: 'Grep',
+    transcriptPath,
+    logPath,
+  });
+  check('geniza-fallback rule: exit code 0 for the doc-targeted, not-consulted case', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+  check('geniza-fallback rule: docs-targeted Grep with no recent consult -> WARN (allow + systemMessage), never deny',
+    stdoutJson?.hookSpecificOutput?.permissionDecision === 'allow' && typeof stdoutJson.systemMessage === 'string',
+    `stdout=${JSON.stringify(stdoutJson)}`);
+  check('geniza-fallback rule: the warn names §10.13 and "grep"', /§10\.13/.test(stdoutJson.systemMessage) && /grep/i.test(stdoutJson.systemMessage), `systemMessage=${stdoutJson.systemMessage}`);
+
+  const events = readJsonl(logPath);
+  const declared = events.find((e) => e.kind === 'grep_fallback_declared');
+  check('geniza-fallback rule: the declaration was recorded AUTOMATICALLY in the hook log, no request made to anyone',
+    !!declared && declared.tool === 'Grep', `events=${JSON.stringify(events)}`);
+}
+
+// --- WebSearch, same shape ------------------------------------------------------------------
+{
+  const work = tempDir('hooks-groupa-genizafallback-websearch-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 1 }]);
+  const logPath = join(work, 'log.jsonl');
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { query: 'gemini pricing 2026' },
+    toolName: 'WebSearch',
+    transcriptPath,
+    logPath,
+  });
+  check('geniza-fallback rule: WebSearch with no recent consult also WARNS', typeof stdoutJson?.systemMessage === 'string', `stdout=${JSON.stringify(stdoutJson)}`);
+  const events = readJsonl(logPath);
+  check('geniza-fallback rule: WebSearch declaration is recorded too', events.some((e) => e.kind === 'grep_fallback_declared' && e.tool === 'WebSearch'), `events=${JSON.stringify(events)}`);
+}
+
+// --- COUNTER: geniza WAS consulted recently (within the window) -> silent, nothing recorded ----
+{
+  const work = tempDir('hooks-groupa-genizafallback-consulted-');
+  const transcriptPath = writeTranscript(work, [{ command: RETRIEVAL_CMD, minutesAgo: 5 }]);
+  const logPath = join(work, 'log.jsonl');
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { pattern: 'baldwin', glob: '**/*.md' },
+    toolName: 'Grep',
+    transcriptPath,
+    logPath,
+  });
+  check('geniza-fallback rule COUNTER: geniza consulted 5 min ago (inside the 20-min default window) -> silent',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+  const events = readJsonl(logPath);
+  check('geniza-fallback rule COUNTER: nothing recorded when the geniza WAS consulted', !events.some((e) => e.kind === 'grep_fallback_declared'), `events=${JSON.stringify(events)}`);
+}
+
+// --- COUNTER: geniza consulted, but OUTSIDE a short overridden window -> warns again ------------
+{
+  const work = tempDir('hooks-groupa-genizafallback-stale-consult-');
+  const transcriptPath = writeTranscript(work, [{ command: RETRIEVAL_CMD, minutesAgo: 5 }]);
+  const logPath = join(work, 'log.jsonl');
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { pattern: 'baldwin', glob: '**/*.md' },
+    toolName: 'Grep',
+    transcriptPath,
+    windowMs: 60 * 1000, // 1 minute — the 5-minute-old consult is now stale
+    logPath,
+  });
+  check('geniza-fallback rule: a consult OUTSIDE the (overridden, shorter) window no longer excuses the fallback -> warns',
+    typeof stdoutJson?.systemMessage === 'string', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// --- COUNTER: not doc-targeted (a plain code Grep) -> silent regardless of transcript state -----
+{
+  const work = tempDir('hooks-groupa-genizafallback-code-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 2 }]); // no consult at all
+  const logPath = join(work, 'log.jsonl');
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { pattern: 'resolveSource', type: 'py' },
+    toolName: 'Grep',
+    transcriptPath,
+    logPath,
+  });
+  check('geniza-fallback rule COUNTER: a code-targeted Grep (not aimed at documents) is silent even with zero consult evidence',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+  const events = readJsonl(logPath);
+  check('geniza-fallback rule COUNTER: nothing recorded for a code-targeted Grep', !events.some((e) => e.kind === 'grep_fallback_declared'), `events=${JSON.stringify(events)}`);
+}
+
+// --- COUNTER: no transcript_path at all (no honest evidence either way) -> silent, not accused --
+{
+  const { stdoutJson, r } = grepDocsDecision({
+    toolInput: { pattern: 'baldwin', glob: '**/*.md' },
+    toolName: 'Grep',
+    // transcriptPath deliberately omitted
+  });
+  check('geniza-fallback rule COUNTER: no transcript_path at all -> exit 0, silent (cannot prove absence of a consult)',
+    r.status === 0 && stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// --- COUNTER: transcript_path points at a non-existent/unreadable file -> silent, never a crash -
+{
+  const { stdoutJson, r } = grepDocsDecision({
+    toolInput: { pattern: 'baldwin', glob: '**/*.md' },
+    toolName: 'Grep',
+    transcriptPath: join(tempDir('hooks-groupa-genizafallback-notreal-'), 'does-not-exist.jsonl'),
+  });
+  check('geniza-fallback rule COUNTER: unreadable transcript path -> exit 0, silent, no crash',
+    r.status === 0 && stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// --- non-Grep/non-WebSearch tool calls are untouched ---------------------------------------------
+{
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { file_path: 'docs/x.md' },
+    toolName: 'Read',
+  });
+  check('geniza-fallback rule: a Read call (not Grep/WebSearch) is untouched', stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);
