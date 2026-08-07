@@ -219,17 +219,28 @@ retrieval.get_entity_provenance(canonical_id)                    # ומה המק
 ‏**‏`find_impact`/`find_dependency_path` יחזירו ריק** עד שירוץ חילוץ (`scripts/extract_graph.py`);
 כל עובדה שמודל מחלץ נכתבת `proposed` ואינה מוחזרת עד שאדם מקדם אותה.
 
-**⚠️ ‏6.8.26 — ‏PostgreSQL עבר מ-Docker להתקנה מקומית.** ‏`postgresql-x64-18` הוא **שירות Windows**
-בהפעלה אוטומטית על **פורט 5432**, עם `pgvector 0.8.6` שהודר מהמקור מול MSVC (אותה גרסה בדיוק
-כמו התמונה שהוחלפה). ‏**‏Neo4j עדיין בקונטיינר** — הוא מחזיק 7,941 צמתים ואין נתיב בנייה-מחדש
-המוני, ולכן הזזתו תמתין לסיום החילוץ. הסיבה למעבר: המכונה אתחלה את עצמה ב-02:27 ולקחה איתה את
-‏Docker, ש-WSL אינו מעלה לבד — ‏17 שעות עבודה על הרצפה. שירות Windows עולה באתחול בלי איש.
-‏**הנתונים לא נגעו:** ‏`pg_dump` מלא + התפקידים ב-`backups/`, ה-volumes של Docker שלמים,
-ושמונה מדדים אומתו זהים משני הצדדים (‏853 מסמכים · 877 גרסאות · 15,192 chunks · 1024 ממדים).
+**⚠️ ‏7.8.26 — אין יותר Docker בפרויקט. שני המסדים הם שירותי Windows.**
 
-הפעלה: `docs/infra/deliverables-2026-08-05.md` §3. ‏**‏Postgres עולה לבד; ‏Neo4j עדיין דורש
-`docker compose up -d` ב-`infra/`** — ו-`scripts/run-extraction.ps1` עושה זאת בעצמו (כולל
-‏`wsl -u root service docker start`, כי ‏`sudo` נתקע בהמתנה לסיסמה). ‏grep הוא ה-fallback המוצהר.
+```
+postgresql-x64-18   פורט 5432   pgvector 0.8.6 (MSVC)   ← עבר 6.8.26
+neo4j               7687 / 7474  2026.06.0 Community      ← עבר 7.8.26
+שניהם: הפעלה אוטומטית · מאזינים על 127.0.0.1 בלבד
+```
+
+**הסיבה, ולא העדפה:** המכונה אתחלה את עצמה ב-02:27 ולקחה איתה את Docker, ש-WSL אינו מעלה לבד —
+‏17 שעות חילוץ על הרצפה. **שירות Windows עולה באתחול בלי שאיש נוכח.**
+
+**‏Neo4j הועבר ב-`dump`/`load` ולא בבנייה-מחדש**, אחרי שהתברר שההנחה "הגרף הוא היטל טהור" נכונה
+ל-43% ממנו בלבד: ‏`write_proposed` ב-`extract_graph.py` הוא נתיב כתיבה שני, ו-**9,877 צמתי `Module`
+ו-~14,000 קשרים אינם קיימים בשום מקום ב-Postgres** (R-110). ההגירה אומתה בהשוואה מכנית מול קו-בסיס
+שנלקח על גרף מוכח-שקט: ‏`docs/infra/graph-baseline-2026-08-07.txt`, ‏17,858 צמתים ו-25,359 קשרים,
+זהים בדיוק. הקונטיינר הוסר רק אחרי ש-1,197 בדיקות Playwright ו-223 pytest עברו.
+
+**‏⚠️ כל אזכור של `docker compose up -d`, ‏`mk-postgres` או `mk-neo4j` הוא רשומה היסטורית, לא פקודה.**
+‏`scripts/check-no-docker.mjs` חוסם קריאת Docker **חיה** חדשה, ומבחין בין הפעלה לבין אזכור בהערה —
+ההסברים למה יצאנו נשארים, והם החלק החשוב.
+
+הפעלה: `docs/infra/deliverables-2026-08-05.md` §3. ‏grep הוא ה-fallback המוצהר.
 A grep finds a string in one file; the store returns the **section** that contains it, with its
 heading path and the document it came from — which is usually what the claim is actually about.
 **But a hit is a lead, not a verdict.** Read the source before asserting it. This does not repeal L16.
