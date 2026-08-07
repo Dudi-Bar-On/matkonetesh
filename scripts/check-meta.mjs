@@ -170,6 +170,14 @@ run('check-no-docker', 'check-no-docker (a live `docker <subcommand>` call in ex
 run('check-ci', 'check-ci', 'check-ci.mjs');
 run('gate-lessons', 'gate-lessons', 'gate-lessons.mjs');
 run('check-board-fresh', 'check-board-fresh', 'check-board-fresh.mjs');
+// Task 1 item 7 (session-state arc, 2026-08-07, owner: "הקפדה לחומרה מקסימלית, קרובה לאכיפה ככל
+// שניתן"). Same family as check-board-fresh directly above — a self-report (there: the board; here:
+// the active SDD ledger) must stay current with git — but a narrower and more severe instance: the
+// board updates once at arc close, while the ledger is meant to be current MID-ARC, which is exactly
+// what session-state.mjs now reads to recover position after a compact. BLOCKS because the fix is
+// one line in the ledger, cheap and immediate from the commit that trips it — see the gate's own
+// header for the full "GATE SCOPING" argument and the live incident (R-109) that motivated it.
+run('check-state-fresh', 'check-state-fresh (the active SDD ledger must record commits landed since it was last edited)', 'check-state-fresh.mjs');
 run('check-brief', 'check-brief', 'check-brief.mjs');
 run('check-h9', 'check-h9', 'check-h9.mjs');
 run('check-release', 'check-release (audit mode, reported not blocking - see file header)', 'check-release.mjs');

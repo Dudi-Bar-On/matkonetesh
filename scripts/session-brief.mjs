@@ -22,6 +22,8 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname, relative } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
 import { fileURLToPath } from 'node:url';
+import { activeArc, ledgerPosition, planCounts } from './session-state.mjs';
+import { scanDecisionsAwaitingOwner } from './lib/register-scan.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const NA = 'not established';
@@ -65,13 +67,19 @@ function liveVsBoard() {
 }
 
 // ---------------------------------------------------------------------------
-// 2) POSITION — active phase + task counts, as the board's phase table records them.
+// 2) POSITION — prefers the ACTIVE LEDGER (.superpowers/sdd/<plan>/progress.md, most recently
+// modified) when one exists, because a mid-arc controller's real position is what it last wrote to
+// its own ledger, not what the board says — the board is only updated at arc close (H10) and was
+// caught stating a stale/false position live on 2026-08-07 (see session-state.mjs's header). Falls
+// back to the board's own 🔄-marked phase row ONLY when no ledger exists at all. Either way, the
+// line says which of the two sources it came from — a stale source stated with confidence is worse
+// than one that says what it is.
 // A row's note/הערה cell can legitimately overflow into further physical lines (seen live in this
 // board), but Phase/שם/משימות/סטטוס are always on the row's OPENING line — only that line is parsed.
 // ---------------------------------------------------------------------------
-function position() {
+function positionFromBoard() {
   const board = readText(BOARD);
-  if (board === null) return `POSITION: ${NA} — docs/STATUS-BOARD.md not found.`;
+  if (board === null) return `POSITION (from BOARD — no active ledger found): ${NA} — docs/STATUS-BOARD.md not found.`;
   const lines = board.split('\n');
   let active = null;
   for (const line of lines) {
@@ -89,8 +97,24 @@ function position() {
     tasksLine ? `project ${tasksLine[1].trim()} tasks` : null,
     gapsLine ? `gaps ${gapsLine[1].trim()}` : null,
   ].filter(Boolean).join(' · ') || NA;
-  if (!active) return `POSITION: no phase marked 🔄 (active) on the board · ${proj}`;
-  return `POSITION: ${active[1]} — ${active[2]} (${active[3]}) 🔄 · ${proj}`;
+  if (!active) return `POSITION (from BOARD — no active ledger found): no phase marked 🔄 (active) on the board · ${proj}`;
+  return `POSITION (from BOARD — no active ledger found): ${active[1]} — ${active[2]} (${active[3]}) 🔄 · ${proj}`;
+}
+
+function position() {
+  const arc = activeArc();
+  if (!arc.ledger) return positionFromBoard();
+  const pos = ledgerPosition(arc.ledger.path);
+  const last = pos.lastComplete
+    ? `last recorded complete: ${pos.lastComplete}`
+    : 'no "Task N: complete" line found yet in this ledger';
+  const arcTag = pos.arcComplete ? ' [ARC COMPLETE]' : '';
+  const counts = planCounts(arc.planPath);
+  const remain = counts
+    ? `${counts.remaining}/${counts.total} boxes remain across ${counts.taskHeaders} task(s)`
+    : `${NA} — plan file not found (${arc.planRel ?? 'no plan name'})`;
+  const defTag = pos.deferrals.length ? ` · ${pos.deferrals.length} deferral(s) with trigger` : '';
+  return `POSITION (from ACTIVE LEDGER — ${arc.ledger.dir}): ${last}${arcTag} · ${remain}${defTag}`;
 }
 
 // ---------------------------------------------------------------------------
@@ -105,36 +129,7 @@ function position() {
 // this register's convention is that a status cell opens with ✅ once, and only once, ruled on.
 // ---------------------------------------------------------------------------
 function decisionsAwaitingOwner() {
-  const files = [ROADMAP, BOARD].filter(existsSync);
-  if (!files.length) return { line: `DECISIONS AWAITING OWNER: ${NA} — no ROADMAP/board file found.`, ids: [] };
-
-  // A ledger/decision-register row's own ID is its FIRST table cell (never scanned for an id
-  // anywhere else in the row's text — a description cell can legitimately reference OTHER ids,
-  // e.g. BR-2's text mentions "(R-6)" in passing; that must not be misread as R-6's own row).
-  const ROW_ID = /^\|\s*((?:R|BR)-\d+)\s*\|/;
-  const MARKERS = /(החלטת בעלים(?:\s+נדרשת)?|ממתין להכרעה)/;
-
-  const found = new Map(); // id -> snippet
-  for (const f of files) {
-    const text = readFileSync(f, 'utf8');
-    for (const line of text.split('\n')) {
-      const idm = line.match(ROW_ID);
-      if (!idm) continue;
-      if (!MARKERS.test(line)) continue; // no open-decision phrase anywhere on the row at all
-      // Isolate the row's own status cell: split on '|', drop the empty leading/trailing cells a
-      // '| ... |'-fenced row always produces, and take what remains rightmost — the table's last
-      // real column is always the ruling/status column in both the ROADMAP register and this loop.
-      const cells = line.split('|').map(s => s.trim()).filter((s, i, a) => !(s === '' && (i === 0 || i === a.length - 1)));
-      const statusCell = cells[cells.length - 1] ?? '';
-      if (/^✅/.test(statusCell.replace(/^[*`\s]+/, ''))) continue; // status cell itself says done — closed, not open
-      if (!found.has(idm[1])) found.set(idm[1], line.replace(/[*`|]/g, '').trim().slice(0, 90));
-    }
-  }
-  const ids = [...found.keys()];
-  if (!ids.length) return { line: 'DECISIONS AWAITING OWNER: 0 found (ROADMAP + board scanned).', ids };
-  const preview = ids.slice(0, 4).map(id => `${id} (${found.get(id).slice(0, 50)}…)`).join(' · ');
-  const more = ids.length > 4 ? ` · +${ids.length - 4} more` : '';
-  return { line: `DECISIONS AWAITING OWNER: ${ids.length} — ${preview}${more}`, ids };
+  return scanDecisionsAwaitingOwner([ROADMAP, BOARD], 'DECISIONS AWAITING OWNER');
 }
 
 // ---------------------------------------------------------------------------
