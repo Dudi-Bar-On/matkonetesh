@@ -1,5 +1,5 @@
-﻿# scripts/watchman.ps1 (this task's slice — Tasks 16-21 append the six real components below the
-# marker `# === REAL COMPONENTS ===`)
+﻿# scripts/watchman.ps1 (Tasks 16-21 appended six real components below the marker
+# `# === REAL COMPONENTS ===`; Task 10 (docker-exit arc) appended the seventh, neo4j)
 <#
 .SYNOPSIS
   Layer 0 — the watchman (spec §8). Detects and automatically recovers infrastructure components,
@@ -470,6 +470,69 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         } `
         -Verify { Test-GenizaReaderAnswers }
 
+    # neo4j (warn): the graph projection (find_impact/find_dependency_path) built by
+    # scripts/extract_graph.py. Neo4j moved off Docker onto the native Windows service `neo4j`
+    # (bolt 7687 / http 7474, loopback only) on 2026-08-07 (see CLAUDE.md and this task's brief) --
+    # this is that service's watchman component, the seventh, where none existed for the container.
+    # Severity is warn, not block: per CLAUDE.md, find_impact/find_dependency_path already return
+    # empty until an extraction has promoted facts, and no commit/build/release gate reads Neo4j
+    # directly -- its failure costs graph-shaped queries, with lexical/semantic search over the same
+    # geniza documents as a working (if slower) alternative. That is the spec's warn shape, not block.
+    #
+    # DETECT IS A REAL QUERY, NOT A PORT CHECK (this task's brief, requirement 1): mirrors the ollama
+    # and geniza-postgres components above -- a listening bolt socket proves a process accepted a TCP
+    # connection, not that the store finished recovery or holds any data. Test-Neo4jAnswers runs
+    # scripts/check-neo4j-reader.py, which opens a session through src.knowledge.config.neo4j_driver()
+    # (the exact factory function every graph-facing tool in this repo uses) and executes a genuine
+    # `MATCH (n) RETURN count(n)` -- same shape as check-geniza-reader.py's row-count read, and it
+    # fails NOT OK on either a connection error or a zero count (connects fine, empty graph is still
+    # not a working graph). Bolt credentials are read by config.py from infra/.env; never surfaced in
+    # this file, this component's Detail, or the JSONL log.
+    #
+    # NO JAVA DEPENDENCY, DELIBERATELY: verify-neo4j-native.ps1 shells out to cypher-shell.bat, which
+    # needs NEO4J_HOME/JAVA_HOME resolved against the machine environment (this task's brief, trap 1)
+    # and is the component that inherited the ambient-PATH Java gap earlier today. This component
+    # instead drives the Python `neo4j` bolt driver (already a dependency of src/knowledge/config.py,
+    # confirmed installed: neo4j==6.2.0) through Invoke-BoundedProcess -> py -3, which talks bolt
+    # directly and never touches java.exe, neo4j-admin.bat, or neo4j.ps1 -- so neither Java trap in
+    # this task's brief (ambient PATH missing JAVA_HOME; neo4j.ps1 version writing through Write-Host)
+    # applies here at all. Recorded, not assumed: this component genuinely has no Java exposure.
+    #
+    # RECOVER = Start-Service neo4j, and ONLY this component owns it (this task's brief, requirement
+    # 2) -- unlike mk_rules-postgres/geniza-postgres, which share one native Postgres service and
+    # therefore split Start-Service to exactly one owner, nothing else in this file watches the
+    # `neo4j` Windows service, so there is no double-recovery to avoid and no reason for a no-op here.
+    # -ErrorAction SilentlyContinue matches mk_rules-postgres's own reasoning: if the caller lacks
+    # privilege or the service is disabled or the data directory is corrupt, this call fails silently
+    # and Verify (below, the same real query) correctly keeps reporting NOT OK -- this component never
+    # guesses at WHY recovery failed, only THAT it did or didn't.
+    # -MaxRecoverWaitSeconds 60: Neo4j is a JVM store with real startup/recovery time, unlike the 5s
+    # components above whose Recover either cannot fix content (hooks, geniza-postgres) or is a fast
+    # config write (rules-mirror uses its own longer bound already) -- 60s matches ollama's bound
+    # above for the same reason: a real process needs real time to come up, and this file's RED
+    # witness (this task's report) never runs against the production service, only a bogus name/port.
+    #
+    # WHAT THIS COMPONENT CANNOT DETECT: a bolt endpoint that answers count queries correctly while
+    # the graph's actual content is stale, wrong, or was only ever partially promoted from `proposed`
+    # facts (find_impact quality is not this component's concern, only that the store answers at
+    # all). It also does not verify APOC availability (LlamaIndex's Neo4jPropertyGraphStore requires
+    # it per config.py's own comment) -- a node-count query does not exercise APOC procedures, so an
+    # APOC regression would pass this check and only surface the next time graph_store() is actually
+    # used for ingestion.
+    function Test-Neo4jAnswers {
+        $p = Invoke-BoundedProcess -FilePath 'py' `
+            -ArgumentList @('-3', (Join-Path $RepoRoot 'scripts\check-neo4j-reader.py')) `
+            -TimeoutSeconds 15
+        $resultValue = $null
+        foreach ($line in ($p.Output -split "`r?`n")) { if ($line -match '^RESULT=(\S+)') { $resultValue = $Matches[1] } }
+        $p.ExitCode -eq 0 -and $resultValue -eq 'ok'
+    }
+
+    $neo4jResult = Invoke-ComponentCheck -Name 'neo4j' -Severity 'warn' -MaxRecoverWaitSeconds 60 `
+        -Detect { Test-Neo4jAnswers } `
+        -Recover { Start-Service -Name 'neo4j' -ErrorAction SilentlyContinue } `
+        -Verify { Test-Neo4jAnswers }
+
     # Read EMBED_MODEL / OLLAMA_URL / EMBED_DIM straight out of src/knowledge/config.py rather than
     # hardcoding them here -- config.py is the one place that is allowed to know these values (this
     # task's brief: "read them from there, never hardcode"). A plain-text regex read (not a python
@@ -639,7 +702,7 @@ $results = @(if ($SelfTest) { Get-SelfTestResults } else {
         } `
         -Verify { Test-SerenaUp }
 
-    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $ollamaResult, $serenaResult)
+    @($hooksResult, $rulesMirrorResult, $rulesPgResult, $genizaResult, $neo4jResult, $ollamaResult, $serenaResult)
 })
 
 foreach ($r in $results) {
