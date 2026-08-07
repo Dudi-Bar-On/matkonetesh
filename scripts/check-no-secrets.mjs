@@ -32,6 +32,17 @@ const IS_CODE_REFERENCE = [
   /^(await|new|require|import|function|async|return|this\.|self\.)\b/,
   /^[A-Za-z_$][\w$]*\s*\(/,   // someCall(...)
   /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)+;?$/,  // a.b.c — a dotted reference, never a secret
+  // PowerShell's own form of the same thing, added 2026-08-08 after this gate blocked a commit over
+  // a PowerShell line setting the PGPASSWORD environment variable from another variable holding the
+  // superuser password (entropy 3.63) — an assignment whose right-hand side is a
+  // VARIABLE, with no value in the file at all. The three PowerShell scripts that reach a privileged
+  // role all use this exact line, and it is the correct pattern: read from infra\.env at runtime,
+  // set for one call, removed in a finally. A blocking gate that fails on the safe idiom teaches
+  // people to work around the gate, which costs more than the false positive itself.
+  // Deliberately anchored and bare: `$env:NAME` or `$NAME` and nothing else. A literal cannot hide
+  // in it, because anything appended — a concatenation, a quote, a subexpression — fails the anchor
+  // and is still inspected.
+  /^\$(env:)?[A-Za-z_][\w]*$/,
 ];
 
 // key = value, where the key names a credential and the value is long enough to be one.

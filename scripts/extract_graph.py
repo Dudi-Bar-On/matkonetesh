@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -29,6 +30,60 @@ sys.path.insert(0, str(ROOT))
 from src.knowledge import config, extract  # noqa: E402
 
 log = logging.getLogger("extract_graph")
+
+# Task 7 (2026-08-08) / task-7-brief.md item 3. The owner's original idea was "let ingest trigger an
+# incremental backup on every drive" — measured against 83 revisions/day and a ~190 MB geniza dump,
+# that is 15 GB/day of Postgres dumps alone (see backup-stores.ps1's own header) and was refuted as a
+# blanket policy. It is the RIGHT idea specifically for the graph: WAL archiving (scripts/enable-wal-
+# archiving.ps1) already covers Postgres continuously, but Neo4j Community has no equivalent — R-110's
+# 9,877 Module nodes exist ONLY there, and the only way to protect them is a dump, taken close to when
+# they were written. This function is that trigger, scoped to -GraphOnly so it never re-dumps Postgres.
+GRAPH_BACKUP_MIN_INTERVAL_SECONDS = 15 * 60  # debounce: do not bounce neo4j for back-to-back small runs
+
+
+def _graph_backup_dest() -> Path:
+    # Matches backup-stores.ps1's own default -PrimaryDest, single source of truth kept informal on
+    # purpose: this is a best-effort trigger, not a second copy of that script's configuration surface.
+    return Path("G:/matconetesh-backups")
+
+
+def _trigger_graph_backup(written_total: int) -> None:
+    """Best-effort. NEVER raises, and NEVER changes this script's own exit code — a backup hiccup is
+    not an extraction failure, and treating it as one would make a maintenance script's transient
+    problem (a busy G:, a momentary permission glitch) block the actual extraction work it is meant
+    to protect. Debounced so a run of many small `--pending` batches in quick succession does not
+    bounce the neo4j service repeatedly; Community's offline-only dump already returns in seconds on
+    this graph's measured size (17,858 nodes / 25,359 edges, docs/infra/graph-baseline-2026-08-07.txt)
+    so the debounce is about avoiding UNNECESSARY bounces, not about a dump being slow.
+    """
+    if written_total <= 0:
+        log.info("graph backup trigger: no facts written this run — nothing changed, skipping.")
+        return
+    try:
+        dest = _graph_backup_dest()
+        if dest.exists():
+            existing = sorted(dest.glob("neo4j-*.dump"), key=lambda p: p.stat().st_mtime, reverse=True)
+            if existing and (time.time() - existing[0].stat().st_mtime) < GRAPH_BACKUP_MIN_INTERVAL_SECONDS:
+                age_min = (time.time() - existing[0].stat().st_mtime) / 60
+                log.info(f"graph backup trigger: last graph backup is {age_min:.1f} min old "
+                          f"(< {GRAPH_BACKUP_MIN_INTERVAL_SECONDS // 60} min debounce) — skipping.")
+                return
+        script = ROOT / "scripts" / "backup-stores.ps1"
+        result = subprocess.run(
+            ["powershell.exe", "-NoProfile", "-File", str(script), "-GraphOnly"],
+            capture_output=True, text=True, timeout=180,
+        )
+        tail = (result.stdout or result.stderr or "").strip().splitlines()[-1:] or ["(no output)"]
+        if result.returncode == 0:
+            log.info(f"graph backup trigger: OK — {tail[0]}")
+        else:
+            # Expected and non-fatal when not elevated (Community dumps offline only; stopping the
+            # service needs admin) — the scheduled extraction task (register-extraction-task.ps1) runs
+            # with -RunLevel Highest specifically so this succeeds unattended; a manual, unelevated run
+            # of this script will log exactly this warning instead, and that is the correct behaviour.
+            log.warning(f"graph backup trigger: backup-stores.ps1 -GraphOnly exited {result.returncode} — {tail[0]}")
+    except Exception as exc:  # best-effort by design — see the docstring above
+        log.warning(f"graph backup trigger: could not run ({type(exc).__name__}: {exc})")
 
 
 def fetch_chunks(paths: list[str] | None, limit: int | None, namespace: str, min_chars: int,
@@ -386,6 +441,8 @@ def main() -> int:
     print("  Every fact written is `proposed`, never `current` — current-only retrieval")
     print("  does not return any of it until a human promotes it.")
     print("=" * 74)
+
+    _trigger_graph_backup(written_total)
     return 0
 
 

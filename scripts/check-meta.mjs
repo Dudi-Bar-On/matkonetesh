@@ -7,7 +7,7 @@
 //
 // Wraps: check-geniza-fresh (§10.12) · check-pytest (the Python suite) · check-no-secrets · gate-lessons (§10.16) · check-board-fresh (H10) ·
 // check-shipped-closed (H10) · check-brief (§13) · check-h9 (H9) · check-h8-ledger (H8, §5 + §5a) ·
-// check-release in AUDIT mode
+// check-backup-fresh (R-111, task 7) · check-release in AUDIT mode
 // (H7 x2 / DoD-12 / L29 / H14 - reported, not blocking; see check-release.mjs's own header for why).
 //
 // LAYERING (four legs — see .githooks/pre-commit, .claude/settings.json and .github/workflows/*.yml
@@ -178,6 +178,23 @@ run('check-board-fresh', 'check-board-fresh', 'check-board-fresh.mjs');
 // one line in the ledger, cheap and immediate from the commit that trips it — see the gate's own
 // header for the full "GATE SCOPING" argument and the live incident (R-109) that motivated it.
 run('check-state-fresh', 'check-state-fresh (the active SDD ledger must record commits landed since it was last edited)', 'check-state-fresh.mjs');
+// R-111 / task 7 (2026-08-08): "a backup nobody checks the freshness of is an assumption." The
+// geniza's newest backup was found two days and 71 documents behind, discovered only because someone
+// happened to look. Filesystem-only (no DB credentials, no live connection — must answer correctly
+// even when both stores are down, exactly the scenario a backup exists to survive).
+// BLOCKING once the destination drive is mounted, per this file's own GATE SCOPING test: the remedy
+// is one reachable command (`powershell scripts\backup-stores.ps1`, or for archive lag,
+// `powershell scripts\enable-wal-archiving.ps1` — elevated, the owner's to run once) — same shape as
+// check-geniza-fresh's own justification for blocking. SKIPS, not fails, when the destination drive
+// itself is absent (CI has no G:\ or F:\ at all) or when WAL archiving has never been enabled on this
+// machine — an unmet precondition is not a compliance finding, same reasoning check-rules-fresh and
+// check-state-fresh already apply to their own infra dependencies. Env overrides for self-test
+// fixtures only: PRIMARY_DEST, ARCHIVE_DEST, MAX_BACKUP_AGE_HOURS, MAX_ARCHIVE_LAG_MINUTES — see the
+// gate's own header. NOTE for whoever wires this in fresh on a machine with neither base backup nor
+// WAL archiving yet: this WILL fail until `backup-stores.ps1` has been run at least once and stays
+// red on archive lag until `enable-wal-archiving.ps1` (elevated) has been run — that is the intended,
+// deliberate signal this task exists to create, not a bug in the gate.
+run('check-backup-fresh', 'check-backup-fresh (R-111 — base backup + WAL archive freshness)', 'check-backup-fresh.mjs');
 run('check-brief', 'check-brief', 'check-brief.mjs');
 run('check-h9', 'check-h9', 'check-h9.mjs');
 run('check-release', 'check-release (audit mode, reported not blocking - see file header)', 'check-release.mjs');

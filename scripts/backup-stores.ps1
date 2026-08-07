@@ -41,14 +41,37 @@
     RETENTION: the newest N of each kind are kept per destination; older ones are removed only AFTER a
     new one has been written and verified. A retention pass that runs before the new backup succeeds is
     how people lose everything at once.
+
+    WAL ARCHIVE RETENTION (task 7, 2026-08-08): scripts/enable-wal-archiving.ps1 turns on continuous
+    archiving to G:\pg-wal-archive. "Plan the cleanup from the first day, not after it happens" - a
+    failing archive_command STOPS Postgres recycling WAL until the destination has space, so an
+    archive directory that fills is an outage, not an inconvenience. This script prunes archived WAL
+    older than -WalRetentionDays (default 14) on EVERY run, whether or not -GraphOnly is set - it is
+    the one script this repo already runs regularly, so it is where an ongoing cleanup duty belongs.
+    Time-based, not backup-chain-based: this repo does not (yet) take a physical pg_basebackup, so
+    there is no base-backup anchor to prune "up to" - see enable-wal-archiving.ps1's own header for
+    what that gap means for point-in-time restore. SKIPPED, not failed, when the archive directory
+    does not exist yet (archiving not enabled on this machine).
+
+    GRAPH-ONLY MODE (task 7, task-7-brief.md item 3): -GraphOnly skips every Postgres dump (geniza,
+    rules, roles) and produces only the neo4j-*.dump - meant to be called from scripts/extract_graph.py
+    at the end of a successful extraction run, NOT on every ingest. The owner's original idea was "let
+    every ingest trigger an incremental backup"; measured at 83 revisions/day and ~190 MB per full
+    geniza dump, that is 15 GB/day of Postgres dumps alone - not sustainable, and WAL archiving already
+    covers Postgres continuously. Neo4j has no WAL equivalent (Community, no continuous log shipping),
+    so a dump taken right after the run that changed it is the actual fix for R-110's exposure, and
+    -GraphOnly is what keeps that fix from also re-dumping ~190 MB of Postgres data 83 times a day.
 #>
 
 [CmdletBinding()]
 param(
-    [string]$PrimaryDest   = 'G:\matconetesh-backups',
-    [string]$RemovableDest = 'F:\matconetesh-backups',
-    [int]   $Keep          = 7,
-    [switch]$SkipNeo4j
+    [string]$PrimaryDest      = 'G:\matconetesh-backups',
+    [string]$RemovableDest    = 'F:\matconetesh-backups',
+    [string]$ArchiveDest      = 'G:\pg-wal-archive',
+    [int]   $Keep             = 7,
+    [int]   $WalRetentionDays = 14,
+    [switch]$SkipNeo4j,
+    [switch]$GraphOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -107,6 +130,9 @@ function Invoke-PgDump {
     } finally { Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue }
 }
 
+if ($GraphOnly) {
+    Write-Step "Skipping all Postgres dumps (-GraphOnly - called from a completed extraction run, not a full backup)"
+} else {
 Write-Step "Dumping mk_knowledge (the geniza)"
 Invoke-PgDump 'geniza' (Join-Path $RepoRoot 'infra\.env') 'POSTGRES_SUPERUSER' 'POSTGRES_SUPERUSER_PASSWORD' 'POSTGRES_PORT' 'mk_knowledge' "mk_knowledge-$Stamp.dump"
 
@@ -134,6 +160,7 @@ if ($su -and $sp) {
         Write-Host "  roles : $([math]::Round((Get-Item $rolesOut).Length/1KB,1)) KB"
         $produced += $rolesOut
     } finally { Remove-Item Env:PGPASSWORD -ErrorAction SilentlyContinue }
+}
 }
 
 Write-Step "Dumping the Neo4j graph"
@@ -199,6 +226,24 @@ foreach ($d in $dests) {
         $old = Get-ChildItem $d -Filter $pattern -ErrorAction SilentlyContinue |
                Sort-Object LastWriteTime -Descending | Select-Object -Skip $Keep
         foreach ($o in $old) { Remove-Item $o.FullName -Force; Write-Host "  removed $($o.Name) from $d" }
+    }
+}
+
+Write-Step "WAL archive retention - pruning files older than $WalRetentionDays day(s) at $ArchiveDest"
+# Planned from day one (task 7, item 2), not after archive_command starts failing from a full disk.
+# Time-based, not chained to a base backup, because this repo does not (yet) take a physical
+# pg_basebackup to anchor a restore against - see enable-wal-archiving.ps1's header for that gap.
+if (-not (Test-Path $ArchiveDest)) {
+    Write-Warn "archive directory $ArchiveDest does not exist - WAL archiving not enabled on this machine, nothing to prune."
+} else {
+    $cutoff = (Get-Date).AddDays(-$WalRetentionDays)
+    $oldWal = Get-ChildItem $ArchiveDest -File -ErrorAction SilentlyContinue | Where-Object { $_.LastWriteTime -lt $cutoff }
+    if ($oldWal.Count) {
+        $prunedMB = [math]::Round(($oldWal | Measure-Object -Property Length -Sum).Sum / 1MB, 1)
+        $oldWal | Remove-Item -Force
+        Write-Host "  pruned $($oldWal.Count) file(s), $prunedMB MB, older than $($cutoff.ToString('yyyy-MM-dd'))"
+    } else {
+        Write-Host "  nothing older than $WalRetentionDays day(s) - nothing pruned."
     }
 }
 
