@@ -113,6 +113,30 @@ function run(id, displayName, file) {
 }
 
 run('check-geniza-fresh', 'check-geniza-fresh', 'check-geniza-fresh.mjs');
+// Phase 6 Task 1 wiring (2026-08-07). Three gates over mk_rules, the process-rules store — built,
+// unit-tested, and NOT wired until now. Same "is the fix cheap and immediate from this commit?" test
+// this file's own header applies everywhere else, argued per gate rather than inherited as one answer:
+//   - check-rules-fresh: BLOCKING. Same shape as check-geniza-fresh directly above — self-heals
+//     (re-runs build_rules_store.py --doc against the one document it's stale for) and re-prints the
+//     result, so the fix IS the gate running itself. No reason to treat it differently from its sibling.
+//   - check-rules-complete: BLOCKING, but for a different reason than the other two — it was
+//     deliberately rewritten read-only (see its own header) after its first version repaired the very
+//     condition it checked, making its FAIL branch unreachable. It does NOT self-heal. But the fix it
+//     names on FAIL is one command (`py -3 scripts/build_rules_store.py --doc
+//     docs/process/development-discipline.md`), reachable from the exact commit that added a rule-shaped
+//     section without syncing it — cheap and immediate even though this script won't run it for you.
+//     Not self-healing is not the same question as "is blocking correct"; here it still is.
+//   - check-rules-mirror: BLOCKING. Rebuilds rules.sqlite from mk_rules and RE-VERIFIES the checksum
+//     after rebuilding rather than trusting the rebuild's exit code (see its own header, fix round 2) —
+//     the fix is one in-process command and the gate proves it worked before returning OK.
+// All three SKIP (exit 0) rather than FAIL when mk_rules is unreachable — classified on the exception
+// MESSAGE, not its class, because psycopg2's OperationalError is the same class for "nothing is
+// listening" and "wrong password"; only the former may be silent. A fresh clone or CI box with no
+// native PostgreSQL service is not a developer with a stale rules store, and blocking them here would
+// only teach the skip hatch — same reasoning check-geniza-fresh's header gives for its own dependency.
+run('check-rules-fresh', 'check-rules-fresh (docs/process/development-discipline.md matches mk_rules)', 'check-rules-fresh.mjs');
+run('check-rules-complete', 'check-rules-complete (every on-disk rule has a current row in mk_rules — does not self-heal)', 'check-rules-complete.mjs');
+run('check-rules-mirror', 'check-rules-mirror (rules.sqlite checksum matches mk_rules)', 'check-rules-mirror.mjs');
 run('check-pytest', 'check-pytest', 'check-pytest.mjs');
 run('check-no-secrets', 'check-no-secrets', 'check-no-secrets.mjs');
 run('check-requirements', 'check-requirements', 'check-requirements.mjs');
