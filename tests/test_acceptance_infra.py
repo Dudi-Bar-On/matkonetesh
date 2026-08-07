@@ -12,15 +12,23 @@ UPDATED 2026-08-07 (docker-exit Tasks 4/6): PostgreSQL (`postgresql-x64-18`) and
 are both native Windows services now — `mk-postgres` was retired (R-108) and the Neo4j container
 is stopped, kept only as a rollback until Task 12. A1 and A2 below restart the SERVICES
 (`Restart-Service`), not containers; the property each protects — the database survives a restart
-with its data intact — is unchanged by the move. A6 and A7 still read the Docker daemon
-(`_require_docker`/`_compose_container_names`) — that is deliberate, not an oversight: rewriting
-them for native Windows is a separate task (7/8), and until then they SKIP LOUDLY rather than
-silently pass once nothing Docker-shaped is left running.
+with its data intact — is unchanged by the move.
+
+UPDATED 2026-08-07 (docker-exit Tasks 7/8): A6 and A7 no longer read the Docker daemon. There is
+nothing left running in Docker that they were checking (Neo4j moved native in Task 6), so
+`_require_docker`/`wsl`/`_compose_container_names` were deleted rather than kept as dead code —
+Chesterton's Fence does not apply to code whose entire reason for existing (a Docker daemon to
+ask) is gone. A6 now reads `Get-NetTCPConnection`, the OS's own live socket table. A7 now compares
+the installed binary's own version against a string committed to `docs/infra/dependency-summary.md`
+(no image tag exists for a native service, so "no floating latest" has no analogue — the concern
+it protected, a version that changed without a diff to review, does not go away).
 """
 
 from __future__ import annotations
 
+import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -50,31 +58,6 @@ def _restart_windows_service(name: str) -> subprocess.CompletedProcess:
          f"Restart-Service -Name '{name}' -Force"],
         capture_output=True, text=True, timeout=120,
     )
-
-
-def wsl(command: str, timeout: int = 300) -> subprocess.CompletedProcess:
-    """Docker lives in WSL2 (no Desktop, no reboot — the owner works remotely).
-
-    On a Linux CI runner there IS no `wsl`, and subprocess.run RAISES FileNotFoundError rather
-    than returning a non-zero code — so a caller checking `returncode` never runs. That is how
-    three of these tests turned CI red on their first push: an ABSENT tool reported as a FAILED
-    one, which is L54 in its third costume. A synthetic failure is returned instead, and the
-    callers' existing skip logic then does the right thing.
-    """
-    try:
-        return subprocess.run(
-            ["wsl", "-d", "Ubuntu-20.04", "-u", "root", "-e", "bash", "-lc", command],
-            capture_output=True, text=True, timeout=timeout, encoding="utf-8", errors="replace",
-        )
-    except (FileNotFoundError, NotADirectoryError, OSError) as exc:
-        return subprocess.CompletedProcess(args=command, returncode=127, stdout="", stderr=str(exc))
-
-
-def _require_docker():
-    result = wsl("docker ps --format '{{.Names}}'", timeout=60)
-    if result.returncode != 0:
-        pytest.skip(f"docker is not reachable from WSL: {result.stderr.strip()[:120]}")
-    return result.stdout
 
 
 def _require_stack():
@@ -247,86 +230,169 @@ def test_A5_the_env_file_carrying_the_secrets_is_not_tracked():
     assert ignored.returncode == 0, "infra/.env is not gitignored"
 
 
-def _compose_container_names():
-    """The containers this compose project actually declares, asked of the daemon, never hardcoded.
+def _declared_ports() -> dict[str, int]:
+    """Every port this project declares, read from its own env files — never hardcoded.
 
-    A6 and A7 used to name `mk-postgres mk-neo4j` literally. When the superseded PostgreSQL container
-    was retired on 2026-08-07 (R-108), both tests failed with `No such object: mk-postgres` — they were
-    not wrong about security, they were wrong about the inventory, and a test that pins an inventory
-    fails every time the inventory legitimately changes. Worse, the obvious "fix" is to edit the name
-    list, which quietly teaches that these tests are a chore rather than a check.
-
-    Derived instead from the compose project label, so adding or retiring a service needs no edit here
-    and a NEW service is covered the moment it starts — which is the direction that matters, since an
-    unchecked new container is exactly what A6 exists to catch.
+    A6 used to name `mk-postgres mk-neo4j` literally, and the day that inventory changed (R-108)
+    the test broke on the wrong thing. Deriving the port list from what the project itself
+    declares means a NEW service is covered the moment its port is added to one of these files —
+    which is the direction that matters, since an unchecked new listener is exactly what A6 exists
+    to catch. An empty result is a declared-nothing state, never silently treated as "all clear" —
+    the caller skips or fails on it, it never passes.
     """
-    result = wsl(
-        "docker ps --filter label=com.docker.compose.project=matconetesh-knowledge "
-        "--format '{{.Names}}'",
-        timeout=60,
+    from dotenv import dotenv_values
+
+    ports: dict[str, int] = {}
+    for env_path in (ROOT / "infra" / ".env", ROOT / "infra" / "rules-db" / ".env"):
+        if not env_path.exists():
+            continue
+        for key, value in (dotenv_values(env_path) or {}).items():
+            if key.endswith("_PORT") and value:
+                try:
+                    ports[f"{env_path.relative_to(ROOT).as_posix()}:{key}"] = int(value)
+                except ValueError:
+                    continue
+    return ports
+
+
+def _listening_sockets() -> list[dict]:
+    """The OS's own live socket table — the daemon states a fact, the config file states an
+    intention, and only one of them is what an attacker meets (this test's design principle,
+    unchanged from when it read `docker inspect`)."""
+    result = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+         "Get-NetTCPConnection -State Listen | Select-Object LocalPort,LocalAddress "
+         "| ConvertTo-Json -Compress"],
+        capture_output=True, text=True, timeout=30,
     )
     assert result.returncode == 0, result.stderr
-    names = [n.strip() for n in result.stdout.split("\n") if n.strip()]
-    # An empty list would make both tests pass by checking nothing — the failure mode this whole
-    # repository keeps paying for. If the stack is down, that is a skip, not a green.
-    if not names:
-        import pytest
-
-        pytest.skip("no containers from this compose project are running — nothing to inspect")
-    return names
+    if not result.stdout.strip():
+        return []
+    data = json.loads(result.stdout)
+    return [data] if isinstance(data, dict) else data
 
 
 def test_A6_services_are_not_exposed_beyond_loopback():
     """A: "Services are not publicly exposed by default."
 
-    Read from the RUNNING containers, not from compose.yaml — the file states an intention and the
-    daemon states a fact, and only one of them is what an attacker meets.
+    REWRITTEN 2026-08-07 (docker-exit Tasks 7/8): PostgreSQL and Neo4j are native Windows
+    services now, not containers — there is no `docker inspect` to read. A Windows service binds
+    a TCP port exactly as a container publishes one, so the risk is identical; only the tool
+    changes. `Get-NetTCPConnection -State Listen` is the native analogue of `docker inspect`'s
+    `HostIp`: both read the live socket rather than a config file's stated intention. IPv6 `::`
+    (and IPv4 `0.0.0.0`) are the all-interfaces wildcard, not loopback — only `127.0.0.1`/`::1`
+    pass.
     """
-    _require_docker()
-    # JSON, not a --format template. The template version ran an UNPUBLISHED port straight into
-    # the next entry — `7473/tcp->7474/tcp->127.0.0.1:7474` — and the test failed on its own
-    # string handling while every real binding was correct. Parsing structure beats parsing a
-    # string that was never meant to be parsed.
-    import json
+    ports = _declared_ports()
+    if not ports:
+        pytest.skip("no ports are declared in infra/.env or infra/rules-db/.env — nothing to inspect")
 
-    names = _compose_container_names()
-    result = wsl("docker inspect " + " ".join(names), timeout=60)
-    assert result.returncode == 0, result.stderr
-    containers = json.loads(result.stdout)
-    assert len(containers) == len(names), f"expected {len(names)} container(s), got {len(containers)}"
+    by_port: dict[int, list[str]] = {}
+    for entry in _listening_sockets():
+        by_port.setdefault(entry["LocalPort"], []).append(entry["LocalAddress"])
 
-    described = []
-    for c in containers:
-        name = c["Name"].lstrip("/")
-        for port, bindings in (c["NetworkSettings"]["Ports"] or {}).items():
-            if not bindings:
-                described.append(f"{name} {port}: exposed, NOT published")
-                continue
-            for b in bindings:
-                host_ip = b.get("HostIp", "")
-                described.append(f"{name} {port} -> {host_ip}:{b.get('HostPort')}")
-                assert host_ip in ("127.0.0.1", "::1"), (
-                    f"{name} publishes {port} on {host_ip or '0.0.0.0 (all interfaces)'} — "
-                    "every published port must bind to loopback only."
-                )
-    print("  port bindings, read from the running containers:\n    " + "\n    ".join(described))
+    checked = []
+    bad = []
+    for label, port in ports.items():
+        addrs = by_port.get(port)
+        if not addrs:
+            continue  # declared but nothing is currently listening on it — not this test's concern
+        for addr in addrs:
+            checked.append(f"{label} (port {port}): {addr}")
+            if addr not in ("127.0.0.1", "::1"):
+                bad.append(f"{label} listens on port {port} at {addr or '(empty)'}")
+
+    if not checked:
+        pytest.skip("none of the declared ports are currently listening — nothing to inspect")
+
+    print("  listening sockets, read from the OS:\n    " + "\n    ".join(checked))
+    assert not bad, "beyond-loopback binding(s): " + "; ".join(bad)
 
 
-def test_A7_no_container_uses_a_floating_latest_tag():
-    """A strict safety rule: "Do not use `latest` container tags."
+def _dependency_summary_versions() -> dict[str, str]:
+    """The versions committed to docs/infra/dependency-summary.md's native-service table — the
+    diff-reviewed baseline A7 compares the installed binary against. Same role that file already
+    plays for every other pinned version in this project."""
+    text = (ROOT / "docs" / "infra" / "dependency-summary.md").read_text(encoding="utf-8")
+    versions: dict[str, str] = {}
+    for name, pattern in (
+        ("postgresql", r"\|\s*PostgreSQL\s*\(native\)\s*\|\s*`([^`]+)`"),
+        ("neo4j", r"\|\s*Neo4j\s*\(native\)\s*\|\s*`([^`]+)`"),
+    ):
+        m = re.search(pattern, text)
+        assert m, f"docs/infra/dependency-summary.md has no recorded native version for {name}"
+        versions[name] = m.group(1)
+    return versions
 
-    Checked on the running containers for the same reason as A6 — compose.yaml could be edited
-    without a recreate, and then the file and the fact disagree.
-    """
-    _require_docker()
-    result = wsl(
-        "docker inspect " + " ".join(_compose_container_names())
-        + " --format '{{.Name}} {{.Config.Image}}'",
-        timeout=60,
+
+def _postgres_installed_version() -> str:
+    """Read from the binary (`psql --version`), not from a config file. `psql.exe` lives next to
+    the service's own `pg_ctl.exe`, located from the service's PathName rather than a hardcoded
+    install path, so this survives a PostgreSQL minor-version upgrade that changes the folder."""
+    svc = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+         "(Get-CimInstance Win32_Service -Filter \"Name='postgresql-x64-18'\").PathName"],
+        capture_output=True, text=True, timeout=15,
     )
-    assert result.returncode == 0, result.stderr
-    for line in [l.strip() for l in result.stdout.split("\n") if l.strip()]:
-        image = line.split()[-1]
-        assert ":" in image, f"{line}: no tag at all, which resolves to latest"
-        assert not image.endswith(":latest"), f"{line}: a floating latest tag"
-    print("  images: " + " · ".join(l.strip() for l in result.stdout.split("\n") if l.strip()))
+    assert svc.returncode == 0, svc.stderr
+    m = re.search(r'"([^"]+\\bin\\pg_ctl\.exe)"', svc.stdout)
+    assert m, f"could not locate pg_ctl.exe from the service's own PathName: {svc.stdout!r}"
+    psql = str(Path(m.group(1)).parent / "psql.exe")
+
+    out = subprocess.run([psql, "--version"], capture_output=True, text=True, timeout=15)
+    assert out.returncode == 0, out.stderr
+    vm = re.search(r"(\d+\.\d+)", out.stdout)
+    assert vm, f"could not parse psql --version output: {out.stdout!r}"
+    return vm.group(1)
+
+
+def _neo4j_installed_version() -> str:
+    """Read from the binary (`neo4j-admin --version`), not from a config file.
+
+    NOT `neo4j.ps1`/`neo4j.bat version` — that subcommand writes through PowerShell's `Write-Host`,
+    which never reaches a captured pipeline: a caller that does `subprocess.run([...]).stdout` gets
+    an empty string while the version prints only to the interactive console. This produced a false
+    failure here (L66, fourth occurrence in this repo). `neo4j-admin --version` writes to stdout.
+    """
+    home = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+         "[Environment]::GetEnvironmentVariable('NEO4J_HOME','Machine')"],
+        capture_output=True, text=True, timeout=15,
+    )
+    assert home.returncode == 0, home.stderr
+    neo4j_home = home.stdout.strip()
+    assert neo4j_home, "NEO4J_HOME is not set at machine scope"
+    admin = Path(neo4j_home) / "bin" / "neo4j-admin.bat"
+
+    out = subprocess.run([str(admin), "--version"], capture_output=True, text=True, timeout=20)
+    assert out.returncode == 0, out.stderr
+    version = out.stdout.strip()
+    assert version, "neo4j-admin --version produced no stdout"
+    return version
+
+
+def test_A7_installed_version_matches_the_recorded_pin():
+    """A strict safety rule: "Do not use `latest` container tags" — carried to its native form.
+
+    REWRITTEN 2026-08-07 (docker-exit Tasks 7/8): a native Windows service has no image tag, so
+    "no floating latest" has no literal analogue — but the concern it protected (a version that
+    changed without a diff to review) survives the move. The native form: compare the INSTALLED
+    binary's own version against a version string committed to
+    docs/infra/dependency-summary.md, the same role that file already plays for every other
+    pinned dependency here. Covers both PostgreSQL and Neo4j — same concern, same check.
+    """
+    recorded = _dependency_summary_versions()
+    installed = {
+        "postgresql": _postgres_installed_version(),
+        "neo4j": _neo4j_installed_version(),
+    }
+    mismatches = [
+        f"{name}: installed {installed[name]!r} != recorded {recorded[name]!r} "
+        "in docs/infra/dependency-summary.md"
+        for name in recorded
+        if installed[name] != recorded[name]
+    ]
+    print("  installed vs recorded:\n    " + "\n    ".join(
+        f"{name}: installed={installed[name]!r} recorded={recorded[name]!r}" for name in recorded
+    ))
+    assert not mismatches, "; ".join(mismatches)

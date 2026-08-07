@@ -16,6 +16,20 @@ Reproduce with `python -m pip list`, `docker compose config`, `python -c "import
 | APOC Core | bundled `2026.06.0` | `apoc.create.addLabels`, `apoc.merge.relationship` — Cypher cannot parameterise a label or a relationship type. File/network procedures deliberately disabled | runtime |
 | Ollama + bge-m3 | local, RTX 3090 | Embeddings, on this machine. No document text leaves it | runtime |
 
+## Native service versions (source of truth for `test_acceptance_infra.py::test_A7`)
+
+Added 2026-08-07 (docker-exit Tasks 7/8). PostgreSQL and Neo4j both run as native Windows
+services now — no image tag exists to check against a floating `latest`, so this table plays that
+role instead: A7 reads the installed binary's own version (`psql --version`,
+`neo4j-admin --version`) and fails if it no longer matches the row below, exactly as it used to
+fail on an untagged/`:latest` image. Bump the version here in the SAME diff that upgrades the
+service — that diff is the point of the check.
+
+| Service | Installed version | Native service name |
+|---|---|---|
+| PostgreSQL (native) | `18.4` | `postgresql-x64-18` |
+| Neo4j (native) | `2026.06.0` | `neo4j` |
+
 ## Python
 
 Interpreter **3.14.6**, SQLite **3.50.4** — above the 3.45.0 floor that JSONB requires, which is

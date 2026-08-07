@@ -132,6 +132,13 @@ run('check-commands-exist', 'check-commands-exist (a mandatory-read doc naming a
 // naming dead scripts; here, tests naming a wait that cannot fail). Two real waitForTimeout violations
 // (tests/i18n-completeness.spec.ts:48,:121) shipped before this gate existed to catch them.
 run('check-no-arbitrary-waits', 'check-no-arbitrary-waits (a page.waitForTimeout in tests/ — DoD-11, cannot fail for the right reason)', 'check-no-arbitrary-waits.mjs');
+// Docker-exit Task 9. Same family as check-no-arbitrary-waits immediately above: a fully local,
+// always-decidable scan of a fixed file set, and the fix (rewrite the call to its native equivalent)
+// is a single cheap edit reachable from the very commit that trips it — so it BLOCKS, per this file's
+// own §GATE SCOPING rule above. It is a live-invocation detector, not a string grep — see the gate's
+// own header (scripts/check-no-docker.mjs) for the invocation-vs-mention rule that keeps it from
+// lighting up on the repo's own Docker-exit documentation and comments.
+run('check-no-docker', 'check-no-docker (a live `docker <subcommand>` call in executable code — Docker-exit Task 9)', 'check-no-docker.mjs');
 // R-94. Without this, check-meta could report OK while the UI suite had been red in CI for 25
 // consecutive runs — which is what happened. It READS CI rather than running the suite, because
 // §11a forbids a second concurrent Playwright run and a hook that launched one would cause the
