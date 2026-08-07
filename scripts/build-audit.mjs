@@ -65,9 +65,23 @@ const PROJECTS_DIR =
 
 const OWNER_TZ_OFFSET_MIN = 3 * 60; // GMT+3, fixed (not DST-aware; matches the owner's own convention)
 
+// 2026-08-07: this printed `FAIL — build-audit could not produce an audit file` on CI, where there is
+// no session transcript and never will be. It exits 0 and does not block — but it printed FAIL, in a
+// gate run, for entirely correct behaviour. That is the noise that teaches people a gate's output can
+// be ignored, which is how a real red later gets ignored too. The distinction the message must carry
+// is the one this repository keeps rediscovering: an ABSENT input is not a FAILED run.
+//
+// NOT-APPLICABLE  — there is no transcript here (CI, a fresh clone, a moved home directory). Expected.
+// FAIL            — a transcript exists and something went wrong reading or rendering it. Worth eyes.
+function notApplicable(msg) {
+  console.log('NOT APPLICABLE — no session transcript on this machine, so there is nothing to record.');
+  console.log(`  ${msg}`);
+  console.log('  This is the expected state in CI and on a fresh clone. Nothing is wrong.');
+}
+
 function fail(msg) {
   console.log('='.repeat(70));
-  console.log('FAIL — build-audit could not produce an audit file');
+  console.log('FAIL — build-audit found a transcript but could not produce an audit file');
   console.log('='.repeat(70));
   console.log(msg);
   console.log('\nNo file was written (a partial file that looks complete would be worse than none).');
@@ -86,12 +100,12 @@ function localStamp(isoTs) {
 
 // ---- 1. locate the live transcript: newest LAST timestamp among this project's .jsonl files ----
 if (!existsSync(PROJECTS_DIR)) {
-  fail(`Transcript directory does not exist: ${PROJECTS_DIR}`);
+  notApplicable(`Transcript directory does not exist: ${PROJECTS_DIR}`);
   process.exit(0);
 }
 const candidates = readdirSync(PROJECTS_DIR).filter((f) => f.endsWith('.jsonl'));
 if (!candidates.length) {
-  fail(`Transcript directory exists but has no .jsonl files: ${PROJECTS_DIR}`);
+  notApplicable(`Transcript directory exists but has no .jsonl files: ${PROJECTS_DIR}`);
   process.exit(0);
 }
 

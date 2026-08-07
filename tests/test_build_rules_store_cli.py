@@ -4,10 +4,54 @@ import sys
 import tempfile
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
+
+# These four tests need a live mk_rules. On this machine it is always there, so they were written and
+# have always run green — and they FAILED in CI, where there is no database, while the 80 tests in
+# tests/test_rules_builder.py SKIPPED in the same run for the same absence.
+#
+# That difference is the whole bug: an ABSENT dependency reported as a FAILING one. It is L54's fourth
+# costume in this repository, and it stayed invisible for a day because 47 commits went unpushed and CI
+# is the only place where "no database" is the normal state.
+#
+# Same mechanism as the siblings that get it right: resolve the dependency at import time and skip with
+# a stated reason if it is not there. A skip says "not verified here", which is information; a failure
+# says "this is broken", which was false.
+psycopg2 = pytest.importorskip("psycopg2", reason="psycopg2 is not installed")
+sys.path.insert(0, str(ROOT))
+rules_config = pytest.importorskip(
+    "src.rules_store.config", reason="src.rules_store is not importable"
+)
+
+
+def _require_mk_rules():
+    """Skip — do not fail — when mk_rules is unreachable.
+
+    Deliberately NOT a bare `except Exception`: a wrong password or a missing table is a real defect
+    that must stay loud, exactly as check-rules-fresh.mjs classifies on the message rather than the
+    exception class. Only "not configured" and "cannot connect" are absences.
+    """
+    try:
+        conn = rules_config.connect_reader()
+    except Exception as exc:  # noqa: BLE001 - re-raised below unless it is a genuine absence
+        msg = str(exc)
+        absent = (
+            type(exc).__name__ == "ConfigError"
+            or "could not connect" in msg
+            or "Connection refused" in msg
+            or "Is the server running" in msg
+            or "timeout expired" in msg
+        )
+        if absent:
+            pytest.skip(f"mk_rules is not reachable here: {type(exc).__name__}")
+        raise
+    conn.close()
 
 
 def test_cli_reports_lifecycle_counts():
+    _require_mk_rules()
     with tempfile.TemporaryDirectory() as d:
         doc = Path(d) / "fixture.md"
         doc.write_text("### 10.97 CLI test rule\n\nfrom the CLI.\n", encoding="utf-8")
@@ -37,6 +81,7 @@ def test_rebuild_mirror_only_does_not_write_to_postgres():
     CLI with --rebuild-mirror-only against a FRESH mirror path, then show the mirror now holds the
     seeded rule (proving it actually read Postgres) while the Postgres snapshot is byte-for-byte
     unchanged (proving it never wrote back)."""
+    _require_mk_rules()
     sys.path.insert(0, str(ROOT))
     from src.rules_store import builder, config, mirror as mirror_mod
 
@@ -115,6 +160,7 @@ def test_cli_requires_doc_or_rebuild_flag():
     both produce a non-zero exit and no mirror file (proven directly: this exact assertion set
     passed even with scripts/build_rules_store.py deleted, see task-11-report.md Fix round 1).
     Pinned to the CLI's own refusal message text so only a real, running refusal can pass."""
+    _require_mk_rules()
     with tempfile.TemporaryDirectory() as d:
         mirror_path = Path(d) / "should-not-exist.sqlite"
         r = subprocess.run(
@@ -135,6 +181,7 @@ def test_source_path_is_stored_posix_never_backslash():
     `source_path` string to sync_document's lookup — misclassifying a real update as a
     cross-document rule_id collision (ValueError, whole document refused). Pins that the CLI
     normalizes to POSIX (`.as_posix()`) before the value ever reaches Postgres."""
+    _require_mk_rules()
     sys.path.insert(0, str(ROOT))
     from src.rules_store import config
 
