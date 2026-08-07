@@ -127,42 +127,93 @@ foreach ($p in @($BoltPort, $HttpPort)) {
 }
 
 # --- 4. Refuse if the install directory already exists --------------------------------------------
-Write-Step "Checking install directory $Neo4jHome"
-if (Test-Path $Neo4jHome) {
-    Write-Refuse "$Neo4jHome already exists. Remove it manually after confirming it holds nothing you need, then re-run."
+Write-Step "Checking install directory under $InstallRoot"
+# 2026-08-07: this used to test a HARDCODED "$InstallRoot\neo4j-$Version" and then refuse after
+# extraction when that path did not appear. It did not appear, because the archive's own folder is
+# "neo4j-community-<version>". The script was right to refuse rather than continue on a guess — but
+# the guess should never have been there. The name is now DERIVED from what is actually on disk,
+# after extraction, which is the same rule this whole arc keeps arriving at: read the artefact,
+# do not pin a string that describes it.
+$existing = @(Get-ChildItem -Path $InstallRoot -Directory -Filter "neo4j-*$Neo4jVersion*" -ErrorAction SilentlyContinue)
+if ($existing.Count -gt 1) {
+    Write-Refuse "$InstallRoot holds more than one neo4j-*$Neo4jVersion* directory: $($existing.Name -join ', '). Remove the ones you do not want and re-run."
+}
+if ($existing.Count -eq 1 -and (Test-Path (Join-Path $existing[0].FullName "bin\neo4j.ps1"))) {
+    # RESUMABLE: a previous run got as far as extracting. Re-downloading 246 MB and re-extracting
+    # to reach the same bytes is waste, so reuse it and say so loudly rather than silently.
+    $Neo4jHome = $existing[0].FullName
+    $script:AlreadyExtracted = $true
+    Write-Host "  found an existing extraction at $Neo4jHome - reusing it, skipping download and extract."
+    Write-Host "  (if you want a clean install instead, delete that directory and re-run.)"
+}
+elseif ($existing.Count -eq 1) {
+    Write-Refuse "$($existing[0].FullName) exists but has no bin\neo4j.ps1 - it is a partial or foreign directory. Remove it after confirming it holds nothing you need, then re-run."
 }
 
-# --- 5. JDK: check what's already here before installing anything ---------------------------------
-Write-Step "Checking for an existing JDK"
-$javaCmd = Get-Command java -ErrorAction SilentlyContinue
-$haveUsableJdk = $false
-if ($javaCmd) {
-    $verOut = (& java -version 2>&1 | Out-String)
-    Write-Host "  found on PATH: $($javaCmd.Source)"
-    $verIndented = ($verOut.Trim() -split "`n" | ForEach-Object { "  $_" }) -join "`n"
-    Write-Host $verIndented
-    if ($verOut -match '"(21|25)\.') { $haveUsableJdk = $true }
+# --- 5. JDK: find it wherever it actually is, not only on PATH ------------------------------------
+#
+# 2026-08-07, second refusal. The first version asked ONE question — "is `java` on PATH?" — and the
+# honest answer was no, while a perfectly good JDK sat at
+# C:\Program Files\Eclipse Adoptium\jdk-25.0.4.7-hotspot. Temurin's MSI does not add itself to PATH
+# or set JAVA_HOME unless those features are selected, so the script installed a JDK, could not see
+# the JDK it had just installed, asked winget to install it again, and winget replied "already
+# installed, no upgrade available" with a non-zero exit — which the script read as a failed install.
+# Three wrong conclusions from one narrow probe.
+#
+# Now: look where a JDK can actually be (JAVA_HOME, PATH, then the standard vendor directories), and
+# treat winget's "nothing to upgrade" as the success it is. And because Neo4j's service needs to find
+# Java without a shell, JAVA_HOME is SET machine-wide here rather than assumed.
+function Find-Jdk {
+    $candidates = @()
+    if ($env:JAVA_HOME) { $candidates += (Join-Path $env:JAVA_HOME "bin\java.exe") }
+    $onPath = Get-Command java -ErrorAction SilentlyContinue
+    if ($onPath) { $candidates += $onPath.Source }
+    foreach ($root in @("C:\Program Files\Eclipse Adoptium", "C:\Program Files\Java", "C:\Program Files\Zulu")) {
+        if (Test-Path $root) {
+            $candidates += (Get-ChildItem $root -Directory -ErrorAction SilentlyContinue |
+                            ForEach-Object { Join-Path $_.FullName "bin\java.exe" })
+        }
+    }
+    foreach ($c in ($candidates | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique)) {
+        $v = (& $c -version 2>&1 | Out-String)
+        if ($v -match '"(21|25)[.\"]') {
+            return [pscustomobject]@{ Exe = $c; Home = (Split-Path (Split-Path $c -Parent) -Parent); Version = $v.Trim() }
+        }
+    }
+    return $null
 }
-if (-not $haveUsableJdk) {
-    Write-Host "  no usable JDK (21 or 25) found on PATH."
+
+Write-Step "Checking for a usable JDK (21 or 25)"
+$jdk = Find-Jdk
+if (-not $jdk) {
+    Write-Host "  none found on PATH, in JAVA_HOME, or under the standard vendor directories."
     $winget = Get-Command winget -ErrorAction SilentlyContinue
     if (-not $winget) {
         Write-Refuse "no JDK found and winget is not available to install one. Install a JDK 21 or 25 manually (Neo4j 2026.06.0 on Windows: OracleJDK or ZuluJDK per docs/vendor/neo4j/03-install-requirements.md) and re-run."
     }
     Write-Host "  THIS IS A ONE-SHOT, NON-IDEMPOTENT ACTION: installing Eclipse Temurin JDK 25 via winget (matches the container's measured Temurin OpenJDK 25.0.3; see the NOTES header of this script for the vendor-support caveat)."
     & winget install --id EclipseAdoptium.Temurin.25.JDK --silent --accept-package-agreements --accept-source-agreements
-    if ($LASTEXITCODE -ne 0) {
-        Write-Refuse "winget install of the JDK failed (exit $LASTEXITCODE). Install a JDK 21 or 25 manually and re-run."
+    $wingetExit = $LASTEXITCODE
+    # -1978335189 = APPINSTALLER_CLI_ERROR_UPDATE_NOT_APPLICABLE: "already installed, nothing newer".
+    # That is not a failure; it means the thing we wanted is already here. Re-look either way, and
+    # let the search — not winget's exit code — decide whether we have a JDK.
+    $jdk = Find-Jdk
+    if (-not $jdk) {
+        Write-Refuse "winget finished with exit $wingetExit and no usable JDK 21/25 can be found afterwards. Install one manually and re-run."
     }
-    # Refresh PATH in this session from the machine + user environment so `java` resolves without
-    # a new shell.
-    $env:Path = [System.Environment]::GetEnvironmentVariable("Path", "Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path", "User")
-    $javaCmd = Get-Command java -ErrorAction SilentlyContinue
-    if (-not $javaCmd) {
-        Write-Refuse "JDK install reported success but 'java' still does not resolve on PATH. Open a new elevated shell and re-run."
-    }
-    Write-Host "  installed: $($javaCmd.Source)"
 }
+Write-Host "  using: $($jdk.Exe)"
+Write-Host (($jdk.Version -split "`n" | ForEach-Object { "  $_" }) -join "`n")
+
+# Neo4j's Windows service resolves Java through JAVA_HOME. It is empty on this machine even with a
+# JDK installed, so set it — machine-wide for the service, and in-session so the rest of this script
+# can call neo4j-admin without a new shell.
+if ($env:JAVA_HOME -ne $jdk.Home) {
+    Write-Host "  setting JAVA_HOME (machine) = $($jdk.Home)"
+    [System.Environment]::SetEnvironmentVariable("JAVA_HOME", $jdk.Home, "Machine")
+    $env:JAVA_HOME = $jdk.Home
+}
+$env:Path = "$($jdk.Home)\bin;$env:Path"
 
 # --- 6. Download the Neo4j Community zip (skip if already staged) ---------------------------------
 Write-Step "Fetching Neo4j $Neo4jVersion Community (Windows zip)"
@@ -180,11 +231,23 @@ if ($zipSizeMb -lt 50) {
 Write-Host "  staged: $ZipPath ($zipSizeMb MB)"
 
 # --- 7. Extract ------------------------------------------------------------------------------------
-Write-Step "Extracting to $InstallRoot"
-New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
-Expand-Archive -Path $ZipPath -DestinationPath $InstallRoot -Force
-if (-not (Test-Path $Neo4jHome)) {
-    Write-Refuse "expected $Neo4jHome to exist after extraction but it does not - the archive's internal folder name did not match. Check $InstallRoot manually."
+if ($script:AlreadyExtracted) {
+    Write-Step "Skipping extract - reusing $Neo4jHome from an earlier run"
+} else {
+    Write-Step "Extracting to $InstallRoot"
+    New-Item -ItemType Directory -Force -Path $InstallRoot | Out-Null
+    Expand-Archive -Path $ZipPath -DestinationPath $InstallRoot -Force
+
+    # DERIVE the home directory from what the archive actually produced. The first version of this
+    # script asserted "$InstallRoot\neo4j-$Version" and refused when it did not appear — the archive
+    # unpacks to "neo4j-community-<version>". Refusing was right; assuming was not. Find the
+    # directory that contains bin\neo4j.ps1 and require exactly one, so a surprise cannot pass either.
+    $unpacked = @(Get-ChildItem -Path $InstallRoot -Directory -ErrorAction SilentlyContinue |
+                  Where-Object { Test-Path (Join-Path $_.FullName "bin\neo4j.ps1") })
+    if ($unpacked.Count -ne 1) {
+        Write-Refuse "expected exactly one unpacked Neo4j directory under $InstallRoot (a directory containing bin\neo4j.ps1); found $($unpacked.Count): $($unpacked.Name -join ', '). Inspect $InstallRoot manually."
+    }
+    $Neo4jHome = $unpacked[0].FullName
 }
 Write-Host "  NEO4J_HOME = $Neo4jHome"
 
@@ -196,23 +259,77 @@ $env:NEO4J_HOME = $Neo4jHome
 # --- 9. Loopback-only listen addresses + ports matching infra/.env -----------------------------------
 Write-Step "Configuring loopback-only listen addresses (A6 gate requirement)"
 $confPath = Join-Path $Neo4jHome "conf\neo4j.conf"
-$overrides = @"
 
-# --- Added by scripts/install-neo4j-native.ps1 ($(Get-Date -Format s)) ---
-# A6 acceptance test requires nothing listen beyond loopback. Ports match infra/.env so
-# src/knowledge/config.py needs no changes between the container and this native install.
-server.default_listen_address=127.0.0.1
-server.bolt.listen_address=127.0.0.1:$BoltPort
-server.http.listen_address=127.0.0.1:$HttpPort
-server.https.enabled=false
-# Same bounds infra/compose.yaml already applies to the container, carried over rather than
-# left unbounded on a native install.
-server.memory.heap.initial_size=512m
-server.memory.heap.max_size=2G
-server.memory.pagecache.size=1G
-"@
-Add-Content -Path $confPath -Value $overrides
-Write-Host "  appended loopback + memory-bound overrides to $confPath"
+# 2026-08-07, third refusal — and the most instructive one. This block used to APPEND its settings to
+# neo4j.conf. Four of them are already declared in the shipped file, so appending produced
+# `server.https.enabled declared multiple times.` and neo4j-admin refused to read its own config.
+# Appending to a key-value file is only safe when you know the key is absent, and here nobody
+# checked. It also meant a second run would append a second copy, so the fix had to make re-running
+# safe as well, not merely make one run work.
+#
+# Now: strip any previous block this script wrote (sentinel-delimited), comment out every existing
+# uncommented declaration of the keys we set, and write our block once. Re-runnable, and it never
+# leaves a duplicate behind.
+$MARK_BEGIN = "# --- BEGIN install-neo4j-native.ps1 overrides ---"
+$MARK_END   = "# --- END install-neo4j-native.ps1 overrides ---"
+
+$settings = [ordered]@{
+    "server.default_listen_address"    = "127.0.0.1"
+    "server.bolt.listen_address"       = "127.0.0.1:$BoltPort"
+    "server.http.listen_address"       = "127.0.0.1:$HttpPort"
+    "server.https.enabled"             = "false"
+    "server.memory.heap.initial_size"  = "512m"
+    "server.memory.heap.max_size"      = "2G"
+    "server.memory.pagecache.size"     = "1G"
+}
+
+$lines = @(Get-Content -Path $confPath)
+
+# 1. drop any block a previous run of this script wrote
+$out = New-Object System.Collections.Generic.List[string]
+$inBlock = $false
+foreach ($l in $lines) {
+    if ($l -eq $MARK_BEGIN) { $inBlock = $true; continue }
+    if ($l -eq $MARK_END)   { $inBlock = $false; continue }
+    if (-not $inBlock) { $out.Add($l) }
+}
+
+# 2. comment out any surviving declaration of a key we are about to set, so ours is the only one
+$commented = 0
+for ($i = 0; $i -lt $out.Count; $i++) {
+    $line = $out[$i]
+    if ($line -match '^\s*#') { continue }
+    if ($line -notmatch '^\s*([A-Za-z0-9_.]+)\s*=') { continue }
+    $key = $Matches[1]
+    if ($settings.Contains($key)) {
+        $out[$i] = "# (superseded by install-neo4j-native.ps1) $line"
+        $commented++
+    }
+}
+
+# 3. write our block exactly once
+$block = New-Object System.Collections.Generic.List[string]
+$block.Add("")
+$block.Add($MARK_BEGIN)
+$block.Add("# A6 requires that nothing listens beyond loopback. Ports come from infra/.env so")
+$block.Add("# src/knowledge/config.py needs no change between the container and this native install.")
+$block.Add("# Memory bounds carried over from infra/compose.yaml rather than left unbounded.")
+foreach ($k in $settings.Keys) { $block.Add("$k=$($settings[$k])") }
+$block.Add($MARK_END)
+
+Set-Content -Path $confPath -Value ($out + $block) -Encoding UTF8
+Write-Host "  wrote $($settings.Count) setting(s) to $confPath; commented out $commented pre-existing declaration(s) of those keys."
+
+# Prove it rather than assume it: no key we set may appear more than once uncommented.
+$dupes = Get-Content $confPath |
+         Where-Object { $_ -notmatch '^\s*#' -and $_ -match '^\s*([A-Za-z0-9_.]+)\s*=' } |
+         ForEach-Object { ($_ -split '=')[0].Trim() } |
+         Where-Object { $settings.Contains($_) } |
+         Group-Object | Where-Object { $_.Count -gt 1 }
+if ($dupes) {
+    Write-Refuse "after rewriting, these keys are still declared more than once: $(($dupes | ForEach-Object { "$($_.Name) x$($_.Count)" }) -join ', '). Inspect $confPath."
+}
+Write-Host "  verified: no duplicate declaration of any key this script sets."
 
 # --- 10. Set the initial password (one-shot, before first start) -------------------------------------
 Write-Step "Setting the initial password for user '$Neo4jUser'"

@@ -87,6 +87,35 @@ $neo4jHome = $env:NEO4J_HOME
 if (-not $neo4jHome) {
     $neo4jHome = [System.Environment]::GetEnvironmentVariable("NEO4J_HOME", "Machine")
 }
+
+# 2026-08-07: the first real run of this verifier reported TWO failures — "answers RETURN 1" and
+# "version matches" — with the cause `'java' is not recognized`. The service was healthy the whole
+# time: it was Running and listening on loopback, which is only possible if it found Java. What had
+# no Java was THIS SHELL, opened before the installer set JAVA_HOME machine-wide.
+#
+# A verifier that reports the thing it checks as broken because its own environment is incomplete is
+# worse than no verifier: it produces a red that points at the wrong component. Resolve Java the same
+# way the installer does — machine environment first, then the standard vendor directories — instead
+# of trusting whatever PATH this shell happened to inherit.
+if (-not $env:JAVA_HOME) {
+    $env:JAVA_HOME = [System.Environment]::GetEnvironmentVariable("JAVA_HOME", "Machine")
+}
+if (-not (Get-Command java -ErrorAction SilentlyContinue)) {
+    $javaHome = $env:JAVA_HOME
+    if (-not $javaHome) {
+        foreach ($root in @("C:\Program Files\Eclipse Adoptium", "C:\Program Files\Java", "C:\Program Files\Zulu")) {
+            if (-not (Test-Path $root)) { continue }
+            $found = Get-ChildItem $root -Directory -ErrorAction SilentlyContinue |
+                     Where-Object { Test-Path (Join-Path $_.FullName "bin\java.exe") } |
+                     Select-Object -First 1
+            if ($found) { $javaHome = $found.FullName; break }
+        }
+    }
+    if ($javaHome) {
+        $env:JAVA_HOME = $javaHome
+        $env:Path = "$javaHome\bin;$env:Path"
+    }
+}
 $cypherShell = if ($neo4jHome) { Join-Path $neo4jHome "bin\cypher-shell.bat" } else { $null }
 if (-not $Neo4jUser -or -not $Neo4jPassword) {
     Add-Check "answers RETURN 1" $false "infra\.env is missing NEO4J_USER/NEO4J_PASSWORD - cannot attempt a real query."
@@ -99,11 +128,17 @@ if (-not $Neo4jUser -or -not $Neo4jPassword) {
 }
 
 # --- 5. Version match ----------------------------------------------------------------------------
-$neo4jCli = if ($neo4jHome) { Join-Path $neo4jHome "bin\neo4j.ps1" } else { $null }
+# Use neo4j-admin, NOT neo4j.ps1. `neo4j.ps1 version` writes through Write-Host, which does not reach
+# the pipeline — so `& $cli version | Out-String` came back EMPTY while the version printed on screen,
+# and this check failed reporting "reported: " with nothing after it. That is L66 in
+# docs/process/development-discipline.md, met for the fourth time in this repository: in PowerShell
+# the pipeline is the return value, and Write-Host is not in it. `neo4j-admin --version` writes to
+# stdout and is captured correctly.
+$neo4jCli = if ($neo4jHome) { Join-Path $neo4jHome "bin\neo4j-admin.bat" } else { $null }
 if (-not $neo4jCli -or -not (Test-Path $neo4jCli)) {
     Add-Check "version matches $ExpectedVersion" $false "neo4j CLI not found (NEO4J_HOME=$neo4jHome) - cannot check version."
 } else {
-    $verOut = (& $neo4jCli version 2>&1 | Out-String)
+    $verOut = (& $neo4jCli --version 2>&1 | Out-String)
     $ok = $verOut -match [regex]::Escape($ExpectedVersion)
     Add-Check "version matches $ExpectedVersion" $ok "reported: $($verOut.Trim())"
 }
