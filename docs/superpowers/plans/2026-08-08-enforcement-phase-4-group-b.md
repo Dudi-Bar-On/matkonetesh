@@ -416,3 +416,30 @@ Spec §6 row 5, severity **block**: the claim "live" requires the live URL to ha
 - **Q2 (§6.4 trigger 2 breadth):** the spec's literal "exit ≠ 0" includes tools whose nonzero exit is an answer (`grep`, `diff`, `test`, `cmp`); counting those guarantees false blocks on edits mid-ordinary-work. The plan excludes exactly that small named list (Task 3) and keeps everything else. Approve the exclusion list, or direct otherwise.
 - **Q3 (§6.4 trigger 1, "מפרט מאושר"):** operationalized as a spec file containing `אושר על-ידי הבעלים` plus (for new source files) an active arc ledger. Is that the right evidence bar for "approved design exists"?
 - **Q4 (§6.3 window):** "failures this session > 0" combined with "no lesson since the previous commit" would permanently re-block every later commit of a session whose earlier failures were already covered. Implemented reading: failures counted since the last commit event in this session (Task 6, tested explicitly). Confirm this reading.
+
+### Task 13: R-116 — the knowledge rules watch a door nobody uses
+
+**Added 2026-08-08, after measuring the controller's own session.** `symbolic-grep-use-serena.mjs` and
+`geniza-fallback-declaration.mjs` both gate on `tool_name === 'Grep'`. Measured over one full shift:
+**105 greps through Bash, 0 through the Grep tool, 0 serena calls, 9 geniza queries.** Both rules
+reported green for the entire session — not because the discipline was followed, but because they were
+blind to the door being used. That is the silent-green failure this whole layer exists to prevent,
+occurring inside the layer.
+
+**Files:** `scripts/hooks/lib/` (a shared matcher) · both rules · `scripts/tests/test-hooks-groupa.mjs`
+
+- [ ] **1.** Extract the "is this a knowledge search" decision into ONE place both rules call. Two
+      copies of a classification rule drifting apart is a defect this repo has already paid for
+      (§5.1's three conditions live in one rule today; the Bash surface must not become a second copy).
+- [ ] **2.** Apply the SAME §5.1 conditions to a Bash command whose leading segment word is `grep`,
+      `rg`, `findstr` or `Select-String` — reusing the segment-splitting and option-skipping that
+      `main-only-no-worktrees.mjs` already does, so `git -C x grep` and `echo "grep foo"` behave as
+      they should.
+- [ ] **3.** COUNTER-RED is the whole task, and it is bigger here than the RED: a targeted grep of a
+      KNOWN file (`grep -n "R-72" docs/ROADMAP-2026-07-30.md`) is not a corpus search and must stay
+      silent. So must a Hebrew pattern, a pattern with spaces, and a `docs/**` sweep. Most of the 105
+      calls measured above were targeted reads and SHOULD remain silent — the number is evidence of
+      blindness, not of 105 violations.
+- [ ] **4.** Re-measure after wiring: run a realistic stretch of ordinary work and report how many of
+      the greps now warn. **More than a handful is a finding**, not a success.
+
