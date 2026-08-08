@@ -31,7 +31,12 @@
                                              and not touched by this script.
 
     WHY G: AND NOT F: (measured 2026-08-07): G: has 12,102 GB free - trivially large next to the
-    measured ~1.1-1.5 GB/day this cluster generates (pg_stat_wal.wal_bytes since the last stats
+    MEASURED ~5.8 GB/day once archiving was actually live (2026-08-08, from files on disk). The earlier
+    estimate of 1.1-1.5 GB/day came from pg_stat_wal.wal_bytes and was WRONG BY 5x, because it counts
+    bytes written, not segments archived: archive_timeout below forces a FULL 16MB segment every five
+    minutes even when the cluster is idle, so the floor is 288 x 16MB = 4.6 GB/day regardless of how
+    little changes. 14 days of that is ~81 GB against 12,102 GB free - comfortable, but the number a
+    reader needs is the real one. (The old figure came from wal_bytes since the last stats
     reset, sampled 2026-08-08). F: has 65.5 GB free and is a REMOVABLE drive meant to be detached
     most of the time (backup-stores.ps1's own header) - a continuous stream cannot target a drive
     that is routinely unplugged, so F: stays what it already is: a second, periodic, physical-media
@@ -39,7 +44,7 @@
 
     RETENTION, PLANNED HERE - NOT AFTER A FULL DISK STOPS POSTGRES (task-7-brief.md item 2). A
     failing archive_command halts WAL recycling until space frees, so an archive directory that
-    fills is not a disk-space inconvenience, it is a PostgreSQL outage. At ~1.1-1.5 GB/day against
+    fills is not a disk-space inconvenience, it is a PostgreSQL outage. At the measured ~5.8 GB/day against
     12,102 GB free, filling G: this way would take decades - the real risk is not volume, it is an
     archive_command that starts failing silently and is never pruned regardless. Cleanup is handled
     by scripts/backup-stores.ps1 (time-based deletion of archived WAL older than -WalRetentionDays,
@@ -106,7 +111,7 @@ if (-not (Test-Path "$PgBin\psql.exe")) { Write-Refuse "psql.exe not found at $P
 $archiveDrive = Split-Path $ArchiveDest -Qualifier
 if (-not (Test-Path $archiveDrive)) { Write-Refuse "archive destination drive $archiveDrive is not present." }
 $freeGB = [math]::Round((Get-PSDrive ($archiveDrive.TrimEnd(':'))).Free / 1GB, 1)
-if ($freeGB -lt $MinFreeGB) { Write-Refuse "only $freeGB GB free on $archiveDrive - refusing below the $MinFreeGB GB floor (measured daily volume is ~1.1-1.5 GB; this floor is a large multiple of that, not a tight fit)." }
+if ($freeGB -lt $MinFreeGB) { Write-Refuse "only $freeGB GB free on $archiveDrive - refusing below the $MinFreeGB GB floor (measured daily volume is ~5.8 GB; this floor is a large multiple of that, not a tight fit)." }
 Write-Host "  archive destination: $ArchiveDest  ($freeGB GB free on $archiveDrive)"
 
 $env:PgSuperUser = Get-EnvValue (Join-Path $RepoRoot 'infra\.env') 'POSTGRES_SUPERUSER'
@@ -261,7 +266,12 @@ $deadline = (Get-Date).AddSeconds($VerifyTimeoutSecs)
 $confirmed = $false
 do {
     Start-Sleep -Seconds 3
-    $stat = Invoke-Psql "SELECT archived_count, coalesce(failed_count,0), coalesce(last_archived_wal,''), coalesce(last_failed_wal,'')" -Quiet
+    # The FROM clause was missing here on the owner's first run (2026-08-08 04:32), so the query died
+    # with `column "archived_count" does not exist` AFTER the config edit and restart had already
+    # succeeded. Nothing was left half-done - archiving was on and working, and the verification step
+    # is what failed - but a verifier that crashes reports nothing, which is the one thing this script
+    # exists to avoid. Line 253 above always had the FROM; this line did not.
+    $stat = Invoke-Psql "SELECT archived_count, coalesce(failed_count,0), coalesce(last_archived_wal,''), coalesce(last_failed_wal,'') FROM pg_stat_archiver" -Quiet
     $parts = $stat -split '\|'
     $archivedCount = [int]$parts[0]
     $failedCount   = [int]$parts[1]

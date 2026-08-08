@@ -1,5 +1,28 @@
 {
   "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep|WebSearch|Agent|browser_navigate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/pretooluse.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/subagentstop.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "SessionStart": [
       {
         "matcher": "startup|resume|compact",
