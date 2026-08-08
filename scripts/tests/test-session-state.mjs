@@ -325,12 +325,14 @@ function runWithEnf(extraEnv) {
   } else {
     console.log('PASS  §6.2 RED: §5 line reads the SAME counter fix-cycle-limit.mjs would block on');
   }
-  if (!/§10\.16\s+failures this arc: \d+ · lessons: see commit gate/.test(r.stdout)) {
-    console.error('FAIL  expected the §10.16 line with the stated Task-6 placeholder');
+  // Task 6 landed: the placeholder ("lessons: see commit gate") is gone — this line now renders the
+  // real sessionLessonGate() verdict from the SAME primitives lessons-before-commit.mjs blocks on.
+  if (!/§10\.16\s+failures this arc: \d+ · lessons logged: (OK|MISSING ⚠ \d+ uncovered|unknown \(could not read the discipline-doc diff\))/.test(r.stdout)) {
+    console.error('FAIL  expected the §10.16 line with a real sessionLessonGate() verdict');
     console.error(`      stdout: ${r.stdout}`);
     process.exitCode = 1;
   } else {
-    console.log('PASS  §6.2: §10.16 line present with the documented lessons placeholder');
+    console.log('PASS  §6.2: §10.16 line present with a real sessionLessonGate() verdict');
   }
   if (!/=== ENFORCEMENT STATE, restored after compact ===/.test(r.stdout)) {
     console.error('FAIL  expected the full restored-after-compact header when a counter is open');

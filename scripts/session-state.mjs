@@ -22,8 +22,9 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanDecisionsAwaitingOwner } from './lib/register-scan.mjs';
-import { openState as openEnforcementState, openTargets, eventCountSince } from './hooks/lib/enforcement-state.mjs';
+import { openState as openEnforcementState, openTargets, eventCountSince, lastEvent } from './hooks/lib/enforcement-state.mjs';
 import { ATTEMPT_THRESHOLD } from './hooks/rules/fix-cycle-limit.mjs';
+import { sessionLessonGate } from './gate-lessons.mjs';
 
 // SESSION_STATE_ROOT lets a self-test point plan-path resolution at a disposable fixture tree
 // instead of the real repo (ledgers store plan paths repo-relative, e.g.
@@ -348,9 +349,14 @@ export function enforcementState(sessionId) {
 
   let targets;
   let failuresThisArc;
+  let failuresSinceLastCommit;
   try {
     targets = sessionId ? openTargets(db, sessionId) : [];
     failuresThisArc = sessionId ? eventCountSince(db, sessionId, 'verification_failure', 0) : 0;
+    const lastCommit = sessionId ? lastEvent(db, sessionId, 'commit') : null;
+    failuresSinceLastCommit = sessionId
+      ? eventCountSince(db, sessionId, 'verification_failure', lastCommit?.ts ?? 0)
+      : 0;
   } catch {
     try { db.close(); } catch { /* best-effort */ }
     return 'ENFORCEMENT STATE: state store unreadable — counters unknown, not asserted';
@@ -386,9 +392,25 @@ export function enforcementState(sessionId) {
   } else {
     lines.push('  §5      no open fix-cycle target at or past the ceiling');
   }
-  // Task 6 (sessionLessonGate) has not landed yet — per task-5-brief.md, the lessons-count half of
-  // this line is a stated placeholder, not a fabricated number, until that task supplies a real one.
-  lines.push(`  §10.16  failures this arc: ${failuresThisArc} · lessons: see commit gate`);
+  // §10.16 / §6.3 (Task 6): the lessons half is now the SAME primitive the commit-time blocking
+  // rule (lessons-before-commit.mjs) reads — sessionLessonGate() — so this line can never drift out
+  // of agreement with what actually blocks the next `git commit`. The diff read is best-effort: any
+  // failure (git missing, not a repo, doc unreadable) degrades to an explicit "unknown" verdict
+  // rather than a false OK or a thrown exception — this announcer is read-only, never a gate itself.
+  let lessonsLine;
+  try {
+    const diffText = execFileSync(
+      'git', ['diff', 'HEAD', '--', join(ROOT, 'docs', 'process', 'development-discipline.md')],
+      { cwd: ROOT, encoding: 'utf8', timeout: 5000 },
+    );
+    const verdict = sessionLessonGate({ failuresSinceLastCommit, disciplineDiffText: diffText });
+    lessonsLine = verdict.pass
+      ? 'lessons logged: OK'
+      : `lessons logged: MISSING ⚠ ${failuresSinceLastCommit} uncovered`;
+  } catch {
+    lessonsLine = 'lessons logged: unknown (could not read the discipline-doc diff)';
+  }
+  lines.push(`  §10.16  failures this arc: ${failuresThisArc} · ${lessonsLine}`);
   lines.push(`  infra   ${infra.text}`);
   return lines.join('\n');
 }

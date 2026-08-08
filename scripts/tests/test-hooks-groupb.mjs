@@ -7,7 +7,7 @@
 // pipeline. PostToolUse here is an EAR, not a mouth: observers never return decisions, so there is
 // no allow/warn/block lattice to prove, only "did every failure resolve to exit 0 + {} + a named
 // log record, and did one broken observer fail to silence its siblings".
-import { spawnSync } from 'node:child_process';
+import { spawnSync, execFileSync } from 'node:child_process';
 import {
   mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync,
 } from 'node:fs';
@@ -1616,6 +1616,293 @@ export function observe(input) {
       out.decision === 'block' && out.reason.includes('UTC'), `reason=${out.reason}`);
     delete process.env.ENFORCEMENT_STATE_PATH;
     delete process.env.DISCIPLINE;
+  }
+}
+
+// =================================================================================================
+// SECTION 6 — scripts/hooks/rules/lessons-before-commit.mjs + scripts/gate-lessons.mjs's exported
+// sessionLessonGate (task-6-brief.md, spec §6.3). Every case runs against a TEMP
+// ENFORCEMENT_STATE_PATH and (for rule-level cases needing real diff evidence) a disposable temp git
+// repo pointed to via LESSONS_GATE_GIT_CWD/DISCIPLINE — never the real repo state or the real
+// discipline.md, exactly like Section 4's own warning: this rule is wired into Bash `git commit`,
+// which means it would run on THIS TEST'S OWN commits too if state/evidence were not isolated.
+// =================================================================================================
+{
+  const GL = await import(pathToFileURL(join(ROOT, 'scripts', 'gate-lessons.mjs')).href);
+  const RULE6 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'lessons-before-commit.mjs')).href);
+  const ES6 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+  const s6Work = tempDir('hooks-groupb-lessons-');
+
+  // Millisecond-resolution ts collisions between two recordEvent() calls issued back-to-back would
+  // make the Q4 "since the last commit" boundary ambiguous (a failure landing in the SAME ms as the
+  // commit event would be indistinguishable from one strictly after it). Busy-waits to the next tick
+  // — cheap here since this is a test, not a hook running under a real latency budget.
+  function tick() {
+    const t = Date.now();
+    while (Date.now() === t) { /* spin */ }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // PURE-FUNCTION TABLE — sessionLessonGate({failuresSinceLastCommit, disciplineDiffText}), no git,
+  // no state store. Covers the same decision table the rule sits on top of.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const zero = GL.sessionLessonGate({ failuresSinceLastCommit: 0, disciplineDiffText: '' });
+    check('sessionLessonGate: zero failures -> pass, silently', zero.pass === true, `out=${JSON.stringify(zero)}`);
+
+    const noEvidence = GL.sessionLessonGate({ failuresSinceLastCommit: 2, disciplineDiffText: '' });
+    check('sessionLessonGate: 2 failures + empty diff -> fail', noEvidence.pass === false, `out=${JSON.stringify(noEvidence)}`);
+    check('sessionLessonGate: fail reason names §10.16', noEvidence.reason.includes('§10.16'), `reason=${noEvidence.reason}`);
+    check('sessionLessonGate: fail reason names the count (2)', noEvidence.reason.includes('2'), `reason=${noEvidence.reason}`);
+    check('sessionLessonGate: fail reason names the lesson-line alternative verbatim',
+      noEvidence.reason.includes('**L<n> ·'), `reason=${noEvidence.reason}`);
+    check('sessionLessonGate: fail reason names the no-lesson-declaration alternative verbatim',
+      noEvidence.reason.includes('**No-lesson declaration (YYYY-MM-DD):** <arc> — reason'), `reason=${noEvidence.reason}`);
+
+    const withLesson = GL.sessionLessonGate({
+      failuresSinceLastCommit: 2,
+      disciplineDiffText: '+**L63 · הלקח (2026-08-08).**\n context line, unprefixed\n-removed old line',
+    });
+    check('sessionLessonGate: failures + diff with a NEW +**L<n> ·** line -> pass', withLesson.pass === true, `out=${JSON.stringify(withLesson)}`);
+
+    const withDecl = GL.sessionLessonGate({
+      failuresSinceLastCommit: 3,
+      disciplineDiffText: '+**No-lesson declaration (2026-08-08):** enforcement B/6 — reviewed, nothing new.',
+    });
+    check('sessionLessonGate: failures + diff with a NEW no-lesson declaration -> pass', withDecl.pass === true, `out=${JSON.stringify(withDecl)}`);
+
+    // A lesson line present only as CONTEXT (unprefixed) or REMOVED (`-` prefixed) must not count —
+    // only an ADDITION proves a lesson was written since the last commit.
+    const contextOnly = GL.sessionLessonGate({
+      failuresSinceLastCommit: 1,
+      disciplineDiffText: ' **L63 · unrelated context line, not new.**\n-**L62 · this one was REMOVED.**',
+    });
+    check('sessionLessonGate: an unprefixed/removed L-line does not count as new -> fail',
+      contextOnly.pass === false, `out=${JSON.stringify(contextOnly)}`);
+
+    const negFailures = GL.sessionLessonGate({ failuresSinceLastCommit: -1, disciplineDiffText: '' });
+    check('sessionLessonGate: negative/garbage failures count treated as 0 -> pass', negFailures.pass === true, `out=${JSON.stringify(negFailures)}`);
+  }
+
+  // Sets up a disposable git repo (its own .git) containing one tracked discipline.md, committed, so
+  // `git diff HEAD -- <doc>` has real content to read after an on-disk (uncommitted) modification —
+  // the exact same command the rule itself shells out to, just pointed at a throwaway repo via
+  // LESSONS_GATE_GIT_CWD so the real repo's own discipline.md is never touched.
+  function makeTempRepo(discDocInitialText) {
+    const repoDir = tempDir('hooks-groupb-lessons-repo-');
+    execFileSync('git', ['init', '-q'], { cwd: repoDir });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoDir });
+    execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoDir });
+    const docPath = join(repoDir, 'discipline.md');
+    writeFileSync(docPath, discDocInitialText, 'utf8');
+    execFileSync('git', ['add', '.'], { cwd: repoDir });
+    execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: repoDir });
+    return { repoDir, docPath };
+  }
+
+  function withRuleEnv({ statePath, gitCwd, disciplinePath }, fn) {
+    const prevState = process.env.ENFORCEMENT_STATE_PATH;
+    const prevCwd = process.env.LESSONS_GATE_GIT_CWD;
+    const prevDoc = process.env.DISCIPLINE;
+    process.env.ENFORCEMENT_STATE_PATH = statePath;
+    process.env.LESSONS_GATE_GIT_CWD = gitCwd;
+    process.env.DISCIPLINE = disciplinePath;
+    try {
+      return fn();
+    } finally {
+      if (prevState === undefined) delete process.env.ENFORCEMENT_STATE_PATH; else process.env.ENFORCEMENT_STATE_PATH = prevState;
+      if (prevCwd === undefined) delete process.env.LESSONS_GATE_GIT_CWD; else process.env.LESSONS_GATE_GIT_CWD = prevCwd;
+      if (prevDoc === undefined) delete process.env.DISCIPLINE; else process.env.DISCIPLINE = prevDoc;
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // COUNTER-RED-3 — non-commit Bash passes through untouched.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const outStatus = RULE6.evaluate({ tool_name: 'Bash', session_id: 'sX', tool_input: { command: 'git status' } });
+    check('lessons-before-commit: `git status` -> allow', outStatus.decision === 'allow', `out=${JSON.stringify(outStatus)}`);
+    const outEcho = RULE6.evaluate({ tool_name: 'Bash', session_id: 'sX', tool_input: { command: 'echo "git commit"' } });
+    check('lessons-before-commit: `echo "git commit"` (lookalike, not a real commit) -> allow', outEcho.decision === 'allow', `out=${JSON.stringify(outEcho)}`);
+    const outNonBash = RULE6.evaluate({ tool_name: 'Edit', session_id: 'sX', tool_input: { file_path: 'x.js' } });
+    check('lessons-before-commit: non-Bash tool -> allow', outNonBash.decision === 'allow', `out=${JSON.stringify(outNonBash)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // COUNTER-RED — zero failures recorded this session -> allow, silently. Proven with
+  // LESSONS_GATE_GIT_CWD pointed at a directory that is NOT a git repo: if the rule tried to shell
+  // out to git anyway it would hit the fail-open GIT-FAILURE path below, not this silent one, and the
+  // reason text differs between the two — the assertion distinguishes them.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const notARepo = tempDir('hooks-groupb-lessons-notrepo-');
+    const statePath = join(s6Work, 'zero-failures.sqlite');
+    const sessionId = 'sess-zero';
+    { const db = ES6.openState(statePath); db.close(); }
+    const out = withRuleEnv(
+      { statePath, gitCwd: notARepo, disciplinePath: join(notARepo, 'discipline.md') },
+      () => RULE6.evaluate({ tool_name: 'Bash', session_id: sessionId, tool_input: { command: 'git commit -m "x"' } }),
+    );
+    check('COUNTER-RED lessons: zero failures -> allow silently', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    check('COUNTER-RED lessons: zero-failures reason names "no failures" (never reaches the git-failure path)',
+      /no failures/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // RED — 2 failures since last commit + empty discipline diff -> BLOCK; reason names §10.16, the
+  // count, and BOTH alternatives verbatim.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const { repoDir, docPath } = makeTempRepo('# discipline\n\n## 11\n\n(no lessons yet)\n');
+    const statePath = join(s6Work, 'red.sqlite');
+    const sessionId = 'sess-red';
+    {
+      const db = ES6.openState(statePath);
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't1' } });
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't2' } });
+      db.close();
+    }
+    const out = withRuleEnv(
+      { statePath, gitCwd: repoDir, disciplinePath: docPath },
+      () => RULE6.evaluate({ tool_name: 'Bash', session_id: sessionId, tool_input: { command: 'git commit -m "x"' } }),
+    );
+    check('RED lessons: 2 failures + empty diff -> BLOCK', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('RED lessons: reason names §10.16', out.reason.includes('§10.16'), `reason=${out.reason}`);
+    check('RED lessons: reason names the count (2)', out.reason.includes('2'), `reason=${out.reason}`);
+    check('RED lessons: reason names the lesson-line alternative verbatim', out.reason.includes('**L<n> ·'), `reason=${out.reason}`);
+    check('RED lessons: reason names the no-lesson-declaration alternative verbatim',
+      out.reason.includes('**No-lesson declaration (YYYY-MM-DD):** <arc> — reason'), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // COUNTER-RED — failures + diff containing a NEW `+**L63 · ...**` line -> allow.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const { repoDir, docPath } = makeTempRepo('# discipline\n\n## 11\n\n(no lessons yet)\n');
+    writeFileSync(docPath, '# discipline\n\n## 11\n\n**L63 · הלקח (2026-08-08).** a real lesson.\n', 'utf8');
+    const statePath = join(s6Work, 'counter-lesson.sqlite');
+    const sessionId = 'sess-lesson';
+    {
+      const db = ES6.openState(statePath);
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't1' } });
+      db.close();
+    }
+    const out = withRuleEnv(
+      { statePath, gitCwd: repoDir, disciplinePath: docPath },
+      () => RULE6.evaluate({ tool_name: 'Bash', session_id: sessionId, tool_input: { command: 'git commit -m "x"' } }),
+    );
+    check('COUNTER-RED lessons: failures + new L-line in diff -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // COUNTER-RED — failures + diff containing a NEW no-lesson declaration -> allow.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const { repoDir, docPath } = makeTempRepo('# discipline\n\n## 11\n\n(no lessons yet)\n');
+    writeFileSync(docPath, '# discipline\n\n## 11\n\n**No-lesson declaration (2026-08-08):** enforcement B/6 — reviewed, nothing new.\n', 'utf8');
+    const statePath = join(s6Work, 'counter-decl.sqlite');
+    const sessionId = 'sess-decl';
+    {
+      const db = ES6.openState(statePath);
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't1' } });
+      db.close();
+    }
+    const out = withRuleEnv(
+      { statePath, gitCwd: repoDir, disciplinePath: docPath },
+      () => RULE6.evaluate({ tool_name: 'Bash', session_id: sessionId, tool_input: { command: 'git commit -m "x"' } }),
+    );
+    check('COUNTER-RED lessons: failures + new no-lesson declaration in diff -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // COUNTER-RED-2 (Q4 ruling, tested explicitly) — a session whose failures all predate its last
+  // commit event -> allow. Concretely: 2 failures, THEN a 'commit' event recorded (simulating the
+  // PRIOR commit that already covered them, via verification-outcomes.mjs's own PostToolUse write),
+  // and NO new failures after that -> the next `git commit` sees failuresSinceLastCommit === 0.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const notARepo = tempDir('hooks-groupb-lessons-notrepo2-');
+    const statePath = join(s6Work, 'q4.sqlite');
+    const sessionId = 'sess-q4';
+    {
+      const db = ES6.openState(statePath);
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't1' } });
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't2' } });
+      tick();
+      // The PRIOR commit event — everything before this point is "already covered" per Q4.
+      ES6.recordEvent(db, { sessionId, kind: 'commit', detail: { command: 'git commit -m "prev"' } });
+      db.close();
+    }
+    const out = withRuleEnv(
+      { statePath, gitCwd: notARepo, disciplinePath: join(notARepo, 'discipline.md') },
+      () => RULE6.evaluate({ tool_name: 'Bash', session_id: sessionId, tool_input: { command: 'git commit -m "next"' } }),
+    );
+    check('COUNTER-RED-2 lessons (Q4): failures all predate the last commit event -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    check('COUNTER-RED-2 lessons (Q4): reason names "no failures" (0 since the last commit)', /no failures/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Q4 made concrete the other direction: NEW failures AFTER that prior commit still block, with the
+  // count reflecting only the post-commit failures (1, not 3).
+  // -----------------------------------------------------------------------------------------------
+  {
+    const { repoDir, docPath } = makeTempRepo('# discipline\n\n## 11\n\n(no lessons yet)\n');
+    const statePath = join(s6Work, 'q4-new-failure.sqlite');
+    const sessionId = 'sess-q4b';
+    {
+      const db = ES6.openState(statePath);
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't1' } });
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't2' } });
+      tick();
+      ES6.recordEvent(db, { sessionId, kind: 'commit', detail: { command: 'git commit -m "prev"' } });
+      tick();
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't3' } });
+      db.close();
+    }
+    const out = withRuleEnv(
+      { statePath, gitCwd: repoDir, disciplinePath: docPath },
+      () => RULE6.evaluate({ tool_name: 'Bash', session_id: sessionId, tool_input: { command: 'git commit -m "next"' } }),
+    );
+    check('Q4 (post-commit failure): still blocks', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('Q4 (post-commit failure): count reflects only the 1 post-commit failure, not all 3',
+      /\b1\b/.test(out.reason.split('recorded since')[0]), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Fail-open — enforcement state unreadable (corrupt file) -> allow, degradation named.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const garbagePath = join(s6Work, 'garbage.sqlite');
+    writeFileSync(garbagePath, 'not a sqlite file, just garbage bytes', 'utf8');
+    const out = withRuleEnv(
+      { statePath: garbagePath, gitCwd: ROOT, disciplinePath: join(ROOT, 'docs', 'process', 'development-discipline.md') },
+      () => RULE6.evaluate({ tool_name: 'Bash', session_id: 'sess-garbage', tool_input: { command: 'git commit -m "x"' } }),
+    );
+    check('lessons-before-commit: corrupt state file -> allow (never blocks)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    check('lessons-before-commit: reason names the degradation', /unreadable|degrad/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Fail-open — git itself unavailable/failing (LESSONS_GATE_GIT_CWD points at a non-repo dir, so
+  // `git diff HEAD -- ...` errors) with failures actually recorded -> allow, degradation named, NOT
+  // a false block.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const notARepo = tempDir('hooks-groupb-lessons-gitfail-');
+    const statePath = join(s6Work, 'gitfail.sqlite');
+    const sessionId = 'sess-gitfail';
+    {
+      const db = ES6.openState(statePath);
+      ES6.recordEvent(db, { sessionId, kind: 'verification_failure', detail: { target: 't1' } });
+      db.close();
+    }
+    const out = withRuleEnv(
+      { statePath, gitCwd: notARepo, disciplinePath: join(notARepo, 'nonexistent-discipline.md') },
+      () => RULE6.evaluate({ tool_name: 'Bash', session_id: sessionId, tool_input: { command: 'git commit -m "x"' } }),
+    );
+    check('lessons-before-commit: git diff failure with real failures pending -> allow (fail-open, not a false block)',
+      out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    check('lessons-before-commit: git-failure reason names the degradation', /degrad/i.test(out.reason), `reason=${out.reason}`);
   }
 }
 
