@@ -714,5 +714,363 @@ export function observe(input) {
   }
 }
 
+// =================================================================================================
+// SECTION 3 — scripts/hooks/lib/verification-target.mjs + the two Task 3 observers
+// (verification-outcomes.mjs, edit-tracker.mjs). task-3-brief.md. §6.1: "המפתח הוא הבדיקה
+// שנכשלה, לא הקובץ שנערך" — the COUNTER-RED cases below are the point of this section.
+// =================================================================================================
+{
+  const VT = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'verification-target.mjs')).href);
+
+  // ---------------------------------------------------------------------------------------------
+  // RED — classifyCommand: real verification invocations recognized, with the right runner.
+  // ---------------------------------------------------------------------------------------------
+  check('classify: npx playwright test -> verification/playwright',
+    VT.classifyCommand('npx playwright test').isVerification === true
+    && VT.classifyCommand('npx playwright test').runner === 'playwright');
+  check('classify: npx playwright test <file> -> verification/playwright',
+    VT.classifyCommand('npx playwright test tests/foo.spec.ts').isVerification === true
+    && VT.classifyCommand('npx playwright test tests/foo.spec.ts').runner === 'playwright');
+  check('classify: py -3 -m pytest <file> -> verification/pytest',
+    VT.classifyCommand('py -3 -m pytest tests/probe.py').isVerification === true
+    && VT.classifyCommand('py -3 -m pytest tests/probe.py').runner === 'pytest');
+  check('classify: node scripts/tests/run-all.mjs -> verification/node-test',
+    VT.classifyCommand('node scripts/tests/run-all.mjs').isVerification === true
+    && VT.classifyCommand('node scripts/tests/run-all.mjs').runner === 'node-test');
+  check('classify: node scripts/check-meta.mjs -> verification/node-test',
+    VT.classifyCommand('node scripts/check-meta.mjs').isVerification === true
+    && VT.classifyCommand('node scripts/check-meta.mjs').runner === 'node-test');
+  check('classify: node scripts/tests/test-hooks-groupb.mjs -> verification/node-test',
+    VT.classifyCommand('node scripts/tests/test-hooks-groupb.mjs').isVerification === true
+    && VT.classifyCommand('node scripts/tests/test-hooks-groupb.mjs').runner === 'node-test');
+
+  // ---------------------------------------------------------------------------------------------
+  // COUNTER-RED — classifyCommand: everything else, including the Phase-3-bar lookalikes.
+  // ---------------------------------------------------------------------------------------------
+  check('COUNTER-RED classify: npm install -> not a verification', VT.classifyCommand('npm install').isVerification === false);
+  check('COUNTER-RED classify: grep -q foo file -> not a verification', VT.classifyCommand('grep -q foo file').isVerification === false);
+  check('COUNTER-RED classify: git commit -m "..." -> not a verification', VT.classifyCommand('git commit -m "fix"').isVerification === false);
+  check('COUNTER-RED classify: python build.py -> not a verification', VT.classifyCommand('python build.py').isVerification === false);
+  check('COUNTER-RED classify: curl -> not a verification', VT.classifyCommand('curl https://example.com').isVerification === false);
+  check('COUNTER-RED classify: empty/non-string command -> not a verification, never throws',
+    VT.classifyCommand('').isVerification === false && VT.classifyCommand(undefined).isVerification === false);
+
+  // REAL captured output — this exact text was produced by a real `py -3 -m pytest` run against a
+  // real two-test file in this repo on 2026-08-08 (one deliberately-failing, one passing) — not
+  // invented from memory. See task-3-report.md for the unedited terminal capture.
+  const REAL_PYTEST_FAILURE_OUTPUT = [
+    '============================= test session starts =============================',
+    'platform win32 -- Python 3.14.6, pytest-9.1.1, pluggy-1.6.0',
+    'rootdir: C:\\Users\\dudib\\source\\repos\\matconetesh',
+    'collected 2 items',
+    '',
+    'tests\\probe.py F.                                     [100%]',
+    '',
+    '================================== FAILURES ===================================',
+    '_________________________________ test_delta __________________________________',
+    '',
+    '    def test_delta():',
+    '>       assert 1 == 2',
+    'E       assert 1 == 2',
+    '',
+    'tests\\probe.py:2: AssertionError',
+    '=========================== short test summary info ===========================',
+    'FAILED tests/probe.py::test_delta - assert 1 == 2',
+    '========================= 1 failed, 1 passed in 0.08s =========================',
+  ].join('\n');
+
+  check('extract (pytest): the FAILED nodeid is extracted from real captured output',
+    JSON.stringify(VT.extractFailingTargets('pytest', REAL_PYTEST_FAILURE_OUTPUT)) === JSON.stringify(['tests/probe.py::test_delta']));
+
+  // REAL captured output — `npx playwright test` (list reporter) against a real two-test spec file
+  // in this repo, both deliberately failing, printed NON-ascending ("✘  2 ...A" before "✘  1 ...B")
+  // — captured 2026-08-08, not invented.
+  const REAL_PW_FAILURE_OUTPUT = [
+    'Running 2 tests using 2 workers',
+    '',
+    '  ✘  2 [chromium] › tests\\probe.spec.ts:3:5 › probe fail A @probe (169ms)',
+    '  ✘  1 [chromium] › tests\\probe.spec.ts:8:5 › probe fail B @probe (157ms)',
+    '',
+    '',
+    '  1) [chromium] › tests\\probe.spec.ts:3:5 › probe fail A @probe ──────────────────────',
+    '  2 failed',
+  ].join('\n');
+
+  const pwTargets = VT.extractFailingTargets('playwright', REAL_PW_FAILURE_OUTPUT);
+  check('extract (playwright): both failing tests extracted from real output, deduplicated', pwTargets.length === 2, `got=${JSON.stringify(pwTargets)}`);
+  check('extract (playwright): target A has the real file:line:col › title shape',
+    pwTargets.includes('tests\\probe.spec.ts:3:5 › probe fail A @probe'), `got=${JSON.stringify(pwTargets)}`);
+  check('extract (playwright): target B has the real file:line:col › title shape',
+    pwTargets.includes('tests\\probe.spec.ts:8:5 › probe fail B @probe'), `got=${JSON.stringify(pwTargets)}`);
+
+  // REAL house convention (grep-confirmed across scripts/tests/*.mjs, and run live) — a test file's
+  // own check() helper prints `FAIL  <label>` on stderr; run-all.mjs inherits this verbatim.
+  const REAL_NODE_TEST_OUTPUT = [
+    'FAIL  state: TTL prune — expected pruned, got present',
+    'PASS  state: sanity check',
+    '',
+    '1/2 checks passed.',
+  ].join('\n');
+  check('extract (node-test): the FAIL label is extracted from real captured output',
+    JSON.stringify(VT.extractFailingTargets('node-test', REAL_NODE_TEST_OUTPUT)) === JSON.stringify(['state: TTL prune — expected pruned, got present']));
+
+  // ---------------------------------------------------------------------------------------------
+  // COUNTER-RED — extractFailingTargets: a PASSING run's output (no ✘/FAILED lines) yields [].
+  // This matters more than the RED cases: extraction must never manufacture a target out of
+  // ordinary pass-summary text, even text that mentions a test's own title.
+  // ---------------------------------------------------------------------------------------------
+  const REAL_PW_PASS_OUTPUT = [
+    'Running 1 test using 1 worker',
+    '',
+    '  ✓  1 [chromium] › tests\\probe.spec.ts:3:5 › probe fail A @probe (150ms)',
+    '',
+    '  1 passed (2.1s)',
+  ].join('\n');
+  check('COUNTER-RED extract (playwright): a passing run yields zero targets',
+    VT.extractFailingTargets('playwright', REAL_PW_PASS_OUTPUT).length === 0);
+
+  const REAL_PYTEST_PASS_OUTPUT = [
+    'collected 2 items',
+    'tests\\probe.py ..                                     [100%]',
+    '========================= 2 passed in 0.05s =========================',
+  ].join('\n');
+  check('COUNTER-RED extract (pytest): a passing run yields zero targets',
+    VT.extractFailingTargets('pytest', REAL_PYTEST_PASS_OUTPUT).length === 0);
+
+  check('COUNTER-RED extract: unparseable/empty output yields [], never throws',
+    VT.extractFailingTargets('pytest', '').length === 0
+    && VT.extractFailingTargets('playwright', 'garbage nonsense text').length === 0
+    && VT.extractFailingTargets('node-test', undefined).length === 0);
+
+  // =================================================================================================
+  // Observer integration — the REAL posttooluse.mjs runObservers() against the REAL observers
+  // directory (now containing edit-tracker.mjs + verification-outcomes.mjs), against a temp
+  // ENFORCEMENT_STATE_PATH so the real repo store (.superpowers/hooks-state/enforcement-state.sqlite)
+  // is never touched by a test run.
+  // =================================================================================================
+  const { runObservers } = await import(POSTTOOLUSE_MODULE);
+  const ES3 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+  const obsWork = tempDir('hooks-groupb-observers-');
+  const statePath = join(obsWork, 'state.sqlite');
+  const obsLogPath = join(obsWork, 'log.jsonl');
+  process.env.ENFORCEMENT_STATE_PATH = statePath;
+
+  function pytestFailurePayload(sessionId, command, outputText) {
+    return {
+      session_id: sessionId,
+      hook_event_name: 'PostToolUseFailure',
+      tool_name: 'Bash',
+      tool_input: { command },
+      error: `Exit code 1\n${outputText}`,
+      is_interrupt: false,
+    };
+  }
+  function bashPassPayload(sessionId, command, stdout) {
+    return {
+      session_id: sessionId,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Bash',
+      tool_input: { command },
+      tool_response: { stdout, stderr: '', interrupted: false, isImage: false, noOutputExpected: false },
+    };
+  }
+  function editPayload(sessionId, filePath) {
+    return {
+      session_id: sessionId,
+      hook_event_name: 'PostToolUse',
+      tool_name: 'Edit',
+      tool_input: { file_path: filePath },
+      tool_response: {},
+    };
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — the exact §6.1 cycle, at the observer-integration level: failure -> edit -> failure
+  // yields attempts=1 for exactly the one failing id.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-cycle';
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest tests/probe.py', REAL_PYTEST_FAILURE_OUTPUT), { logPath: obsLogPath });
+    let db = ES3.openState(statePath);
+    let targets = ES3.openTargets(db, sid);
+    check('integration: first failure -> target open, attempts=0',
+      targets.length === 1 && targets[0].target === 'tests/probe.py::test_delta' && targets[0].attempts === 0, `targets=${JSON.stringify(targets)}`);
+    db.close();
+
+    await runObservers(editPayload(sid, join(ROOT, 'src', 'somewhere.py')), { logPath: obsLogPath });
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest tests/probe.py', REAL_PYTEST_FAILURE_OUTPUT), { logPath: obsLogPath });
+    db = ES3.openState(statePath);
+    targets = ES3.openTargets(db, sid);
+    check('integration: failure->edit->failure closes ONE cycle, attempts=1', targets.length === 1 && targets[0].attempts === 1, `targets=${JSON.stringify(targets)}`);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — §6.1's exact sentence: three DIFFERENT failing tests are three FIRST attempts, never a
+  // third attempt on one target.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-three';
+    const out1 = REAL_PYTEST_FAILURE_OUTPUT;
+    const out2 = REAL_PYTEST_FAILURE_OUTPUT.replace(/test_delta/g, 'test_echo');
+    const out3 = REAL_PYTEST_FAILURE_OUTPUT.replace(/test_delta/g, 'test_foxtrot');
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest tests/probe.py::test_delta', out1), { logPath: obsLogPath });
+    await runObservers(editPayload(sid, join(ROOT, 'a.py')), { logPath: obsLogPath });
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest tests/probe.py::test_echo', out2), { logPath: obsLogPath });
+    await runObservers(editPayload(sid, join(ROOT, 'b.py')), { logPath: obsLogPath });
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest tests/probe.py::test_foxtrot', out3), { logPath: obsLogPath });
+
+    const db = ES3.openState(statePath);
+    const targets = ES3.openTargets(db, sid);
+    check('integration: three different failing tests -> three rows, each attempts=0',
+      targets.length === 3 && targets.every((t) => t.attempts === 0), `targets=${JSON.stringify(targets)}`);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — a suite-wide pass (no filter in the command) wipes every open target for the session.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-wipe-all';
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest', REAL_PYTEST_FAILURE_OUTPUT), { logPath: obsLogPath });
+    let db = ES3.openState(statePath);
+    check('integration: seeded a failing target before the wipe-all test', ES3.openTargets(db, sid).length === 1);
+    db.close();
+
+    await runObservers(bashPassPayload(sid, 'py -3 -m pytest', 'collected... 2 passed'), { logPath: obsLogPath });
+    db = ES3.openState(statePath);
+    check('integration: suite-wide pass (bare pytest, no filter) wipes the open target',
+      ES3.openTargets(db, sid).length === 0, `targets=${JSON.stringify(ES3.openTargets(db, sid))}`);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — a FILTERED pass wipes only the matching target, leaving an unrelated open target intact.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-filtered';
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest tests/probe.py::test_delta', REAL_PYTEST_FAILURE_OUTPUT), { logPath: obsLogPath });
+    await runObservers(pytestFailurePayload(
+      sid, 'py -3 -m pytest tests/other.py::test_zulu',
+      REAL_PYTEST_FAILURE_OUTPUT.replace(/test_delta/g, 'test_zulu').replace(/probe\.py/g, 'other.py'),
+    ), { logPath: obsLogPath });
+    let db = ES3.openState(statePath);
+    check('integration: two DIFFERENT targets seeded before the filtered-pass test', ES3.openTargets(db, sid).length === 2, `targets=${JSON.stringify(ES3.openTargets(db, sid))}`);
+    db.close();
+
+    await runObservers(bashPassPayload(sid, 'py -3 -m pytest tests/probe.py::test_delta', 'collected... 1 passed'), { logPath: obsLogPath });
+    db = ES3.openState(statePath);
+    const remaining = ES3.openTargets(db, sid);
+    check('integration: filtered pass wipes ONLY the named target', remaining.length === 1 && remaining[0].target === 'tests/other.py::test_zulu', `remaining=${JSON.stringify(remaining)}`);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — an unattributed failure (unparseable output — a crash with no FAILED line)
+  // increments the session failure count but openTargets() stays empty: an unattributed failure
+  // must never be able to block an edit.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-unattributed';
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest', 'a segfault or crash with no FAILED line at all'), { logPath: obsLogPath });
+    const db = ES3.openState(statePath);
+    check('COUNTER-RED integration: unparseable failure -> openTargets stays empty', ES3.openTargets(db, sid).length === 0, `targets=${JSON.stringify(ES3.openTargets(db, sid))}`);
+    const count = ES3.eventCountSince(db, sid, 'verification_failure', 0);
+    check('COUNTER-RED integration: unparseable failure IS counted at the session level', count === 1, `count=${count}`);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — owner ruling Q2: `grep -q foo file` exit 1 must NOT record a bash_failure event.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-grep';
+    await runObservers({
+      session_id: sid, hook_event_name: 'PostToolUseFailure', tool_name: 'Bash',
+      tool_input: { command: 'grep -q nothing somefile.txt' }, error: 'Exit code 1', is_interrupt: false,
+    }, { logPath: obsLogPath });
+    const db = ES3.openState(statePath);
+    const count = ES3.eventCountSince(db, sid, 'bash_failure', 0);
+    check('COUNTER-RED integration: grep -q exit 1 -> zero bash_failure events recorded', count === 0, `count=${count}`);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — a real (non-exempt) tool's nonzero exit DOES record bash_failure.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-npmfail';
+    await runObservers({
+      session_id: sid, hook_event_name: 'PostToolUseFailure', tool_name: 'Bash',
+      tool_input: { command: 'npm install' }, error: 'Exit code 1\nnpm ERR! something broke', is_interrupt: false,
+    }, { logPath: obsLogPath });
+    const db = ES3.openState(statePath);
+    const count = ES3.eventCountSince(db, sid, 'bash_failure', 0);
+    check('integration: npm install exit 1 -> a bash_failure event IS recorded', count === 1, `count=${count}`);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — git commit success -> a commit event. COUNTER-RED — a commit whose MESSAGE mentions
+  // "pytest"/verification-shaped words is never misread as a verification run.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-commit';
+    await runObservers(bashPassPayload(sid, 'git commit -m "run git commit later, also pytest mention"', ''), { logPath: obsLogPath });
+    const db = ES3.openState(statePath);
+    const count = ES3.eventCountSince(db, sid, 'commit', 0);
+    check('integration: git commit success -> a commit event is recorded', count === 1, `count=${count}`);
+    const vf = ES3.eventCountSince(db, sid, 'verification_failure', 0);
+    check('COUNTER-RED integration: git commit is never misread as a verification run', vf === 0);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — an edit with NO preceding failure must not count (noteEdit is a no-op on
+  // fix_targets when there is nothing open — the edit event itself is still recorded elsewhere).
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-loneedit';
+    await runObservers(editPayload(sid, join(ROOT, 'lonely.py')), { logPath: obsLogPath });
+    const db = ES3.openState(statePath);
+    check('COUNTER-RED integration: an edit with no preceding failure leaves openTargets empty', ES3.openTargets(db, sid).length === 0);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — edit-tracker: an edit to a UI-basename file (app.js/app.css/index.html) also records a
+  // ui_edit event (feeds Task 10).
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-uiedit';
+    await runObservers(editPayload(sid, join(ROOT, 'app.js')), { logPath: obsLogPath });
+    const db = ES3.openState(statePath);
+    const count = ES3.eventCountSince(db, sid, 'ui_edit', 0);
+    check('integration: an edit to app.js records a ui_edit event', count === 1, `count=${count}`);
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — a FAILED Edit/Write call (the tool itself errored) does not count as a real
+  // edit: re-failing the same target with no SUCCESSFUL edit in between must not close a cycle.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-int-failed-edit';
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest tests/probe.py', REAL_PYTEST_FAILURE_OUTPUT), { logPath: obsLogPath });
+    await runObservers({
+      session_id: sid, hook_event_name: 'PostToolUseFailure', tool_name: 'Edit',
+      tool_input: { file_path: join(ROOT, 'x.py') }, error: 'Exit code 1\nold_string not found', is_interrupt: false,
+    }, { logPath: obsLogPath });
+    await runObservers(pytestFailurePayload(sid, 'py -3 -m pytest tests/probe.py', REAL_PYTEST_FAILURE_OUTPUT), { logPath: obsLogPath });
+    const db = ES3.openState(statePath);
+    const targets = ES3.openTargets(db, sid);
+    check('COUNTER-RED integration: a FAILED edit does not arm the next cycle (attempts stays 0)',
+      targets.length === 1 && targets[0].attempts === 0, `targets=${JSON.stringify(targets)}`);
+    db.close();
+  }
+
+  delete process.env.ENFORCEMENT_STATE_PATH;
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);
