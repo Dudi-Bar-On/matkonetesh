@@ -1,5 +1,11 @@
 # Rule-coverage classification batches
 
+> **קו-הבסיס של הכיסוי — דרך כתיבה אחת בלבד.**
+> ‏`docs/process/rule-coverage-baseline.json` נכתב **רק** על ידי
+> `node scripts/check-rule-coverage.mjs --update-baseline` — לעולם לא ביד, ולעולם לא על ידי השער עצמו.
+> הסיבה אינה סגנון: שער שכותב מחדש את קו-הבסיס שלו **מאשר בדיוק את הנסיגה שהוא נועד לתפוס**, כמו
+> בדיקה שמעדכנת את ה-snapshot שלה כשהיא נכשלת. מעדכנים **אחרי** שהבעלים אישר את אובדן הכיסוי.
+
 One batch file per owner approval; the JSON is the record, the prose is the argument. A batch file
 is a Markdown file: a human-readable proposal table, a rationale, a mandatory `## הורדות מוצעות`
 section (proposed demotions to `none` — or the line `אין הורדות מוצעות במנה זו` if there are
