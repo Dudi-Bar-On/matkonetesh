@@ -90,6 +90,23 @@ import { existsSync, readFileSync } from 'node:fs';
 import { basename, extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { skillInvokedSince, DEFAULT_SKILL_WINDOW_MS } from '../lib/skill-invoked.mjs';
+
+// DESIGN WINDOW — deliberately much longer than the 20-minute default, and the reason is measured
+// rather than guessed. On 2026-08-08 this rule blocked the spec that a design conversation had just
+// produced: `superpowers:brainstorming` was invoked at 14:52, the spec was written at 16:02, and the
+// default window is 20 minutes. The block was correct per the code and wrong per the intent.
+//
+// The two triggers ask different questions and cannot share a window. §6.4 trigger 2 asks "was
+// debugging invoked BETWEEN this failure and this fix" — a tight, causal window is exactly right
+// there. This trigger asks "did design precede this creative work", and design is not an event that
+// decays: a spec is written at the END of a conversation that can easily run an hour or more, and
+// nothing about that conversation becomes less true because time passed.
+//
+// Four hours, not "the whole session", because a transcript is read backwards over a window and an
+// unbounded scan of a 38 MB file on every Write is a cost this rule should not impose. Four hours
+// covers a long design session with room to spare; anything older is a different day's design and
+// should be evidenced by the register approval instead, which is the other escape this rule names.
+const DESIGN_WINDOW_MS = 4 * 60 * 60 * 1000;
 import { activeArc, governingSpecFile } from '../../session-state.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -207,7 +224,7 @@ function degraded(what) {
 
 function evaluateBranchA(input, filePath, isPlans) {
   const skillRe = isPlans ? BRAINSTORM_OR_PLANS_RE : BRAINSTORM_RE;
-  const skill = skillInvokedSince(input.transcript_path, skillRe, DEFAULT_SKILL_WINDOW_MS, undefined, input.agent_id);
+  const skill = skillInvokedSince(input.transcript_path, skillRe, DESIGN_WINDOW_MS, undefined, input.agent_id);
   if (skill.determined && skill.invoked) {
     return {
       decision: 'allow',
@@ -250,7 +267,7 @@ function evaluateBranchA(input, filePath, isPlans) {
 }
 
 function evaluateBranchB(input, filePath) {
-  const skill = skillInvokedSince(input.transcript_path, BRAINSTORM_RE, DEFAULT_SKILL_WINDOW_MS, undefined, input.agent_id);
+  const skill = skillInvokedSince(input.transcript_path, BRAINSTORM_RE, DESIGN_WINDOW_MS, undefined, input.agent_id);
   if (skill.determined && skill.invoked) {
     return {
       decision: 'allow',
