@@ -104,7 +104,12 @@ function disciplineDocPath() {
   return process.env.DISCIPLINE || DEFAULT_DISCIPLINE_DOC;
 }
 
-const ATTEMPT_THRESHOLD = 3;
+// Exported (not just module-local) so §6.2's restored-after-compact announcer
+// (scripts/session-state.mjs's enforcementState()) can render "N of 3" from the SAME constant this
+// rule blocks on, rather than a second hardcoded "3" that could silently drift out of agreement with
+// the actual block threshold (task-5-brief.md: "If your restored announcement says '2 of 3' while the
+// rule would block, the announcement is a lie").
+export const ATTEMPT_THRESHOLD = 3;
 const NEAR_MISS_MAX_DISTANCE_RATIO = 0.2; // see levenshtein()/isNearMiss() below
 const NEAR_MISS_MIN_DISTANCE_FLOOR = 2;
 

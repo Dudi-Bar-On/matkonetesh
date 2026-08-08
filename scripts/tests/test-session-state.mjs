@@ -10,8 +10,8 @@
 //     field says "not established", and the REST of the report still renders (best-effort, never
 //     throws, never exits non-zero).
 import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import { mkdirSync } from 'node:fs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { tempDir, writeFile, setMtime, runNode, assertExit, summary } from './test-helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -255,6 +255,246 @@ if (!/ACTIVE ARC:/.test(rLayer2.stdout) || !/WAITING ON OWNER/.test(rLayer2.stdo
   process.exitCode = 1;
 } else {
   console.log('PASS  layer 1 renders fully whether or not layer 2 succeeds (never instead of it)');
+}
+
+// ---------------------------------------------------------------------------
+// §6.2 — ENFORCEMENT STATE, restored after compact (task-5-brief.md, task 5 of Phase 4 Group B).
+// A BEHAVIOURAL red: seed a REAL counter into a temp enforcement-state store via Task 2's own API,
+// observe the announcement absent (no seed / different session), then present (matching session).
+// Every fixture here uses a temp ENFORCEMENT_STATE_PATH — the rules are LIVE on Edit/Write in this
+// repo right now, so seeding the REAL store would risk blocking real work, including this task's own.
+// ---------------------------------------------------------------------------
+const enfWork = tempDir('ss-enforcement-');
+
+function enfStatePath(name) {
+  return join(enfWork, name);
+}
+
+function healthyWatchmanLog() {
+  const p = join(enfWork, 'watchman-log-healthy.jsonl');
+  const line = (name) => JSON.stringify({ Name: name, Severity: 'warn', InitialOk: true, Recovered: false, FinalOk: true, ElapsedSeconds: 0.1, Detail: 'already ok', TimestampUtc: new Date().toISOString() });
+  writeFileSync(p, [line('geniza-postgres'), line('rules-mirror'), line('serena')].join('\n') + '\n', 'utf8');
+  return p;
+}
+
+function serenaDownWatchmanLog() {
+  const p = join(enfWork, 'watchman-log-serena-down.jsonl');
+  const okLine = (name) => JSON.stringify({ Name: name, Severity: 'warn', InitialOk: true, Recovered: false, FinalOk: true, ElapsedSeconds: 0.1, Detail: 'already ok', TimestampUtc: new Date().toISOString() });
+  // Two entries for serena, the LATER one down — proves "last verdict wins", not "first" or "any".
+  const serenaUp = JSON.stringify({ Name: 'serena', Severity: 'warn', InitialOk: true, Recovered: false, FinalOk: true, ElapsedSeconds: 0.1, Detail: 'already ok', TimestampUtc: '2026-08-08T00:00:00Z' });
+  const serenaDown = JSON.stringify({ Name: 'serena', Severity: 'warn', InitialOk: false, Recovered: false, FinalOk: false, ElapsedSeconds: 90, Detail: 'recovery attempted, still down after 90s', TimestampUtc: '2026-08-08T00:01:00Z' });
+  writeFileSync(p, [okLine('geniza-postgres'), okLine('rules-mirror'), serenaUp, serenaDown].join('\n') + '\n', 'utf8');
+  return p;
+}
+
+async function seedFixCycle(statePath, sessionId, target, closedCycles) {
+  const ES = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+  const db = ES.openState(statePath);
+  ES.noteVerificationFailure(db, sessionId, [target]); // first failure — not yet a closed cycle
+  for (let i = 0; i < closedCycles; i++) {
+    ES.noteEdit(db, sessionId, '/fixture-edit.js');
+    ES.noteVerificationFailure(db, sessionId, [target]); // edit -> failure closes one cycle
+  }
+  db.close();
+}
+
+function runWithEnf(extraEnv) {
+  return run({
+    ROADMAP: join(enfWork, 'no-roadmap.md'),
+    SPECS_DIR: join(enfWork, 'no-specs'),
+    GITROOT: enfWork,
+    ...extraEnv,
+  });
+}
+
+// RED — a target with 2 closed fix cycles, matching session_id, healthy infra -> the §5 line names
+// the target and "2 of 3" (the SAME 3 fix-cycle-limit.mjs itself blocks the 4th attempt on).
+{
+  const p = enfStatePath('red.sqlite');
+  await seedFixCycle(p, 'sess-enf-red', 'tests/test_x.py::test_y', 2);
+  const r = runWithEnf({
+    ENFORCEMENT_STATE_PATH: p,
+    SESSION_STATE_SESSION_ID: 'sess-enf-red',
+    WATCHMAN_LOG: healthyWatchmanLog(),
+  });
+  assertExit('§6.2 RED: exit 0', r, 0);
+  if (!/§5\s+fix attempts on `tests\/test_x\.py::test_y`: 2 of 3/.test(r.stdout)) {
+    console.error('FAIL  expected the exact §5 line naming the target and "2 of 3"');
+    console.error(`      stdout: ${r.stdout}`);
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 RED: §5 line reads the SAME counter fix-cycle-limit.mjs would block on');
+  }
+  if (!/§10\.16\s+failures this arc: \d+ · lessons: see commit gate/.test(r.stdout)) {
+    console.error('FAIL  expected the §10.16 line with the stated Task-6 placeholder');
+    console.error(`      stdout: ${r.stdout}`);
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2: §10.16 line present with the documented lessons placeholder');
+  }
+  if (!/=== ENFORCEMENT STATE, restored after compact ===/.test(r.stdout)) {
+    console.error('FAIL  expected the full restored-after-compact header when a counter is open');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2: full block header present when there is something to report');
+  }
+
+  // Absence proof, same fixture, WRONG session_id -> the counter is invisible (session-scoped by
+  // construction, matching enforcement-state.mjs's own cross-session guarantee) -> collapses to the
+  // one-line "nothing to report" form instead of falsely showing another session's counter.
+  const rOther = runWithEnf({
+    ENFORCEMENT_STATE_PATH: p,
+    SESSION_STATE_SESSION_ID: 'sess-enf-different',
+    WATCHMAN_LOG: healthyWatchmanLog(),
+  });
+  assertExit('§6.2 RED (absence proof): exit 0', rOther, 0);
+  if (/tests\/test_x\.py::test_y/.test(rOther.stdout)) {
+    console.error('FAIL  a different session must NOT see sess-enf-red\'s open counter');
+    console.error(`      stdout: ${rOther.stdout}`);
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 RED (absence proof): a different session_id does not see another session\'s counter');
+  }
+}
+
+// RED-2 — watchman's LAST serena record is down -> the infra line names it, verbatim "serena
+// DISCONNECTED ⚠", and picks the LAST record (not the first, which was up).
+{
+  const p = enfStatePath('red2.sqlite');
+  const r = runWithEnf({
+    ENFORCEMENT_STATE_PATH: p,
+    SESSION_STATE_SESSION_ID: 'sess-enf-red2',
+    WATCHMAN_LOG: serenaDownWatchmanLog(),
+  });
+  assertExit('§6.2 RED-2: exit 0', r, 0);
+  if (!/serena DISCONNECTED ⚠/.test(r.stdout)) {
+    console.error('FAIL  expected the infra line to name serena DISCONNECTED ⚠ from its LAST watchman record');
+    console.error(`      stdout: ${r.stdout}`);
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 RED-2: infra line surfaces serena DISCONNECTED ⚠ from the newest watchman verdict');
+  }
+  if (!/geniza OK/.test(r.stdout) || !/rules mirror OK/.test(r.stdout)) {
+    console.error('FAIL  expected the OTHER two infra components to still read OK');
+    console.error(`      stdout: ${r.stdout}`);
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 RED-2: the two healthy components are NOT dragged down by serena\'s failure');
+  }
+}
+
+// COUNTER-RED — empty state DB (no rows for this session) + healthy watchman log -> the single "no
+// open counters" line, nothing that could be misread as a warning, and no full block header (a wall
+// of zeroes trains people to skip the section).
+{
+  const p = enfStatePath('counter-red.sqlite'); // never seeded — openState() creates an empty schema
+  const r = runWithEnf({
+    ENFORCEMENT_STATE_PATH: p,
+    SESSION_STATE_SESSION_ID: 'sess-enf-counter',
+    WATCHMAN_LOG: healthyWatchmanLog(),
+  });
+  assertExit('§6.2 COUNTER-RED: exit 0', r, 0);
+  if (!/ENFORCEMENT STATE: no open counters, no uncovered failures\./.test(r.stdout)) {
+    console.error('FAIL  expected the exact one-line "no open counters" statement');
+    console.error(`      stdout: ${r.stdout}`);
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 COUNTER-RED: all-zero counters + healthy infra collapse to one short line');
+  }
+  if (/=== ENFORCEMENT STATE, restored after compact ===/.test(r.stdout)) {
+    console.error('FAIL  the all-zero case must NOT also print the full block header');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 COUNTER-RED: no full-block header printed when there is nothing to report');
+  }
+  if (/⚠/.test(r.stdout.split('ENFORCEMENT STATE: no open counters')[1]?.split('\n')[0] ?? '')) {
+    console.error('FAIL  the one-line "nothing to report" statement must contain nothing warning-shaped');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 COUNTER-RED: the one-line statement contains nothing that reads as a warning');
+  }
+}
+
+// COUNTER-RED-2 (fail-open) — ENFORCEMENT_STATE_PATH points at a garbage (non-SQLite) file -> the
+// section renders the exact stated-unreadable line, and the SCRIPT STILL EXITS 0 (orientation is not
+// a gate — enforcement-state.mjs's own fail-open contract, inherited here verbatim).
+{
+  const p = enfStatePath('garbage.sqlite');
+  mkdirSync(dirname(p), { recursive: true });
+  writeFileSync(p, 'not a sqlite file, just garbage bytes 1234567890', 'utf8');
+  const r = runWithEnf({
+    ENFORCEMENT_STATE_PATH: p,
+    SESSION_STATE_SESSION_ID: 'sess-enf-garbage',
+    WATCHMAN_LOG: healthyWatchmanLog(),
+  });
+  assertExit('§6.2 COUNTER-RED-2 (fail-open): exit 0 even with an unreadable store', r, 0);
+  if (!/ENFORCEMENT STATE: state store unreadable — counters unknown, not asserted/.test(r.stdout)) {
+    console.error('FAIL  expected the exact fail-open statement when the store is corrupt/unreadable');
+    console.error(`      stdout: ${r.stdout}`);
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 COUNTER-RED-2: a corrupt/unreadable store degrades to the exact stated fail-open line, never a crash, never a false zero presented as a fact');
+  }
+  // The rest of the report must still render — orientation is not a gate, per this script's own header.
+  if (!/GOVERNING SPEC/.test(r.stdout)) {
+    console.error('FAIL  the rest of the report must still render when enforcement state is unreadable');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 COUNTER-RED-2: the rest of session-state\'s report still renders around the failure');
+  }
+}
+
+// COUNTER-RED-3 — missing/unreadable watchman log (never a crash): infra degrades to "not
+// available", the rest of the block (which DOES have an open counter here) still renders.
+{
+  const p = enfStatePath('no-watchman.sqlite');
+  await seedFixCycle(p, 'sess-enf-nowatchman', 'some/target.py::test_z', 1);
+  const r = runWithEnf({
+    ENFORCEMENT_STATE_PATH: p,
+    SESSION_STATE_SESSION_ID: 'sess-enf-nowatchman',
+    WATCHMAN_LOG: join(enfWork, 'does-not-exist-watchman-log.jsonl'),
+  });
+  assertExit('§6.2 COUNTER-RED-3: exit 0 even with a missing watchman log', r, 0);
+  if (!/infra\s+not available/.test(r.stdout)) {
+    console.error('FAIL  expected the infra line to degrade to "not available" when the watchman log is missing');
+    console.error(`      stdout: ${r.stdout}`);
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 COUNTER-RED-3: missing watchman log degrades infra to "not available" without crashing');
+  }
+  if (!/fix attempts on `some\/target\.py::test_z`: 1 of 3/.test(r.stdout)) {
+    console.error('FAIL  expected the §5 line to still render even though infra could not be read');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  §6.2 COUNTER-RED-3: the §5 counter still renders when only infra failed to read');
+  }
+}
+
+// TIMING — the cost this section adds to session-state's own SessionStart budget (measured at
+// ~270ms baseline per task-5-brief.md; this must stay in that neighbourhood).
+{
+  const p = enfStatePath('timing.sqlite');
+  await seedFixCycle(p, 'sess-enf-timing', 'timing/target.py::test_t', 1);
+  const env = {
+    ENFORCEMENT_STATE_PATH: p,
+    SESSION_STATE_SESSION_ID: 'sess-enf-timing',
+    WATCHMAN_LOG: healthyWatchmanLog(),
+    ROADMAP: join(enfWork, 'no-roadmap.md'),
+    SPECS_DIR: join(enfWork, 'no-specs'),
+    GITROOT: enfWork,
+  };
+  run(env); // warm-up
+  const N = 5;
+  const samples = [];
+  for (let i = 0; i < N; i++) {
+    const t0 = Date.now();
+    const r = run(env);
+    samples.push(Date.now() - t0);
+    if (r.status !== 0) { console.error(`FAIL  timing sample #${i + 1}: expected exit 0, got ${r.status}`); process.exitCode = 1; }
+  }
+  samples.sort((a, b) => a - b);
+  const median = samples[Math.floor(samples.length / 2)];
+  console.log(`\n§6.2 SESSION-STATE + ENFORCEMENT STATE TIMING (full script, layer 2 skipped, ${N} samples, sorted, ms): [${samples.join(', ')}] — median ${median}ms`);
 }
 
 summary('session-state');

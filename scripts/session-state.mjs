@@ -22,6 +22,8 @@ import { execFileSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { scanDecisionsAwaitingOwner } from './lib/register-scan.mjs';
+import { openState as openEnforcementState, openTargets, eventCountSince } from './hooks/lib/enforcement-state.mjs';
+import { ATTEMPT_THRESHOLD } from './hooks/rules/fix-cycle-limit.mjs';
 
 // SESSION_STATE_ROOT lets a self-test point plan-path resolution at a disposable fixture tree
 // instead of the real repo (ledgers store plan paths repo-relative, e.g.
@@ -37,6 +39,11 @@ const ROADMAP = process.env.ROADMAP || join(ROOT, 'docs', 'ROADMAP-2026-07-30.md
 const SPECS_DIR = process.env.SPECS_DIR || join(ROOT, 'docs', 'superpowers', 'specs');
 const BOARD = process.env.BOARD || join(ROOT, 'docs', 'STATUS-BOARD.md');
 const GITROOT = process.env.GITROOT || ROOT;
+const WATCHMAN_LOG = process.env.WATCHMAN_LOG || join(ROOT, '.superpowers', 'watchman-log.jsonl');
+// Self-test-only override: production sources session_id from the real SessionStart hook payload on
+// stdin (see resolveSessionId() below); this lets a fixture pin one without needing to actually pipe
+// JSON through spawnSync.
+const SESSION_ID_OVERRIDE = process.env.SESSION_STATE_SESSION_ID || null;
 
 function safe(label, fn) {
   try { return fn(); } catch (e) { return `${NA} (${label}: ${e.message.split('\n')[0].slice(0, 120)})`; }
@@ -281,7 +288,113 @@ except Exception as e:
 }
 
 // ---------------------------------------------------------------------------
-function buildReport() {
+// 8) ENFORCEMENT STATE (§6.2) — the piece SessionStart was missing: it already re-reads the RULES
+// on every compact, but not the STATE. The §5 fix-cycle counter and §10.16 failure count both
+// survive in Task 2's SQLite store; the KNOWLEDGE of them does not survive compact on its own. This
+// reads that SAME store the blocking rule (fix-cycle-limit.mjs) reads, at announce time — no
+// caching, no second source of truth, and the "N of 3" denominator is literally that rule's own
+// exported ATTEMPT_THRESHOLD, not a re-typed "3" that could drift.
+//
+// infra line: reads watchman's OWN last-verdict-per-component from .superpowers/watchman-log.jsonl
+// (Phase 2's layer 0) — never probes live itself; probing at SessionStart is watchman's job, already
+// wired into the same SessionStart hook.
+//
+// Fail-soft contract, same as every other section here: any failure to read the state store
+// degrades to an explicit "state store unreadable — counters unknown, not asserted" line (never a
+// thrown exception, never a silent zero that could be misread as "nothing open").
+// ---------------------------------------------------------------------------
+const INFRA_COMPONENTS = [
+  { key: 'geniza-postgres', label: 'geniza' },
+  { key: 'rules-mirror', label: 'rules mirror' },
+  { key: 'serena', label: 'serena' },
+];
+
+export function infraStatus(watchmanLogPath = WATCHMAN_LOG) {
+  let text;
+  try {
+    text = readFileSync(watchmanLogPath, 'utf8');
+  } catch (e) {
+    return { ok: false, text: `not available — ${watchmanLogPath} unreadable (${e.message.split('\n')[0].slice(0, 100)})` };
+  }
+  // Last record wins per component name — watchman appends one JSON line per component per run, in
+  // run order, so the last occurrence in the file IS the newest verdict (no timestamp comparison
+  // needed, and none trusted over file order in case two runs share a timestamp).
+  const latest = new Map();
+  for (const raw of text.split('\n')) {
+    const line = raw.trim();
+    if (!line) continue;
+    let rec;
+    try { rec = JSON.parse(line); } catch { continue; } // one malformed line must not break the rest
+    if (rec && typeof rec.Name === 'string') latest.set(rec.Name, rec);
+  }
+  const parts = [];
+  let ok = true;
+  for (const c of INFRA_COMPONENTS) {
+    const rec = latest.get(c.key);
+    if (!rec) { parts.push(`${c.label} UNKNOWN ⚠`); ok = false; continue; }
+    const componentOk = rec.FinalOk === true;
+    if (!componentOk) ok = false;
+    parts.push(`${c.label} ${componentOk ? 'OK' : 'DISCONNECTED ⚠'}`);
+  }
+  return { ok, text: parts.join(' · ') };
+}
+
+export function enforcementState(sessionId) {
+  let db;
+  try { db = openEnforcementState(); } catch { db = null; }
+  if (!db) {
+    return 'ENFORCEMENT STATE: state store unreadable — counters unknown, not asserted';
+  }
+
+  let targets;
+  let failuresThisArc;
+  try {
+    targets = sessionId ? openTargets(db, sessionId) : [];
+    failuresThisArc = sessionId ? eventCountSince(db, sessionId, 'verification_failure', 0) : 0;
+  } catch {
+    try { db.close(); } catch { /* best-effort */ }
+    return 'ENFORCEMENT STATE: state store unreadable — counters unknown, not asserted';
+  }
+  try { db.close(); } catch { /* best-effort */ }
+
+  // §6.1: a target's FIRST recorded failure is not yet a closed fix cycle (it becomes one only once
+  // an edit follows it) — so a target sitting at attempts=0 is not yet a meaningful counter to
+  // announce; showing it would be exactly the "wall of zeroes" this section exists to avoid.
+  const openCycles = targets.filter((t) => t.attempts > 0);
+  const infra = infraStatus();
+
+  const nothingToReport = openCycles.length === 0 && failuresThisArc === 0 && infra.ok;
+  if (nothingToReport) {
+    // Item 2: when every counter is zero and infra is healthy, ONE short line — a wall of zeroes
+    // trains people to skip the section, which makes the section useless the one time it isn't zero.
+    return 'ENFORCEMENT STATE: no open counters, no uncovered failures.';
+  }
+
+  const lines = ['=== ENFORCEMENT STATE, restored after compact ==='];
+  if (openCycles.length) {
+    for (const t of openCycles) {
+      // "4 of 3" is what a bare count prints once the ceiling is passed, and it reads as a bug in the
+      // one announcement that has to be trusted on sight. At or past the ceiling, say what is true and
+      // what it means instead: the next edit on this target is blocked, which is the fact the reader
+      // needs before they try one.
+      lines.push(
+        t.attempts >= ATTEMPT_THRESHOLD
+          ? `  §5      fix attempts on \`${t.target}\`: ${t.attempts} — AT THE CEILING (${ATTEMPT_THRESHOLD}). The next edit on this target is BLOCKED until the architecture question is raised with the owner.`
+          : `  §5      fix attempts on \`${t.target}\`: ${t.attempts} of ${ATTEMPT_THRESHOLD}`
+      );
+    }
+  } else {
+    lines.push('  §5      no open fix-cycle target at or past the ceiling');
+  }
+  // Task 6 (sessionLessonGate) has not landed yet — per task-5-brief.md, the lessons-count half of
+  // this line is a stated placeholder, not a fabricated number, until that task supplies a real one.
+  lines.push(`  §10.16  failures this arc: ${failuresThisArc} · lessons: see commit gate`);
+  lines.push(`  infra   ${infra.text}`);
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
+function buildReport(sessionId) {
   const lines = ['=== session-state (what survives compact) ==='];
   const arc = safe('active-arc', activeArc);
   lines.push(typeof arc === 'string' ? arc : arc.line);
@@ -323,6 +436,8 @@ function buildReport() {
     lines.push('LANDED SINCE ARC START: n/a — no active arc.');
   }
 
+  lines.push(safe('enforcement', () => enforcementState(sessionId)));
+
   const decisions = safe('decisions', decisionsAwaitingOwner);
   lines.push(typeof decisions === 'string' ? decisions : decisions.line);
   lines.push(safe('spec', governingSpec));
@@ -337,14 +452,51 @@ function isMain() {
   catch { return false; }
 }
 
+// The SessionStart hook's own JSON payload (session_id, hook_event_name, source: startup|resume|
+// compact, ...) arrives on stdin, exactly like every other Claude Code hook this repo already reads
+// (see scripts/hooks/posttooluse.mjs's readStdin()). Bounded at 2s and wrapped so ANY failure —
+// no data ever arriving, malformed JSON, a stream error — resolves to `null` rather than hanging or
+// throwing: §6.2 must never be the reason a session fails to start (item 3, task-5-brief.md).
+function readStdinSessionId() {
+  return new Promise((resolve) => {
+    if (process.stdin.isTTY) { resolve(null); return; }
+    let settled = false;
+    const finish = (val) => { if (!settled) { settled = true; resolve(val); } };
+    const timer = setTimeout(() => finish(null), 2000);
+    let data = '';
+    try {
+      process.stdin.setEncoding('utf8');
+      process.stdin.on('data', (chunk) => { data += chunk; });
+      process.stdin.on('end', () => {
+        clearTimeout(timer);
+        try {
+          const parsed = JSON.parse(data);
+          finish(typeof parsed?.session_id === 'string' && parsed.session_id ? parsed.session_id : null);
+        } catch { finish(null); }
+      });
+      process.stdin.on('error', () => { clearTimeout(timer); finish(null); });
+    } catch { clearTimeout(timer); finish(null); }
+  });
+}
+
+async function resolveSessionId() {
+  if (SESSION_ID_OVERRIDE) return SESSION_ID_OVERRIDE; // self-test fixture path only
+  try { return await readStdinSessionId(); }
+  catch { return null; } // fail-soft: no session_id -> enforcementState() reports 0 open targets
+}
+
 if (isMain()) {
   const t0 = Date.now();
-  try {
-    console.log(buildReport());
-  } catch (e) {
-    console.log(`session-state: WARN — could not build the report (${e.message.split('\n')[0]}). This never blocks the session.`);
-  }
-  const ms = Date.now() - t0;
-  if (process.env.SESSION_STATE_SHOW_TIMING) console.log(`\n[session-state: ${ms}ms]`);
-  process.exit(0);
+  (async () => {
+    let sessionId = null;
+    try { sessionId = await resolveSessionId(); } catch { sessionId = null; }
+    try {
+      console.log(buildReport(sessionId));
+    } catch (e) {
+      console.log(`session-state: WARN — could not build the report (${e.message.split('\n')[0]}). This never blocks the session.`);
+    }
+    const ms = Date.now() - t0;
+    if (process.env.SESSION_STATE_SHOW_TIMING) console.log(`\n[session-state: ${ms}ms]`);
+    process.exit(0);
+  })();
 }
