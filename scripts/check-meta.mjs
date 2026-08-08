@@ -137,6 +137,20 @@ run('check-geniza-fresh', 'check-geniza-fresh', 'check-geniza-fresh.mjs');
 run('check-rules-fresh', 'check-rules-fresh (docs/process/development-discipline.md matches mk_rules)', 'check-rules-fresh.mjs');
 run('check-rules-complete', 'check-rules-complete (every on-disk rule has a current row in mk_rules — does not self-heal)', 'check-rules-complete.mjs');
 run('check-rules-mirror', 'check-rules-mirror (rules.sqlite checksum matches mk_rules)', 'check-rules-mirror.mjs');
+// Rule-coverage arc, Task 12 (2026-08-08): does every hook file DECLARE which corpus rules it
+// enforces (`export const RULE_IDS = [...]`), read from the mirror this file's own three gates just
+// verified above. BLOCKING, but NOT on the shape this file's GATE SCOPING paragraph forbids — the
+// gate's own header (scripts/check-rule-coverage.mjs) argues this in code, repeated here per that
+// header's own instruction to justify severity in BOTH places: the standing ~45-rule gap (A/B rules
+// with no hook yet) is reported, never blocking — closing it is a programme, not a commit's cheap
+// fix, exactly the L70 failure mode ("a gate that blocks every commit until all 58 are implemented
+// is switched off within a day"). What DOES block is always undoable by the tripping commit alone: a
+// rule file that lost its RULE_IDS export, a declared id that names no rule in the corpus, a mirror
+// mechanism value outside the 12-value vocabulary, or a REGRESSION against the committed baseline
+// (docs/process/rule-coverage-baseline.json) — a rule that WAS covered and no longer is. The baseline
+// updates only by an explicit `--update-baseline` run, never by this gate itself, so a regression can
+// never be silently approved by the act of checking for one.
+run('check-rule-coverage', 'check-rule-coverage (RULE_IDS declarations vs the mirror — reports always, blocks only on regression)', 'check-rule-coverage.mjs');
 run('check-pytest', 'check-pytest', 'check-pytest.mjs');
 run('check-no-secrets', 'check-no-secrets', 'check-no-secrets.mjs');
 run('check-requirements', 'check-requirements', 'check-requirements.mjs');
