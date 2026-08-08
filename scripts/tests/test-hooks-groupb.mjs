@@ -361,5 +361,358 @@ export function observe(input) {
   check('timing (failure payload): measured and printed above (informational — see task report)', true);
 }
 
+// =================================================================================================
+// SECTION 2 — scripts/hooks/lib/enforcement-state.mjs (task-2-brief.md). The SQLite state store
+// every Group B counter sits on. Tests run against a temp ENFORCEMENT_STATE_PATH (spawned via
+// PowerShell/child processes for cross-process persistence proofs, or imported directly in-process
+// for the cheaper unit-shaped checks) — never against the real repo store.
+// =================================================================================================
+{
+  const { spawnSync: spawnSyncState } = await import('node:child_process');
+  const stateWork = tempDir('hooks-groupb-state-');
+
+  function freshStatePath(name) {
+    return join(stateWork, name);
+  }
+
+  // Runs a throwaway node -e script with ENFORCEMENT_STATE_PATH set, importing the real module —
+  // used for the "survives a fresh process" proof, where the whole point is a SEPARATE process.
+  function runInChildProcess(statePathVal, code) {
+    const moduleHref = pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href;
+    const script = `
+      import * as ES from ${JSON.stringify(moduleHref)};
+      ${code}
+    `;
+    return spawnSyncState(process.execPath, ['--input-type=module', '-e', script], {
+      encoding: 'utf8',
+      env: { ...process.env, ENFORCEMENT_STATE_PATH: statePathVal },
+      cwd: ROOT,
+      timeout: 15000,
+    });
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — "attempts survive a fresh process": one child process opens the store and records a
+  // failure + edit + failure (closing one cycle to attempts=1), a SECOND, entirely separate
+  // child process opens the SAME path and reads openTargets() back. This is the §6.2 "the
+  // counter survives" property proven the way the brief demands: two unrelated OS processes,
+  // not two calls in the same process (which would prove nothing about persistence).
+  // -----------------------------------------------------------------------------------------
+  {
+    const p = freshStatePath('persist.sqlite');
+    const writeResult = runInChildProcess(p, `
+      const db = ES.openState();
+      ES.noteVerificationFailure(db, 'sess-persist', ['T1']);
+      ES.noteEdit(db, 'sess-persist', '/some/file.js');
+      ES.noteVerificationFailure(db, 'sess-persist', ['T1']);
+      db.close();
+      process.stdout.write('done');
+    `);
+    check('persistence: writer child process exited 0', writeResult.status === 0, `stderr=${writeResult.stderr}`);
+    check('persistence: writer child wrote "done"', writeResult.stdout.trim() === 'done', `stdout=${JSON.stringify(writeResult.stdout)} stderr=${writeResult.stderr}`);
+
+    const readResult = runInChildProcess(p, `
+      const db = ES.openState();
+      const targets = ES.openTargets(db, 'sess-persist');
+      db.close();
+      process.stdout.write(JSON.stringify(targets));
+    `);
+    check('persistence: reader child process exited 0', readResult.status === 0, `stderr=${readResult.stderr}`);
+    let readTargets = null;
+    try { readTargets = JSON.parse(readResult.stdout.trim()); } catch { /* leave null, checked below */ }
+    check('persistence: reader child saw the target array', Array.isArray(readTargets), `stdout=${JSON.stringify(readResult.stdout)} stderr=${readResult.stderr}`);
+    if (Array.isArray(readTargets)) {
+      check('persistence: attempts=1 survived into the second process', readTargets.find((t) => t.target === 'T1')?.attempts === 1, `targets=${JSON.stringify(readTargets)}`);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // In-process checks from here on (importing the module directly) — cheaper, and just as valid
+  // for same-process behavioural proofs; only the persistence proof above needed real separate
+  // processes.
+  // -----------------------------------------------------------------------------------------
+  const ES = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+
+  // -----------------------------------------------------------------------------------------
+  // RED — "§6.1 cycle semantics", the exact trap case named in the brief: a re-run that fails
+  // WITHOUT an intervening edit must NOT count as a new attempt.
+  // -----------------------------------------------------------------------------------------
+  {
+    const p = freshStatePath('cycle.sqlite');
+    const db = ES.openState(p);
+    check('cycle: openState() returned a usable db', !!db);
+
+    ES.noteVerificationFailure(db, 'sess-cycle', ['T']);
+    let targets = ES.openTargets(db, 'sess-cycle');
+    check('cycle: first failure -> target exists, attempts=0', targets.find((t) => t.target === 'T')?.attempts === 0, `targets=${JSON.stringify(targets)}`);
+
+    ES.noteEdit(db, 'sess-cycle', '/f.js');
+    ES.noteVerificationFailure(db, 'sess-cycle', ['T']);
+    targets = ES.openTargets(db, 'sess-cycle');
+    check('cycle: edit then failure -> attempts=1 (one closed cycle)', targets.find((t) => t.target === 'T')?.attempts === 1, `targets=${JSON.stringify(targets)}`);
+
+    // The trap: fail AGAIN with NO edit in between.
+    ES.noteVerificationFailure(db, 'sess-cycle', ['T']);
+    targets = ES.openTargets(db, 'sess-cycle');
+    check('cycle: TRAP — re-run failing again with no edit between -> attempts STILL 1, no new cycle closed', targets.find((t) => t.target === 'T')?.attempts === 1, `targets=${JSON.stringify(targets)}`);
+
+    // Now a real second cycle: edit, then fail again -> attempts=2.
+    ES.noteEdit(db, 'sess-cycle', '/f.js');
+    ES.noteVerificationFailure(db, 'sess-cycle', ['T']);
+    targets = ES.openTargets(db, 'sess-cycle');
+    check('cycle: a genuine second edit->failure closes a second cycle -> attempts=2', targets.find((t) => t.target === 'T')?.attempts === 2, `targets=${JSON.stringify(targets)}`);
+
+    // Pass wipes it.
+    ES.noteVerificationPass(db, 'sess-cycle', ['T']);
+    targets = ES.openTargets(db, 'sess-cycle');
+    check('cycle: verification pass deletes the target row', targets.find((t) => t.target === 'T') === undefined, `targets=${JSON.stringify(targets)}`);
+
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — "three different failing tests are three first attempts": failures on T1,T2,T3
+  // interleaved with edits never push any single target past 1 (§6.1's exact sentence).
+  // -----------------------------------------------------------------------------------------
+  {
+    const p = freshStatePath('three-targets.sqlite');
+    const db = ES.openState(p);
+
+    ES.noteVerificationFailure(db, 'sess-three', ['T1']);
+    ES.noteEdit(db, 'sess-three', '/a.js');
+    ES.noteVerificationFailure(db, 'sess-three', ['T2']); // T2 is brand new -> attempts=0, not 1,
+    // even though an edit happened first — the edited flag only matters for a target that ALREADY
+    // existed when the edit landed.
+    ES.noteEdit(db, 'sess-three', '/b.js');
+    ES.noteVerificationFailure(db, 'sess-three', ['T3']);
+
+    const targets = ES.openTargets(db, 'sess-three');
+    const byId = Object.fromEntries(targets.map((t) => [t.target, t]));
+    check('three targets: T1 attempts=0 (first failure, no edit closed a cycle on it)', byId.T1?.attempts === 0, `targets=${JSON.stringify(targets)}`);
+    check('three targets: T2 attempts=0 (new target, edit before it does not matter)', byId.T2?.attempts === 0, `targets=${JSON.stringify(targets)}`);
+    check('three targets: T3 attempts=0 (new target)', byId.T3?.attempts === 0, `targets=${JSON.stringify(targets)}`);
+    check('three targets: all three are tracked separately (3 rows)', targets.length === 3, `targets=${JSON.stringify(targets)}`);
+
+    // Now close ONE cycle on T1 only, and confirm T2/T3 are untouched.
+    ES.noteEdit(db, 'sess-three', '/c.js'); // edits ALL open targets, per noteEdit's contract
+    ES.noteVerificationFailure(db, 'sess-three', ['T1']); // only T1 fails again -> only T1 bumps
+    const targets2 = ES.openTargets(db, 'sess-three');
+    const byId2 = Object.fromEntries(targets2.map((t) => [t.target, t]));
+    check('three targets: only T1 (the one that failed again) bumped to attempts=1', byId2.T1?.attempts === 1, `targets=${JSON.stringify(targets2)}`);
+    check('three targets: T2 stayed at attempts=0 (edited, but never re-verified/failed)', byId2.T2?.attempts === 0, `targets=${JSON.stringify(targets2)}`);
+    check('three targets: T3 stayed at attempts=0 (edited, but never re-verified/failed)', byId2.T3?.attempts === 0, `targets=${JSON.stringify(targets2)}`);
+
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — "another session's rows are invisible": seed under session A, query under B.
+  // -----------------------------------------------------------------------------------------
+  {
+    const p = freshStatePath('cross-session.sqlite');
+    const db = ES.openState(p);
+
+    ES.noteVerificationFailure(db, 'session-A', ['T-a']);
+    ES.noteEdit(db, 'session-A', '/a.js');
+    ES.noteVerificationFailure(db, 'session-A', ['T-a']);
+    ES.recordEvent(db, { sessionId: 'session-A', kind: 'commit', detail: 'v1' });
+
+    const targetsB = ES.openTargets(db, 'session-B');
+    check('cross-session: openTargets() under session B is empty despite session A having rows', targetsB.length === 0, `targetsB=${JSON.stringify(targetsB)}`);
+
+    const countB = ES.eventCountSince(db, 'session-B', 'commit', 0);
+    check('cross-session: eventCountSince() under session B is 0 despite session A having a commit event', countB === 0, `countB=${countB}`);
+
+    const lastB = ES.lastEvent(db, 'session-B', 'commit');
+    check('cross-session: lastEvent() under session B is null', lastB === null, `lastB=${JSON.stringify(lastB)}`);
+
+    // Sanity: session A itself DOES see its own data (proves the emptiness above is scoping, not
+    // a broken store).
+    const targetsA = ES.openTargets(db, 'session-A');
+    check('cross-session: session A sees its own target (sanity check the store itself works)', targetsA.length === 1 && targetsA[0].attempts === 1, `targetsA=${JSON.stringify(targetsA)}`);
+    const countA = ES.eventCountSince(db, 'session-A', 'commit', 0);
+    check('cross-session: session A sees its own commit event (sanity check)', countA === 1, `countA=${countA}`);
+
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — "TTL prune": insert a row with ts = now-25h (older than the 24h TTL), then
+  // openState() again on the same path -> gone. Directly manipulates the DB via a raw INSERT
+  // through the module's own opened handle (no private API needed — SQL is SQL) to backdate the
+  // timestamp, since there is no public "insert with a fake ts" export (correctly — nothing
+  // should be able to lie about when something happened, only tests reaching around that).
+  // -----------------------------------------------------------------------------------------
+  {
+    const p = freshStatePath('ttl.sqlite');
+    let db = ES.openState(p);
+    check('TTL: openState() returned a usable db', !!db);
+
+    const staleTs = Date.now() - (25 * 60 * 60 * 1000); // 25h ago > 24h TTL
+    db.prepare('INSERT INTO fix_targets (session_id, target, attempts, edited_since_failure, last_failure_ts) VALUES (?, ?, ?, ?, ?)')
+      .run('sess-ttl', 'stale-target', 3, 0, staleTs);
+    db.prepare('INSERT INTO events (session_id, kind, ts, detail) VALUES (?, ?, ?, ?)')
+      .run('sess-ttl', 'commit', staleTs, null);
+
+    // Also insert a FRESH row, to prove the prune is selective (age-based), not "wipe everything".
+    ES.noteVerificationFailure(db, 'sess-ttl', ['fresh-target']);
+    db.close();
+
+    // Re-open the SAME path — this is the prune-on-open contract.
+    db = ES.openState(p);
+    check('TTL: re-opened db is usable', !!db);
+
+    const targets = ES.openTargets(db, 'sess-ttl');
+    check('TTL: the 25h-old target row is gone after re-open', targets.find((t) => t.target === 'stale-target') === undefined, `targets=${JSON.stringify(targets)}`);
+    check('TTL: the fresh target row survived the prune', targets.find((t) => t.target === 'fresh-target') !== undefined, `targets=${JSON.stringify(targets)}`);
+
+    const staleCount = ES.eventCountSince(db, 'sess-ttl', 'commit', 0);
+    check('TTL: the 25h-old commit event is gone after re-open', staleCount === 0, `staleCount=${staleCount}`);
+
+    db.close();
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — "corrupt DB file -> openState returns null, no throw": write garbage bytes first.
+  // -----------------------------------------------------------------------------------------
+  {
+    const p = freshStatePath('corrupt.sqlite');
+    mkdirSync(dirname(p), { recursive: true });
+    writeFileSync(p, 'this is not a sqlite file, just garbage bytes 1234567890', 'utf8');
+
+    let threw = false;
+    let db;
+    try {
+      db = ES.openState(p);
+    } catch {
+      threw = true;
+    }
+    check('corrupt file: openState() did NOT throw', !threw);
+    check('corrupt file: openState() returned null (fail-open, not a usable db)', db === null || db === undefined, `db=${db}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // Additional fail-open proofs — every exported function given a null db must return its
+  // documented fail-open value, never throw. This is what makes a rule built on this module safe
+  // to call even when openState() already failed upstream.
+  // -----------------------------------------------------------------------------------------
+  {
+    let threw = false;
+    let results = {};
+    try {
+      results = {
+        recordEvent: ES.recordEvent(null, { sessionId: 's', kind: 'edit' }),
+        lastEvent: ES.lastEvent(null, 's', 'edit'),
+        eventCountSince: ES.eventCountSince(null, 's', 'edit', 0),
+        openTargets: ES.openTargets(null, 's'),
+        noteVerificationFailure: ES.noteVerificationFailure(null, 's', ['T']),
+        noteEdit: ES.noteEdit(null, 's', '/f.js'),
+        noteVerificationPass: ES.noteVerificationPass(null, 's', ES.ALL),
+      };
+    } catch {
+      threw = true;
+    }
+    check('null db: no function threw', !threw);
+    check('null db: lastEvent -> null', results.lastEvent === null);
+    check('null db: eventCountSince -> 0', results.eventCountSince === 0);
+    check('null db: openTargets -> []', Array.isArray(results.openTargets) && results.openTargets.length === 0);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // CONCURRENCY — multiple separate processes opening + writing to the SAME store file at
+  // effectively the same instant must not throw and must not corrupt/lose the store (WAL +
+  // busy_timeout, per the module header). N child processes launched together via async `spawn`
+  // (not spawnSync in a loop, which would be sequential and prove nothing about contention), all
+  // racing to open/write the same file, awaited together via Promise.all.
+  // -----------------------------------------------------------------------------------------
+  {
+    const { spawn: spawnAsync } = await import('node:child_process');
+    const p = freshStatePath('concurrent-real.sqlite');
+    const moduleHref = pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href;
+    const N = 8;
+
+    function spawnChild(sessionId) {
+      const script = `
+        import * as ES from ${JSON.stringify(moduleHref)};
+        const db = ES.openState();
+        for (let j = 0; j < 20; j++) {
+          ES.noteVerificationFailure(db, ${JSON.stringify(sessionId)}, ['T' + j]);
+        }
+        if (db) db.close();
+        process.stdout.write(db ? 'ok' : 'no-db');
+      `;
+      return new Promise((resolve) => {
+        const child = spawnAsync(process.execPath, ['--input-type=module', '-e', script], {
+          env: { ...process.env, ENFORCEMENT_STATE_PATH: p },
+          cwd: ROOT,
+        });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (d) => { stdout += d; });
+        child.stderr.on('data', (d) => { stderr += d; });
+        child.on('close', (code) => resolve({ code, stdout, stderr }));
+      });
+    }
+
+    const t0 = Date.now();
+    const results = await Promise.all(
+      Array.from({ length: N }, (_, i) => spawnChild(`sess-concurrent-${i}`))
+    );
+    const elapsedMs = Date.now() - t0;
+
+    const allExitedZero = results.every((r) => r.code === 0);
+    check('concurrency: all N concurrent writer processes exited 0 (no crash under contention)', allExitedZero, `results=${JSON.stringify(results.map((r) => ({ code: r.code, stderr: r.stderr.slice(0, 300) })))}`);
+    const allOk = results.every((r) => r.stdout.trim() === 'ok');
+    check('concurrency: all N processes reported a usable db (openState never returned null under contention)', allOk, `stdouts=${JSON.stringify(results.map((r) => r.stdout))}`);
+    console.log(`\nCONCURRENCY: ${N} concurrent writer processes vs one SQLite file — wall time ${elapsedMs}ms`);
+
+    // Verify no data was lost/corrupted: every session's 20 targets should be present.
+    const dbCheck = ES.openState(p);
+    check('concurrency: post-race db still opens cleanly for verification', !!dbCheck);
+    if (dbCheck) {
+      let allSessionsComplete = true;
+      const details = [];
+      for (let i = 0; i < N; i++) {
+        const t = ES.openTargets(dbCheck, `sess-concurrent-${i}`);
+        details.push({ session: `sess-concurrent-${i}`, count: t.length });
+        if (t.length !== 20) allSessionsComplete = false;
+      }
+      check('concurrency: every session\'s full 20-target write survived the race intact', allSessionsComplete, `details=${JSON.stringify(details)}`);
+      dbCheck.close();
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COST — openState() + a prune + a few writes/reads, inside the 40-50ms hook budget. Measured
+  // as pure in-process cost (no node-spawn overhead, since observers/rules call this as a library,
+  // not as a subprocess) so it isolates the store's own contribution to that budget.
+  // -----------------------------------------------------------------------------------------
+  {
+    const p = freshStatePath('cost.sqlite');
+    // warm-up (file creation, schema creation) excluded from the measured samples.
+    let db = ES.openState(p);
+    ES.noteVerificationFailure(db, 'sess-cost', ['T']);
+    db.close();
+
+    const N = 20;
+    const samples = [];
+    for (let i = 0; i < N; i++) {
+      const t0 = process.hrtime.bigint();
+      const d = ES.openState(p); // includes prune-on-open
+      ES.noteVerificationFailure(d, 'sess-cost', [`T${i}`]);
+      ES.noteEdit(d, 'sess-cost', '/f.js');
+      ES.openTargets(d, 'sess-cost');
+      ES.lastEvent(d, 'sess-cost', 'edit');
+      d.close();
+      const elapsedMs = Number(process.hrtime.bigint() - t0) / 1e6;
+      samples.push(elapsedMs);
+    }
+    samples.sort((a, b) => a - b);
+    const median = samples[Math.floor(samples.length / 2)];
+    console.log(`\nENFORCEMENT-STATE IN-PROCESS COST (open+prune+write+edit+read+close, ${N} samples, sorted, ms): [${samples.map((s) => s.toFixed(2)).join(', ')}] — median ${median.toFixed(2)}ms`);
+    check('cost: measured and printed above (informational — see task report)', true);
+  }
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);
