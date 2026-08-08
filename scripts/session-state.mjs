@@ -220,15 +220,28 @@ export function decisionsAwaitingOwner() {
 // ---------------------------------------------------------------------------
 // 6) GOVERNING SPEC — the newest-modified file under docs/superpowers/specs/. Plans expire (a task
 // gets reassigned, reordered, dropped); the spec that authorized the arc is what still binds.
+//
+// governingSpecFile() (added task-7-brief.md fix round 1) is the RAW data this same scan already
+// produces, exported separately so a caller that needs the bare filename (e.g.
+// brainstorm-before-creative.mjs's Branch B, checking whether the ACTIVE arc's governing spec is
+// approved) reuses this one scan instead of re-parsing governingSpec()'s human-readable string or
+// inventing a second "what file is newest under SPECS_DIR" implementation. governingSpec() itself is
+// unchanged in behavior — it now simply formats what governingSpecFile() returns.
 // ---------------------------------------------------------------------------
-export function governingSpec() {
-  if (!existsSync(SPECS_DIR)) return `GOVERNING SPEC: ${NA} — ${SPECS_DIR} not found.`;
+export function governingSpecFile() {
+  if (!existsSync(SPECS_DIR)) return null;
   const files = readdirSync(SPECS_DIR)
     .filter(f => f.endsWith('.md'))
     .map(f => ({ f, m: statSync(join(SPECS_DIR, f)).mtimeMs }));
-  if (!files.length) return `GOVERNING SPEC: ${NA} — no .md files under ${SPECS_DIR}.`;
+  if (!files.length) return null;
   files.sort((a, b) => b.m - a.m);
-  return `GOVERNING SPEC: ${files[0].f} (newest-modified ${new Date(files[0].m).toISOString().slice(0, 16)})`;
+  return { file: files[0].f, mtimeMs: files[0].m };
+}
+
+export function governingSpec() {
+  const top = governingSpecFile();
+  if (!top) return `GOVERNING SPEC: ${NA} — ${SPECS_DIR} not found or empty.`;
+  return `GOVERNING SPEC: ${top.file} (newest-modified ${new Date(top.mtimeMs).toISOString().slice(0, 16)})`;
 }
 
 // ---------------------------------------------------------------------------

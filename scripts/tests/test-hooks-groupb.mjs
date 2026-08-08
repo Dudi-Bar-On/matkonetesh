@@ -9,7 +9,7 @@
 // log record, and did one broken observer fail to silence its siblings".
 import { spawnSync, execFileSync } from 'node:child_process';
 import {
-  mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync,
+  mkdtempSync, writeFileSync, mkdirSync, readFileSync, existsSync, rmSync, readdirSync,
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
@@ -1903,6 +1903,482 @@ export function observe(input) {
     check('lessons-before-commit: git diff failure with real failures pending -> allow (fail-open, not a false block)',
       out.decision === 'allow', `out=${JSON.stringify(out)}`);
     check('lessons-before-commit: git-failure reason names the degradation', /degrad/i.test(out.reason), `reason=${out.reason}`);
+  }
+}
+
+// =================================================================================================
+// SECTION 7 — scripts/hooks/lib/skill-invoked.mjs + scripts/hooks/rules/brainstorm-before-creative.mjs
+// (task-7-brief.md, §6.4 trigger 1). Every case runs against fixture transcripts, a fixture
+// ROADMAP register (ROADMAP env override, re-read per call), a fixture .superpowers/sdd ledger
+// directory, and a fixture docs/superpowers/specs directory — never the real
+// transcript/register/ledgers/specs, exactly like every prior section's own warning: this rule is
+// wired into Write|Edit, which means it would run on THIS TEST'S OWN writes too if evidence sources
+// were not isolated.
+//
+// FIX ROUND 1 (coordinator finding, 2026-08-08): driving the ORIGINAL rule with a transcript
+// containing NO skill invocation at all proved a plans/ write and a brand-new source file BOTH
+// allowed regardless of which spec actually governed the write — "some spec somewhere is approved"
+// was not evidence about THIS write. Every RED case below is built on exactly that shape of input
+// (a clean synthetic transcript, zero Skill entries) per the coordinator's own reproduction method,
+// not on this session's real transcript (which contains a real writing-plans invocation and would
+// hide the bug the same way the coordinator's first probe did).
+// =================================================================================================
+{
+  const s7Work = tempDir('hooks-groupb-brainstorm-');
+
+  // scripts/session-state.mjs's SDD_DIR *and* SPECS_DIR are MODULE-LOAD-TIME constants
+  // (`process.env.X || <real path>`), read ONCE when the module is first imported — unlike
+  // roadmapPath() in brainstorm-before-creative.mjs, which is deliberately a function re-reading
+  // process.env.ROADMAP on every call. Setting either env var AFTER import has no effect (this was
+  // discovered the hard way in fix round 0 of this same task: a "no active ledger" case first came
+  // back `allow` because the real repo's OWN active ledger — this very task's — was still what
+  // findLedgers() saw). The fix, reused here for SPECS_DIR too: point BOTH at fixed fixture
+  // directories BEFORE the very first import of the rule (which transitively imports
+  // session-state.mjs), then vary each fixed directory's ON-DISK CONTENTS per case at runtime —
+  // findLedgers()/governingSpecFile() both DO re-read their directory listing on every call.
+  const FIXED_SDD_DIR = join(s7Work, 'fixed-sdd');
+  const FIXED_SPECS_DIR = join(s7Work, 'fixed-specs');
+  mkdirSync(FIXED_SDD_DIR, { recursive: true });
+  mkdirSync(FIXED_SPECS_DIR, { recursive: true });
+  const prevSddDirAtImport = process.env.SDD_DIR;
+  const prevSpecsDirAtImport = process.env.SPECS_DIR;
+  process.env.SDD_DIR = FIXED_SDD_DIR;
+  process.env.SPECS_DIR = FIXED_SPECS_DIR;
+  const SKILLINV = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'skill-invoked.mjs')).href);
+  const RULE7 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'brainstorm-before-creative.mjs')).href);
+  if (prevSddDirAtImport === undefined) delete process.env.SDD_DIR; else process.env.SDD_DIR = prevSddDirAtImport;
+  if (prevSpecsDirAtImport === undefined) delete process.env.SPECS_DIR; else process.env.SPECS_DIR = prevSpecsDirAtImport;
+
+  const LEDGER_ARC_DIR = join(FIXED_SDD_DIR, '2026-08-08-fixture-arc');
+  function setLedgerPresent(present) {
+    if (present) {
+      mkdirSync(LEDGER_ARC_DIR, { recursive: true });
+      writeFileSync(join(LEDGER_ARC_DIR, 'progress.md'), 'plan: docs/superpowers/plans/fixture.md\n', 'utf8');
+    } else if (existsSync(LEDGER_ARC_DIR)) {
+      rmSync(LEDGER_ARC_DIR, { recursive: true, force: true });
+    }
+  }
+
+  // Clears FIXED_SPECS_DIR and (optionally) writes exactly ONE .md file into it — unambiguously the
+  // "newest-modified" file governingSpecFile() will report, without needing to fight mtime races.
+  function setGoverningSpec(fileName) {
+    if (existsSync(FIXED_SPECS_DIR)) {
+      for (const f of readdirSync(FIXED_SPECS_DIR)) rmSync(join(FIXED_SPECS_DIR, f), { force: true });
+    }
+    if (fileName) writeFileSync(join(FIXED_SPECS_DIR, fileName), '# spec\n', 'utf8');
+  }
+
+  // Builds a fixture transcript .jsonl containing one entry per `entries` item, in the REAL shape
+  // measured off a live transcript (see skill-invoked.mjs's own header): a top-level assistant turn
+  // whose message.content array holds one block. `entries[i]` is either { tsOffsetMs, skill } (a
+  // Skill tool_use) or { tsOffsetMs, text } (a plain text block).
+  function makeTranscript(entries) {
+    const path = join(s7Work, `transcript-${Math.random().toString(36).slice(2)}.jsonl`);
+    const now = Date.now();
+    const lines = entries.map((e) => JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date(now - e.tsOffsetMs).toISOString(),
+      message: {
+        content: [
+          e.skill !== undefined
+            ? { type: 'tool_use', name: 'Skill', input: { skill: e.skill } }
+            : { type: 'text', text: e.text },
+        ],
+      },
+    }));
+    writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
+    return path;
+  }
+
+  // A CLEAN transcript with NO Skill invocation anywhere — five plain "user" turns, exactly the
+  // shape the coordinator's own reproduction used ("a clean JSONL of five plain user lines"). This
+  // is the input every RED case below is built on.
+  function makeCleanTranscript() {
+    const path = join(s7Work, `clean-transcript-${Math.random().toString(36).slice(2)}.jsonl`);
+    const now = Date.now();
+    const lines = [
+      'what does this repo do',
+      'ok now look at the failing test',
+      'no, the OTHER file',
+      'fine, go ahead',
+      'looks good, continue',
+    ].map((text, i) => JSON.stringify({
+      type: 'user',
+      timestamp: new Date(now - (5 - i) * 1000).toISOString(),
+      message: { content: [{ type: 'text', text }] },
+    }));
+    writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
+    return path;
+  }
+
+  // Builds a fixture register file with the real section header and the real row shapes.
+  function makeRegister(rows) {
+    const path = join(s7Work, `roadmap-${Math.random().toString(36).slice(2)}.md`);
+    const header = '## מרשם האישורים — מפרטים שאושרו על-ידי הבעלים\n\n| מפרט | סטטוס | הראיה |\n|---|---|---|\n';
+    const body = rows.map((r) => (r.approved
+      ? `| \`${r.file}\` | **מאושר (2026-08-08)** | evidence |`
+      : `| \`${r.file}\` | 🔴 **לא-מאושר — הכרעת בעלים 8.8.26** | evidence |`)).join('\n');
+    writeFileSync(path, `${header}${body}\n`, 'utf8');
+    return path;
+  }
+
+  // The register the coordinator's own reproduction used — the real 19-approved/6-blocked shape,
+  // trimmed to a representative few, so "an approved spec exists SOMEWHERE" stays abundantly true
+  // (proving the fix checks the SPECIFIC write, not "is the register non-empty").
+  const REALISTIC_REGISTER = makeRegister([
+    { file: '2026-08-06-process-enforcement-design.md', approved: true },
+    { file: '2026-08-01-fixture-design.md', approved: true },
+    { file: '2026-08-03-data-model-design.md', approved: true },
+    { file: '2026-07-21-occupancy-slots-h4-design.md', approved: false }, // one of the owner's 6 deliberately-blocked
+  ]);
+
+  function withRegisterEnv(roadmapPath, evalFn) {
+    const prevRoadmap = process.env.ROADMAP;
+    process.env.ROADMAP = roadmapPath;
+    try {
+      return evalFn();
+    } finally {
+      if (prevRoadmap === undefined) delete process.env.ROADMAP; else process.env.ROADMAP = prevRoadmap;
+    }
+  }
+
+  const NONEXISTENT_TRANSCRIPT = join(s7Work, 'this-file-does-not-exist.jsonl');
+  const emptyRegister = makeRegister([]); // register readable, section present, zero rows at all
+  const noSuchRegister = join(s7Work, 'no-such-roadmap.md'); // register path itself unreadable
+
+  // -----------------------------------------------------------------------------------------------
+  // skillInvokedSince() — pure-function proof, straight off the measured real transcript shape.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const t = makeTranscript([{ tsOffsetMs: 60_000, skill: 'superpowers:brainstorming' }]);
+    const hit = SKILLINV.skillInvokedSince(t, /brainstorming/, 20 * 60 * 1000);
+    check('skillInvokedSince: brainstorming inside window -> determined+invoked', hit.determined === true && hit.invoked === true, `hit=${JSON.stringify(hit)}`);
+
+    const miss = SKILLINV.skillInvokedSince(t, /writing-plans/, 20 * 60 * 1000);
+    check('skillInvokedSince: different skill regex, same transcript -> determined, not invoked', miss.determined === true && miss.invoked === false, `miss=${JSON.stringify(miss)}`);
+
+    const missing = SKILLINV.skillInvokedSince(NONEXISTENT_TRANSCRIPT, /brainstorming/, 20 * 60 * 1000);
+    check('skillInvokedSince: missing transcript file -> determined:false', missing.determined === false, `missing=${JSON.stringify(missing)}`);
+
+    const cleanResult = SKILLINV.skillInvokedSince(makeCleanTranscript(), /brainstorming/, 20 * 60 * 1000);
+    check('skillInvokedSince: clean (no-skill) transcript -> determined, not invoked', cleanResult.determined === true && cleanResult.invoked === false, `r=${JSON.stringify(cleanResult)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // RULE PASSTHROUGH — anything that isn't Write/Edit, or has no file_path, is untouched.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const out = RULE7.evaluate({ tool_name: 'Bash', session_id: 'S', tool_input: { command: 'echo hi' } });
+    check('brainstorm-before-creative: Bash passes through untouched', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // RED — Write to docs/superpowers/specs/new-thing.md on a CLEAN (no-skill) transcript -> block,
+  // naming brainstorming. specs/ has no register escape at all.
+  // -----------------------------------------------------------------------------------------------
+  {
+    setLedgerPresent(false);
+    setGoverningSpec(null);
+    const specPath = join(s7Work, 'docs', 'superpowers', 'specs', 'new-thing.md');
+    const out = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: specPath, content: '# spec' } }),
+    );
+    check('RED (spec write, clean transcript): blocks even with a realistic (mostly-approved) register', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('RED (spec write, clean transcript): reason names brainstorming', /brainstorming/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // RED-2 — NEW src/foo.py on a CLEAN transcript, WITH an active arc whose governing spec has no
+  // register row at all -> block. (NOT "no active arc" — per the coordinator's own instruction 3,
+  // "no active arc" is an explicit ALLOW-with-degradation case, tested separately below under
+  // "Branch B: no active arc -> allows". This case proves the actual regression: an active arc
+  // whose write is NOT tied to any registered spec must still block.)
+  // -----------------------------------------------------------------------------------------------
+  {
+    setLedgerPresent(true);
+    setGoverningSpec('2026-08-09-totally-unregistered-spec.md');
+    const srcPath = join(s7Work, 'src', 'foo.py');
+    const out = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: srcPath, content: 'print(1)' } }),
+    );
+    check('RED-2 (new src/foo.py, clean transcript, active arc on an unregistered spec): blocks', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('RED-2 (new src/foo.py, clean transcript, active arc on an unregistered spec): reason names brainstorming', /brainstorming/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // *** THE COORDINATOR'S EXACT REPRODUCTION, RE-RUN AGAINST THE FIXED RULE ***
+  // A clean (no-skill) transcript; a REALISTIC register with 19-approved-style noise (here trimmed
+  // to a few rows, still mostly-approved). The coordinator's own probe ran inside a LIVE session that
+  // DOES have an active arc on disk (this very task's own ledger) — so the plans/ case is reproduced
+  // with no active arc needed (plans/ never required one), and the src/ case is reproduced with an
+  // active arc present but its governing spec NOT tied to any approved register row, matching what a
+  // real session in this shape would actually hit. Both must now correctly `block`.
+  // -----------------------------------------------------------------------------------------------
+  {
+    setLedgerPresent(false); // no active arc at all — the plans/ write doesn't need one
+    setGoverningSpec(null);
+    const planPath = join(s7Work, 'docs', 'superpowers', 'plans', '2026-08-09-new-plan.md');
+    const outPlan = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: planPath, content: '# plan' } }),
+    );
+    check('COORDINATOR REPRO: plans/2026-08-09-new-plan.md, clean transcript, realistic register -> now BLOCKS (was wrongly allow)',
+      outPlan.decision === 'block', `out=${JSON.stringify(outPlan)}`);
+
+    setLedgerPresent(true); // an active arc IS present in the coordinator's own live probe
+    setGoverningSpec('2026-08-09-totally-unregistered-spec.md'); // its governing spec is not tied to any approved row
+    const srcPath = join(s7Work, 'src', 'newModule.mjs');
+    const outSrc = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: srcPath, content: 'export default {};' } }),
+    );
+    check('COORDINATOR REPRO: src/newModule.mjs, clean transcript, realistic register, active arc on an unregistered spec -> now BLOCKS (was wrongly allow)',
+      outSrc.decision === 'block', `out=${JSON.stringify(outSrc)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // COUNTER-RED — same spec-write, but the transcript contains a brainstorming Skill invocation
+  // inside the window -> allow.
+  // -----------------------------------------------------------------------------------------------
+  {
+    setLedgerPresent(false);
+    setGoverningSpec(null);
+    const specPath = join(s7Work, 'docs', 'superpowers', 'specs', 'new-thing-2.md');
+    const t = makeTranscript([{ tsOffsetMs: 30_000, skill: 'superpowers:brainstorming' }]);
+    const out = withRegisterEnv(
+      emptyRegister,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: t, tool_input: { file_path: specPath, content: '# spec' } }),
+    );
+    check('COUNTER-RED (spec write, brainstorming invoked): allows', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // PLAN-NAME MATCHING — a plan whose OWN filename matches an approved spec's row (token
+  // comparison, the coordinator's own example) allows, with NO skill invoked.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const planPath = join(s7Work, 'docs', 'superpowers', 'plans', '2026-08-08-enforcement-phase-4-group-b.md');
+    const out = withRegisterEnv(
+      REALISTIC_REGISTER, // contains the approved `2026-08-06-process-enforcement-design.md` row
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: planPath, content: '# plan' } }),
+    );
+    check('plan name token-matches an APPROVED spec row (no skill invoked): allows', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    check('plan name token-matches an APPROVED spec row: reason names the matched spec file', /2026-08-06-process-enforcement-design\.md/.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // PLAN-NAME MATCHING, negative — a plan whose filename matches NOTHING in the register (all
+  // generic/short tokens filtered) still blocks, even with a realistic mostly-approved register.
+  // (This is the exact bug-reproduction case, restated as a standalone check.)
+  // -----------------------------------------------------------------------------------------------
+  {
+    const planPath = join(s7Work, 'docs', 'superpowers', 'plans', '2026-08-09-new-plan.md');
+    const out = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: planPath, content: '# plan' } }),
+    );
+    check('plan name matches NOTHING in the register: still blocks', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('plan name matches NOTHING: reason states no register entry matched', /no register entry/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // PLAN-NAME MATCHING, matched-but-blocked — a plan whose filename token-matches a spec the owner
+  // deliberately left UNAPPROVED still blocks, and the reason names that spec and says so.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const planPath = join(s7Work, 'docs', 'superpowers', 'plans', '2026-08-09-occupancy-slots-h5.md');
+    const out = withRegisterEnv(
+      REALISTIC_REGISTER, // contains the BLOCKED `2026-07-21-occupancy-slots-h4-design.md` row
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: planPath, content: '# plan' } }),
+    );
+    check('plan name matches a DELIBERATELY-UNAPPROVED spec row: still blocks', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('plan name matches unapproved spec: reason names the matched-but-unapproved spec', /2026-07-21-occupancy-slots-h4-design\.md/.test(out.reason) && /not marked approved/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // specs/ (not plans/) gets NO register escape at all, even when the plan-name-matching machinery
+  // would otherwise find an approved row for that exact filename — the escape is plans/-only.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const specPath = join(s7Work, 'docs', 'superpowers', 'specs', '2026-08-06-process-enforcement-design.md');
+    const out = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: specPath, content: '# spec' } }),
+    );
+    check('specs/ write, exact-name match to an approved row, no skill invoked: still blocks (escape is plans/-only)', out.decision === 'block', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Edit to an EXISTING source file -> allow, and the transcript is NEVER even consulted: pass a
+  // nonexistent transcript path and assert allow, proving the cheap existsSync() branch short-
+  // circuits before any transcript read.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const existingPath = join(s7Work, 'existing-app.js');
+    writeFileSync(existingPath, '// already here\n', 'utf8');
+    const out = RULE7.evaluate({
+      tool_name: 'Edit',
+      session_id: 'S',
+      transcript_path: NONEXISTENT_TRANSCRIPT,
+      tool_input: { file_path: existingPath, old_string: 'a', new_string: 'b' },
+    });
+    check('Edit to EXISTING source file: allows, no transcript read needed', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // New file under scripts/tests/, .superpowers/, mockups/, docs/, and a scratchpad path -> allow
+  // (not creative work). Same nonexistent-transcript proof as above.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const cases = [
+      join(s7Work, 'scripts', 'tests', 'new-test.mjs'),
+      join(s7Work, '.superpowers', 'sdd', 'x', 'scratch.py'),
+      join(s7Work, 'mockups', 'gen.js'),
+      join(s7Work, 'docs', 'some-code-sample.js'),
+      join(s7Work, 'scratchpad', 'temp.py'),
+    ];
+    for (const p of cases) {
+      const out = RULE7.evaluate({
+        tool_name: 'Write',
+        session_id: 'S',
+        transcript_path: NONEXISTENT_TRANSCRIPT,
+        tool_input: { file_path: p, content: 'x' },
+      });
+      check(`new file under excluded tree (${p.slice(s7Work.length)}): allows`, out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Unreadable transcript on a gating path -> allow (determined:false, never an accusation) — both
+  // branches, each with an otherwise-clearing setup that should never even be consulted since the
+  // transcript check resolves first.
+  // -----------------------------------------------------------------------------------------------
+  {
+    setLedgerPresent(true);
+    setGoverningSpec('2026-08-06-process-enforcement-design.md'); // even an APPROVED spec present
+    const specPath = join(s7Work, 'docs', 'superpowers', 'specs', 'unreadable-transcript.md');
+    const out = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: NONEXISTENT_TRANSCRIPT, tool_input: { file_path: specPath, content: '# spec' } }),
+    );
+    check('unreadable transcript, specs/ write, no other escape: allows (fail-open)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    check('unreadable transcript reason names the degradation', /degrad/i.test(out.reason), `reason=${out.reason}`);
+
+    const srcPath = join(s7Work, 'src', 'bar.py');
+    const out2 = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: NONEXISTENT_TRANSCRIPT, tool_input: { file_path: srcPath, content: 'x=1' } }),
+    );
+    check('unreadable transcript, new source file, no other escape: allows (fail-open)', out2.decision === 'allow', `out2=${JSON.stringify(out2)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Fail-open — the register file itself is unreadable (bad ROADMAP path) on a gating path with a
+  // readable-but-clean transcript -> allow, degradation named.
+  // -----------------------------------------------------------------------------------------------
+  {
+    setLedgerPresent(false);
+    setGoverningSpec(null);
+    const planPath = join(s7Work, 'docs', 'superpowers', 'plans', 'reg-unreadable.md');
+    const out = withRegisterEnv(
+      noSuchRegister,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: planPath, content: '# plan' } }),
+    );
+    check('plans/ write, register file itself unreadable: allows (fail-open)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    check('register-unreadable reason names the degradation', /degrad/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // GOVERNING-SPEC CHECK (Branch B), all four outcomes:
+  //   1. No active arc at all -> allow, reason states why.
+  //   2. Active arc, governing spec APPROVED -> allow.
+  //   3. Active arc, governing spec has a register row but it is UNAPPROVED (the owner's
+  //      deliberately-blocked case) -> BLOCKS. "That last case matters most."
+  //   4. Active arc, governing spec has NO row at all in the register -> blocks.
+  // -----------------------------------------------------------------------------------------------
+  {
+    // 1. No active arc.
+    setLedgerPresent(false);
+    setGoverningSpec('2026-08-06-process-enforcement-design.md'); // approved spec present on disk, but no arc tracking it
+    const srcPath1 = join(s7Work, 'src', 'no-arc.py');
+    const out1 = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: srcPath1, content: 'x=1' } }),
+    );
+    check('Branch B: no active arc -> allows', out1.decision === 'allow', `out=${JSON.stringify(out1)}`);
+    check('Branch B: no active arc -> reason states why', /no active arc/i.test(out1.reason), `reason=${out1.reason}`);
+
+    // 2. Active arc, approved governing spec.
+    setLedgerPresent(true);
+    setGoverningSpec('2026-08-06-process-enforcement-design.md');
+    const srcPath2 = join(s7Work, 'src', 'approved-arc.py');
+    const out2 = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: srcPath2, content: 'x=1' } }),
+    );
+    check('Branch B: active arc + APPROVED governing spec -> allows', out2.decision === 'allow', `out=${JSON.stringify(out2)}`);
+    check('Branch B: active arc + approved spec -> reason names the spec', /2026-08-06-process-enforcement-design\.md/.test(out2.reason), `reason=${out2.reason}`);
+
+    // 3. THE CASE THAT MATTERS MOST — active arc, governing spec is one of the owner's 6
+    // deliberately-unapproved specs -> BLOCKS.
+    setLedgerPresent(true);
+    setGoverningSpec('2026-07-21-occupancy-slots-h4-design.md');
+    const srcPath3 = join(s7Work, 'src', 'unapproved-arc.py');
+    const out3 = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: srcPath3, content: 'x=1' } }),
+    );
+    check('Branch B (MATTERS MOST): active arc on a DELIBERATELY-UNAPPROVED spec -> BLOCKS', out3.decision === 'block', `out=${JSON.stringify(out3)}`);
+    check('Branch B (MATTERS MOST): reason names the unapproved spec', /2026-07-21-occupancy-slots-h4-design\.md/.test(out3.reason) && /not marked approved/i.test(out3.reason), `reason=${out3.reason}`);
+
+    // 4. Active arc, governing spec has no row at all in the register.
+    setLedgerPresent(true);
+    setGoverningSpec('2026-08-09-totally-unregistered-spec.md');
+    const srcPath4 = join(s7Work, 'src', 'unregistered-arc.py');
+    const out4 = withRegisterEnv(
+      REALISTIC_REGISTER,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: makeCleanTranscript(), tool_input: { file_path: srcPath4, content: 'x=1' } }),
+    );
+    check('Branch B: active arc, governing spec has NO register row at all -> blocks', out4.decision === 'block', `out=${JSON.stringify(out4)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Branch B's brainstorming-only escape still works with zero register/arc evidence at all.
+  // -----------------------------------------------------------------------------------------------
+  {
+    setLedgerPresent(false);
+    setGoverningSpec(null);
+    const srcPath = join(s7Work, 'src', 'brainstormed.py');
+    const t = makeTranscript([{ tsOffsetMs: 5000, skill: 'superpowers:brainstorming' }]);
+    const out = withRegisterEnv(
+      emptyRegister,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: t, tool_input: { file_path: srcPath, content: 'x=1' } }),
+    );
+    check('Branch B: brainstorming invoked, no register/arc evidence at all: allows', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // writing-plans (not brainstorming) invoked -> passes for a plans/ write, but must NOT pass a
+  // specs/ write (brainstorming only, there).
+  // -----------------------------------------------------------------------------------------------
+  {
+    const planPath = join(s7Work, 'docs', 'superpowers', 'plans', 'writing-plans-escape.md');
+    const t = makeTranscript([{ tsOffsetMs: 5000, skill: 'superpowers:writing-plans' }]);
+    const outPlans = withRegisterEnv(
+      emptyRegister,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: t, tool_input: { file_path: planPath, content: '# plan' } }),
+    );
+    check('writing-plans invoked: passes for a plans/ write', outPlans.decision === 'allow', `out=${JSON.stringify(outPlans)}`);
+
+    const specPath = join(s7Work, 'docs', 'superpowers', 'specs', 'writing-plans-no-escape.md');
+    const t2 = makeTranscript([{ tsOffsetMs: 5000, skill: 'superpowers:writing-plans' }]);
+    const outSpecs = withRegisterEnv(
+      emptyRegister,
+      () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: t2, tool_input: { file_path: specPath, content: '# spec' } }),
+    );
+    check('writing-plans invoked: does NOT pass for a specs/ write (brainstorming only there)', outSpecs.decision === 'block', `out=${JSON.stringify(outSpecs)}`);
   }
 }
 
