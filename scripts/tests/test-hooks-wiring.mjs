@@ -102,6 +102,17 @@ check(
   stopCommandsWiring.some((c) => typeof c === 'string' && c.includes('scripts/hooks/stop.mjs')),
 );
 
+// Task 12: exact timeouts, named explicitly rather than left implicit — a Group B integration
+// task's own DoD line ("PostToolUse and Stop present with the exact commands/timeouts").
+function timeoutOf(entry) {
+  return Array.isArray(entry?.hooks) ? entry.hooks[0]?.timeout : undefined;
+}
+check('PreToolUse timeout is 5s', timeoutOf(preEntry) === 5);
+check('PostToolUse timeout is 5s', timeoutOf(postEntry) === 5);
+check('PostToolUseFailure timeout is 5s', timeoutOf(postFailureEntry) === 5);
+check('Stop timeout is 10s', timeoutOf(Array.isArray(stop) ? stop[0] : undefined) === 10);
+check('SubagentStop timeout is 5s', timeoutOf(Array.isArray(subagentStop) ? subagentStop[0] : undefined) === 5);
+
 // The pre-existing SessionStart block must survive the merge untouched.
 const sessionStart = settings?.hooks?.SessionStart;
 check('hooks.SessionStart still present (not clobbered)', Array.isArray(sessionStart) && sessionStart.length > 0);

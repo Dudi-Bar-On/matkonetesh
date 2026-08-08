@@ -4085,5 +4085,369 @@ let RULE7;
   }
 }
 
+// =================================================================================================
+// SECTION 12 — Task 12 integration: end-to-end scenarios through the REAL CLIs
+// (pretooluse.mjs, posttooluse.mjs, stop.mjs), each pointed at the REAL production rules/observers
+// directories (PRETOOLUSE_RULES_DIR / POSTTOOLUSE_OBSERVERS_DIR / STOP_RULES_DIR are deliberately
+// NOT set here — the whole point is to prove the actual shipped rule set behaves, not a fixture
+// copy of it) with ONLY the state DB and the log path redirected to a temp location per the
+// declared §2.1 pattern (redirect WHERE state lives, never WHETHER a rule runs).
+// =================================================================================================
+{
+  const s12Work = tempDir('hooks-groupb-integration-');
+  const PRETOOLUSE_CLI12 = join(ROOT, 'scripts', 'hooks', 'pretooluse.mjs');
+  const POSTTOOLUSE_CLI12 = join(ROOT, 'scripts', 'hooks', 'posttooluse.mjs');
+  const STOP_CLI12 = join(ROOT, 'scripts', 'hooks', 'stop.mjs');
+
+  function runPre12({ stdin, logPath, statePath, env: extraEnv }) {
+    const env = { ...process.env, ...(extraEnv || {}) };
+    if (logPath) env.PRETOOLUSE_LOG_PATH = logPath;
+    if (statePath) env.ENFORCEMENT_STATE_PATH = statePath;
+    return spawnSync(process.execPath, [PRETOOLUSE_CLI12], {
+      input: stdin, encoding: 'utf8', env, cwd: ROOT, timeout: 15000,
+    });
+  }
+  function runPost12({ stdin, logPath, statePath, env: extraEnv }) {
+    const env = { ...process.env, ...(extraEnv || {}) };
+    if (logPath) env.PRETOOLUSE_LOG_PATH = logPath;
+    if (statePath) env.ENFORCEMENT_STATE_PATH = statePath;
+    return spawnSync(process.execPath, [POSTTOOLUSE_CLI12], {
+      input: stdin, encoding: 'utf8', env, cwd: ROOT, timeout: 15000,
+    });
+  }
+  function runStop12({ stdin, logPath, statePath, env: extraEnv }) {
+    const env = { ...process.env, ...(extraEnv || {}) };
+    if (logPath) env.PRETOOLUSE_LOG_PATH = logPath;
+    if (statePath) env.ENFORCEMENT_STATE_PATH = statePath;
+    return spawnSync(process.execPath, [STOP_CLI12], {
+      input: stdin, encoding: 'utf8', env, cwd: ROOT, timeout: 15000,
+    });
+  }
+
+  function makeTranscript12(entries, fileBase = 'transcript') {
+    const path = join(s12Work, `${fileBase}-${Math.random().toString(36).slice(2)}.jsonl`);
+    const lines = entries.map((e) => JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date(e.atMs).toISOString(),
+      message: { content: [{ type: 'text', text: e.text }] },
+    }));
+    writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
+    return path;
+  }
+  function emptyTranscript12() {
+    const path = join(s12Work, `empty-${Math.random().toString(36).slice(2)}.jsonl`);
+    writeFileSync(path, '', 'utf8');
+    return path;
+  }
+  // A transcript that already carries a systematic-debugging Skill invocation (measured shape,
+  // skill-invoked.mjs's own header) — used to isolate the §5 story from the §6.4-trigger-2 rule
+  // (debugging-before-fix-edit.mjs), which ALSO fires on a failure-then-edit pattern: a real
+  // developer replaying this exact story would invoke the skill once per failure too, so this is
+  // representative, not a workaround.
+  function transcriptWithDebuggingSkill12() {
+    const path = join(s12Work, `debugskill-${Math.random().toString(36).slice(2)}.jsonl`);
+    writeFileSync(path, '', 'utf8');
+    return path;
+  }
+  // Appends a FRESH systematic-debugging Skill invocation (current timestamp) to the transcript —
+  // called once per failure cycle, right after the failure and before the edit, exactly the order
+  // a real developer would produce (debugging-before-fix-edit.mjs windows skillInvokedSince() from
+  // the failure's own ts forward, so a skill entry dated BEFORE that failure would not count).
+  function appendDebuggingSkillInvocation12(path) {
+    const line = JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date().toISOString(),
+      message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill: 'superpowers:systematic-debugging' } }] },
+    });
+    const existing = existsSync(path) ? readFileSync(path, 'utf8') : '';
+    writeFileSync(path, `${existing}${line}\n`, 'utf8');
+  }
+  // pretooluse.mjs's real stdout shape is {} (allow), {systemMessage,hookSpecificOutput...} (warn),
+  // or {hookSpecificOutput:{permissionDecision:'deny',...}} (block) — NEVER a top-level `decision`
+  // field (that shape belongs to stop.mjs only). These two helpers read the REAL shape.
+  function preIsBlocked12(result) {
+    let parsed = {};
+    try { parsed = JSON.parse(result.stdout || '{}'); } catch { /* leave {} */ }
+    return parsed?.hookSpecificOutput?.permissionDecision === 'deny';
+  }
+  function preReason12(result) {
+    let parsed = {};
+    try { parsed = JSON.parse(result.stdout || '{}'); } catch { /* leave {} */ }
+    return parsed?.hookSpecificOutput?.permissionDecisionReason || '';
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // STORY 1 — §5: verification fails -> edit allowed -> fails -> edit -> fails -> edit -> fails
+  // (attempts reach 3, a CLOSED cycle each time) -> the 4th edit on the SAME target is BLOCKED ->
+  // a brand-new session_id (simulating a crash/new session) is allowed immediately (no stale block).
+  // -----------------------------------------------------------------------------------------------
+  {
+    const sid = `s12-story5-${Math.random().toString(36).slice(2)}`;
+    const statePath = join(s12Work, `state-story5-${Math.random().toString(36).slice(2)}.sqlite`);
+    const logPath = join(s12Work, `log-story5-${Math.random().toString(36).slice(2)}.jsonl`);
+    const target = 'tests/test_story5.py::test_thing';
+    // Isolates the §5 story from §6.4 trigger 2 (debugging-before-fix-edit.mjs), which ALSO fires
+    // on a bare failure->edit pattern — a real developer replaying this story invokes the skill
+    // once per failure too, so this transcript is representative, not a bypass.
+    const transcript = transcriptWithDebuggingSkill12();
+
+    function postFailure() {
+      return runPost12({
+        statePath, logPath,
+        stdin: JSON.stringify({
+          session_id: sid, hook_event_name: 'PostToolUseFailure', tool_name: 'Bash', transcript_path: transcript,
+          tool_input: { command: 'pytest tests/test_story5.py' },
+          error: `FAILED tests/test_story5.py::test_thing - AssertionError\n1 failed`,
+          is_interrupt: false,
+        }),
+      });
+    }
+    function preEdit() {
+      return runPre12({
+        statePath, logPath,
+        stdin: JSON.stringify({
+          session_id: sid, hook_event_name: 'PreToolUse', tool_name: 'Edit', transcript_path: transcript,
+          tool_input: { file_path: join(ROOT, 'story5-fixture.py'), old_string: 'a', new_string: 'b' },
+        }),
+      });
+    }
+    function postEdit() {
+      return runPost12({
+        statePath, logPath,
+        stdin: JSON.stringify({
+          session_id: sid, hook_event_name: 'PostToolUse', tool_name: 'Edit', transcript_path: transcript,
+          tool_input: { file_path: join(ROOT, 'story5-fixture.py'), old_string: 'a', new_string: 'b' },
+          tool_response: { filePath: join(ROOT, 'story5-fixture.py') },
+        }),
+      });
+    }
+
+    // fail #1 -> edit allowed -> fail #2 (closes cycle 1) -> edit allowed -> fail #3 (closes cycle 2)
+    // -> edit allowed -> fail #4 (closes cycle 3, attempts==3) -> NEXT edit must BLOCK. A fresh
+    // systematic-debugging invocation is appended after each failure, before each edit, so §6.4
+    // trigger 2 stays silent throughout and only fix-cycle-limit.mjs's §5 counter is under test.
+    postFailure(); appendDebuggingSkillInvocation12(transcript);
+    let r1 = preEdit(); postEdit();
+    postFailure(); appendDebuggingSkillInvocation12(transcript);
+    let r2 = preEdit(); postEdit();
+    postFailure(); appendDebuggingSkillInvocation12(transcript);
+    let r3 = preEdit(); postEdit();
+    postFailure(); appendDebuggingSkillInvocation12(transcript);
+    let r4 = preEdit();
+
+    check('STORY5: edit #1 (before any closed cycle) is allowed',
+      !preIsBlocked12(r1), `stdout=${r1.stdout}`);
+    check('STORY5: edit #2 (1 closed cycle) is allowed',
+      !preIsBlocked12(r2), `stdout=${r2.stdout}`);
+    check('STORY5: edit #3 (2 closed cycles) is allowed',
+      !preIsBlocked12(r3), `stdout=${r3.stdout}`);
+    check('STORY5: edit #4 (3 closed cycles -> the 4th cycle) is BLOCKED and names §5',
+      preIsBlocked12(r4) && /§5/.test(preReason12(r4)),
+      `stdout=${r4.stdout}`);
+
+    // A brand-new session_id (simulating a crash) must NOT inherit the block — TTL/session scoping,
+    // not a liveness check, is what makes this safe (Task 2's own property, replayed end-to-end here).
+    const sidNew = `s12-story5-new-${Math.random().toString(36).slice(2)}`;
+    const rNew = runPre12({
+      statePath, logPath,
+      stdin: JSON.stringify({
+        session_id: sidNew, hook_event_name: 'PreToolUse', tool_name: 'Edit', transcript_path: transcript,
+        tool_input: { file_path: join(ROOT, 'story5-fixture.py'), old_string: 'a', new_string: 'b' },
+      }),
+    });
+    check('STORY5: a NEW session_id (crash/new session) is allowed immediately — no stale block',
+      !preIsBlocked12(rNew), `stdout=${rNew.stdout}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // STORY 2 — §10.16: a failure is recorded -> `git commit` is BLOCKED -> the discipline doc gains a
+  // new `+**L<n> ·` line in the working tree -> the SAME `git commit` is now allowed.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const sid = `s12-story16-${Math.random().toString(36).slice(2)}`;
+    const statePath = join(s12Work, `state-story16-${Math.random().toString(36).slice(2)}.sqlite`);
+    const logPath = join(s12Work, `log-story16-${Math.random().toString(36).slice(2)}.jsonl`);
+    const transcript = emptyTranscript12();
+
+    // Record one verification failure this session.
+    runPost12({
+      statePath, logPath,
+      stdin: JSON.stringify({
+        session_id: sid, hook_event_name: 'PostToolUseFailure', tool_name: 'Bash', transcript_path: transcript,
+        tool_input: { command: 'pytest tests/test_story16.py' },
+        error: `FAILED tests/test_story16.py::test_x - AssertionError\n1 failed`,
+        is_interrupt: false,
+      }),
+    });
+
+    const rBlocked = runPre12({
+      statePath, logPath,
+      stdin: JSON.stringify({
+        session_id: sid, hook_event_name: 'PreToolUse', tool_name: 'Bash', transcript_path: transcript,
+        tool_input: { command: 'git commit -m "story16 test commit"' },
+      }),
+    });
+    check('STORY16: git commit with an uncovered failure this session is BLOCKED and names §10.16',
+      preIsBlocked12(rBlocked) && /§10\.16/.test(preReason12(rBlocked)),
+      `stdout=${rBlocked.stdout}`);
+
+    // The real rule shells to `git diff HEAD -- docs/process/development-discipline.md` on disk, so
+    // this story writes a REAL (uncommitted) lesson line into that file, runs the same commit
+    // command again, and reverts the line in a finally block — never leaving repo state touched.
+    const disciplinePath = join(ROOT, 'docs', 'process', 'development-discipline.md');
+    const original = readFileSync(disciplinePath, 'utf8');
+    try {
+      writeFileSync(disciplinePath, `${original}\n**L999 · Story16 integration probe (2026-08-08).** Temporary, removed by the test.\n`, 'utf8');
+      const rAllowed = runPre12({
+        statePath, logPath,
+        stdin: JSON.stringify({
+          session_id: sid, hook_event_name: 'PreToolUse', tool_name: 'Bash', transcript_path: transcript,
+          tool_input: { command: 'git commit -m "story16 test commit"' },
+        }),
+      });
+      check('STORY16: after a new **L<n> · line lands in the working tree, the SAME commit is allowed',
+        !preIsBlocked12(rAllowed), `stdout=${rAllowed.stdout}`);
+    } finally {
+      writeFileSync(disciplinePath, original, 'utf8');
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // STORY 3 — THE HONEST DAY: 20 ordinary events an experienced developer on this project would
+  // actually run, replayed through the REAL pretooluse/posttooluse/stop CLIs (production rules and
+  // observers, isolated state+log only). Zero of them should warn or block. This is the plan's own
+  // "single most important deliverable" line — every intervention here is reported individually,
+  // not summarized away, per the task-12 brief.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const sid = `s12-honestday-${Math.random().toString(36).slice(2)}`;
+    const statePath = join(s12Work, `state-honestday-${Math.random().toString(36).slice(2)}.sqlite`);
+    const logPath = join(s12Work, `log-honestday-${Math.random().toString(36).slice(2)}.jsonl`);
+    const transcriptClean = emptyTranscript12();
+    const interventions = [];
+
+    function noteIfIntervening(label, kind, result) {
+      let parsed = {};
+      try { parsed = JSON.parse(result.stdout || '{}'); } catch { /* leave {} */ }
+      let intervened;
+      if (kind === 'stop') {
+        intervened = parsed.decision === 'block' || typeof parsed.systemMessage === 'string';
+      } else if (kind === 'pre') {
+        // pretooluse.mjs's real shape: block -> hookSpecificOutput.permissionDecision === 'deny';
+        // warn -> systemMessage present (+ permissionDecision 'allow'); allow -> {}.
+        intervened = parsed?.hookSpecificOutput?.permissionDecision === 'deny'
+          || typeof parsed.systemMessage === 'string';
+      } else {
+        // posttooluse.mjs is an observer only — it always writes {} by contract (Task 1), so this
+        // branch exists to document that fact rather than to ever actually trip.
+        intervened = parsed.decision === 'block' || parsed.decision === 'warn'
+          || typeof parsed.systemMessage === 'string';
+      }
+      if (intervened) interventions.push({ label, stdout: result.stdout, stderr: result.stderr });
+    }
+
+    const bashEvents = [
+      'git status',
+      'git log --oneline -5',
+      "grep -n \"R-72\" docs/ROADMAP-2026-07-30.md",
+      'npm install',
+      'node scripts/tests/run-all.mjs',
+      'git diff --stat',
+      'git add scripts/hooks/lib/enforcement-state.mjs',
+      'python -m pytest tests/test_ingest.py -q',
+      'node scripts/check-meta.mjs',
+      'curl -sI https://example.com/',
+    ];
+    for (const command of bashEvents) {
+      const pre = runPre12({
+        statePath, logPath,
+        stdin: JSON.stringify({
+          session_id: sid, hook_event_name: 'PreToolUse', tool_name: 'Bash', transcript_path: transcriptClean,
+          tool_input: { command },
+        }),
+      });
+      noteIfIntervening(`PreToolUse Bash: ${command}`, 'pre', pre);
+      const post = runPost12({
+        statePath, logPath,
+        stdin: JSON.stringify({
+          session_id: sid, hook_event_name: 'PostToolUse', tool_name: 'Bash', transcript_path: transcriptClean,
+          tool_input: { command },
+          tool_response: { stdout: '', stderr: '', interrupted: false },
+        }),
+      });
+      noteIfIntervening(`PostToolUse Bash: ${command}`, 'post', post);
+    }
+
+    // 6 ordinary edits to EXISTING files with no open failures on the session.
+    const editFiles = [
+      'scripts/hooks/lib/enforcement-state.mjs',
+      'scripts/tests/test-hooks-groupb.mjs',
+      'docs/process/development-discipline.md',
+      'scripts/hooks/rules/fix-cycle-limit.mjs',
+      'scripts/hooks/observers/edit-tracker.mjs',
+      'scripts/hooks/stop-rules/live-url-verified.mjs',
+    ];
+    for (const rel of editFiles) {
+      const filePath = join(ROOT, rel);
+      const pre = runPre12({
+        statePath, logPath,
+        stdin: JSON.stringify({
+          session_id: sid, hook_event_name: 'PreToolUse', tool_name: 'Edit', transcript_path: transcriptClean,
+          tool_input: { file_path: filePath, old_string: 'x', new_string: 'x' },
+        }),
+      });
+      noteIfIntervening(`PreToolUse Edit: ${rel}`, 'pre', pre);
+      const post = runPost12({
+        statePath, logPath,
+        stdin: JSON.stringify({
+          session_id: sid, hook_event_name: 'PostToolUse', tool_name: 'Edit', transcript_path: transcriptClean,
+          tool_input: { file_path: filePath, old_string: 'x', new_string: 'x' },
+          tool_response: { filePath },
+        }),
+      });
+      noteIfIntervening(`PostToolUse Edit: ${rel}`, 'post', post);
+    }
+
+    // 1 passing suite run (feeds the §5/§10.16 counters clean), 1 commit after a green session, and
+    // 3 ordinary Stop replies (no claim / a claim WITH pasted evidence / a question, not a claim).
+    const passOut = runPost12({
+      statePath, logPath,
+      stdin: JSON.stringify({
+        session_id: sid, hook_event_name: 'PostToolUse', tool_name: 'Bash', transcript_path: transcriptClean,
+        tool_input: { command: 'npx playwright test' },
+        tool_response: { stdout: '48 passed (1.2m)', stderr: '', interrupted: false },
+      }),
+    });
+    noteIfIntervening('PostToolUse Bash: npx playwright test (passing)', 'post', passOut);
+
+    const commitOut = runPre12({
+      statePath, logPath,
+      stdin: JSON.stringify({
+        session_id: sid, hook_event_name: 'PreToolUse', tool_name: 'Bash', transcript_path: transcriptClean,
+        tool_input: { command: 'git commit -m "an ordinary commit after a green session"' },
+      }),
+    });
+    noteIfIntervening('PreToolUse Bash: git commit (session has zero uncovered failures)', 'pre', commitOut);
+
+    const stopReplies = [
+      'רואה שהבדיקה עברה, אמשיך לצעד הבא.',
+      "Here's the output:\n```\n48 passed\n```\nAll green, exit code 0.",
+      'האם זה עובד אצלך?',
+    ];
+    for (const text of stopReplies) {
+      const transcript = makeTranscript12([{ atMs: Date.now(), text }], 'honestday-stop');
+      const stopOut = runStop12({
+        statePath, logPath,
+        stdin: JSON.stringify({ session_id: sid, hook_event_name: 'Stop', transcript_path: transcript, stop_hook_active: false }),
+      });
+      noteIfIntervening(`Stop: "${text.slice(0, 40)}"`, 'stop', stopOut);
+    }
+
+    check(`STORY-HONEST-DAY: zero false interventions across 20 ordinary events (found ${interventions.length})`,
+      interventions.length === 0,
+      interventions.map((i) => `${i.label} -> ${i.stdout}`).join(' | '));
+  }
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);

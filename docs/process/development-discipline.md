@@ -2010,6 +2010,11 @@ allowed to shrink silently, the count is not evidence.
 ‏**‏hook של PreToolUse חוסם את כל פקודת ה-Bash, לא את חלקה האחרון.** עריכה שתוכן אחר יסתמך עליה נכתבת
 בקריאה נפרדת, ומאומתת מהדיסק לפני ההפקדה.
 
+**No-lesson declaration (2026-08-08):** שלב 4 · משימה 12 (מעבר האינטגרציה) — מדידה טהורה ללא ממצא חדש.
+העלות לא נסוגה (61ms לכל היותר, מול קו-בסיס ~50ms), אזהרות-השווא היו **אפס** על יום-עבודה מלא, וכל
+נקודות-הכניסה נורו בייצור. הלקחים שהשלב כן ייצר כבר נכתבו — ‏L68 עד L73 — ולהוסיף שורה שביעית רק מפני
+שהשער ביקש היה מדלל אותן.
+
 **What happened.** Before dispatching the last ten tasks of the watchman plan, I had a pre-flight audit
 read them against the real repository. It found three blockers and saved three review rounds. It also
 marked Task 19 **clean**, with this reasoning: its `wsl -u root … service docker start` sequence "is a
