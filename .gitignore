@@ -86,3 +86,6 @@ docs/audit/*.md
 # a pre-existing gap: agent-ledger.mjs's own ledger.json already lived here untracked but not
 # actually covered by any ignore pattern before this line.
 .superpowers/hooks-state/
+
+# R-102 evidence: one line per real HNSW corruption, with what was running beside it.
+.superpowers/hnsw-corruption-log.jsonl

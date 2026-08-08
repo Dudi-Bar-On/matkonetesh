@@ -48,6 +48,70 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 
+def _capture_forensics(failures: list[str]) -> None:
+    """Record WHAT ELSE WAS HAPPENING the moment corruption was found. Never raises.
+
+    R-102 is now at five occurrences and the standing hypothesis — heavy concurrent writes — has never
+    been MEASURED. Choosing a replacement index type on an unmeasured hypothesis would swap one
+    component for another for the same reason that picked the first one, so this collects the evidence
+    a decision needs instead: how many Postgres backends were active, whether an extraction or a test
+    suite was running, and how long since the last REINDEX. Five more data points settle it; guessing
+    never will.
+
+    Appended to a git-ignored JSONL, so the record survives the session that found it.
+    """
+    try:
+        import json
+        import subprocess
+        from datetime import datetime, timezone
+
+        snapshot: dict[str, object] = {
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "failures": failures,
+        }
+        try:
+            from src.knowledge import config
+
+            conn = config.connect_reader()
+            with conn.cursor() as cur:
+                cur.execute(
+                    "SELECT count(*) FILTER (WHERE state='active'), count(*), "
+                    "coalesce(max(extract(epoch from (now()-query_start))), 0) "
+                    "FROM pg_stat_activity WHERE datname = current_database()"
+                )
+                row = cur.fetchone() or (0, 0, 0)
+                active, total, oldest = row
+                snapshot["pg_active_backends"] = active
+                snapshot["pg_total_backends"] = total
+                snapshot["pg_oldest_query_seconds"] = round(float(oldest), 1)
+                cur.execute("SELECT count(*) FROM data_chunk_vectors")
+                vrow = cur.fetchone()
+                snapshot["vector_rows"] = vrow[0] if vrow else None
+            conn.close()
+        except Exception as exc:
+            snapshot["pg_snapshot_error"] = f"{type(exc).__name__}: {exc}"
+
+        try:
+            out = subprocess.run(
+                ["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=15
+            ).stdout
+            names = [ln.split('","')[0].strip('"').lower() for ln in out.splitlines() if ln.startswith('"')]
+            snapshot["node_processes"] = sum(1 for n in names if n.startswith("node"))
+            snapshot["python_processes"] = sum(1 for n in names if n.startswith(("python", "py")))
+            snapshot["postgres_processes"] = sum(1 for n in names if n.startswith("postgres"))
+        except Exception as exc:
+            snapshot["process_snapshot_error"] = f"{type(exc).__name__}: {exc}"
+
+        log = ROOT / ".superpowers" / "hnsw-corruption-log.jsonl"
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with open(log, "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(snapshot, ensure_ascii=False) + "\n")
+    except Exception:
+        # Forensics must never turn a detection into a crash. A missing record costs one data point;
+        # a raised exception here would cost the detection itself.
+        pass
+
+
 def _emit(result: str, detail: str) -> int:
     print(detail)
     print(f"RESULT={result}")
@@ -181,6 +245,11 @@ def main(argv: list[str]) -> int:
 
     failures = [d for _, r, d in results if r == "fail"]
     if failures:
+        # Never record a forensic entry for the synthetic RED branch: the whole value of this log is
+        # that every line in it is a REAL corruption with real concurrent activity beside it. One
+        # fabricated row makes the other five untrustworthy.
+        if not forced_missing:
+            _capture_forensics(failures)
         return _emit("fail", " | ".join(failures))
     if all(r == "skip" for _, r, _ in results):
         return _emit("skip", " | ".join(d for _, _, d in results))
