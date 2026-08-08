@@ -27,6 +27,15 @@
 // distinct value is playwright.config.ts's OWN documented way to run two suites concurrently on
 // different ports, and this rule does not fight that: it only ever probes the one port the
 // upcoming command would itself use.
+// RULE_IDS — the rules in the corpus this file ACTUALLY enforces, read by
+// scripts/check-rule-coverage.mjs. Declared here rather than as a path column in the store so
+// it travels with the file: a stored path goes stale in silence, which is the failure the rules
+// register itself exists to prevent. An id absent from the corpus is an ERROR, not an ignored
+// field — claiming to enforce something that does not exist is false coverage.
+// An observer declares [] EXPLICITLY, so the gate can require the export on every scanned file
+// and catch a rule that simply forgot to declare rather than mistaking it for an observer.
+export const RULE_IDS = ['11a'];
+
 import net from 'node:net';
 
 const DEFAULT_PORT = 8123;

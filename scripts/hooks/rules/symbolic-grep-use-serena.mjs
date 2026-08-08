@@ -67,6 +67,15 @@
 // `docs/`, which `CODE_PATH` can never match (no `src`/`scripts` segment, no `app.js`/`app.css`),
 // so (א) alone already makes a warn impossible for either call regardless of the pattern's shape.
 // No code change was made for these two on that basis — see the report for the full trace.
+// RULE_IDS — the rules in the corpus this file ACTUALLY enforces, read by
+// scripts/check-rule-coverage.mjs. Declared here rather than as a path column in the store so
+// it travels with the file: a stored path goes stale in silence, which is the failure the rules
+// register itself exists to prevent. An id absent from the corpus is an ERROR, not an ignored
+// field — claiming to enforce something that does not exist is false coverage.
+// An observer declares [] EXPLICITLY, so the gate can require the export on every scanned file
+// and catch a rule that simply forgot to declare rather than mistaking it for an observer.
+export const RULE_IDS = ['10.17'];
+
 import { isSerenaLive } from '../lib/serena-probe.mjs';
 import { extractBashGrepInvocations } from '../lib/bash-grep-extract.mjs';
 

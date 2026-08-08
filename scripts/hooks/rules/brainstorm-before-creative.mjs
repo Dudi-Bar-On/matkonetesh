@@ -86,6 +86,15 @@
 // COST DISCIPLINE: every check in evaluate() itself is a string/path comparison BEFORE either the
 // transcript or the register is ever read — an ordinary Edit to an existing, non-gated file returns
 // `allow` from a single normalized-path comparison and pays no I/O at all.
+// RULE_IDS — the rules in the corpus this file ACTUALLY enforces, read by
+// scripts/check-rule-coverage.mjs. Declared here rather than as a path column in the store so
+// it travels with the file: a stored path goes stale in silence, which is the failure the rules
+// register itself exists to prevent. An id absent from the corpus is an ERROR, not an ignored
+// field — claiming to enforce something that does not exist is false coverage.
+// An observer declares [] EXPLICITLY, so the gate can require the export on every scanned file
+// and catch a rule that simply forgot to declare rather than mistaking it for an observer.
+export const RULE_IDS = ['1'];
+
 import { existsSync, readFileSync } from 'node:fs';
 import { basename, extname, join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';

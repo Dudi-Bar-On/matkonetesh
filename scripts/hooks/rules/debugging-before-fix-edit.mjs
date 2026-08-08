@@ -63,6 +63,15 @@ export const WINDOW_MS = 30 * 60 * 1000;
 // FAIL-OPEN (same contract as every rule in this pipeline, requirement 3): unreadable state,
 // unreadable transcript, a missing session_id, or any unexpected exception here all resolve to
 // allow — a blocking rule that cannot read its own evidence must never block.
+// RULE_IDS — the rules in the corpus this file ACTUALLY enforces, read by
+// scripts/check-rule-coverage.mjs. Declared here rather than as a path column in the store so
+// it travels with the file: a stored path goes stale in silence, which is the failure the rules
+// register itself exists to prevent. An id absent from the corpus is an ERROR, not an ignored
+// field — claiming to enforce something that does not exist is false coverage.
+// An observer declares [] EXPLICITLY, so the gate can require the export on every scanned file
+// and catch a rule that simply forgot to declare rather than mistaking it for an observer.
+export const RULE_IDS = ['1'];
+
 import { openState, lastEvent, normalizeActorId } from '../lib/enforcement-state.mjs';
 import { skillInvokedSince } from '../lib/skill-invoked.mjs';
 
