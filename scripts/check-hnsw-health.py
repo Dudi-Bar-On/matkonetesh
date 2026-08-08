@@ -109,9 +109,44 @@ def _probe(cur, table: str, id_column: str, index_name: str, forced_missing: boo
             f"{index_name} returned {identity} at distance {distance:.6g} when queried with that row's "
             f"own embedding - it should be 0. The index is answering with stale vectors. Repair: {repair}"
         )
+    # SECOND PROBE, added 2026-08-08 after this detector reported OK on a genuinely corrupt index.
+    # The identity probe above asks "can you find this exact stored vector", and a damaged HNSW graph
+    # can still answer that while returning NOTHING for an ordinary query — which is what happened:
+    # `RESULT=ok` from this script, and zero rows from a real search, on the same index, minutes apart.
+    # That is the fifth occurrence of R-102 and the first one this detector missed.
+    #
+    # So: query with a vector that is NOT any stored row — an existing embedding perturbed on one
+    # component — and require the index path to return as many rows as a sequential scan. Still no
+    # embedding model involved, still deterministic, and it exercises graph traversal rather than a
+    # lookup that may be answered from a leaf the corruption did not touch.
+    cur.execute(f"SELECT embedding::text FROM {table} WHERE embedding IS NOT NULL LIMIT 1")
+    raw = cur.fetchone()[0]
+    values = [float(x) for x in raw.strip("[]").split(",")]
+    values[0] = values[0] + 0.37 if abs(values[0]) < 0.5 else values[0] - 0.37
+    probe = "[" + ",".join(repr(v) for v in values) + "]"
+
+    arbitrary = f"SELECT {id_column} FROM {table} ORDER BY embedding <=> %s::vector ASC LIMIT 5"
+    cur.execute(arbitrary, (probe,))
+    arb_index = cur.fetchall()
+    cur.execute("SET enable_indexscan = off")
+    cur.execute("SET enable_indexonlyscan = off")
+    cur.execute(arbitrary, (probe,))
+    arb_seq = cur.fetchall()
+    cur.execute("RESET enable_indexscan")
+    cur.execute("RESET enable_indexonlyscan")
+
+    if len(arb_index) < len(arb_seq):
+        return "fail", (
+            f"{index_name} answers an identity lookup but returns only {len(arb_index)} row(s) for an "
+            f"ordinary query, where a sequential scan returns {len(arb_seq)}. The graph is damaged even "
+            f"though the vector it was built from is still findable — this is the shape that passed an "
+            f"earlier version of this check while real searches came back empty. Repair: {repair}"
+        )
+
     return "ok", (
-        f"{index_name}: identity found at distance {distance:.6g} via the index path, "
-        f"{len(via_index)} row(s), sequential scan agrees ({len(via_seqscan)})."
+        f"{index_name}: identity found at distance {distance:.6g} via the index path, and an arbitrary "
+        f"(non-stored) query returns {len(arb_index)} row(s), matching the sequential scan "
+        f"({len(arb_seq)})."
     )
 
 

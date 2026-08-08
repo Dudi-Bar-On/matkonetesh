@@ -124,23 +124,67 @@ const REAL_ROOT = parse(tempDir('gate-test-')).root;
 }
 
 // ---------------------------------------------------------------------------
-// RED: WAL archive lag exceeds the limit -> FAIL.
+// The WAL leg, rewritten 2026-08-08. It used to assert that a 45-minute-old archive file FAILS. That
+// assertion encoded a wrong contract, and the gate proved it by blocking a commit on a completely
+// healthy system: archive_timeout switches a segment only when something has been WRITTEN, so an idle
+// hour produces no new file and age alone reads that as a stall. What actually distinguishes the two
+// is whether a COMPLETED segment is waiting — so these three cases test that, with the old file age
+// held deliberately stale in every one of them to prove age is no longer what decides.
 // ---------------------------------------------------------------------------
-{
+function walFixture(minutesOld = 45) {
   const primary = tempDir('gate-test-backups-');
   freshDump(primary, 'mk_knowledge-20260808-010000.dump', 1);
   freshDump(primary, 'neo4j-20260808-010000.dump', 1);
   const archive = tempDir('gate-test-archive-');
-  const walFile = join(archive, '000000010000000000000009');
+  const walFile = join(archive, '0000000100000000000000C0');
   writeFileSync(walFile, 'x'.repeat(16));
-  setMtime(walFile, minutesAgoIso(45)); // > 20min default limit
-  const r = runNode(SCRIPT, [], { PRIMARY_DEST: primary, ARCHIVE_DEST: archive });
-  assertExit('WAL archive lag 45min > 20min limit -> exit 1 (FAIL)', r, 1);
-  if (!/WAL archive lag/.test(r.stderr)) {
-    console.error('FAIL  expected "WAL archive lag" in the FAIL output');
+  setMtime(walFile, minutesAgoIso(minutesOld));
+  return { PRIMARY_DEST: primary, ARCHIVE_DEST: archive };
+}
+
+// RED 1: completed segments genuinely not being shipped -> FAIL.
+{
+  const r = runNode(SCRIPT, [], {
+    ...walFixture(),
+    WAL_PENDING_OVERRIDE: '0000000100000000000000FF|0000000100000000000000C0|0|',
+  });
+  assertExit('WAL: 63 completed segments unshipped -> exit 1 (FAIL)', r, 1);
+  if (!/segment\(s\) behind/.test(r.stderr)) {
+    console.error('FAIL  expected the FAIL output to name how many segments are behind');
     process.exitCode = 1;
   } else {
-    console.log('PASS  stale WAL archive -> FAIL naming the lag');
+    console.log('PASS  unshipped segments -> FAIL naming the distance');
+  }
+}
+
+// RED 2: PostgreSQL itself reporting archive failures -> FAIL, regardless of distance.
+{
+  const r = runNode(SCRIPT, [], {
+    ...walFixture(),
+    WAL_PENDING_OVERRIDE: '0000000100000000000000C1|0000000100000000000000C0|3|0000000100000000000000BF',
+  });
+  assertExit('WAL: pg_stat_archiver reports failures -> exit 1 (FAIL)', r, 1);
+  if (!/FAILING/.test(r.stderr)) {
+    console.error('FAIL  expected the FAIL output to say archiving is failing');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  archive failures -> FAIL, even one segment behind');
+  }
+}
+
+// COUNTER-RED, the case that caused all this: an idle cluster with a stale file and NOTHING pending
+// must pass in silence. One segment ahead is the segment currently being written — not archivable yet.
+{
+  const r = runNode(SCRIPT, [], {
+    ...walFixture(120),
+    WAL_PENDING_OVERRIDE: '0000000100000000000000C1|0000000100000000000000C0|0|',
+  });
+  assertExit('WAL: idle cluster, 2h-old file, nothing pending -> exit 0 (OK)', r, 0);
+  if (/FAIL/.test(r.stderr)) {
+    console.error('FAIL  an idle cluster must not produce a finding');
+    process.exitCode = 1;
+  } else {
+    console.log('PASS  idle cluster with an old file -> silent OK');
   }
 }
 

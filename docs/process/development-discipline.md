@@ -1244,6 +1244,62 @@ agent handed a project's instructions will follow them instead of its task.
 The other lesson of that era needs no section, because it is now enforced in code: **a stale map is worse
 than no map, because it is trusted and wrong.** That is why `check-memory-fresh` blocks.
 
+### Owner architecture decision — the reset for a §5 fix-cycle block (owner ruling, 2026-08-08)
+
+> **Ruling (owner, in conversation, 2026-08-08):** a documented owner-decision record resets the §5
+> fix-cycle counter. Modelled on the visible escape this project already uses — the No-lesson
+> declaration `scripts/gate-lessons.mjs` recognises, of the form
+> `**No-lesson declaration (YYYY-MM-DD):** <arc> — reason`.
+
+Phase 4 Group B Task 4 (`scripts/hooks/rules/fix-cycle-limit.mjs`) turns §5's 3-fix rule from advice
+into a block: once any open fix target in a session has closed 3 fix cycles, the next Edit/Write on
+it is blocked before it becomes attempt #4. §5's own alternative is "question the architecture with
+the owner" — but a conversation alone leaves no artifact a session-scoped rule can see. The record:
+
+```
+**Owner architecture decision (YYYY-MM-DD):** <target> — <what was decided>
+```
+
+lives right here, in §11, for the same reason the No-lesson declaration does: visible, dated,
+human-readable, grep-able off the document itself — not a bypass flag, not a config toggle, not a
+second ledger that can fall out of sync with the doc. `fix-cycle-limit.mjs` reads this document fresh
+on every Edit/Write call (no caching). `<target>` must match the blocked target string verbatim — it
+is quoted in full in the block's own deny reason, so writing the record is copy-the-target, not
+guess-the-target.
+
+**The record is a RESET, not a permanent exemption (fix round 1, 2026-08-08).** "Reset" is
+point-in-time: a record dated D clears only the fix cycles that had accumulated as of D. If the same
+target fails AGAIN after D, the record no longer covers that failure and the block returns — the deny
+reason then names the stale record and says so, because a target that keeps failing after an
+owner-approved change is exactly the conversation §5 wants had a **second** time, not proof the gate
+misfired. A date-only record (`YYYY-MM-DD`, the mirrored form) is read as covering up to the END of
+that UTC day — permissive enough that "the owner reviewed and wrote the record the same day the
+failures happened" (the common case) actually clears it. Anyone who needs same-day precision can
+write the finer form the rule also accepts, `(YYYY-MM-DD HH:MM)`, **read as UTC, not local time.**
+
+**The reset is literal AND single-use (fix round 2, 2026-08-08).** Round 1 only compared timestamps
+on every call — it never actually zeroed anything, so a same-day date-only record kept re-clearing
+every fresh batch of same-day failures (its whole-day cutoff never stops covering "today," no matter
+how many times the target re-crosses the ceiling). Fixed two ways, together: (1) the first time a
+record validly covers a target's current failures, the rule deletes that target's row via the
+store's own `noteVerificationPass()` — the exact action a real passing verification run takes — so
+the counter is genuinely zero afterward, not merely "not blocked this call"; (2) a given record (its
+exact target+text pair) may perform that reset **at most once per session** — tracked as an
+`events` row, read fresh every call. Once consumed, that same record can never clear the same target
+again; the deny reason says so and asks for a **new** record (a later date, or a precise UTC time) to
+reset it a second time. This is what makes "failures … after D count again from zero" literal rather
+than "a standing daily allowance."
+
+Because the match is exact-string, a typo'd target in the record silently never clears the real one —
+the rule does not loosen the match to compensate (a fuzzy match risks clearing the WRONG target, which
+is worse than an over-strict block); instead, when no exact record exists but a similarly-spelled one
+does, the deny reason names it directly, so the fix is a two-second string correction, not a guess.
+
+The owner accepted, explicitly, the risk that an agent could write this record unilaterally: this
+layer exists against **forgetting** §5's stop, not against malice, and the strict alternative — no
+in-session reset at all — would leave genuinely owner-approved work blocked inside its own session
+with no way out. Per the ruling: **no anti-forgery machinery was added, and none should be.**
+
 ## 13. Operating Model — Main thread vs subagents (H6, adopted 2026-07-30)
 
 Authoritative form of METHODOLOGY-2026-07-30 §2, written here so every subagent inherits it.

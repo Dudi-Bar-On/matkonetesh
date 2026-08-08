@@ -47,9 +47,11 @@ check(
   preCommands.some((c) => typeof c === 'string' && c.includes('scripts/hooks/pretooluse.mjs')),
 );
 check(
-  'PreToolUse matcher covers Bash, Grep, WebSearch and Agent (the tools with rules registered today)',
+  'PreToolUse matcher covers Bash, Grep, WebSearch, Agent, Edit and Write (the tools with rules '
+    + 'registered today — Edit/Write added by Task 4\'s fix-cycle-limit.mjs, the first Group B rule '
+    + 'that must run BEFORE the tool call it inspects, not after)',
   typeof preEntry?.matcher === 'string'
-    && ['Bash', 'Grep', 'WebSearch', 'Agent'].every((t) => preEntry.matcher.includes(t)),
+    && ['Bash', 'Grep', 'WebSearch', 'Agent', 'Edit', 'Write'].every((t) => preEntry.matcher.includes(t)),
 );
 
 const subagentStop = settings?.hooks?.SubagentStop;

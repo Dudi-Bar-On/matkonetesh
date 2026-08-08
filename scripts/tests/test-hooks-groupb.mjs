@@ -1072,5 +1072,552 @@ export function observe(input) {
   delete process.env.ENFORCEMENT_STATE_PATH;
 }
 
+// =================================================================================================
+// SECTION 4 — scripts/hooks/rules/fix-cycle-limit.mjs (task-4-brief.md). §5's 3-fix rule, promoted
+// from advice to a PreToolUse Edit|Write block. Every case here runs against a TEMP
+// ENFORCEMENT_STATE_PATH and (where relevant) a TEMP DISCIPLINE doc — never the real repo store or
+// the real discipline.md — per the brief's own warning: this rule is wired into Edit|Write, which
+// means it runs on THIS TEST'S OWN edits too if state is not isolated.
+// =================================================================================================
+{
+  const RULE = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'fix-cycle-limit.mjs')).href);
+  const ES4 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+  const s4Work = tempDir('hooks-groupb-fixcycle-');
+
+  // Drives a target to a given attempts count via the real cycle semantics (fail, [edit, fail]*N),
+  // exactly like a real session would, rather than poking the SQL table directly.
+  function driveToAttempts(db, sessionId, target, attempts) {
+    ES4.noteVerificationFailure(db, sessionId, [target]);
+    for (let i = 0; i < attempts; i++) {
+      ES4.noteEdit(db, sessionId, '/some/file.js');
+      ES4.noteVerificationFailure(db, sessionId, [target]);
+    }
+  }
+
+  // Seeds a fresh temp store (via `seedFn(db)`) AND runs `evalFn()` — e.g. RULE.evaluate(...) —
+  // while ENFORCEMENT_STATE_PATH still points at that SAME store, since RULE.evaluate() calls the
+  // real openState() with no argument (reading the env var at call time, per the module's own
+  // contract). The env var is restored to whatever it was before, but only AFTER evalFn() has run —
+  // restoring it between seeding and evaluating would make the rule see a different (or the real)
+  // store than the one just seeded. Returns evalFn()'s result.
+  function withState(seedFn, evalFn = () => undefined) {
+    const p = join(s4Work, `state-${Math.random().toString(36).slice(2)}.sqlite`);
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = p;
+    try {
+      const db = ES4.openState(p);
+      seedFn(db, p);
+      db.close();
+      return evalFn(p);
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED (Bash passthrough) — first, since it must be true regardless of state.
+  // -----------------------------------------------------------------------------------------
+  {
+    const out = RULE.evaluate({ tool_name: 'Bash', session_id: 'S', tool_input: { command: 'echo hi' } });
+    check('fix-cycle: Bash passes through untouched', out.decision === 'allow' && out.reason === 'not an Edit/Write', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — seeded session S, target at attempts=3 -> Edit is BLOCKED, reason names §5, the target,
+  // the number 3, the alternative, and §5's provenance.
+  // -----------------------------------------------------------------------------------------
+  {
+    const out = withState(
+      (db) => driveToAttempts(db, 'S', 'tests/test_x.py::test_y', 3),
+      () => RULE.evaluate({ tool_name: 'Edit', session_id: 'S', tool_input: { file_path: 'C:/repo/model.py' } }),
+    );
+    check('RED fix-cycle: attempts=3 -> Edit is BLOCKED', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('RED fix-cycle: reason names §5', out.reason.includes('§5'), `reason=${out.reason}`);
+    check('RED fix-cycle: reason names the target', out.reason.includes('tests/test_x.py::test_y'), `reason=${out.reason}`);
+    check('RED fix-cycle: reason names the number 3', out.reason.includes('3'), `reason=${out.reason}`);
+    check('RED fix-cycle: reason names the alternative (raise the architecture question with the owner)',
+      out.reason.toLowerCase().includes('raise the architecture question with the owner'), `reason=${out.reason}`);
+    check('RED fix-cycle: reason quotes §5\'s provenance (written after a real failure)',
+      out.reason.toLowerCase().includes('real failure') || out.reason.toLowerCase().includes('guessed fixes'), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED-2 (regression pair, DoD-7 discipline) — same shape, attempts=2 -> allow (not yet cycle 4).
+  // -----------------------------------------------------------------------------------------
+  {
+    const out = withState(
+      (db) => driveToAttempts(db, 'S', 'tests/test_x.py::test_y', 2),
+      () => RULE.evaluate({ tool_name: 'Edit', session_id: 'S', tool_input: { file_path: 'C:/repo/model.py' } }),
+    );
+    check('RED-2 fix-cycle: attempts=2 -> allow (not yet the 4th cycle)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — a DIFFERENT session id with attempts=3 on the SAME target -> allow (session
+  // scoping, not global).
+  // -----------------------------------------------------------------------------------------
+  {
+    const out = withState(
+      (db) => driveToAttempts(db, 'session-A', 'tests/test_x.py::test_y', 3),
+      () => RULE.evaluate({ tool_name: 'Edit', session_id: 'session-B', tool_input: { file_path: 'x.js' } }),
+    );
+    check('COUNTER-RED fix-cycle: different session id, same target at attempts=3 -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — no open targets at all -> allow.
+  // -----------------------------------------------------------------------------------------
+  {
+    const out = withState(
+      () => { /* no writes — empty store */ },
+      () => RULE.evaluate({ tool_name: 'Write', session_id: 'sess-empty', tool_input: { file_path: 'x.js' } }),
+    );
+    check('COUNTER-RED fix-cycle: no open targets -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — state DB unreadable (garbage bytes at the state path) -> allow, with the
+  // degradation named in the reason. A blocking rule that cannot read its own state must never
+  // block.
+  // -----------------------------------------------------------------------------------------
+  {
+    const garbagePath = join(s4Work, 'garbage.sqlite');
+    mkdirSync(dirname(garbagePath), { recursive: true });
+    writeFileSync(garbagePath, 'not a sqlite file, just garbage bytes 1234567890', 'utf8');
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = garbagePath;
+    let out;
+    try {
+      out = RULE.evaluate({ tool_name: 'Edit', session_id: 'sess-garbage', tool_input: { file_path: 'x.js' } });
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+    check('COUNTER-RED fix-cycle: corrupt state file -> allow (never throws, never blocks)', out && out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    check('COUNTER-RED fix-cycle: reason names the degradation', /unreadable|degrad/i.test(out?.reason || ''), `reason=${out?.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // Strictly-sequential replay (Phase 3's most expensive lesson, replayed on purpose): failure(T)
+  // -> edit -> pass(T), six times over, in ONE session/store. Every edit allowed at every step;
+  // attempts never exceed 1 (a pass wipes the row before the next failure can build on it).
+  // -----------------------------------------------------------------------------------------
+  {
+    withState((db) => {
+      const sid = 'sess-sequential';
+      const target = 'tests/seq.py::test_seq';
+      for (let round = 0; round < 6; round++) {
+        ES4.noteVerificationFailure(db, sid, [target]);
+        const preEditTargets = ES4.openTargets(db, sid);
+        check(`sequential round ${round + 1}: attempts never exceed 1 before the edit`,
+          (preEditTargets.find((t) => t.target === target)?.attempts ?? 0) <= 1,
+          `targets=${JSON.stringify(preEditTargets)}`);
+
+        const outBefore = RULE.evaluate({ tool_name: 'Edit', session_id: sid, tool_input: { file_path: '/f.js' } });
+        check(`sequential round ${round + 1}: edit allowed`, outBefore.decision === 'allow', `out=${JSON.stringify(outBefore)}`);
+
+        ES4.noteEdit(db, sid, '/f.js');
+        ES4.noteVerificationPass(db, sid, [target]);
+        const postPassTargets = ES4.openTargets(db, sid);
+        check(`sequential round ${round + 1}: pass wipes the target`,
+          postPassTargets.find((t) => t.target === target) === undefined, `targets=${JSON.stringify(postPassTargets)}`);
+      }
+    });
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RESET PATH — a documented Owner architecture decision record naming the EXACT blocked target
+  // clears it, even though attempts is still 3 in the store (the store is untouched by the reset —
+  // the record is read live, not written back into fix_targets).
+  // -----------------------------------------------------------------------------------------
+  const todayUtc = new Date().toISOString().slice(0, 10);
+
+  {
+    const docPath = join(s4Work, 'discipline-owner-decision.md');
+    const target = 'tests/test_owner.py::test_reset';
+    writeFileSync(docPath, [
+      '## 11. Lessons log',
+      '',
+      `**Owner architecture decision (${todayUtc}):** ${target} — the owner reviewed the repeated `
+        + 'failure and approved a schema change; the counter is reset for this target.',
+      '',
+    ].join('\n'), 'utf8');
+
+    // Both env vars (ENFORCEMENT_STATE_PATH and DISCIPLINE) must still be set when RULE.evaluate()
+    // itself runs — nested here, inside withState()'s evalFn, for the same reason withState's own
+    // header comment explains for the state path alone.
+    const out = withState(
+      (db) => driveToAttempts(db, 'sess-owner-reset', target, 3),
+      () => {
+        const prevDoc = process.env.DISCIPLINE;
+        process.env.DISCIPLINE = docPath;
+        try {
+          return RULE.evaluate({ tool_name: 'Edit', session_id: 'sess-owner-reset', tool_input: { file_path: 'x.js' } });
+        } finally {
+          if (prevDoc === undefined) delete process.env.DISCIPLINE;
+          else process.env.DISCIPLINE = prevDoc;
+        }
+      },
+    );
+    check('RESET fix-cycle: an Owner architecture decision naming the exact target -> allow even at attempts=3',
+      out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — an Owner architecture decision naming a DIFFERENT target does NOT clear this one.
+  // -----------------------------------------------------------------------------------------
+  {
+    const docPath = join(s4Work, 'discipline-owner-decision-other.md');
+    const blockedTarget = 'tests/test_x.py::test_y';
+    writeFileSync(docPath, [
+      '## 11. Lessons log',
+      '',
+      `**Owner architecture decision (${todayUtc}):** tests/some_other.py::test_unrelated — unrelated decision.`,
+      '',
+    ].join('\n'), 'utf8');
+
+    const out = withState(
+      (db) => driveToAttempts(db, 'sess-owner-noreset', blockedTarget, 3),
+      () => {
+        const prevDoc = process.env.DISCIPLINE;
+        process.env.DISCIPLINE = docPath;
+        try {
+          return RULE.evaluate({ tool_name: 'Edit', session_id: 'sess-owner-noreset', tool_input: { file_path: 'x.js' } });
+        } finally {
+          if (prevDoc === undefined) delete process.env.DISCIPLINE;
+          else process.env.DISCIPLINE = prevDoc;
+        }
+      },
+    );
+    check('COUNTER-RED fix-cycle: an Owner architecture decision naming a DIFFERENT target still blocks this one',
+      out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('COUNTER-RED fix-cycle: an UNRELATED (not near-miss) record does not trigger a near-miss note',
+      !out.reason.includes('Note: a record exists for'), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // FIX ROUND 1 — RED: a record is a POINT-IN-TIME reset, not a permanent exemption. An exact-name
+  // record dated D, when a failure was recorded AFTER D (simulated here via a direct last_failure_ts
+  // overwrite, mirroring the TTL test's own pattern for backdating), does NOT clear the target — the
+  // decision is stale relative to that later failure, and the reason names the staleness.
+  // -----------------------------------------------------------------------------------------
+  {
+    const target = 'tests/test_owner.py::test_stale';
+    const docPath = join(s4Work, 'discipline-owner-decision-stale.md');
+    writeFileSync(docPath, [
+      '## 11. Lessons log',
+      '',
+      `**Owner architecture decision (${todayUtc}):** ${target} — an architecture decision was made, `
+        + 'but the target failed again afterward.',
+      '',
+    ].join('\n'), 'utf8');
+
+    const futureTs = Date.now() + 2 * 24 * 60 * 60 * 1000; // 2 days from now — after any same-day cutoff
+
+    const out = withState(
+      (db) => {
+        driveToAttempts(db, 'sess-owner-stale', target, 3);
+        db.prepare('UPDATE fix_targets SET last_failure_ts = ? WHERE session_id = ? AND target = ?')
+          .run(futureTs, 'sess-owner-stale', target);
+      },
+      () => {
+        const prevDoc = process.env.DISCIPLINE;
+        process.env.DISCIPLINE = docPath;
+        try {
+          return RULE.evaluate({ tool_name: 'Edit', session_id: 'sess-owner-stale', tool_input: { file_path: 'x.js' } });
+        } finally {
+          if (prevDoc === undefined) delete process.env.DISCIPLINE;
+          else process.env.DISCIPLINE = prevDoc;
+        }
+      },
+    );
+    check('RED fix-cycle (point-in-time): a failure recorded AFTER the decision date -> still BLOCKED',
+      out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('RED fix-cycle (point-in-time): reason names the staleness (a record exists but does not cover this failure)',
+      out.reason.includes('does not cover') || out.reason.toLowerCase().includes('recorded after it') || out.reason.toLowerCase().includes('after it)'),
+      `reason=${out.reason}`);
+    check('RED fix-cycle (point-in-time): reason tells the reader to write a FRESH record',
+      out.reason.toLowerCase().includes('fresh record'), `reason=${out.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — the mirror of the above: a record dated/timed AFTER the last failure DOES clear
+  // it. (Already covered by the "RESET fix-cycle" case above using same-day defaults; this second
+  // proof pins an explicit past reference instant so the ordering is unambiguous regardless of the
+  // real wall clock at test-run time.)
+  // -----------------------------------------------------------------------------------------
+  {
+    const target = 'tests/test_owner.py::test_reset_precise';
+    const docPath = join(s4Work, 'discipline-owner-decision-precise-clear.md');
+    const failureInstant = Date.parse('2026-08-08T10:00:00Z');
+    const decisionInstant = '2026-08-08 10:05'; // 5 minutes AFTER the failure, same day, finer form
+    writeFileSync(docPath, [
+      '## 11. Lessons log',
+      '',
+      `**Owner architecture decision (${decisionInstant}):** ${target} — precise same-day reset.`,
+      '',
+    ].join('\n'), 'utf8');
+
+    const out = withState(
+      (db) => {
+        driveToAttempts(db, 'sess-owner-precise-clear', target, 3);
+        db.prepare('UPDATE fix_targets SET last_failure_ts = ? WHERE session_id = ? AND target = ?')
+          .run(failureInstant, 'sess-owner-precise-clear', target);
+      },
+      () => {
+        const prevDoc = process.env.DISCIPLINE;
+        process.env.DISCIPLINE = docPath;
+        try {
+          return RULE.evaluate({ tool_name: 'Edit', session_id: 'sess-owner-precise-clear', tool_input: { file_path: 'x.js' } });
+        } finally {
+          if (prevDoc === undefined) delete process.env.DISCIPLINE;
+          else process.env.DISCIPLINE = prevDoc;
+        }
+      },
+    );
+    check('COUNTER-RED fix-cycle (point-in-time, finer form): a decision timed 5min AFTER the last failure -> allow',
+      out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — the finer form also correctly stays a HARD cutoff: a failure recorded a few minutes AFTER
+  // a precisely-timed decision, on the SAME calendar day, is NOT covered (this is exactly the
+  // same-day precision a date-only record cannot express).
+  // -----------------------------------------------------------------------------------------
+  {
+    const target = 'tests/test_owner.py::test_stale_precise';
+    const docPath = join(s4Work, 'discipline-owner-decision-precise-stale.md');
+    const decisionInstant = '2026-08-08 10:00';
+    const failureInstant = Date.parse('2026-08-08T10:10:00Z'); // 10 minutes AFTER the decision, same day
+
+    writeFileSync(docPath, [
+      '## 11. Lessons log',
+      '',
+      `**Owner architecture decision (${decisionInstant}):** ${target} — precise same-day decision.`,
+      '',
+    ].join('\n'), 'utf8');
+
+    const out = withState(
+      (db) => {
+        driveToAttempts(db, 'sess-owner-precise-stale', target, 3);
+        db.prepare('UPDATE fix_targets SET last_failure_ts = ? WHERE session_id = ? AND target = ?')
+          .run(failureInstant, 'sess-owner-precise-stale', target);
+      },
+      () => {
+        const prevDoc = process.env.DISCIPLINE;
+        process.env.DISCIPLINE = docPath;
+        try {
+          return RULE.evaluate({ tool_name: 'Edit', session_id: 'sess-owner-precise-stale', tool_input: { file_path: 'x.js' } });
+        } finally {
+          if (prevDoc === undefined) delete process.env.DISCIPLINE;
+          else process.env.DISCIPLINE = prevDoc;
+        }
+      },
+    );
+    check('RED fix-cycle (point-in-time, finer form): a same-day failure 10min AFTER a precisely-timed decision -> still BLOCKED',
+      out.decision === 'block', `out=${JSON.stringify(out)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED — near-miss target name: a record exists for a target one character different from the
+  // blocked one. Exact match fails (correctly — no silent fuzzy clearing), but the deny reason
+  // names the near-miss record explicitly so a typo is a two-second fix, not a bewildering wall.
+  // -----------------------------------------------------------------------------------------
+  {
+    const blockedTarget = 'tests/test_owner.py::test_typo';
+    const recordedTarget = 'tests/test_owner.py::test_typo0'; // one extra character — small edit distance
+    const docPath = join(s4Work, 'discipline-owner-decision-nearmiss.md');
+    writeFileSync(docPath, [
+      '## 11. Lessons log',
+      '',
+      `**Owner architecture decision (${todayUtc}):** ${recordedTarget} — decision for the WRONG (typo'd) target string.`,
+      '',
+    ].join('\n'), 'utf8');
+
+    const out = withState(
+      (db) => driveToAttempts(db, 'sess-owner-nearmiss', blockedTarget, 3),
+      () => {
+        const prevDoc = process.env.DISCIPLINE;
+        process.env.DISCIPLINE = docPath;
+        try {
+          return RULE.evaluate({ tool_name: 'Edit', session_id: 'sess-owner-nearmiss', tool_input: { file_path: 'x.js' } });
+        } finally {
+          if (prevDoc === undefined) delete process.env.DISCIPLINE;
+          else process.env.DISCIPLINE = prevDoc;
+        }
+      },
+    );
+    check('RED fix-cycle (near-miss): a typo\'d record does NOT clear the real target -> still BLOCKED',
+      out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('RED fix-cycle (near-miss): reason names the near-miss record\'s target text',
+      out.reason.includes(recordedTarget), `reason=${out.reason}`);
+    check('RED fix-cycle (near-miss): reason names the actually-blocked target text too',
+      out.reason.includes(blockedTarget), `reason=${out.reason}`);
+    check('RED fix-cycle (near-miss): reason flags it as a mismatch/typo, not a generic block',
+      out.reason.toLowerCase().includes('mismatch') || out.reason.toLowerCase().includes('typo'), `reason=${out.reason}`);
+  }
+
+  // ===========================================================================================
+  // FIX ROUND 2 (coordinator review, 2026-08-08) — the coordinator's own reproduction proved round
+  // 1's "reset" was still a permanent-until-comparison-fails exemption: a target cleared by a
+  // same-day date-only record kept clearing every SUBSEQUENT same-day failure too, because a bare
+  // date cannot order same-day events. The fix makes the reset LITERAL: the first time a record
+  // validly clears a target, the rule WIPES that target's row (same action a real verification pass
+  // takes) — so the counter genuinely restarts at zero, and reaching the ceiling again needs 3
+  // GENUINELY NEW cycles, independent of same-day granularity. These tests replay the coordinator's
+  // own exact reproduction sequence.
+  // ===========================================================================================
+
+  // -------------------------------------------------------------------------------------------
+  // RED — the coordinator's literal date-only sequence: 4 cycles -> block; record dated in the
+  // past (2020-01-01) -> still block (stale, unchanged from round 1); record dated TODAY
+  // (date-only) -> allow AND the row is wiped; FOUR MORE cycles recorded strictly after that ->
+  // must BLOCK AGAIN, because the counter restarted at zero, not because of any date comparison.
+  // -------------------------------------------------------------------------------------------
+  {
+    const target = 'tests/t.py::test_coordinator_dateonly';
+    const docPath = join(s4Work, 'discipline-owner-decision-round2-dateonly.md');
+    const sid = 'sess-round2-dateonly';
+    // A single SHARED store path for this whole multi-step scenario — withState()'s per-call fresh
+    // path doesn't fit here, since each step must see the PREVIOUS step's state.
+    const p2 = join(s4Work, 'round2-dateonly-shared.sqlite');
+    process.env.ENFORCEMENT_STATE_PATH = p2;
+
+    {
+      const db = ES4.openState(p2);
+      driveToAttempts(db, sid, target, 3);
+      db.close();
+    }
+    const out1 = RULE.evaluate({ tool_name: 'Edit', session_id: sid, tool_input: { file_path: 'x.js' } });
+    check('ROUND2 fix-cycle (date-only replay): step 1 — 4 cycles, no record -> BLOCK', out1.decision === 'block', `out=${JSON.stringify(out1)}`);
+
+    writeFileSync(docPath, `## 11\n\n**Owner architecture decision (2020-01-01):** ${target} — old, irrelevant decision.\n`, 'utf8');
+    process.env.DISCIPLINE = docPath;
+    const outStale = RULE.evaluate({ tool_name: 'Edit', session_id: sid, tool_input: { file_path: 'x.js' } });
+    check('ROUND2 fix-cycle (date-only replay): step 2 — record dated 2020-01-01 -> still BLOCK (stale)', outStale.decision === 'block', `out=${JSON.stringify(outStale)}`);
+
+    const todayUtc2 = new Date().toISOString().slice(0, 10);
+    writeFileSync(docPath, `## 11\n\n**Owner architecture decision (${todayUtc2}):** ${target} — reset today.\n`, 'utf8');
+    const outCleared = RULE.evaluate({ tool_name: 'Edit', session_id: sid, tool_input: { file_path: 'x.js' } });
+    check('ROUND2 fix-cycle (date-only replay): step 3 — record dated today (date-only) -> ALLOW', outCleared.decision === 'allow', `out=${JSON.stringify(outCleared)}`);
+    check('ROUND2 fix-cycle (date-only replay): step 3 — reason names the reset-to-zero', outCleared.reason.toLowerCase().includes('reset') || outCleared.reason.toLowerCase().includes('fresh'), `reason=${outCleared.reason}`);
+
+    {
+      const db = ES4.openState(p2);
+      const rowsNow = ES4.openTargets(db, sid);
+      db.close();
+      check('ROUND2 fix-cycle (date-only replay): the wipe actually happened — target row is GONE from the store', rowsNow.find((r) => r.target === target) === undefined, `rows=${JSON.stringify(rowsNow)}`);
+    }
+
+    {
+      const db = ES4.openState(p2);
+      for (let i = 0; i < 4; i++) {
+        ES4.noteEdit(db, sid, '/f.js');
+        ES4.noteVerificationFailure(db, sid, [target]);
+      }
+      db.close();
+    }
+    const outReblocked = RULE.evaluate({ tool_name: 'Edit', session_id: sid, tool_input: { file_path: 'x.js' } });
+    check('ROUND2 fix-cycle (date-only replay): step 4 — FOUR MORE cycles recorded AFTER the SAME-DAY record -> BLOCK AGAIN (this is the exact defect the coordinator found)',
+      outReblocked.decision === 'block', `out=${JSON.stringify(outReblocked)}`);
+
+    delete process.env.ENFORCEMENT_STATE_PATH;
+    delete process.env.DISCIPLINE;
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // COUNTER-RED — the mirror using the finer (minute-precision) form: same sequence, proving the
+  // wipe-based reset works for the finer form too (not just date-only), with fully controlled,
+  // unambiguous UTC instants (no reliance on real wall-clock delays between steps).
+  // -------------------------------------------------------------------------------------------
+  {
+    const target = 'tests/t.py::test_coordinator_precise';
+    const sid = 'sess-round2-precise';
+    const docPath = join(s4Work, 'discipline-owner-decision-round2-precise.md');
+    const p3 = join(s4Work, 'round2-precise-shared.sqlite');
+
+    const NOW = Date.now();
+    const T_MINUS_10MIN = NOW - 10 * 60_000; // original failures happened here
+    const T_MINUS_5MIN = NOW - 5 * 60_000;   // decision recorded here — AFTER the original failures
+
+    process.env.ENFORCEMENT_STATE_PATH = p3;
+    {
+      const db = ES4.openState(p3);
+      driveToAttempts(db, sid, target, 3);
+      db.prepare('UPDATE fix_targets SET last_failure_ts = ? WHERE session_id = ? AND target = ?').run(T_MINUS_10MIN, sid, target);
+      db.close();
+    }
+
+    const recordInstant = new Date(T_MINUS_5MIN).toISOString().slice(0, 16).replace('T', ' ');
+    writeFileSync(docPath, `## 11\n\n**Owner architecture decision (${recordInstant}):** ${target} — precise reset 5 minutes after the failures.\n`, 'utf8');
+    process.env.DISCIPLINE = docPath;
+
+    const outCleared = RULE.evaluate({ tool_name: 'Edit', session_id: sid, tool_input: { file_path: 'x.js' } });
+    check('COUNTER-RED fix-cycle (minute-precision replay): record 5min after the failures -> ALLOW', outCleared.decision === 'allow', `out=${JSON.stringify(outCleared)}`);
+
+    {
+      const db = ES4.openState(p3);
+      const rowsNow = ES4.openTargets(db, sid);
+      db.close();
+      check('COUNTER-RED fix-cycle (minute-precision replay): the wipe happened for the finer form too', rowsNow.find((r) => r.target === target) === undefined, `rows=${JSON.stringify(rowsNow)}`);
+    }
+
+    {
+      const db = ES4.openState(p3);
+      for (let i = 0; i < 4; i++) {
+        ES4.noteEdit(db, sid, '/f.js');
+        ES4.noteVerificationFailure(db, sid, [target]);
+      }
+      db.close();
+    }
+    const outReblocked = RULE.evaluate({ tool_name: 'Edit', session_id: sid, tool_input: { file_path: 'x.js' } });
+    check('COUNTER-RED fix-cycle (minute-precision replay): FOUR MORE cycles after the precise record -> BLOCK AGAIN', outReblocked.decision === 'block', `out=${JSON.stringify(outReblocked)}`);
+
+    delete process.env.ENFORCEMENT_STATE_PATH;
+    delete process.env.DISCIPLINE;
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // RED — UTC is now stated EXPLICITLY in the deny reason's own instructions (fix round 2, second
+  // finding): the finer-form instruction must say "UTC", and the stale-record note must say "UTC"
+  // too, so writing a timestamp in the wrong zone is never a silent, unexplained no-op.
+  // -------------------------------------------------------------------------------------------
+  {
+    const out = withState(
+      (db) => driveToAttempts(db, 'sess-utc-doc', 'tests/t.py::test_utc_doc', 3),
+      () => RULE.evaluate({ tool_name: 'Edit', session_id: 'sess-utc-doc', tool_input: { file_path: 'x.js' } }),
+    );
+    check('RED fix-cycle (UTC documentation): the base deny reason states the finer form is read as UTC, not local time',
+      out.reason.includes('UTC') && out.reason.toLowerCase().includes('not local time'), `reason=${out.reason}`);
+  }
+
+  // -------------------------------------------------------------------------------------------
+  // RED — the stale-record note also states UTC explicitly (the exact scenario that cost the
+  // reviewer a wrong conclusion: a stale record's "last failure at" timestamp must be unambiguous).
+  // -------------------------------------------------------------------------------------------
+  {
+    const target = 'tests/t.py::test_utc_stale';
+    const sid = 'sess-utc-stale';
+    const docPath = join(s4Work, 'discipline-owner-decision-utc-stale.md');
+    const p4 = join(s4Work, 'utc-stale.sqlite');
+    process.env.ENFORCEMENT_STATE_PATH = p4;
+    {
+      const db = ES4.openState(p4);
+      driveToAttempts(db, sid, target, 3);
+      db.prepare('UPDATE fix_targets SET last_failure_ts = ? WHERE session_id = ? AND target = ?')
+        .run(Date.now() + 2 * 24 * 60 * 60 * 1000, sid, target);
+      db.close();
+    }
+    writeFileSync(docPath, `## 11\n\n**Owner architecture decision (${new Date().toISOString().slice(0, 10)}):** ${target} — stale relative to a later failure.\n`, 'utf8');
+    process.env.DISCIPLINE = docPath;
+    const out = RULE.evaluate({ tool_name: 'Edit', session_id: sid, tool_input: { file_path: 'x.js' } });
+    check('RED fix-cycle (UTC documentation, stale note): the stale-record note states the last-failure timestamp is UTC',
+      out.decision === 'block' && out.reason.includes('UTC'), `reason=${out.reason}`);
+    delete process.env.ENFORCEMENT_STATE_PATH;
+    delete process.env.DISCIPLINE;
+  }
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);

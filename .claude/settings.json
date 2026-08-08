@@ -2,7 +2,7 @@
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Bash|Grep|WebSearch|Agent|browser_navigate",
+        "matcher": "Bash|Grep|WebSearch|Agent|browser_navigate|Edit|Write",
         "hooks": [
           {
             "type": "command",

@@ -5,9 +5,18 @@
 // is that look, run every time (§10.12/H8), so staleness is a finding on the next commit, not
 // whenever someone next remembers to check by hand.
 //
-// THREE INDEPENDENT FRESHNESS QUESTIONS, filesystem-only (no DB credentials, no live connection —
-// this gate must answer correctly even when Postgres/Neo4j are both down, which is exactly the
-// scenario a backup exists to survive):
+// THREE INDEPENDENT FRESHNESS QUESTIONS. The two BASE-BACKUP questions are filesystem-only — no DB
+// credentials, no live connection — because this gate must still answer them when Postgres and Neo4j
+// are both down, which is exactly the scenario a backup exists to survive.
+//
+// The WAL question is NOT filesystem-only, and that is a correction made on 2026-08-08 after this
+// gate blocked its own author's commit on a healthy system. File age cannot tell a stalled archive
+// from a quiet hour: archive_timeout forces a segment switch only when something has been written, so
+// an idle cluster produces no new file and a time-based check calls that a stall. The only thing that
+// separates the two is whether a COMPLETED segment is waiting, and only PostgreSQL knows that. So the
+// WAL leg asks it — and when PostgreSQL cannot be reached, it degrades to reporting the file without
+// a verdict rather than inventing one, since a database that is down is the watchman's finding to
+// report and not this gate's:
 //   1. mk_knowledge (geniza) base backup  — newest mk_knowledge-*.dump under PRIMARY_DEST
 //   2. neo4j graph backup                 — newest neo4j-*.dump under PRIMARY_DEST (R-110: the ONLY
 //                                            copy of 9,877 Module nodes that exist nowhere else)
@@ -37,7 +46,12 @@
 // MAX_BACKUP_AGE_HOURS=<n> (default 48 — the exact age R-111 found and flagged as too old),
 // MAX_ARCHIVE_LAG_MINUTES=<n> (default 20 — 4x enable-wal-archiving.ps1's archive_timeout of 5min).
 import { existsSync, readdirSync, statSync } from 'node:fs';
-import { join, parse } from 'node:path';
+import { join, parse, dirname } from 'node:path';
+import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const PY = process.platform === 'win32' ? 'py' : 'python3';
 
 const PRIMARY_DEST = process.env.PRIMARY_DEST || 'G:\\matconetesh-backups';
 const ARCHIVE_DEST = process.env.ARCHIVE_DEST || 'G:\\pg-wal-archive';
@@ -101,6 +115,50 @@ if (!driveMounted(PRIMARY_DEST)) {
   }
 }
 
+// Reads what PostgreSQL itself knows about archiving: how far the current write position is from the
+// last archived segment, and whether archiving has failed. Returns null on ANY failure to reach the
+// server — a gate that cannot read the state must not invent one, and Postgres being down is the
+// mk_rules-postgres / geniza-postgres components' finding to report, not this gate's.
+function walPendingState() {
+  // TEST-ONLY SEAM, and it exists because the alternative is worse: this leg's verdict now depends on
+  // live server state, and a self-test cannot stall a real WAL archive to prove the gate notices. The
+  // override is a plain string, never set in normal operation — production always takes the branch
+  // below. Format: "<currentSegment>|<lastArchivedWal>|<failedCount>|<lastFailedWal>".
+  const injected = process.env.WAL_PENDING_OVERRIDE;
+  if (injected) return parsePendingLine(injected);
+  const r = spawnSync(PY, ['-3', '-c', [
+    'import sys; sys.path.insert(0, r"' + ROOT.replace(/\\/g, '\\\\') + '")',
+    'from src.knowledge import config',
+    'c = config.connect_reader(); cur = c.cursor()',
+    'cur.execute("select pg_walfile_name(pg_current_wal_lsn())"); cur_seg = cur.fetchone()[0]',
+    'cur.execute("select last_archived_wal, failed_count, last_failed_wal from pg_stat_archiver")',
+    'last, failed, lastfail = cur.fetchone()',
+    'print("%s|%s|%s|%s" % (cur_seg, last or "", failed or 0, lastfail or ""))',
+    'c.close()',
+  ].join('\n')], { encoding: 'utf8', timeout: 20000 });
+  if (r.status !== 0 || !r.stdout) return null;
+  return parsePendingLine(r.stdout.trim().split(/\r?\n/).pop());
+}
+
+// "<currentSegment>|<lastArchivedWal>|<failedCount>|<lastFailedWal>" -> the shape the WAL leg reads.
+function parsePendingLine(line) {
+  const [currentSegment, lastArchivedWal, failedCount, lastFailedWal] = String(line).split('|');
+  if (!currentSegment) return null;
+  // Segment names are 24 hex chars: timeline(8) + logical(8) + segment(8). Comparing the trailing
+  // 16 as a BigInt gives the distance without arithmetic on the timeline, which never moves here.
+  const num = (s) => (s && s.length === 24 ? BigInt('0x' + s.slice(8)) : null);
+  const a = num(currentSegment);
+  const b = num(lastArchivedWal);
+  const segmentsBehind = a !== null && b !== null ? Number(a - b) : 0;
+  return {
+    currentSegment,
+    lastArchivedWal: lastArchivedWal || null,
+    failedCount: Number(failedCount) || 0,
+    lastFailedWal: lastFailedWal || null,
+    segmentsBehind,
+  };
+}
+
 // ---- 3: WAL archive lag on ARCHIVE_DEST ----
 if (!driveMounted(ARCHIVE_DEST)) {
   skips.push(`WAL archive drive (${driveRoot(ARCHIVE_DEST) ?? ARCHIVE_DEST}) is not mounted — cannot check archive lag.`);
@@ -111,11 +169,32 @@ if (!driveMounted(ARCHIVE_DEST)) {
   if (!hit) {
     problems.push(`WAL archive directory (${ARCHIVE_DEST}) exists but holds no archived WAL file. Either archiving was just enabled and no segment has switched yet (wait ${MAX_ARCHIVE_LAG_MINUTES}min and re-run), or archive_command is failing — check pg_stat_archiver.failed_count. Fix: see scripts/enable-wal-archiving.ps1's own verification output.`);
   } else {
+    // File age alone is the WRONG INSTRUMENT, and this gate blocked its own author's commit on
+    // 2026-08-08 proving it. archive_timeout forces a segment switch only when something has
+    // actually been WRITTEN; on an idle cluster PostgreSQL does not switch an empty segment, so a
+    // quiet hour produces no new archived file and a purely time-based check calls that a stall.
+    // Measured at the moment it fired: 0 archive failures, 23 segments archived, and the current WAL
+    // segment exactly ONE ahead of the last archived one — that one being the segment still being
+    // written, which is not archivable yet. Nothing was pending. Nothing was wrong.
+    //
+    // What actually distinguishes a stall from a quiet server is whether a COMPLETE segment is
+    // waiting: current == last_archived, or exactly one ahead, means nothing is pending regardless of
+    // the clock. Two or more ahead means finished segments are not being shipped, and failed_count
+    // says so outright. Age is kept only as a corroborating detail in the message, never as the test.
+    //
+    // The rule this restates, because it cost a blocked commit to relearn: a blocking gate that fires
+    // on the healthy case teaches people to route around gates, which costs more than the defect it
+    // was watching for.
     const minutes = ageMinutes(hit.mtimeMs);
-    if (minutes > MAX_ARCHIVE_LAG_MINUTES) {
-      problems.push(`WAL archive lag: newest archived file ${hit.name} is ${minutes.toFixed(1)}min old (limit ${MAX_ARCHIVE_LAG_MINUTES}min). A failing archive_command STOPS PostgreSQL from recycling WAL — this is not cosmetic staleness. Check the PostgreSQL log and pg_stat_archiver.last_failed_wal / last_failed_time.`);
+    const pending = walPendingState();   // null when PostgreSQL cannot be reached
+    if (pending === null) {
+      oks.push(`WAL archive: newest ${hit.name} (${minutes.toFixed(1)}min old) — PostgreSQL unreachable, so pending-segment state could not be read; reporting the file only.`);
+    } else if (pending.failedCount > 0) {
+      problems.push(`WAL archiving is FAILING: pg_stat_archiver reports ${pending.failedCount} failure(s), last on ${pending.lastFailedWal ?? 'an unknown segment'}. A failing archive_command STOPS PostgreSQL from recycling WAL — this is an outage in waiting, not cosmetic staleness. Check the PostgreSQL log.`);
+    } else if (pending.segmentsBehind >= 2) {
+      problems.push(`WAL archive lag: ${pending.segmentsBehind} segment(s) behind — current ${pending.currentSegment}, last archived ${pending.lastArchivedWal ?? 'none'} (newest file on disk ${hit.name}, ${minutes.toFixed(1)}min old). Completed segments are not being shipped. Check pg_stat_archiver and the PostgreSQL log.`);
     } else {
-      oks.push(`WAL archive: newest ${hit.name} (${minutes.toFixed(1)}min old)`);
+      oks.push(`WAL archive: nothing pending (current ${pending.currentSegment}, last archived ${pending.lastArchivedWal}); newest file ${hit.name} is ${minutes.toFixed(1)}min old, which on an idle cluster is expected — PostgreSQL does not switch an empty segment.`);
     }
   }
 }
