@@ -3783,5 +3783,307 @@ let RULE7;
   }
 }
 
+// =================================================================================================
+// SECTION 14 — R-117 / Task 14: actor-scoped counters. Dispatched subagents inherit the parent's
+// session_id, so a store keyed by session_id ALONE lets one actor's failures block a DIFFERENT
+// concurrent actor's edit — observed live during Task 10. Every case here runs against a TEMP
+// ENFORCEMENT_STATE_PATH, never the real repo store.
+// =================================================================================================
+{
+  const s14Work = tempDir('hooks-groupb-actor-scope-');
+  const ES14 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+  const RULE14fc = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'fix-cycle-limit.mjs')).href);
+  const RULE14dbg = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'debugging-before-fix-edit.mjs')).href);
+  const OBS14v = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'observers', 'verification-outcomes.mjs')).href);
+  const { resolveActorTranscriptPath } = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'skill-invoked.mjs')).href);
+
+  // Writes a transcript with NO skill invocation at the REAL sidechain path a dispatched
+  // subagent's own turns actually live at (skill-invoked.mjs's own resolveActorTranscriptPath) —
+  // not at the top-level transcript_path, which a real subagent never writes to. Mirrors real
+  // Claude Code layout, per that module's own measured header.
+  function writeCleanActorTranscript14(topLevelPath, agentId) {
+    const actorPath = resolveActorTranscriptPath(topLevelPath, agentId);
+    mkdirSync(dirname(actorPath), { recursive: true });
+    writeFileSync(actorPath, `${JSON.stringify({
+      type: 'assistant', timestamp: new Date(Date.now() - 50_000).toISOString(),
+      message: { content: [{ type: 'text', text: 'no skill invocation here' }] },
+    })}\n`, 'utf8');
+    return actorPath;
+  }
+
+  function withState14(seedFn, evalFn = () => undefined) {
+    const p = join(s14Work, `state-${Math.random().toString(36).slice(2)}.sqlite`);
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = p;
+    try {
+      const db = ES14.openState(p);
+      seedFn(db, p);
+      db.close();
+      return evalFn(p);
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+  }
+
+  function driveToAttempts14(db, sessionId, target, attempts, actorId) {
+    ES14.noteVerificationFailure(db, sessionId, [target], actorId);
+    for (let i = 0; i < attempts; i++) {
+      ES14.noteEdit(db, sessionId, '/some/file.js', actorId);
+      ES14.noteVerificationFailure(db, sessionId, [target], actorId);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED (task-14-brief's own required scenario, fix-cycle-limit.mjs / §5): two actors under ONE
+  // session — actor A drives a target to attempts=3 (the ceiling), actor B (same session_id, a
+  // DIFFERENT agent_id, same target name) must still be ALLOWED to edit.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-14-shared';
+    const target = 'tests/shared.py::test_shared';
+    const outB = withState14(
+      (db) => driveToAttempts14(db, sid, target, 3, 'agent-A'),
+      () => RULE14fc.evaluate({
+        tool_name: 'Edit', session_id: sid, agent_id: 'agent-B', tool_input: { file_path: '/x.js' },
+      }),
+    );
+    check('RED Task14 fix-cycle: actor A at the ceiling does NOT block actor B\'s edit',
+      outB.decision === 'allow', `outB=${JSON.stringify(outB)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED (same scenario, task-14-brief's own required pairing): actor A's OWN next edit on
+  // that SAME target must still BLOCK — the fix must not have become "no actor is ever blocked".
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-14-shared-2';
+    const target = 'tests/shared2.py::test_shared2';
+    const outA = withState14(
+      (db) => driveToAttempts14(db, sid, target, 3, 'agent-A'),
+      () => RULE14fc.evaluate({
+        tool_name: 'Edit', session_id: sid, agent_id: 'agent-A', tool_input: { file_path: '/x.js' },
+      }),
+    );
+    check('COUNTER-RED Task14 fix-cycle: actor A\'s OWN next edit on the SAME target still BLOCKS',
+      outA.decision === 'block', `outA=${JSON.stringify(outA)}`);
+    check('COUNTER-RED Task14 fix-cycle: block reason still names §5 and the target',
+      outA.reason.includes('§5') && outA.reason.includes(target), `reason=${outA.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED (main-session identity): the top-level session (no agent_id at all) and a dispatched
+  // subagent (agent_id set) on the SAME target must be scoped independently too — the main session
+  // is its OWN stable identity, not a wildcard that sees every subagent's rows.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-14-main-vs-sub';
+    const target = 'tests/main_vs_sub.py::test_x';
+    const outMain = withState14(
+      (db) => driveToAttempts14(db, sid, target, 3, 'agent-sub1'), // subagent drives to the ceiling
+      () => RULE14fc.evaluate({
+        tool_name: 'Edit', session_id: sid, tool_input: { file_path: '/x.js' }, // no agent_id -> main session
+      }),
+    );
+    check('RED Task14 fix-cycle: a subagent at the ceiling does NOT block the main session\'s own edit',
+      outMain.decision === 'allow', `outMain=${JSON.stringify(outMain)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // RED (task-14-brief's own required scenario, debugging-before-fix-edit.mjs / §6.4 trigger 2 —
+  // this is the LITERAL defect observed live): actor A's OWN bash_failure (recorded by
+  // verification-outcomes.mjs's real observer, not a synthetic insert) must not block actor B's
+  // edit under the same session_id.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-14-dbg-shared';
+    const cleanTranscript = join(s14Work, 'clean-transcript-14.jsonl');
+    writeCleanActorTranscript14(cleanTranscript, 'agent-B');
+
+    const outB = withState14(
+      (db) => {
+        // Actor A's real Bash failure, exactly as verification-outcomes.mjs's own observer would
+        // record it — not a raw SQL insert — so this is the actual production write path under test.
+        OBS14v.observe({
+          tool_name: 'Bash', session_id: sid, agent_id: 'agent-A',
+          tool_input: { command: 'npm run build' },
+          _outcome: { ok: false, raw_error: 'Error: build failed' },
+        });
+      },
+      () => RULE14dbg.evaluate({
+        tool_name: 'Edit', session_id: sid, agent_id: 'agent-B',
+        transcript_path: cleanTranscript, tool_input: { file_path: '/x.js' },
+      }),
+    );
+    check('RED Task14 debugging-before-fix-edit: actor A\'s bash_failure does NOT block actor B\'s edit (the literal R-117 defect)',
+      outB.decision === 'allow', `outB=${JSON.stringify(outB)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED (same scenario): actor A's OWN next edit, with no systematic-debugging invocation
+  // since the failure, must still BLOCK — the fix must not have disabled §6.4 trigger 2 entirely.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-14-dbg-shared-2';
+    const cleanTranscript = join(s14Work, 'clean-transcript-14b.jsonl');
+    writeCleanActorTranscript14(cleanTranscript, 'agent-A');
+
+    const outA = withState14(
+      (db) => {
+        OBS14v.observe({
+          tool_name: 'Bash', session_id: sid, agent_id: 'agent-A',
+          tool_input: { command: 'npm run build' },
+          _outcome: { ok: false, raw_error: 'Error: build failed' },
+        });
+      },
+      () => RULE14dbg.evaluate({
+        tool_name: 'Edit', session_id: sid, agent_id: 'agent-A',
+        transcript_path: cleanTranscript, tool_input: { file_path: '/x.js' },
+      }),
+    );
+    check('COUNTER-RED Task14 debugging-before-fix-edit: actor A\'s OWN next edit still BLOCKS',
+      outA.decision === 'block', `outA=${JSON.stringify(outA)}`);
+    check('COUNTER-RED Task14 debugging-before-fix-edit: block reason still names systematic-debugging',
+      /systematic-debugging/.test(outA.reason), `reason=${outA.reason}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED (§10.16 / §6.3, task-14-brief's own required pairing): the SAME two-actor scenario
+  // must NOT hide from the session-wide lessons gate — eventCountSince('verification_failure') is
+  // deliberately UNCHANGED (no actorId parameter), so failures from BOTH actors must both count
+  // toward the session total.
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-14-lessons';
+    // Read INSIDE evalFn, while ENFORCEMENT_STATE_PATH still points at the seeded temp store —
+    // opening a fresh db AFTER withState14() returns would read the DEFAULT (real repo) store, not
+    // the fixture, since the env var is already restored by then.
+    const count = withState14(
+      (db) => {
+        ES14.noteVerificationFailure(db, sid, ['t-a'], 'agent-A');
+        ES14.noteVerificationFailure(db, sid, ['t-b'], 'agent-B');
+        ES14.noteVerificationFailure(db, sid, ['t-c']); // main session, no agent_id
+      },
+      () => {
+        const db2 = ES14.openState();
+        const c = ES14.eventCountSince(db2, sid, 'verification_failure', 0);
+        db2.close();
+        return c;
+      },
+    );
+    check('COUNTER-RED Task14 §10.16: eventCountSince sees ALL THREE actors\' failures (session-wide, not per-actor)',
+      count === 3, `count=${count}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // GREEN (§5 resolution stays per-actor): actor A's own passing run clears ONLY actor A's own
+  // fix_targets row — actor B's own concurrently-open row on a differently-named target is
+  // untouched (proves noteVerificationPass's ALL sentinel does not wipe cross-actor).
+  // -----------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-14-pass-scope';
+    const { targetsA, targetsB } = withState14(
+      (db) => {
+        ES14.noteVerificationFailure(db, sid, ['t-a-only'], 'agent-A');
+        ES14.noteVerificationFailure(db, sid, ['t-b-only'], 'agent-B');
+        ES14.noteVerificationPass(db, sid, ES14.ALL, 'agent-A');
+      },
+      () => {
+        const db2 = ES14.openState();
+        const a = ES14.openTargets(db2, sid, 'agent-A');
+        const b = ES14.openTargets(db2, sid, 'agent-B');
+        db2.close();
+        return { targetsA: a, targetsB: b };
+      },
+    );
+    check('GREEN Task14: actor A\'s full-suite pass wipes actor A\'s own row',
+      targetsA.length === 0, `targetsA=${JSON.stringify(targetsA)}`);
+    check('GREEN Task14: actor A\'s full-suite pass leaves actor B\'s own row untouched',
+      targetsB.length === 1 && targetsB[0].target === 't-b-only', `targetsB=${JSON.stringify(targetsB)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // MIGRATION — rows written under the OLD schema (no actor_id column at all, simulating the
+  // live store as it existed before this task) survive openState()'s migration and are visible
+  // under the main-session identity ('' / no agent_id) — never under every actor (which would
+  // recreate the defect) and never dropped (which would silently erase a real in-flight counter).
+  // -----------------------------------------------------------------------------------------
+  {
+    const p = join(s14Work, 'pre-migration.sqlite');
+    const { DatabaseSync } = await import('node:sqlite');
+    mkdirSync(dirname(p), { recursive: true });
+    const rawDb = new DatabaseSync(p);
+    rawDb.exec('PRAGMA journal_mode = WAL');
+    // The EXACT pre-Task-14 schema (no actor_id column anywhere).
+    rawDb.exec(`CREATE TABLE events (id INTEGER PRIMARY KEY, session_id TEXT NOT NULL, kind TEXT NOT NULL, ts INTEGER NOT NULL, detail TEXT)`);
+    rawDb.exec(`CREATE TABLE fix_targets (session_id TEXT NOT NULL, target TEXT NOT NULL, attempts INTEGER NOT NULL DEFAULT 0, edited_since_failure INTEGER NOT NULL DEFAULT 0, last_failure_ts INTEGER NOT NULL, PRIMARY KEY (session_id, target))`);
+    rawDb.prepare('INSERT INTO fix_targets (session_id, target, attempts, edited_since_failure, last_failure_ts) VALUES (?, ?, ?, ?, ?)')
+      .run('sess-14-migrate', 'legacy/target.py::test_legacy', 2, 0, Date.now());
+    rawDb.prepare('INSERT INTO events (session_id, kind, ts, detail) VALUES (?, ?, ?, ?)')
+      .run('sess-14-migrate', 'bash_failure', Date.now() - 5000, null);
+    rawDb.close();
+
+    // openState() (the real production entry point) must migrate this file in place.
+    const migratedDb = ES14.openState(p);
+    const migratedTargetsUnfiltered = ES14.openTargets(migratedDb, 'sess-14-migrate');
+    const migratedTargetsMain = ES14.openTargets(migratedDb, 'sess-14-migrate', null);
+    const migratedTargetsOtherActor = ES14.openTargets(migratedDb, 'sess-14-migrate', 'some-subagent');
+    const migratedFailure = ES14.lastEvent(migratedDb, 'sess-14-migrate', 'bash_failure', null);
+    const migratedFailureOtherActor = ES14.lastEvent(migratedDb, 'sess-14-migrate', 'bash_failure', 'some-subagent');
+    migratedDb.close();
+
+    check('MIGRATION Task14: openState() survives a pre-existing store with no actor_id column',
+      Array.isArray(migratedTargetsUnfiltered), `migratedTargetsUnfiltered=${JSON.stringify(migratedTargetsUnfiltered)}`);
+    check('MIGRATION Task14: the pre-existing fix_targets row is visible unfiltered',
+      migratedTargetsUnfiltered.some((t) => t.target === 'legacy/target.py::test_legacy' && t.attempts === 2),
+      `migratedTargetsUnfiltered=${JSON.stringify(migratedTargetsUnfiltered)}`);
+    check('MIGRATION Task14: the pre-existing fix_targets row is visible under the MAIN-SESSION identity',
+      migratedTargetsMain.some((t) => t.target === 'legacy/target.py::test_legacy'),
+      `migratedTargetsMain=${JSON.stringify(migratedTargetsMain)}`);
+    check('MIGRATION Task14: the pre-existing fix_targets row is NOT visible to an unrelated subagent actor (never a wildcard)',
+      !migratedTargetsOtherActor.some((t) => t.target === 'legacy/target.py::test_legacy'),
+      `migratedTargetsOtherActor=${JSON.stringify(migratedTargetsOtherActor)}`);
+    check('MIGRATION Task14: the pre-existing bash_failure event is visible under the main-session identity',
+      migratedFailure !== null, `migratedFailure=${JSON.stringify(migratedFailure)}`);
+    check('MIGRATION Task14: the pre-existing bash_failure event is NOT visible to an unrelated subagent actor',
+      migratedFailureOtherActor === null, `migratedFailureOtherActor=${JSON.stringify(migratedFailureOtherActor)}`);
+
+    // Second open (simulating a later hook call against the now-migrated file) must be a clean
+    // no-op — proves the migration is idempotent, not re-run (and therefore not re-corrupting) on
+    // every subsequent openState() call.
+    const secondOpen = ES14.openState(p);
+    const secondRead = ES14.openTargets(secondOpen, 'sess-14-migrate', null);
+    secondOpen.close();
+    check('MIGRATION Task14: a SECOND openState() on the already-migrated file is a clean no-op',
+      secondRead.length === 1 && secondRead[0].attempts === 2, `secondRead=${JSON.stringify(secondRead)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------
+  // COUNTER-RED — backward compatibility: every pre-Task-14 call shape (no actorId argument at
+  // all) must behave EXACTLY as before. This is not new coverage of new behavior; it is the proof
+  // that Section 2-13's existing 400+ assertions above remain valid without modification.
+  // -----------------------------------------------------------------------------------------
+  {
+    const { targets, lastFail } = withState14(
+      (db) => {
+        ES14.noteVerificationFailure(db, 'sess-14-backcompat', ['T']);
+        ES14.noteEdit(db, 'sess-14-backcompat', '/f.js');
+        ES14.noteVerificationFailure(db, 'sess-14-backcompat', ['T']);
+      },
+      () => {
+        const db2 = ES14.openState();
+        const t = ES14.openTargets(db2, 'sess-14-backcompat');
+        const lf = ES14.lastEvent(db2, 'sess-14-backcompat', 'verification_failure');
+        db2.close();
+        return { targets: t, lastFail: lf };
+      },
+    );
+    check('COUNTER-RED Task14 backcompat: 3-arg noteVerificationFailure/2-arg openTargets still work exactly as before',
+      targets.length === 1 && targets[0].attempts === 1, `targets=${JSON.stringify(targets)}`);
+    check('COUNTER-RED Task14 backcompat: 3-arg lastEvent (no actorId) is still unfiltered',
+      lastFail !== null, `lastFail=${JSON.stringify(lastFail)}`);
+  }
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);

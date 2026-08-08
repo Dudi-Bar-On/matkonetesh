@@ -13,8 +13,18 @@
 // Group B file follows).
 import {
   openState, noteVerificationFailure, noteVerificationPass, recordEvent, openTargets, ALL,
+  normalizeActorId,
 } from '../lib/enforcement-state.mjs';
 import { classifyCommand, extractFailingTargets } from '../lib/verification-target.mjs';
+
+// Task 14 / R-117: this observer is where 'bash_failure' — the literal defect — gets written. It
+// is now recorded WITH actorId (input.agent_id, normalized), so debugging-before-fix-edit.mjs can
+// filter to the SAME actor whose Bash command actually failed, instead of seeing every concurrent
+// actor's failures as its own. The §5 fix_targets bump (noteVerificationFailure) and the §5-reset
+// clear (noteVerificationPass) are likewise scoped to the acting actor — each actor's own passing
+// run only clears ITS OWN tracked cycles. The 'verification_failure' EVENT and the 'commit' EVENT
+// stay session-wide (no actor filter on read) — see enforcement-state.mjs's module header for why
+// each of these was decided the way it was, one at a time.
 
 // Same segment/token approach as scripts/hooks/rules/main-only-no-worktrees.mjs (comment there
 // explains the shell-separator and quoting choices in full) — reused here for two unrelated
@@ -99,6 +109,7 @@ export function observe(input) {
   if (typeof command !== 'string' || command.trim() === '') return;
 
   const outcome = input._outcome || {};
+  const actorId = normalizeActorId(input.agent_id);
 
   const db = openState();
   if (!db) return; // fail-open — no state store, nothing recorded
@@ -111,38 +122,44 @@ export function observe(input) {
       const outputText = typeof outcome.raw_error === 'string' ? outcome.raw_error : '';
       const targets = extractFailingTargets(runner, outputText);
       if (targets.length > 0) {
-        noteVerificationFailure(db, sessionId, targets);
+        noteVerificationFailure(db, sessionId, targets, actorId);
       } else {
         // Unparseable output on a failed verification: counted toward §10.16's session-failure
         // total via the plain event below, but NEVER attributed to a per-target fix-cycle counter
-        // — an unattributed failure must not be able to block a real edit.
+        // — an unattributed failure must not be able to block a real edit. Session-wide by design
+        // (see module header) — actorId still attached for audit, never filtered on read.
         recordEvent(db, {
           sessionId,
           kind: 'verification_failure',
           detail: { target: '(unattributed)', runner },
+          actorId,
         });
       }
     } else if (isVerification && outcome.ok === true) {
       const { suiteWide, filterText } = commandScope(runner, command);
       if (suiteWide) {
-        noteVerificationPass(db, sessionId, ALL);
+        noteVerificationPass(db, sessionId, ALL, actorId);
       } else if (filterText) {
         const normalizedFilter = filterText.replace(/\\/g, '/');
-        const matched = openTargets(db, sessionId)
+        const matched = openTargets(db, sessionId, actorId)
           .map((t) => t.target)
           .filter((t) => t.replace(/\\/g, '/').includes(normalizedFilter));
-        noteVerificationPass(db, sessionId, matched); // [] is a safe, documented no-op
+        noteVerificationPass(db, sessionId, matched, actorId); // [] is a safe, documented no-op
       }
       // suiteWide=false and filterText=null (e.g. `-k expr`, `--grep foo`): nothing identifiable
       // to clear — intentionally no-op, see commandScope's comment.
     }
 
+    // R-117 / Task 14's actual fix: 'bash_failure' now carries the ACTING actor's own id, so
+    // debugging-before-fix-edit.mjs can filter to it instead of seeing every concurrent actor's
+    // failures under the shared session_id.
     if (outcome.ok === false && !isAnswerExit(command)) {
-      recordEvent(db, { sessionId, kind: 'bash_failure', detail: { command: command.slice(0, 200) } });
+      recordEvent(db, { sessionId, kind: 'bash_failure', detail: { command: command.slice(0, 200) }, actorId });
     }
 
+    // 'commit' stays session-wide by design (see module header) — actorId attached for audit only.
     if (outcome.ok === true && isGitCommitCommand(command)) {
-      recordEvent(db, { sessionId, kind: 'commit', detail: { command: command.slice(0, 200) } });
+      recordEvent(db, { sessionId, kind: 'commit', detail: { command: command.slice(0, 200) }, actorId });
     }
   } finally {
     try { db.close(); } catch { /* best-effort */ }

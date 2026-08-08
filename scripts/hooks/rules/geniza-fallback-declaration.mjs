@@ -16,10 +16,22 @@
 // GATE: fires only when lib/geniza-consult.mjs POSITIVELY determines "no retrieval call found in
 // the window" — see that module's header for the window, its stated reason, and why any
 // inability to read the transcript resolves to silence rather than an accusation.
+//
+// TASK 13 (R-116): the same "aimed at documents" question now also applies to a Bash command
+// whose leading segment word is grep/rg/findstr/select-string — normalized to a Grep-tool-shaped
+// candidate by lib/bash-grep-extract.mjs, shared with symbolic-grep-use-serena.mjs. ONE addition
+// specific to this Bash surface, per the brief's own named counter-case: `grep -n "R-72"
+// docs/ROADMAP-2026-07-30.md` is a targeted read of a KNOWN file, not a corpus search, and must
+// stay silent — isSweepTarget() (same module) tells a wildcard/directory/multi-file sweep apart
+// from a single named file. That exemption is scoped to Bash-derived candidates only: the
+// long-committed, already-tested Grep-tool path below is untouched, since the Grep tool's own
+// `path` semantics were never part of this task's brief and changing them risks the 146
+// already-green checks this rule is tested under.
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { genizaConsultedRecently } from '../lib/geniza-consult.mjs';
+import { extractBashGrepInvocations } from '../lib/bash-grep-extract.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
@@ -63,15 +75,35 @@ function recordFallback(record) {
   }
 }
 
+// See TASK 13 header note. `matchedCandidate` is the Grep-tool `tool_input` unchanged for a real
+// Grep call, or the FIRST Bash-derived grep-like segment that is both doc-targeted AND a sweep
+// (not a single known file) for a Bash call — `null` for WebSearch (no candidate shape applies).
+function targetedDecision(input) {
+  if (input.tool_name === 'WebSearch') return { targeted: true, matchedCandidate: null };
+  if (input.tool_name === 'Grep') {
+    return { targeted: isDocTargetedGrep(input.tool_input), matchedCandidate: input.tool_input };
+  }
+  if (input.tool_name === 'Bash') {
+    const candidates = extractBashGrepInvocations(input.tool_input && input.tool_input.command);
+    const matchedCandidate = candidates.find((c) => isDocTargetedGrep(c) && c.isSweep) || null;
+    return { targeted: Boolean(matchedCandidate), matchedCandidate };
+  }
+  return { targeted: false, matchedCandidate: null };
+}
+
 export function evaluate(input) {
-  if (!input || (input.tool_name !== 'Grep' && input.tool_name !== 'WebSearch')) {
-    return { decision: 'allow', reason: 'not a Grep or WebSearch call' };
+  if (!input || (input.tool_name !== 'Grep' && input.tool_name !== 'WebSearch' && input.tool_name !== 'Bash')) {
+    return { decision: 'allow', reason: 'not a Grep, WebSearch, or grep-like Bash call' };
   }
 
   const isWebSearch = input.tool_name === 'WebSearch';
-  const targeted = isWebSearch || isDocTargetedGrep(input.tool_input);
+  const { targeted, matchedCandidate } = targetedDecision(input);
   if (!targeted) {
-    return { decision: 'allow', reason: "§10.13: not aimed at documents (no docs/sources path, no .md glob/type) — not this rule's business" };
+    return {
+      decision: 'allow',
+      reason: "§10.13: not aimed at documents (no docs/sources path, no .md glob/type, or a "
+        + "targeted read of a single known file rather than a sweep) — not this rule's business",
+    };
   }
 
   const { determined, consulted } = genizaConsultedRecently(input.transcript_path);
@@ -84,7 +116,7 @@ export function evaluate(input) {
 
   const target = isWebSearch
     ? (input.tool_input && input.tool_input.query)
-    : (input.tool_input && (input.tool_input.path || input.tool_input.glob || input.tool_input.pattern));
+    : (matchedCandidate && (matchedCandidate.path || matchedCandidate.glob || matchedCandidate.pattern));
   const targetText = target ? String(target).slice(0, 120) : 'no target text';
 
   recordFallback({

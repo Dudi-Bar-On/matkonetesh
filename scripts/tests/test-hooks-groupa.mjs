@@ -1309,5 +1309,302 @@ const RETRIEVAL_CMD = 'python -c "from src.knowledge import retrieval; print(ret
   check('geniza-fallback rule: a Read call (not Grep/WebSearch) is untouched', stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
 }
 
+// ---------------------------------------------------------------------------------------------
+// TASK 13 (R-116) — both knowledge rules were blind to a grep run through Bash instead of the
+// dedicated Grep tool (105 greps through Bash, 0 through Grep, measured over one shift). Same
+// discipline as Task 6: exercise the REAL rule files under the REAL default rules dir.
+// ---------------------------------------------------------------------------------------------
+function bashSymGrepDecision(command, serenaUrl) {
+  const work = tempDir('hooks-groupa-bashsymgrep-');
+  const logPath = join(work, 'log.jsonl');
+  const env = { PRETOOLUSE_SERENA_URL: serenaUrl, PRETOOLUSE_SERENA_TIMEOUT_MS: '400' };
+  const r = runCliRealRules({
+    stdin: JSON.stringify({ tool_name: 'Bash', tool_input: { command } }),
+    logPath,
+    env,
+  });
+  let stdoutJson;
+  try { stdoutJson = r.stdout.trim() === '' ? {} : JSON.parse(r.stdout); } catch { stdoutJson = undefined; }
+  return { r, stdoutJson, logPath };
+}
+
+{
+  const fake = await startFakeSerenaServer();
+  try {
+    // --- THE POSITIVE CASE: a genuine `grep` invocation inside Bash, targeting code with a bare
+    // identifier as a real SWEEP (a directory, not a single named file — see FIX ROUND 1 below
+    // for why a single file no longer qualifies), serena live -> WARN, exactly as the dedicated
+    // Grep tool already does. This is the RED this task exists to turn GREEN: before the fix,
+    // tool_name !== 'Grep' short-circuits this rule straight to `allow` with no warning at all,
+    // no matter what the command contains.
+    {
+      const { r, stdoutJson } = bashSymGrepDecision('grep -rn "computeEquipPlan" src/', fake.url);
+      check('TASK 13 symbolic-grep/Bash: exit code 0', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+      check('TASK 13 symbolic-grep/Bash: `grep -rn pattern src/` (code sweep, bare identifier, serena live) -> WARN, never deny',
+        stdoutJson?.hookSpecificOutput?.permissionDecision === 'allow' && typeof stdoutJson.systemMessage === 'string',
+        `stdout=${JSON.stringify(stdoutJson)}`);
+      check('TASK 13 symbolic-grep/Bash: the warn names §10.17/§5.1 and Serena, same as the Grep-tool path',
+        /§10\.17|§5\.1/.test(stdoutJson.systemMessage) && /[Ss]erena/.test(stdoutJson.systemMessage),
+        `systemMessage=${stdoutJson.systemMessage}`);
+    }
+    // --- ripgrep, --type instead of a path, still recognized as a code target ------------------
+    {
+      const { stdoutJson } = bashSymGrepDecision('rg --type js computeEquipPlan', fake.url);
+      check('TASK 13 symbolic-grep/Bash: `rg --type js computeEquipPlan` -> WARN (type is a code type)',
+        typeof stdoutJson?.systemMessage === 'string', `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    // --- pipeline segmentation: `cmd | grep x` inspects the `grep x` segment on its own, and it
+    // is silent here because THAT segment names no code target at all (a bare unqualified pipe
+    // grep, no file/dir/type argument) — proves the shared segmenter is wired, not merely that
+    // everything is silent by default. ----------------------------------------------------------
+    {
+      const { stdoutJson } = bashSymGrepDecision('cat notes.txt | grep computeEquipPlan', fake.url);
+      check('TASK 13 symbolic-grep/Bash COUNTER: `cmd | grep x` with no target argument -> silent (segment inspected, no code target)',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    // --- THE COUNTER-CASES the brief calls "the larger half" -----------------------------------
+    {
+      // `echo "grep foo"` (brief's own named example): echo never runs grep at all — the
+      // segment's own leading word is `echo`, not `grep`.
+      const { stdoutJson } = bashSymGrepDecision('echo "grep -n computeEquipPlan src/app.js"', fake.url);
+      check('TASK 13 symbolic-grep/Bash COUNTER (brief\'s own example): `echo "grep foo"` -> silent, echo never runs grep',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    {
+      // A targeted grep of a KNOWN docs file (brief's own named counter-case) is not a code
+      // target at all — (א) fails regardless of the Bash extension.
+      const { stdoutJson } = bashSymGrepDecision('grep -n "R-72" docs/ROADMAP-2026-07-30.md', fake.url);
+      check('TASK 13 symbolic-grep/Bash COUNTER: targeted known-file grep of a docs file -> silent (not a code target)',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    {
+      // docs/** sweep via Bash — same silence as the Grep-tool path, for the same reason (א).
+      const { stdoutJson } = bashSymGrepDecision('grep -rn "computeEquipPlan" docs/', fake.url);
+      check('TASK 13 symbolic-grep/Bash COUNTER: docs/** sweep via Bash -> silent (not a code target)',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    {
+      // A pattern with spaces via Bash (brief's own named example) -> not a bare identifier.
+      const { stdoutJson } = bashSymGrepDecision('grep -n "equip plan derivation" src/app.js', fake.url);
+      check('TASK 13 symbolic-grep/Bash COUNTER: pattern with spaces via Bash -> silent',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+    {
+      // A Hebrew pattern via Bash (brief's own named example) -> not a bare identifier.
+      const { stdoutJson } = bashSymGrepDecision('grep -n "ציוד בישול" src/app.js', fake.url);
+      check('TASK 13 symbolic-grep/Bash COUNTER: Hebrew pattern via Bash -> silent',
+        stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+    }
+  } finally {
+    await fake.close();
+  }
+}
+{
+  // --- (ג) fails via Bash too: serena down -> total silence even though (א)+(ב)+sweep all match -
+  const { stdoutJson, r } = bashSymGrepDecision('grep -rn "computeEquipPlan" src/', DEAD_SERENA_URL);
+  check('TASK 13 symbolic-grep/Bash COUNTER: serena disconnected -> exit code 0, still allow', r.status === 0);
+  check('TASK 13 symbolic-grep/Bash COUNTER: serena disconnected -> total silence',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // A Bash command that never runs grep at all (the overwhelming majority of Bash calls) is
+  // silent, even with serena live — the fix must not turn every Bash call into a probe.
+  const fake = await startFakeSerenaServer();
+  try {
+    const { stdoutJson } = bashSymGrepDecision('npm test', fake.url);
+    check('TASK 13 symbolic-grep/Bash COUNTER: an ordinary non-grep Bash command -> silent',
+      stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+  } finally {
+    await fake.close();
+  }
+}
+
+// --- geniza-fallback-declaration.mjs via Bash -----------------------------------------------
+{
+  // --- THE POSITIVE CASE: a real corpus sweep of docs/ run through Bash, no recent consult ----
+  const work = tempDir('hooks-groupa-bashgeniza-warn-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 2 }]);
+  const logPath = join(work, 'log.jsonl');
+  const { r, stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'grep -rn "baldwin" docs/' },
+    toolName: 'Bash',
+    transcriptPath,
+    logPath,
+  });
+  check('TASK 13 geniza-fallback/Bash: exit code 0', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+  check('TASK 13 geniza-fallback/Bash: `grep -rn pattern docs/` (a real sweep, no recent consult) -> WARN',
+    stdoutJson?.hookSpecificOutput?.permissionDecision === 'allow' && typeof stdoutJson.systemMessage === 'string',
+    `stdout=${JSON.stringify(stdoutJson)}`);
+  check('TASK 13 geniza-fallback/Bash: the warn names §10.13', /§10\.13/.test(stdoutJson.systemMessage), `systemMessage=${stdoutJson.systemMessage}`);
+  const events = readJsonl(logPath);
+  check('TASK 13 geniza-fallback/Bash: the declaration is recorded with tool "Bash" (not "Grep") — the whole point of R-116',
+    events.some((e) => e.kind === 'grep_fallback_declared' && e.tool === 'Bash'), `events=${JSON.stringify(events)}`);
+}
+{
+  // --- rg --type md, no path at all -> still a sweep (scans every markdown file in cwd) -------
+  const work = tempDir('hooks-groupa-bashgeniza-typemd-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 2 }]);
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'rg --type md baldwin' },
+    toolName: 'Bash',
+    transcriptPath,
+  });
+  check('TASK 13 geniza-fallback/Bash: `rg --type md pattern` -> WARN (a type sweep, no path needed)',
+    typeof stdoutJson?.systemMessage === 'string', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // --- THE NAMED COUNTER-CASE, checked personally per the brief: a targeted grep of a KNOWN
+  // file is not a corpus search and must stay silent, even with zero consult evidence. ----------
+  const work = tempDir('hooks-groupa-bashgeniza-knownfile-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 2 }]);
+  const logPath = join(work, 'log.jsonl');
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'grep -n "R-72" docs/ROADMAP-2026-07-30.md' },
+    toolName: 'Bash',
+    transcriptPath,
+    logPath,
+  });
+  check('TASK 13 geniza-fallback/Bash COUNTER (the named case): targeted grep of a KNOWN file -> silent, not a corpus search',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+  const events = readJsonl(logPath);
+  check('TASK 13 geniza-fallback/Bash COUNTER: nothing recorded for the known-file case',
+    !events.some((e) => e.kind === 'grep_fallback_declared'), `events=${JSON.stringify(events)}`);
+}
+{
+  // --- echo "grep ..." never runs grep -> silent, regardless of what the string says -----------
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'echo "grep -rn baldwin docs/"' },
+    toolName: 'Bash',
+    transcriptPath: writeTranscript(tempDir('hooks-groupa-bashgeniza-echo-'), [{ none: true, minutesAgo: 2 }]),
+  });
+  check('TASK 13 geniza-fallback/Bash COUNTER: `echo "grep ... docs/"` -> silent, echo never runs grep',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // --- a code-targeted Bash grep (src/) is not aimed at documents -> silent regardless of consult
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'grep -rn "resolveSource" src/' },
+    toolName: 'Bash',
+    transcriptPath: writeTranscript(tempDir('hooks-groupa-bashgeniza-code-'), [{ none: true, minutesAgo: 2 }]),
+  });
+  check('TASK 13 geniza-fallback/Bash COUNTER: a code-targeted Bash grep (src/) -> silent',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // --- geniza WAS consulted recently -> silent even for a real Bash sweep -----------------------
+  const work = tempDir('hooks-groupa-bashgeniza-consulted-');
+  const transcriptPath = writeTranscript(work, [{ command: RETRIEVAL_CMD, minutesAgo: 5 }]);
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'grep -rn "baldwin" docs/' },
+    toolName: 'Bash',
+    transcriptPath,
+  });
+  check('TASK 13 geniza-fallback/Bash COUNTER: geniza consulted recently -> silent even for a real Bash sweep',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // --- an ordinary non-grep Bash command is untouched, whatever the transcript state -----------
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'python build.py' },
+    toolName: 'Bash',
+    transcriptPath: writeTranscript(tempDir('hooks-groupa-bashgeniza-ordinary-'), [{ none: true, minutesAgo: 2 }]),
+  });
+  check('TASK 13 geniza-fallback/Bash COUNTER: an ordinary non-grep Bash command -> silent',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
+// ---------------------------------------------------------------------------------------------
+// TASK 13, FIX ROUND 1 (coordinator review, 2026-08-08) — the coordinator drove both rules
+// directly with real command shapes and found three false positives. These are those EXACT
+// commands, verbatim, so the suite itself would have caught what the coordinator's manual probe
+// caught. See symbolic-grep-use-serena.mjs's own header for the investigation of all three
+// (one confirmed and fixed — the known-file exemption; two investigated and refuted by
+// measurement — see below and the report).
+// ---------------------------------------------------------------------------------------------
+{
+  // Command 1 — a targeted read of ONE already-known code file. CONFIRMED bug, NOW FIXED: the
+  // symbolic-grep rule must not warn on a single named file any more than the geniza rule does.
+  const fake = await startFakeSerenaServer();
+  try {
+    const { stdoutJson } = bashSymGrepDecision('grep -n "tool_name" scripts/hooks/rules/symbolic-grep-use-serena.mjs', fake.url);
+    check('TASK 13 FIX ROUND 1 (coordinator command 1): `grep -n "tool_name" <one known .mjs file>` -> silent (known-file exemption, same as geniza)',
+      stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+  } finally {
+    await fake.close();
+  }
+  const work = tempDir('hooks-groupa-fixround1-cmd1-geniza-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 2 }]);
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'grep -n "tool_name" scripts/hooks/rules/symbolic-grep-use-serena.mjs' },
+    toolName: 'Bash',
+    transcriptPath,
+  });
+  check('TASK 13 FIX ROUND 1 (coordinator command 1): geniza-fallback -> silent (a code path, never doc-targeted)',
+    stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // Command 2 — a Hebrew pattern against docs/. REFUTED by measurement (see the rule file's own
+  // header and the report): (א) alone already makes a symbolic-grep warn impossible here, since
+  // `docs/` can never match CODE_PATH — confirmed silent regardless of the Bash extraction fix.
+  // For geniza-fallback, this command IS a genuine docs/ sweep (the human-readable pattern text
+  // plays no part in that rule's classification) — WARNS here under a fixture with no recent
+  // consult, which is the correct, intended behavior; the coordinator's live probe reading
+  // "G silent" reflects THEIR session's own consult/transcript state at the moment they ran it,
+  // not a rule defect — verified separately, not re-litigated here.
+  const fake = await startFakeSerenaServer();
+  try {
+    const { stdoutJson } = bashSymGrepDecision('grep -rn "מדריך האש" docs/', fake.url);
+    check('TASK 13 FIX ROUND 1 (coordinator command 2): Hebrew pattern against docs/ -> symbolic-grep silent (docs/ is never a code target)',
+      stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+  } finally {
+    await fake.close();
+  }
+  const work = tempDir('hooks-groupa-fixround1-cmd2-geniza-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 2 }]);
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'grep -rn "מדריך האש" docs/' },
+    toolName: 'Bash',
+    transcriptPath,
+  });
+  check('TASK 13 FIX ROUND 1 (coordinator command 2): geniza-fallback -> WARN (a genuine docs/ sweep, no recent consult)',
+    typeof stdoutJson?.systemMessage === 'string', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // Command 3 — a spaced phrase against docs/. Same reasoning and same refutation as command 2:
+  // (א) makes symbolic-grep's warn impossible against docs/ regardless of (ב); geniza-fallback
+  // correctly warns because this IS a genuine sweep with no recent consult.
+  const fake = await startFakeSerenaServer();
+  try {
+    const { stdoutJson } = bashSymGrepDecision('grep -rn "source authority" docs/', fake.url);
+    check('TASK 13 FIX ROUND 1 (coordinator command 3): spaced phrase against docs/ -> symbolic-grep silent (docs/ is never a code target)',
+      stdoutJson?.systemMessage === undefined, `stdout=${JSON.stringify(stdoutJson)}`);
+  } finally {
+    await fake.close();
+  }
+  const work = tempDir('hooks-groupa-fixround1-cmd3-geniza-');
+  const transcriptPath = writeTranscript(work, [{ none: true, minutesAgo: 2 }]);
+  const { stdoutJson } = grepDocsDecision({
+    toolInput: { command: 'grep -rn "source authority" docs/' },
+    toolName: 'Bash',
+    transcriptPath,
+  });
+  check('TASK 13 FIX ROUND 1 (coordinator command 3): geniza-fallback -> WARN (a genuine docs/ sweep, no recent consult)',
+    typeof stdoutJson?.systemMessage === 'string', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+{
+  // Command 4 (the coordinator's own control case, code sweep) — must still WARN under both the
+  // pre-fix and post-fix rule: `src/` is a directory (isSweep true), so the known-file exemption
+  // does not apply here, and it never should — this is exactly the symbol-shaped work §5.1 exists
+  // to redirect toward Serena.
+  const fake = await startFakeSerenaServer();
+  try {
+    const { stdoutJson } = bashSymGrepDecision('grep -rn "renderWorkplan" src/', fake.url);
+    check('TASK 13 FIX ROUND 1 (coordinator control case): `grep -rn pattern src/` (a real sweep) -> still WARNS after the known-file fix',
+      typeof stdoutJson?.systemMessage === 'string', `stdout=${JSON.stringify(stdoutJson)}`);
+  } finally {
+    await fake.close();
+  }
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);

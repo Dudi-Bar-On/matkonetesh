@@ -318,8 +318,10 @@ function runWithEnf(extraEnv) {
     WATCHMAN_LOG: healthyWatchmanLog(),
   });
   assertExit('§6.2 RED: exit 0', r, 0);
-  if (!/§5\s+fix attempts on `tests\/test_x\.py::test_y`: 2 of 3/.test(r.stdout)) {
-    console.error('FAIL  expected the exact §5 line naming the target and "2 of 3"');
+  // Task 14 / R-117: the line now names WHICH ACTOR the counter belongs to (§5 is per-actor) —
+  // `seedFixCycle()` above writes with no actorId, which normalizes to the main-session identity.
+  if (!/§5\s+\[main session \(no agent_id\)\]\s+fix attempts on `tests\/test_x\.py::test_y`: 2 of 3/.test(r.stdout)) {
+    console.error('FAIL  expected the exact §5 line naming the actor, the target and "2 of 3"');
     console.error(`      stdout: ${r.stdout}`);
     process.exitCode = 1;
   } else {
@@ -464,7 +466,7 @@ function runWithEnf(extraEnv) {
   } else {
     console.log('PASS  §6.2 COUNTER-RED-3: missing watchman log degrades infra to "not available" without crashing');
   }
-  if (!/fix attempts on `some\/target\.py::test_z`: 1 of 3/.test(r.stdout)) {
+  if (!/\[main session \(no agent_id\)\]\s+fix attempts on `some\/target\.py::test_z`: 1 of 3/.test(r.stdout)) {
     console.error('FAIL  expected the §5 line to still render even though infra could not be read');
     process.exitCode = 1;
   } else {

@@ -63,8 +63,15 @@ export const WINDOW_MS = 30 * 60 * 1000;
 // FAIL-OPEN (same contract as every rule in this pipeline, requirement 3): unreadable state,
 // unreadable transcript, a missing session_id, or any unexpected exception here all resolve to
 // allow — a blocking rule that cannot read its own evidence must never block.
-import { openState, lastEvent } from '../lib/enforcement-state.mjs';
+import { openState, lastEvent, normalizeActorId } from '../lib/enforcement-state.mjs';
 import { skillInvokedSince } from '../lib/skill-invoked.mjs';
+
+// R-117 / Task 14 FIX: 'bash_failure' is now read PER-ACTOR (normalizeActorId(input.agent_id)),
+// not session-wide. This is the exact defect: a dispatched subagent was blocked here over a
+// 'bash_failure' event a DIFFERENT, concurrent subagent recorded under the same inherited
+// session_id. 'verification_pass' is filtered to the SAME actor for the same reason — an unrelated
+// actor's own independent green run is not evidence THIS actor investigated ITS OWN failure (see
+// enforcement-state.mjs's module header for the full per-counter table).
 
 const SKILL_RE = /systematic-debugging/;
 
@@ -95,11 +102,12 @@ export function evaluate(input) {
     return degraded('enforcement state unreadable (openState() returned null — corrupt/locked/missing store)');
   }
 
+  const actorId = normalizeActorId(input.agent_id);
   let failure;
   let pass;
   try {
-    failure = lastEvent(db, sessionId, 'bash_failure');
-    pass = lastEvent(db, sessionId, 'verification_pass');
+    failure = lastEvent(db, sessionId, 'bash_failure', actorId);
+    pass = lastEvent(db, sessionId, 'verification_pass', actorId);
   } catch {
     try { db.close(); } catch { /* best-effort */ }
     return degraded('enforcement state unreadable while reading events');

@@ -91,7 +91,19 @@
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { openState, openTargets, noteVerificationPass, recordEvent } from '../lib/enforcement-state.mjs';
+import {
+  openState, openTargets, noteVerificationPass, recordEvent, normalizeActorId,
+} from '../lib/enforcement-state.mjs';
+
+// R-117 / Task 14: §5 fix cycles are PER-ACTOR (task-14-brief, quoting development-discipline.md:
+// "two agents debugging different things are not on each other's fourth attempt"). openTargets()
+// below is called with an explicit actorId, so this rule only ever sees (and only ever blocks on)
+// the SAME actor's own open targets — a concurrent subagent's own cycles on the same or a different
+// target are invisible here by construction, exactly like session scoping already was. The owner-
+// decision-reset consumption tracking (CONSUMED_EVENT_KIND, below) is scoped the same way: each
+// actor's own reset of a target is independent, once each — an owner record naming a target resets
+// EVERY actor's own counter for it independently as each actor's evaluate() call encounters it, not
+// as one shared reset consumed by whichever actor happens to hit the record first.
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
@@ -174,12 +186,12 @@ const CONSUMED_EVENT_KIND = 'owner_decision_reset';
 function consumedKey(target, raw) {
   return `${target} ${raw}`;
 }
-function consumedRecordKeys(db, sessionId) {
+function consumedRecordKeys(db, sessionId, actorId) {
   const out = new Set();
   try {
     const rows = db.prepare(
-      'SELECT detail FROM events WHERE session_id = ? AND kind = ?',
-    ).all(sessionId, CONSUMED_EVENT_KIND);
+      'SELECT detail FROM events WHERE session_id = ? AND kind = ? AND actor_id = ?',
+    ).all(sessionId, CONSUMED_EVENT_KIND, actorId);
     for (const row of rows) {
       try {
         const d = JSON.parse(row.detail);
@@ -233,6 +245,7 @@ export function evaluate(input) {
   }
 
   const sessionId = input.session_id;
+  const actorId = normalizeActorId(input.agent_id);
   const db = openState();
   if (!db) {
     return {
@@ -245,7 +258,9 @@ export function evaluate(input) {
 
   let targets;
   try {
-    targets = openTargets(db, sessionId);
+    // Task 14 / R-117: filtered to THIS actor's own targets only — a concurrent actor's own §5
+    // cycles on any target (same name or not) are invisible here by construction.
+    targets = openTargets(db, sessionId, actorId);
   } catch {
     try { db.close(); } catch { /* best-effort */ }
     return {
@@ -262,7 +277,7 @@ export function evaluate(input) {
   }
 
   const records = ownerDecisionRecords();
-  const consumed = consumedRecordKeys(db, sessionId);
+  const consumed = consumedRecordKeys(db, sessionId, actorId);
 
   // A target's CURRENT accumulated failures are validly covered only if an EXACT-name record
   // exists, its cutoff is strictly after the target's most recent recorded failure (a record
@@ -304,9 +319,9 @@ export function evaluate(input) {
 
   if (clearedTargetIds.length) {
     try {
-      noteVerificationPass(db, sessionId, clearedTargetIds);
+      noteVerificationPass(db, sessionId, clearedTargetIds, actorId);
       for (const { target, raw } of toMarkConsumed) {
-        recordEvent(db, { sessionId, kind: CONSUMED_EVENT_KIND, detail: { target, raw } });
+        recordEvent(db, { sessionId, kind: CONSUMED_EVENT_KIND, detail: { target, raw }, actorId });
       }
     } catch {
       // Best-effort: if the wipe/consumption-marking fails, the SAME valid-record check simply

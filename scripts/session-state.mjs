@@ -379,6 +379,13 @@ export function enforcementState(sessionId) {
   // §6.1: a target's FIRST recorded failure is not yet a closed fix cycle (it becomes one only once
   // an edit follows it) — so a target sitting at attempts=0 is not yet a meaningful counter to
   // announce; showing it would be exactly the "wall of zeroes" this section exists to avoid.
+  // Task 14 / R-117: openTargets(db, sessionId) is called with NO 3rd argument here — deliberately
+  // UNFILTERED, returning every actor's own rows for this session, each carrying its own `actorId`.
+  // §5 is per-actor (fix-cycle-limit.mjs only ever blocks the SAME actor whose targets these are),
+  // so an announcement that silently merged them, or picked one actor's rows and called it "the
+  // session's", would be a lie about scope — exactly what this task's brief warns against ("must
+  // keep telling the truth about whichever scope it reports"). Each line below names its own actor
+  // explicitly instead.
   const openCycles = targets.filter((t) => t.attempts > 0);
   const infra = infraStatus();
 
@@ -396,10 +403,14 @@ export function enforcementState(sessionId) {
       // one announcement that has to be trusted on sight. At or past the ceiling, say what is true and
       // what it means instead: the next edit on this target is blocked, which is the fact the reader
       // needs before they try one.
+      // actorLabel: §5 is per-actor (Task 14) — naming which actor a counter belongs to is what
+      // keeps this line truthful; omitting it would let a reader assume it blocks THEM when it may
+      // belong to a different, concurrent subagent (or vice versa).
+      const actorLabel = t.actorId ? `actor ${t.actorId}` : 'main session (no agent_id)';
       lines.push(
         t.attempts >= ATTEMPT_THRESHOLD
-          ? `  §5      fix attempts on \`${t.target}\`: ${t.attempts} — AT THE CEILING (${ATTEMPT_THRESHOLD}). The next edit on this target is BLOCKED until the architecture question is raised with the owner.`
-          : `  §5      fix attempts on \`${t.target}\`: ${t.attempts} of ${ATTEMPT_THRESHOLD}`
+          ? `  §5      [${actorLabel}] fix attempts on \`${t.target}\`: ${t.attempts} — AT THE CEILING (${ATTEMPT_THRESHOLD}). The next edit on this target BY THIS ACTOR is BLOCKED until the architecture question is raised with the owner.`
+          : `  §5      [${actorLabel}] fix attempts on \`${t.target}\`: ${t.attempts} of ${ATTEMPT_THRESHOLD}`
       );
     }
   } else {

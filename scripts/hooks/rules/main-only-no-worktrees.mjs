@@ -39,34 +39,16 @@
 // parsing/executing the shell grammar, which is out of scope for "the easiest rule to decide" —
 // flagged in the task report (both rounds), not silently accepted as correct.
 
-const SEGMENT_SPLIT = /(?:&&|\|\||[;\n]|\|(?!\|))/g;
+// Splitter/tokenizer moved to lib/bash-segments.mjs (Task 13, R-116) so the grep-classification
+// rules can reuse the exact same machinery instead of forking a second copy — see that module's
+// header. Behavior here is unchanged: same regex, same tokenizer, just imported now.
+import { segments, tokenize } from '../lib/bash-segments.mjs';
 
 // Global options that take their value as a SEPARATE following token (not inline `--opt=value`,
 // which is already a single self-contained token and needs no extra skip).
 const VALUE_TAKING_GLOBAL_OPTS = new Set([
   '-C', '-c', '--git-dir', '--work-tree', '--namespace', '--exec-path',
 ]);
-
-function segments(command) {
-  return command
-    .split(SEGMENT_SPLIT)
-    .map((s) => s.trim())
-    .filter(Boolean);
-}
-
-// Minimal tokenizer: whitespace-separated, with a light allowance for a whole token wrapped in
-// matching quotes (so `-c "core.pager=cat"` still reads as two tokens). Not a shell parser —
-// nested/escaped quoting inside a token is not unwrapped, which is fine here: we only ever
-// inspect the FIRST few tokens (git, global options, subcommand, its first flag).
-function tokenize(seg) {
-  const matches = seg.match(/"[^"]*"|'[^']*'|\S+/g) || [];
-  return matches.map((t) => {
-    if ((t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))) {
-      return t.slice(1, -1);
-    }
-    return t;
-  });
-}
 
 // Given a segment's tokens starting at tokens[0] === 'git', returns the index of the subcommand
 // token (worktree, checkout, status, ...), skipping any global options in between.

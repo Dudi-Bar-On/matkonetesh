@@ -37,7 +37,12 @@
 // observer must never throw (posttooluse.mjs's runObservers() already catches a throw, but this
 // file also guards its own openState()/db.close() per the fail-open discipline every other Group B
 // file follows).
-import { openState, recordEvent } from '../lib/enforcement-state.mjs';
+import { openState, recordEvent, normalizeActorId } from '../lib/enforcement-state.mjs';
+
+// Task 14 / R-117: 'playwright_run' / 'live_probe' stay SESSION-WIDE by design (see
+// enforcement-state.mjs's module header — Stop only ever fires on the top-level session's own
+// turn, so a dispatched subagent's own UI verification must remain visible to the orchestrator's
+// eventual claim). actorId is still attached to each event for audit, but no reader filters on it.
 import { classifyCommand } from '../lib/verification-target.mjs';
 
 const LIVE_HOST_RE = /matkonetesh\.pages\.dev/;
@@ -87,6 +92,7 @@ export function observe(input) {
       detail: kind === 'playwright_run'
         ? { command: (input.tool_input && input.tool_input.command || '').slice(0, 200) }
         : { source: input.tool_name },
+      actorId: normalizeActorId(input.agent_id),
     });
   } finally {
     try { db.close(); } catch { /* best-effort */ }
