@@ -232,6 +232,30 @@ function degraded(what) {
 }
 
 function evaluateBranchA(input, filePath, isPlans) {
+  // MAINTAINING AN ALREADY-APPROVED SPEC IS NOT CREATIVE WORK WITHOUT A DESIGN — the spec IS the
+  // design, and the owner already approved it. Added 2026-08-08 after this rule blocked an edit that
+  // recorded an arc's post-execution results into the very spec the owner had approved that morning:
+  // the design existed, was registered, and there was no path forward except re-running a
+  // brainstorming session about a decision already made.
+  //
+  // This is the false-positive shape L70 is about, and the fix is not to loosen the rule but to let it
+  // read the evidence it already trusts elsewhere. The plans branch already clears a write when the
+  // plan's own name matches an approved register row; the specs branch now clears a write when the
+  // spec's OWN FILENAME is an approved row. A NEW spec — one the register does not carry — still
+  // blocks, which is the case §6.4 actually exists to stop.
+  if (!isPlans) {
+    const reg = registerRows();
+    const own = reg.determined ? findExactRow(reg.rows, basename(filePath)) : null;
+    if (own && own.approved) {
+      return {
+        decision: 'allow',
+        reason: `§6.4 trigger 1: \`${basename(filePath)}\` is itself an APPROVED spec in the register `
+          + '— editing a design the owner has already approved is maintenance of that design, not '
+          + 'creative work preceding one. A spec absent from the register, or present and marked '
+          + 'unapproved, still blocks.',
+      };
+    }
+  }
   const skillRe = isPlans ? BRAINSTORM_OR_PLANS_RE : BRAINSTORM_RE;
   const skill = skillInvokedSince(input.transcript_path, skillRe, DESIGN_WINDOW_MS, undefined, input.agent_id);
   if (skill.determined && skill.invoked) {
