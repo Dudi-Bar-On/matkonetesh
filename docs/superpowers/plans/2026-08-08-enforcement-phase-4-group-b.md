@@ -443,3 +443,24 @@ occurring inside the layer.
 - [ ] **4.** Re-measure after wiring: run a realistic stretch of ordinary work and report how many of
       the greps now warn. **More than a handful is a finding**, not a success.
 
+### Task 14: R-117 — actor-scoped counters, because subagents share a session_id
+
+**Observed live during Task 10, not hypothesised.** A dispatched subagent was blocked by
+`debugging-before-fix-edit` over `bash_failure` events recorded under its own `session_id` that it never
+produced — a concurrent subagent wrote them. One actor's failure blocking another is the "blocked for no
+reason" shape this whole phase exists to avoid.
+
+**Files:** `scripts/hooks/lib/enforcement-state.mjs` · the rules that read per-actor counters · tests
+
+- [ ] **1.** Key ACTOR-level counters by (`session_id`, `agent_id`). `agent_id` is present in the hook
+      payload — measured in Task 8, not assumed. A main-session actor has no agent_id; treat its
+      absence as its own stable identity rather than as a wildcard.
+- [ ] **2.** DO NOT scope everything. §5 fix cycles are per-actor. §10.16 lessons-since-last-commit is
+      per-SESSION and must stay shared — a lesson owed for the session is not owed per subagent.
+      Decide each counter explicitly and write the reasoning beside it.
+- [ ] **3.** RED: two actors under one session, actor A records 4 failures, actor B's edit must be
+      ALLOWED. COUNTER-RED: actor A's own 4th edit must still block, and the §10.16 gate must still see
+      the whole session's failures.
+- [ ] **4.** Migration: existing rows carry no agent_id. Decide what they mean and say so — treating
+      them as belonging to every actor would recreate the defect.
+

@@ -2874,5 +2874,914 @@ let RULE7;
   }
 }
 
+// =================================================================================================
+// SECTION 9 — scripts/hooks/stop.mjs + scripts/hooks/lib/claim-scan.mjs +
+// scripts/hooks/stop-rules/verify-before-success-claim.mjs (task-9-brief.md, §6.4 trigger 3:
+// verification before a success claim). Every case here runs against a TEMP rules directory and a
+// CLEAN SYNTHETIC transcript — never this session's own real transcript, same discipline as
+// Section 8.
+// =================================================================================================
+{
+  const s9Work = tempDir('hooks-groupb-stopclaim-');
+  const STOP_CLI = join(ROOT, 'scripts', 'hooks', 'stop.mjs');
+  const STOP_MODULE = pathToFileURL(STOP_CLI).href;
+  const CLAIM_SCAN = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'claim-scan.mjs')).href);
+  const REAL_STOP_RULE_PATH = join(ROOT, 'scripts', 'hooks', 'stop-rules', 'verify-before-success-claim.mjs');
+  const STOP_RULE = await import(pathToFileURL(REAL_STOP_RULE_PATH).href);
+
+  function runStopCli({ stdin, rulesDir, logPath, env: extraEnv }) {
+    const env = { ...process.env, ...(extraEnv || {}) };
+    if (rulesDir) env.STOP_RULES_DIR = rulesDir;
+    if (logPath) env.PRETOOLUSE_LOG_PATH = logPath;
+    return spawnSync(process.execPath, [STOP_CLI], {
+      input: stdin,
+      encoding: 'utf8',
+      env,
+      cwd: ROOT,
+      timeout: 15000,
+    });
+  }
+
+  function writeStopRule(dir, filename, body) {
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(join(dir, filename), body, 'utf8');
+  }
+
+  // Builds a fixture transcript .jsonl, the real measured shape — one entry per `entries` item:
+  // { atMs, text } (an assistant turn with a single text content block) or
+  // { atMs, skill } (an assistant turn with a Skill tool_use — for the escape path).
+  function makeAssistantTranscript(entries) {
+    const path = join(s9Work, `transcript-${Math.random().toString(36).slice(2)}.jsonl`);
+    const lines = entries.map((e) => JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date(e.atMs).toISOString(),
+      message: {
+        content: [
+          e.skill !== undefined
+            ? { type: 'tool_use', name: 'Skill', input: { skill: e.skill } }
+            : { type: 'text', text: e.text },
+        ],
+      },
+    }));
+    writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
+    return path;
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Unit level — claim-scan.mjs's own detectors, isolated from the rule/CLI. This is what proves
+  // the regexes themselves are precise, independent of how the rule/CLI wire them together.
+  // -----------------------------------------------------------------------------------------------
+  {
+    check('detectsSuccessClaim: Hebrew "הכל עובד, סיימתי" (statement) -> true',
+      CLAIM_SCAN.detectsSuccessClaim('הכל עובד, סיימתי'));
+    check('detectsSuccessClaim: Hebrew "בוצע." (statement) -> true',
+      CLAIM_SCAN.detectsSuccessClaim('הבדיקה בוצע.'));
+    check('detectsSuccessClaim: Hebrew "הכל ירוק" -> true',
+      CLAIM_SCAN.detectsSuccessClaim('הרצתי את הבדיקות, הכל ירוק'));
+    check('detectsSuccessClaim: English "all tests passing" -> true',
+      CLAIM_SCAN.detectsSuccessClaim('I ran the suite, all tests passing now.'));
+    check('detectsSuccessClaim: English "it works" -> true',
+      CLAIM_SCAN.detectsSuccessClaim('I tried it again and it works.'));
+    check('detectsSuccessClaim: English "task complete" -> true',
+      CLAIM_SCAN.detectsSuccessClaim('The task is complete.'));
+
+    // COUNTER-RED: NOT claims — the entire point of requirement 1 in the brief.
+    check('COUNTER: question "האם זה עובד אצלך?" -> false (a question, not a claim)',
+      !CLAIM_SCAN.detectsSuccessClaim('האם זה עובד אצלך?'));
+    check('COUNTER: question "is this done yet?" -> false (question exclusion, tracked word "done")',
+      !CLAIM_SCAN.detectsSuccessClaim('is this done yet?'));
+    check('COUNTER: UI-colour sentence, "green" bare (not "all green") is not a tracked token -> false',
+      !CLAIM_SCAN.detectsSuccessClaim('the button turns a nice shade of green'));
+    check('COUNTER: Hebrew sentence about vegetables, no claim word -> false',
+      !CLAIM_SCAN.detectsSuccessClaim('הוספתי עגבניות וחסה לסלט'));
+    check('COUNTER: commit message quoting an earlier claim inside quotes -> false '
+      + '(the quote mark breaks the required claim-word boundary)',
+      !CLAIM_SCAN.detectsSuccessClaim('did you say it "works" already?'));
+    check('COUNTER: no claim at all -> false',
+      !CLAIM_SCAN.detectsSuccessClaim('let me look at the next file'));
+    check('COUNTER: empty/non-string -> false', !CLAIM_SCAN.detectsSuccessClaim('') && !CLAIM_SCAN.detectsSuccessClaim(undefined));
+
+    // ---------------------------------------------------------------------------------------------
+    // FIX ROUND 2, item (A) — claim SHAPE, not claim WORD, for done/fixed/works. Every one of these
+    // is the coordinator's OWN named example, or a direct variant of it; all must now be false.
+    // ---------------------------------------------------------------------------------------------
+    check('FIX-R2 COUNTER: "the fixed version" (attributive, not a claim) -> false '
+      + '(this is the exact real reply that false-fired in round 1)',
+      !CLAIM_SCAN.detectsSuccessClaim('Good, restore confirmed (matches the fixed version).'));
+    check('FIX-R2 COUNTER: "once that is done" (subordinate clause) -> false',
+      !CLAIM_SCAN.detectsSuccessClaim('Let\'s continue once that is done.'));
+    check('FIX-R2 COUNTER: "how it works" (mechanism, not confirmation) -> false',
+      !CLAIM_SCAN.detectsSuccessClaim('Let me explain how it works internally.'));
+    check('FIX-R2 COUNTER: "the fixed implementation" (attributive) -> false',
+      !CLAIM_SCAN.detectsSuccessClaim('running my actual real reply texts through the fixed implementation programmatically'));
+    check('FIX-R2 COUNTER: "if it works" (subordinate) -> false',
+      !CLAIM_SCAN.detectsSuccessClaim('If it works, we can ship it.'));
+    check('FIX-R2 COUNTER: "once the tests are passing" (subordinate, BROAD word too) -> false',
+      !CLAIM_SCAN.detectsSuccessClaim('Once the tests are passing, we can ship.'));
+    check('FIX-R2 GREEN: "it works" (predicate shape) -> STILL true',
+      CLAIM_SCAN.detectsSuccessClaim('I tried it again and it works.'));
+    check('FIX-R2 GREEN: "it works now" -> true', CLAIM_SCAN.detectsSuccessClaim('it works now'));
+    check('FIX-R2 GREEN: "I\'m done" (predicate) -> true', CLAIM_SCAN.detectsSuccessClaim("I'm done."));
+    check('FIX-R2 GREEN: "all done" (predicate) -> true', CLAIM_SCAN.detectsSuccessClaim('All done.'));
+    check('FIX-R2 GREEN: "I fixed it" (first-person) -> true', CLAIM_SCAN.detectsSuccessClaim('I fixed it.'));
+    check('FIX-R2 GREEN: "we fixed the bug" -> true', CLAIM_SCAN.detectsSuccessClaim('We fixed the bug.'));
+    check('FIX-R2 GREEN: standalone "Done." -> true', CLAIM_SCAN.detectsSuccessClaim('Done.'));
+    check('FIX-R2 GREEN: trailing subordinate clause does NOT void a preceding claim -> true',
+      CLAIM_SCAN.detectsSuccessClaim("It's done, once you verify it."));
+
+    check('containsQuotedEvidence: fenced block -> true',
+      CLAIM_SCAN.containsQuotedEvidence('here you go:\n```\n12 passed\n```'));
+    check('containsQuotedEvidence: "exit code 0" -> true',
+      CLAIM_SCAN.containsQuotedEvidence('ran it, exit code 0'));
+    check('containsQuotedEvidence: "42 passed" -> true',
+      CLAIM_SCAN.containsQuotedEvidence('suite output: 42 passed, 0 failed'));
+    check('containsQuotedEvidence: bare PASS -> true',
+      CLAIM_SCAN.containsQuotedEvidence('PASS  the check'));
+    check('containsQuotedEvidence: no evidence -> false',
+      !CLAIM_SCAN.containsQuotedEvidence('it works now, trust me'));
+    check('FIX-R2 containsQuotedEvidence: "exit 0" (no "code") -> true (this project\'s own real phrasing)',
+      CLAIM_SCAN.containsQuotedEvidence('GREEN confirmed, 333/333, exit 0.'));
+    check('FIX-R2 containsQuotedEvidence: "333/333 checks passed" (words between digit and "passed") -> true',
+      CLAIM_SCAN.containsQuotedEvidence('333/333 checks passed, exit 0.'));
+
+    // FIX ROUND 2, item (A) — the evidence window itself: a real fixture transcript with evidence in
+    // an EARLIER assistant turn and a bare claim ("All GREEN.") in the newest turn, nothing else.
+    {
+      const evidenceEarlier = makeAssistantTranscript([
+        { atMs: Date.now() - 4 * 60_000, text: 'GREEN confirmed, 336/336, exit 0.' },
+        { atMs: Date.now() - 5_000, text: 'All GREEN.' },
+      ]);
+      const lastTurn = CLAIM_SCAN.lastAssistantText(evidenceEarlier);
+      check('FIX-R2 recentEvidencePresent: last turn ALONE has no evidence', !CLAIM_SCAN.containsQuotedEvidence(lastTurn.text), `text=${lastTurn.text}`);
+      check('FIX-R2 recentEvidencePresent: last turn ALONE still claims (all green)', CLAIM_SCAN.detectsSuccessClaim(lastTurn.text));
+      check('FIX-R2 recentEvidencePresent: widened window finds the EARLIER turn\'s evidence -> true',
+        CLAIM_SCAN.recentEvidencePresent(evidenceEarlier, CLAIM_SCAN.EVIDENCE_WINDOW_MS, Date.now()));
+
+      const evidenceTooOld = makeAssistantTranscript([
+        { atMs: Date.now() - 20 * 60_000, text: 'GREEN confirmed, 336/336, exit 0.' }, // 20min > 10min window
+        { atMs: Date.now() - 5_000, text: 'All GREEN.' },
+      ]);
+      check('FIX-R2 recentEvidencePresent: evidence OUTSIDE the 10-minute window -> false (staleness respected)',
+        !CLAIM_SCAN.recentEvidencePresent(evidenceTooOld, CLAIM_SCAN.EVIDENCE_WINDOW_MS, Date.now()));
+    }
+
+    check('detectsLiveClaim: Hebrew "עלה לאוויר" -> true', CLAIM_SCAN.detectsLiveClaim('הגרסה עלה לאוויר'));
+    check('detectsLiveClaim: English "is live" -> true', CLAIM_SCAN.detectsLiveClaim('the new version is live'));
+    check('detectsLiveClaim: unrelated text -> false', !CLAIM_SCAN.detectsLiveClaim('let me check the plan'));
+
+    const unreadable = CLAIM_SCAN.lastAssistantText(join(s9Work, 'does-not-exist.jsonl'));
+    check('lastAssistantText: nonexistent transcript -> determined:false', unreadable.determined === false);
+
+    const t = makeAssistantTranscript([{ atMs: Date.now() - 5000, text: 'הכל עובד, סיימתי' }]);
+    const read = CLAIM_SCAN.lastAssistantText(t);
+    check('lastAssistantText: real fixture -> determined:true, text matches', read.determined === true && read.text === 'הכל עובד, סיימתי', `read=${JSON.stringify(read)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Rule level (direct import, like Section 8) — verify-before-success-claim.mjs's evaluate().
+  // -----------------------------------------------------------------------------------------------
+  {
+    const NONEXISTENT = join(s9Work, 'nope.jsonl');
+
+    // RED — a success claim, no evidence, no skill invocation, clean transcript -> BLOCK.
+    const cleanClaimTranscript = makeAssistantTranscript([
+      { atMs: Date.now() - 50_000, text: 'reading the file now' },
+      { atMs: Date.now() - 5_000, text: 'הכל עובד, סיימתי' },
+    ]);
+    const redOut = STOP_RULE.evaluate({ transcript_path: cleanClaimTranscript });
+    check('RED verify-before-success-claim: claim, no evidence, no skill -> BLOCK', redOut.decision === 'block', `out=${JSON.stringify(redOut)}`);
+    check('RED verify-before-success-claim: reason names verification-before-completion',
+      /verification-before-completion/.test(redOut.reason), `reason=${redOut.reason}`);
+    check('RED verify-before-success-claim: reason quotes the claim snippet',
+      /עובד/.test(redOut.reason), `reason=${redOut.reason}`);
+
+    // GREEN (evidence path) — same claim, but WITH a fenced pasted-output block -> ALLOW.
+    const evidenceTranscript = makeAssistantTranscript([
+      { atMs: Date.now() - 5_000, text: 'הכל עובד — הנה הפלט:\n```\n12 passed\n```' },
+    ]);
+    const evOut = STOP_RULE.evaluate({ transcript_path: evidenceTranscript });
+    check('GREEN verify-before-success-claim: claim WITH pasted evidence -> ALLOW', evOut.decision === 'allow', `out=${JSON.stringify(evOut)}`);
+
+    // GREEN (skill-escape path) — claim present, no evidence, but verification-before-completion
+    // was invoked in the transcript AFTER the earlier turns and before now.
+    const skillEscapeTranscript = makeAssistantTranscript([
+      { atMs: Date.now() - 40_000, skill: 'superpowers:verification-before-completion' },
+      { atMs: Date.now() - 5_000, text: 'הכל עובד, סיימתי' },
+    ]);
+    const skillOut = STOP_RULE.evaluate({ transcript_path: skillEscapeTranscript });
+    check('GREEN verify-before-success-claim: claim, no evidence, but skill invoked recently -> ALLOW', skillOut.decision === 'allow', `out=${JSON.stringify(skillOut)}`);
+
+    // COUNTER-RED — a question, not a claim -> ALLOW, no block, reason does not claim a block.
+    const questionTranscript = makeAssistantTranscript([{ atMs: Date.now() - 5_000, text: 'האם זה עובד אצלך?' }]);
+    const qOut = STOP_RULE.evaluate({ transcript_path: questionTranscript });
+    check('COUNTER-RED verify-before-success-claim: a question -> ALLOW (not a claim)', qOut.decision === 'allow', `out=${JSON.stringify(qOut)}`);
+
+    // ---------------------------------------------------------------------------------------------
+    // FIX ROUND 2 — the two real false positives, reproduced at the RULE level and proven fixed.
+    // ---------------------------------------------------------------------------------------------
+    // (1) evidence pasted in an EARLIER turn, bare claim in the newest turn -> now ALLOW.
+    const widenedEvidenceTranscript = makeAssistantTranscript([
+      { atMs: Date.now() - 4 * 60_000, text: 'GREEN confirmed, 336/336, exit 0.' },
+      { atMs: Date.now() - 5_000, text: 'All GREEN.' },
+    ]);
+    const widenedOut = STOP_RULE.evaluate({ transcript_path: widenedEvidenceTranscript });
+    check('FIX-R2 verify-before-success-claim: bare claim, evidence in an EARLIER turn -> ALLOW (was BLOCK before round 2)',
+      widenedOut.decision === 'allow', `out=${JSON.stringify(widenedOut)}`);
+
+    // (2) evidence too far back (outside the 10-minute window) -> still BLOCKS (staleness respected,
+    // not a blanket "ever pasted evidence this session" pass).
+    const staleEvidenceTranscript = makeAssistantTranscript([
+      { atMs: Date.now() - 20 * 60_000, text: 'GREEN confirmed, 336/336, exit 0.' },
+      { atMs: Date.now() - 5_000, text: 'All GREEN.' },
+    ]);
+    const staleOut = STOP_RULE.evaluate({ transcript_path: staleEvidenceTranscript });
+    check('FIX-R2 verify-before-success-claim: bare claim, evidence OUTSIDE the 10-minute window -> still BLOCK',
+      staleOut.decision === 'block', `out=${JSON.stringify(staleOut)}`);
+
+    // (3) the real false-fire text from round 1 — "fixed" used attributively -> now ALLOW (no claim
+    // detected at all, never reaches the evidence/skill check).
+    const attributiveFixedTranscript = makeAssistantTranscript([
+      { atMs: Date.now() - 5_000, text: "Good, restore confirmed (matches the fixed version). Now let's check subagentstop.mjs." },
+    ]);
+    const attributiveOut = STOP_RULE.evaluate({ transcript_path: attributiveFixedTranscript });
+    check('FIX-R2 verify-before-success-claim: "the fixed version" (attributive) -> ALLOW (was BLOCK before round 2)',
+      attributiveOut.decision === 'allow', `out=${JSON.stringify(attributiveOut)}`);
+    check('FIX-R2 verify-before-success-claim: "the fixed version" reason states no claim, not a degradation/evidence excuse',
+      /no success-claim/i.test(attributiveOut.reason), `reason=${attributiveOut.reason}`);
+
+    // COUNTER-RED — no claim at all -> ALLOW.
+    const noClaimTranscript = makeAssistantTranscript([{ atMs: Date.now() - 5_000, text: 'let me check the next file' }]);
+    const ncOut = STOP_RULE.evaluate({ transcript_path: noClaimTranscript });
+    check('COUNTER-RED verify-before-success-claim: no claim -> ALLOW', ncOut.decision === 'allow', `out=${JSON.stringify(ncOut)}`);
+
+    // COUNTER-RED — unreadable transcript -> ALLOW (degraded), never a crash.
+    const unreadableOut = STOP_RULE.evaluate({ transcript_path: NONEXISTENT });
+    check('COUNTER-RED verify-before-success-claim: unreadable transcript -> ALLOW (degraded)', unreadableOut.decision === 'allow', `out=${JSON.stringify(unreadableOut)}`);
+    check('COUNTER-RED verify-before-success-claim: degraded reason names the degradation', /degrad/i.test(unreadableOut.reason), `reason=${unreadableOut.reason}`);
+
+    // Missing input entirely -> ALLOW, never a throw.
+    const noInputOut = STOP_RULE.evaluate(undefined);
+    check('verify-before-success-claim: undefined input -> ALLOW, no throw', noInputOut.decision === 'allow', `out=${JSON.stringify(noInputOut)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // CLI level — scripts/hooks/stop.mjs itself: the loop guard, the exit-0-triad on a throwing rule,
+  // and the real end-to-end path through STOP_RULES_DIR pointed at the REAL rule file.
+  // -----------------------------------------------------------------------------------------------
+  {
+    // RED — a stop-rule that throws -> stdout {} + exit 0 + a rule_threw record logged (same triad
+    // Task 1 proved for observers).
+    const throwRulesDir = join(s9Work, 'throw-rules');
+    writeStopRule(throwRulesDir, 'boom.mjs', "export function evaluate() { throw new Error('boom'); }\n");
+    const logPath1 = join(s9Work, 'log1.jsonl');
+    const r1 = runStopCli({ stdin: '{}', rulesDir: throwRulesDir, logPath: logPath1 });
+    check('RED stop.mjs: throwing rule -> exit 0', r1.status === 0, `status=${r1.status} stderr=${r1.stderr}`);
+    check('RED stop.mjs: throwing rule -> stdout is {}', r1.stdout.trim() === '{}', `stdout=${r1.stdout}`);
+    const logged1 = readJsonl(logPath1);
+    check('RED stop.mjs: throwing rule -> rule_threw logged', logged1.some((e) => e.kind === 'rule_threw'), `log=${JSON.stringify(logged1)}`);
+
+    // RED — the loop guard: stop_hook_active:true, with a rule seeded that WOULD block, must still
+    // resolve to {} — the guard fires before the pipeline is ever run.
+    const blockRulesDir = join(s9Work, 'block-rules');
+    writeStopRule(blockRulesDir, 'always-block.mjs', "export function evaluate() { return { decision: 'block', reason: 'should never be seen' }; }\n");
+    const r2 = runStopCli({ stdin: JSON.stringify({ stop_hook_active: true }), rulesDir: blockRulesDir });
+    check('RED stop.mjs: stop_hook_active:true -> {} (loop guard, even with a blocking rule present)',
+      r2.status === 0 && r2.stdout.trim() === '{}', `status=${r2.status} stdout=${r2.stdout}`);
+
+    // RED — trigger-3 end to end through the REAL rule directory: assistant text "הכל עובד, סיימתי",
+    // no fence, no skill -> stdout JSON has decision:"block" and reason names
+    // verification-before-completion.
+    const e2eClaimTranscript = makeAssistantTranscript([{ atMs: Date.now() - 5_000, text: 'הכל עובד, סיימתי' }]);
+    const r3 = runStopCli({
+      stdin: JSON.stringify({ transcript_path: e2eClaimTranscript }),
+      rulesDir: join(ROOT, 'scripts', 'hooks', 'stop-rules'),
+    });
+    check('RED stop.mjs E2E (real rule dir): trigger-3 claim -> exit 0', r3.status === 0, `status=${r3.status} stderr=${r3.stderr}`);
+    let parsed3;
+    try { parsed3 = JSON.parse(r3.stdout); } catch { parsed3 = null; }
+    check('RED stop.mjs E2E: stdout parses as JSON', parsed3 !== null, `stdout=${r3.stdout}`);
+    check('RED stop.mjs E2E: decision is "block"', parsed3 && parsed3.decision === 'block', `stdout=${r3.stdout}`);
+    check('RED stop.mjs E2E: reason names verification-before-completion',
+      parsed3 && /verification-before-completion/.test(parsed3.reason), `stdout=${r3.stdout}`);
+
+    // ---------------------------------------------------------------------------------------------
+    // FIX ROUND 1 (coordinator review): THE test that would have caught the inert-in-production
+    // defect. NO env overrides for rulesDir at all — this is the exact invocation shape Claude Code
+    // itself uses on a real Stop event: no STOP_RULES_DIR, no PRETOOLUSE_RULES_DIR, nothing. Every
+    // OTHER check in this section sets rulesDir explicitly (even when pointing at the "real"
+    // directory), which is precisely why the original ship missed that stop.mjs's own default fell
+    // through to pipeline.mjs's DEFAULT_RULES_DIR (scripts/hooks/rules — PreToolUse's own
+    // directory) instead of scripts/hooks/stop-rules/. logPath IS still overridden here (a
+    // production log write is a harmless side effect this test has no reason to leave behind, and
+    // overriding it does not touch the rulesDir resolution path under test at all).
+    // ---------------------------------------------------------------------------------------------
+    {
+      const prodClaimTranscript = makeAssistantTranscript([{ atMs: Date.now() - 5_000, text: 'תיקנתי את זה, הכל עובד עכשיו.' }]);
+      const prodLogPath = join(s9Work, 'prod-no-override-log.jsonl');
+      const rProd = runStopCli({
+        stdin: JSON.stringify({ transcript_path: prodClaimTranscript }),
+        // rulesDir DELIBERATELY OMITTED — proves the CLI's OWN default, not a test-supplied one.
+        logPath: prodLogPath,
+      });
+      check('PRODUCTION (no rulesDir override) stop.mjs E2E: exit 0', rProd.status === 0, `status=${rProd.status} stderr=${rProd.stderr}`);
+      let parsedProd;
+      try { parsedProd = JSON.parse(rProd.stdout); } catch { parsedProd = null; }
+      check('PRODUCTION (no rulesDir override) stop.mjs E2E: decision is "block" — this is the check '
+        + 'that failed before FIX ROUND 1 (it returned allow/{} because stop-rules/ was never loaded)',
+        parsedProd && parsedProd.decision === 'block', `stdout=${rProd.stdout}`);
+      check('PRODUCTION (no rulesDir override) stop.mjs E2E: reason names verification-before-completion',
+        parsedProd && /verification-before-completion/.test(parsedProd.reason), `stdout=${rProd.stdout}`);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // FIX ROUND 2 (coordinator review): the widened-evidence-window case, end to end through the
+    // real CLI and the real rule directory — evidence pasted in an earlier turn, bare "All GREEN."
+    // in the newest turn, must ALLOW.
+    // ---------------------------------------------------------------------------------------------
+    {
+      const widenedCliTranscript = makeAssistantTranscript([
+        { atMs: Date.now() - 4 * 60_000, text: 'GREEN confirmed, 336/336, exit 0.' },
+        { atMs: Date.now() - 5_000, text: 'All GREEN.' },
+      ]);
+      const rWidened = runStopCli({
+        stdin: JSON.stringify({ transcript_path: widenedCliTranscript }),
+        rulesDir: join(ROOT, 'scripts', 'hooks', 'stop-rules'),
+      });
+      check('FIX-R2 stop.mjs E2E: bare claim with evidence in an EARLIER turn -> {} (was a BLOCK before round 2)',
+        rWidened.status === 0 && rWidened.stdout.trim() === '{}', `stdout=${rWidened.stdout}`);
+    }
+
+    // ---------------------------------------------------------------------------------------------
+    // COUNTER-RED table (E2E, real rule dir) — the exact cases the brief names by name.
+    // ---------------------------------------------------------------------------------------------
+    const evidenceTranscriptCli = makeAssistantTranscript([
+      { atMs: Date.now() - 5_000, text: 'הכל עובד — הנה הפלט:\n```\n12 passed\n```' },
+    ]);
+    const rEvidence = runStopCli({
+      stdin: JSON.stringify({ transcript_path: evidenceTranscriptCli }),
+      rulesDir: join(ROOT, 'scripts', 'hooks', 'stop-rules'),
+    });
+    check('COUNTER-RED stop.mjs E2E: claim WITH fenced evidence -> {}', rEvidence.status === 0 && rEvidence.stdout.trim() === '{}', `stdout=${rEvidence.stdout}`);
+
+    const questionTranscriptCli = makeAssistantTranscript([{ atMs: Date.now() - 5_000, text: 'האם זה עובד אצלך?' }]);
+    const rQuestion = runStopCli({
+      stdin: JSON.stringify({ transcript_path: questionTranscriptCli }),
+      rulesDir: join(ROOT, 'scripts', 'hooks', 'stop-rules'),
+    });
+    check('COUNTER-RED stop.mjs E2E: a question -> {}', rQuestion.status === 0 && rQuestion.stdout.trim() === '{}', `stdout=${rQuestion.stdout}`);
+
+    const noClaimTranscriptCli = makeAssistantTranscript([{ atMs: Date.now() - 5_000, text: 'let me look at the next file' }]);
+    const rNoClaim = runStopCli({
+      stdin: JSON.stringify({ transcript_path: noClaimTranscriptCli }),
+      rulesDir: join(ROOT, 'scripts', 'hooks', 'stop-rules'),
+    });
+    check('COUNTER-RED stop.mjs E2E: no claim at all -> {}', rNoClaim.status === 0 && rNoClaim.stdout.trim() === '{}', `stdout=${rNoClaim.stdout}`);
+
+    const rUnreadable = runStopCli({
+      stdin: JSON.stringify({ transcript_path: join(s9Work, 'does-not-exist-either.jsonl') }),
+      rulesDir: join(ROOT, 'scripts', 'hooks', 'stop-rules'),
+    });
+    check('COUNTER-RED stop.mjs E2E: unreadable transcript -> {}', rUnreadable.status === 0 && rUnreadable.stdout.trim() === '{}', `stdout=${rUnreadable.stdout}`);
+
+    // Malformed JSON on stdin -> {} (pipeline's own malformed-input path), same as PreToolUse.
+    const rMalformed = runStopCli({ stdin: '{ not json', rulesDir: join(ROOT, 'scripts', 'hooks', 'stop-rules') });
+    check('stop.mjs: malformed stdin -> exit 0, {}', rMalformed.status === 0 && rMalformed.stdout.trim() === '{}', `stdout=${rMalformed.stdout}`);
+
+    // toStopOutput() unit check (imported directly), the translation table from the brief.
+    const STOP_MOD = await import(STOP_MODULE);
+    check('toStopOutput: block -> {decision:"block",reason}', JSON.stringify(STOP_MOD.toStopOutput('block', 'x')) === JSON.stringify({ decision: 'block', reason: 'x' }));
+    check('toStopOutput: warn -> {systemMessage}', JSON.stringify(STOP_MOD.toStopOutput('warn', 'x')) === JSON.stringify({ systemMessage: 'x' }));
+    check('toStopOutput: allow -> {}', JSON.stringify(STOP_MOD.toStopOutput('allow', 'x')) === '{}');
+  }
+}
+
+// =================================================================================================
+// SECTION 10 — scripts/hooks/observers/session-events.mjs + scripts/hooks/stop-rules/
+// ui-playwright-before-done.mjs (task-10-brief.md, §10.2: UI touched -> Playwright ran, before
+// "בוצע" — warn, never block). Every case runs against a TEMP ENFORCEMENT_STATE_PATH and a CLEAN
+// SYNTHETIC transcript — never this session's own real store/transcript, same discipline as
+// Sections 4/8/9.
+// =================================================================================================
+{
+  const s10Work = tempDir('hooks-groupb-uiplaywright-');
+  const SESSION_EVENTS = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'observers', 'session-events.mjs')).href);
+  const EDIT_TRACKER10 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'observers', 'edit-tracker.mjs')).href);
+  const ES10 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+  const RULE10 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'stop-rules', 'ui-playwright-before-done.mjs')).href);
+  const STOP_CLI10 = join(ROOT, 'scripts', 'hooks', 'stop.mjs');
+
+  function makeAssistantTranscript10(entries) {
+    const path = join(s10Work, `transcript-${Math.random().toString(36).slice(2)}.jsonl`);
+    const lines = entries.map((e) => JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date(e.atMs).toISOString(),
+      message: { content: [{ type: 'text', text: e.text }] },
+    }));
+    writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
+    return path;
+  }
+
+  // Same pattern as Section 4's withState()/Section 9's transcript builder: seeds a fresh temp
+  // SQLite store while ENFORCEMENT_STATE_PATH points at it (so the real openState() the module
+  // under test calls with no argument reads THIS store), then evaluates, then restores the env var.
+  function withState10(seedFn, evalFn = () => undefined) {
+    const p = join(s10Work, `state-${Math.random().toString(36).slice(2)}.sqlite`);
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = p;
+    try {
+      const db = ES10.openState(p);
+      seedFn(db, p);
+      db.close();
+      return evalFn(p);
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+  }
+
+  function runStopCli10({ stdin, rulesDir, logPath, env: extraEnv }) {
+    const env = { ...process.env, ...(extraEnv || {}) };
+    if (rulesDir) env.STOP_RULES_DIR = rulesDir;
+    if (logPath) env.PRETOOLUSE_LOG_PATH = logPath;
+    return spawnSync(process.execPath, [STOP_CLI10], {
+      input: stdin, encoding: 'utf8', env, cwd: ROOT, timeout: 15000,
+    });
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Unit level — session-events.mjs's classifySessionEvent(), pure, no I/O.
+  // -----------------------------------------------------------------------------------------------
+  {
+    check('classifySessionEvent: Bash `npx playwright test` -> playwright_run',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'Bash', tool_input: { command: 'npx playwright test' } }) === 'playwright_run');
+    check('classifySessionEvent: Bash `pytest` -> null (not playwright)',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'Bash', tool_input: { command: 'pytest tests/' } }) === null);
+    check('classifySessionEvent: Bash `node scripts/live-smoke.mjs` (no explicit host text) -> live_probe (its own default --url IS the live host)',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'Bash', tool_input: { command: 'node scripts/live-smoke.mjs' } }) === 'live_probe');
+    check('classifySessionEvent: Bash `curl https://matkonetesh.pages.dev/` -> live_probe',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'Bash', tool_input: { command: 'curl -sI https://matkonetesh.pages.dev/' } }) === 'live_probe');
+    check('classifySessionEvent: Bash `curl https://example.com/` (not the live host) -> null',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'Bash', tool_input: { command: 'curl -sI https://example.com/' } }) === null);
+    check('classifySessionEvent: Bash `echo hi` -> null',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'Bash', tool_input: { command: 'echo hi' } }) === null);
+    check('classifySessionEvent: browser_navigate to matkonetesh.pages.dev -> live_probe',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'mcp__plugin_playwright_playwright__browser_navigate', tool_input: { url: 'https://matkonetesh.pages.dev/' } }) === 'live_probe');
+    check('classifySessionEvent: browser_navigate to localhost (not the live host) -> null',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'mcp__plugin_playwright_playwright__browser_navigate', tool_input: { url: 'http://localhost:8123/' } }) === null);
+    check('classifySessionEvent: Edit tool -> null (this observer only watches Bash/browser_navigate)',
+      SESSION_EVENTS.classifySessionEvent({ tool_name: 'Edit', tool_input: { file_path: 'app.js' } }) === null);
+    check('classifySessionEvent: missing/malformed input -> null, never throws',
+      SESSION_EVENTS.classifySessionEvent(undefined) === null && SESSION_EVENTS.classifySessionEvent({}) === null);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Observer level — observe() actually writing to a TEMP store. "Pass or fail, a run is a run":
+  // §10.2 asks whether Playwright RAN, not whether it passed — the pass/fail axis is §6.1's job
+  // (verification-outcomes.mjs), not this observer's.
+  // -----------------------------------------------------------------------------------------------
+  {
+    withState10((db) => {
+      SESSION_EVENTS.observe({
+        session_id: 'sess-obs-fail', tool_name: 'Bash',
+        tool_input: { command: 'npx playwright test tests/probe.spec.ts' },
+        _outcome: { ok: false, exit_code: 1, raw_error: 'Exit code 1' },
+      });
+    }, (p) => {
+      const db = ES10.openState(p);
+      const ev = ES10.lastEvent(db, 'sess-obs-fail', 'playwright_run');
+      db.close();
+      check('observe: a FAILING playwright run still records playwright_run', ev !== null, `ev=${JSON.stringify(ev)}`);
+    });
+
+    withState10((db) => {
+      SESSION_EVENTS.observe({
+        session_id: 'sess-obs-pass', tool_name: 'Bash',
+        tool_input: { command: 'npx playwright test' },
+        _outcome: { ok: true },
+      });
+    }, (p) => {
+      const db = ES10.openState(p);
+      const ev = ES10.lastEvent(db, 'sess-obs-pass', 'playwright_run');
+      db.close();
+      check('observe: a PASSING playwright run also records playwright_run', ev !== null, `ev=${JSON.stringify(ev)}`);
+    });
+
+    withState10((db) => {
+      SESSION_EVENTS.observe({
+        session_id: 'sess-obs-nav', tool_name: 'mcp__plugin_playwright_playwright__browser_navigate',
+        tool_input: { url: 'https://matkonetesh.pages.dev/' },
+      });
+    }, (p) => {
+      const db = ES10.openState(p);
+      const ev = ES10.lastEvent(db, 'sess-obs-nav', 'live_probe');
+      db.close();
+      check('observe: browser_navigate to the live host records live_probe', ev !== null, `ev=${JSON.stringify(ev)}`);
+    });
+
+    withState10((db) => {
+      SESSION_EVENTS.observe({
+        session_id: 'sess-obs-none', tool_name: 'Bash', tool_input: { command: 'echo hi' }, _outcome: { ok: true },
+      });
+    }, (p) => {
+      const db = ES10.openState(p);
+      const pw = ES10.lastEvent(db, 'sess-obs-none', 'playwright_run');
+      const lp = ES10.lastEvent(db, 'sess-obs-none', 'live_probe');
+      db.close();
+      check('COUNTER observe: an unrelated Bash command records nothing', pw === null && lp === null);
+    });
+
+    check('observe: missing session_id -> no throw (fail-open)', (() => {
+      try { SESSION_EVENTS.observe({ tool_name: 'Bash', tool_input: { command: 'npx playwright test' } }); return true; } catch { return false; }
+    })());
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // Rule level (direct import) — ui-playwright-before-done.mjs's evaluate(). The brief's own
+  // RED + COUNTER-RED table, replayed against the REAL edit-tracker.mjs observer for the "non-UI
+  // edit" case rather than poking the event kind directly (Section 8's own precedent for this).
+  // -----------------------------------------------------------------------------------------------
+  {
+    const NOW = Date.now();
+    const claimTranscript = makeAssistantTranscript10([{ atMs: NOW - 5_000, text: 'עדכנתי את המסך, הכל עובד.' }]);
+    const noClaimTranscript = makeAssistantTranscript10([{ atMs: NOW - 5_000, text: 'reading the file now' }]);
+
+    // RED — ui_edit 「now」, NO playwright_run, a claim -> WARN, reason names §10.2 and Playwright.
+    {
+      const out = withState10(
+        (db) => { ES10.recordEvent(db, { sessionId: 'sess-red', kind: 'ui_edit', detail: { filePath: 'app.js' } }); },
+        () => RULE10.evaluate({ session_id: 'sess-red', transcript_path: claimTranscript }),
+      );
+      check('RED ui-playwright-before-done: ui_edit, no playwright_run, claim -> WARN', out.decision === 'warn', `out=${JSON.stringify(out)}`);
+      check('RED ui-playwright-before-done: reason names §10.2', out.reason.includes('10.2'), `reason=${out.reason}`);
+      check('RED ui-playwright-before-done: reason names Playwright', /Playwright/.test(out.reason), `reason=${out.reason}`);
+    }
+
+    // COUNTER-RED 1 — ui_edit, THEN a NEWER playwright_run, then a claim -> ALLOW (the run already
+    // happened; nagging here would be exactly the "block the honest case" mistake).
+    {
+      const out = withState10(
+        (db) => {
+          ES10.recordEvent(db, { sessionId: 'sess-c1', kind: 'ui_edit', detail: {} });
+          ES10.recordEvent(db, { sessionId: 'sess-c1', kind: 'playwright_run', detail: {} });
+        },
+        () => RULE10.evaluate({ session_id: 'sess-c1', transcript_path: claimTranscript }),
+      );
+      check('COUNTER-RED 1: ui_edit then NEWER playwright_run, claim -> ALLOW', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+
+    // COUNTER-RED 2 — a claim, but NO ui_edit this session at all -> ALLOW.
+    {
+      const out = withState10(
+        () => { /* nothing recorded for this session */ },
+        () => RULE10.evaluate({ session_id: 'sess-c2', transcript_path: claimTranscript }),
+      );
+      check('COUNTER-RED 2: claim, no ui_edit at all -> ALLOW', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+
+    // COUNTER-RED 3 — a ui_edit, but the reply makes NO claim -> ALLOW — editing is not asserting,
+    // and §11a forbids running the suite casually, so this must never nag someone mid-edit.
+    {
+      const out = withState10(
+        (db) => { ES10.recordEvent(db, { sessionId: 'sess-c3', kind: 'ui_edit', detail: {} }); },
+        () => RULE10.evaluate({ session_id: 'sess-c3', transcript_path: noClaimTranscript }),
+      );
+      check('COUNTER-RED 3: ui_edit but no claim -> ALLOW (editing is not asserting)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+
+    // COUNTER-RED 4 — an edit to a NON-UI file (scripts/hooks/...) is recorded only as a plain
+    // 'edit' event by edit-tracker.mjs, never 'ui_edit' — driven through the REAL observer.
+    {
+      const out = withState10(
+        (db) => {
+          EDIT_TRACKER10.observe({
+            session_id: 'sess-c4', tool_name: 'Edit',
+            tool_input: { file_path: join(ROOT, 'scripts', 'hooks', 'observers', 'session-events.mjs') },
+            _outcome: { ok: true },
+          });
+        },
+        () => RULE10.evaluate({ session_id: 'sess-c4', transcript_path: claimTranscript }),
+      );
+      check('COUNTER-RED 4: non-UI edit -> no ui_edit event -> ALLOW', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+
+    // Degraded paths — never a throw, never a warn on undeterminable evidence.
+    check('degraded: undefined input -> ALLOW, no throw', RULE10.evaluate(undefined).decision === 'allow');
+    check('degraded: missing session_id -> ALLOW', RULE10.evaluate({ transcript_path: claimTranscript }).decision === 'allow');
+    {
+      const out = RULE10.evaluate({ session_id: 'sess-x', transcript_path: join(s10Work, 'does-not-exist.jsonl') });
+      check('degraded: unreadable transcript -> ALLOW, reason names degradation', out.decision === 'allow' && /degrad/i.test(out.reason), `out=${JSON.stringify(out)}`);
+    }
+    {
+      const garbagePath = join(s10Work, 'garbage.sqlite');
+      writeFileSync(garbagePath, 'not a sqlite file, just garbage bytes', 'utf8');
+      const prev = process.env.ENFORCEMENT_STATE_PATH;
+      process.env.ENFORCEMENT_STATE_PATH = garbagePath;
+      let out;
+      try {
+        out = RULE10.evaluate({ session_id: 'sess-garbage', transcript_path: claimTranscript });
+      } finally {
+        if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+        else process.env.ENFORCEMENT_STATE_PATH = prev;
+      }
+      check('degraded: corrupt state store -> ALLOW, never throws/warns', out && out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // CLI level — scripts/hooks/stop.mjs, through the REAL stop-rules/ directory (both Task 9's and
+  // Task 10's rules present — proves Task 10's rule is actually wired into production, not just
+  // importable in isolation). Every transcript here carries FENCED EVIDENCE alongside the claim so
+  // verify-before-success-claim.mjs (Task 9, same directory) independently resolves to allow —
+  // isolating Task 10's own decision as the pipeline's max-severity one (pipeline.mjs's own
+  // SEVERITY_RANK: warn > allow, block > warn) without needing a second, rule-duplicating temp
+  // directory just to test this file in isolation.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const NOW = Date.now();
+    const evidenceClaim = 'עדכנתי את המסך, הכל עובד — הפלט:\n```\n12 passed\n```';
+    const REAL_STOP_RULES_DIR = join(ROOT, 'scripts', 'hooks', 'stop-rules');
+
+    function seedAndRunCli10(sessionId, seedFn, text) {
+      const p = join(s10Work, `cli-state-${Math.random().toString(36).slice(2)}.sqlite`);
+      const db = ES10.openState(p);
+      seedFn(db);
+      db.close();
+      const transcript = makeAssistantTranscript10([{ atMs: NOW - 5_000, text }]);
+      return runStopCli10({
+        stdin: JSON.stringify({ session_id: sessionId, transcript_path: transcript }),
+        rulesDir: REAL_STOP_RULES_DIR,
+        env: { ENFORCEMENT_STATE_PATH: p },
+      });
+    }
+
+    // RED — evidence-backed claim (keeps Task 9's rule at allow), ui_edit, no playwright_run ->
+    // systemMessage carrying §10.2, and explicitly NO `decision` field (warn must not block).
+    {
+      const r = seedAndRunCli10('sess-cli-red', (db) => {
+        ES10.recordEvent(db, { sessionId: 'sess-cli-red', kind: 'ui_edit', detail: {} });
+      }, evidenceClaim);
+      check('RED stop.mjs CLI (real dir): exit 0', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+      let parsed;
+      try { parsed = JSON.parse(r.stdout); } catch { parsed = null; }
+      check('RED stop.mjs CLI (real dir): stdout parses as JSON', parsed !== null, `stdout=${r.stdout}`);
+      check('RED stop.mjs CLI (real dir): systemMessage present, NO decision field (warn must not block)',
+        parsed && typeof parsed.systemMessage === 'string' && !('decision' in parsed), `stdout=${r.stdout}`);
+      check('RED stop.mjs CLI (real dir): systemMessage names §10.2', parsed && parsed.systemMessage.includes('10.2'), `stdout=${r.stdout}`);
+      check('RED stop.mjs CLI (real dir): systemMessage mentions Playwright', parsed && /Playwright/.test(parsed.systemMessage), `stdout=${r.stdout}`);
+    }
+
+    // COUNTER-RED 1 — evidence-backed claim, ui_edit then a NEWER playwright_run -> {}.
+    {
+      const r = seedAndRunCli10('sess-cli-c1', (db) => {
+        ES10.recordEvent(db, { sessionId: 'sess-cli-c1', kind: 'ui_edit', detail: {} });
+        ES10.recordEvent(db, { sessionId: 'sess-cli-c1', kind: 'playwright_run', detail: {} });
+      }, evidenceClaim);
+      check('COUNTER-RED 1 stop.mjs CLI (real dir): playwright_run after ui_edit -> {}', r.status === 0 && r.stdout.trim() === '{}', `stdout=${r.stdout}`);
+    }
+
+    // COUNTER-RED 2 — evidence-backed claim, no ui_edit at all -> {}.
+    {
+      const r = seedAndRunCli10('sess-cli-c2', () => {}, evidenceClaim);
+      check('COUNTER-RED 2 stop.mjs CLI (real dir): claim, no ui_edit -> {}', r.status === 0 && r.stdout.trim() === '{}', `stdout=${r.stdout}`);
+    }
+
+    // COUNTER-RED 3 — ui_edit, but the reply makes no claim at all -> {}.
+    {
+      const r = seedAndRunCli10('sess-cli-c3', (db) => {
+        ES10.recordEvent(db, { sessionId: 'sess-cli-c3', kind: 'ui_edit', detail: {} });
+      }, 'let me check the layout code');
+      check('COUNTER-RED 3 stop.mjs CLI (real dir): ui_edit, no claim -> {}', r.status === 0 && r.stdout.trim() === '{}', `stdout=${r.stdout}`);
+    }
+  }
+}
+
+// =================================================================================================
+// SECTION 11 — scripts/hooks/stop-rules/live-url-verified.mjs (task-11-brief.md, §10.10: "a push is
+// not a release"). Every case runs against a TEMP ENFORCEMENT_STATE_PATH and a CLEAN SYNTHETIC
+// transcript — never this session's own real store/transcript, same discipline as Sections 4/8/9/10.
+// =================================================================================================
+{
+  const s11Work = tempDir('hooks-groupb-livecheck-');
+  const ES11 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+  const RULE11 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'stop-rules', 'live-url-verified.mjs')).href);
+  const STOP_CLI11 = join(ROOT, 'scripts', 'hooks', 'stop.mjs');
+
+  function makeAssistantTranscript11(entries) {
+    const path = join(s11Work, `transcript-${Math.random().toString(36).slice(2)}.jsonl`);
+    const lines = entries.map((e) => JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date(e.atMs).toISOString(),
+      message: { content: [{ type: 'text', text: e.text }] },
+    }));
+    writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
+    return path;
+  }
+
+  // Same pattern as Section 10's withState10(): seeds a fresh temp SQLite store while
+  // ENFORCEMENT_STATE_PATH points at it, then evaluates, then restores the env var.
+  function withState11(seedFn, evalFn = () => undefined) {
+    const p = join(s11Work, `state-${Math.random().toString(36).slice(2)}.sqlite`);
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = p;
+    try {
+      const db = ES11.openState(p);
+      seedFn(db, p);
+      db.close();
+      return evalFn(p);
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+  }
+
+  function runStopCli11({ stdin, rulesDir, logPath, env: extraEnv }) {
+    const env = { ...process.env, ...(extraEnv || {}) };
+    if (rulesDir) env.STOP_RULES_DIR = rulesDir;
+    if (logPath) env.PRETOOLUSE_LOG_PATH = logPath;
+    return spawnSync(process.execPath, [STOP_CLI11], {
+      input: stdin, encoding: 'utf8', env, cwd: ROOT, timeout: 15000,
+    });
+  }
+
+  // Inserts a live_probe event at an EXPLICIT ts (not "now") so freshness/staleness can be tested
+  // precisely, mirroring Section 4's own direct-SQL seeding for last_failure_ts backdating.
+  function seedProbeAt(db, sessionId, tsMs) {
+    db.prepare('INSERT INTO events (session_id, kind, ts, detail) VALUES (?, ?, ?, ?)')
+      .run(sessionId, 'live_probe', tsMs, JSON.stringify({ source: 'test-seed' }));
+  }
+
+  const NOW = Date.now();
+  const liveClaimText = 'מהדורה 291 חיה';
+  const liveClaimTranscript = makeAssistantTranscript11([{ atMs: NOW - 5_000, text: liveClaimText }]);
+  const localWorksTranscript = makeAssistantTranscript11([{ atMs: NOW - 5_000, text: 'הגרסה המקומית עובדת' }]);
+  const devServerTranscript = makeAssistantTranscript11([{ atMs: NOW - 5_000, text: 'the dev server shows it working now' }]);
+  const pushedOnlyTranscript = makeAssistantTranscript11([{ atMs: NOW - 5_000, text: 'I pushed the commit' }]);
+
+  // -----------------------------------------------------------------------------------------------
+  // Rule level (direct import) — live-url-verified.mjs's evaluate(). The brief's own RED + COUNTER
+  // table (step 1), replayed one case at a time.
+  // -----------------------------------------------------------------------------------------------
+  {
+    // RED — live claim, no live_probe event at all this session -> BLOCK, reason names live-smoke.mjs.
+    {
+      const out = withState11(
+        () => { /* nothing recorded */ },
+        () => RULE11.evaluate({ session_id: 'sess-red', transcript_path: liveClaimTranscript }),
+      );
+      check('RED live-url-verified: live claim, no live_probe -> BLOCK', out.decision === 'block', `out=${JSON.stringify(out)}`);
+      check('RED live-url-verified: reason names live-smoke.mjs', out.reason.includes('live-smoke.mjs'), `reason=${out.reason}`);
+      check('RED live-url-verified: reason names §10.10', out.reason.includes('10.10'), `reason=${out.reason}`);
+    }
+
+    // COUNTER-RED — same claim, live_probe recorded 2 minutes ago (fresh) -> ALLOW ({}).
+    {
+      const out = withState11(
+        (db) => { seedProbeAt(db, 'sess-fresh', NOW - 2 * 60 * 1000); },
+        () => RULE11.evaluate({ session_id: 'sess-fresh', transcript_path: liveClaimTranscript }),
+      );
+      check('COUNTER-RED live-url-verified: fresh live_probe (2 min ago) -> ALLOW', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+
+    // COUNTER-RED — "הגרסה המקומית עובדת" (local works) -> no live-claim detected -> ALLOW, even with
+    // NO probe at all — this is the miscount-blocks-a-human case the brief names explicitly.
+    {
+      const out = withState11(
+        () => {},
+        () => RULE11.evaluate({ session_id: 'sess-local', transcript_path: localWorksTranscript }),
+      );
+      check('COUNTER-RED live-url-verified: "local version works" -> ALLOW (no live-claim, local != live)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+
+    // COUNTER-RED — "the dev server shows it" -> no live-claim detected -> ALLOW, no probe needed.
+    {
+      const out = withState11(
+        () => {},
+        () => RULE11.evaluate({ session_id: 'sess-dev', transcript_path: devServerTranscript }),
+      );
+      check('COUNTER-RED live-url-verified: "the dev server shows it" -> ALLOW (no live-claim)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+
+    // COUNTER-RED — "I pushed" (a push, not a claim of live) -> no live-claim detected -> ALLOW.
+    {
+      const out = withState11(
+        () => {},
+        () => RULE11.evaluate({ session_id: 'sess-pushed', transcript_path: pushedOnlyTranscript }),
+      );
+      check('COUNTER-RED live-url-verified: "I pushed" -> ALLOW (a push is not a live claim)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+
+    // RED — live_probe recorded 31+ minutes ago (stale) -> BLOCK (freshness asserted in the stale
+    // direction too — a morning probe does not license an afternoon claim about a new push).
+    {
+      const out = withState11(
+        (db) => { seedProbeAt(db, 'sess-stale', NOW - 31 * 60 * 1000); },
+        () => RULE11.evaluate({ session_id: 'sess-stale', transcript_path: liveClaimTranscript }),
+      );
+      check('RED live-url-verified: live_probe 31 minutes ago (stale) -> BLOCK', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    }
+
+    // Boundary — live_probe exactly at the 30-minute edge (well inside) still allows, and one that is
+    // just past the cutoff still blocks (confirms the comparison direction, not just gross values).
+    {
+      const outInside = withState11(
+        (db) => { seedProbeAt(db, 'sess-boundary-in', NOW - (RULE11.WINDOW_MS - 60_000)); },
+        () => RULE11.evaluate({ session_id: 'sess-boundary-in', transcript_path: liveClaimTranscript }),
+      );
+      check('BOUNDARY live-url-verified: probe 1 min inside the window -> ALLOW', outInside.decision === 'allow', `out=${JSON.stringify(outInside)}`);
+
+      const outOutside = withState11(
+        (db) => { seedProbeAt(db, 'sess-boundary-out', NOW - (RULE11.WINDOW_MS + 60_000)); },
+        () => RULE11.evaluate({ session_id: 'sess-boundary-out', transcript_path: liveClaimTranscript }),
+      );
+      check('BOUNDARY live-url-verified: probe 1 min outside the window -> BLOCK', outOutside.decision === 'block', `out=${JSON.stringify(outOutside)}`);
+    }
+
+    // RED — another session's probe must not license THIS session's claim (falls out of lastEvent()'s
+    // own session_id scoping, per this rule's header comment — proven here, not just asserted).
+    {
+      const out = withState11(
+        (db) => { seedProbeAt(db, 'sess-OTHER', NOW - 60_000); },
+        () => RULE11.evaluate({ session_id: 'sess-mine', transcript_path: liveClaimTranscript }),
+      );
+      check('RED live-url-verified: another session\'s fresh probe -> BLOCK (session-scoped, not shared)', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    }
+
+    // Degraded paths — never a throw, never a block on undeterminable evidence.
+    check('degraded: undefined input -> ALLOW, no throw', RULE11.evaluate(undefined).decision === 'allow');
+    check('degraded: missing session_id -> ALLOW', RULE11.evaluate({ transcript_path: liveClaimTranscript }).decision === 'allow');
+    {
+      const out = RULE11.evaluate({ session_id: 'sess-x', transcript_path: join(s11Work, 'does-not-exist.jsonl') });
+      check('degraded: unreadable transcript -> ALLOW, reason names degradation', out.decision === 'allow' && /degrad/i.test(out.reason), `out=${JSON.stringify(out)}`);
+    }
+    {
+      const garbagePath = join(s11Work, 'garbage.sqlite');
+      writeFileSync(garbagePath, 'not a sqlite file, just garbage bytes', 'utf8');
+      const prev = process.env.ENFORCEMENT_STATE_PATH;
+      process.env.ENFORCEMENT_STATE_PATH = garbagePath;
+      let out;
+      try {
+        out = RULE11.evaluate({ session_id: 'sess-garbage', transcript_path: liveClaimTranscript });
+      } finally {
+        if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+        else process.env.ENFORCEMENT_STATE_PATH = prev;
+      }
+      check('degraded: corrupt state store -> ALLOW, never throws/blocks', out && out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    }
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // CLI level — scripts/hooks/stop.mjs, through the REAL stop-rules/ directory (Task 9's, Task 10's,
+  // and this rule all present — proves it is actually wired into production).
+  // -----------------------------------------------------------------------------------------------
+  {
+    const REAL_STOP_RULES_DIR11 = join(ROOT, 'scripts', 'hooks', 'stop-rules');
+
+    function seedAndRunCli11(sessionId, seedFn, text) {
+      const p = join(s11Work, `cli-state-${Math.random().toString(36).slice(2)}.sqlite`);
+      const db = ES11.openState(p);
+      seedFn(db);
+      db.close();
+      const transcript = makeAssistantTranscript11([{ atMs: Date.now() - 5_000, text }]);
+      return runStopCli11({
+        stdin: JSON.stringify({ session_id: sessionId, transcript_path: transcript }),
+        rulesDir: REAL_STOP_RULES_DIR11,
+        env: { ENFORCEMENT_STATE_PATH: p },
+      });
+    }
+
+    // RED — live claim, no probe -> decision:"block", stdout carries the exact deny text.
+    {
+      const r = seedAndRunCli11('sess-cli-red', () => {}, liveClaimText);
+      check('RED stop.mjs CLI (real dir): exit 0', r.status === 0, `status=${r.status} stderr=${r.stderr}`);
+      let parsed;
+      try { parsed = JSON.parse(r.stdout); } catch { parsed = null; }
+      check('RED stop.mjs CLI (real dir): decision is "block"', parsed && parsed.decision === 'block', `stdout=${r.stdout}`);
+      check('RED stop.mjs CLI (real dir): reason names §10.10 and live-smoke.mjs',
+        parsed && parsed.reason.includes('10.10') && parsed.reason.includes('live-smoke.mjs'), `stdout=${r.stdout}`);
+    }
+
+    // GREEN — live claim, FRESH live_probe recorded -> {} (silent, the rule working as intended).
+    {
+      const r = seedAndRunCli11('sess-cli-green', (db) => {
+        db.prepare('INSERT INTO events (session_id, kind, ts, detail) VALUES (?, ?, ?, ?)')
+          .run('sess-cli-green', 'live_probe', Date.now() - 60_000, null);
+      }, liveClaimText);
+      check('GREEN stop.mjs CLI (real dir): fresh live_probe -> {} (silent)', r.status === 0 && r.stdout.trim() === '{}', `stdout=${r.stdout}`);
+    }
+
+    // COUNTER-RED — quoting §10.10 itself in a reply with no live-claim phrasing -> {} .
+    {
+      const r = seedAndRunCli11('sess-cli-quote', () => {}, 'לפי §10.10, push לא זה release.');
+      check('COUNTER-RED stop.mjs CLI (real dir): quoting §10.10, no live-claim wording -> {}', r.status === 0 && r.stdout.trim() === '{}', `stdout=${r.stdout}`);
+    }
+
+    // COUNTER-RED — "I pushed" only -> {}.
+    {
+      const r = seedAndRunCli11('sess-cli-pushed', () => {}, 'I pushed the fix');
+      check('COUNTER-RED stop.mjs CLI (real dir): "I pushed" only -> {}', r.status === 0 && r.stdout.trim() === '{}', `stdout=${r.stdout}`);
+    }
+  }
+}
+
 console.log(`\n${total - failures}/${total} checks passed.`);
 process.exit(failures ? 1 : 0);

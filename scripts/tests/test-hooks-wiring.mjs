@@ -93,6 +93,15 @@ check(
     && ['Bash', 'Edit', 'Write', 'browser_navigate'].every((t) => postFailureEntry.matcher.includes(t)),
 );
 
+// Task 9: Stop -> stop.mjs (§6.4 trigger 3 — verification before a success claim).
+const stop = settings?.hooks?.Stop;
+check('hooks.Stop is a non-empty array', Array.isArray(stop) && stop.length > 0);
+const stopCommandsWiring = Array.isArray(stop) ? (stop[0]?.hooks?.map((h) => h.command) ?? []) : [];
+check(
+  'Stop runs scripts/hooks/stop.mjs',
+  stopCommandsWiring.some((c) => typeof c === 'string' && c.includes('scripts/hooks/stop.mjs')),
+);
+
 // The pre-existing SessionStart block must survive the merge untouched.
 const sessionStart = settings?.hooks?.SessionStart;
 check('hooks.SessionStart still present (not clobbered)', Array.isArray(sessionStart) && sessionStart.length > 0);
