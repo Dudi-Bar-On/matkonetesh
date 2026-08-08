@@ -12,6 +12,30 @@
         ]
       }
     ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash|Edit|Write|browser_navigate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/posttooluse.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUseFailure": [
+      {
+        "matcher": "Bash|Edit|Write|browser_navigate",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node scripts/hooks/posttooluse.mjs",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
     "SubagentStop": [
       {
         "hooks": [

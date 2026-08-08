@@ -5,9 +5,9 @@
 // process (progress.md's own stated risk: "settings.json may already contain other configuration.
 // Do not clobber it — read it first, merge, and keep every existing key.").
 //
-// Deliberately does NOT assert a PostToolUse entry: task-8-report.md records the decision not to
-// wire one, because no PostToolUse rule exists yet (nothing to run there would be pure per-call
-// tax with zero benefit — the same reasoning Task 2 already established for an unfocused matcher).
+// Phase 4, Group B, Task 1 now wires PostToolUse -> posttooluse.mjs (the observer runner §6.1/§6.4
+// stand behind). task-8-report.md's earlier decision not to wire one is superseded by that task,
+// not silently reversed — see task-1-report.md.
 import { readFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -60,10 +60,36 @@ check(
   stopCommands.some((c) => typeof c === 'string' && c.includes('scripts/hooks/subagentstop.mjs')),
 );
 
-// PostToolUse is deliberately NOT wired (see file header) — this is a positive assertion of that
-// decision, not an oversight: if a future task adds a PostToolUse rule and wires it, this line
-// should be replaced with a real assertion at the same time, not silently left stale.
-check('hooks.PostToolUse is absent (no rule exists for it yet — see file header)', settings?.hooks?.PostToolUse === undefined);
+const postToolUse = settings?.hooks?.PostToolUse;
+check('hooks.PostToolUse is a non-empty array', Array.isArray(postToolUse) && postToolUse.length > 0);
+const postEntry = Array.isArray(postToolUse) ? postToolUse[0] : undefined;
+const postCommands = postEntry?.hooks?.map((h) => h.command) ?? [];
+check(
+  'PostToolUse runs scripts/hooks/posttooluse.mjs',
+  postCommands.some((c) => typeof c === 'string' && c.includes('scripts/hooks/posttooluse.mjs')),
+);
+check(
+  'PostToolUse matcher covers Bash, Edit, Write and browser_navigate',
+  typeof postEntry?.matcher === 'string'
+    && ['Bash', 'Edit', 'Write', 'browser_navigate'].every((t) => postEntry.matcher.includes(t)),
+);
+
+// Fix Round 1 (coordinator ruling): PostToolUseFailure wired to the SAME script/matcher — a
+// failing Bash command produces NO PostToolUse event at all (measured, see posttooluse.mjs header),
+// so §6.1/§6.4's fix-cycle counter and failure-then-edit trigger structurally need this too.
+const postToolUseFailure = settings?.hooks?.PostToolUseFailure;
+check('hooks.PostToolUseFailure is a non-empty array', Array.isArray(postToolUseFailure) && postToolUseFailure.length > 0);
+const postFailureEntry = Array.isArray(postToolUseFailure) ? postToolUseFailure[0] : undefined;
+const postFailureCommands = postFailureEntry?.hooks?.map((h) => h.command) ?? [];
+check(
+  'PostToolUseFailure runs scripts/hooks/posttooluse.mjs (same script as PostToolUse)',
+  postFailureCommands.some((c) => typeof c === 'string' && c.includes('scripts/hooks/posttooluse.mjs')),
+);
+check(
+  'PostToolUseFailure matcher covers Bash, Edit, Write and browser_navigate',
+  typeof postFailureEntry?.matcher === 'string'
+    && ['Bash', 'Edit', 'Write', 'browser_navigate'].every((t) => postFailureEntry.matcher.includes(t)),
+);
 
 // The pre-existing SessionStart block must survive the merge untouched.
 const sessionStart = settings?.hooks?.SessionStart;
