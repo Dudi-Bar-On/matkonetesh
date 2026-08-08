@@ -165,13 +165,24 @@ def sync_rule(
         # doesn't carry it) one level up. If the incoming record carries no rule_group, inherit
         # the PREVIOUS current revision's value (if any); an explicit rule_group on the record
         # (e.g. a future classifier) always wins.
+        #
+        # `mechanism`/`mechanism_target` (0006 migration, Task 3 of the 2026-08-08 rule-coverage
+        # arc) are inherited the same way and for the same reason: they too are HUMAN
+        # classifications the extractor never derives, so a re-sync triggered only by the
+        # document's TEXT changing must not silently null them out — this is measured defect #1 of
+        # that arc: a discipline-doc rewording, the most ordinary edit in this repository, would
+        # otherwise wipe every classification the arc creates, and Task 2's mirror digest — which
+        # would then agree on both sides — would never notice.
         cur.execute(
-            "SELECT rule_group FROM rule_revisions WHERE rule_id = %s AND is_current",
+            "SELECT rule_group, mechanism, mechanism_target FROM rule_revisions "
+            "WHERE rule_id = %s AND is_current",
             (record.rule_id,),
         )
         prev_row = cur.fetchone()
         inherited_rule_group = prev_row[0] if prev_row else None
         rule_group = getattr(record, "rule_group", None) or inherited_rule_group
+        mechanism = getattr(record, "mechanism", None) or (prev_row[1] if prev_row else None)
+        mechanism_target = getattr(record, "mechanism_target", None) or (prev_row[2] if prev_row else None)
 
         # Step 1 — Postgres, is_current=false. source_path is the CALLER's real value (Fix round
         # 1) — never a hardcoded literal, and now (Fix round 2) never a silently-defaulted one
@@ -182,33 +193,36 @@ def sync_rule(
         # for all three on every current row regardless of what the record carried — invisible
         # until Task 13's mirror-checksum digest started covering `bucket` and a self-heal
         # (rebuild_mirror_from_postgres) silently overwrote a mirror that legitimately held
-        # 'process' with the NULL read back from Postgres. Written here from the SAME record
-        # fields the mirror write below already uses (`getattr(record, "bucket", None)`, and
-        # `severity`/`mechanism` as None — nothing in the extractor computes those two yet, same
-        # as the mirror write never claimed to either), so Postgres and the mirror can never again
-        # silently disagree about which of these three fields is present.
+        # 'process' with the NULL read back from Postgres. `severity` stays a literal None here —
+        # NULL on all 140 rows in both stores today, nothing to inherit, no behavioural test could
+        # witness a loss (Task 3 brief, noted as a decision not an oversight). `mechanism` and
+        # `mechanism_target` are now the INHERITED values computed above, written here from the
+        # SAME variables the mirror write below already uses — one computation, not two that could
+        # disagree.
         cur.execute(
             """
             INSERT INTO rule_revisions
                 (rule_id, section, title_he, statement, bucket, rule_group, severity, mechanism,
-                 source_path, source_heading, source_hash, revision_status, is_current)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'current', false)
+                 mechanism_target, source_path, source_heading, source_hash, revision_status,
+                 is_current)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, 'current', false)
             RETURNING revision_id
             """,
             (record.rule_id, record.section, record.title_he, record.statement,
-             getattr(record, "bucket", None), rule_group, None, None,
+             getattr(record, "bucket", None), rule_group, None, mechanism, mechanism_target,
              source_path, record.source_heading, record.content_hash),
         )
         revision_id = cur.fetchone()[0]
     pg_conn.commit()
 
-    # Step 2 — the mirror. rule_group is the SAME value just written to Postgres above (including
-    # the inheritance), never re-derived here — one computation, not two that could disagree.
+    # Step 2 — the mirror. rule_group/mechanism/mechanism_target are the SAME values just written
+    # to Postgres above (including the inheritance), never re-derived here — one computation, not
+    # two that could disagree.
     mirror_mod.write_revision(mirror_conn, {
         "rule_id": record.rule_id, "section": record.section, "title_he": record.title_he,
         "statement": record.statement, "bucket": getattr(record, "bucket", None),
         "rule_group": rule_group, "severity": None,
-        "mechanism": None, "source_path": source_path,
+        "mechanism": mechanism, "mechanism_target": mechanism_target, "source_path": source_path,
         "source_heading": record.source_heading, "source_hash": record.content_hash,
         "revision_status": "current",
     })
@@ -354,7 +368,7 @@ def rebuild_mirror_from_postgres(pg_conn, mirror_conn) -> int:
     with pg_conn.cursor() as cur:
         cur.execute(
             "SELECT rule_id, section, title_he, statement, bucket, rule_group, severity, mechanism, "
-            "source_path, source_heading, source_hash, revision_status "
+            "mechanism_target, source_path, source_heading, source_hash, revision_status "
             "FROM rule_revisions WHERE is_current"
         )
         rows = cur.fetchall()

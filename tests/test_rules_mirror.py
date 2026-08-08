@@ -126,6 +126,19 @@ def test_checksum_changes_when_rule_group_changes_but_source_hash_does_not():
             conn.close()
 
 
+def test_checksum_covers_mechanism_and_target(tmp_path):
+    """A mechanism/mechanism_target edit MUST change the digest — otherwise a classified rule can
+    silently lose its classification in the mirror (the R-103 shape, third occurrence)."""
+    m = mirror.open_mirror(tmp_path / "m.sqlite")
+    base = {"rule_id": "T1", "statement": "s", "source_path": "p", "source_hash": "h",
+            "revision_status": "current", "mechanism": "pretooluse:Bash",
+            "mechanism_target": "git commit"}
+    mirror.write_revision(m, base)
+    before = mirror.checksum(m)
+    mirror.write_revision(m, {**base, "mechanism": "none", "mechanism_target": None})
+    assert mirror.checksum(m) != before, "mechanism drift is invisible to the digest"
+
+
 def test_checksum_of_rows_is_the_single_shared_formula():
     """The digest formula lives in ONE function so the SQLite side (checksum(), via conn) and the
     Postgres side (check-rules-mirror.mjs's inline query, via a plain list of tuples) cannot desync
@@ -134,8 +147,8 @@ def test_checksum_of_rows_is_the_single_shared_formula():
     with tempfile.TemporaryDirectory() as d:
         conn = mirror.open_mirror(Path(d) / "rules.sqlite")
         try:
-            mirror.write_revision(conn, _sample(rule_id="A", source_hash="h1", statement="s1", severity="warn", bucket="A", rule_group="A"))
-            mirror.write_revision(conn, _sample(rule_id="B", source_hash="h2", statement="s2", severity=None, bucket=None, rule_group=None))
+            mirror.write_revision(conn, _sample(rule_id="A", source_hash="h1", statement="s1", severity="warn", bucket="A", rule_group="A", mechanism="pretooluse:Bash", mechanism_target="git commit"))
+            mirror.write_revision(conn, _sample(rule_id="B", source_hash="h2", statement="s2", severity=None, bucket=None, rule_group=None, mechanism=None, mechanism_target=None))
             from_conn = mirror.checksum(conn)
         finally:
             conn.close()
@@ -143,8 +156,8 @@ def test_checksum_of_rows_is_the_single_shared_formula():
         # The exact same tuples, fed straight to the shared formula — as a Postgres cursor's
         # fetchall() would hand them, no sqlite3.Row involved.
         rows = [
-            ("A", "h1", "s1", "warn", "A", "A"),
-            ("B", "h2", "s2", None, None, None),
+            ("A", "h1", "s1", "warn", "A", "A", "pretooluse:Bash", "git commit"),
+            ("B", "h2", "s2", None, None, None, None, None),
         ]
         from_rows = mirror.checksum_of_rows(rows)
         assert from_conn == from_rows, "checksum() must delegate to checksum_of_rows(), not re-implement it"

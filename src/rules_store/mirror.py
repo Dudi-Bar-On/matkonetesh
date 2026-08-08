@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS rule_revisions (
   rule_group       TEXT,
   severity         TEXT,
   mechanism        TEXT,
+  mechanism_target TEXT,
   source_path      TEXT NOT NULL,
   source_heading   TEXT,
   source_hash      TEXT NOT NULL,
@@ -43,7 +44,8 @@ CREATE TABLE IF NOT EXISTS rule_revisions (
 """
 
 _COLUMNS = ("rule_id", "section", "title_he", "statement", "bucket", "rule_group", "severity",
-            "mechanism", "source_path", "source_heading", "source_hash", "revision_status")
+            "mechanism", "mechanism_target", "source_path", "source_heading", "source_hash",
+            "revision_status")
 
 
 def open_mirror(path: Path) -> sqlite3.Connection:
@@ -107,29 +109,39 @@ def checksum_of_rows(rows) -> str:
     sides' checksums are computed, so a `rule_group` drift is now structurally as visible as a
     `bucket` drift.
 
-    Takes `(rule_id, source_hash, statement, severity, bucket, rule_group)` tuples so both the
-    SQLite side (`checksum()` below) and check-rules-mirror.mjs's inline Postgres query go through
-    this exact same code — a future change to the format string can no longer desync the two
-    computations, because there is only one format string.
+    `mechanism`/`mechanism_target` (0006 migration, Task 2 of the 2026-08-08 rule-coverage arc) are
+    folded in here for the exact reason R-103 names, a third time: a column added and not added to
+    THIS function reproduces the invisible-drift failure on day one. After the classification
+    batches, `mechanism` becomes exactly what the coverage gate and arc-2 hooks read — leaving it
+    out of the digest would recreate R-103 on day one (0005's own comment warns of precisely this).
+
+    Takes `(rule_id, source_hash, statement, severity, bucket, rule_group, mechanism,
+    mechanism_target)` tuples so both the SQLite side (`checksum()` below) and
+    check-rules-mirror.mjs's inline Postgres query go through this exact same code — a future
+    change to the format string can no longer desync the two computations, because there is only
+    one format string.
     """
     body = "\n".join(
-        f"{rule_id}:{source_hash}:{statement}:{severity or ''}:{bucket or ''}:{rule_group or ''}"
-        for rule_id, source_hash, statement, severity, bucket, rule_group in rows
+        f"{rule_id}:{source_hash}:{statement}:{severity or ''}:{bucket or ''}:{rule_group or ''}:"
+        f"{mechanism or ''}:{mechanism_target or ''}"
+        for rule_id, source_hash, statement, severity, bucket, rule_group, mechanism, mechanism_target
+        in rows
     )
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
 def checksum(conn: sqlite3.Connection) -> str:
     """sha256 over the sorted, concatenated (rule_id, source_hash, statement, severity, bucket,
-    rule_group) tuples — this is what check-rules-mirror.mjs (Task 12/13, extended Task 2026-08-07
-    for rule_group) compares against the equivalent computation over Postgres, to catch silent
-    divergence between the two stores. See checksum_of_rows() for why these six columns and not
-    just the first two."""
+    rule_group, mechanism, mechanism_target) tuples — this is what check-rules-mirror.mjs (Task
+    12/13, extended 2026-08-07 for rule_group and 2026-08-08 for mechanism/mechanism_target)
+    compares against the equivalent computation over Postgres, to catch silent divergence between
+    the two stores. See checksum_of_rows() for why these eight columns and not just the first two."""
     rows = conn.execute(
-        "SELECT rule_id, source_hash, statement, severity, bucket, rule_group "
-        "FROM rule_revisions ORDER BY rule_id"
+        "SELECT rule_id, source_hash, statement, severity, bucket, rule_group, mechanism, "
+        "mechanism_target FROM rule_revisions ORDER BY rule_id"
     ).fetchall()
     return checksum_of_rows(
-        (r["rule_id"], r["source_hash"], r["statement"], r["severity"], r["bucket"], r["rule_group"])
+        (r["rule_id"], r["source_hash"], r["statement"], r["severity"], r["bucket"],
+         r["rule_group"], r["mechanism"], r["mechanism_target"])
         for r in rows
     )

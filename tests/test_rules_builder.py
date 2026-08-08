@@ -683,3 +683,30 @@ def test_builder_reads_the_working_tree_not_head():
         m.close()
         _clean(pg, "10.96")
         pg.close()
+
+
+def test_resync_preserves_mechanism_classification(tmp_path):
+    """Classify TEST-KEEP (mechanism + target, the way scripts/classify_rules.py will), then
+    re-sync the SAME rule_id with CHANGED text. The fresh revision must inherit the
+    classification — in Postgres AND the mirror — exactly as rule_group already does."""
+    pg = _writer_conn(); pg.autocommit = False
+    _clean(pg, "TEST-KEEP")
+    m = mirror.open_mirror(tmp_path / "keep.sqlite")
+    rec1 = extractor.RuleRecord(rule_id="TEST-KEEP", section="TEST", title_he="t",
+                                statement="old text", source_heading="h", content_hash="hash1")
+    builder.sync_rule(pg, m, rec1, source_path="test://keep")
+    with pg.cursor() as cur:  # the classification write, as classify.apply_batch will do it
+        cur.execute("UPDATE rule_revisions SET rule_group='A', mechanism='pretooluse:Bash', "
+                    "mechanism_target='git commit' WHERE rule_id='TEST-KEEP' AND is_current")
+    pg.commit()
+    rec2 = extractor.RuleRecord(rule_id="TEST-KEEP", section="TEST", title_he="t",
+                                statement="new text", source_heading="h", content_hash="hash2")
+    builder.sync_rule(pg, m, rec2, source_path="test://keep")
+    with pg.cursor() as cur:
+        cur.execute("SELECT mechanism, mechanism_target FROM rule_revisions "
+                    "WHERE rule_id='TEST-KEEP' AND is_current")
+        assert cur.fetchone() == ("pretooluse:Bash", "git commit"), "PG lost the classification"
+    row = [r for r in mirror.read_current(m) if r["rule_id"] == "TEST-KEEP"][0]
+    assert (row["mechanism"], row["mechanism_target"]) == ("pretooluse:Bash", "git commit"), \
+        "the mirror lost the classification"
+    _clean(pg, "TEST-KEEP"); pg.close()
