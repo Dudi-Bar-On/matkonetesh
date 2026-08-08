@@ -31,7 +31,60 @@
 // transcript — missing path, missing file, unreadable, no parseable lines in the window — resolves
 // to determined:false. Only a positively-read transcript with no matching invocation inside the
 // window resolves to determined:true, invoked:false. A caller must never block on determined:false.
+//
+// SUBAGENT FIX ROUND (2026-08-08, coordinator ruling on Task 8 review, section 10.24: a block
+// whose escape cannot be reached is not enforcement, it is stopping work): a DISPATCHED SUBAGENT
+// own turns, including its own Skill tool_use calls, are written by Claude Code to a SEPARATE
+// sidechain transcript file, never merged into the top-level session own transcript_path. This
+// was found live: a dispatched subagent invoked superpowers:systematic-debugging to clear
+// debugging-before-fix-edit.mjs own block on itself, and the block did not clear, because
+// skillInvokedSince() was reading the WRONG file, since the invocation was real and present on
+// disk, just not in the file this function was told to look at.
+//
+// MEASURED, NOT INFERRED (this task own instrumented capture of a real PreToolUse payload, fired
+// from inside a real dispatched subagent): the hook payload carries agent_id (and agent_type) as
+// top-level fields alongside transcript_path, for example:
+//   transcript_path: .../projects/PROJ/SESSIONID.jsonl        (the TOP-LEVEL session file)
+//   agent_id:        a2bf7adaa2ed4c7a1
+// and the subagent own turns were confirmed, by direct file inspection, to live at
+//   .../projects/PROJ/SESSIONID/subagents/agent-AGENTID.jsonl
+// that is a SIBLING directory named after the session id, containing one file per dispatched
+// agent, its filename fully determined by transcript_path plus agent_id alone. Both fields the
+// payload already hands every rule. This is case 2 of the ruling (if discoverable, read the
+// actor own transcript), not case 3 (undetectable escape) - the path is 100 percent predictable
+// from data the hook already provides, no guessing, no scan of a directory of candidates.
+//
+// resolveActorTranscriptPath() below is a PURE path computation, no I/O: it returns the sidechain
+// path when agentId is a non-empty string, and returns transcriptPath unchanged otherwise (no
+// agentId at all - the ordinary top-level-session case, where transcript_path already IS the
+// actor own transcript, per the original module header above). Whether that computed path
+// actually exists on disk is left ENTIRELY to skillInvokedSince own pre-existing existsSync()
+// check below - deliberately: if the predicted sidechain file happens not to exist (a race at
+// the very first tool call, a future Claude Code layout change), that already resolves to
+// determined:false exactly like any other missing transcript, and every caller of this module
+// already treats determined:false as cannot prove either way, degrade to allow, name the
+// degradation - which is precisely the fail-open behaviour the ruling case 3 asks for, achieved
+// here for free by NOT special-casing it, rather than by adding a second failure path that could
+// drift out of sync with the first. There is deliberately no fallback from the sidechain path
+// back to the top-level transcript on a miss: a fallback would silently read a DIFFERENT actor
+// (the orchestrator, or an unrelated subagent) skill invocations as if they were this actor own,
+// exactly the wrong-evidence failure mode the ruling phrase the actor OWN transcript exists to
+// rule out, worse than simply degrading to allow.
 import { readFileSync, statSync, existsSync } from 'node:fs';
+import { dirname, basename, join } from 'node:path';
+
+// Computes the transcript path a skill-invocation check should actually read for THIS actor. See
+// header comment above for the measured basis. agentId absent/null/undefined/empty-string means
+// transcriptPath returned unchanged (the top-level-session case - no redirect needed, nothing to
+// compute). A non-string/empty transcriptPath is returned as-is too; the caller own existsSync()
+// guard is what turns that into determined:false, not this function.
+export function resolveActorTranscriptPath(transcriptPath, agentId) {
+  if (typeof transcriptPath !== 'string' || transcriptPath === '') return transcriptPath;
+  if (typeof agentId !== 'string' || agentId === '') return transcriptPath;
+  const dir = dirname(transcriptPath);
+  const base = basename(transcriptPath).replace(/\.jsonl$/i, '');
+  return join(dir, base, 'subagents', `agent-${agentId}.jsonl`);
+}
 
 // Same generous default as geniza-consult.mjs and the same reasoning: a brainstorming/writing-plans
 // invocation that happened a few tool calls ago (not just the immediately preceding call) should
@@ -57,8 +110,9 @@ function readTail(path, maxBytes) {
 //                        `skillNameRe` was found inside the [nowMs - sinceMs, nowMs] window.
 //   determined=true, invoked=false -> the transcript WAS readable and no such invocation was found
 //                        inside the window.
-export function skillInvokedSince(transcriptPath, skillNameRe, sinceMs, nowMs = Date.now()) {
-  if (typeof transcriptPath !== 'string' || transcriptPath === '' || !existsSync(transcriptPath)) {
+export function skillInvokedSince(transcriptPath, skillNameRe, sinceMs, nowMs = Date.now(), agentId = null) {
+  const effectivePath = resolveActorTranscriptPath(transcriptPath, agentId);
+  if (typeof effectivePath !== 'string' || effectivePath === '' || !existsSync(effectivePath)) {
     return { determined: false, invoked: false };
   }
   if (!(skillNameRe instanceof RegExp)) {
@@ -66,7 +120,7 @@ export function skillInvokedSince(transcriptPath, skillNameRe, sinceMs, nowMs = 
   }
   let text;
   try {
-    text = readTail(transcriptPath, MAX_TAIL_BYTES);
+    text = readTail(effectivePath, MAX_TAIL_BYTES);
   } catch {
     return { determined: false, invoked: false };
   }

@@ -1923,29 +1923,41 @@ export function observe(input) {
 // not on this session's real transcript (which contains a real writing-plans invocation and would
 // hide the bug the same way the coordinator's first probe did).
 // =================================================================================================
-{
-  const s7Work = tempDir('hooks-groupb-brainstorm-');
+const s7Work = tempDir('hooks-groupb-brainstorm-');
 
-  // scripts/session-state.mjs's SDD_DIR *and* SPECS_DIR are MODULE-LOAD-TIME constants
-  // (`process.env.X || <real path>`), read ONCE when the module is first imported — unlike
-  // roadmapPath() in brainstorm-before-creative.mjs, which is deliberately a function re-reading
-  // process.env.ROADMAP on every call. Setting either env var AFTER import has no effect (this was
-  // discovered the hard way in fix round 0 of this same task: a "no active ledger" case first came
-  // back `allow` because the real repo's OWN active ledger — this very task's — was still what
-  // findLedgers() saw). The fix, reused here for SPECS_DIR too: point BOTH at fixed fixture
-  // directories BEFORE the very first import of the rule (which transitively imports
-  // session-state.mjs), then vary each fixed directory's ON-DISK CONTENTS per case at runtime —
-  // findLedgers()/governingSpecFile() both DO re-read their directory listing on every call.
-  const FIXED_SDD_DIR = join(s7Work, 'fixed-sdd');
-  const FIXED_SPECS_DIR = join(s7Work, 'fixed-specs');
-  mkdirSync(FIXED_SDD_DIR, { recursive: true });
-  mkdirSync(FIXED_SPECS_DIR, { recursive: true });
+// scripts/session-state.mjs's SDD_DIR *and* SPECS_DIR are MODULE-LOAD-TIME constants
+// (`process.env.X || <real path>`), read ONCE when the module is first imported — unlike
+// roadmapPath() in brainstorm-before-creative.mjs, which is deliberately a function re-reading
+// process.env.ROADMAP on every call. Setting either env var AFTER import has no effect (this was
+// discovered the hard way in fix round 0 of this same task: a "no active ledger" case first came
+// back `allow` because the real repo's OWN active ledger — this very task's — was still what
+// findLedgers() saw). The fix, reused here for SPECS_DIR too: point BOTH at fixed fixture
+// directories BEFORE the very first import of the rule (which transitively imports
+// session-state.mjs), then vary each fixed directory's ON-DISK CONTENTS per case at runtime —
+// findLedgers()/governingSpecFile() both DO re-read their directory listing on every call.
+//
+// Hoisted to file scope (not just this section's own block) because ESM caches a module by its
+// resolved URL: Section 9's later `await import(...)` of this SAME rule file returns the SAME
+// cached instance, whose session-state.mjs import already locked in THESE directories as SDD_DIR/
+// SPECS_DIR — re-setting the env vars at that point would have no effect (same trap the paragraph
+// above already names). Section 9 reuses these two constants directly instead of trying to
+// redirect them again.
+const FIXED_SDD_DIR = join(s7Work, 'fixed-sdd');
+const FIXED_SPECS_DIR = join(s7Work, 'fixed-specs');
+mkdirSync(FIXED_SDD_DIR, { recursive: true });
+mkdirSync(FIXED_SPECS_DIR, { recursive: true });
+
+// Also hoisted (same caching reason as FIXED_SDD_DIR/FIXED_SPECS_DIR above): Section 9 reuses this
+// SAME RULE7 instance rather than importing brainstorm-before-creative.mjs a second time, since a
+// second import of the identical resolved path would return the identical cached module anyway.
+let RULE7;
+{
   const prevSddDirAtImport = process.env.SDD_DIR;
   const prevSpecsDirAtImport = process.env.SPECS_DIR;
   process.env.SDD_DIR = FIXED_SDD_DIR;
   process.env.SPECS_DIR = FIXED_SPECS_DIR;
   const SKILLINV = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'skill-invoked.mjs')).href);
-  const RULE7 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'brainstorm-before-creative.mjs')).href);
+  RULE7 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'brainstorm-before-creative.mjs')).href);
   if (prevSddDirAtImport === undefined) delete process.env.SDD_DIR; else process.env.SDD_DIR = prevSddDirAtImport;
   if (prevSpecsDirAtImport === undefined) delete process.env.SPECS_DIR; else process.env.SPECS_DIR = prevSpecsDirAtImport;
 
@@ -2379,6 +2391,486 @@ export function observe(input) {
       () => RULE7.evaluate({ tool_name: 'Write', session_id: 'S', transcript_path: t2, tool_input: { file_path: specPath, content: '# spec' } }),
     );
     check('writing-plans invoked: does NOT pass for a specs/ write (brainstorming only there)', outSpecs.decision === 'block', `out=${JSON.stringify(outSpecs)}`);
+  }
+}
+
+// =================================================================================================
+// SECTION 8 — scripts/hooks/rules/debugging-before-fix-edit.mjs (task-8-brief.md, §6.4 trigger 2).
+// "a failure (exit != 0) followed by an edit, with no systematic-debugging invocation in between,
+// blocks." Reuses Task 3's own 'bash_failure' events (which already apply Q2's answer-exit
+// exemption — grep/diff/test/cmp) and Task 7's skillInvokedSince(). Every case here runs against a
+// TEMP ENFORCEMENT_STATE_PATH and a CLEAN SYNTHETIC transcript with NO skill invocations at all —
+// never this session's own real transcript (per the brief: two earlier tasks tonight produced
+// misleading results because the real transcript happened to contain the very skill invocation
+// under test).
+// =================================================================================================
+{
+  const s8Work = tempDir('hooks-groupb-debugfix-');
+  const RULE8 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'debugging-before-fix-edit.mjs')).href);
+  const ES8 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+
+  function withState8(seedFn, evalFn) {
+    const p = join(s8Work, `state-${Math.random().toString(36).slice(2)}.sqlite`);
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = p;
+    try {
+      const db = ES8.openState(p);
+      seedFn(db);
+      db.close();
+      return evalFn();
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+  }
+
+  function insertEvent(db, sessionId, kind, ts) {
+    db.prepare('INSERT INTO events (session_id, kind, ts, detail) VALUES (?, ?, ?, ?)')
+      .run(sessionId, kind, ts, null);
+  }
+
+  // Builds a fixture transcript .jsonl, the real measured shape (skill-invoked.mjs's own header) —
+  // one entry per `entries` item: { atMs, skill } (a Skill tool_use, absolute epoch ms) or
+  // { atMs, text } (a plain text block).
+  function makeTranscript8(entries) {
+    const path = join(s8Work, `transcript-${Math.random().toString(36).slice(2)}.jsonl`);
+    const lines = entries.map((e) => JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date(e.atMs).toISOString(),
+      message: {
+        content: [
+          e.skill !== undefined
+            ? { type: 'tool_use', name: 'Skill', input: { skill: e.skill } }
+            : { type: 'text', text: e.text },
+        ],
+      },
+    }));
+    writeFileSync(path, `${lines.join('\n')}\n`, 'utf8');
+    return path;
+  }
+
+  // A CLEAN transcript — no Skill invocation anywhere. Every RED case below is built on this, not on
+  // this session's own real transcript (see section header).
+  function makeCleanTranscript8() {
+    const now = Date.now();
+    return makeTranscript8([
+      { atMs: now - 50_000, text: 'what does this repo do' },
+      { atMs: now - 40_000, text: 'ok now look at the failing test' },
+      { atMs: now - 30_000, text: 'no, the OTHER file' },
+      { atMs: now - 20_000, text: 'fine, go ahead' },
+      { atMs: now - 10_000, text: 'looks good, continue' },
+    ]);
+  }
+
+  const NONEXISTENT_TRANSCRIPT = join(s8Work, 'this-file-does-not-exist.jsonl');
+  const editInput = (sessionId, transcriptPath, filePath) => ({
+    tool_name: 'Edit',
+    session_id: sessionId,
+    transcript_path: transcriptPath,
+    tool_input: { file_path: filePath },
+  });
+
+  // ---------------------------------------------------------------------------------------------
+  // RED — recent bash_failure (60s old), clean transcript with NO systematic-debugging invocation
+  // -> BLOCK. Reason names systematic-debugging and quotes the alternative.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-8-red';
+    const out = withState8(
+      (db) => insertEvent(db, sid, 'bash_failure', Date.now() - 60_000),
+      () => RULE8.evaluate(editInput(sid, makeCleanTranscript8(), join(ROOT, 'x.js'))),
+    );
+    check('RED debugging-before-fix-edit: recent failure, no skill invocation -> BLOCK', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    check('RED debugging-before-fix-edit: reason names systematic-debugging', /systematic-debugging/.test(out.reason), `reason=${out.reason}`);
+    check('RED debugging-before-fix-edit: reason names the escape (invoke the skill)', /invoke/i.test(out.reason), `reason=${out.reason}`);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // COUNTER-RED 1 — the mid-debugging human, protected: same failure, transcript WITH a
+  // systematic-debugging invocation dated AFTER the failure -> allow.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-8-escaped';
+    const failTs = Date.now() - 60_000;
+    const out = withState8(
+      (db) => insertEvent(db, sid, 'bash_failure', failTs),
+      () => {
+        const t = makeTranscript8([{ atMs: failTs + 10_000, skill: 'superpowers:systematic-debugging' }]);
+        return RULE8.evaluate(editInput(sid, t, join(ROOT, 'x.js')));
+      },
+    );
+    check('COUNTER-RED: systematic-debugging invoked after the failure -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // COUNTER-RED 2 — no bash_failure recorded at all for this session -> allow. The transcript is
+  // pointed at a nonexistent path — if the rule tried to read it anyway it would only ever get
+  // determined:false, never a false ALLOW-by-luck, so this also proves the cheap-state-first
+  // short-circuit really happens.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-8-nofailure';
+    const out = withState8(
+      () => {},
+      () => RULE8.evaluate(editInput(sid, NONEXISTENT_TRANSCRIPT, join(ROOT, 'x.js'))),
+    );
+    check('COUNTER-RED: no bash_failure event at all -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // COUNTER-RED 3 — the failure was recorded by ANOTHER session -> invisible by construction
+  // (lastEvent is scoped by session_id) -> allow.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const otherSid = 'sess-8-owner';
+    const mySid = 'sess-8-bystander';
+    const out = withState8(
+      (db) => insertEvent(db, otherSid, 'bash_failure', Date.now() - 60_000),
+      () => RULE8.evaluate(editInput(mySid, makeCleanTranscript8(), join(ROOT, 'x.js'))),
+    );
+    check('COUNTER-RED: failure recorded by a DIFFERENT session -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // COUNTER-RED 4 — staleness backstop: failure 31+ minutes old -> allow, even with no skill
+  // invocation and no resolving pass. A forgotten morning failure cannot block afternoon work.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-8-stale';
+    const out = withState8(
+      (db) => insertEvent(db, sid, 'bash_failure', Date.now() - (31 * 60 * 1000)),
+      () => RULE8.evaluate(editInput(sid, makeCleanTranscript8(), join(ROOT, 'x.js'))),
+    );
+    check('COUNTER-RED: failure 31+ minutes old -> allow (staleness backstop)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // COUNTER-RED 5 — the failure was already resolved by a passing run: a verification_pass event
+  // recorded AFTER the bash_failure -> allow, even with no skill invocation.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-8-resolved';
+    const out = withState8(
+      (db) => {
+        insertEvent(db, sid, 'bash_failure', Date.now() - 60_000);
+        insertEvent(db, sid, 'verification_pass', Date.now() - 30_000);
+      },
+      () => RULE8.evaluate(editInput(sid, makeCleanTranscript8(), join(ROOT, 'x.js'))),
+    );
+    check('COUNTER-RED: a verification_pass after the failure -> allow (resolved)', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // COUNTER-RED 6 — end-to-end replay of Task 3's own exemption: `grep -q foo file` exit 1 must
+  // record ZERO bash_failure events (Task 3's own COUNTER-RED, replayed here through the real
+  // observer), so the edit that follows is never gated at all.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const { runObservers } = await import(POSTTOOLUSE_MODULE);
+    const sid = 'sess-8-grep';
+    const p = join(s8Work, `state-grep-${Math.random().toString(36).slice(2)}.sqlite`);
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = p;
+    try {
+      await runObservers({
+        session_id: sid, hook_event_name: 'PostToolUseFailure', tool_name: 'Bash',
+        tool_input: { command: 'grep -q nothing somefile.txt' }, error: 'Exit code 1', is_interrupt: false,
+      }, { logPath: join(s8Work, 'log.jsonl') });
+      const out = RULE8.evaluate(editInput(sid, makeCleanTranscript8(), join(ROOT, 'x.js')));
+      check('COUNTER-RED: grep exit 1 (answer-exit exemption) records no bash_failure -> edit allowed', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // RED — a REAL (non-exempt) failure, e.g. npm install, DOES gate the following edit — the
+  // positive end-to-end path, mirroring COUNTER-RED 6 above.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const { runObservers } = await import(POSTTOOLUSE_MODULE);
+    const sid = 'sess-8-npmfail';
+    const p = join(s8Work, `state-npm-${Math.random().toString(36).slice(2)}.sqlite`);
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = p;
+    try {
+      await runObservers({
+        session_id: sid, hook_event_name: 'PostToolUseFailure', tool_name: 'Bash',
+        tool_input: { command: 'npm install' }, error: 'Exit code 1\nnpm ERR! something broke', is_interrupt: false,
+      }, { logPath: join(s8Work, 'log.jsonl') });
+      const out = RULE8.evaluate(editInput(sid, makeCleanTranscript8(), join(ROOT, 'x.js')));
+      check('RED: npm install exit 1 -> the following edit IS blocked', out.decision === 'block', `out=${JSON.stringify(out)}`);
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Editing a DIFFERENT file than the failure concerned is still judged on the failure, not the
+  // path — this rule reads no file_path at all. Same seed, an unrelated file_path, same (blocked)
+  // outcome.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const sid = 'sess-8-diffpath';
+    const t = makeCleanTranscript8();
+    const outA = withState8(
+      (db) => insertEvent(db, sid, 'bash_failure', Date.now() - 60_000),
+      () => RULE8.evaluate(editInput(sid, t, join(ROOT, 'unrelated-file.py'))),
+    );
+    check('editing a DIFFERENT file than the failure -> still judged on the failure -> BLOCK', outA.decision === 'block', `out=${JSON.stringify(outA)}`);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Fail-open: not an Edit/Write -> allow without touching state at all.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const out = RULE8.evaluate({ tool_name: 'Bash', session_id: 'sess-8-notedit', tool_input: { command: 'ls' } });
+    check('not an Edit/Write -> allow', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+  }
+
+  // ---------------------------------------------------------------------------------------------
+  // Fail-open: enforcement state unreadable (parent path is itself a FILE, so mkdirSync(dirname())
+  // throws inside openState()) -> allow, never a throw.
+  // ---------------------------------------------------------------------------------------------
+  {
+    const prev = process.env.ENFORCEMENT_STATE_PATH;
+    const blockerFile = join(s8Work, 'blocker-file');
+    writeFileSync(blockerFile, 'x', 'utf8');
+    process.env.ENFORCEMENT_STATE_PATH = join(blockerFile, 'sub', 'state.sqlite');
+    try {
+      const out = RULE8.evaluate(editInput('sess-8-unreadable', makeCleanTranscript8(), join(ROOT, 'x.js')));
+      check('enforcement state unreadable -> allow, never throws', out.decision === 'allow', `out=${JSON.stringify(out)}`);
+    } finally {
+      if (prev === undefined) delete process.env.ENFORCEMENT_STATE_PATH;
+      else process.env.ENFORCEMENT_STATE_PATH = prev;
+    }
+  }
+}
+
+// =================================================================================================
+// SECTION 9 — scripts/hooks/lib/skill-invoked.mjs's SUBAGENT FIX (coordinator review, fix round 1
+// on Task 8): a dispatched subagent's own Skill tool_use invocations live only in its own sidechain
+// transcript file (…/<sessionDir>/<sessionId>/subagents/agent-<agentId>.jsonl), never merged into
+// the top-level session's own transcript_path. Measured live (this task's own instrumented capture
+// of a real PreToolUse payload fired from inside a real dispatched subagent): the payload carries
+// `agent_id` alongside `transcript_path`, and the sidechain path is fully predictable from those two
+// fields alone. `resolveActorTranscriptPath()`/`skillInvokedSince()`'s new `agentId` parameter are
+// the shared fix — both `brainstorm-before-creative.mjs` (Task 7, already committed and live before
+// this fix) and `debugging-before-fix-edit.mjs` (Task 8) now pass `input.agent_id` through to it.
+// Every case here runs against fixture files built to the REAL measured on-disk shape, never this
+// session's own real transcript/store.
+// =================================================================================================
+{
+  const s9Work = tempDir('hooks-groupb-subagent-transcript-');
+  const SKILLINV9 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'skill-invoked.mjs')).href);
+
+  function makeSkillLine(atMs, skill) {
+    return JSON.stringify({
+      type: 'assistant',
+      timestamp: new Date(atMs).toISOString(),
+      message: { content: [{ type: 'tool_use', name: 'Skill', input: { skill } }] },
+    });
+  }
+  function makeTextLine(atMs, text) {
+    return JSON.stringify({
+      type: 'user',
+      timestamp: new Date(atMs).toISOString(),
+      message: { content: [{ type: 'text', text }] },
+    });
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // resolveActorTranscriptPath() — pure path computation, no I/O, no existsSync gate of its own.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const mainPath = join(s9Work, 'sess-abc.jsonl');
+    const withAgent = SKILLINV9.resolveActorTranscriptPath(mainPath, 'agentXYZ');
+    const expected = join(s9Work, 'sess-abc', 'subagents', 'agent-agentXYZ.jsonl');
+    check('resolveActorTranscriptPath: agentId given -> sidechain path, exact structure',
+      withAgent === expected, `got=${withAgent} expected=${expected}`);
+
+    check('resolveActorTranscriptPath: no agentId (undefined) -> transcriptPath unchanged',
+      SKILLINV9.resolveActorTranscriptPath(mainPath, undefined) === mainPath);
+    check('resolveActorTranscriptPath: agentId null -> transcriptPath unchanged',
+      SKILLINV9.resolveActorTranscriptPath(mainPath, null) === mainPath);
+    check('resolveActorTranscriptPath: agentId empty string -> transcriptPath unchanged',
+      SKILLINV9.resolveActorTranscriptPath(mainPath, '') === mainPath);
+    check('resolveActorTranscriptPath: non-string transcriptPath -> returned as-is, never throws',
+      SKILLINV9.resolveActorTranscriptPath(undefined, 'agentXYZ') === undefined);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // RED (the actual defect this round fixes) — a subagent's own invocation lives ONLY in its
+  // sidechain file; the main transcript has NO invocation at all. Passing agentId now finds it.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const mainPath = join(s9Work, 'sess-sub1.jsonl');
+    writeFileSync(mainPath, [
+      makeTextLine(Date.now() - 60_000, 'ordinary orchestrator turn, no skill here'),
+    ].join('\n') + '\n', 'utf8');
+
+    const sidechainDir = join(s9Work, 'sess-sub1', 'subagents');
+    mkdirSync(sidechainDir, { recursive: true });
+    const sidechainPath = join(sidechainDir, 'agent-sub1.jsonl');
+    writeFileSync(sidechainPath, [
+      makeSkillLine(Date.now() - 30_000, 'superpowers:systematic-debugging'),
+    ].join('\n') + '\n', 'utf8');
+
+    const withoutAgentId = SKILLINV9.skillInvokedSince(mainPath, /systematic-debugging/, 20 * 60 * 1000, Date.now());
+    check('COUNTER (pre-fix behaviour, still correct): reading the main transcript with NO agentId finds nothing',
+      withoutAgentId.determined === true && withoutAgentId.invoked === false, `got=${JSON.stringify(withoutAgentId)}`);
+
+    const withAgentId = SKILLINV9.skillInvokedSince(mainPath, /systematic-debugging/, 20 * 60 * 1000, Date.now(), 'sub1');
+    check('RED (the fix): the SAME call with agentId reads the sidechain file and finds the invocation',
+      withAgentId.determined === true && withAgentId.invoked === true, `got=${JSON.stringify(withAgentId)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // COUNTER-RED — a main-session actor (no agent_id at all — the ordinary top-level interactive
+  // case) whose invocation IS directly in transcript_path still clears, unchanged from before this
+  // fix. Regression guard: the fix must not break the case that already worked.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const mainPath = join(s9Work, 'sess-toplevel.jsonl');
+    writeFileSync(mainPath, [
+      makeSkillLine(Date.now() - 30_000, 'superpowers:systematic-debugging'),
+    ].join('\n') + '\n', 'utf8');
+    const result = SKILLINV9.skillInvokedSince(mainPath, /systematic-debugging/, 20 * 60 * 1000, Date.now(), undefined);
+    check('COUNTER-RED: main-session actor (no agentId), invocation directly in transcript_path -> still clears',
+      result.determined === true && result.invoked === true, `got=${JSON.stringify(result)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // COUNTER-RED — case-3 fail-open, achieved for free: agentId given, but the predicted sidechain
+  // file does NOT exist on disk (e.g. race at the very first tool call). Must resolve to
+  // determined:false — NEVER silently fall back to reading the main transcript (that would read a
+  // DIFFERENT actor's evidence as if it were this actor's own).
+  // -----------------------------------------------------------------------------------------------
+  {
+    const mainPath = join(s9Work, 'sess-nosidechain.jsonl');
+    writeFileSync(mainPath, [
+      makeSkillLine(Date.now() - 30_000, 'superpowers:systematic-debugging'),
+    ].join('\n') + '\n', 'utf8');
+    // Deliberately NOT creating sess-nosidechain/subagents/agent-ghost.jsonl.
+    const result = SKILLINV9.skillInvokedSince(mainPath, /systematic-debugging/, 20 * 60 * 1000, Date.now(), 'ghost');
+    check('COUNTER-RED (fail-open, case 3): agentId given but sidechain file missing -> determined:false, never a silent fallback to the main transcript',
+      result.determined === false, `got=${JSON.stringify(result)}`);
+  }
+
+  // -----------------------------------------------------------------------------------------------
+  // End-to-end through BOTH real rules — the actual defect the coordinator found live, reproduced
+  // deterministically here instead of relying on a real subagent's own transcript.
+  // -----------------------------------------------------------------------------------------------
+  {
+    const RULE8b = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'rules', 'debugging-before-fix-edit.mjs')).href);
+    const ES9 = await import(pathToFileURL(join(ROOT, 'scripts', 'hooks', 'lib', 'enforcement-state.mjs')).href);
+
+    const mainPath = join(s9Work, 'sess-e2e-debug.jsonl');
+    writeFileSync(mainPath, [
+      makeTextLine(Date.now() - 60_000, 'orchestrator turn, no skill invocation here'),
+    ].join('\n') + '\n', 'utf8');
+    const sidechainDir = join(s9Work, 'sess-e2e-debug', 'subagents');
+    mkdirSync(sidechainDir, { recursive: true });
+
+    const sid = 'sess-e2e-debug';
+    const statePath = join(s9Work, 'state-e2e-debug.sqlite');
+    const prevState = process.env.ENFORCEMENT_STATE_PATH;
+    process.env.ENFORCEMENT_STATE_PATH = statePath;
+    try {
+      const db = ES9.openState(statePath);
+      db.prepare('INSERT INTO events (session_id, kind, ts, detail) VALUES (?, ?, ?, ?)')
+        .run(sid, 'bash_failure', Date.now() - 60_000, null);
+      db.close();
+
+      // Without agent_id (as if this were the pre-fix behaviour) — since the failure IS recent and
+      // the main transcript has no invocation at all, this still blocks even with a valid escape
+      // sitting in a sidechain file the rule was never told to look at.
+      const outNoAgent = RULE8b.evaluate({
+        tool_name: 'Edit', session_id: sid, transcript_path: mainPath,
+        tool_input: { file_path: join(ROOT, 'x.js') },
+      });
+      check('E2E pre-fix-shape sanity: no agent_id, escape only in sidechain -> still blocks (proves the fixture is real)',
+        outNoAgent.decision === 'block', `out=${JSON.stringify(outNoAgent)}`);
+
+      // The escape is written to the SIDECHAIN file, dated after the failure — exactly the real
+      // shape a dispatched subagent produces.
+      writeFileSync(join(sidechainDir, 'agent-sub9.jsonl'), [
+        makeSkillLine(Date.now() - 30_000, 'superpowers:systematic-debugging'),
+      ].join('\n') + '\n', 'utf8');
+
+      const outWithAgent = RULE8b.evaluate({
+        tool_name: 'Edit', session_id: sid, transcript_path: mainPath, agent_id: 'sub9',
+        tool_input: { file_path: join(ROOT, 'x.js') },
+      });
+      check('E2E FIX: debugging-before-fix-edit.mjs with agent_id set now finds the escape in the sidechain file -> allow',
+        outWithAgent.decision === 'allow', `out=${JSON.stringify(outWithAgent)}`);
+    } finally {
+      if (prevState === undefined) delete process.env.ENFORCEMENT_STATE_PATH; else process.env.ENFORCEMENT_STATE_PATH = prevState;
+    }
+  }
+
+  // brainstorm-before-creative.mjs — same shared fix, Branch B (new source file). Reuses the
+  // ALREADY-IMPORTED RULE7 and its already-locked-in FIXED_SDD_DIR/FIXED_SPECS_DIR from Section 7 —
+  // NOT a fresh import with a fresh env override, because brainstorm-before-creative.mjs is a
+  // module ESM already caches by resolved URL: a second `import()` of the exact same file returns
+  // the SAME instance, whose session-state.mjs import already locked SDD_DIR/SPECS_DIR to Section
+  // 7's directories the first time it was imported. Re-setting the env vars here would silently do
+  // nothing (the same trap Section 7's own header comment documents) — this was caught live by this
+  // very test failing against a fresh (but ineffective) redirect attempt before this fix.
+  {
+    // An active arc + governing spec + a register with NO matching row is required for Branch B to
+    // actually BLOCK rather than degrade-to-allow on "no active arc" — mirrors Section 7's own
+    // Branch B setup exactly (setLedgerPresent/setGoverningSpec), reusing the SAME fixture
+    // directories Section 7's own import of RULE7 already locked in.
+    const e2eArcDir = join(FIXED_SDD_DIR, '2026-08-08-e2e-fixture-arc');
+    mkdirSync(e2eArcDir, { recursive: true });
+    writeFileSync(join(e2eArcDir, 'progress.md'), 'plan: docs/superpowers/plans/e2e-fixture.md\n', 'utf8');
+    // governingSpecFile() picks the newest-modified .md under FIXED_SPECS_DIR — clear any spec left
+    // behind by a prior Section 7 case before adding this section's own, so the "newest" one really
+    // is this one.
+    for (const f of readdirSync(FIXED_SPECS_DIR)) rmSync(join(FIXED_SPECS_DIR, f), { force: true });
+    writeFileSync(join(FIXED_SPECS_DIR, '2026-08-08-e2e-governing-spec.md'), '# spec\n', 'utf8');
+    const e2eRegisterPath = join(s9Work, 'e2e-roadmap.md');
+    writeFileSync(e2eRegisterPath, [
+      '## מרשם האישורים — מפרטים שאושרו על-ידי הבעלים',
+      '',
+      '| מפרט | סטטוס | הראיה |',
+      '|---|---|---|',
+      '',
+    ].join('\n'), 'utf8'); // deliberately zero rows — the governing spec has no register row at all
+
+    const mainPath = join(s9Work, 'sess-e2e-brainstorm.jsonl');
+    writeFileSync(mainPath, [
+      makeTextLine(Date.now() - 60_000, 'orchestrator turn, no skill invocation here'),
+    ].join('\n') + '\n', 'utf8');
+    const sidechainDir = join(s9Work, 'sess-e2e-brainstorm', 'subagents');
+    mkdirSync(sidechainDir, { recursive: true });
+    writeFileSync(join(sidechainDir, 'agent-sub10.jsonl'), [
+      makeSkillLine(Date.now() - 5_000, 'superpowers:brainstorming'),
+    ].join('\n') + '\n', 'utf8');
+
+    const newSrcPath = join(s9Work, 'src', 'e2e-new-module.mjs');
+    const prevRoadmap = process.env.ROADMAP;
+    process.env.ROADMAP = e2eRegisterPath;
+    try {
+      const outNoAgent = RULE7.evaluate({
+        tool_name: 'Write', session_id: 'S', transcript_path: mainPath,
+        tool_input: { file_path: newSrcPath, content: 'x=1' },
+      });
+      check('E2E pre-fix-shape sanity (brainstorm rule): no agent_id, escape only in sidechain -> still blocks',
+        outNoAgent.decision === 'block', `out=${JSON.stringify(outNoAgent)}`);
+
+      const outWithAgent = RULE7.evaluate({
+        tool_name: 'Write', session_id: 'S', transcript_path: mainPath, agent_id: 'sub10',
+        tool_input: { file_path: newSrcPath, content: 'x=1' },
+      });
+      check('E2E FIX (brainstorm rule): with agent_id set, the sidechain brainstorming invocation now clears it -> allow',
+        outWithAgent.decision === 'allow', `out=${JSON.stringify(outWithAgent)}`);
+    } finally {
+      if (prevRoadmap === undefined) delete process.env.ROADMAP; else process.env.ROADMAP = prevRoadmap;
+    }
   }
 }
 

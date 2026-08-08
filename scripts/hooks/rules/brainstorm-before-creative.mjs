@@ -207,7 +207,7 @@ function degraded(what) {
 
 function evaluateBranchA(input, filePath, isPlans) {
   const skillRe = isPlans ? BRAINSTORM_OR_PLANS_RE : BRAINSTORM_RE;
-  const skill = skillInvokedSince(input.transcript_path, skillRe, DEFAULT_SKILL_WINDOW_MS);
+  const skill = skillInvokedSince(input.transcript_path, skillRe, DEFAULT_SKILL_WINDOW_MS, undefined, input.agent_id);
   if (skill.determined && skill.invoked) {
     return {
       decision: 'allow',
@@ -250,7 +250,7 @@ function evaluateBranchA(input, filePath, isPlans) {
 }
 
 function evaluateBranchB(input, filePath) {
-  const skill = skillInvokedSince(input.transcript_path, BRAINSTORM_RE, DEFAULT_SKILL_WINDOW_MS);
+  const skill = skillInvokedSince(input.transcript_path, BRAINSTORM_RE, DEFAULT_SKILL_WINDOW_MS, undefined, input.agent_id);
   if (skill.determined && skill.invoked) {
     return {
       decision: 'allow',
