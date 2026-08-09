@@ -193,7 +193,7 @@ function levenshtein(a, b) {
 // on every call, never a new table/column on fix_targets itself.
 const CONSUMED_EVENT_KIND = 'owner_decision_reset';
 function consumedKey(target, raw) {
-  return `${target} ${raw}`;
+  return `${target}\x00${raw}`;
 }
 function consumedRecordKeys(db, sessionId, actorId) {
   const out = new Set();

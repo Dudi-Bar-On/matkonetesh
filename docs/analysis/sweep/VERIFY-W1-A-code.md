@@ -166,7 +166,7 @@ Runtime, both languages:
 *Minor overstatement:* "**All** outbound network traffic funnels through exactly one `fetch()`" is not literally true — Google Fonts loads via `<link>` at `build.py:144-146`. All *API* traffic does.
 
 ### C16 — §5: `aiJSON`'s repair chain cannot crash on a malformed model response
-`app.js:4372-4373`: `JSON.parse(aiStripFences(raw))` → strip control chars `[ -]` → `aiRepairJson(...)` → throws a clean error. Plus a whole-call retry at `4370-4371` on `api-4xx`/`empty-*`. Three stages, as claimed.
+`app.js:4372-4373`: `JSON.parse(aiStripFences(raw))` → strip control chars `[\x00-\x1f]` → `aiRepairJson(...)` → throws a clean error. Plus a whole-call retry at `4370-4371` on `api-4xx`/`empty-*`. Three stages, as claimed.
 
 ### C17 — §5: all 7 AI features fail loudly with a local fallback
 Checked all seven cited ranges, not a sample: `8227-8234` (toast + local result), `8283-8287` (toast + local schedule), `8364-8366` (error panel + retry button), `8444-8453` (toast pointing at the manual picker), `8507-8509` (toast + fallback mode), `8596-8599` (error panel + retry, with a `bad-structure`-specific message), `8671-8672` (toast + reopen journal). No silent failure, no stuck loading state.
