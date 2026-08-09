@@ -20,12 +20,26 @@
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
-const flag = argv.indexOf('--mirror');
-const MIRROR = flag === -1 ? join(ROOT, 'rules.sqlite') : argv[flag + 1];
+const arg = (name, fallback) => {
+  const i = argv.indexOf(name);
+  return i === -1 ? fallback : argv[i + 1];
+};
+const MIRROR = arg('--mirror', join(ROOT, 'rules.sqlite'));
+// The SECOND legitimate state of an ungrouped rule: the two blind classifiers disagreed and the
+// verdict is the owner's to give. Blocking on that stops work for a reason the author cannot act on,
+// which §10.24 forbids — a block must name a reachable alternative, and "decide something only the
+// owner may decide" is not one.
+//
+// This is not a bypass, and the difference matters. The exemption costs writing the rule into the
+// owner-facing document BY NAME — the less efficient way to do the same work, never a way to skip it.
+// A rule nobody escalated still blocks, and an escalated rule is still printed, because an exemption
+// that hides its subject is just a hole with paperwork.
+const ESCALATED = arg('--escalated',
+  join(ROOT, 'docs', 'process', 'rule-coverage', 'criterion', 'disagreements-for-owner.md'));
 
 // Fail-open, deliberately and in both directions: an absent mirror, an unreadable one, or a Python
 // that will not start are all "this gate could not decide", never "you may not commit". A gate that
@@ -65,10 +79,33 @@ try {
 }
 if (!out.ok) undecided(`the mirror could not be read (${out.why})`);
 
-if (out.missing.length === 0) {
-  console.log(`RULES CLASSIFIED: ${out.total} of ${out.total} rules carry a group (0 open).`);
+// Read the escalation document as TEXT and ask whether each ungrouped rule is named in it. Parsing
+// it into a structure would be stricter and would break the first time its shape changes; the
+// question here is only "does this document mention this rule", and a word-boundary match answers it
+// without pretending to understand the file.
+let escalatedText = '';
+if (ESCALATED && existsSync(ESCALATED)) {
+  try {
+    escalatedText = readFileSync(ESCALATED, 'utf8');
+  } catch {
+    escalatedText = '';   // unreadable escalation doc => nothing is escalated, which errs toward blocking
+  }
+}
+const isEscalated = (id) => new RegExp(`(^|[^\\w-])${id.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}([^\\w-]|$)`)
+  .test(escalatedText);
+
+const awaiting = out.missing.filter(isEscalated);
+const undecidedRules = out.missing.filter((id) => !isEscalated(id));
+
+if (undecidedRules.length === 0) {
+  const classified = out.total - awaiting.length;
+  const tail = awaiting.length
+    ? `\n  ${awaiting.length} awaiting the owner's verdict, named in the escalation document: ${awaiting.join(' ')}`
+    : '';
+  console.log(`RULES CLASSIFIED: ${classified} of ${out.total} rules carry a group (0 undecided).${tail}`);
   process.exit(0);
 }
+out.missing = undecidedRules;
 
 // Naming them is the whole point. "Something is unclassified" sends the reader hunting, and the hunt
 // is what let five of these sit unnoticed.

@@ -137,6 +137,16 @@ run('check-geniza-fresh', 'check-geniza-fresh', 'check-geniza-fresh.mjs');
 run('check-rules-fresh', 'check-rules-fresh (docs/process/development-discipline.md matches mk_rules)', 'check-rules-fresh.mjs');
 run('check-rules-complete', 'check-rules-complete (every on-disk rule has a current row in mk_rules — does not self-heal)', 'check-rules-complete.mjs');
 run('check-rules-mirror', 'check-rules-mirror (rules.sqlite checksum matches mk_rules)', 'check-rules-mirror.mjs');
+// Owner decision, 2026-08-09. BLOCKING, and the severity is argued here as this file's GATE SCOPING
+// paragraph requires. Unlike the coverage gap above, an unclassified rule is NOT a programme-sized
+// backlog: the fix is one classification, and the corpus is at zero undecided as this lands. It blocks
+// because L75..L79 sat ungrouped for a day — four written the same night we classified 95 rules — and
+// nothing noticed. A rule with no group is enforced by nothing and counted by nothing, so it reads as
+// "not applicable" when it means "nobody decided".
+// It does not block a rule the two blind classifiers disagreed on: that rule is named in the escalation
+// document and reported by name, because the verdict is the owner's and §10.24 forbids a block whose
+// only way through is a decision the author may not make.
+run('check-rules-classified', 'check-rules-classified (no rule sits in the corpus without a group)', 'check-rules-classified.mjs');
 // Rule-coverage arc, Task 12 (2026-08-08): does every hook file DECLARE which corpus rules it
 // enforces (`export const RULE_IDS = [...]`), read from the mirror this file's own three gates just
 // verified above. BLOCKING, but NOT on the shape this file's GATE SCOPING paragraph forbids — the

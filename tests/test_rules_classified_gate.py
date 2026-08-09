@@ -67,6 +67,35 @@ def test_gate_treats_an_empty_string_group_as_missing(tmp_path):
     assert "L80" in r.stdout, r.stdout
 
 
+def test_a_rule_escalated_to_the_owner_is_reported_but_does_not_block(tmp_path):
+    """The second legitimate state of an ungrouped rule: the two blind classifiers disagreed and the
+    decision is the owner's. Blocking on that stops work for a reason the author cannot act on, which
+    §10.24 forbids. This is not a bypass — the exemption costs writing the rule into the owner-facing
+    document by name, which is the less efficient way to do the same work, not a way to skip it."""
+    db = _mirror(tmp_path, [("L76", "לקח", "טקסט", None, None, None)])
+    escalated = tmp_path / "disagreements.md"
+    escalated.write_text("## `L76` — אלפא A, בטא B\n", encoding="utf-8")
+    r = subprocess.run(
+        ["node", str(GATE), "--mirror", str(db), "--escalated", str(escalated)],
+        capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+    assert r.returncode == 0, f"an escalated rule must not block\n{r.stdout}{r.stderr}"
+    assert "L76" in r.stdout, "it must still be NAMED — an exemption that hides is a hole"
+
+
+def test_an_ungrouped_rule_absent_from_the_escalation_document_still_blocks(tmp_path):
+    """The exemption is not 'ungrouped is fine now'. A rule nobody escalated still blocks, even when
+    an escalation document exists and lists a different rule."""
+    db = _mirror(tmp_path, [("L76", "a", "t", None, None, None),
+                            ("L99", "b", "t", None, None, None)])
+    escalated = tmp_path / "disagreements.md"
+    escalated.write_text("## `L76` — אלפא A, בטא B\n", encoding="utf-8")
+    r = subprocess.run(
+        ["node", str(GATE), "--mirror", str(db), "--escalated", str(escalated)],
+        capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+    assert r.returncode != 0, r.stdout + r.stderr
+    assert "L99" in r.stdout, r.stdout
+
+
 def test_gate_does_not_invent_a_verdict_when_the_mirror_is_unreadable(tmp_path):
     """Fail-open discipline: the gate reports that it could not decide, and does not block. A gate
     that blocks on its own inability to read is a gate that stops work for a reason nobody can act on
