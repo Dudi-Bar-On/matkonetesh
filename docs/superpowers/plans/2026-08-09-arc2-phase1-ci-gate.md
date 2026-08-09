@@ -1102,13 +1102,41 @@ In `scripts/check-rule-coverage.mjs`, after the existing `SCAN_DIRS` loop, also 
 // not by hook files under scripts/hooks/. They declare RULE_IDS exactly the same way. Counting only the
 // hooks directory would report eleven enforced rules as open — a coverage number that under-reports is
 // as misleading as one that over-reports, and this gate exists to be believed.
+const SCRIPTS_ROOT = join(ROOT, 'scripts');
+
+function scanDeclaringFile(full) {
+  const rel = relative(ROOT, full).replaceAll('\', '/');
+  scannedFiles.push(rel);
+  const text = readFileSync(full, 'utf8');
+  const match = text.match(RULE_IDS_RE);
+  if (!match) { missingExportFiles.push(rel); return; }
+  for (const id of extractIds(match[1])) {
+    if (!declaredIdToFiles.has(id)) declaredIdToFiles.set(id, new Set());
+    declaredIdToFiles.get(id).add(rel);
+  }
+}
+```
+
+**MEASURED 2026-08-09, before dispatch:** the file has NO such helper today — the per-file logic is
+written inline inside the `for (const sub of SCAN_DIRS)` loop at roughly lines 72-92. So this task
+**extracts that body into `scanDeclaringFile` first**, leaves the existing loop calling it, and only
+then adds the second loop. Do not add a parallel copy of the logic beside the original: two scanners
+that must agree are two scanners that will eventually disagree.
+
+Then, after the existing `SCAN_DIRS` loop:
+
+```javascript
 for (const f of readdirSync(SCRIPTS_ROOT).filter((n) => /^check-.*\.mjs$/.test(n)).sort()) {
   scanDeclaringFile(join(SCRIPTS_ROOT, f));
 }
 ```
 
-Use whatever the file's existing per-file scan helper is called — read it first; do not invent a new
-parser beside the one already there.
+⚠️ Not every `scripts/check-*.mjs` enforces a corpus rule — several are infrastructure gates
+(`check-meta`, `check-rules-mirror`, `check-geniza-fresh`) with no `RULE_IDS` at all. Those would land
+in `missingExportFiles` and turn a passing gate red. Decide and state which you did: either skip files
+with no `RULE_IDS` export in this second loop (and say in the comment that the DECLARATION requirement
+still binds the hook directories, where it was measured), or add the export to the infrastructure gates.
+Read the file's existing handling of `missingExportFiles` before choosing — it is a blocking condition.
 
 Then run `node scripts/check-rule-coverage.mjs`, read the number it actually prints, and write THAT into
 `docs/process/rule-coverage-baseline.json` so the gate blocks on regression from the new floor. Do not
