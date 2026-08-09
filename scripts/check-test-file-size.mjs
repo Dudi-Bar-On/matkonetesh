@@ -21,13 +21,21 @@ const ROOT = rootIdx === -1 ? REPO : argv[rootIdx + 1];
 
 // The ceiling is the measured worker count, read from the config rather than hardcoded — a number
 // pinned here would drift from the one that actually governs the run (L64b).
+//
+// The config expresses the ceiling as `workers: process.env.CI ? 2 : 20`. Read the NON-CI branch:
+// the incident this rule exists for happened on a developer's local run, where the higher number
+// governs, and a gate that cannot read the one form its own config uses enforces nothing.
+const TERNARY = /workers\s*:\s*process\.env\.CI\s*\?\s*(\d+)\s*:\s*(\d+)/;
+const LITERAL = /workers\s*:\s*(\d+)/;
 function ceiling() {
   const cfg = join(ROOT, 'playwright.config.ts');
   if (!existsSync(cfg)) return null;
   let text;
   try { text = readFileSync(cfg, 'utf8'); } catch { return null; }
-  const m = /workers\s*:\s*(\d+)/.exec(text);
-  return m ? Number(m[1]) : null;      // an expression rather than a literal => null => fall open
+  const t = TERNARY.exec(text);
+  if (t) return Number(t[2]);          // non-CI branch — the number governing a developer's local run
+  const m = LITERAL.exec(text);
+  return m ? Number(m[1]) : null;      // neither form matched => null => fall open
 }
 
 function specFiles(dir, out = []) {
@@ -50,8 +58,14 @@ if (limit === null) {
   process.exit(0);
 }
 
+const files = specFiles(join(ROOT, 'tests'));
+if (files.length === 0) {
+  console.log('check-test-file-size: scanned 0 files — no verdict reached, not a pass. Not blocking.');
+  process.exit(0);
+}
+
 const over = [];
-for (const f of specFiles(join(ROOT, 'tests'))) {
+for (const f of files) {
   let text;
   try { text = readFileSync(f, 'utf8'); } catch { continue; }
   const count = (text.match(/(^|\s)test\s*\(/g) || []).length;

@@ -37,8 +37,14 @@ const GENERATOR = /\b(secrets\.token_urlsafe|secrets\.token_bytes|secrets\.token
 // reference to the project's alphabet. Anything else is a generator whose output shape is unexamined.
 const DECLARES_ALPHABET = /(A-Za-z0-9\._~|ALPHABET|secrets\.choice\s*\()/;
 
+const files = scriptFiles(join(ROOT, 'scripts'));
+if (files.length === 0) {
+  console.log('check-secret-alphabet: scanned 0 files — no verdict reached, not a pass. Not blocking.');
+  process.exit(0);
+}
+
 const findings = [];
-for (const f of scriptFiles(join(ROOT, 'scripts'))) {
+for (const f of files) {
   let lines;
   try { lines = readFileSync(f, 'utf8').split('\n'); } catch { continue; }
   const rel = relative(ROOT, f).split(sep).join('/');

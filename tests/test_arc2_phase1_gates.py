@@ -314,3 +314,43 @@ def test_file_size_gate_does_not_block_the_real_suite():
     rather than to substance. It must report and exit 0."""
     r = run_gate("check-test-file-size.mjs")
     assert r.returncode == 0, r.stdout
+
+
+def test_file_size_gate_reads_the_ternary_workers_form(tmp_path):
+    """The real repo's playwright.config.ts expresses the ceiling as
+    `workers: process.env.CI ? 2 : 20` — a gate that only matches a literal never enforces anything
+    against it. Must read the NON-CI branch (20), not the CI branch (2)."""
+    (tmp_path / "playwright.config.ts").write_text(
+        "export default { workers: process.env.CI ? 2 : 20 };\n", encoding="utf-8")
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "big.spec.ts").write_text("test('a',()=>{});\n" * 25, encoding="utf-8")
+    r = run_gate("check-test-file-size.mjs", "--root", str(tmp_path))
+    assert "big.spec.ts" in r.stdout and "25" in r.stdout, r.stdout
+    assert "(20)" in r.stdout, r.stdout
+
+
+def test_powershell_gate_scanned_zero_files_reaches_no_verdict(tmp_path):
+    r = run_gate("check-powershell-output.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "no verdict" in r.stdout.lower(), r.stdout
+    assert "no function emits nothing" not in r.stdout, r.stdout
+
+def test_ai_cap_gate_scanned_zero_files_reaches_no_verdict(tmp_path):
+    r = run_gate("check-ai-token-caps.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "no verdict" in r.stdout.lower(), r.stdout
+    assert "every cap in" not in r.stdout, r.stdout
+
+def test_secret_alphabet_gate_scanned_zero_files_reaches_no_verdict(tmp_path):
+    r = run_gate("check-secret-alphabet.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "no verdict" in r.stdout.lower(), r.stdout
+    assert "every generated credential pins its alphabet" not in r.stdout, r.stdout
+
+def test_file_size_gate_scanned_zero_files_reaches_no_verdict(tmp_path):
+    # A literal config so the zero-FILES guard is what fires, not the ceiling-unreadable guard.
+    (tmp_path / "playwright.config.ts").write_text("export default { workers: 2 };\n", encoding="utf-8")
+    r = run_gate("check-test-file-size.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "no verdict" in r.stdout.lower(), r.stdout
+    assert "no spec file exceeds" not in r.stdout, r.stdout

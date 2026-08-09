@@ -52,9 +52,15 @@ function functionBodies(lines) {
   return out;
 }
 
+const files = ps1Files(ROOT);
+if (files.length === 0) {
+  console.log('check-powershell-output: scanned 0 files — no verdict reached, not a pass. Not blocking.');
+  process.exit(0);
+}
+
 const isCode = (line) => line.trim() !== '' && !/^\s*#/.test(line);
 const findings = [];
-for (const f of ps1Files(ROOT)) {
+for (const f of files) {
   let lines;
   try { lines = readFileSync(f, 'utf8').split('\n'); } catch { continue; }
   const rel = relative(ROOT, f).split(sep).join('/');

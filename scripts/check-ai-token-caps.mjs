@@ -37,6 +37,11 @@ const targets = [];
 if (existsSync(join(ROOT, 'worker'))) targets.push(...jsFiles(join(ROOT, 'worker')));
 for (const f of ['app.js']) if (existsSync(join(ROOT, f))) targets.push(join(ROOT, f));
 
+if (targets.length === 0) {
+  console.log('check-ai-token-caps: scanned 0 files — no verdict reached, not a pass. Not blocking.');
+  process.exit(0);
+}
+
 const CAP = /max(?:Output)?Tokens\s*[:=]\s*(\d+)/g;
 const findings = [];
 for (const f of targets) {
