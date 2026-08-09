@@ -50,22 +50,80 @@ if (files.length === 0) {
   process.exit(0);
 }
 
+// SCOPE, stated as a decision and not an oversight (2026-08-09 review): this gate walks `scripts/`
+// only, never the whole repo. `scripts/` is where this project's process ENTRY POINTS live — the
+// CLIs a person or a hook invokes directly, piped or captured, which is the only way the cp1252
+// failure this gate exists for can actually happen (§L74's header). Library/app code elsewhere is
+// out of scope by design, not missed.
+//
 // The check is per-CALL, not per-file (2026-08-09 rewrite). A file may hold Hebrew in a comment or a
 // docstring and print nothing but ASCII — flagging it is noise, and noise is how a gate loses its
 // readers. What matters is a print whose ARGUMENT carries a character the Windows code page cannot
 // encode. The first version tested "does this file contain a print" and "does this file contain any
 // non-ASCII character" independently, which flagged 10 of 11 real scripts on em dashes inside comments
 // that were never printed.
-const PRINTS_NON_ASCII = /(?:print|sys\.std(?:out|err)\.write)\s*\([^)\n]*[^\x00-\x7F][^)\n]*\)/;
-const DECLARES = /(reconfigure\s*\(\s*encoding\s*=\s*["']utf-8|PYTHONIOENCODING|io\.TextIOWrapper\([^)]*utf-8)/;
+//
+// MULTI-LINE ARGUMENTS (2026-08-09 review fix, option (a) of two offered): the argument class is
+// `[^)]*` — no `\n` exclusion — so an argument that wraps onto a following line, e.g.
+// `print("...— "\n      f"...")`, is still seen. This is BOUNDED, not a runaway dot-all: `[^)]`
+// stops at the very next `)` in the source, so the worst case is stopping at a NESTED call's closing
+// paren (e.g. `.join(...)`) rather than the print's own — which still correctly detects the
+// non-ASCII argument, just without claiming the exact call boundary. It can never scan past the next
+// literal `)`, so it cannot run away across an unbalanced-paren file the way an unbounded `[\s\S]*?`
+// reaching for print's OWN close paren could. Real shape this fixes: `scripts/criterion_compare.py`
+// carries a print whose argument spans two lines and was invisible to the single-line version; it
+// was never live because that file separately reconfigures both streams, but the gate would not
+// have said so.
+const PRINTS_NON_ASCII = /(?:print|sys\.std(?:out|err)\.write)\s*\([^)]*[^\x00-\x7F][^)]*\)/;
+const CALL_RE = /(print|sys\.stdout\.write|sys\.stderr\.write)\s*\(([^)]*)\)/g;
+const NON_ASCII = /[^\x00-\x7F]/;
+
+// STREAM-AWARE (2026-08-09 review, item 3): a file that reconfigures stdout still leaks on stderr
+// if a `print(..., file=sys.stderr)` or `sys.stderr.write(...)` call carries non-ASCII — the
+// original DECLARES matched "utf-8 declared ANYWHERE in the file" regardless of which stream the
+// finding actually targets. Cheap enough to do properly: for each non-ASCII call, work out its
+// target stream (print defaults to stdout unless `file=` names stderr; the two `sys.std*.write`
+// forms are unambiguous), then require a declaration for THAT stream specifically. PYTHONIOENCODING
+// is a process-wide env var and satisfies both. The `for _s in (sys.stdout, sys.stderr): ...
+// _s.reconfigure(...)` loop form used elsewhere in this repo also covers both, by construction —
+// detected as its own case rather than missed for not literally saying `sys.stdout.reconfigure`.
+function declaresStream(text, stream) {
+  const direct = new RegExp(`sys\\.${stream}\\.reconfigure\\s*\\(\\s*encoding\\s*=\\s*["']utf-8`, 'i');
+  if (direct.test(text)) return true;
+  if (/PYTHONIOENCODING/.test(text)) return true;
+  const wrapper = new RegExp(
+    `io\\.TextIOWrapper\\([^)]*${stream}[^)]*utf-8|io\\.TextIOWrapper\\([^)]*utf-8[^)]*${stream}`, 'i');
+  if (wrapper.test(text)) return true;
+  const loop = /for\s+(\w+)\s+in\s*\(\s*sys\.stdout\s*,\s*sys\.stderr\s*\)\s*:/.exec(text);
+  if (loop) {
+    const afterLoop = text.slice(loop.index, loop.index + 300);
+    const loopReconfigure = new RegExp(`${loop[1]}\\.reconfigure\\s*\\(\\s*encoding\\s*=\\s*["']utf-8`);
+    if (loopReconfigure.test(afterLoop)) return true;
+  }
+  return false;
+}
+
+function callStream(kind, arg) {
+  if (kind === 'sys.stderr.write') return 'stderr';
+  if (kind === 'sys.stdout.write') return 'stdout';
+  return /file\s*=\s*(sys\.)?stderr\b/.test(arg) ? 'stderr' : 'stdout'; // print(...) default: stdout
+}
 
 const findings = [];
 for (const f of files) {
   let text;
   try { text = readFileSync(f, 'utf8'); } catch { continue; }
   if (!PRINTS_NON_ASCII.test(text)) continue;
-  if (DECLARES.test(text)) continue;
-  findings.push(relative(ROOT, f).split(sep).join('/'));
+  const streamsSeen = new Set();
+  let m;
+  CALL_RE.lastIndex = 0;
+  while ((m = CALL_RE.exec(text)) !== null) {
+    if (!NON_ASCII.test(m[2])) continue;
+    streamsSeen.add(callStream(m[1], m[2]));
+  }
+  const undeclared = [...streamsSeen].filter((s) => !declaresStream(text, s));
+  if (undeclared.length === 0) continue;
+  findings.push(`${relative(ROOT, f).split(sep).join('/')} (${undeclared.join(', ')})`);
 }
 
 if (findings.length === 0) {

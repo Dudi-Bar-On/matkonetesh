@@ -82,15 +82,24 @@ const BARE = /(^|[`'"\s;&|(])python(\s+[-\w./\\]+\.py|\s+-m\s)/;
 
 const findings = [];
 
+// `command:` may sit inline inside a `webServer: { command: '...' }` literal, or open a MULTI-LINE
+// template literal whose body — where a bare `python` token actually lands — is on a FOLLOWING line
+// (2026-08-09 review fix: the first version only ever looked at the `command:` line itself, so
+// `command: \`\n  python build.py\n\`,` escaped it entirely). Tracked the same way `scanWorkflow`
+// already tracks a `run: |` block body: once a `command:` line opens a backtick literal it does not
+// also close (an ODD number of backticks on that line), keep scanning subsequent lines — checking
+// each for BARE — until a line closes it (another odd-backtick-count line flips it shut). A
+// single-line `command: \`...\`` never opens the block at all (an EVEN backtick count on one line),
+// so the ordinary single-line case is unaffected.
 function scanPlaywrightConfig(rel, absPath) {
   let lines;
   try { lines = readFileSync(absPath, 'utf8').split('\n'); } catch { return; }
+  let open = false;
   lines.forEach((line, n) => {
-    // `command:` may sit inline inside a `webServer: { command: '...' }` literal or on its own line
-    // inside a multi-line `webServer: { ... }` block — either way, only a line naming `command:`
-    // itself is in scope; a comment or an unrelated field is not.
-    if (!/command\s*:/.test(line)) return;
+    if (!open && !/command\s*:/.test(line)) return; // not in scope until a `command:` line opens it
     if (BARE.test(line)) findings.push([rel.split(sep).join('/'), n + 1, line.trim()]);
+    const backticks = (line.match(/`/g) || []).length;
+    if (backticks % 2 === 1) open = !open; // odd count on this line flips open/closed
   });
 }
 
@@ -120,6 +129,14 @@ function scanWorkflow(rel, absPath) {
         return;
       }
     }
+    // This matches ANY bare two-space `key:` line, not specifically a job header nested under
+    // `jobs:` — it is not real YAML parsing (2026-08-09 review note). It is safe TODAY only by
+    // DEFAULT DIRECTION: the reset sets jobIsLinux back to `false` (unknown → "scan it"), so a
+    // false-positive reset never hides a violation, it can only cause an over-eager scan of a few
+    // extra lines until the next real `runs-on:` is seen. If that default is ever flipped to `true`
+    // ("assume Linux until told otherwise"), this same imprecise match would start silently
+    // skipping real findings — the safety comes from which way the default points, not from this
+    // regex understanding workflow structure.
     if (/^  [A-Za-z0-9_.-]+:\s*$/.test(line)) { jobIsLinux = false; return; } // new job: reset to unknown
     const runsOn = /^\s*runs-on:\s*(.+)$/.exec(line);
     if (runsOn) { jobIsLinux = isLinuxRunner(runsOn[1]); return; }

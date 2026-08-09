@@ -231,3 +231,26 @@ def test_utf8_gate_ignores_hebrew_confined_to_a_comment(tmp_path):
         '"""תיעוד בעברית שאינו מודפס לעולם."""\nprint("status: ok")\n', encoding="utf-8")
     r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
     assert r.returncode == 0, r.stdout
+
+
+def test_python_invocation_gate_sees_a_multiline_webserver_command(tmp_path):
+    """A command written across a template literal is still a command. Line-scoped matching found
+    the single-line form only — which is the form that happened to exist when the gate was written."""
+    (tmp_path / "playwright.config.ts").write_text(
+        "export default {\n  webServer: {\n    command: `\n      python build.py\n    `,\n  },\n};\n",
+        encoding="utf-8")
+    r = run_gate("check-python-invocation.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1, r.stdout
+    assert "build.py" in r.stdout, r.stdout
+
+def test_utf8_gate_catches_a_multiline_print_argument(tmp_path):
+    """Pins option (a): a print whose non-ASCII argument spans lines (the real shape found at
+    scripts/criterion_compare.py:58-59, not live there only because that file separately
+    reconfigures both streams) must still be caught when undeclared."""
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "wrap.py").write_text(
+        'print("REFUSED — comparison runs only after BOTH classifiers have finished — "\n'
+        '      f"{\'and\'.join([])} missing.")\n',
+        encoding="utf-8")
+    r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "wrap.py" in r.stdout, r.stdout
