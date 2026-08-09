@@ -46,7 +46,20 @@ function runPytest(cmd, pre) {
   return spawnSync(cmd, [...pre, '-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q'], {
     cwd: ROOT,
     encoding: 'utf8',
-    env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+    // CHECK_PYTEST_NESTED (Arc 2 Phase 1, 2026-08-09): tells the Python suite it is running INSIDE
+    // this gate's own spawn of pytest, not at a developer's or CI's top level. Exists for exactly one
+    // consumer: tests/test_arc2_phase1_wiring.py's liveness test, which spawns a REAL
+    // `node scripts/check-meta.mjs` to prove the nine ci-gate scripts are wired — and check-meta.mjs
+    // itself runs THIS gate, which enumerates and re-runs every tests/test_*.py file, including that
+    // same liveness test. Without a way to break the cycle, that is unbounded self-recursion (every
+    // level spawns another full check-meta.mjs, which spawns another pytest, which spawns another...),
+    // not a slow test — it was caught live: a single `pytest tests/` run produced over a dozen
+    // concurrent check-meta.mjs/pytest processes before it was killed. The liveness test checks this
+    // var and skips itself (not xfails, not errors) whenever it is set, because check-pytest running
+    // green at THIS level already proves the suite it would otherwise re-verify; the test's actual job
+    // — proving check-meta.mjs's real, top-level, no-override entry point wires the nine gates — is
+    // still exercised at depth 0 (a developer's or CI's own `pytest tests/`), which never sets this var.
+    env: { ...process.env, PYTHONIOENCODING: 'utf-8', CHECK_PYTEST_NESTED: '1' },
   });
 }
 

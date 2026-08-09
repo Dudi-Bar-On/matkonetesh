@@ -69,25 +69,65 @@ const missingExportFiles = []; // relative paths with no RULE_IDS export at all
 const declaredIdToFiles = new Map(); // id -> Set(relative file paths)
 const scannedFiles = [];
 
+// Extracted (Arc 2 Phase 1, 2026-08-09) from what used to be the inline body of the loop below, so the
+// second loop over scripts/check-*.mjs (added further down) shares the exact same parse-and-record
+// logic rather than carrying a parallel copy that could drift from this one — two scanners that must
+// agree are two scanners that will eventually disagree.
+function scanDeclaringFile(full) {
+  const rel = relative(ROOT, full).replaceAll('\\', '/');
+  scannedFiles.push(rel);
+  const text = readFileSync(full, 'utf8');
+  const match = text.match(RULE_IDS_RE);
+  if (!match) {
+    missingExportFiles.push(rel);
+    return;
+  }
+  const ids = extractIds(match[1]);
+  for (const id of ids) {
+    if (!declaredIdToFiles.has(id)) declaredIdToFiles.set(id, new Set());
+    declaredIdToFiles.get(id).add(rel);
+  }
+}
+
 for (const sub of SCAN_DIRS) {
   const dir = join(HOOKS_ROOT, sub);
   if (!existsSync(dir)) continue;
   const files = readdirSync(dir).filter(f => f.endsWith('.mjs')).sort();
   for (const f of files) {
-    const full = join(dir, f);
-    const rel = relative(ROOT, full).replaceAll('\\', '/');
-    scannedFiles.push(rel);
+    scanDeclaringFile(join(dir, f));
+  }
+}
+
+// Arc 2 Phase 1 (2026-08-09): the ci-gate rules are enforced by standalone gates at scripts/check-*.mjs,
+// not by hook files under scripts/hooks/. They declare RULE_IDS exactly the same way. Counting only the
+// hooks directory would report eleven enforced rules as open — a coverage number that under-reports is
+// as misleading as one that over-reports, and this gate exists to be believed.
+//
+// Not every scripts/check-*.mjs enforces a corpus rule: check-meta.mjs, check-rules-mirror.mjs,
+// check-geniza-fresh.mjs and several others are infrastructure gates (session plumbing, store
+// freshness, the orchestrator itself) with no corpus rule behind them at all — they were never asked
+// to declare RULE_IDS and adding an empty declaration to each would be a cosmetic edit invented solely
+// to satisfy this scanner, not a real statement about what they enforce. Feeding them through
+// scanDeclaringFile unmodified would drop every one of them into missingExportFiles, which is a
+// BLOCKING condition (see the ERROR loop below) — a green gate would turn red the moment this wiring
+// landed, for files that were never in scope. So this second loop SKIPS any scripts/check-*.mjs file
+// that does not already export RULE_IDS, rather than adding the export everywhere. The declaration
+// requirement itself is unchanged and still binds exactly where it was measured and where it belongs:
+// scripts/hooks/{rules,stop-rules,observers} (Step 1 above) and any scripts/check-*.mjs that DOES
+// declare RULE_IDS (all nine of this phase's gates do, and are picked up below).
+// Env-overridable exactly like HOOKS_ROOT/MIRROR/BASELINE above, for the identical reason: this
+// file's own self-test (scripts/tests/test-check-rule-coverage.mjs) spawns the gate against fixture
+// dirs built fresh in a temp dir and must never see the real repo tree. `ROOT` itself is fixed to the
+// real repo (computed from this script's own file location, not from any env var), so without this
+// override the second loop would always scan the real scripts/ directory — including this phase's own
+// nine gates — even inside an isolated self-test run.
+const SCRIPTS_ROOT = process.env.RULE_COVERAGE_SCRIPTS_ROOT || join(ROOT, 'scripts');
+if (existsSync(SCRIPTS_ROOT)) {
+  for (const f of readdirSync(SCRIPTS_ROOT).filter((n) => /^check-.*\.mjs$/.test(n)).sort()) {
+    const full = join(SCRIPTS_ROOT, f);
     const text = readFileSync(full, 'utf8');
-    const match = text.match(RULE_IDS_RE);
-    if (!match) {
-      missingExportFiles.push(rel);
-      continue;
-    }
-    const ids = extractIds(match[1]);
-    for (const id of ids) {
-      if (!declaredIdToFiles.has(id)) declaredIdToFiles.set(id, new Set());
-      declaredIdToFiles.get(id).add(rel);
-    }
+    if (!RULE_IDS_RE.test(text)) continue; // infrastructure gate, out of scope for this scanner — see comment above
+    scanDeclaringFile(full);
   }
 }
 

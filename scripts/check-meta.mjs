@@ -147,6 +147,41 @@ run('check-rules-mirror', 'check-rules-mirror (rules.sqlite checksum matches mk_
 // document and reported by name, because the verdict is the owner's and §10.24 forbids a block whose
 // only way through is a decision the author may not make.
 run('check-rules-classified', 'check-rules-classified (no rule sits in the corpus without a group)', 'check-rules-classified.mjs');
+// Arc 2 Phase 1 (2026-08-09): the eleven ci-gate rules (DoD-11, L15, L24, L30, L43a, L53, L58, L59,
+// L61, L66, L74) built in Tasks 1-5, unit-tested in isolation but never invoked from the real entry
+// point until now — the exact INERT shape this arc exists to end (a `stop` rule that once loaded only
+// under a test-only env var, 333 tests green on a feature that never ran). Each is BLOCKING except
+// check-test-file-size, argued individually below, per this file's own GATE SCOPING paragraph:
+//   - check-control-bytes / check-test-waits / check-yaml-duplicate-keys / check-python-invocation /
+//     check-python-utf8 / check-powershell-output / check-ai-token-caps / check-secret-alphabet: same
+//     shape as check-no-arbitrary-waits and check-no-docker above — a fully local, always-decidable
+//     scan of a fixed file set, and the fix each names (strip the byte, rewrite the wait predicate,
+//     dedupe the YAML key, swap `python`→`py -3`, declare the stream encoding, add a verdict line,
+//     raise the cap to 8192, pin the alphabet) is a single cheap edit reachable from the very commit
+//     that trips it. Every gate SKIPS (not FAILs) on "scanned 0 files" per its own header, so an empty
+//     or unreachable target is never mistaken for a pass — same discipline check-rules-fresh already
+//     applies to its own dependency.
+//   - check-test-file-size: WARNING only, always exits 0 regardless of what it finds. A spec file
+//     legitimately grows as scenarios accrue — the harm this rule names is to *worker-count run
+//     stability* (L30: a file large enough to dominate a worker's share of the suite), not to
+//     substance, and a growing spec is not a defect the way a duplicate YAML key or a bare `python`
+//     call is. Blocking every commit that adds a test to an already-large spec file is exactly the L70
+//     failure mode this whole arc exists to avoid ("a gate that blocks every commit ... is switched off
+//     within a day") — so this one reports and never fails the commit.
+run('check-control-bytes', 'check-control-bytes (L43a — no invisible control byte)', 'check-control-bytes.mjs');
+run('check-test-waits', 'check-test-waits (DoD-11, L15, L58 — a wait must be able to fail)', 'check-test-waits.mjs');
+run('check-yaml-duplicate-keys', 'check-yaml-duplicate-keys (L61)', 'check-yaml-duplicate-keys.mjs');
+run('check-python-invocation', 'check-python-invocation (L59 — the Store alias)', 'check-python-invocation.mjs');
+run('check-python-utf8', 'check-python-utf8 (L74 — non-ASCII on a pipe)', 'check-python-utf8.mjs');
+run('check-powershell-output', 'check-powershell-output (L66 — the pipeline is the return value)', 'check-powershell-output.mjs');
+run('check-ai-token-caps', 'check-ai-token-caps (L24 — 8192 everywhere)', 'check-ai-token-caps.mjs');
+run('check-secret-alphabet', 'check-secret-alphabet (L53 — a secret is command-line syntax)', 'check-secret-alphabet.mjs');
+// check-test-file-size: WARNING only — routed through the ordinary run() seam (so META_SKIP_GATE and
+// the gate-skip-log still cover it like every other gate), but never a candidate for `failed` because
+// the script itself always exits 0 (see its own header) — even when it reports files over the worker
+// ceiling, that is a printed warning, not a nonzero exit, so run()'s `if (r.status !== 0)` branch is
+// simply never taken for this gate.
+run('check-test-file-size', 'check-test-file-size (L30 — WARNING only, reports the worker-ceiling risk, never blocks)', 'check-test-file-size.mjs');
 // Rule-coverage arc, Task 12 (2026-08-08): does every hook file DECLARE which corpus rules it
 // enforces (`export const RULE_IDS = [...]`), read from the mirror this file's own three gates just
 // verified above. BLOCKING, but NOT on the shape this file's GATE SCOPING paragraph forbids — the

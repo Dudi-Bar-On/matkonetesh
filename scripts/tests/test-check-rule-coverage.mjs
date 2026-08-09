@@ -86,6 +86,12 @@ function envFor(hooksDir, mirrorPath, baselinePath) {
     RULE_COVERAGE_HOOKS_ROOT: hooksDir,
     RULE_COVERAGE_MIRROR: mirrorPath,
     RULE_COVERAGE_BASELINE: baselinePath,
+    // Arc 2 Phase 1 (2026-08-09): isolates the gate's second scan loop (scripts/check-*.mjs) the same
+    // way the three overrides above isolate everything else — point it at an empty, freshly-made temp
+    // dir so this self-test never sees the real repo's scripts/ directory (which now includes this
+    // phase's own nine RULE_IDS-declaring gates). `freshDir` makes a real empty directory, so the
+    // gate's `existsSync` guard finds it present and simply enumerates zero matching files.
+    RULE_COVERAGE_SCRIPTS_ROOT: freshDir('no-extra-scripts'),
   };
 }
 
