@@ -1,0 +1,37 @@
+[
+  {
+    "token": "T01",
+    "group": "B",
+    "mechanism": "pretooluse:Edit|Write",
+    "mechanism_target": "the locked classifier-brief/procedure file (docs/process/rule-coverage/**)",
+    "observed_prior_facts": "whether a measurement run is mid-flight — classification dispatches already launched under the current locked brief and the run not yet concluded/re-measured — observable from recorded dispatch events in the state store",
+    "reason": "An edit to the brief is not itself a violation; only an edit BETWEEN dispatches of one measured run is, so compliance turns on the prior sequence (run started, not closed), not on any pattern in the edit alone."
+  },
+  {
+    "token": "T02",
+    "group": "A",
+    "artifact": "the working tree at commit time — `git status --porcelain` output",
+    "pattern": "a line beginning `??` (untracked) whose path matches a test-file glob (e.g. tests/**, *.spec.*, *.test.*) while the commit ships the code it protects",
+    "mechanism": "commit-gate",
+    "mechanism_target": "untracked test files (tests/**) in git status at commit",
+    "reason": "The rule's own practical conclusion is a textual check: after every task, git status must show no untracked test file — presence of a `??` test path decides non-compliance with no intent reading."
+  },
+  {
+    "token": "T03",
+    "group": "C",
+    "reason": "Deciding whether a detector/message promises more than its sampling can support ('index healthy' vs what 400 probes actually cover) requires judging the meaning and epistemic strength of a claim against the coverage of its evidence — no textual pattern or prior-event lookup can decide that."
+  },
+  {
+    "token": "T04",
+    "group": "B",
+    "mechanism": "pretooluse:Edit|Write",
+    "mechanism_target": "docs/superpowers/specs/**",
+    "observed_prior_facts": "whether the spec being edited is recorded as owner-approved in the register (מרשם/state store) — a prior approval event; approved → maintenance edit allowed, unapproved/new → design gate still blocks",
+    "reason": "The diff to a spec file alone cannot decide compliance; the deciding fact is a prior event (owner approval) observed in the register, so the edit gate must consult recorded prior state."
+  },
+  {
+    "token": "T05",
+    "group": "C",
+    "reason": "Deciding whether a test's assertion overclaims relative to what honest data can satisfy (absolute absence vs absence of distinct identifiers only) requires evaluating the meaning and scope of the claim against the data's nature — a judgement of claim strength, not a nameable textual pattern."
+  }
+]

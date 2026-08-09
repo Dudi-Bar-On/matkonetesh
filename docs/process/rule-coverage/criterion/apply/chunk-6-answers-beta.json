@@ -1,0 +1,38 @@
+[
+  {
+    "token": "T01",
+    "group": "B",
+    "mechanism": "pretooluse:Edit|Write",
+    "mechanism_target": "the classifier-brief / measured-procedure files",
+    "observed_prior_facts": "whether a measurement run started and has not yet completed, and the brief's content hash at run start — a mid-run edit is only a violation relative to that prior state",
+    "reason": "An edit to the brief is not a violation per se (editing plus re-measuring is allowed); compliance is decided only by the sequence — did the edit land between batches of an in-progress measured run."
+  },
+  {
+    "token": "T02",
+    "group": "A",
+    "artifact": "the working tree at commit time (git status --porcelain output)",
+    "pattern": "a line beginning with `??` whose path matches a test-file pattern (e.g. tests/** or *spec*/*test* file) at the moment of commit",
+    "mechanism": "commit-gate",
+    "mechanism_target": "untracked test files under tests/**",
+    "reason": "An untracked test file is a purely structural fact of the repository at commit time; its presence decides non-compliance with no reading of intent."
+  },
+  {
+    "token": "T03",
+    "group": "C",
+    "reason": "Deciding compliance means judging whether a claim's strength ('absence guaranteed', 'index healthy') is actually licensed by the kind of evidence behind it (sampling vs. a real query) — an assessment of the meaning of the claim relative to its evidence, not a textual pattern."
+  },
+  {
+    "token": "T04",
+    "group": "A",
+    "artifact": "the edited spec file path together with the approval register (מרשם)",
+    "pattern": "on an Edit/Write to docs/superpowers/specs/**, the presence of that spec's path listed as approved in the register decides whether the edit passes without a brainstorming session; absence blocks",
+    "mechanism": "pretooluse:Edit|Write",
+    "mechanism_target": "docs/superpowers/specs/**",
+    "reason": "The rule reduces to a lookup: an approved-in-register spec licenses editing itself, an unlisted/new spec does not — presence or absence of a register entry is decisive without reading intent."
+  },
+  {
+    "token": "T05",
+    "group": "C",
+    "reason": "Deciding whether a test asserts more than honest data can satisfy requires evaluating the meaning of its assertion against what the data domain makes possible (distinctive vs. incidental identifiers) — a quality/semantics judgement, not a nameable textual pattern."
+  }
+]

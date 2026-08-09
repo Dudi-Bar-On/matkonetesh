@@ -153,3 +153,14 @@
 |---|---|---|
 | אלפא | `C` | Recognising that a claim asserts 'this landed in git' and that its supporting evidence is a disk-fed projection rather than `git show HEAD` requires reading what the claim means and what its evidence actually attests — the check is mechanical only after that semantic identification. |
 | בטא | `B` | The rule forbids answering 'did this land' from a disk-built projection; compliance depends on which evidence-gathering events preceded the claim, which the recorded tool history observes. |
+
+---
+
+## `L76` — היום ללא קבוצה (נוסף 9.8.26, מנה 5)
+
+**זו אינה הצורה המורכבת.** שתי המסווגות שואלות שאלה אחרת לגמרי: האם **חיפוש-צולב בין קובץ לקובץ** הוא "דפוס בארטיפקט" (ש1 ⟵ A) או "עובדה קודמת שצריך לדעת" (ש2 ⟵ B)? הקריטריון לא אומר.
+
+| קריאה | קבוצה | הנימוק |
+|---|---|---|
+| אלפא | `B` | The diff to a spec file alone cannot decide compliance; the deciding fact is a prior event (owner approval) observed in the register, so the edit gate must consult recorded prior state. |
+| בטא | `A` | The rule reduces to a lookup: an approved-in-register spec licenses editing itself, an unlisted/new spec does not — presence or absence of a register entry is decisive without reading intent. |
