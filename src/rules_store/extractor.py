@@ -306,8 +306,14 @@ def extract_h_rulings(text: str, source_path: str) -> list[RuleRecord]:
 #     cannot run away because it does not depend on matching anything past it.
 # ---------------------------------------------------------------------------------------------
 
-_LESSON_TABLE_ROW_RE = re.compile(r"^\|\s*(L\d+)\s*\|(.*)\|\s*$", re.MULTILINE)
-_LESSON_MARKER_RE = re.compile(r"^\*\*(L\d+)\s*·\s*", re.MULTILINE)
+# The optional [ab] suffix (owner decision, 2026-08-09): a compound rule — one carrying both a
+# mechanically checkable clause and a judged clause — is SPLIT into two rules rather than tie-broken,
+# and the halves keep the original number so the relationship stays readable: L43a and L43b, not two
+# fresh sequential ids that look unrelated a month later. Without the suffix here, `**L43a ·` matched
+# as `L43` and the two halves collapsed into ONE record — silently, because the id it produced was a
+# real rule id, which is the worst shape of parse bug: it does not fail, it merges.
+_LESSON_TABLE_ROW_RE = re.compile(r"^\|\s*(L\d+[ab]?)\s*\|(.*)\|\s*$", re.MULTILINE)
+_LESSON_MARKER_RE = re.compile(r"^\*\*(L\d+[ab]?)\s*·\s*", re.MULTILINE)
 
 
 def extract_lessons(text: str, source_path: str) -> list[RuleRecord]:

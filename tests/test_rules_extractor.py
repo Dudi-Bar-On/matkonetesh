@@ -327,6 +327,38 @@ def test_extracts_h_rulings_by_their_h_number_not_their_section_number():
     assert ids == {"H8", "H13"}, f"got {ids}"
 
 
+SPLIT_LESSON_FIXTURE = """\
+**L43a · A tracked source file may not contain a C0 control byte (9.8.26).** The enforceable half.
+
+**L43b · When identical-looking code behaves differently, compare BYTES (9.8.26).** The judged half.
+
+**L44 · An ordinary lesson that must still extract (1.8.26).** Body.
+"""
+
+
+def test_extracts_a_split_lesson_and_its_unsplit_neighbour():
+    """Owner decision 2026-08-09: a compound rule is SPLIT into an enforceable half and a judged half,
+    and the halves keep the original's number so the relationship survives — `L43a`/`L43b`, not two
+    fresh sequential ids that read as unrelated rules a month later.
+
+    The old marker regex ended at `L\\d+`, so `L43a` extracted as `L43` and the two halves collapsed
+    into one record — silently, because the id it produced was a real rule id. This asserts both halves
+    survive as distinct records AND that a plain lesson beside them is untouched."""
+    recs = {r.rule_id: r for r in extract_lessons(SPLIT_LESSON_FIXTURE, "docs/x.md")}
+    assert set(recs) == {"L43a", "L43b", "L44"}, f"got {set(recs)}"
+    # The bolded headline lands in title_he and the prose after it in statement — asserting against
+    # the field the extractor actually fills, not the one I first assumed.
+    assert "control byte" in recs["L43a"].title_he
+    assert "compare BYTES" in recs["L43b"].title_he
+    assert "enforceable half" in recs["L43a"].statement
+    assert "judged half" in recs["L43b"].statement
+    # The halves must not bleed into each other — the exact failure the old regex produced.
+    for field in (recs["L43b"].title_he, recs["L43b"].statement):
+        assert "control byte" not in field
+    for field in (recs["L43a"].title_he, recs["L43a"].statement):
+        assert "compare BYTES" not in field
+
+
 def test_extracts_table_lessons_and_inline_lessons():
     recs = {r.rule_id: r for r in extract_lessons(LESSON_FIXTURE, "docs/process/development-discipline.md")}
     assert set(recs) == {"L1", "L2", "L14"}, f"got {set(recs)}"
@@ -482,11 +514,22 @@ def test_h_bullet_title_that_never_closes_does_not_bleed_the_next_bullets_marker
     assert "source of truth" in recs["H10"].statement
 
 
+def _l_sort_key(rule_id: str) -> tuple[int, str]:
+    """Sorts L-ids numerically with the split suffix kept as a tiebreak. The previous inline
+    `int(x[1:])` raised ValueError on 'L43b' — inside the failure message of the very assertion
+    that was reporting the mismatch, so the test died instead of naming what was wrong."""
+    digits = "".join(c for c in rule_id[1:] if c.isdigit())
+    return (int(digits or 0), rule_id)
+
+
 def _expected_l_ids(text: str) -> set[str]:
     """Independent derivation (deliberately not the extractor's own regex) of every L-id the
     document declares — either as a Lessons-log table row or an inline '**Ln ·' marker."""
-    ids = set(re.findall(r"^\|\s*(L\d+)\s*\|", text, re.MULTILINE))
-    ids.update(re.findall(r"^\*\*(L\d+)\s*·", text, re.MULTILINE))
+    # The [ab] suffix is part of a declared id since the 2026-08-09 split ruling (L43a/L43b).
+    # This derivation must model what the DOCUMENT declares, independently of the extractor —
+    # so it widens for the same reason, not because the extractor changed.
+    ids = set(re.findall(r"^\|\s*(L\d+[ab]?)\s*\|", text, re.MULTILINE))
+    ids.update(re.findall(r"^\*\*(L\d+[ab]?)\s*·", text, re.MULTILINE))
     return ids
 
 
@@ -511,8 +554,8 @@ def test_real_document_every_declared_lesson_id_is_extracted_exactly_once():
     ids = [r.rule_id for r in recs]
     got = set(ids)
     assert got == expected, (
-        f"missing: {sorted(expected - got, key=lambda x: int(x[1:]))}, "
-        f"unexpected: {sorted(got - expected, key=lambda x: int(x[1:]))}"
+        f"missing: {sorted(expected - got, key=_l_sort_key)}, "
+        f"unexpected: {sorted(got - expected, key=_l_sort_key)}"
     )
     assert len(ids) == len(set(ids)), f"duplicate lesson ids extracted: {ids}"
 

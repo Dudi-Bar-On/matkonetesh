@@ -149,16 +149,18 @@ mechanism_target: פקודות Bash המריצות `sudo` בתוך `wsl` לא-א
 
 ### L43 — קוד שנראה זהה התנהג אחרת: בית-בקרה בלתי-נראה מעריכה סקריפטית
 
-**L43a — הסעיף הנאכף.** group **A** · mechanism `pretooluse:Bash` ·
-mechanism_target: עריכה-במקום סקריפטית של קובצי מקור במעקב git.
-**ארטיפקט קונקרטי:** מחרוזת הפקודה ב-payload של PreToolUse:Bash.
-**תבנית קונקרטית:** ‏`/\b(sed|perl)\s+[^|;&]*-[a-zA-Z]*i/` או `awk -i inplace`, כשהפקודה נוקבת
-בנתיב של קובץ מקור בריפו (`*.js`, `*.py`, `*.mjs`, `*.css`) ⇒ חסימה, עם הפניה לכלי Edit
-(התאמת מחרוזת מדויקת) — הערוץ שבו הוזרק ה-U+0008.
+**L43a — הסעיף הנאכף.** ‏**תוקן על-ידי הבעלים 9.8.26** — ההצעה המקורית הייתה לחסום `sed -i`,
+והיא נדחתה: היא חוסמת כלי לגיטימי ואינה מזהה את הפגם. הפגם היה **בייט בקרה בלתי-נראה** שנכנס
+לקובץ, ולזה יש דפוס ישיר.
 
-> **נוסח מוצע L43a:** In-place scripted rewriting of tracked source files (`sed -i`, `perl -i`,
-> `awk -i inplace`) is blocked. Source edits go through the exact-string Edit tool; scripted
-> line-rewriting is how an invisible control byte entered a regex.
+group **A** · mechanism `ci-gate` · mechanism_target: קובצי מקור במעקב git.
+**ארטיפקט קונקרטי:** תוכן הקובץ.
+**תבנית קונקרטית:** בייט מטווח הבקרה C0 שאינו tab/LF/CR — כלומר `[ --]`
+— בקובץ מקור. אפס תוצאות-שווא בקורפוס תקין, כי טקסט אמיתי אינו מכיל אותם.
+
+> **נוסח מוצע L43a:** A tracked source file may not contain a C0 control byte other than tab, LF
+> or CR. Such a byte is invisible in every editor and diff, and it is how a regex came to match
+> zero rows while reading as correct.
 
 **L43b — הסעיף השיפוטי.** group **C** · mechanism `judge`.
 השופט מעריך: כשקוד שנראה זהה מתנהג אחרת — האם בוצעה השוואת **בתים** (סריקת `charCodeAt` וכדומה)
