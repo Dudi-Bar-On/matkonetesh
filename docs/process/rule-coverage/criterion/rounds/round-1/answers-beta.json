@@ -1,0 +1,90 @@
+{
+  "R01": {
+    "group": "B",
+    "reason": "ש1 no — no single artifact's pattern decides; compliance = the sequence (subagent completion claim, then a git log/git status check before relaying), prior facts observable in the subagentstop payload and subsequent Bash payloads."
+  },
+  "R02": {
+    "group": "B",
+    "reason": "ש1 no — compliance is the ordering: a git push event must be followed by a passing live-URL Playwright check before any 'version is live' claim; both prior facts (push, verification run) are observable in Bash/tool hook payloads."
+  },
+  "R03": {
+    "group": "none",
+    "reason": "Documentation of where the thinking-models corpus came from and how to read it — a historical/provenance record with no compliance condition at all."
+  },
+  "R04": {
+    "group": "B",
+    "reason": "ש1 no — a single Agent-dispatch payload cannot decide; compliance needs the count of currently running agents and whether a suite/build/GPU job is active, i.e. prior state observable in the state store / dispatch journal."
+  },
+  "R05": {
+    "group": "C",
+    "reason": "Correct singular/plural on interpolated counts and the correct domain term require evaluating the meaning and quality of rendered Hebrew text — no pattern decides full compliance."
+  },
+  "R06": {
+    "group": "C",
+    "reason": "The trigger ('identical-looking code behaves differently') and whether a scripted edit was adequately 'verified by running' require judging the debugging situation — no nameable decisive pattern, no clean observable prior-fact set."
+  },
+  "R07": {
+    "group": "C",
+    "reason": "Identifying the hardest constraint, MECE coverage of requirements, and reversibility classification are all evaluations of a plan's meaning and quality."
+  },
+  "R08": {
+    "group": "C",
+    "reason": "Deciding whether plan text waives, defers, or REINTERPRETS a spec requirement requires understanding both texts' meaning; a keyword like 'deferred' does not decide (reinterpretation carries no fixed token), so ש1's burden of proof fails."
+  },
+  "R09": {
+    "group": "C",
+    "reason": "Judging that a measurement is 'surprising' and whether the probe genuinely ran the workload is an evaluation of evidence quality, not a pattern or a stored prior fact."
+  },
+  "R10": {
+    "group": "B",
+    "reason": "The two gates are sequence rules — RED witnessed by the implementer before GREEN, and a full suite run after every task before the next begins — with the prior events (test runs, task closes) observable in hook payloads and the session state."
+  },
+  "R11": {
+    "group": "A",
+    "artifact": "the brief file handed to a dispatched subagent (template docs/process/templates/task-brief.md), as referenced in the pretooluse:Agent payload",
+    "pattern": "presence of all required brief sections non-empty and non-placeholder — quoted spec lines, plan code, DoD checklist, report contract incl. the H9 table requirement, and a primary-tool field; a missing field or a TODO/placeholder marker = invalid brief",
+    "reason": "The brief/report contract is decided by the structural completeness of a named file (exactly what make-brief/check-brief scan); the who-runs-where table rides on the same artifact gate."
+  },
+  "R12": {
+    "group": "B",
+    "reason": "ש1 no — compliance is whether a per-language rendered-DOM measurement was actually run before the coverage claim was stated; that prior run is observable in tool hook payloads (Playwright/DOM sweep commands) preceding the claim."
+  },
+  "R13": {
+    "group": "C",
+    "reason": "Whether a derived value has a REAL consumer that fires on real data (L8: a reader that never executes is still dead) requires evaluating code behavior and meaning — a static reference grep does not decide."
+  },
+  "R14": {
+    "group": "C",
+    "reason": "Whether a review truly rendered two substantive verdicts, whether a reviewer was pre-judged, and whether a regression test was narrowed to fit the implementation all require evaluating content meaning and intent."
+  },
+  "R15": {
+    "group": "A",
+    "artifact": "the recovered item's ledger row in docs/ROADMAP-2026-07-30.md §5a (and the task report's spec-trace line)",
+    "pattern": "the ⚠️R status replaced by a recorded joint verdict — בצע, or R-cancelled with decision + one-line reason — present before/with any implementation commit for that item; row deletion is itself a violation",
+    "reason": "Compliance is decided by the presence of the recorded owner verdict in a named document row, checkable at commit-gate without reading intent."
+  },
+  "R16": {
+    "group": "C",
+    "reason": "'Repeatedly causes trouble' attribution and 'genuinely better alternative' are evaluative judgments; the trouble-count prior facts are not cleanly observable in any hook payload or state store, so ש2's condition fails."
+  },
+  "R17": {
+    "group": "A",
+    "artifact": "the task-close report (subagent report file / final stop message)",
+    "pattern": "presence of the fixed 5-row H9 table with its named row labels — מה היה · מה נעשה · מה נשאר · איפה אנחנו · הבא בתור — plus a ledger number in the Position row",
+    "reason": "The mandated structure is a fixed, named table whose presence/absence in the closing artifact decides compliance without reading intent (honesty of content is separate and not what the rule's gate checks)."
+  },
+  "R18": {
+    "group": "C",
+    "reason": "Deciding whether the controller did work 'a subagent could do' requires evaluating the nature of each piece of work — a judgment of meaning, with no decisive pattern or stored prior fact."
+  },
+  "R19": {
+    "group": "C",
+    "reason": "Classifying a decision as important vs routine (hard to reverse, safety, owner preference) is inherently an evaluation of the decision's meaning and consequences."
+  },
+  "R20": {
+    "group": "A",
+    "artifact": "the shell command in the pretooluse:Bash payload",
+    "pattern": "a segment invoking a nested extractor/`claude -p` process with the working directory inside this repo (no cd to a neutral cwd, or relative paths into the repo)",
+    "reason": "The one kept gate — neutral cwd + absolute paths for nested model processes — is decided by the command text itself; the rest of the section is an explicitly historical record riding on that single enforceable finding."
+  }
+}

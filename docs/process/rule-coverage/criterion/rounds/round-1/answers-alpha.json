@@ -1,0 +1,116 @@
+{
+  "R01": {
+    "group": "B",
+    "mechanism": "subagentstop",
+    "mechanism_target": "completion claims in agent reports vs `git log`/`git status`",
+    "observed_prior_facts": "the agent's final report text (subagentstop payload) plus whether a git status/log verification ran before the claim was relayed — tool-event history",
+    "reason": "No single artifact decides it (a completion claim is phrased many ways); the violation is a sequence — a 'committed' claim relayed without a subsequent repo check, both facts visible in hook payloads and the event history."
+  },
+  "R02": {
+    "group": "B",
+    "mechanism": "stop",
+    "mechanism_target": "release/live announcements following `git push`",
+    "observed_prior_facts": "a prior `git push` Bash event and the presence/absence of a Playwright live-URL check event between the push and the announcement",
+    "reason": "Compliance hinges on ordering — push happened, live-URL verification did or did not run before the 'it is live' claim — which is event history, not a pattern in one artifact."
+  },
+  "R03": {
+    "group": "none",
+    "cost": "Reference documentation of an adopted corpus and how to query it; there is no behavior to comply with, so any check would have nothing to decide.",
+    "importance": "בינונית — useful orientation material for planning work, but it prescribes nothing enforceable.",
+    "reason": "Documentation/historical record of where the thinking-models material came from and how to read it — no compliance condition."
+  },
+  "R04": {
+    "group": "B",
+    "mechanism": "pretooluse:Agent",
+    "mechanism_target": "Agent dispatches (concurrency ceiling per §10.5a)",
+    "observed_prior_facts": "the count of currently-running agents and whether a suite run/build/GPU queue is active — derivable from agent start/stop events and process state in the state store",
+    "reason": "A single dispatch payload cannot decide compliance; the decision needs a counter of concurrent agents and knowledge of active heavy processes, i.e. prior events."
+  },
+  "R05": {
+    "group": "C",
+    "reason": "Whether a rendered string is correct Hebrew — right singular/plural on interpolated counts, right domain term, no leak — requires linguistic and domain judgment of the content, not a nameable textual pattern."
+  },
+  "R06": {
+    "group": "C",
+    "reason": "Both gates trigger on a judged situation ('identical-looking code behaves differently', 'was the scripted edit verified by running it') — recognizing the situation and the adequacy of the verification requires evaluating meaning, not matching a pattern."
+  },
+  "R07": {
+    "group": "C",
+    "reason": "Whether a plan identified the hardest constraint first, is MECE at requirement level, or weighed reversibility is a quality judgment over the plan's content — no artifact pattern decides it."
+  },
+  "R08": {
+    "group": "C",
+    "reason": "Deciding that a plan 'waives, defers, or reinterprets' an approved spec requirement means comparing the meaning of plan text against spec text; words like 'deferred' appear legitimately, so no lexical pattern is decisive."
+  },
+  "R09": {
+    "group": "C",
+    "reason": "'Prove the probe actually ran the workload before reasoning from a surprising measurement' requires judging whether evidence supports a conclusion — an assessment of meaning, not a pattern in an artifact."
+  },
+  "R10": {
+    "group": "B",
+    "mechanism": "posttooluse",
+    "mechanism_target": "test runs vs edits (RED-before-GREEN) and full-suite runs after each task close",
+    "observed_prior_facts": "the ordered history of test executions (with failing then passing outcomes) relative to code edits, and whether `npx playwright test` ran after each task — all in the tool-event history",
+    "reason": "Both extracted gates are sequence conditions — a RED run observed before implementation, a whole-suite run after every task — decidable from prior events, not from any single artifact."
+  },
+  "R11": {
+    "group": "A",
+    "artifact": "the brief file passed at agent dispatch (template docs/process/templates/task-brief.md), visible in the pretooluse:Agent payload",
+    "pattern": "presence/absence of the required brief sections — quoted spec lines, exact plan code, DoD checklist, report contract including the H9 table requirement, and a primary-tool field; a missing or placeholder section (e.g. 'TODO') is the violation",
+    "mechanism": "pretooluse:Agent",
+    "mechanism_target": "task-brief files under the brief/report contract",
+    "reason": "The brief contract is a fixed template whose required fields are structurally checkable before dispatch — the text itself says a missing field = an invalid brief and that check-brief already rejects slices."
+  },
+  "R12": {
+    "group": "B",
+    "mechanism": "stop",
+    "mechanism_target": "localization/coverage 'done' claims for fr/de/es/etc.",
+    "observed_prior_facts": "whether a rendered-DOM-per-language measurement (Playwright run against the built app) exists in the event history before the coverage claim is stated",
+    "reason": "The gate is an ordering condition — a coverage claim is permitted only after a rendered-DOM measurement ran; that prior fact lives in the tool-event history, not in any pattern of the claim itself."
+  },
+  "R13": {
+    "group": "none",
+    "cost": "It is a one-line lessons-log record ('root cause X — gate: DoD 5') pointing at a gate that lives elsewhere; enforcing 'every derived value has a real, firing consumer' here would require runtime judgment the record itself does not define.",
+    "importance": "בינונית — the failure it records is real, but the operative compliance condition is DoD line 5, not this record.",
+    "reason": "Historical lesson record whose compliance condition is carried by another rule (DoD 5); on its own it states no checkable condition."
+  },
+  "R14": {
+    "group": "C",
+    "reason": "Detecting pre-judged reviewers, a test 'narrowed to fit the implementation', or the adequacy of two verdicts requires evaluating the meaning of briefs, tests and review content — judgment, not pattern."
+  },
+  "R15": {
+    "group": "B",
+    "mechanism": "pretooluse:Edit|Write",
+    "mechanism_target": "implementation edits on items whose ledger row (docs/ROADMAP-2026-07-30.md §5a) is still ⚠️R",
+    "observed_prior_facts": "the ledger row's status and the presence/absence of a recorded owner verdict (בצע/בטל/R-cancelled) at the moment implementation work starts — read from the ledger document as state",
+    "reason": "The violation is ordering — implementation before the recorded owner decision on an ⚠️R item; deciding it needs the prior state of the ledger row relative to when work began, not a pattern in one artifact."
+  },
+  "R16": {
+    "group": "C",
+    "reason": "'Repeatedly causes trouble' and 'genuinely better alternative was weighed' require attributing failures to a component and judging the quality of an evaluation — meaning and intent, not pattern or counter alone."
+  },
+  "R17": {
+    "group": "A",
+    "artifact": "the task-close report (subagentstop payload / the .superpowers/sdd report file) and the diff of docs/STATUS-BOARD.md",
+    "pattern": "presence of the fixed five H9 row headers — 'מה היה', 'מה נעשה', 'מה נשאר', 'איפה אנחנו', 'הבא בתור' — plus a ledger number in row 4, and a same-task update touching docs/STATUS-BOARD.md; absence of any of these is the violation",
+    "mechanism": "subagentstop",
+    "mechanism_target": "task reports + docs/STATUS-BOARD.md",
+    "reason": "H9 mandates a fixed-format table with fixed row labels at every task end — a concrete structural pattern whose absence in the report decides non-compliance without reading intent."
+  },
+  "R18": {
+    "group": "C",
+    "reason": "Whether the controller did 'work a subagent could do' requires judging delegability of each piece of work — an evaluation of the work's nature, not any pattern or prior fact."
+  },
+  "R19": {
+    "group": "C",
+    "reason": "The entire rule turns on classifying a decision as 'important' vs 'routine' — hard to reverse, safety-relevant, owner-preference — which is an assessment of meaning and consequence."
+  },
+  "R20": {
+    "group": "A",
+    "artifact": "the Bash command in the pretooluse:Bash payload (plus the hook's known cwd)",
+    "pattern": "a command segment invoking a nested model process — leading word `claude` with `-p` — while the working directory is inside this repo / without an explicit cd to a neutral absolute path",
+    "mechanism": "pretooluse:Bash",
+    "mechanism_target": "nested `claude -p` (or equivalent extractor) invocations",
+    "reason": "The one kept gate ('run nested extraction from a NEUTRAL cwd, absolute paths') is decided by a concrete textual pattern in the shell command plus its cwd — no intent-reading needed; the rest of the section is explicitly historical."
+  }
+}
