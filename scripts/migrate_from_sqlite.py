@@ -34,6 +34,9 @@ import json
 import shutil
 import sqlite3
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")  # L74: prints carry "—"; Windows pipes stdout as cp1252
+
 import time
 from dataclasses import dataclass, field
 from pathlib import Path

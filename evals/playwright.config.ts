@@ -40,7 +40,7 @@ export default defineConfig({
     // Same build+serve convention as the root config — tests exercise the real dist/ artifact.
     // Playwright's webServer.command defaults its cwd to this config file's own directory (evals/),
     // but build.py/serve.js live at the repo root — so cwd must be set explicitly.
-    command: `python build.py && node serve.js ${PORT}`,
+    command: `py -3 build.py && node serve.js ${PORT}`,
     cwd: path.resolve(__dirname, '..'),
     url: `http://localhost:${PORT}/index.html`,
     reuseExistingServer: false,

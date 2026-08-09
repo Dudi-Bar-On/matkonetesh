@@ -174,3 +174,60 @@ def test_yaml_gate_accepts_the_same_keys_once_per_list_item(tmp_path):
     r = run_gate("check-yaml-duplicate-keys.mjs", "--root", str(tmp_path))
     assert r.returncode == 0, r.stdout
     assert "no duplicate key" in r.stdout, r.stdout
+
+
+def test_python_invocation_gate_catches_a_bare_python_call(tmp_path):
+    (tmp_path / "playwright.config.ts").write_text(
+        "webServer: { command: 'python build.py' }\n", encoding="utf-8")
+    r = run_gate("check-python-invocation.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "build.py" in r.stdout, r.stdout
+
+def test_python_invocation_gate_accepts_the_launcher(tmp_path):
+    (tmp_path / "playwright.config.ts").write_text(
+        "webServer: { command: 'py -3 build.py' }\n", encoding="utf-8")
+    r = run_gate("check-python-invocation.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_python_invocation_gate_does_not_fire_on_the_real_repo():
+    r = run_gate("check-python-invocation.mjs")
+    assert r.returncode == 0, r.stdout
+
+def test_utf8_gate_catches_a_script_printing_hebrew_without_declaring_encoding(tmp_path):
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "refuse.py").write_text('print("סירוב: הכלל אוסר זאת")\n', encoding="utf-8")
+    r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "refuse.py" in r.stdout, r.stdout
+
+def test_utf8_gate_accepts_a_script_that_declares_it(tmp_path):
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "ok.py").write_text(
+        'import sys\nsys.stdout.reconfigure(encoding="utf-8")\nprint("סירוב")\n', encoding="utf-8")
+    r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_utf8_gate_does_not_fire_on_the_real_scripts():
+    r = run_gate("check-python-utf8.mjs")
+    assert r.returncode == 0, r.stdout
+
+
+def test_python_invocation_gate_ignores_prose_and_log_messages(tmp_path):
+    """Pins the 2026-08-09 scoping fix: the gate matches command POSITIONS (webServer.command,
+    non-Linux workflow run: steps, package.json scripts), not the word `python` appearing anywhere
+    in a file. A JSON doc's prose and a console.log help message both contain the literal text
+    `python build.py` and must not fire."""
+    (tmp_path / "notes.json").write_text(
+        '{"note": "see python build.py for context, not a real invocation"}\n', encoding="utf-8")
+    (tmp_path / "helper.mjs").write_text(
+        "console.log('run:  python scripts/extract_graph.py --pending');\n", encoding="utf-8")
+    r = run_gate("check-python-invocation.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_utf8_gate_ignores_hebrew_confined_to_a_comment(tmp_path):
+    """Pins the 2026-08-09 scoping fix: the gate matches the print CALL's own argument, not "does
+    this file contain a print anywhere and non-ASCII anywhere". Hebrew in a docstring next to an
+    ASCII-only print must not fire."""
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "prose_only.py").write_text(
+        '"""תיעוד בעברית שאינו מודפס לעולם."""\nprint("status: ok")\n', encoding="utf-8")
+    r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout

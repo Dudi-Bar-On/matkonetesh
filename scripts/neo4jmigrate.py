@@ -22,6 +22,9 @@ from __future__ import annotations
 
 import argparse
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")  # L74: prints carry "·"; Windows pipes stdout as cp1252
+
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent

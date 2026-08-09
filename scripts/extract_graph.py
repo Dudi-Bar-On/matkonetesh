@@ -21,6 +21,9 @@ import argparse
 import logging
 import subprocess
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")  # L74: prints carry "—"; Windows pipes stdout as cp1252
+
 import time
 from pathlib import Path
 

@@ -7,6 +7,9 @@ Usage: py -3 scripts/rule_group_distribution.py
 from __future__ import annotations
 
 import sys
+
+sys.stdout.reconfigure(encoding="utf-8")  # L74: print carries "·"; Windows pipes stdout as cp1252
+
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
