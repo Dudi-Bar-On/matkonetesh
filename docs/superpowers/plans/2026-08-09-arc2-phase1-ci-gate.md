@@ -679,52 +679,319 @@ def test_file_size_gate_does_not_block_the_real_suite():
 
 - [ ] **Step 3: Write the four gates**
 
-Each follows Task 1's shape exactly — `RULE_IDS`, `--root`, fail-open, one-line verdict. The scans:
+All four follow Task 1's shape exactly: `RULE_IDS`, the `--root` seam, fail-open on anything they
+cannot interpret, one verdict line, exit 0 or 1.
 
 ```javascript
-// check-powershell-output.mjs — L66. SEVERITY: BLOCKING.
-// In PowerShell the pipeline IS the return value, and this plan was bitten twice in OPPOSITE
-// directions: a bare trailing `$results = @(...)` EMITS NOTHING (the watchman would have printed
-// "WATCHMAN OK" while checking zero components — the exact failure it exists to prevent, inside
-// itself), while `Write-Output` beside `return` emits BOTH, so the caller captures narration mixed
-// with the result. Alternative in the message: end with the variable, or use Write-Host to narrate.
+#!/usr/bin/env node
+// check-powershell-output — L66. In PowerShell the pipeline IS the return value.
+//
+// SEVERITY: BLOCKING. Two defects, one root, and they bit in OPPOSITE directions. A function ending in
+// a bare `$results = @(...)` emits NOTHING — the watchman's real-run branch produced $null, so every
+// real run would have iterated an empty set and printed "WATCHMAN OK while checking zero components",
+// which is the exact failure the watchman exists to prevent, inside the watchman. And `Write-Output`
+// beside `return` emits BOTH, so the caller captures narration mixed into the result. The alternatives
+// are named in the message and cost nothing: end with the variable itself, and narrate with Write-Host.
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, dirname, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export const RULE_IDS = ['L66'];
-// Scan: for each `function ... { ... }` body, flag (a) a last non-comment statement matching
-// /^\s*\$\w+\s*=/ and (b) a body containing BOTH /^\s*Write-Output\b/m and /^\s*return\b/m.
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+const argv = process.argv.slice(2);
+const rootIdx = argv.indexOf('--root');
+const ROOT = rootIdx === -1 ? REPO : argv[rootIdx + 1];
+const SKIP = new Set(['node_modules', '.git', 'dist', '__pycache__', 'test-results']);
+
+function ps1Files(dir, out = []) {
+  let names;
+  try { names = readdirSync(dir); } catch { return out; }
+  for (const name of names) {
+    if (SKIP.has(name)) continue;
+    const p = join(dir, name);
+    let st;
+    try { st = statSync(p); } catch { continue; }
+    if (st.isDirectory()) ps1Files(p, out);
+    else if (name.endsWith('.ps1') || name.endsWith('.psm1')) out.push(p);
+  }
+  return out;
+}
+
+// Brace-count the body of each `function Name {` so a nested scriptblock does not end it early.
+function functionBodies(lines) {
+  const out = [];
+  for (let i = 0; i < lines.length; i++) {
+    const m = /^\s*function\s+([\w-]+)/.exec(lines[i]);
+    if (!m) continue;
+    let depth = 0, started = false, body = [], startLine = i + 1;
+    for (let j = i; j < lines.length; j++) {
+      for (const ch of lines[j]) {
+        if (ch === '{') { depth++; started = true; }
+        else if (ch === '}') depth--;
+      }
+      if (j > i || lines[j].includes('{')) body.push([j + 1, lines[j]]);
+      if (started && depth === 0) { out.push({ name: m[1], startLine, body }); i = j; break; }
+    }
+  }
+  return out;
+}
+
+const isCode = (line) => line.trim() !== '' && !/^\s*#/.test(line);
+const findings = [];
+for (const f of ps1Files(ROOT)) {
+  let lines;
+  try { lines = readFileSync(f, 'utf8').split('\n'); } catch { continue; }
+  const rel = relative(ROOT, f).split(sep).join('/');
+  for (const fn of functionBodies(lines)) {
+    const code = fn.body.filter(([, l]) => isCode(l));
+    // (a) the last statement before the closing brace is a bare assignment — emits nothing
+    for (let k = code.length - 1; k >= 0; k--) {
+      const [n, line] = code[k];
+      if (/^\s*}\s*$/.test(line)) continue;
+      if (/^\s*\$[\w:]+\s*=\s*/.test(line) && !/^\s*\$\w+\s*=\s*.*\|\s*Out-Null/.test(line)) {
+        findings.push([rel, n, `function ${fn.name} ends in a bare assignment`, line.trim()]);
+      }
+      break;
+    }
+    // (b) Write-Output beside return in the same body — both reach the pipeline
+    const hasWriteOutput = code.find(([, l]) => /^\s*Write-Output\b/.test(l));
+    const hasReturn = code.find(([, l]) => /^\s*return\b/.test(l));
+    if (hasWriteOutput && hasReturn) {
+      findings.push([rel, hasWriteOutput[0],
+        `function ${fn.name} uses Write-Output beside return`, hasWriteOutput[1].trim()]);
+    }
+  }
+}
+
+if (findings.length === 0) {
+  console.log('POWERSHELL OUTPUT: no function emits nothing, and none mixes narration into its result.');
+  process.exit(0);
+}
+console.log(
+  `FAIL: ${findings.length} PowerShell output defect(s):\n` +
+  findings.map(([f, n, what, src]) => `  ${f}:${n} — ${what}\n      ${src}`).join('\n') +
+  `\n  A bare trailing assignment emits NOTHING: end the function with the variable itself\n` +
+  `  (\`$results\` on its own line) so the pipeline carries it.\n` +
+  `  Write-Output beside return emits BOTH: narrate with Write-Host, which does not reach the\n` +
+  `  pipeline, and let return carry the result alone.`);
+process.exit(1);
 ```
 
 ```javascript
-// check-ai-token-caps.mjs — L24. SEVERITY: BLOCKING.
-// A low cap plus think:'high' truncates the JSON mid-stream with no error — a confident wrong answer
-// ("not found") rather than a failure. Billing is on tokens actually used, so a high cap is free
-// headroom and a low one buys nothing. Alternative: 8192, or name the probe exemption inline.
+#!/usr/bin/env node
+// check-ai-token-caps — L24. Every AI call carries an 8192 output cap.
+//
+// SEVERITY: BLOCKING, and the harm is to substance rather than efficiency: a low cap plus a high
+// thinking budget truncates the JSON mid-stream with NO error. The smoker device-lookup returned "not
+// found" — a confident wrong answer, not a failure — because the model's thinking consumed the budget
+// and the payload was cut. Billing is on tokens actually used, so a high cap is free headroom and a
+// low one buys nothing. Alternative in the message: raise to 8192, or mark the line as a health probe.
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { join, dirname, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export const RULE_IDS = ['L24'];
-// Scan worker/** and app.js for /max(Output)?Tokens\s*[:=]\s*(\d+)/g; flag any value < 8192 whose
-// line does not carry the marker comment `health-probe`.
+
+const REQUIRED = 8192;
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+const argv = process.argv.slice(2);
+const rootIdx = argv.indexOf('--root');
+const ROOT = rootIdx === -1 ? REPO : argv[rootIdx + 1];
+const SKIP = new Set(['node_modules', '.git', 'dist', '__pycache__']);
+
+function jsFiles(dir, out = []) {
+  let names;
+  try { names = readdirSync(dir); } catch { return out; }
+  for (const name of names) {
+    if (SKIP.has(name)) continue;
+    const p = join(dir, name);
+    let st;
+    try { st = statSync(p); } catch { continue; }
+    if (st.isDirectory()) jsFiles(p, out);
+    else if (/\.(js|mjs|ts)$/.test(name)) out.push(p);
+  }
+  return out;
+}
+
+const targets = [];
+if (existsSync(join(ROOT, 'worker'))) targets.push(...jsFiles(join(ROOT, 'worker')));
+for (const f of ['app.js']) if (existsSync(join(ROOT, f))) targets.push(join(ROOT, f));
+
+const CAP = /max(?:Output)?Tokens\s*[:=]\s*(\d+)/g;
+const findings = [];
+for (const f of targets) {
+  let lines;
+  try { lines = readFileSync(f, 'utf8').split('\n'); } catch { continue; }
+  const rel = relative(ROOT, f).split(sep).join('/');
+  lines.forEach((line, n) => {
+    // A tiny health probe is the ONE named exception in the owner's policy. It must say so on the
+    // line, so the exemption is visible where the number is, not in a document elsewhere.
+    if (/health-probe/i.test(line)) return;
+    for (const m of line.matchAll(CAP)) {
+      const value = Number(m[1]);
+      if (value < REQUIRED) findings.push([rel, n + 1, value, line.trim()]);
+    }
+  });
+}
+
+if (findings.length === 0) {
+  console.log(`AI TOKEN CAPS: every cap in ${targets.length} file(s) is ${REQUIRED} or higher.`);
+  process.exit(0);
+}
+console.log(
+  `FAIL: ${findings.length} AI call(s) capped below ${REQUIRED}:\n` +
+  findings.map(([f, n, v, src]) => `  ${f}:${n} — ${v}\n      ${src}`).join('\n') +
+  `\n  Raise it to ${REQUIRED}. Billing is on tokens actually used, so the cap is free headroom — a\n` +
+  `  low one buys nothing and truncates the JSON mid-stream with no error, which reads as a\n` +
+  `  confident wrong answer rather than a failure.\n` +
+  `  If this genuinely is a tiny health probe, say so on the line: add a \`health-probe\` comment.`);
+process.exit(1);
 ```
 
 ```javascript
-// check-secret-alphabet.mjs — L53. SEVERITY: BLOCKING.
-// A generated secret is an INPUT TO A COMMAND LINE and can be parsed as syntax: token_urlsafe once
-// produced a password beginning with `-`, which neo4j-admin read as a flag and crash-looped reporting
-// "Missing required parameter: '<password>'" — an error pointing at a missing value while the value
-// was right there, being misread. Alternative in the message: the A-Za-z0-9._~ alphabet with a
-// letter first.
+#!/usr/bin/env node
+// check-secret-alphabet — L53. A generated secret is an input to a command line.
+//
+// SEVERITY: BLOCKING. `secrets.token_urlsafe(32)` produced a password beginning with `-`; neo4j-admin
+// read it as a FLAG and crash-looped reporting "Missing required parameter: '<password>'" — an error
+// pointing at a missing value while the value was right there, being misread. The `/` in the same
+// alphabet would split NEO4J_AUTH's `user/password` form. The alternative is one line and is named in
+// the message: choose from A-Za-z0-9._~ and start with a letter.
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { join, dirname, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export const RULE_IDS = ['L53'];
-// Scan scripts/** for /token_urlsafe|token_bytes|token_hex/ and flag any use not accompanied by an
-// explicit alphabet restriction on the same or an adjacent line.
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+const argv = process.argv.slice(2);
+const rootIdx = argv.indexOf('--root');
+const ROOT = rootIdx === -1 ? REPO : argv[rootIdx + 1];
+const SKIP = new Set(['node_modules', '.git', 'dist', '__pycache__']);
+
+function scriptFiles(dir, out = []) {
+  let names;
+  try { names = readdirSync(dir); } catch { return out; }
+  for (const name of names) {
+    if (SKIP.has(name)) continue;
+    const p = join(dir, name);
+    let st;
+    try { st = statSync(p); } catch { continue; }
+    if (st.isDirectory()) scriptFiles(p, out);
+    else if (/\.(py|mjs|js|ps1)$/.test(name)) out.push(p);
+  }
+  return out;
+}
+
+const GENERATOR = /\b(secrets\.token_urlsafe|secrets\.token_bytes|secrets\.token_hex|uuid4\(\)\.hex)\b/;
+// The safe form names its own alphabet — a choice() over an explicit character set, or an explicit
+// reference to the project's alphabet. Anything else is a generator whose output shape is unexamined.
+const DECLARES_ALPHABET = /(A-Za-z0-9\._~|ALPHABET|secrets\.choice\s*\()/;
+
+const findings = [];
+for (const f of scriptFiles(join(ROOT, 'scripts'))) {
+  let lines;
+  try { lines = readFileSync(f, 'utf8').split('\n'); } catch { continue; }
+  const rel = relative(ROOT, f).split(sep).join('/');
+  lines.forEach((line, n) => {
+    if (!GENERATOR.test(line)) return;
+    // A generator is fine when the file also pins the alphabet — check the file, not just the line,
+    // because the alphabet is usually a module-level constant.
+    const context = lines.slice(Math.max(0, n - 6), n + 7).join('\n');
+    if (DECLARES_ALPHABET.test(context) || DECLARES_ALPHABET.test(lines.join('\n'))) return;
+    findings.push([rel, n + 1, line.trim()]);
+  });
+}
+
+if (findings.length === 0) {
+  console.log('SECRET ALPHABET: every generated credential pins its alphabet.');
+  process.exit(0);
+}
+console.log(
+  `FAIL: ${findings.length} credential generator(s) with no declared alphabet:\n` +
+  findings.map(([f, n, src]) => `  ${f}:${n}\n      ${src}`).join('\n') +
+  `\n  A generated secret crosses command lines, env vars and URLs before it is ever used. Choose\n` +
+  `  from A-Za-z0-9._~ and require a letter first:\n` +
+  `      ALPHABET = string.ascii_letters + string.digits + "._~"\n` +
+  `      pw = secrets.choice(string.ascii_letters) + "".join(secrets.choice(ALPHABET) for _ in range(31))\n` +
+  `  A leading "-" is read as a flag; a "/" splits a user/password pair.`);
+process.exit(1);
 ```
 
 ```javascript
-// check-test-file-size.mjs — L30. SEVERITY: WARNING, and the reasoning matters.
-// Playwright caps workers at the test count PER FILE, so a spec file growing from 2 tests to 5 raised
-// the project's real concurrency past what service-worker registration cycles survive — and nothing in
-// that diff looked like a concurrency change. But a spec legitimately grows, the harm is to run
-// stability rather than to substance, and blocking every commit that adds a test would be the L70
-// failure mode. It reports and exits 0.
+#!/usr/bin/env node
+// check-test-file-size — L30. A spec file's own size silently changes the suite's concurrency.
+//
+// SEVERITY: WARNING — it reports and always exits 0, and the reasoning is the point. Playwright caps
+// workers at the test count PER FILE, so a spec growing from 2 tests to 5 raised the project's real
+// concurrency past what service-worker registration cycles reliably survive: an implementer reported
+// "825 passed, exit 0" and the controller's own run on the same code gave 821 passed / 4 failed.
+// Nothing in that diff looked like a concurrency change; the file just got bigger.
+// But a spec legitimately grows, the harm is to run stability rather than to substance, and blocking
+// every commit that adds a test is the L70 failure mode this whole arc exists to avoid. So: report.
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { join, dirname, relative, sep } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 export const RULE_IDS = ['L30'];
-// Scan tests/**.spec.ts, count /(^|\s)test\s*\(/g per file, print any file above the ceiling read from
-// playwright.config.ts's `workers` value. Always exit 0.
+
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+const argv = process.argv.slice(2);
+const rootIdx = argv.indexOf('--root');
+const ROOT = rootIdx === -1 ? REPO : argv[rootIdx + 1];
+
+// The ceiling is the measured worker count, read from the config rather than hardcoded — a number
+// pinned here would drift from the one that actually governs the run (L64b).
+function ceiling() {
+  const cfg = join(ROOT, 'playwright.config.ts');
+  if (!existsSync(cfg)) return null;
+  let text;
+  try { text = readFileSync(cfg, 'utf8'); } catch { return null; }
+  const m = /workers\s*:\s*(\d+)/.exec(text);
+  return m ? Number(m[1]) : null;      // an expression rather than a literal => null => fall open
+}
+
+function specFiles(dir, out = []) {
+  let names;
+  try { names = readdirSync(dir); } catch { return out; }
+  for (const name of names) {
+    const p = join(dir, name);
+    let st;
+    try { st = statSync(p); } catch { continue; }
+    if (st.isDirectory()) specFiles(p, out);
+    else if (name.endsWith('.spec.ts')) out.push(p);
+  }
+  return out;
+}
+
+const limit = ceiling();
+if (limit === null) {
+  console.log('TEST FILE SIZE: could not read the worker ceiling from playwright.config.ts ' +
+              '(absent, or `workers` is an expression rather than a literal). Not reporting.');
+  process.exit(0);
+}
+
+const over = [];
+for (const f of specFiles(join(ROOT, 'tests'))) {
+  let text;
+  try { text = readFileSync(f, 'utf8'); } catch { continue; }
+  const count = (text.match(/(^|\s)test\s*\(/g) || []).length;
+  if (count > limit) over.push([relative(ROOT, f).split(sep).join('/'), count]);
+}
+
+if (over.length === 0) {
+  console.log(`TEST FILE SIZE: no spec file exceeds the measured worker ceiling (${limit}).`);
+  process.exit(0);
+}
+console.log(
+  `TEST FILE SIZE — WARNING (not blocking): ${over.length} spec file(s) above the worker ceiling ` +
+  `(${limit}):\n` +
+  over.map(([f, c]) => `  ${f} — ${c} tests`).join('\n') +
+  `\n  Playwright caps workers at the test count per file, so this file alone raises the suite's real\n` +
+  `  concurrency. If the suite starts failing in full runs and passing in isolation, look here first:\n` +
+  `  nothing in the diff will look like a concurrency change.`);
+process.exit(0);
 ```
 
 - [ ] **Step 4: Run the tests and watch all ten pass.**
@@ -819,7 +1086,10 @@ git commit -m "feat(arc2 phase1): nine gates wired, liveness proven, coverage 41
 
 **Spec coverage.** §3.1 false-alarm tests — every task has one running against the real tree. §3.2 severity argued in code — present in every gate header, with `check-test-file-size` deliberately non-blocking. §3.3 `RULE_IDS` — every gate declares it. §3.4 liveness with no env overrides — Task 6, Step 1. §3.5 overhead — Task 6, Step 5. §5 DoD items 1–6 all map to Task 6.
 
-**Placeholder scan.** Tasks 1–4 carry complete implementations. Task 5's four gates carry their header, `RULE_IDS`, severity argument and an exact scan specification rather than full bodies — a deliberate, declared exception, because those four are the same shape as Task 1 with a different regex, and repeating ~60 lines of identical scaffolding four times would make the plan less readable, not more complete. **The implementer writes the body from the scan specification and the Task 1 template.** No task says "TBD", "handle edge cases", or "similar to Task N" in place of content.
+**Placeholder scan.** Every task carries complete implementations. Task 5 originally carried a
+scan specification instead of four full bodies; the owner ruled on 9.8.26 — *"להרחיב את התוכנית —
+אני רוצה דיוק"* — and it was expanded before execution reached it. No task says "TBD", "handle
+edge cases", or "similar to Task N" in place of content.
 
 **Type consistency.** All nine gates share one interface: `--root <dir>` seam, `export const RULE_IDS`, a verdict line beginning with the gate's uppercase name, exit 0/1. The test helper `run_gate(script, *args)` is defined once in Task 1 and used by every later task.
 

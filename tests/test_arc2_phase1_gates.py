@@ -1,0 +1,43 @@
+import subprocess, sys
+from pathlib import Path
+ROOT = Path(__file__).resolve().parent.parent
+
+def run_gate(script, *args):
+    return subprocess.run(["node", str(ROOT / "scripts" / script), *args],
+                          capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+
+def test_control_bytes_gate_catches_a_planted_byte(tmp_path):
+    (tmp_path / "app.js").write_bytes(b"const x = /word\x08/;\n")
+    r = run_gate("check-control-bytes.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "app.js" in r.stdout
+    assert "0x8" in r.stdout or "\\x08" in r.stdout
+
+def test_control_bytes_gate_does_not_fire_on_the_real_repo():
+    """The false-alarm test, run against the real tree — not invented input."""
+    r = run_gate("check-control-bytes.mjs")
+    assert r.returncode == 0, f"the gate fires on healthy repo content:\n{r.stdout}"
+
+def test_control_bytes_gate_exempts_vendor_documentation(tmp_path):
+    """docs/vendor carries ESC bytes inside ANSI examples. Correcting someone else's shipped
+    documentation is not this gate's business, and firing on it would teach people to skip the gate."""
+    v = tmp_path / "docs" / "vendor" / "x"; v.mkdir(parents=True)
+    (v / "doc.md").write_bytes(b"ANSI: \x1b[31m red \x1b[0m\n")
+    r = run_gate("check-control-bytes.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_control_bytes_gate_fails_open_on_an_unreadable_root():
+    r = run_gate("check-control-bytes.mjs", "--root", "no/such/directory")
+    assert r.returncode == 0
+    assert "could not" in r.stdout.lower()
+
+def test_control_bytes_gate_ignores_an_untracked_file(tmp_path):
+    """The rule says "a tracked source file". Scratch files are not the gate's business, and a
+    gate that fires on files git does not track will be routed around rather than obeyed."""
+    # a real git repo so `git ls-files` is meaningful
+    subprocess.run(["git", "init", "-q"], cwd=str(tmp_path), check=True)
+    (tmp_path / "kept.js").write_text("const ok = 1;\n", encoding="utf-8")
+    subprocess.run(["git", "add", "kept.js"], cwd=str(tmp_path), check=True)
+    (tmp_path / "scratch.js").write_bytes(b"const bad = '\x00';\n")   # never added
+    r = run_gate("check-control-bytes.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
