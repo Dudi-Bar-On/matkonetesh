@@ -254,3 +254,63 @@ def test_utf8_gate_catches_a_multiline_print_argument(tmp_path):
         encoding="utf-8")
     r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
     assert r.returncode == 1 and "wrap.py" in r.stdout, r.stdout
+
+
+def test_powershell_gate_catches_a_bare_trailing_assignment(tmp_path):
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "w.ps1").write_text(
+        "function Get-Results {\n  $results = @($a, $b)\n}\n", encoding="utf-8")
+    r = run_gate("check-powershell-output.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "w.ps1" in r.stdout, r.stdout
+
+def test_powershell_gate_catches_write_output_beside_return(tmp_path):
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "x.ps1").write_text(
+        "function Invoke-Check {\n  Write-Output \"narrating\"\n  return $result\n}\n", encoding="utf-8")
+    r = run_gate("check-powershell-output.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "Write-Output" in r.stdout, r.stdout
+
+def test_powershell_gate_does_not_fire_on_the_real_scripts():
+    r = run_gate("check-powershell-output.mjs")
+    assert r.returncode == 0, r.stdout
+
+def test_ai_cap_gate_catches_a_low_cap(tmp_path):
+    (tmp_path / "app.js").write_text("maxOutputTokens: 1024,\n", encoding="utf-8")
+    r = run_gate("check-ai-token-caps.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "1024" in r.stdout, r.stdout
+
+def test_ai_cap_gate_accepts_8192(tmp_path):
+    (tmp_path / "app.js").write_text("maxOutputTokens: 8192,\n", encoding="utf-8")
+    r = run_gate("check-ai-token-caps.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_ai_cap_gate_does_not_fire_on_the_real_app():
+    r = run_gate("check-ai-token-caps.mjs")
+    assert r.returncode == 0, r.stdout
+
+def test_secret_alphabet_gate_catches_token_urlsafe(tmp_path):
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "gen.py").write_text("pw = secrets.token_urlsafe(32)\n", encoding="utf-8")
+    r = run_gate("check-secret-alphabet.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "token_urlsafe" in r.stdout, r.stdout
+
+def test_secret_alphabet_gate_does_not_fire_on_the_real_scripts():
+    r = run_gate("check-secret-alphabet.mjs")
+    assert r.returncode == 0, r.stdout
+
+def test_file_size_gate_reports_a_spec_over_the_worker_ceiling(tmp_path):
+    # The gate reads the ceiling from THIS root's playwright.config.ts (--root points it at
+    # tmp_path, not the real repo) — the real repo's own `workers` value is a CI-conditional
+    # expression, not a literal, by design (see the report), so a fixture-local literal config is
+    # required for the gate to have any ceiling to compare against at all.
+    (tmp_path / "playwright.config.ts").write_text("export default { workers: 2 };\n", encoding="utf-8")
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "big.spec.ts").write_text("test('a',()=>{});\n" * 40, encoding="utf-8")
+    r = run_gate("check-test-file-size.mjs", "--root", str(tmp_path))
+    assert "big.spec.ts" in r.stdout, r.stdout
+
+def test_file_size_gate_does_not_block_the_real_suite():
+    """L30 is a WARNING, not a block: a spec legitimately grows, and the harm is to run stability
+    rather than to substance. It must report and exit 0."""
+    r = run_gate("check-test-file-size.mjs")
+    assert r.returncode == 0, r.stdout

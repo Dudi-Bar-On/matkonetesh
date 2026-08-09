@@ -178,11 +178,23 @@ function Show-Status {
     # Report lines go to the pipeline (Write-Output); the pass/fail verdict is returned out-of-band so
     # callers can chain Show-Status without swallowing the report.
     $script:StatusOk = ($procs.Count -gt 0 -and $listen.Count -gt 0 -and $probe.Ok)
+    # A trailing narration line (L66, 2026-08-09): the verdict line above is an OUT-OF-BAND side
+    # effect (a $script: variable), never this function's return value — Show-Status is always
+    # called bare (never `$x = Show-Status`) and callers read $script:StatusOk separately. Ending
+    # the function on the bare assignment made it read exactly like the gate's real defect shape
+    # (a return value silently lost), even though nothing here was ever meant to return. Reporting
+    # the same verdict as one more pipeline line removes the ambiguity for free.
+    Write-Output "-- verdict: $(if ($script:StatusOk) { 'PASS' } else { 'FAIL' })"
 }
 
 function Start-Server {
+    # L66: this function's own output is never captured (`Start-Server` is always called bare, see
+    # the bottom switch), and it exits via a bare `return`/`exit`, never a value — so every line
+    # below narrates for the operator and none of them is a return value. Write-Host says that
+    # honestly; Write-Output made this function's early-`return` path look like the return-value
+    # class of defect (narration reaching a pipeline someone might capture) even though nobody does.
     if (@(Get-ListeningOn $Port).Count -gt 0) {
-        Write-Output "[start] port $Port is already listening — not starting a second instance."
+        Write-Host "[start] port $Port is already listening — not starting a second instance."
         Show-Status
         return
     }
@@ -192,12 +204,12 @@ function Start-Server {
     $inner = '"{0}" start-mcp-server --transport streamable-http --host 127.0.0.1 --port {1} --context claude-code --project "{2}" --enable-web-dashboard true --open-web-dashboard false' -f $exe, $Port, $ProjectPath
     # $inner already carries its own quotes; cmd /c strips exactly the outer pair it sees first/last.
     $cmdLine = 'cmd.exe /c "{0} >> "{1}" 2>&1"' -f $inner, $LogFile
-    Write-Output "[start] $inner"
+    Write-Host "[start] $inner"
     $res = Invoke-CimMethod -ClassName Win32_Process -MethodName Create `
         -Arguments @{ CommandLine = $cmdLine; CurrentDirectory = $ProjectPath }
     if ($res.ReturnValue -ne 0) { throw "Win32_Process.Create failed with ReturnValue=$($res.ReturnValue)" }
     $rootPid = $res.ProcessId
-    Write-Output "[start] detached launcher PID $rootPid (WMI — no parent shell, survives this session)"
+    Write-Host "[start] detached launcher PID $rootPid (WMI — no parent shell, survives this session)"
 
     $deadline = (Get-Date).AddSeconds($TimeoutSec)
     while ((Get-Date) -lt $deadline) {
@@ -205,7 +217,7 @@ function Start-Server {
         Start-Sleep -Milliseconds 500
     }
     if (@(Get-ListeningOn $Port).Count -eq 0) {
-        Write-Output "[start] FAILED: port $Port never started listening within ${TimeoutSec}s. Last log lines:"
+        Write-Host "[start] FAILED: port $Port never started listening within ${TimeoutSec}s. Last log lines:"
         if (Test-Path $LogFile) { Get-Content $LogFile -Tail 40 }
         exit 1
     }
@@ -216,7 +228,7 @@ function Start-Server {
         project     = $ProjectPath
         startedUtc  = (Get-Date).ToUniversalTime().ToString('o')
     } | ConvertTo-Json | Set-Content -Path $PidFile -Encoding utf8
-    Write-Output "[start] listening. Status:"
+    Write-Host "[start] listening. Status:"
     Show-Status
 }
 

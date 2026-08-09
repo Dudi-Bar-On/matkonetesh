@@ -6270,7 +6270,8 @@ if(typeof window!=='undefined') window.__askPanelSys=function(){
   return ASK_PANEL_SYS_PREFIX+L('ענה תמיד בעברית','Reply ALWAYS in English (the app UI language is English)')+', בצורה מלאה ומועילה';
 };
 async function askValidateKey(key){
-  try{ await gemFetch('text', {contents:[{parts:[{text:'שלום'}]}], generationConfig: gemGen('text', {maxOutputTokens:20}, {think: thinkFor('keyProbe')})}, {key, retries:0, timeout:12000}); return true; }catch(e){ return false; }
+  // health-probe: discards the response, checks only that the call succeeds.
+  try{ await gemFetch('text', {contents:[{parts:[{text:'שלום'}]}], generationConfig: gemGen('text', {maxOutputTokens:20 /* health-probe */}, {think: thinkFor('keyProbe')})}, {key, retries:0, timeout:12000}); return true; }catch(e){ return false; }
 }
 
 /* ═══════════════════════════════════════════════════════════════════
@@ -6711,7 +6712,8 @@ function openKeyManager(){
     store.set('mk-central-url', (($("#akmCUrl")||{}).value||'').trim()); store.set('mk-central-code', (($("#akmCCode")||{}).value||'').trim());
     if(!centralUrl()||!centralCode()){ cmsg.className='akc-msg'; cmsg.textContent=L('מלא כתובת וקוד.','Enter a URL and a code.'); return; }
     cmsg.className='akc-msg'; cmsg.textContent=L('בודק גישה…','Testing access…');
-    try{ await gemFetch('text', {contents:[{parts:[{text:'שלום'}]}], generationConfig: gemGen('text', {maxOutputTokens:5}, {think: thinkFor('centralTest')})}, {retries:0, timeout:15000}); cmsg.className='akc-msg ok'; cmsg.textContent=L('✓ הגישה המרכזית פעילה.','✓ Central access is live.'); openKeyManager(); }
+    // health-probe: discards the response, checks only that central access is reachable.
+    try{ await gemFetch('text', {contents:[{parts:[{text:'שלום'}]}], generationConfig: gemGen('text', {maxOutputTokens:5 /* health-probe */}, {think: thinkFor('centralTest')})}, {retries:0, timeout:15000}); cmsg.className='akc-msg ok'; cmsg.textContent=L('✓ הגישה המרכזית פעילה.','✓ Central access is live.'); openKeyManager(); }
     catch(e){ const m=String(e&&e.message||e); cmsg.className='akc-msg err'; cmsg.textContent=/api-40[123]/.test(m)?L('✗ הקוד נדחה או נגמרה המכסה.','✗ Code rejected or quota reached.'):L('✗ בדיקה נכשלה — בדוק כתובת/קוד/רשת.','✗ Test failed — check URL / code / network.'); } });
   const ccl=$("#akmCClear"); if(ccl) ccl.addEventListener('click',()=>{ store.set('mk-central-url',''); store.set('mk-central-code',''); toast(L('גישה מרכזית נותקה','Central access disconnected')); openKeyManager(); });
   $("#akmBack").addEventListener('click',openAsk);
