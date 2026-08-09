@@ -118,3 +118,22 @@ def test_wait_gate_catches_the_numeric_tautology(tmp_path):
     (t / "f.spec.ts").write_text("await page.waitForFunction(() => 1);\n", encoding="utf-8")
     r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
     assert r.returncode == 1, r.stdout
+
+
+def test_yaml_gate_catches_a_duplicate_key(tmp_path):
+    w = tmp_path / ".github" / "workflows"; w.mkdir(parents=True)
+    (w / "test.yml").write_text(
+        "jobs:\n  a:\n    with:\n      retention-days: 7\n      retention-days: 30\n", encoding="utf-8")
+    r = run_gate("check-yaml-duplicate-keys.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "retention-days" in r.stdout, r.stdout
+
+def test_yaml_gate_accepts_the_same_key_at_different_levels(tmp_path):
+    """`name:` appears once per job legitimately — duplication is per-mapping, not per-file."""
+    w = tmp_path / ".github" / "workflows"; w.mkdir(parents=True)
+    (w / "ok.yml").write_text("jobs:\n  a:\n    name: one\n  b:\n    name: two\n", encoding="utf-8")
+    r = run_gate("check-yaml-duplicate-keys.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_yaml_gate_does_not_fire_on_the_real_repo():
+    r = run_gate("check-yaml-duplicate-keys.mjs")
+    assert r.returncode == 0, f"the gate fires on real YAML:\n{r.stdout}"
