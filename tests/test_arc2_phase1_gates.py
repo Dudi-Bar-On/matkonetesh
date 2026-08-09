@@ -137,3 +137,34 @@ def test_yaml_gate_accepts_the_same_key_at_different_levels(tmp_path):
 def test_yaml_gate_does_not_fire_on_the_real_repo():
     r = run_gate("check-yaml-duplicate-keys.mjs")
     assert r.returncode == 0, f"the gate fires on real YAML:\n{r.stdout}"
+
+def test_yaml_gate_ignores_colon_lines_inside_a_block_scalar(tmp_path):
+    """`run: |` holds a shell script, not mappings. This gate blocks, so a false positive here
+    stops a healthy build — the most expensive mistake a gate can make."""
+    w = tmp_path / ".github" / "workflows"; w.mkdir(parents=True)
+    (w / "b.yml").write_text(
+        "jobs:\n  a:\n    steps:\n      - name: one\n        run: |\n"
+        "          echo 'Status: ok'\n          echo 'Status: done'\n",
+        encoding="utf-8")
+    r = run_gate("check-yaml-duplicate-keys.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_yaml_gate_catches_a_duplicate_quoted_key(tmp_path):
+    """The exact L61 defect, written with quotes, must not slip through."""
+    w = tmp_path / ".github" / "workflows"; w.mkdir(parents=True)
+    (w / "quoted.yml").write_text(
+        "jobs:\n  a:\n    with:\n      \"retention-days\": 7\n      \"retention-days\": 30\n",
+        encoding="utf-8")
+    r = run_gate("check-yaml-duplicate-keys.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "retention-days" in r.stdout, r.stdout
+
+def test_yaml_gate_accepts_the_same_keys_once_per_list_item(tmp_path):
+    """A `- ` item begins a NEW sibling mapping. Without this, `with:`/`run:`/`uses:` once per step
+    read as duplicates — an earlier draft produced 21 false positives on the two real workflows."""
+    w = tmp_path / ".github" / "workflows"; w.mkdir(parents=True)
+    (w / "c.yml").write_text(
+        "jobs:\n  a:\n    steps:\n      - name: one\n        uses: actions/checkout@v4\n"
+        "        with:\n          fetch-depth: 0\n      - name: two\n        uses: actions/upload@v4\n"
+        "        with:\n          name: b\n", encoding="utf-8")
+    r = run_gate("check-yaml-duplicate-keys.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout

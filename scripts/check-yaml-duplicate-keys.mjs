@@ -62,14 +62,27 @@ if (files.length === 0) {
 // perfectly legal YAML. Without the item reset below, this gate reported 21 duplicates across the two
 // real workflows — it would have fired on healthy files on its very first run, which is how a gate
 // loses its credibility permanently.
-const KEY = /^(\s*)-?\s*([A-Za-z0-9_.-]+):(\s|$)/;
+// Key pattern accepts an optionally quoted key ("retention-days": / 'retention-days': / retention-days:)
+// so the exact L61 defect written with quotes does not slip through.
+const KEY = /^(\s*)-?\s*(?:"([^"]+)"|'([^']+)'|([A-Za-z0-9_.-]+)):(\s|$)/;
 const ITEM = /^(\s*)-\s/;
+// A block scalar's body is TEXT, not mappings. `run: |` holding two lines shaped like `Key: value`
+// is a shell script echoing colons, not a duplicate key — and this gate blocks, so treating it as
+// one would stop a healthy build. Lines indented deeper than the opening key are skipped entirely.
+const BLOCK_OPEN = /^(\s*)-?\s*[A-Za-z0-9_.-]+:\s*[|>][-+]?\s*$/;
+const rawIndent = (line) => /^(\s*)/.exec(line)[1].length;
 const findings = [];
 for (const f of files) {
   let lines;
   try { lines = readFileSync(f, 'utf8').split('\n'); } catch { continue; }
   const seen = new Map();          // indent -> Map(key -> line number)
+  let blockIndent = null;          // non-null while inside a `|`/`>` block scalar's body
   lines.forEach((line, n) => {
+    if (blockIndent !== null) {
+      if (line.trim() === '') return;               // blank lines inside the block stay in the block
+      if (rawIndent(line) > blockIndent) return;     // still deeper than the opening key: block content
+      blockIndent = null;                            // at or above the opening indent: block ended
+    }
     if (/^\s*#/.test(line) || line.trim() === '') return;
     const item = ITEM.exec(line);
     if (item) {
@@ -80,7 +93,7 @@ for (const f of files) {
     const m = KEY.exec(line);
     if (!m) return;
     const indent = m[1].length + (item ? 2 : 0);
-    const key = m[2];
+    const key = m[2] ?? m[3] ?? m[4];
     for (const depth of [...seen.keys()]) if (depth > indent) seen.delete(depth);
     if (!seen.has(indent)) seen.set(indent, new Map());
     const level = seen.get(indent);
@@ -89,6 +102,7 @@ for (const f of files) {
     } else {
       level.set(key, n + 1);
     }
+    if (BLOCK_OPEN.test(line)) blockIndent = rawIndent(line);
   });
 }
 
