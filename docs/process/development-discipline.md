@@ -2224,6 +2224,19 @@ null => fall open"), ומדווח "לא נבדק" במקום פלט נקי מז�
 לקח עצמאי (למשל: "בדיקת-תשתית שקוראת ל-כלי-פלטפורמה חייבת שער-פלטפורמה משלה, לא רק תלות ברשת
 כמו `_require_stack`") שמורה לבעלים לסיווג.
 
+**No-lesson declaration (2026-08-10):** קשת 2 שלב 2 · משימה 3 (`research-before-fix-cycle-3.mjs`
+§10.14 + `research-evidence.mjs`) — אין לקח **חדש**. הקוד הייצורי (הפונקציה החדשה והכלל החדש) הועתק
+מפסאודוקוד הבריף אחרי שנבדקו חתימותיהם האמיתיות של `openTargets`, `resolveActorTranscriptPath`
+ו-`RETRIEVAL_PATTERN` מול המקור — והתאימו במדויק, ללא סטייה. מה שכן היה שגוי הוא **קיבוע הבדיקה
+עצמה** בבריף: (1) כתיבת עדות התמליל ישירות בנתיב הראשי גם כש-`agent=` מועבר, במקום בקובץ ה-sidechain
+ש-`resolveActorTranscriptPath` בפועל מפנה אליו; (2) חותמת זמן ברירת-מחדל מקובעת ל-`.000Z`, שמאבדת
+דיוק מילישניות אמיתי מול `lastFailureTs` (הנגזר מ-`Date.now()`), וגורמת לכשל תזמון לא-דטרמיניסטי.
+שני התיקונים תועדו בפני עצמם בקוד הבדיקה (התגובה שם מסבירה את שניהם) ואומתו ב-3 הרצות חוזרות ללא
+תנודה. זו אותה תבנית שכבר תועדה במלואה ב-`progress.md` של קשת זו ("שלישית הפעם" — משימה 2) ו-בשתי
+המשימות שקדמו לה: בריף שנכתב מזיכרון של API מייצר פגם שקט, בין אם בקוד הייצור ובין אם בקוד הבדיקה
+עצמו. אין כאן סוג חדש של פגם — יש כאן את אותו הדפוס, שוב, במקום אחר בקובץ הבריף. הלקח המספרי הקיים
+(אם וכאשר יירשם על בסיס שלוש-ארבע ההופעות המצטברות) שמור לבעלים.
+
 **What happened.** Before dispatching the last ten tasks of the watchman plan, I had a pre-flight audit
 read them against the real repository. It found three blockers and saved three review rounds. It also
 marked Task 19 **clean**, with this reasoning: its `wsl -u root … service docker start` sequence "is a

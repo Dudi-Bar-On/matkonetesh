@@ -193,3 +193,96 @@ def test_L56_stays_quiet_when_the_spec_was_read(tmp_path):
                                  session="s-l56b", agent="actor-a"),
                          env_extra=env, tmp_path=tmp_path)
     assert decision_of(out) == "allow", out
+
+
+# ---------------------------------------------------------------- Task 3: 10.14
+
+def transcript_with(tmp_path, blocks, ts=None, agent=None):
+    """Writes a minimal-but-real-shaped transcript JSONL (the shape measured in
+    skill-invoked.mjs's own header) containing the given content blocks.
+
+    BRIEF CORRECTION (task-3): the brief's own version of this helper always wrote the content
+    directly at the returned `transcript_path`. That is only correct for the main-session actor.
+    Per skill-invoked.mjs's own measured contract (reused unchanged by research-evidence.mjs via
+    resolveActorTranscriptPath) a DISPATCHED SUBAGENT's own tool_use turns never land in the
+    top-level transcript_path — they land in a sibling sidechain file,
+    `<dir>/<basename-without-ext>/subagents/agent-<agentId>.jsonl`, fully determined by
+    transcript_path + agent_id. A test that passes `agent=` but writes to the plain path is
+    seeding evidence in a file the rule under test will never read for that actor — proven by
+    running the brief's original fixture: it produced a false GREEN (RED never observed for the
+    right reason). Passing `agent=` here now writes to that real sidechain path, matching every
+    other actor-scoped fixture in this arc (see scripts/tests/test-hooks-groupb.mjs's own
+    `sidechainDir = join(work, sessionDir, 'subagents')` pattern, section 9).
+
+    THIRD BRIEF CORRECTION: the brief's own default hardcoded a literal ".000Z" suffix, always
+    truncating to whole seconds. `lastFailureTs` in the real store carries genuine millisecond
+    precision (`Date.now()` in enforcement-state.mjs). A transcript entry sharing the SAME second
+    as the seeded failure but truncated to :000 sorts BEFORE the failure's real millisecond
+    component the majority of the time (`ts < since` in research-evidence.mjs), silently excluding
+    real evidence — reproduced directly: the brief's exact helper made
+    test_1014_stays_quiet_when_research_happened fail depending on wall-clock timing between the
+    seed call and this write, for a reason having nothing to do with the rule under test. Real
+    Claude Code transcript timestamps carry millisecond precision — preserving the real
+    millisecond component here is the more faithful fixture, not a workaround."""
+    import datetime
+    now = datetime.datetime.utcnow()
+    ts = ts or now.strftime("%Y-%m-%dT%H:%M:%S.") + f"{now.microsecond // 1000:03d}Z"
+    line = {"type": "assistant", "timestamp": ts, "message": {"content": blocks}}
+    transcript_path = tmp_path / "transcript.jsonl"
+    if agent:
+        d = tmp_path / "transcript" / "subagents"
+        d.mkdir(parents=True, exist_ok=True)
+        target = d / f"agent-{agent}.jsonl"
+    else:
+        target = transcript_path
+    target.write_text(json.dumps(line) + "\n", encoding="utf-8")
+    return transcript_path
+
+
+def test_1014_warns_on_third_fix_cycle_without_research(tmp_path):
+    state = tmp_path / "state.sqlite"
+    seed(state, "attempts", "s-1014", "actor-a", "tests/foo.spec.ts", "2")
+    t = transcript_with(tmp_path, [{"type": "text", "text": "just thinking"}], agent="actor-a")
+    out = run_pretooluse(
+        payload("Edit", ROOT / "app.js", old="a", new="b", session="s-1014",
+                agent="actor-a", transcript=t),
+        env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
+    assert decision_of(out) == "warn", out
+    assert "10.14" in reason_of(out) and "geniza" in reason_of(out).lower()
+
+
+def test_1014_stays_quiet_when_research_happened(tmp_path):
+    """False-alarm side: the retrieval command in the transcript is the REAL call shape from
+    CLAUDE.md's own documented API — retrieval.search_current_docs — not an invented token."""
+    state = tmp_path / "state.sqlite"
+    seed(state, "attempts", "s-1014b", "actor-a", "tests/foo.spec.ts", "2")
+    t = transcript_with(tmp_path, [{"type": "tool_use", "name": "Bash", "input": {
+        "command": "py -3 -c \"from src.knowledge import retrieval; "
+                   "print(retrieval.search_current_docs('playwright webServer timeout'))\""}}],
+        agent="actor-a")
+    out = run_pretooluse(
+        payload("Edit", ROOT / "app.js", old="a", new="b", session="s-1014b",
+                agent="actor-a", transcript=t),
+        env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_1014_stays_quiet_below_two_cycles(tmp_path):
+    state = tmp_path / "state.sqlite"
+    seed(state, "attempts", "s-1014c", "actor-a", "tests/foo.spec.ts", "1")
+    t = transcript_with(tmp_path, [{"type": "text", "text": "nothing"}])
+    out = run_pretooluse(
+        payload("Edit", ROOT / "app.js", old="a", new="b", session="s-1014c",
+                agent="actor-a", transcript=t),
+        env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_1014_fails_open_on_unreadable_transcript(tmp_path):
+    state = tmp_path / "state.sqlite"
+    seed(state, "attempts", "s-1014d", "actor-a", "tests/foo.spec.ts", "2")
+    out = run_pretooluse(
+        payload("Edit", ROOT / "app.js", old="a", new="b", session="s-1014d",
+                agent="actor-a", transcript=tmp_path / "no-such.jsonl"),
+        env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out

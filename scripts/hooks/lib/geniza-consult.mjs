@@ -35,7 +35,10 @@ const DEFAULT_WINDOW_MS = 20 * 60 * 1000;
 // read only ever loses the ability to see FURTHER BACK than the window cares about anyway.
 const MAX_TAIL_BYTES = 512 * 1024;
 
-const RETRIEVAL_PATTERN = /from\s+src\.knowledge\s+import\s+retrieval|retrieval\.(search_current_docs|semantic_search|get_source_excerpt|get_revision_history|find_impact|find_dependency_path|get_entity_provenance)\s*\(/;
+// Exported (Task 3, §10.14) so research-evidence.mjs classifies a Bash command as a geniza
+// retrieval call using this SAME regex — one classifier, one place, never a second copy that
+// could drift out of agreement with this one.
+export const RETRIEVAL_PATTERN = /from\s+src\.knowledge\s+import\s+retrieval|retrieval\.(search_current_docs|semantic_search|get_source_excerpt|get_revision_history|find_impact|find_dependency_path|get_entity_provenance)\s*\(/;
 
 function windowMs() {
   const raw = Number(process.env.PRETOOLUSE_GENIZA_WINDOW_MS);
