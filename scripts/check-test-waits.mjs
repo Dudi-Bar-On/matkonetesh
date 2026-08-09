@@ -42,35 +42,43 @@ if (files.length === 0) {
   process.exit(0);
 }
 
-// A predicate that cannot fail: `|| true`, `|| 1`, or a bare `=> true`. The `?.` in the shipped example
-// is a tell but not a rule — optional chaining is legitimate; the tautology beside it is not.
+// A predicate that cannot fail: `|| true`, `|| 1`, a bare `=> true`, or the same tautology wearing
+// different clothes — `=> 1` and `=> !!1` are truthy no matter what the reachable state is, exactly
+// like `=> true`. The `?.` in the shipped example is a tell but not a rule — optional chaining is
+// legitimate; the tautology beside it is not.
 // NOTE (deviation from the brief, forced by its own test): the brief's `[^)]*` cannot cross the nested
 // `)` in `waitForFunction(() => ...)` — it never matches `waitForFunction(() => x || true)`, which is
 // the exact L58 case this gate exists to catch. Bounding on `;` instead (one statement, may span lines
 // for a multi-line predicate) fixes that without opening the scan past the statement it belongs to.
-const CANNOT_FAIL = /waitForFunction\s*\([^;]*?(\|\|\s*(true|1)\b|=>\s*true\s*[,)])/s;
+const CANNOT_FAIL = /waitForFunction\s*\([^;]*?(\|\|\s*(true|1)\b|=>\s*(true|1|!!1)\s*[,)])/s;
 
 // A gate that fires on prose ABOUT a rule, rather than a violation OF it, is worse than no gate:
-// it trains the reader to skip the output. Strip line and block comments before matching. This is
-// deliberately naive — it does not understand strings containing "//" — and that is the correct
-// trade here: a missed violation inside a string literal is a false NEGATIVE, which this arc's
-// other tests can still catch, while a false POSITIVE costs the gate its credibility.
-const stripComments = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+// it trains the reader to skip the output. Blank out comments — WITHOUT changing the line count — a
+// finding whose line number is wrong is a finding nobody can act on, and stripping text (removing the
+// matched span outright) silently shifts every offset after it. This is deliberately naive — it does
+// not understand strings containing "//" — and that is the correct trade here: a missed violation
+// inside a string literal is a false NEGATIVE, which this arc's other tests can still catch, while a
+// false POSITIVE costs the gate its credibility.
+const blankComments = (s) =>
+  s.replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+   .replace(/^([ \t]*)\/\/.*$/gm, (m, indent) => indent);
 
 const findings = [];
 for (const f of files) {
-  const text = readFileSync(f, 'utf8');
+  let text;
+  try { text = readFileSync(f, 'utf8'); } catch { continue; }   // an unreadable file is not a verdict
   const rel = relative(ROOT, f).split(sep).join('/');
-  // Per-line stripping (not stripComments on the whole file) so a match keeps the ORIGINAL line
-  // number — collapsing the file first would shift every line after a multi-line block comment.
-  text.split('\n').forEach((line, n) => {
-    if (stripComments(line).includes('waitForTimeout')) findings.push([rel, n + 1, 'waitForTimeout', line.trim()]);
+  // Blanked ONCE for the whole file — same line count and same char offsets as the original, so both
+  // scans below read real line numbers directly, with no separate per-line pass and no drift after a
+  // multi-line block comment.
+  const blanked = blankComments(text);
+  blanked.split('\n').forEach((line, n) => {
+    if (line.includes('waitForTimeout')) findings.push([rel, n + 1, 'waitForTimeout', text.split('\n')[n].trim()]);
   });
-  const strippedText = stripComments(text);
-  const m = CANNOT_FAIL.exec(strippedText);
+  const m = CANNOT_FAIL.exec(blanked);
   if (m) {
-    const upto = strippedText.slice(0, m.index).split('\n').length;
-    findings.push([rel, upto, 'a predicate that cannot fail', m[0].split('\n')[0].trim()]);
+    const upto = blanked.slice(0, m.index).split('\n').length;
+    findings.push([rel, upto, 'a predicate that cannot fail', text.split('\n')[upto - 1].trim()]);
   }
 }
 

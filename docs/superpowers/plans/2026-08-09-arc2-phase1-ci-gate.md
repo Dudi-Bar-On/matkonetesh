@@ -364,6 +364,10 @@ const i = argv.indexOf('--root');
 const ROOT = i === -1 ? REPO : argv[i + 1];
 const SKIP = new Set(['node_modules', '.git', 'dist', '__pycache__', 'test-results']);
 
+// MEASURED 2026-08-09: the tree holds 149 .yml/.yaml files and only THREE are tracked — the other 146
+// are untracked `.playwright-mcp/` page snapshots, which are machine-generated and full of repeated
+// keys. Scan the tracked list, exactly as check-control-bytes does, with the same filesystem fallback
+// so the tmp_path tests still work.
 function yamlFiles(dir, out = []) {
   let names;
   try { names = readdirSync(dir); } catch { return out; }
@@ -376,18 +380,31 @@ function yamlFiles(dir, out = []) {
   return out;
 }
 
-const KEY = /^(\s*)([A-Za-z0-9_.-]+):(\s|$)/;
+// MEASURED BEFORE DISPATCH, 2026-08-09, and the first version was wrong. A `- ` list item begins a
+// NEW sibling mapping at the same indent, so `with:`/`run:`/`uses:` appearing once per STEP is
+// perfectly legal YAML. Without the item reset below, this gate reported 21 duplicates across the two
+// real workflows — it would have fired on healthy files on its very first run, which is how a gate
+// loses its credibility permanently.
+const KEY = /^(\s*)-?\s*([A-Za-z0-9_.-]+):(\s|$)/;
+const ITEM = /^(\s*)-\s/;
 const findings = [];
 for (const f of yamlFiles(ROOT)) {
   let lines;
-  try { lines = readFileSync(f, 'utf8').split('\n'); } catch { continue; }
+  try { lines = readFileSync(f, 'utf8').split('
+'); } catch { continue; }
   const seen = new Map();          // indent -> Map(key -> line number)
   lines.forEach((line, n) => {
     if (/^\s*#/.test(line) || line.trim() === '') return;
+    const item = ITEM.exec(line);
+    if (item) {
+      // Everything recorded at this indent or deeper belonged to the PREVIOUS list element.
+      const at = item[1].length;
+      for (const depth of [...seen.keys()]) if (depth >= at) seen.delete(depth);
+    }
     const m = KEY.exec(line);
     if (!m) return;
-    const indent = m[1].length, key = m[2];
-    // A shallower or equal line closes every deeper scope: those keys belong to a finished mapping.
+    const indent = m[1].length + (item ? 2 : 0);
+    const key = m[2];
     for (const depth of [...seen.keys()]) if (depth > indent) seen.delete(depth);
     if (!seen.has(indent)) seen.set(indent, new Map());
     const level = seen.get(indent);
@@ -396,7 +413,6 @@ for (const f of yamlFiles(ROOT)) {
     } else {
       level.set(key, n + 1);
     }
-    if (line.trim().endsWith(':')) seen.set(indent, level);   // parent of the next, deeper block
   });
 }
 
@@ -1029,10 +1045,25 @@ def test_every_phase1_gate_runs_through_check_meta_with_no_env_overrides():
                    "TEST FILE SIZE:"]:
         assert marker in r.stdout, f"{marker} missing — that gate is not wired: \n{r.stdout[-2000:]}"
 
-def test_coverage_gate_now_reads_forty_one_of_eighty_two():
+PHASE1_RULES = ["DoD-11", "L15", "L24", "L30", "L43a", "L53", "L58", "L59", "L61", "L66", "L74"]
+
+
+def test_every_phase1_rule_is_counted_as_covered():
+    """Asserts the RULES, not a ratio. A pinned "41 of 82" would have broken on its own: the
+    denominator moved from 82 to 84 the same day this plan was written, because writing lessons ADDS
+    rules — and a test that pins a number cannot tell a real regression from ordinary progress
+    (L64b, which this arc itself wrote)."""
     r = subprocess.run(["node", str(ROOT / "scripts" / "check-rule-coverage.mjs")],
                        capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
-    assert "41 of 82" in r.stdout, r.stdout
+    assert r.returncode == 0, r.stdout
+    missing = [rid for rid in PHASE1_RULES if rid in r.stdout and "not covered" in r.stdout]
+    assert not missing, f"declared but not counted: {missing}
+{r.stdout}"
+    covered = int(r.stdout.split("RULE COVERAGE: ")[1].split(" of ")[0])
+    assert covered >= 10 + len(PHASE1_RULES), (
+        f"coverage reads {covered}; the ten pre-existing hooks plus this phase's "
+        f"{len(PHASE1_RULES)} rules should all be counted
+{r.stdout}")
 ```
 
 - [ ] **Step 2: Run and watch both fail** — the markers are absent because nothing is wired.
@@ -1056,9 +1087,32 @@ run('check-secret-alphabet', 'check-secret-alphabet (L53 — a secret is command
 run('check-test-file-size', 'check-test-file-size (L30 — WARNING only)', 'check-test-file-size.mjs');
 ```
 
-- [ ] **Step 4: Update the coverage baseline and run both tests**
+- [ ] **Step 4: Teach the coverage gate to see these gates at all, then update the baseline**
 
-Run: `node scripts/check-rule-coverage.mjs` — it prints `RULE COVERAGE: 41 of 82`. Write that into `docs/process/rule-coverage-baseline.json` so the gate blocks on regression from the NEW floor.
+MEASURED 2026-08-09, before this task was dispatched: `check-rule-coverage.mjs` scans ONLY
+`scripts/hooks/{rules,stop-rules,observers}`. Every gate this phase builds lives at `scripts/check-*.mjs`
+and declares `RULE_IDS` — and is counted by nothing. Without this step the phase would finish with
+eleven rules enforced and a coverage gate still reporting them open, which is the reporting failure this
+arc exists to end.
+
+In `scripts/check-rule-coverage.mjs`, after the existing `SCAN_DIRS` loop, also scan the gate scripts:
+
+```javascript
+// Arc 2 Phase 1 (2026-08-09): the ci-gate rules are enforced by standalone gates at scripts/check-*.mjs,
+// not by hook files under scripts/hooks/. They declare RULE_IDS exactly the same way. Counting only the
+// hooks directory would report eleven enforced rules as open — a coverage number that under-reports is
+// as misleading as one that over-reports, and this gate exists to be believed.
+for (const f of readdirSync(SCRIPTS_ROOT).filter((n) => /^check-.*\.mjs$/.test(n)).sort()) {
+  scanDeclaringFile(join(SCRIPTS_ROOT, f));
+}
+```
+
+Use whatever the file's existing per-file scan helper is called — read it first; do not invent a new
+parser beside the one already there.
+
+Then run `node scripts/check-rule-coverage.mjs`, read the number it actually prints, and write THAT into
+`docs/process/rule-coverage-baseline.json` so the gate blocks on regression from the new floor. Do not
+assume the number — the denominator moves whenever a lesson is written.
 
 - [ ] **Step 5: Measure overhead and paste it**
 
@@ -1077,7 +1131,7 @@ Expected: both green, no `--retries`, no `--workers` override.
 
 ```bash
 git add scripts/check-meta.mjs docs/process/rule-coverage-baseline.json tests/test_arc2_phase1_gates.py
-git commit -m "feat(arc2 phase1): nine gates wired, liveness proven, coverage 41 of 82"
+git commit -m "feat(arc2 phase1): nine gates wired, liveness proven, every ci-gate rule counted"
 ```
 
 ---

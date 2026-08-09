@@ -100,3 +100,21 @@ def test_wait_gate_ignores_a_mention_inside_a_comment(tmp_path):
         encoding="utf-8")
     r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
     assert r.returncode == 0, r.stdout
+
+def test_wait_gate_reports_the_real_line_number_after_a_block_comment(tmp_path):
+    """A finding with the wrong line number is one nobody can act on. Comment removal must not
+    shift the offsets of everything after it."""
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "e.spec.ts").write_text(
+        "/* one\n   two\n   three */\nconst x = 1;\nawait page.waitForFunction(() => true);\n",
+        encoding="utf-8")
+    r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1, r.stdout
+    assert ":5" in r.stdout, f"expected the tautology reported at line 5:\n{r.stdout}"
+
+def test_wait_gate_catches_the_numeric_tautology(tmp_path):
+    """`=> 1` is `=> true` wearing different clothes — truthy no matter what the reachable state is."""
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "f.spec.ts").write_text("await page.waitForFunction(() => 1);\n", encoding="utf-8")
+    r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1, r.stdout
