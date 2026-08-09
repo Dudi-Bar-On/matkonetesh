@@ -1,0 +1,125 @@
+[
+  {
+    "token": "S58",
+    "group": "C",
+    "reason": "Deciding compliance means judging whether a given constant IS a language-sensitive threshold and whether its validation covered Hebrew as well as English — recognizing which numbers in code are bilingual thresholds requires understanding what the constant means, not matching a nameable pattern; no concrete artifact/pattern decides it."
+  },
+  {
+    "token": "S59",
+    "group": "none",
+    "cost": "It is a lessons-log entry mapping a past failure to gates that already exist elsewhere (DoD 8, §10.2); enforcing it here would duplicate those gates — the entry itself carries no compliance condition of its own.",
+    "importance": "בינונית — the record matters as the justification for DoD 8/§10.2, but the enforcement lives in those gates, not in this entry."
+  },
+  {
+    "token": "S60",
+    "group": "C",
+    "reason": "Compliance is 'when a constant enters a reason, state its provenance in the same breath' — deciding whether a number in prose is being used as load-bearing evidence, and whether its origin was stated, requires evaluating the meaning of the reasoning, not a textual pattern."
+  },
+  {
+    "token": "S61",
+    "group": "A",
+    "artifact": "the check-meta.mjs run at pre-commit, specifically its check-pytest step",
+    "pattern": "pytest exit code 0 required to pass; a non-zero exit or an inability to run python reported as SKIPPED out loud — presence/absence of a green pytest run in the gate output decides compliance",
+    "mechanism": "commit-gate",
+    "mechanism_target": "the Python suite (memory layer) via check-meta.mjs check-pytest",
+    "reason": "The rule's operative condition — the Python suite must run and block at commit — is decided by an exit code inside an already-named gate, no intent-reading needed."
+  },
+  {
+    "token": "S62",
+    "group": "C",
+    "reason": "Compliance requires recognizing that a written statement is 'a capability claim about the environment' and judging whether two INDEPENDENT tools corroborated it and which refusal layer was recorded — identifying such claims in prose and assessing independence is a judgement of meaning, not a nameable textual pattern."
+  },
+  {
+    "token": "S63",
+    "group": "C",
+    "reason": "Deciding whether a green test actually exercised the intended mechanism (fixture matches live shape, precondition established, interceptor fired, contract validated) requires understanding what the test proves versus what the program does — quality-of-evidence judgement, not a pattern."
+  },
+  {
+    "token": "S64",
+    "group": "C",
+    "reason": "Compliance is 'before asking anyone to run a command, judge whether it needs elevation/a password and whether the channel can supply it' — whether an arbitrary installer needs elevation is a semantic property of the command and its package, not decidable by a nameable textual pattern across the three distinct failure shapes given."
+  },
+  {
+    "token": "S65",
+    "group": "A",
+    "artifact": "the shell command in the pretooluse payload",
+    "pattern": "a print/echo/log/commit segment whose argument names or expands GEMINI_API_KEY (or a key-shaped literal) — the rule's standing clause 'never print, log, echo, or commit a key'",
+    "mechanism": "pretooluse:Bash",
+    "mechanism_target": "commands that echo/print/log an API-key variable or literal",
+    "reason": "The enforceable core is the never-echo-a-key clause, decided by the presence of a key name/literal in an output-producing command; the env-scope retrieval line is a how-to attached to it."
+  },
+  {
+    "token": "S66",
+    "group": "A",
+    "artifact": "the content being written to a source file in the Edit/Write payload",
+    "pattern": "presence of invisible C0 control bytes (U+0001–U+0008, U+000B, U+000C, etc.) in text written to source files — the corruption class the rule exists to catch",
+    "mechanism": "pretooluse:Edit|Write",
+    "mechanism_target": "app.js|app.css|scripts/** and other source files receiving scripted edits",
+    "reason": "The failure the rule guards against — a control byte injected by a scripted edit — is decided by a byte-class scan of the written content, no intent needed."
+  },
+  {
+    "token": "S67",
+    "group": "B",
+    "mechanism": "subagentstop",
+    "mechanism_target": "git status/git log versus the finished subagent's completion claim",
+    "observed_prior_facts": "the subagent's final report claiming 'committed'/'done' (in the subagentstop payload) and the repository state (git status/log) at that moment — whether a commit containing the claimed work actually exists",
+    "reason": "The decision needs the sequence 'claim made, then repo checked' — both facts are observable at subagent completion, and a claim with a dirty tree/absent commit is non-compliance."
+  },
+  {
+    "token": "S68",
+    "group": "C",
+    "reason": "Compliance is 'at least one test uses bytes captured from the real endpoint' — captured bytes and an authored fixture are textually indistinguishable; deciding provenance of the fixture requires judging where its data came from, i.e., intent/meaning."
+  },
+  {
+    "token": "S69",
+    "group": "none",
+    "cost": "A lessons-log record of a past failure mapped to gates that already exist (§5 3-fix stop, DoD 11); the entry itself states no new compliance condition — enforcing it means enforcing those gates, which are separate rules.",
+    "importance": "בינונית — valuable as the justification and failure-mode map for §5/DoD 11, but not itself enforceable."
+  },
+  {
+    "token": "S70",
+    "group": "B",
+    "mechanism": "posttooluse",
+    "mechanism_target": "Playwright output containing 'Target page, context or browser has been closed'",
+    "observed_prior_facts": "the failure output containing that message, and whether an isolated single-test run occurred after it and before any fix edits — the sequence error→solo-run is what compliance consists of",
+    "reason": "The trigger is a concrete string in tool output, but compliance is a required NEXT step given that prior event, so the decision needs the observed sequence, not just the pattern."
+  },
+  {
+    "token": "S71",
+    "group": "none",
+    "cost": "It is explicitly a restatement of an existing principle (L14/Occam) with a fresh instance, plus an observation that user domain corrections are evidence; judging whether a hypothesis 'needs several independent things to be true' would require a model judging reasoning quality — but as written this is a historical record of a scar, not a new compliance condition.",
+    "importance": "בינונית — the scar strengthens L14 and the user-correction-is-evidence note is genuinely useful, but enforcement belongs to the principle it restates."
+  },
+  {
+    "token": "S72",
+    "group": "A",
+    "artifact": "container/compose/config files in an Edit/Write payload or commit diff",
+    "pattern": "an image reference tagged ':latest' or carrying no version tag, instead of a pinned version number",
+    "mechanism": "pretooluse:Edit|Write",
+    "mechanism_target": "docker-compose.yml / container and dependency version pins in config files",
+    "reason": "The operative rule — pin the newest version NUMBER, never the floating 'latest' tag — is decided by the literal presence/absence of the tag in the file; the read-the-release-notes rider is advisory around it."
+  },
+  {
+    "token": "S73",
+    "group": "C",
+    "reason": "Compliance — a polysemous field has exactly one reader, all consumers found before fixing, sentinels kept outside the value space — requires understanding what a field's states MEAN and whether code paths interpret it consistently; that is semantic judgement of design, not a nameable pattern."
+  },
+  {
+    "token": "S74",
+    "group": "C",
+    "reason": "Deciding whether the assertion accompanying a screenshot reads the RENDERED output rather than internal JS state requires understanding what the assertion actually observes — a judgement about the meaning of the test code, not a textual pattern."
+  },
+  {
+    "token": "S75",
+    "group": "B",
+    "mechanism": "pretooluse:Agent",
+    "mechanism_target": "dispatch of the next implementation task while a prior task's changes lack a full-suite run",
+    "observed_prior_facts": "whether a full 'npx playwright test' run completed green since the last task's code changes (suite-run events and edit events in the transcript/state store) — the rule's gate (b): the controller runs the entire suite after every task, not at arc end",
+    "reason": "Gate (b) is decidable from the sequence of prior observable events (task finished, suite run or not before next dispatch); gate (a), RED-on-the-brief's-code, rides on the existing TDD rule."
+  },
+  {
+    "token": "S76",
+    "group": "C",
+    "reason": "Compliance — at least one test 'enters where the user enters' and asserts what the user gets out, and reported pre-existing gaps are verified by running the chain — requires judging whether a test's entry point corresponds to the real user path across layers; that is an assessment of the test's meaning, not a pattern."
+  }
+]

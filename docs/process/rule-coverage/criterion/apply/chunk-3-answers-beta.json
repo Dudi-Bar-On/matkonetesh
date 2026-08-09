@@ -1,0 +1,94 @@
+[
+  {"token": "S39", "group": "A",
+   "artifact": "the Edit/Write diff to the Playwright config file",
+   "pattern": "a modification of the `workers:` line changing its value away from 8",
+   "mechanism": "pretooluse:Edit|Write",
+   "mechanism_target": "playwright.config.*",
+   "reason": "The rule's live compliance condition is 'workers: 8 stays until the owner's phase B/C decision' — any diff touching that value is the violation, decidable without reading intent."},
+
+  {"token": "S40", "group": "B",
+   "mechanism": "pretooluse:Edit|Write",
+   "mechanism_target": "derived/representative documents (CLAUDE.md, briefs, indexes, summaries)",
+   "observed_prior_facts": "whether a Read of the authoritative source document occurred in this session before the write to the derived artifact",
+   "reason": "No pattern in the summary itself decides compliance; the decision needs the prior event 'the source was opened before writing', which is observable in the tool-call history."},
+
+  {"token": "S41", "group": "A",
+   "artifact": "the diff introducing a computed/derived value, checked against the codebase at commit",
+   "pattern": "a newly introduced identifier with zero read-references outside its own definition/assignment site",
+   "mechanism": "commit-gate",
+   "mechanism_target": "app.js|app.css",
+   "reason": "'Computed but unread' is a structural fact — a symbol with no consuming reference — decidable by static reference count without judging meaning."},
+
+  {"token": "S42", "group": "C",
+   "reason": "Deciding whether a fix actually FIRED requires reproducing the failure and judging whether the error signature changed — an evaluation of the meaning of runtime evidence, not a nameable textual pattern or a stored prior fact."},
+
+  {"token": "S43", "group": "C",
+   "reason": "Whether a test asserts an 'observable effect' versus a computed field, and whether a fixture is minimal, requires understanding what the assertion means to a real consumer — semantic judgement of test content."},
+
+  {"token": "S44", "group": "B",
+   "mechanism": "pretooluse:Agent",
+   "mechanism_target": "any Agent dispatch while a full-suite run is active in the background",
+   "observed_prior_facts": "whether a backgrounded full-suite run was started earlier and is still active (background-task/dispatch journal state)",
+   "reason": "The violation is dispatch-while-a-suite-run-is-pending-for-the-agent-to-wait-on; deciding it needs the prior fact of an active background suite run, which is observable in the run/dispatch state."},
+
+  {"token": "S45", "group": "B",
+   "mechanism": "stop",
+   "mechanism_target": "release/live claims ('מהדורה NNN', 'shipped', 'live') in the reply to the owner",
+   "observed_prior_facts": "a git push event since the last claim, and the presence or absence of a recorded Playwright verification of the live URL after that push",
+   "reason": "The claim alone decides nothing; compliance turns on the sequence push → live-URL verification → claim, and both prior events are observable in logged tool activity."},
+
+  {"token": "S46", "group": "C",
+   "reason": "Deciding whether the deliverables bundled into one subagent brief are 'unrelated'/'independent' requires judging the meaning and relationship of the tasks — no textual pattern or prior fact settles independence."},
+
+  {"token": "S47", "group": "none",
+   "cost": "The stated gate (clustered/in-memory server, pinned workers) is an already-implemented architectural remedy, not an ongoing condition; enforcing it would mean continuously asserting server-architecture properties, and the described architecture was itself later superseded (de-clustered).",
+   "importance": "נמוכה — a historical root-cause record whose value is the diagnosis story; the live protections (worker pin, server design) are carried by other, current rules."},
+
+  {"token": "S48", "group": "A",
+   "artifact": "the diff to the app's markup/template strings",
+   "pattern": "a math-comparison glyph (≥, ≤, ±, °) adjacent to Hebrew text in a template/markup string that is not wrapped in a dir=\"ltr\" element",
+   "mechanism": "commit-gate",
+   "mechanism_target": "app.js|app.css",
+   "reason": "The enforceable core — numeric/math readouts in Hebrew UI must sit in dir=\"ltr\" islands — is a lintable presence/absence pattern in the source."},
+
+  {"token": "S49", "group": "A",
+   "artifact": "the generated plan file",
+   "pattern": "a task section containing zero fenced code blocks, or an unterminated/truncated fence (exactly what scripts/check-plan-complete.mjs detects)",
+   "mechanism": "commit-gate",
+   "mechanism_target": "docs/superpowers/plans/**",
+   "reason": "Plan completeness is decided by counting fenced blocks per task section and detecting truncation-in-fence — a purely structural check on the file."},
+
+  {"token": "S50", "group": "C",
+   "reason": "Recognizing that an utterance is a coverage/translation claim, and that its stated basis is a proxy (key coverage, grep) rather than a rendered-DOM measurement, requires evaluating the meaning of the claim and of its evidence."},
+
+  {"token": "S51", "group": "C",
+   "reason": "Deciding whether each sub-finding of a research document 'informs a decision' and has 'landed' somewhere requires judging the meaning and decision-relevance of prose sections — no structural mapping exists to check mechanically."},
+
+  {"token": "S52", "group": "C",
+   "reason": "Compliance is a debugging-methodology judgement — whether the machine was 'provably idle', whether theorizing stayed within an already-instrumented layer, and whether the next move should have been boundary instrumentation — all evaluations of the quality of an investigation."},
+
+  {"token": "S53", "group": "B",
+   "mechanism": "pretooluse:Grep|WebSearch",
+   "mechanism_target": "grep/text-search calls over code symbols or corpus documents",
+   "observed_prior_facts": "whether a serena symbol query or a geniza/graph retrieval query for the same need was attempted earlier in the session (tool-call history), since grep is legitimate only as a declared fallback",
+   "reason": "A grep call by itself is not a violation; compliance depends on the sequence 'tried serena/graph first', which lives in prior observed tool events."},
+
+  {"token": "S54", "group": "B",
+   "mechanism": "pretooluse:Agent",
+   "mechanism_target": "any new Agent dispatch",
+   "observed_prior_facts": "the count of currently active agents (dispatch journal) and whether a suite run, build, or GPU translation queue is active — the ≤3 light / hard-cap-5 / one-heavy-during-load ceilings are counters over that state",
+   "reason": "Deciding whether a dispatch breaches the concurrency ceiling requires the running count of prior dispatches and active heavy processes, all observable in state."},
+
+  {"token": "S55", "group": "A",
+   "artifact": "`git status --porcelain` output at commit/push time",
+   "pattern": "a modified tracked file left unstaged (a ' M' line) while the commit/push is reported as complete",
+   "mechanism": "commit-gate",
+   "mechanism_target": "git commit",
+   "reason": "The failure is mechanically visible in the git state itself — modified tracked files outside the staged set at the moment a 'pushed, up to date' claim is made."},
+
+  {"token": "S56", "group": "C",
+   "reason": "Deciding that a plan instruction 'deletes or reverts existing behavior' and that 'the tree has moved on' since the plan was written requires interpreting the instruction's meaning against current reality — semantic judgement, not a pattern or a stored counter."},
+
+  {"token": "S57", "group": "C",
+   "reason": "Judging whether a measurement is 'surprising' and whether the evidence proves the probe actually ran the workload (plausible duration, processes spawned, server responding) is an evaluation of the meaning and quality of the evidence."}
+]
