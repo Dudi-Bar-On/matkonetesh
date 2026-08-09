@@ -207,10 +207,24 @@ def _probe(cur, table: str, id_column: str, index_name: str, forced_missing: boo
             f"earlier version of this check while real searches came back empty. Repair: {repair}"
         )
 
+    # WHAT THIS "ok" MEANS, AND WHAT IT DOES NOT (measured 2026-08-09, R-102 occurrence six).
+    # This detector said RESULT=ok while `nitrite curing salt` returned 0 rows through the index and 5
+    # through a sequential scan, on that same index, minutes apart. The damage was a LOCAL pocket in the
+    # graph, and the measurement of what it takes to find one is blunt:
+    #     200 identity probes spread across the id range .... 0 caught it
+    #     200 midpoint probes between distant stored rows ... 0 caught it
+    #     antipode / synthetic / heavily perturbed vectors .. 0 caught it
+    #     five real embeddings from the model .............. 1 caught it
+    # A sampling probe cannot promise a pocket does not exist, so this message no longer says the index
+    # is healthy — only what was actually asked and answered. The gate that DOES catch this is the
+    # acceptance test that queries with a real embedding, because only a real query goes where a real
+    # query goes. Widening this probe would buy confidence the evidence does not support (L77).
     return "ok", (
-        f"{index_name}: identity found at distance {distance:.6g} via the index path, and an arbitrary "
-        f"(non-stored) query returns {len(arb_index)} row(s), matching the sequential scan "
-        f"({len(arb_seq)})."
+        f"{index_name}: the probes asked returned correctly — identity at distance {distance:.6g}, and "
+        f"an arbitrary (non-stored) query returning {len(arb_index)} row(s) against the sequential "
+        f"scan's {len(arb_seq)}. This is NOT a statement that the index is whole: a local pocket of "
+        f"damage survives every probe of this shape, and only a query from the real embedding model "
+        f"has ever found one."
     )
 
 

@@ -59,7 +59,7 @@ def test_cli_reports_lifecycle_counts():
         r = subprocess.run(
             [sys.executable, str(ROOT / "scripts" / "build_rules_store.py"),
              "--doc", str(doc), "--mirror-path", str(mirror_path)],
-            capture_output=True, text=True,
+            capture_output=True, text=True, encoding="utf-8",
         )
         assert r.returncode == 0, r.stdout + r.stderr
         assert "added: 1" in r.stdout or "added:1" in r.stdout.replace(" ", ""), r.stdout

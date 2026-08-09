@@ -17,6 +17,15 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
+# L74: this script prints Hebrew and the separator '·'. On Windows a PIPE gets the locale encoding
+# (cp1252), so the same command that reads fine in a terminal hands a caller bytes it cannot decode as
+# UTF-8 — which is how a passing test started crashing inside subprocess's reader thread rather than in
+# an assertion. Naming the encoding here makes the output identical whether the parent was launched
+# with -X utf8 or not, and that determinism is the point: encoding must not depend on how we were run.
+for _stream in (sys.stdout, sys.stderr):
+    if hasattr(_stream, "reconfigure"):
+        _stream.reconfigure(encoding="utf-8")
+
 from src.rules_store import builder, config, mirror  # noqa: E402
 
 
