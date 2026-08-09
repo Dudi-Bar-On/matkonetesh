@@ -41,3 +41,14 @@ def test_control_bytes_gate_ignores_an_untracked_file(tmp_path):
     (tmp_path / "scratch.js").write_bytes(b"const bad = '\x00';\n")   # never added
     r = run_gate("check-control-bytes.mjs", "--root", str(tmp_path))
     assert r.returncode == 0, r.stdout
+
+def test_control_bytes_gate_does_not_report_a_pass_when_it_scanned_nothing(tmp_path):
+    """A gate that looked at zero files has not decided anything. Printing a clean verdict there is
+    how an inert gate looks from the outside — green forever, for the wrong reason."""
+    subprocess.run(["git", "init", "-q"], cwd=str(tmp_path), check=True)
+    (tmp_path / "notes.rst").write_text("no scannable extension here\n", encoding="utf-8")
+    subprocess.run(["git", "add", "notes.rst"], cwd=str(tmp_path), check=True)
+    r = run_gate("check-control-bytes.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "no verdict" in r.stdout.lower(), r.stdout
+    assert "none in" not in r.stdout, "it must not read as a clean verdict"

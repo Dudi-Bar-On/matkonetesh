@@ -68,6 +68,15 @@ try {
   }
 }
 
+if (files.length === 0) {
+  // A gate that scanned nothing has not decided anything. Exiting 0 here would be indistinguishable
+  // from a clean tree, and that is how an inert gate looks from the outside: green, forever, for
+  // the wrong reason. Fail open (do not block) but say plainly that no verdict was reached.
+  console.log('check-control-bytes: scanned 0 files — no verdict reached, not a pass. ' +
+              'Check the tracked-file list and the extension filter. Not blocking.');
+  process.exit(0);
+}
+
 const bad = [];
 for (const f of files) {
   let buf;
