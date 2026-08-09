@@ -1,0 +1,10 @@
+[
+  {
+    "token": "V01",
+    "group": "B",
+    "mechanism": "commit-gate",
+    "mechanism_target": "scripts/check-*.mjs (new gate script in the commit)",
+    "observed_prior_facts": "a recorded prior Bash execution of the newly-created gate script (node scripts/check-*.mjs run against the real repo corpus) in the session's tool-use log/state store before the commit that ships it",
+    "reason": "No static pattern in the diff can decide compliance (ש1 fails: presence of the script says nothing about whether it ever ran); the decision is sequential — was the new gate executed against the real 172-file corpus before being declared done — and that prior fact is observable in recorded Bash invocations, so ש2 answers yes with observable prior facts."
+  }
+]

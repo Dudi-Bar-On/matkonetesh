@@ -46,6 +46,10 @@ MAX_BATCH = 10
 _DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
 
 
+AGREEMENT_MARKER = "two-blind-classifiers-agreed"
+"""Stands in for an owner approval date when the agreement path produced the batch (owner ruling,
+2026-08-09). Deliberately not a date: it must never read as if a person approved it on some day."""
+
 def validate_batch(batch: dict, current: dict) -> list[str]:
     """Returns a list of full-sentence errors naming the offending rule_id and value — empty list
     means the batch may be applied. Never raises on a malformed batch shape; a missing/blank field
@@ -55,7 +59,26 @@ def validate_batch(batch: dict, current: dict) -> list[str]:
     errors: list[str] = []
 
     approved = batch.get("approved_by_owner")
-    if not isinstance(approved, str) or not _DATE_RE.match(approved):
+    # The agreement path (owner ruling 2026-08-09) substitutes TWO BLIND CLASSIFIERS AGREEING for the
+    # owner's date. It is not a bypass: the marker can only be produced by classify_rules.py's
+    # --from-agreement branch, which reads both answer files, refuses on any disagreement, refuses a
+    # demotion to `none`, and refuses a token only one side answered. A human writing this marker into
+    # a batch file by hand would be lying about a check the machine performs — which is exactly the
+    # difference between "the machine verified agreement" and "someone declared it".
+    if approved == AGREEMENT_MARKER:
+        # PROBED AND CLOSED, 2026-08-09, minutes after the marker was added. The marker removes the
+        # DATE requirement, and the date was the only thing standing between a batch file and a
+        # demotion. So a hand-written marker plus `rule_group: none` waived a requirement with nobody
+        # approving it — the exact hole the owner's caveat exists to prevent. The refusal cannot live
+        # only in the --from-agreement branch: a batch FILE never passes through that branch.
+        for e in batch.get("entries") or []:
+            if e.get("rule_group") == "none" or e.get("mechanism") == "none":
+                errors.append(
+                    f"{e.get('rule_id')!r}: a demotion to 'none' may NOT ride on classifier agreement. "
+                    "Agreement replaces the owner's approval for classification, never for waiving a "
+                    "requirement — that one still reaches the owner with cost against importance."
+                )
+    elif not isinstance(approved, str) or not _DATE_RE.match(approved):
         errors.append(
             "approved_by_owner is missing or not a YYYY-MM-DD date "
             f"(got {approved!r}) — the owner must approve this batch in conversation before "
