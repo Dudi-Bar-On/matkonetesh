@@ -626,7 +626,10 @@ campaigns running the suite 5–7× each to tally a pass rate produced numbers, 
 systematic-debugging session with a purpose-built repro harness (the reload-storm arms) found root cause in
 hours. Measurement campaigns certify a stable system; they do not diagnose an unstable one.
 
-**L23 · A proxy metric is not the screen: "99% translated" shipped half-English screens (v267, 2026-07-26).**
+**L23a · A percentage claim without a named rendered-DOM artifact is blocked (v267, split 9.8.26).**
+A coverage, translation or localization percentage may appear in a final report only alongside a NAMED rendered-DOM measurement artifact — a per-language screenshot, or the output file of a rendered-DOM measure run. A percentage with no named artifact is blocked at stop.
+
+**L23b · A proxy metric is not the screen: "99% translated" shipped half-English screens (v267, 2026-07-26).**
 The v267 localization claim ("~99% translated", "ready to test") was measured on key coverage and bundle-string
 grep — while the real fr/de/es/it screens rendered roughly half English. The owner caught it on screen, and the
 sequel (v269/v270) exposed two more layers the proxy could not see: untranslated data-values behind translated
@@ -637,6 +640,8 @@ Root cause: measuring at an intermediate (keys, bundle strings) instead of at th
 DOM, per language). Gate: any coverage/translation/localization claim is stated ONLY from a rendered-DOM
 measurement per language (§10.19); key-coverage and grep counts may be reported only as explicitly-labeled
 proxies, never as the claim.
+
+**The judged half:** a coverage claim is judged by WHERE it was measured. The rendered DOM per language — including data-values behind translated keys and shell-level strings — is the only admissible basis. Key-coverage and grep counts are proxies, and must be labelled as proxies.
 
 **L24 · Never cap AI output tokens low — a low cap plus think:'high' silently truncates the JSON (v269–v271, 2026-07-27).**
 The smoker device-lookup returned "not found": the model's thinking consumed the budget and the JSON payload was
@@ -676,13 +681,18 @@ every generated plan BEFORE review (per-task fenced-block count > 0, truncation-
 §2); and large documents are NEVER assembled by LLM concatenation — assemble mechanically (`cat`, file ops),
 then run the completeness gate on the result.
 
-**L28 · 2026-07-30 · שחיקת כללי-כלים תחת קונטקסט ארוך — הבעלים תפס נטישה של serena/graphify לטובת grep ("אם אתה לא עושה — סימן שנמחקו לך הכללים").**
+**L28a · grep על קוד נחסם לפני שנוסה הכלי הייעודי (30.7.26, פוצל 9.8.26).**
+‏Grep על קובצי מקור נחסם כל עוד לא נרשמה באותו session פנייה קודמת ל-serena (עבודה סימבולית) או לגניזה (שאלת מסמכים). ‏grep הוא **fallback** — הוא בא אחרי שהכלי הייעודי נוסה, לעולם לא במקומו.
+
+**L28b · 2026-07-30 · שחיקת כללי-כלים תחת קונטקסט ארוך — הבעלים תפס נטישה של serena/graphify לטובת grep ("אם אתה לא עושה — סימן שנמחקו לך הכללים").**
 הכלל, מעכשיו קבוע:
 1. כל עבודת קוד — קריאה ועריכה — דרך **serena** (find_symbol / find_referencing_symbols / get_symbols_overview / replace_symbol_body). לא רק חיפושים — העבודה עצמה.
 2. כל שאלת מסמכים/קשרים/provenance — **שאילתת graphify** (`query`/`path`/`explain`) לפני grep; grep = fallback מוצהר בלבד.
 3. **תמיד `graphify --help`** (ו-`initial_instructions` של serena) לפני שימוש — לנצל יכולות במלואן (`graphify watch` ישב ב-help כל הזמן ולא נוצל).
 4. עדכון גרף רציף: `graphify watch` לקוד; docs ברענון `--mode deep` תקופתי, נאכף ע"י `scripts/check-graph-fresh.mjs`.
 5. **מטא-כלל:** אם מזהים שהכללים האלה לא מיושמים — זה עצמו האות שהקונטקסט נשחק; עוצרים ומריצים מחדש את `docs/process/checklists/session-start.md`, לא ממשיכים.
+
+**החצי השיפוטי:** עבודת קוד סימבולית — קריאה **ועריכה** — נעשית דרך serena, ו-fallback ל-grep מוצהר בקול ומנומק. ואם מתגלה שהכללים האלה אינם מיושמים, זה עצמו אות שהקונטקסט נשחק: עוצרים ומריצים מחדש את session-start, לא ממשיכים.
 
 **L29 · A release gate that ran on the wrong state: the suite went green twice before the copy that shipped even existed (v278, 2026-07-31).**
 v278's task ran the full suite ×2 and reported green, but the what's-new string was added to the tree AFTER
@@ -703,12 +713,17 @@ green run from an implementer is a sample, not proof — the controller reruns t
 before accepting a "done" claim (§11a); and a growing spec file is itself worth eyeballing for a
 worker-count side effect, not just for content.
 
-**L31 · Agents left waiting on a background suite run burn real time for no signal (2026-07-31).**
+**L31a · A subagent is never dispatched to run or wait on the full suite (2026-07-31, split 9.8.26).**
+Never dispatch a subagent whose brief includes running or waiting on the full Playwright suite. An Agent dispatch whose prompt contains `npx playwright test`, or an instruction to wait on or poll a suite run, is blocked at dispatch — the controller runs the suite itself (§11a).
+
+**L31b · Agents left waiting on a background suite run burn real time for no signal (2026-07-31).**
 Across three tasks this session, subagents polled a backgrounded full-suite run and reported "still
 waiting" repeatedly, costing roughly an hour combined with nothing to show for it. The cure was already
 adopted in §11a — the controller owns the full-suite gate, not a dispatched subagent — but it was not
 applied consistently this session. Gate: never hand a subagent a background suite run to wait on; the
 controller runs it (or waits on it) directly and hands the subagent a verdict, not a polling loop.
+
+**The judged half:** the controller owns the full-suite gate in substance and not only in wording — a subagent receives a verdict, pass or fail with the output pasted, never a polling loop. A subagent report shaped as "still waiting" on a suite run is itself a process defect to raise.
 
 **L32 · The pipe-vs-exit-code mistake, made twice more — including by the controller, minutes after writing
 the rule down (2026-07-31).** `cmd | head; ec=$?` (or the equivalent through any pipe) captures the exit
@@ -768,13 +783,18 @@ external wire format, at least one test must use **bytes captured from the real 
 written from the same assumption the parser holds. This is `verify-against-the-runtime-path` applied to
 data rather than to code paths.
 
-**L36 · "Target page, context or browser has been closed" almost always means timeout, not a crash
+**L36a · After a "browser has been closed" run, the next invocation must be the isolated spec (2026-07-31, split 9.8.26).**
+After a run whose output contains "Target page, context or browser has been closed", the next Playwright invocation MUST be an isolated run of the failing spec. A full-suite rerun is blocked until that one-minute discriminator has been executed.
+
+**L36b · "Target page, context or browser has been closed" almost always means timeout, not a crash
 (2026-08-01).** When a test times out with a `waitForFunction` pending, teardown closes the page and the
 pending wait reports the closure — the symptom, not the cause. Two separate investigations lost hours
 hunting a browser crash that never happened. Gate: read it as "the condition never became true", and use
 the one-minute discriminator — **run the test alone**. Load contention vanishes in isolation; a real defect
 does not. That single step separated a flake from a genuine product regression in under a minute the same
 day.
+
+**The judged half:** read the closure as "the condition never became true", not as a crash — and read the isolation run correctly: load contention vanishes in isolation, a real defect does not.
 
 **L37 · Three plausible explanations died before the single-point cause was found (2026-08-01).** For the
 same slow-voice symptom I successively believed the digit gate was freezing early speech, then that the
@@ -1643,7 +1663,10 @@ supplied example turned out to use `Header_2` and `node.parent_node`, neither of
 llama-index-core 0.14.23.
 
 
-**L51 · An installer that needs a password, run without a TTY, fails silently — and I have now
+**L51a · `sudo` inside a non-interactive `wsl` call is blocked (2026-08-05, split 9.8.26).**
+A `sudo` inside a non-interactive `wsl` invocation is blocked: the password prompt reads EOF and the command fails silently, which is indistinguishable from doing nothing. Use `wsl -u root <command>` — the Windows user is already authenticated, so root needs no password.
+
+**L51b · An installer that needs a password, run without a TTY, fails silently — and I have now
 walked into it three times (2026-08-05).**
 
 Three separate installs on this machine looked like nothing happened at all:
@@ -1671,6 +1694,8 @@ already-authenticated path.
 `apt-get install a b c d` fails **entirely** when one name is missing — so a single irrelevant
 package took down four required ones. When a vendor's convenience script fails on one component,
 read WHICH component before concluding the platform is unsupported.
+
+**The judged half:** before routing any command to a human or a channel, verify it does not need elevation or a password that channel cannot supply, and look first for an already-authenticated path. And when a vendor convenience script fails, read WHICH component failed before concluding the platform is unsupported.
 
 **L52 · "Always take the newest" is a version policy, not a tagging policy — and the newest
 changes contracts (2026-08-05).**
@@ -1866,7 +1891,10 @@ Three things this teaches, in ascending order of cost:
 CONCURRENTLY` — verified the way every other recovery there is verified: by asking the component to
 answer, not by watching the command exit 0.
 
-**L63 · A citation that grants more than its source does — twice in two consecutive tasks
+**L63a · A report may not cite a file it did not open this session (2026-08-05, split 9.8.26).**
+A final report may cite a repo file as justification only if that file was actually opened this session. A cited path absent from the session's read history blocks the report. Open the file while you quote it, not from memory of it.
+
+**L63b · A citation that grants more than its source does — twice in two consecutive tasks
 (2026-08-06).**
 
 Two agents, two tasks, the same shape:
@@ -1892,7 +1920,12 @@ to promise that its safety citations do not.**
 rests on what another file says, the quoted words must appear in that file verbatim — and if you
 find yourself adding a clause to make the quote fit the argument, the argument is what is wrong.
 
-**L64 · "The geniza has it" is not "git has it" — and I read one as the other (2026-08-06).**
+**The judged half:** quote, do not paraphrase. The quoted words must appear verbatim in the cited file, and the file must actually say what it is cited for. If you find yourself adding a clause to make the quote fit the argument, the argument is what is wrong.
+
+**L64a · A "landed" claim is checked against git, not against a search hit (2026-08-06, split 9.8.26).**
+A claim that a named document landed or was committed is checked against git itself — `git show HEAD:<path>` plus a clean `git status --porcelain` for that path. A "landed" claim over a path git does not confirm is blocked. Presence in the geniza, a search hit, or a quote in a commit message is never landing evidence: the geniza ingests from DISK.
+
+**L64b · "The geniza has it" is not "git has it" — and I read one as the other (2026-08-06).**
 
 L62 and L63 were written, quoted in four commit messages, cited in dispatches to subagents, and
 verified findable in the geniza by direct query. **Neither had ever been committed.** They existed
@@ -1914,6 +1947,8 @@ question is "did this land", the answer comes from `git show HEAD:<path>` or fro
 projection that was built by reading the disk. And the corollary, which is the more useful half:
 **prefer a test that derives its expectation from the artefact over one that pins a number**, because
 only the first can notice that your artefact and everyone else's have diverged.
+
+**The judged half:** prefer a test that derives its expectation from the artefact at test time over one that pins a number or a list — only the first can notice that your checkout and everyone else's have diverged.
 
 **L65 · The right conclusion reached through an invented mechanism — and why the conclusion being
 right is what makes it dangerous (2026-08-06).**
@@ -2121,7 +2156,10 @@ Two rules follow, and both are now implemented rather than aspired to:
 **Never fix this class by weakening the gate.** The tempting move was `META_SKIP_GATE=check-pytest`.
 It would have worked, and the next person meets the same accusation with one fewer clue.
 
-**L55 · An exception that pip can silently undo is a coincidence, not a decision (2026-08-05).**
+**L55a · A `--no-deps` pin that is not written down is blocked (2026-08-05, split 9.8.26).**
+`pip install --no-deps` is blocked unless every package pin in the command appears in `requirements-overrides.txt` — the file whose entire subject is pins that contradict upstream, with the reason written beside each one.
+
+**L55b · An exception that pip can silently undo is a coincidence, not a decision (2026-08-05).**
 
 The owner ruled we run neo4j driver 6.2 against `llama-index-graph-stores-neo4j`'s declared
 `neo4j<6`. The obvious implementation — `pip install --no-deps neo4j==6.2.0` — *works*, and is
@@ -2147,4 +2185,6 @@ The changelog then showed a `Result` iteration speed-up, two connection-timeout 
 fixes specific to Windows** — the platform we develop on. **"I tested it and nothing changed" is
 only evidence about the axis you tested.** Before concluding a version brings nothing, read what it
 claims to bring.
+
+**The judged half:** every deliberate exception carries all four parts — declared separately, tested to be in force, tested to be still needed, and its cost left visible. And "I tested it and nothing changed" is evidence only about the axis you tested: before concluding a version brings nothing, read what it claims to bring.
 

@@ -391,7 +391,13 @@ def test_real_document_extract_rules_merges_all_shapes_without_raising():
     assert "H8" in ids
     assert "H13" in ids
     assert "L1" in ids
-    assert "L63" in ids
+    # Derived, not pinned. This line used to read `assert "L63" in ids`, and it broke the moment L63
+    # was legitimately split into L63a/L63b — a test that pins a specific id cannot tell a real
+    # regression from a rename, which is precisely what L64b says to avoid. Ask the document which
+    # lesson ids it declares, then require the extractor to have found them.
+    declared = _expected_l_ids(text)
+    assert declared, "the document declares no lesson ids — the derivation itself is broken"
+    assert declared <= ids, f"declared but not extracted: {sorted(declared - ids, key=_l_sort_key)}"
     assert "DoD-10" in ids
 
 
