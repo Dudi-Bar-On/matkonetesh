@@ -50,7 +50,13 @@ test.describe('R-62 Task 3 · P6 — every failure path is byte-identical to tod
         w.vcSpeakContent('הוצא את החזה מהמעשנה ועטוף אותו.');   // steps
         w.vcSpeak('הטיימר של החזה הסתיים.', 'he', 'timer');      // timers
       });
-      await page.waitForFunction(() => true);
+      // L58 fix: `waitForFunction(() => true)` waited for nothing — it resolves on its first poll no
+      // matter what. With no AI key seeded, vcSpeak's early-return branch (app.js ~7832, `!aiAvail()`)
+      // runs synchronously and its only observable side effect is the toast it raises before returning
+      // — so wait on THAT: it is the real signal that both calls above have finished running the branch
+      // these assertions depend on, and it fails to appear (leaving this hanging, not silently passing)
+      // if a regression removes the toast or the early return.
+      await page.waitForFunction(() => document.querySelector('#toast')?.classList.contains('show'));
       expect(calls).toBe(0);      // no TTS key seeded → no request at all; the point is the CLASSIFIER
       const seen = await page.evaluate(() => (window as any).__vcClassCalls || 0);
       expect(seen).toBe(0);

@@ -52,3 +52,51 @@ def test_control_bytes_gate_does_not_report_a_pass_when_it_scanned_nothing(tmp_p
     assert r.returncode == 0, r.stdout
     assert "no verdict" in r.stdout.lower(), r.stdout
     assert "none in" not in r.stdout, "it must not read as a clean verdict"
+
+
+def test_wait_gate_catches_waitForTimeout(tmp_path):
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "a.spec.ts").write_text("await page.waitForTimeout(150);\n", encoding="utf-8")
+    r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "waitForTimeout" in r.stdout, r.stdout
+
+def test_wait_gate_catches_a_predicate_that_cannot_fail(tmp_path):
+    """L58: the exact line that shipped in Phase C and passed review."""
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "b.spec.ts").write_text(
+        "await page.waitForFunction(() => document.fonts?.status === 'loaded' || true);\n",
+        encoding="utf-8")
+    r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "|| true" in r.stdout, r.stdout
+
+def test_wait_gate_accepts_a_real_condition_wait(tmp_path):
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "c.spec.ts").write_text(
+        "await page.waitForFunction(() => document.querySelectorAll('.card').length === 3);\n",
+        encoding="utf-8")
+    r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_wait_gate_does_not_fire_on_the_real_suite():
+    r = run_gate("check-test-waits.mjs")
+    assert r.returncode == 0, f"the gate fires on the real suite:\n{r.stdout}"
+
+def test_wait_gate_does_not_report_a_pass_when_it_scanned_nothing(tmp_path):
+    """Same shape as the control-bytes gate: zero files scanned must not read as a clean verdict."""
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "notes.txt").write_text("not a spec file\n", encoding="utf-8")
+    r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+    assert "no verdict" in r.stdout.lower(), r.stdout
+    assert "TEST WAITS:" not in r.stdout, "it must not read as a clean verdict"
+
+def test_wait_gate_ignores_a_mention_inside_a_comment(tmp_path):
+    """A comment is not code. A gate that fires on prose about a rule, instead of a violation of
+    it, teaches the reader to skip its output — and then it enforces nothing."""
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "d.spec.ts").write_text(
+        "// never use page.waitForTimeout(150) — see DoD-11\n"
+        "await page.waitForFunction(() => document.querySelectorAll('.card').length === 3);\n",
+        encoding="utf-8")
+    r = run_gate("check-test-waits.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
