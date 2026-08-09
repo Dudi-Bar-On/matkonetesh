@@ -2213,6 +2213,17 @@ null => fall open"), ומדווח "לא נבדק" במקום פלט נקי מז�
 `Write` — אין חריגה חדשה לתעד. אימות-חי מתוך subagent מדובר בוצע בהצלחה (§3.4), כך שאין כאן גם
 "לא ניתן לבצע מתוך subagent" לתעד כלקח.
 
+**No-lesson declaration (2026-08-10):** תיקון CI אדום — `test_A7_installed_version_matches_the_recorded_pin`
+נכשל ב-job ה-`discipline` (Linux) עם `FileNotFoundError: 'powershell'`, ותוקן ב-`skipif(sys.platform
+!= "win32", ...)` עם נימוק שקורא לשם מה שאינו-לינוקסי בפועל (שירותי Windows ילידיים,
+`Get-CimInstance Win32_Service`, משתנה-סביבה ברמת-מכונה). **הכותב חושב שזה כן ראוי ללקח מספרי —
+ראו הערה בדוח.** הסיבה שלא כתבתי L חדש כאן: הדפוס (בדיקה שמניחה כלי-פלטפורמה בלי שער-פלטפורמה,
+נשארת אדומה ימים בלי שאיש שם לב) חדש בפרטיו אך לא בסוגו — קרוב ל-L40 (פסק ירוק שאינו אומר מה לא
+כוסה) ול-L54/§11a (שער שמדווח בלי לקרוא את המצב האמיתי); ‏`check-ci.mjs` (מ-R-94) כבר קיים בדיוק כדי
+לתפוס את הפער הזה, והוא אכן תפס אותו כשהופעל ידנית כאן. ההכרעה אם זו הופעה חוזרת של לקח קיים או
+לקח עצמאי (למשל: "בדיקת-תשתית שקוראת ל-כלי-פלטפורמה חייבת שער-פלטפורמה משלה, לא רק תלות ברשת
+כמו `_require_stack`") שמורה לבעלים לסיווג.
+
 **What happened.** Before dispatching the last ten tasks of the watchman plan, I had a pre-flight audit
 read them against the real repository. It found three blockers and saved three review rounds. It also
 marked Task 19 **clean**, with this reasoning: its `wsl -u root … service docker start` sequence "is a

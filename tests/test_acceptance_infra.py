@@ -371,6 +371,20 @@ def _neo4j_installed_version() -> str:
     return version
 
 
+@pytest.mark.skipif(
+    sys.platform != "win32",
+    reason=(
+        "Windows-specific by construction, not by convenience: PostgreSQL and Neo4j here are "
+        "native WINDOWS SERVICES (2026-08-07 docker-exit), and both helpers this test calls read "
+        "Windows-only state that has no Linux equivalent to probe instead — "
+        "Get-CimInstance Win32_Service (a Windows service object) and a machine-scope environment "
+        "variable set via [Environment]::GetEnvironmentVariable(...,'Machine') (Windows-only scope; "
+        "POSIX has no machine/user/process split). CI's Linux runner has neither service installed "
+        "as a Windows service in the first place, so there is nothing here for it to check — this "
+        "is not a check being skipped for convenience, it is a Windows-native-service check with no "
+        "target on Linux."
+    ),
+)
 def test_A7_installed_version_matches_the_recorded_pin():
     """A strict safety rule: "Do not use `latest` container tags" — carried to its native form.
 
@@ -380,6 +394,14 @@ def test_A7_installed_version_matches_the_recorded_pin():
     binary's own version against a version string committed to
     docs/infra/dependency-summary.md, the same role that file already plays for every other
     pinned dependency here. Covers both PostgreSQL and Neo4j — same concern, same check.
+
+    UPDATED 2026-08-10 (CI-red fix): this shells out to `powershell` unconditionally via
+    `_postgres_installed_version`/`_neo4j_installed_version`, unlike every other test in this file
+    that talks to the stack (`_require_stack` skips cleanly when it is unreachable). On the
+    `discipline` job's Linux runner, `powershell` does not exist as a binary at all — not "not on
+    PATH", the executable itself has no Linux build — so the shell-out raised `FileNotFoundError`
+    before any of this test's own logic ran, which is a crash, not a skip. Skipped explicitly by
+    platform instead, with the reason above stating what is actually Windows-specific.
     """
     recorded = _dependency_summary_versions()
     installed = {

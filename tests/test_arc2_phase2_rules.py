@@ -105,3 +105,91 @@ def test_read_tracker_records_nothing_for_a_failed_read(tmp_path):
                        capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT),
                        env={**os.environ, "ENFORCEMENT_STATE_PATH": str(state)})
     assert json.loads(q.stdout.strip()) == [], q.stdout
+
+
+# ---------------------------------------------------------------- Task 2: L16 + L56
+
+DISCIPLINE = ROOT / "docs" / "process" / "development-discipline.md"
+
+
+def test_L16_blocks_claude_md_edit_when_discipline_never_read(tmp_path):
+    state = tmp_path / "state.sqlite"
+    # Channel proven live: SOME file was read this session by SOME actor — just not the source.
+    seed(state, "event", "s-l16", "actor-a", "file_read", str(ROOT / "app.js"))
+    out = run_pretooluse(
+        payload("Edit", ROOT / "CLAUDE.md", old="## Session start", new="## Session start (v2)",
+                session="s-l16", agent="actor-a"),
+        env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "development-discipline.md" in reason_of(out)   # the reachable alternative, by name
+
+
+def test_L16_allows_claude_md_edit_after_the_source_was_read(tmp_path):
+    state = tmp_path / "state.sqlite"
+    seed(state, "event", "s-l16b", "actor-a", "file_read", str(DISCIPLINE))
+    out = run_pretooluse(
+        payload("Edit", ROOT / "CLAUDE.md", old="x", new="y", session="s-l16b", agent="actor-a"),
+        env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_L16_fails_open_when_the_channel_shows_no_traffic(tmp_path):
+    """The L57 trap applied to ourselves: an EMPTY file_read channel cannot distinguish "the
+    actor read nothing" from "the Read matcher is not wired." Absence of the channel is not
+    evidence — allow, with the degradation named."""
+    state = tmp_path / "state.sqlite"   # store exists after first open, but zero file_read rows
+    out = run_pretooluse(
+        payload("Edit", ROOT / "CLAUDE.md", old="x", new="y", session="s-l16c", agent="actor-a"),
+        env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_L16_does_not_fire_on_ordinary_real_files(tmp_path):
+    """False-alarm vs the real tree: an app.js edit (the single most common real Edit target in
+    this repo's history) must never be L16's business, whatever the channel says."""
+    state = tmp_path / "state.sqlite"
+    seed(state, "event", "s-l16d", "actor-a", "file_read", str(ROOT / "app.js"))
+    out = run_pretooluse(
+        payload("Edit", ROOT / "app.js", old="const a=1", new="const a=2",
+                session="s-l16d", agent="actor-a"),
+        env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
+    assert "derived-artifact-source" not in reason_of(out), out
+
+
+def test_L56_warns_once_on_implementation_edit_without_reading_the_governing_spec(tmp_path):
+    state = tmp_path / "state.sqlite"
+    # A real arc fixture: SDD ledger + a governing spec file, via session-state.mjs's own seams.
+    sdd = tmp_path / "sdd" / "some-plan"; sdd.mkdir(parents=True)
+    (sdd / "progress.md").write_text("# progress\n", encoding="utf-8")
+    specs = tmp_path / "specs"; specs.mkdir()
+    spec = specs / "2026-08-09-arc2-enforcement-implementation-design.md"
+    spec.write_text("# spec\n", encoding="utf-8")
+    env = {"ENFORCEMENT_STATE_PATH": str(state), "SDD_DIR": str(tmp_path / "sdd"),
+           "SPECS_DIR": str(specs)}
+    seed(state, "event", "s-l56", "actor-a", "file_read", str(ROOT / "app.js"))  # channel live
+    out = run_pretooluse(payload("Edit", ROOT / "app.js", old="a", new="b",
+                                 session="s-l56", agent="actor-a"),
+                         env_extra=env, tmp_path=tmp_path)
+    assert decision_of(out) == "warn", out
+    assert spec.name in reason_of(out)
+    # And ONCE only — the second identical edit passes silently (the throttle event).
+    out2 = run_pretooluse(payload("Edit", ROOT / "app.js", old="b", new="c",
+                                  session="s-l56", agent="actor-a"),
+                          env_extra=env, tmp_path=tmp_path)
+    assert decision_of(out2) == "allow", out2
+
+
+def test_L56_stays_quiet_when_the_spec_was_read(tmp_path):
+    state = tmp_path / "state.sqlite"
+    sdd = tmp_path / "sdd" / "some-plan"; sdd.mkdir(parents=True)
+    (sdd / "progress.md").write_text("# progress\n", encoding="utf-8")
+    specs = tmp_path / "specs"; specs.mkdir()
+    spec = specs / "2026-08-09-arc2-enforcement-implementation-design.md"
+    spec.write_text("# spec\n", encoding="utf-8")
+    env = {"ENFORCEMENT_STATE_PATH": str(state), "SDD_DIR": str(tmp_path / "sdd"),
+           "SPECS_DIR": str(specs)}
+    seed(state, "event", "s-l56b", "actor-a", "file_read", str(spec))
+    out = run_pretooluse(payload("Edit", ROOT / "app.js", old="a", new="b",
+                                 session="s-l56b", agent="actor-a"),
+                         env_extra=env, tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
