@@ -14,7 +14,7 @@
     ],
     "PostToolUse": [
       {
-        "matcher": "Bash|Edit|Write|browser_navigate",
+        "matcher": "Bash|Edit|Write|browser_navigate|Read",
         "hooks": [
           {
             "type": "command",

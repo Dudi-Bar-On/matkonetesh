@@ -2205,6 +2205,14 @@ null => fall open"), ומדווח "לא נבדק" במקום פלט נקי מז�
 נקודות-הכניסה נורו בייצור. הלקחים שהשלב כן ייצר כבר נכתבו — ‏L68 עד L73 — ולהוסיף שורה שביעית רק מפני
 שהשער ביקש היה מדלל אותן.
 
+**No-lesson declaration (2026-08-10):** קשת 2 שלב 2 · משימה 1 (ערוץ הראיות `file_read` —
+`recentEvents()`, `read-tracker.mjs`, הרחבת ה-matcher של `PostToolUse` ל-`Read`) — אין לקח **חדש**.
+זו הרחבה ישירה של תבנית ה-observer הקיימת (`edit-tracker.mjs`) לאירוע נוסף, ללא ארכיטקטורה חדשה
+ו-RED/GREEN אושרו בפועל מול הקוד האמיתי (git stash + הזזת הקובץ הזמנית, לא רק הרצה תיאורטית).
+עלות ה-Read שנמדדה (61.0ms ממוצע, 20 הרצות) תואמת בדיוק את התקציב המדוד כבר עבור `Bash`/`Edit`/
+`Write` — אין חריגה חדשה לתעד. אימות-חי מתוך subagent מדובר בוצע בהצלחה (§3.4), כך שאין כאן גם
+"לא ניתן לבצע מתוך subagent" לתעד כלקח.
+
 **What happened.** Before dispatching the last ten tasks of the watchman plan, I had a pre-flight audit
 read them against the real repository. It found three blockers and saved three review rounds. It also
 marked Task 19 **clean**, with this reasoning: its `wsl -u root … service docker start` sequence "is a

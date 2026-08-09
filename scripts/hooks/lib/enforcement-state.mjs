@@ -334,6 +334,29 @@ export function eventCountSince(db, sessionId, kind, sinceTs) {
   }
 }
 
+// All events of `kind` for `sessionId` with ts >= sinceTs, newest first. [] on any failure —
+// "could not read" and "nothing recorded" share the fail-open value here on purpose: every
+// consumer (L16/L56, Phase 2) treats an empty list as "no evidence, do not block on absence you
+// cannot distinguish from a broken channel" — see derived-artifact-source.mjs's channel probe.
+// `actorId`: same three-way contract as lastEvent() above — omitted (undefined) = unfiltered,
+// passed (including ''/null, the main-session identity) = filtered to that one normalized actor.
+export function recentEvents(db, sessionId, kind, sinceTs, actorId) {
+  if (!db || typeof sessionId !== 'string' || typeof kind !== 'string') return [];
+  try {
+    const since = Number.isFinite(sinceTs) ? sinceTs : 0;
+    const rows = actorId === undefined
+      ? db.prepare(
+        'SELECT ts, detail, actor_id FROM events WHERE session_id = ? AND kind = ? AND ts >= ? ORDER BY ts DESC, id DESC'
+      ).all(sessionId, kind, since)
+      : db.prepare(
+        'SELECT ts, detail, actor_id FROM events WHERE session_id = ? AND kind = ? AND ts >= ? AND actor_id = ? ORDER BY ts DESC, id DESC'
+      ).all(sessionId, kind, since, normalizeActorId(actorId));
+    return rows.map((r) => ({ ts: Number(r.ts), detail: r.detail ?? null, actorId: r.actor_id }));
+  } catch {
+    return [];
+  }
+}
+
 // Every open (still-tracked) fix target for `sessionId`. [] on any failure — a rule reading this
 // to decide whether to block must see "nothing open" exactly the same way whether that is true or
 // the store just could not be read; both resolve to "do not block".
