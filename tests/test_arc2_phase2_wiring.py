@@ -54,10 +54,18 @@ def test_the_loader_evaluates_every_rule_file_on_disk_no_env_overrides():
         lines = [ln for ln in fh.read().splitlines() if ln.strip()]
     assert lines, "no new log line for this invocation"
     entry = json.loads(lines[-1])
-    assert entry.get("rules_evaluated") == len(on_disk), (
-        f"the loader evaluated {entry.get('rules_evaluated')} rule(s) but {len(on_disk)} file(s) "
-        f"are on disk — some rule is present but never loaded (the Phase-4 inert-rule failure):\n"
-        f"{on_disk}")
+    # R-120 changed what "loaded everything" means: rules are now skipped by declared tool scope,
+    # so equality with the file count would be WRONG to assert — it would forbid the optimisation
+    # rather than check it. What must still hold is that nothing falls out of the accounting.
+    assert entry.get("rules_on_disk") == len(on_disk), (
+        f"the pipeline saw {entry.get('rules_on_disk')} rule file(s), {len(on_disk)} are on disk")
+    evaluated = entry.get("rules_evaluated")
+    skipped = entry.get("rules_skipped_by_tool_scope")
+    assert evaluated + skipped == len(on_disk), (
+        f"{evaluated} evaluated + {skipped} skipped != {len(on_disk)} on disk — a rule left the "
+        f"load path without being accounted for, which is the Phase-4 inert-rule failure wearing "
+        f"an optimisation as a disguise:\n{on_disk}")
+    assert evaluated > 0, "a Write evaluated NO rules — tool scoping has excluded everything"
 
 
 def test_every_phase2_rule_is_declared_and_counted():
@@ -79,6 +87,41 @@ def test_coverage_baseline_file_contains_every_phase2_rule():
     covered = set(baseline["covered"])
     missing = [rid for rid in PHASE2_RULES if rid not in covered]
     assert not missing, f"baseline is missing phase-2 rule id(s): {missing}"
+
+
+def test_no_tool_type_is_an_order_of_magnitude_slower_than_the_others():
+    """R-120. The overhead below was measured on an Edit payload only, for weeks. Measuring three
+    tool types instead of one found that an Agent dispatch cost 634ms worst case — 8x an Edit —
+    because the concurrency rule asked the OS about liveness by spawning `tasklist` once PER PID,
+    and the ledger holds several. Fixed by process.kill(pid, 0), which is the same OS question at
+    0.003ms. Nothing found this for weeks because only one payload shape was ever timed."""
+    payloads = {
+        "Edit": {"tool_name": "Edit",
+                 "tool_input": {"file_path": str(ROOT / "app.js"), "old_string": "c", "new_string": "c"}},
+        "Bash": {"tool_name": "Bash", "tool_input": {"command": "echo hi"}},
+        "Agent": {"tool_name": "Agent", "tool_input": {"prompt": "x"}},
+        "Write": {"tool_name": "Write",
+                  "tool_input": {"file_path": str(ROOT / "README.md"), "content": "x\n"}},
+    }
+    worst = {}
+    for name, extra in payloads.items():
+        payload = {"session_id": "s-spread-arc2p2", "hook_event_name": "PreToolUse",
+                   "cwd": str(ROOT), **extra}
+        times = []
+        for _ in range(5):
+            t0 = time.perf_counter()
+            subprocess.run(["node", str(ROOT / "scripts" / "hooks" / "pretooluse.mjs")],
+                           input=json.dumps(payload), capture_output=True, text=True,
+                           encoding="utf-8", cwd=str(ROOT), env={**os.environ})
+            times.append((time.perf_counter() - t0) * 1000)
+        worst[name] = max(times)
+    print("\nPRETOOLUSE WORST BY TOOL: " + " · ".join(f"{k} {v:.0f}ms" for k, v in worst.items()))
+    fastest = min(worst.values())
+    outliers = {k: round(v) for k, v in worst.items() if v > fastest * 4}
+    assert not outliers, (
+        f"tool type(s) {outliers} cost more than 4x the fastest ({fastest:.0f}ms) — one payload "
+        f"shape is doing work the others are not. That is how a 634ms Agent path hid behind a "
+        f"healthy-looking Edit measurement (R-120).")
 
 
 def test_pretooluse_overhead_stays_in_the_baseline_class():

@@ -14,6 +14,12 @@
 // green-ish while a genuine SchemaViolation hid inside the skip — harm to substance, and the
 // alternative is named and cheap: skip only on the CONNECTION-SHAPED exception types the excuse
 // is actually about (a positive marker list), fail on everything else.
+// TOOLS — the tool names this rule can ever object to. The pipeline reads this from the
+// file TEXT and skips importing the module entirely for any other tool, which is what keeps
+// per-call cost from growing with the total rule count. It must stay HONEST: for any tool
+// not listed here, evaluate() must return allow. tests/test_hook_tool_scope.py proves that
+// for every rule and every tool, so a wrong list fails loudly instead of silencing a rule.
+export const TOOLS = ['Edit', 'Write'];
 export const RULE_IDS = ['L9', 'L57'];
 
 import { readFileSync } from 'node:fs';

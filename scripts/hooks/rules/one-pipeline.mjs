@@ -18,6 +18,12 @@
 // surfaces the CP2 truncation shape at the moment it is written instead of at review; the harm
 // of a late catch is efficiency (a review round), not substance. Edits pass undecided
 // (a fragment's completeness is undecidable — fail open, reason named).
+// TOOLS — the tool names this rule can ever object to. The pipeline reads this from the
+// file TEXT and skips importing the module entirely for any other tool, which is what keeps
+// per-call cost from growing with the total rule count. It must stay HONEST: for any tool
+// not listed here, evaluate() must return allow. tests/test_hook_tool_scope.py proves that
+// for every rule and every tool, so a wrong list fails loudly instead of silencing a rule.
+export const TOOLS = ['Edit', 'Write'];
 export const RULE_IDS = ['12.1', '2'];
 
 import { normPath, toolFilePath, newContent } from '../lib/target-path.mjs';

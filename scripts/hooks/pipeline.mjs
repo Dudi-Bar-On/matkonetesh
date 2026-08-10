@@ -96,7 +96,39 @@ export async function runPipeline(rawInput, opts = {}) {
     return { decision: 'allow', reason, events, results: [] };
   }
 
-  const ruleFiles = listRuleFiles(rulesDir);
+  const allRuleFiles = listRuleFiles(rulesDir);
+  // R-120 — tool-scoped loading. Importing every rule on every tool call cost 18ms of the measured
+  // 85ms worst case, and would have grown by roughly another 100ms as the 52 open rules land. A
+  // rule declares `export const TOOLS = [...]`; that is read from the file TEXT (no import — the
+  // import is the cost being avoided) and a rule whose list excludes this tool is skipped.
+  //
+  // FAIL-OPEN, deliberately and in this exact order: if the file cannot be read, or declares no
+  // TOOLS, or the declaration cannot be parsed, the rule IS imported and run. The failure mode of
+  // a wrong skip is a silently inert rule — the Phase-4 Task-9 defect, which passed 333 tests — so
+  // every uncertain case must resolve toward running the rule, never toward skipping it.
+  //
+  // The declarations are not trusted on their word: tests/test_hook_tool_scope.py drives every rule
+  // with every tool it did NOT declare and requires `allow`, so a dishonest list fails loudly.
+  const ruleFiles = [];
+  const skipped = [];
+  for (const rf of allRuleFiles) {
+    let declared = null;
+    try {
+      const m = /export\s+const\s+TOOLS\s*=\s*\[([^\]]*)\]/.exec(readFileSync(rf.path, 'utf8'));
+      if (m) {
+        declared = m[1].split(',').map((t) => t.trim().replace(/^['"]|['"]$/g, '')).filter(Boolean);
+      }
+    } catch { declared = null; }
+    const name = typeof input.tool_name === 'string' ? input.tool_name : '';
+    // Substring match, not equality: MCP tools arrive with a server prefix (the browser_navigate
+    // rule already matches that way), and an over-broad match only costs an import.
+    if (declared && declared.length > 0 && !declared.some((t) => name === t || name.includes(t))) {
+      skipped.push(rf.file);
+      continue;
+    }
+    ruleFiles.push(rf);
+  }
+
   let finalDecision = 'allow';
   let finalReason = ruleFiles.length === 0 ? 'no rules registered' : 'no rule objected';
   const results = [];
@@ -160,6 +192,11 @@ export async function runPipeline(rawInput, opts = {}) {
     reason: finalReason,
     tool: input.tool_name ?? null,
     rules_evaluated: ruleFiles.length,
+    // Both halves are logged because `rules_evaluated` alone can no longer prove nothing was lost:
+    // rules_on_disk === rules_evaluated + rules_skipped_by_tool_scope is what the liveness test
+    // asserts, so a rule that vanished from the load path shows up as arithmetic that stops adding.
+    rules_on_disk: allRuleFiles.length,
+    rules_skipped_by_tool_scope: skipped.length,
   });
 
   return { decision: finalDecision, reason: finalReason, events, results };

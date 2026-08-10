@@ -14,6 +14,12 @@
 // worst kind of change (invisible locally, fatal later), and the alternative costs one lookup and
 // is named in the message: pin the newest version NUMBER, and when the number crosses a major,
 // read that component's own release notes before debugging anything.
+// TOOLS — the tool names this rule can ever object to. The pipeline reads this from the
+// file TEXT and skips importing the module entirely for any other tool, which is what keeps
+// per-call cost from growing with the total rule count. It must stay HONEST: for any tool
+// not listed here, evaluate() must return allow. tests/test_hook_tool_scope.py proves that
+// for every rule and every tool, so a wrong list fails loudly instead of silencing a rule.
+export const TOOLS = ['Edit', 'Write'];
 export const RULE_IDS = ['L52'];
 
 import { basename } from 'node:path';

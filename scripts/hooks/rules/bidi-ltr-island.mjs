@@ -18,6 +18,12 @@
 // The rest of L13's surface (a NEW readout built without an island) is explicitly NOT enforceable
 // here at 0 false alarms and stays owned by DoD-8/9 (390×844 screenshot, actually looked at) —
 // a named gap, not a silent one.
+// TOOLS — the tool names this rule can ever object to. The pipeline reads this from the
+// file TEXT and skips importing the module entirely for any other tool, which is what keeps
+// per-call cost from growing with the total rule count. It must stay HONEST: for any tool
+// not listed here, evaluate() must return allow. tests/test_hook_tool_scope.py proves that
+// for every rule and every tool, so a wrong list fails loudly instead of silencing a rule.
+export const TOOLS = ['Edit', 'Write'];
 export const RULE_IDS = ['L13'];
 
 import { basename } from 'node:path';

@@ -60,8 +60,33 @@ export function currentHostPid() {
 // Real OS query, never a flag. `false` on ANY inability to confirm liveness (pid gone, or the
 // query itself failed) — the fail-open/undercount-biased direction (an internal failure must
 // never look like grounds to block, matching pipeline.mjs's own contract).
+// Real OS query, never a flag. `false` on ANY inability to confirm liveness (pid gone, or the
+// query itself failed) — the fail-open/undercount-biased direction (an internal failure must
+// never look like grounds to block, matching pipeline.mjs's own contract).
+//
+// R-120, measured 2026-08-10 rather than reasoned. A PreToolUse call on the Agent tool cost 539ms,
+// and 496ms of it was here: the ledger holds 5 pids and each spawned its own `tasklist`. Three
+// primitives, timed on this machine:
+//
+//     tasklist, full CSV listing   777ms      (tried first — made it WORSE, 539ms -> 838ms)
+//     tasklist, filtered by pid    463ms      (the original, once per pid)
+//     process.kill(pid, 0)           0.003ms
+//
+// `process.kill(pid, 0)` sends NO signal; it asks the OS whether the pid can be signalled, which is
+// the existence question we are actually asking. ESRCH means gone. EPERM means it exists and is
+// simply not ours — still ALIVE, and getting that backwards would silently raise the concurrency
+// ceiling, so it is answered explicitly rather than falling into the catch-all. `tasklist` remains
+// the fallback for any other error, so an unfamiliar failure still resolves through the path that
+// was already trusted.
 export function isPidAlive(pid) {
   if (!Number.isFinite(pid) || pid <= 0) return false;
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (err) {
+    if (err && err.code === 'ESRCH') return false;
+    if (err && err.code === 'EPERM') return true;
+  }
   try {
     const out = execFileSync('tasklist', ['/FI', `PID eq ${pid}`, '/NH'], {
       encoding: 'utf8',

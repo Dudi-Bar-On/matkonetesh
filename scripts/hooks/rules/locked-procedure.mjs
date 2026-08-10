@@ -18,6 +18,12 @@
 // re-measurement planned) — the harm mode is doing it SILENTLY, and a warn that quotes the gate
 // at the moment of the edit removes the silence, which is the whole lesson. The warn is the
 // enforcement; the run-invalidation cost of ignoring it is L78's own receipt.
+// TOOLS — the tool names this rule can ever object to. The pipeline reads this from the
+// file TEXT and skips importing the module entirely for any other tool, which is what keeps
+// per-call cost from growing with the total rule count. It must stay HONEST: for any tool
+// not listed here, evaluate() must return allow. tests/test_hook_tool_scope.py proves that
+// for every rule and every tool, so a wrong list fails loudly instead of silencing a rule.
+export const TOOLS = ['Edit', 'Write'];
 export const RULE_IDS = ['L78'];
 
 import { normPath, toolFilePath } from '../lib/target-path.mjs';
