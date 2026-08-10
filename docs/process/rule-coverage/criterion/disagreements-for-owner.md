@@ -164,3 +164,21 @@
 |---|---|---|
 | אלפא | `B` | The diff to a spec file alone cannot decide compliance; the deciding fact is a prior event (owner approval) observed in the register, so the edit gate must consult recorded prior state. |
 | בטא | `A` | The rule reduces to a lookup: an approved-in-register spec licenses editing itself, an unlisted/new spec does not — presence or absence of a register entry is decisive without reading intent. |
+
+---
+
+## `L83` — היום ללא קבוצה (נוסף 10.8.26, סוף שלב 2 של קשת 2)
+
+**זו אינה מחלוקת בין שתי מסווגות — זו החלטה שאין לי סמכות לקבל.** הכלל אומר שהוראה
+תפעולית לסוכן חייבת לכלול את המנגנון שמאפשר לקיים אותה. הסיווג המתבקש הוא `none`
+(הנחיה על אופן כתיבת תדריכים, לא דפוס בארטיפקט ולא מצב קודם), **והכלל שלנו אוסר על
+הורדה ל-`none` שנשענת על הסכמת-מסווגות — היא דורשת אישור בעלים בתאריך.** לכן הוא כאן.
+
+| קריאה | קבוצה | הנימוק |
+|---|---|---|
+| ההצעה | `none` | ההוראה נכתבת בתדריך שאני מחבר; אין ארטיפקט קבוע שאפשר לסרוק כדי לדעת אם המנגנון נמסר. |
+| החלופה | `A` · `pretooluse:Agent` | תדריך שמורה להריץ פקודה ארוכה **ואינו נוקב ב-`timeout`** הוא דפוס גלוי בטקסט ההזנקה, ונקודת האכיפה `pretooluse:Agent` כבר קיימת בדירוג (מקום 6). |
+
+**המלצתי:** החלופה (`A`) — היא צרה, ניתנת למדידה, ותופסת בדיוק את הכשל שקרה שלוש פעמים.
+**אבל אני מעלה אותה ולא מחליט אותה**, כי הכיוון הנוח לי כאן הוא גם הכיוון שמשחרר את
+השער שחוסם אותי, וזה בדיוק המצב שבו החלטה עצמית אינה ראויה לאמון.

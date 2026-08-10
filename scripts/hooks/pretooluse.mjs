@@ -1,7 +1,9 @@
 #!/usr/bin/env node
-// scripts/hooks/pretooluse.mjs — PreToolUse CLI entry point. NOT wired into .claude/settings.json
-// yet (that is Task 7, after the rules in Group A exist — wiring a pipeline before it has
-// anything to say is a tax with no benefit).
+// scripts/hooks/pretooluse.mjs — PreToolUse CLI entry point. WIRED into .claude/settings.json,
+// matcher `Bash|Grep|WebSearch|Agent|browser_navigate|Edit|Write` — verified 2026-08-10 by reading
+// settings.json, not by remembering. (This header claimed "NOT wired yet" for three days after it
+// was wired: a stale comment in the most dangerous file in the repo, which is precisely the class
+// of thing L16 exists to catch. Re-read the file, do not trust this line.)
 //
 // This process is spawned by Claude Code before every tool call once wired. Everything here is
 // written on the assumption that a bug in this file is the single most dangerous thing that can
