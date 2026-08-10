@@ -125,6 +125,35 @@ export function lastAssistantText(transcriptPath) {
   return { determined: false, text: '' };
 }
 
+// maskQuotedProse — Phase 4's prose analogue of bash-segments' stripDataRegions (R-133 and four
+// sibling incidents: gates firing on text that DESCRIBES a pattern rather than code that runs
+// it). Replaces quoted/fenced/blockquoted regions with SPACES OF THE SAME LENGTH, so any offset
+// computed on the masked text is valid in the original — which is what lets findClaimMatch()
+// keep returning original-text offsets for extractClaimSnippet() without a mapping table.
+//
+// APPLIES TO CLAIM DETECTION ONLY, NEVER TO EVIDENCE DETECTION: containsQuotedEvidence() reads
+// the RAW text on purpose — pasted verification output lives INSIDE fences, and masking it would
+// turn every honestly-evidenced reply into a block candidate. One helper, options (keepInlineCode
+// for rules whose SIGNAL is a `path` cited in inline code — L63a/L64a) — never a sibling helper;
+// a helper applied to one rule and not its sibling is the exact defect found on 2026-08-10.
+//
+// KNOWN, ACCEPTED FALSE-NEGATIVE: two Hebrew gershayim acronyms (צה"ל … חו"ל) on one line pair
+// up as a "quote" and mask the text between them, hiding a claim that sits there. The phase's
+// bar is zero FALSE ALARMS; a rare missed claim costs nothing (the DoD gate still exists), while
+// a false block costs every reply that quotes anything.
+export function maskQuotedProse(text, { keepInlineCode = false } = {}) {
+  if (typeof text !== 'string' || !text) return '';
+  let out = text;
+  const blank = (re) => { out = out.replace(re, (m) => ' '.repeat(m.length)); };
+  blank(/```[\s\S]*?(?:```|$)/g);        // fenced blocks, incl. an unterminated trailing fence
+  if (!keepInlineCode) blank(/`[^`\n]+`/g); // inline code spans
+  blank(/^[ \t]*>[^\n]*/gm);             // markdown blockquote lines
+  blank(/"[^"\n]{2,400}"/g);             // ASCII double-quoted spans, single-line, bounded
+  blank(/[“„][^“”„\n]{2,400}[”“]/g); // “…” „…“ curly quotes
+  blank(/«[^»\n]{2,400}»/g); // «…» guillemets
+  return out;
+}
+
 // BROAD set — bare word-boundary match remains sufficient (see header comment: zero false positives
 // across every real sample tested in both rounds). Still subject to the per-sentence question and
 // subordinator guards below.
@@ -169,7 +198,11 @@ function splitSentences(text) {
 // voided if a SUBORDINATOR_RE hit exists in the sentence BEFORE the candidate's own start.
 function findClaimMatch(text) {
   if (typeof text !== 'string' || !text) return null;
-  for (const sentence of splitSentences(text)) {
+  // Phase 4 retrofit (R-133): claims are detected on MASKED text — quoted/fenced/blockquoted
+  // prose is never claim-bearing. Same-length masking keeps every offset valid in the original,
+  // so extractClaimSnippet() still slices the real text below.
+  const masked = maskQuotedProse(text);
+  for (const sentence of splitSentences(masked)) {
     if (sentence.text.includes('?')) continue; // question — never claim-bearing, whole sentence skipped.
 
     const subMatch = SUBORDINATOR_RE.exec(sentence.text);
@@ -223,7 +256,7 @@ export const LIVE_CLAIM_RE = /(גרסה חיה|עלה לאוויר|באוויר|
 
 export function detectsLiveClaim(text) {
   if (typeof text !== 'string' || !text) return false;
-  return LIVE_CLAIM_RE.test(text);
+  return LIVE_CLAIM_RE.test(maskQuotedProse(text));
 }
 
 // "Evidence" = pasted command output, the DoD's own currency (development-discipline.md §3: every

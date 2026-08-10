@@ -77,6 +77,15 @@ if not msgs:
     print("EXAMINED NOTHING — the extractor is broken, not the corpus")
     raise SystemExit(1)
 
+if "--dump" in sys.argv:
+    out_path = pathlib.Path(sys.argv[sys.argv.index("--dump") + 1])
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with io.open(out_path, "w", encoding="utf-8") as fh:
+        for t in msgs:
+            fh.write(json.dumps({"text": t}, ensure_ascii=False) + "\n")
+    print(f"dumped {len(msgs)} messages to {out_path}")
+    raise SystemExit(0)
+
 hits = {k: 0 for k in CANDIDATES}
 for t in msgs:
     for k, (pat, _) in CANDIDATES.items():
