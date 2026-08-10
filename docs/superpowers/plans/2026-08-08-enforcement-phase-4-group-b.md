@@ -1,5 +1,12 @@
 # Enforcement Phase 4 — Group B (מצב) Implementation Plan
 
+> **‏✅ בוצעה — סומן 10.8.26.** ‏7 הפקדות המשך · קבוצה B שוגרה
+>
+> **למה הסימון הזה קיים:** ‏`check-plan-complete` דיווח על 11 מ-34 התוכניות כפגומות. הבדיקה הראשונה
+> אי-פעם של השער מול הקורפוס הקיים — הוא נבנה ב-L27 והורץ רק על מה שנכתב אחריו. **התוכניות אינן
+> קטועות; הן היסטוריות, וכתובות בסגנון שקדם לדרישת בלוקי-הקוד.** רשום כ-R-119, הוכרע ע"י הבעלים
+> ‏10.8.26: קו-בסיס מוצהר + סימון ביצוע, בלי שכתוב תיעוד של עבודה שכבר נחתה.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Implement §6 of the approved spec `docs/superpowers/specs/2026-08-06-process-enforcement-design.md` — the five stateful (Group B) rules: the §5 fix-cycle counter, the §10.16 lessons-at-commit gate, the three §1 skill triggers (§6.4), the §10.2 UI-verified warn, and the §10.10 live-URL block — plus the §6.2 ENFORCEMENT STATE restoration after compact.

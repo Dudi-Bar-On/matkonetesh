@@ -1,5 +1,12 @@
 # Equipment E3 — Validity Gates Implementation Plan
 
+> **‏✅ בוצעה — סומן 10.8.26.** ‏27 הפקדות המשך · שערי תקפות E3
+>
+> **למה הסימון הזה קיים:** ‏`check-plan-complete` דיווח על 11 מ-34 התוכניות כפגומות. הבדיקה הראשונה
+> אי-פעם של השער מול הקורפוס הקיים — הוא נבנה ב-L27 והורץ רק על מה שנכתב אחריו. **התוכניות אינן
+> קטועות; הן היסטוריות, וכתובות בסגנון שקדם לדרישת בלוקי-הקוד.** רשום כ-R-119, הוכרע ע"י הבעלים
+> ‏10.8.26: קו-בסיס מוצהר + סימון ביצוע, בלי שכתוב תיעוד של עבודה שכבר נחתה.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** The three validity gates of spec §5.2 — catalog bold-invalid (with O-5's why-and-how-to-fix), plan-add blocked, event-add blocked — all reading ONE ownership verdict; O-7's probe capability; retroactive-invalidation warn with real counts. The uncookable item explains itself, everywhere.

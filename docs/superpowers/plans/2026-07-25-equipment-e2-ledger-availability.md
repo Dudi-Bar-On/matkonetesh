@@ -1,5 +1,12 @@
 # Equipment E2 — Reservation Ledger + Availability Implementation Plan
 
+> **‏✅ בוצעה — סומן 10.8.26.** ‏38 הפקדות המשך · מרשם הציוד E2
+>
+> **למה הסימון הזה קיים:** ‏`check-plan-complete` דיווח על 11 מ-34 התוכניות כפגומות. הבדיקה הראשונה
+> אי-פעם של השער מול הקורפוס הקיים — הוא נבנה ב-L27 והורץ רק על מה שנכתב אחריו. **התוכניות אינן
+> קטועות; הן היסטוריות, וכתובות בסגנון שקדם לדרישת בלוקי-הקוד.** רשום כ-R-119, הוכרע ע"י הבעלים
+> ‏10.8.26: קו-בסיס מוצהר + סימון ביצוע, בלי שכתוב תיעוד של עבודה שכבר נחתה.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** The net-new `mk-eqm-ledger` reservation store, `EQM.availability` answering free/partial/busy over a time window from ONE shared fit arithmetic, `EQM.allocate`/`release` holder-tracked with cancel-frees-all, and the occupancy display rewired to module-owned math (O-6) — with the D11 empty-device lie killed.

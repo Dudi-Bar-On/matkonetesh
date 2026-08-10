@@ -1,5 +1,12 @@
 # Cooking Paths CP1 — Single-Source Unification Implementation Plan
 
+> **‏✅ בוצעה — סומן 10.8.26.** ‏17 הפקדות המשך · Cooking Path CP1 שוגר
+>
+> **למה הסימון הזה קיים:** ‏`check-plan-complete` דיווח על 11 מ-34 התוכניות כפגומות. הבדיקה הראשונה
+> אי-פעם של השער מול הקורפוס הקיים — הוא נבנה ב-L27 והורץ רק על מה שנכתב אחריו. **התוכניות אינן
+> קטועות; הן היסטוריות, וכתובות בסגנון שקדם לדרישת בלוקי-הקוד.** רשום כ-R-119, הוכרע ע"י הבעלים
+> ‏10.8.26: קו-בסיס מוצהר + סימון ביצוע, בלי שכתוב תיעוד של עבודה שכבר נחתה.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Every surface that shows cooking temps/hours/labels reads ONE accessor over `itemStages` — killing the card-vs-timeline contradictions (105° vs 120°), the work-plan detail contradicting its own row, and the AI grounding contradicting the plan. NO new UX in CP1 (the path panel is CP2).

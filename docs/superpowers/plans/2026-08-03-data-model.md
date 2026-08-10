@@ -1,5 +1,12 @@
 # Data-Model Refactor (R-75) — Implementation Plan
 
+> **‏✅ בוצעה — סומן 10.8.26.** ‏2 הפקדות המשך (`c38ea21` בלוקי ייבוש/תסיסה/יישון · `02153dd` דו"ח ההמרה) — **הראיה החלשה מבין ה-11**
+>
+> **למה הסימון הזה קיים:** ‏`check-plan-complete` דיווח על 11 מ-34 התוכניות כפגומות. הבדיקה הראשונה
+> אי-פעם של השער מול הקורפוס הקיים — הוא נבנה ב-L27 והורץ רק על מה שנכתב אחריו. **התוכניות אינן
+> קטועות; הן היסטוריות, וכתובות בסגנון שקדם לדרישת בלוקי-הקוד.** רשום כ-R-119, הוכרע ע"י הבעלים
+> ‏10.8.26: קו-בסיס מוצהר + סימון ביצוע, בלי שכתוב תיעוד של עבודה שכבר נחתה.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Replace the flat 193-row shape with a core + 0..n mechanism blocks + a triggered route, so that no consumer ever has to re-derive what a field means.

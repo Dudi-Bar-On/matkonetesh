@@ -1,5 +1,12 @@
 # v268 — Chrome-complete localization Implementation Plan
 
+> **‏✅ בוצעה — סומן 10.8.26.** ‏28 הפקדות המשך · לוקליזציה v268
+>
+> **למה הסימון הזה קיים:** ‏`check-plan-complete` דיווח על 11 מ-34 התוכניות כפגומות. הבדיקה הראשונה
+> אי-פעם של השער מול הקורפוס הקיים — הוא נבנה ב-L27 והורץ רק על מה שנכתב אחריו. **התוכניות אינן
+> קטועות; הן היסטוריות, וכתובות בסגנון שקדם לדרישת בלוקי-הקוד.** רשום כ-R-119, הוכרע ע"י הבעלים
+> ‏10.8.26: קו-בסיס מוצהר + סימון ביצוע, בלי שכתוב תיעוד של עבודה שכבר נחתה.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this
 > plan task-by-task. Steps use checkbox (`- [ ]`) syntax. The **authoritative design is the approved spec**
 > `docs/superpowers/specs/2026-07-26-full-localization-design-v2.md` (v3-amended) — each task cites the spec
