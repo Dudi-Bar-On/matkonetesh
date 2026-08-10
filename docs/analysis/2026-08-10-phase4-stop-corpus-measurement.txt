@@ -1,0 +1,17 @@
+corpus: 9093 assistant final messages
+
+signal               msgs    rate  meaning
+DoD-3_claim          2822   31.0%  any success-ish word
+DoD-3_evidence        941   10.3%  pasted evidence present
+L23a_pct              427    4.7%  a percentage appears
+L23a_artifact         469    5.2%  a named artifact appears
+L64a_landed            27    0.3%  a landed claim over a named file
+L63a_path             455    5.0%  a repo path cited
+10.6_three_parts      258    2.8%  three-part shape
+H9_table              602    6.6%  a markdown table
+
+DoD-3, naive reading: 2216 of 9093 messages (24%) would BLOCK.
+  A rule that blocks that share of ordinary replies is not a gate, it is a muzzle —
+  which is why the shipped verify-before-success-claim narrows to specific claim shapes.
+
+L23a, naive reading: 367 of 9093 (4%) carry a percentage with no named artifact.
