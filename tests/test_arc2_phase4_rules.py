@@ -242,3 +242,57 @@ def test_l23a_silent_on_quoted_lesson_text(tmp_path):
 def test_l23a_corpus_replay(corpus_dump):
     out = replay("percentage-artifact.mjs", corpus_dump)
     assert out["fireCount"] <= 60, f"domain narrowing failed: {out['fireCount']}"
+
+
+# ------------------------------------------------------- Task 5: L64a landed↔git
+
+def test_l64a_warns_on_landed_claim_over_path_git_never_saw(tmp_path):
+    out = eval_stop_rule("landed-claim-git.mjs",
+                         "המסמך docs/no-such-file-xyzzy-98765.md נחת ונמצא בגניזה.", tmp_path)
+    assert out["decision"] == "warn"
+    assert "L64a" in out["reason"]
+
+
+def test_l64a_allows_landed_claim_over_committed_clean_path(tmp_path):
+    # CLAUDE.md is committed and (in a clean checkout of that path) unchanged — a TRUE claim.
+    # If local state has CLAUDE.md dirty, the test writes+commits its own probe file instead;
+    # implementer: use `git status --porcelain -- CLAUDE.md` to choose, and document the choice.
+    out = eval_stop_rule("landed-claim-git.mjs", "הקובץ CLAUDE.md נחת ב-main.", tmp_path)
+    assert out["decision"] == "allow"
+
+
+def test_l64a_silent_without_landed_verb(tmp_path):
+    text = "עדכנתי את docs/STATUS-BOARD.md ואמשיך למשימה הבאה."
+    assert eval_stop_rule("landed-claim-git.mjs", text, tmp_path)["decision"] == "allow"
+
+
+def test_l64a_silent_on_quoted_landed_claim(tmp_path):
+    text = 'הלקח L64a מצטט: "docs/x.md landed" — זו דוגמה, לא טענה.'
+    assert eval_stop_rule("landed-claim-git.mjs", text, tmp_path)["decision"] == "allow"
+
+
+# NOTE (task-5-report.md "Corpus replay / blocking finding"): the brief's Step 6 corpus-replay
+# test (`assert out["fireCount"] <= 30`) is deliberately NOT added here. Measured fireCount on the
+# real corpus, with the brief's own verbatim LANDED_RE/toRepoRelative/gitConfirms, is 32/9,140 — 2
+# over the threshold. All 32 fires hand-classified against real `git log`/`git ls-files` evidence
+# (not just today's HEAD): 29/32 (91%) are false alarms from three structural defects in the
+# brief's own verbatim design, not tuning gaps — (1) MOST claims name a file by BASENAME ONLY
+# ("`gates.mjs`", "`check-meta.mjs`"), which `git cat-file -e HEAD:<basename>` can never resolve
+# against the file's real nested repo path, so a TRUE landed claim about e.g.
+# `scripts/check-meta.mjs` false-fires every time; (2) the PATHISH extension alternation lists
+# `js` before `json`, and JS regex alternation is first-match not longest-match, so ANY `.json`
+# path is truncated mid-token to a nonexistent `.js` path (`_extracted.json` → captured as
+# `_extracted.js`) — 6 of the 32 fires; (3) the 60-char VERB↔PATH proximity window catches
+# "committed"/"landed" describing a DIFFERENT nearby subject (e.g. "a repo-committed
+# documentation file (`docs/process/development-discipline.md`)" inside a security-review trust-
+# boundary note) or negated ("dist/ is gitignored... never committed", "לא-מופקד") — neither
+# case is a real claim about the captured path. 2/32 (6%) are genuine violations (rule working):
+# `scratch/translate-eval/EVAL-RESULTS.md` and `graphify-out/graph.html` both claimed "landed"/
+# "committed and pushed" with ZERO commits ever touching either path in `git log --all`. 1/32 (3%)
+# is a since-deleted replay artifact: `scripts/memsync.py`, removed 5.8.26 (CLAUDE.md), reviewed
+# here while it still existed. Fixing (1) would require a basename-fallback search
+# (`git ls-files | grep`), not a bounded guard on the brief's own pattern like Tasks 3/4's — a
+# materially different resolution strategy, not a narrower filter. Left for an explicit owner
+# decision (Waiver Gate, CLAUDE.md §4) per the task's own STOP-condition instruction, rather than
+# quietly redesigning path resolution to force the number under 30. See task-5-report.md for the
+# full 32-fire classification table.
