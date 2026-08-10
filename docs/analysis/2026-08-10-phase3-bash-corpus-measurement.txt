@@ -1,0 +1,109 @@
+================================================================================
+!! CORRECTION, 2026-08-10 — READ BEFORE USING THE "in-cmd" COLUMN !!
+
+The controller read L51a's and 10.12a's "0 in-command" as "100% of the hits are prose noise".
+That reading is WRONG for L51a, and the Phase-3 planner caught it before it reached the plan.
+
+`sudo` inside `wsl` is ALWAYS quoted -- `wsl -e bash -lc 'sudo ...'` is the only shape the call
+takes. The stripping pass removes quoted strings, so it removed THE SIGNAL, not the noise. The
+same applies to L39: `$GEMINI_API_KEY` expands inside double quotes, which is exactly where an
+echo of it would live.
+
+So the "in-cmd" column means "survives blanket stripping", which is NOT the same as "is a real
+command". For rules whose subject lives inside quotes it under-counts to zero. Those rules need a
+stripping profile that keeps quote CONTENT and excludes prose structurally instead (the statement
+must lead with `wsl` / a printer command).
+
+The failure mode here is the one this whole arc keeps finding: a measurement returned zero and the
+zero was read as absence rather than as a broken instrument. Sixth occurrence in one day.
+================================================================================
+
+corpus: 6339 real Bash commands
+
+rule        raw  in-cmd   noise   what the stripping removed
+L10         157     154      2%   prose/quoted mentions that are not commands
+L18          47      18     62%   prose/quoted mentions that are not commands
+L32          15      15      0%   prose/quoted mentions that are not commands
+L51a          5       0    100%   prose/quoted mentions that are not commands
+L55a          6       3     50%   prose/quoted mentions that are not commands
+L73         159     154      3%   prose/quoted mentions that are not commands
+10.12a        3       0    100%   prose/quoted mentions that are not commands
+L39           0       1      0%   prose/quoted mentions that are not commands
+
+--- L10: what survives stripping (these are the real candidates) ---
+    cd && npx playwright test --retries=2 2>&1 | tail -5; echo
+    npx playwright test tests/equipment.spec.ts --retries=2 --reporter=line 2>&1 | tail -30;
+    npx playwright test --retries=2 --reporter=line 2>&1 | tail -20;
+    npx playwright test --retries=2 --reporter=line 2>&1 | tail -4;
+
+--- L18: what survives stripping (these are the real candidates) ---
+    | head -1) [ -n ] && taskkill //PID //F >/dev/null 2>&1 && ech
+    | awk | sort -u); do taskkill //PID //F >/dev/null 2>&1 && ech
+    G | awk | sort -u); do taskkill //PID //F >/dev/null 2>&1; done
+    cd echo taskkill //PID 382168 //T //F 2>&1 | head -
+
+--- L32: what survives stripping (these are the real candidates) ---
+    eline -4; git status -sb | head -3; node scripts/check-meta.mjs; ec=$?; echo
+    git show 8ad1402 --stat | tail -5; npx playwright test > /c/Users/dudib/AppData/Local/Temp/claude/C-
+    t show ecf2051 -- app.js | grep -E | head -8; echo ; npx playwright test > /c/Users/dudib/AppData/Lo
+    npx wrangler deploy 2>&1 | tail -12; ec=$?; echo
+
+--- L55a: what survives stripping (these are the real candidates) ---
+    | sed echo python -m pip install --quiet --disable-pip-version-check --no-deps neo4j==6.2.0 2>&1 | t
+    tail -5 echo python -m pip install --quiet --disable-pip-version-check --no-deps neo4j==5.28.4 2>&1 
+    os/matconetesh python -m pip install --quiet --disable-pip-version-check --no-deps -r requirements-o
+
+--- L73: what survives stripping (these are the real candidates) ---
+    rce/repos/matconetesh && cat >> docs/process/graphify-improvements.md git add docs/process/graphify-
+    rce/repos/matconetesh && cat >> docs/analysis/program/new-gaps-2026-07-24-p0-app.md git add docs/ana
+    rce/repos/matconetesh && cat >> docs/analysis/program/new-gaps-2026-07-24-p0-app.md git add docs/ana
+    cat >> git add && git commit -q -m && git push -q origin main
+
+--- L39: what survives stripping (these are the real candidates) ---
+    -3 | cut -c1-90 | sed echo $GEMINI_API_KEY<redacted> ls -la .dev.vars .env 2>/dev/null
+
+corpus: 6339 real Bash commands from 405 transcript file(s)
+
+rule        hits     rate  what a naive pattern would fire on
+L10          157    2.48%  playwright test with a workers/retries override
+L18           47    0.74%  any kill/taskkill mention
+L32           15    0.24%  $? read after a pipe
+L51a           5    0.08%  sudo inside a wsl call
+L55a           6    0.09%  pip install --no-deps
+L73          749   11.82%  git commit (any)
+10.12a         3    0.05%  nested claude -p
+L39           35    0.55%  echoing a key-shaped name
+L73_combined    159    2.51%  git commit in the SAME call as a content write
+
+--- L10 context (redacted, truncated) ---
+     letter of DoD-12:  ``` $ npx playwright test          # plain — no --retries, no --workers=1    ✓  442 [chrom
+    rce/repos/matconetesh" && npx playwright test --retries=2 2>&1 | tail -5; echo "EXIT=
+    npx playwright test tests/equipment.spec.ts --retries=2 --reporter=line 2>&1 | tail
+--- L18 context (redacted, truncated) ---
+    b". It then followed §11a's   kill/verify protocol (taskkill /T 
+     suite still running? (do NOT kill it — §11a/L18) ===" && powers
+    ACTS() CONTENT gap — botulism kill-temps and Cure #1   compositi
+--- L32 context (redacted, truncated) ---
+     --oneline -4; git status -sb | head -3; node scripts/check-meta.mjs; ec=$?; echo "TRUE exit=$ec"
+    e -1; git show 8ad1402 --stat | tail -5; npx playwright test > /c/Users/dudib/AppData/Local/Temp/claude/C--Use
+    3; git show ecf2051 -- app.js | grep -E "^[-+].*(_langDictReady|function L\()" | head -8; echo "=== controller
+--- L51a context (redacted, truncated) ---
+    r we need your password) ===" wsl -d Ubuntu-20.04 -e bash -lc 'sudo -n true 2>/dev/null && echo "  sudo: PASSW
+    y operation here unattended. `wsl -e bash -lc 'sudo …'` has no TTY and fails sile
+    wsl -e bash -lc "sudo service docker start 2>&1 | t
+--- L55a context (redacted, truncated) ---
+    0 over the pin ===" python -m pip install --quiet --disable-pip-version-check --no-deps neo4j==6.2.0 2>&1 | ta
+    er, same probe ---" python -m pip install --quiet --disable-pip-version-check --no-deps neo4j==5.28.4 2>&1 | t
+    e/repos/matconetesh python -m pip install --quiet --disable-pip-version-check --no-deps -r requirements-overri
+--- L73 context (redacted, truncated) ---
+    pp-spoken-safety-design.md && git commit -q -m "docs(spec): P0-app spe
+    24-p0-app-spoken-safety.md && git commit -q -m "docs(plan): P0-app imp
+    sts/p0-safety-nums.spec.ts && git commit -q -m "fix(ai): A3+B10 — unit
+--- 10.12a context (redacted, truncated) ---
+     parent's cwd, so the nested `claude -p` loads this project's `CLAUDE
+    nd inherits cwd, so a nested 'claude -p' inside this     repo loads C
+    kend inherits cwd → a nested `claude -p` inside this repo loads CLAUD
+--- L39 context (redacted, truncated) ---
+    yNumVal" app.js && echo "" && echo "=== does the AUDIT'S EXACT LEAK now token<redacted> (lifting the shipped d
+    218 | grep -E '\.json' | head echo "=== residual scan: the 10 token<redacted> across ALL Hebrew-source .py
+    t rev-parse --show-toplevel)" echo "=== token<redacted> residual in the 4 dicts (data
