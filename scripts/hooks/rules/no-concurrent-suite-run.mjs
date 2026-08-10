@@ -43,7 +43,7 @@ export const TOOLS = ['Bash'];
 export const RULE_IDS = ['11a'];
 
 import net from 'node:net';
-import { segments, tokenize, playwrightTestTokens } from '../lib/bash-segments.mjs';
+import { segments, tokenize, playwrightTestTokens, stripDataRegions } from '../lib/bash-segments.mjs';
 
 const DEFAULT_PORT = 8123;
 
@@ -80,7 +80,14 @@ export async function evaluate(input) {
     return { decision: 'allow', reason: 'no command text to inspect' };
   }
 
-  const triggers = segments(command).some((seg) => playwrightTestTokens(tokenize(seg)) !== null);
+  // Data regions out first. This rule did NOT misfire on the 6,384-command corpus — but only
+  // because it is group B and its state gate short-circuits before the text ever matters. The
+  // sibling rule with the identical omission (main-only-no-worktrees, R-128) DID misfire, on
+  // prose that merely mentioned it. Applying the helper here is not a response to a symptom; it
+  // is refusing to leave the same latent defect in the second of two files, which is the exact
+  // shape this project has now paid for three times in one day (R-119a, R-128, R-129).
+  const triggers = segments(stripDataRegions(command))
+    .some((seg) => playwrightTestTokens(tokenize(seg)) !== null);
   if (!triggers) {
     return { decision: 'allow', reason: 'no `playwright test` invocation in this command' };
   }

@@ -1,0 +1,58 @@
+=== 1. Bash-inspecting rules and which shared helpers they use ===
+
+  geniza-fallback-declaration.mjs      helpers: genizaConsultedRecently, extractBashGrepInvocations
+  lessons-before-commit.mjs            helpers: openState, eventCountSince, lastEvent
+  main-only-no-worktrees.mjs           helpers: segments, tokenize, stripDataRegions
+  no-concurrent-suite-run.mjs          helpers: segments, tokenize, playwrightTestTokens  <-- segments WITHOUT stripDataRegions
+  playwright-plain-run.mjs             helpers: statements, tokenize, stripDataRegions, playwrightTestTokens
+  symbolic-grep-use-serena.mjs         helpers: isSerenaLive, extractBashGrepInvocations
+
+=== 2. regex literals appearing in more than one rule file ===
+
+  /scripts/
+      in: agent-concurrency-ceiling.mjs, bidi-ltr-island.mjs, brainstorm-before-creative.mjs, debugging-before-fix-edit.mjs, derived-artifact-source.mjs, fix-cycle-limit.mjs, geniza-fallback-declaration.mjs, lessons-before-commit.mjs, locked-procedure.mjs, main-only-no-worktrees.mjs, no-concurrent-suite-run.mjs, one-pipeline.mjs, playwright-plain-run.mjs, research-before-fix-cycle-3.mjs, spec-read-before-implementation.mjs, stale-dev-server.mjs, symbolic-grep-use-serena.mjs, test-honesty.mjs, version-pin-floating.mjs, worker-ceiling-lock.mjs
+  /notlistedhere,evaluate()mustreturnallow.tests/
+      in: agent-concurrency-ceiling.mjs, bidi-ltr-island.mjs, brainstorm-before-creative.mjs, debugging-before-fix-edit.mjs, derived-artifact-source.mjs, fix-cycle-limit.mjs, geniza-fallback-declaration.mjs, lessons-before-commit.mjs, locked-procedure.mjs, main-only-no-worktrees.mjs, no-concurrent-suite-run.mjs, one-pipeline.mjs, research-before-fix-cycle-3.mjs, spec-read-before-implementation.mjs, stale-dev-server.mjs, symbolic-grep-use-serena.mjs, test-honesty.mjs, version-pin-floating.mjs, worker-ceiling-lock.mjs
+  /superpowers/
+      in: brainstorm-before-creative.mjs, one-pipeline.mjs
+
+=== 3. shared helpers, and how many rules import each ===
+
+  ALL                          (enforcement-state.mjs)  used by 3: brainstorm-before-creative.mjs, lessons-before-commit.mjs, symbolic-grep-use-serena.mjs
+  DEFAULT_SKILL_WINDOW_MS      (skill-invoked.mjs)  used by 1: brainstorm-before-creative.mjs
+  ROOT                         (enforcement-state.mjs)  used by 6: brainstorm-before-creative.mjs, derived-artifact-source.mjs, geniza-fallback-declaration.mjs, lessons-before-commit.mjs, spec-read-before-implementation.mjs, stale-dev-server.mjs
+  SEGMENT_SPLIT                (bash-segments.mjs)  used by 1: lessons-before-commit.mjs
+  currentHostPid               (agent-ledger.mjs)  used by 1: agent-concurrency-ceiling.mjs
+  disciplineDocPath            (owner-decision-records.mjs)  used by 2: derived-artifact-source.mjs, lessons-before-commit.mjs
+  eventCountSince              (enforcement-state.mjs)  used by 1: lessons-before-commit.mjs
+  extractBashGrepInvocations   (bash-grep-extract.mjs)  used by 2: geniza-fallback-declaration.mjs, symbolic-grep-use-serena.mjs
+  genizaConsultedRecently      (geniza-consult.mjs)  used by 1: geniza-fallback-declaration.mjs
+  isSerenaLive                 (serena-probe.mjs)  used by 1: symbolic-grep-use-serena.mjs
+  isSweepTarget                (bash-grep-extract.mjs)  used by 2: geniza-fallback-declaration.mjs, symbolic-grep-use-serena.mjs
+  lastEvent                    (enforcement-state.mjs)  used by 2: debugging-before-fix-edit.mjs, lessons-before-commit.mjs
+  ledgerPath                   (agent-ledger.mjs)  used by 1: agent-concurrency-ceiling.mjs
+  newContent                   (target-path.mjs)  used by 5: bidi-ltr-island.mjs, one-pipeline.mjs, test-honesty.mjs, version-pin-floating.mjs, worker-ceiling-lock.mjs
+  normPath                     (target-path.mjs)  used by 8: bidi-ltr-island.mjs, derived-artifact-source.mjs, locked-procedure.mjs, one-pipeline.mjs, spec-read-before-implementation.mjs, test-honesty.mjs, version-pin-floating.mjs, worker-ceiling-lock.mjs
+  normalizeActorId             (enforcement-state.mjs)  used by 5: debugging-before-fix-edit.mjs, derived-artifact-source.mjs, fix-cycle-limit.mjs, research-before-fix-cycle-3.mjs, spec-read-before-implementation.mjs
+  noteVerificationFailure      (enforcement-state.mjs)  used by 1: research-before-fix-cycle-3.mjs
+  noteVerificationPass         (enforcement-state.mjs)  used by 2: debugging-before-fix-edit.mjs, fix-cycle-limit.mjs
+  oldContent                   (target-path.mjs)  used by 2: bidi-ltr-island.mjs, worker-ceiling-lock.mjs
+  openState                    (enforcement-state.mjs)  used by 6: debugging-before-fix-edit.mjs, derived-artifact-source.mjs, fix-cycle-limit.mjs, lessons-before-commit.mjs, research-before-fix-cycle-3.mjs, spec-read-before-implementation.mjs
+  openTargets                  (enforcement-state.mjs)  used by 2: fix-cycle-limit.mjs, research-before-fix-cycle-3.mjs
+  ownerDecisionRecords         (owner-decision-records.mjs)  used by 2: fix-cycle-limit.mjs, worker-ceiling-lock.mjs
+  playwrightTestTokens         (bash-segments.mjs)  used by 2: no-concurrent-suite-run.mjs, playwright-plain-run.mjs
+  pruneLive                    (agent-ledger.mjs)  used by 1: agent-concurrency-ceiling.mjs
+  readLedger                   (agent-ledger.mjs)  used by 1: agent-concurrency-ceiling.mjs
+  recentEvents                 (enforcement-state.mjs)  used by 2: derived-artifact-source.mjs, spec-read-before-implementation.mjs
+  recordEvent                  (enforcement-state.mjs)  used by 2: fix-cycle-limit.mjs, spec-read-before-implementation.mjs
+  researchEvidenceSince        (research-evidence.mjs)  used by 1: research-before-fix-cycle-3.mjs
+  segments                     (bash-segments.mjs)  used by 5: lessons-before-commit.mjs, main-only-no-worktrees.mjs, no-concurrent-suite-run.mjs, one-pipeline.mjs, playwright-plain-run.mjs
+  skillInvokedSince            (skill-invoked.mjs)  used by 2: brainstorm-before-creative.mjs, debugging-before-fix-edit.mjs
+  statements                   (bash-segments.mjs)  used by 1: playwright-plain-run.mjs
+  stripDataRegions             (bash-segments.mjs)  used by 2: main-only-no-worktrees.mjs, playwright-plain-run.mjs
+  tokenize                     (bash-segments.mjs)  used by 4: lessons-before-commit.mjs, main-only-no-worktrees.mjs, no-concurrent-suite-run.mjs, playwright-plain-run.mjs
+  toolFilePath                 (target-path.mjs)  used by 8: bidi-ltr-island.mjs, derived-artifact-source.mjs, locked-procedure.mjs, one-pipeline.mjs, spec-read-before-implementation.mjs, test-honesty.mjs, version-pin-floating.mjs, worker-ceiling-lock.mjs
+  ttlMs                        (agent-ledger.mjs)  used by 1: agent-concurrency-ceiling.mjs
+  writeLedger                  (agent-ledger.mjs)  used by 1: agent-concurrency-ceiling.mjs
+
+scanned 20 rule file(s), 6 of them Bash rules.
