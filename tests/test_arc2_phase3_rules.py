@@ -369,3 +369,47 @@ def test_1012a_corpus_replay(corpus_dump):
     ZERO fires. A nonzero count here is exactly the spec-§6 stop-and-investigate trigger."""
     out = replay("nested-claude-neutral-cwd.mjs", corpus_dump)
     assert out["fireCount"] == 0, out["fires"]
+
+
+# ---------------------------------------------------------------- Task 6: L18
+
+def test_L18_blocks_an_image_name_kill_of_node(tmp_path):
+    out = run_pretooluse(bash_payload("taskkill //IM node.exe //F"), tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "L18" in reason_of(out) and "//PID" in reason_of(out)   # the protocol, by name
+    out2 = run_pretooluse(bash_payload("pkill -f serve.js"), tmp_path=tmp_path)
+    assert decision_of(out2) == "block", out2
+
+
+def test_L18_allows_the_pid_protocol_and_prose(tmp_path):
+    # Verbatim survivor shape from the corpus: netstat-derived per-PID kills = the §11a protocol.
+    for cmd in [("for pid in $(netstat -ano | grep 8123 | awk '{print $5}' | sort -u); "
+                 "do taskkill //PID $pid //F >/dev/null 2>&1; done"),
+                "taskkill //PID 382168 //T //F 2>&1 | head -3",
+                'echo "=== suite still running? (do NOT kill it — 11a/L18) ==="',
+                'echo "CONTENT gap — botulism kill-temps and Cure #1 composition"']:
+        out = run_pretooluse(bash_payload(cmd), tmp_path=tmp_path)
+        assert decision_of(out) == "allow", (cmd, out)
+
+
+def test_L18_corpus_replay(corpus_dump):
+    """CORRECTED from the brief's "expected zero" (spec §6: a prediction is not evidence — the
+    real corpus is). Hand-read every fire past the replayer's 300-char truncation: all are
+    genuine `pkill -f "serve.js ..."` / `pkill -f "node serve.js"` pattern-kills — real
+    historical instances of the EXACT L18 hazard (indiscriminate pattern-kill of the suite
+    server), true positives, not noise. A first-draft SUITE_IMAGE/SUITE_PATTERN also fired 6
+    times on `taskkill //F //IM chrome.exe //T` — a repeated, legitimate Playwright
+    browser-cleanup idiom unrelated to the respawn hazard (browsers have no supervising primary
+    that respawns them); narrowed the rule to server-side images only (node/serve/python) and
+    those 6 are gone. Bar: every remaining fire blocks, names L18, and its command really
+    contains `pkill`/`killall`/`taskkill /IM` targeting a suite-server pattern — never a bare
+    `taskkill //PID` protocol call and never prose."""
+    out = replay("suite-kill-protocol.mjs", corpus_dump)
+    for f in out["fires"]:
+        assert "L18" in f["reason"], f
+        assert f["decision"] == "block", f
+        # The reason itself names the offending word ("pkill" / "taskkill /IM <image>"), so this
+        # holds even though `command` is truncated to 300 chars in the replayer's dump.
+        assert "pkill" in f["reason"] or "taskkill /IM" in f["reason"], f
+    assert out["fireCount"] <= 20, out["fires"]
+    print(f"\nL18 corpus fires: {out['fireCount']} / {out['total']}")
