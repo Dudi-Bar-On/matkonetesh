@@ -137,3 +137,34 @@ def test_unquoted_claim_still_detected():
 def test_live_claim_masked_when_quoted():
     text = 'ה-CLAUDE.md אומר: "never tell the owner a version is live until Playwright verified".'
     assert node_eval(f"C.detectsLiveClaim({json.dumps(text)})") is False
+
+
+# ------------------------------------------------------- Task 2: DoD-3 rides rule 1's detector
+
+def test_dod3_declared_on_verify_before_success_claim():
+    src = (STOP_RULES / "verify-before-success-claim.mjs").read_text(encoding="utf-8")
+    assert "'DoD-3'" in src, "DoD-3 must be enforced by the EXISTING claim detector (R-116)"
+
+
+def test_dod3_catch_green_claim_without_pasted_output(tmp_path):
+    out = eval_stop_rule("verify-before-success-claim.mjs",
+                         "הרצתי את הסוויטה והכל ירוק, המשימה בוצעה.", tmp_path)
+    assert out["decision"] == "block"
+
+
+def test_dod3_false_alarm_green_claim_with_pasted_output(tmp_path):
+    text = ("הסוויטה ירוקה:\n```\n1197 passed (54s)\nexit code 0\n```")
+    out = eval_stop_rule("verify-before-success-claim.mjs", text, tmp_path)
+    assert out["decision"] == "allow"
+
+# NOTE (task-2-report.md "Corpus replay / blocking finding"): the brief's Step 5 corpus-replay
+# test (`assert out["fireCount"] <= 200`) is deliberately NOT added here. Measured fireCount on
+# the real corpus is 610 — identical to Task 1's own already-recorded baseline for this exact,
+# unchanged rule (Task 2 touches only the RULE_IDS export, no detection logic). A 20-fire sample
+# classified 13/20 (65%) as false alarms (mostly security/code-review "Analysis complete..."
+# narratives, not GREEN/test claims). This trips the brief's own stated STOP condition ("Any
+# legitimate-work fire -> STOP, investigate, narrow, re-run before committing") and narrowing the
+# detector to chase the threshold would violate the R-116 "no second detector" decision recorded
+# in verify-before-success-claim.mjs's own header. Left for an explicit owner decision rather than
+# silently forcing a red test green or silently reinterpreting the brief's threshold (Waiver Gate,
+# CLAUDE.md §4). See task-2-report.md for the full 20-fire table.

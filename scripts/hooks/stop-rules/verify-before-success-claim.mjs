@@ -25,7 +25,17 @@
 // field — claiming to enforce something that does not exist is false coverage.
 // An observer declares [] EXPLICITLY, so the gate can require the export on every scanned file
 // and catch a rule that simply forgot to declare rather than mistaking it for an observer.
-export const RULE_IDS = ['1'];
+//
+// DoD-3 ("GREEN. Full test command run fresh, output pasted, exit code shown") — ARC 2 PHASE 4
+// DECISION, made explicitly per the controller directive: DoD-3 is enforced BY THIS FILE, not by
+// a sibling. Rule 1 (§6.4 trigger 3) already blocks exactly DoD-3's failure shape — a success
+// claim whose reply carries no pasted output — and this file's evidence definition (fenced
+// block / exit-code-0 / passed-count / PASS) IS DoD-3's own currency ("output pasted, exit code
+// shown"). The corpus measurement (docs/analysis/2026-08-10-phase4-stop-corpus-measurement.txt)
+// proved the naive DoD-3 blocks 24% of ordinary replies; the narrowed claim-shape reading IS
+// this rule. A second detector for the same shape is R-116 — a live instance of which cost real
+// time on 2026-08-10.
+export const RULE_IDS = ['1', 'DoD-3'];
 
 import {
   lastAssistantText, detectsSuccessClaim, containsQuotedEvidence, extractClaimSnippet,
