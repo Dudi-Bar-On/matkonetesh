@@ -271,28 +271,51 @@ def test_l64a_silent_on_quoted_landed_claim(tmp_path):
     assert eval_stop_rule("landed-claim-git.mjs", text, tmp_path)["decision"] == "allow"
 
 
-# NOTE (task-5-report.md "Corpus replay / blocking finding"): the brief's Step 6 corpus-replay
-# test (`assert out["fireCount"] <= 30`) is deliberately NOT added here. Measured fireCount on the
-# real corpus, with the brief's own verbatim LANDED_RE/toRepoRelative/gitConfirms, is 32/9,140 — 2
-# over the threshold. All 32 fires hand-classified against real `git log`/`git ls-files` evidence
-# (not just today's HEAD): 29/32 (91%) are false alarms from three structural defects in the
-# brief's own verbatim design, not tuning gaps — (1) MOST claims name a file by BASENAME ONLY
-# ("`gates.mjs`", "`check-meta.mjs`"), which `git cat-file -e HEAD:<basename>` can never resolve
-# against the file's real nested repo path, so a TRUE landed claim about e.g.
-# `scripts/check-meta.mjs` false-fires every time; (2) the PATHISH extension alternation lists
-# `js` before `json`, and JS regex alternation is first-match not longest-match, so ANY `.json`
-# path is truncated mid-token to a nonexistent `.js` path (`_extracted.json` → captured as
-# `_extracted.js`) — 6 of the 32 fires; (3) the 60-char VERB↔PATH proximity window catches
-# "committed"/"landed" describing a DIFFERENT nearby subject (e.g. "a repo-committed
-# documentation file (`docs/process/development-discipline.md`)" inside a security-review trust-
-# boundary note) or negated ("dist/ is gitignored... never committed", "לא-מופקד") — neither
-# case is a real claim about the captured path. 2/32 (6%) are genuine violations (rule working):
-# `scratch/translate-eval/EVAL-RESULTS.md` and `graphify-out/graph.html` both claimed "landed"/
-# "committed and pushed" with ZERO commits ever touching either path in `git log --all`. 1/32 (3%)
-# is a since-deleted replay artifact: `scripts/memsync.py`, removed 5.8.26 (CLAUDE.md), reviewed
-# here while it still existed. Fixing (1) would require a basename-fallback search
-# (`git ls-files | grep`), not a bounded guard on the brief's own pattern like Tasks 3/4's — a
-# materially different resolution strategy, not a narrower filter. Left for an explicit owner
-# decision (Waiver Gate, CLAUDE.md §4) per the task's own STOP-condition instruction, rather than
-# quietly redesigning path resolution to force the number under 30. See task-5-report.md for the
-# full 32-fire classification table.
+# ------------------------------------------------------- Task 5b: repair — three named defects
+# (task-5b-repair-report.md): basename-only path resolution, js-before-json alternation
+# truncation, and a 60-char verb-proximity window with no negation guard. Threshold NOT raised —
+# these tests pin the fixes named in the report, not a re-tuned number.
+
+def test_l64a_allows_message_that_only_names_files_it_read(tmp_path):
+    # "Files read in full" narrates work done, never claims landing — R-137/R-138's family.
+    # (Filenames deliberately avoid the words "landed"/"committed" as substrings of the basename
+    # itself — that is a separate, unrelated collision, not the narration case under test.)
+    text = "Files read in full: `scripts/check-meta.mjs`, `src/y.py`."
+    assert eval_stop_rule("landed-claim-git.mjs", text, tmp_path)["decision"] == "allow"
+
+
+def test_l64a_allows_negated_landing_claim(tmp_path):
+    # A sentence that NAMES a file and NEGATES landing must not fire — VERB has no negation
+    # guard today (task-5-report.md #19/#28: "לא-מופקד", "dist/ is gitignored... never committed").
+    text = "`merge.mjs` is NOT yet committed — still working on it."
+    assert eval_stop_rule("landed-claim-git.mjs", text, tmp_path)["decision"] == "allow"
+
+
+def test_l64a_allows_json_mentioned_in_prose(tmp_path):
+    # The alternation bug's own case: `en.json` (real, tracked, clean) must resolve as `.json`
+    # against its true path, not truncate to a nonexistent `.js` that git can never confirm.
+    text = "lang/en.json נחת ב-main."
+    assert eval_stop_rule("landed-claim-git.mjs", text, tmp_path)["decision"] == "allow"
+
+
+def test_l64a_warns_on_basename_only_landed_claim_git_cannot_confirm(tmp_path):
+    # A real landed claim over a named (basename-only) path git cannot confirm — the untracked
+    # nested file case (task-5-report.md's dominant cause, ~15/27 false alarms) must still WARN
+    # when the path genuinely is not in HEAD anywhere in the tree.
+    out = eval_stop_rule("landed-claim-git.mjs",
+                         "הקובץ no-such-basename-xyzzy-12345.mjs נחת ונמצא בגניזה.", tmp_path)
+    assert out["decision"] == "warn"
+    assert "L64a" in out["reason"]
+
+
+def test_l64a_corpus_replay(corpus_dump):
+    out = replay("landed-claim-git.mjs", corpus_dump)
+    # Measured before repair: 32/9,141 fires, 27/32 (84%) hand-classified false alarms
+    # (task-5-report.md's 32-row table). After repair: 6/9,148 fires, 2/6 (33%) false alarms —
+    # 2 genuine violations still caught (EVAL-RESULTS.md, graph.html), 2 replay artifacts
+    # (a historically-true claim about a living document, re-judged against TODAY's git state —
+    # inherent to replaying old claims, not a rule defect), 2 residual false alarms from the
+    # verb-subject proximity mismatch named in task-5b-repair-report.md as out of scope (fixing
+    # it needs real subject/verb parsing, not a bounded guard). Headroom kept above the measured
+    # 6 so an unrelated later corpus addition doesn't spuriously fail this test.
+    assert out["fireCount"] <= 12, f"repair did not reduce fires enough: {out['fireCount']}"
