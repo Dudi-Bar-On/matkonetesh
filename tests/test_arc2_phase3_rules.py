@@ -413,3 +413,67 @@ def test_L18_corpus_replay(corpus_dump):
         assert "pkill" in f["reason"] or "taskkill /IM" in f["reason"], f
     assert out["fireCount"] <= 20, out["fires"]
     print(f"\nL18 corpus fires: {out['fireCount']} / {out['total']}")
+
+
+# ---------------------------------------------------------------- Task 7: L73
+
+def test_L73_blocks_content_edit_plus_commit_in_one_call(tmp_path):
+    # Verbatim survivor shape from the corpus (cat >> doc && git add && git commit).
+    out = run_pretooluse(bash_payload(
+        "cat >> docs/process/graphify-improvements.md <<'EOF'\nnew section\nEOF\n"
+        "git add docs/process/graphify-improvements.md && git commit -q -m \"docs: notes\""),
+        tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "L73" in reason_of(out) and "separate" in reason_of(out)
+
+
+def test_L73_allows_the_heredoc_commit_message_style(tmp_path):
+    """COORDINATOR REQUIREMENT — the owner's real all-day commit style, verbatim shape. The
+    heredoc here is the COMMIT MESSAGE, not a content edit. If this fails, STOP and report
+    before implementing further (see the task's stop condition)."""
+    cmd = ("git commit -q -F - -- docs/STATUS-BOARD.md scripts/hooks/rules/x.mjs <<'MSG'\n"
+           "feat(enforcement Phase 3): the plan said cat >> file.md then git commit is the trap\n"
+           "\n"
+           "body: sed -i and tee inside this message are prose, not edits.\n"
+           "MSG")
+    out = run_pretooluse(bash_payload(cmd), tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_L73_allows_every_real_heredoc_commit_from_the_corpus(tmp_path, corpus_dump):
+    """COORDINATOR REQUIREMENT, second half — REAL commands, not a constructed shape: every
+    `git commit … -F -` + heredoc command actually recorded in the corpus, replayed verbatim
+    through the real CLI. Guarded against examining nothing: the owner committed this way all
+    day today, so the corpus MUST contain them."""
+    import re as _re
+    real = [c for c in corpus_commands(corpus_dump)
+            if _re.search(r"git commit[^\n]*-F -", c) and "<<" in c
+            and "cat >" not in c and "sed -i" not in c and "tee " not in c.split("<<")[0]
+            and ">>" not in c.split("<<")[0]]
+    assert real, "no real -F - heredoc commits found in the corpus — this test examined NOTHING"
+    fired = []
+    for c in real[:40]:   # a representative slab; the shape is identical across all of them
+        out = run_pretooluse(bash_payload(c), tmp_path=tmp_path)
+        if decision_of(out) != "allow" and "L73" in reason_of(out):
+            fired.append(c[:120])
+    assert fired == [], f"L73 fires on the owner's real heredoc-commit style: {fired}"
+
+
+def test_L73_allows_add_plus_commit_and_plain_commit(tmp_path):
+    for cmd in ['git add app.js tests/x.spec.ts && git commit -q -m "fix: thing"',
+                'git commit -q -m "docs: cat >> file.md then commit — quoting the rule"',
+                "git log --oneline -3 | grep commit"]:
+        out = run_pretooluse(bash_payload(cmd), tmp_path=tmp_path)
+        assert decision_of(out) == "allow", (cmd, out)
+
+
+def test_L73_corpus_replay(corpus_dump):
+    """~154 in-command combined calls exist in history (the incident class L73 was written for
+    on 8.8.26) — true positives (coordinator-confirmed reading). Bar: every fire names L73, and
+    no fire is a heredoc-message-only commit (the dedicated tests above check that directly on
+    real corpus commands)."""
+    out = replay("edit-commit-separation.mjs", corpus_dump)
+    assert out["fireCount"] > 0, "history's known combined calls did not fire — the rule is inert"
+    for f in out["fires"]:
+        assert "L73" in f["reason"], f
+    print(f"\nL73 corpus fires: {out['fireCount']} / {out['total']}")
