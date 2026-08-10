@@ -141,3 +141,41 @@ def test_replay_harness_runs_an_existing_rule(corpus_dump):
     main-only-no-worktrees blocks only worktree/branch operations."""
     out = replay("main-only-no-worktrees.mjs", corpus_dump)
     assert out["total"] > 5000
+
+
+# ---------------------------------------------------------------- Task 3: L10
+
+def test_L10_blocks_a_retries_override(tmp_path):
+    # Verbatim from the corpus's surviving candidates (the measurement file, L10 section).
+    out = run_pretooluse(bash_payload(
+        "npx playwright test --retries=2 --reporter=line 2>&1 | tail -20"), tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "L10" in reason_of(out) and "plain" in reason_of(out)   # reachable alternative named
+
+
+def test_L10_blocks_a_workers_override(tmp_path):
+    out = run_pretooluse(bash_payload("npx playwright test --workers=1"), tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+
+
+def test_L10_allows_the_plain_run_and_the_quoted_rule_text(tmp_path):
+    out = run_pretooluse(bash_payload("npx playwright test 2>&1 | tail -5"), tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+    # The EXACT noise shape the measurement found (context line: quoting DoD-12 inside an echo):
+    out2 = run_pretooluse(bash_payload(
+        'echo "$ npx playwright test          # plain — no --retries, no --workers=1"'),
+        tmp_path=tmp_path)
+    assert decision_of(out2) == "allow", out2
+
+
+def test_L10_corpus_replay(corpus_dump):
+    """Real history contains ~154 GENUINE override runs (they predate L10 — the rule was written
+    because of them). Those are true positives, not false alarms (coordinator-confirmed reading).
+    Bar: every fire's reason names the offending flag, and no fire lands on a command where the
+    flag exists only inside stripped prose (the verbatim noise shape above + sample inspection)."""
+    out = replay("playwright-plain-run.mjs", corpus_dump)
+    assert out["fireCount"] > 0, "history's known --retries runs did not fire — the rule is inert"
+    for f in out["fires"]:
+        assert "--retries" in f["reason"] or "--workers" in f["reason"], f
+    assert not any("no --retries, no --workers=1" in f["command"] for f in out["fires"])
+    print(f"\nL10 corpus fires: {out['fireCount']} / {out['total']} (inspect samples in report)")
