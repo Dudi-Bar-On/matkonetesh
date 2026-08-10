@@ -637,3 +637,56 @@ def test_the_real_document_no_longer_yields_container_rules():
     for r in recs:
         assert len(r.statement) < 20000, (
             f"rule {r.rule_id} carries {len(r.statement)} chars — that is a section, not a rule")
+
+
+# --- R-130 follow-up: the container trim must never cost a lesson ------------------------------
+#
+# Owner question, 2026-08-10, asked before I thought to ask it myself: "if H15 was a container of
+# lessons, did you check them against the lessons in our stores? so we don't lose lessons."
+#
+# I had justified trimming H15 (72,830 -> 702 chars) and retiring `11` on the grounds that every
+# lesson they held is already extracted separately. That was an ASSERTION. Measured afterwards it
+# held — the two containers between them held 43 + 49 = 92 ids, exactly the 92 in the document, all
+# present as their own records with their full text. But "true when I checked" is not a property.
+# This is the property.
+
+def test_every_lesson_in_the_document_is_extracted_as_its_own_rule():
+    """Both directions. A lesson in the document with no record is a LOST lesson — the failure the
+    owner's question was aimed at. A record with no marker in the document is a stale ghost, the
+    opposite failure and equally worth failing on."""
+    import pathlib
+    import re as _re
+    from src.rules_store.extractor import extract_rules
+
+    doc = pathlib.Path("docs/process/development-discipline.md").read_text(encoding="utf-8")
+    marker = _re.compile(r"\*\*(L\d+[ab]?)\s*·", _re.MULTILINE)
+    table = _re.compile(r"^\|\s*\*{0,2}(L\d+[ab]?)\*{0,2}\s*\|", _re.MULTILINE)
+    in_doc = set(marker.findall(doc)) | set(table.findall(doc))
+    assert in_doc, "found no lesson markers in the document — this test examined NOTHING"
+
+    recs = extract_rules(doc, "docs/process/development-discipline.md")
+    extracted = {r.rule_id for r in recs if _re.fullmatch(r"L\d+[ab]?", r.rule_id)}
+
+    lost = sorted(in_doc - extracted)
+    assert not lost, (
+        f"lesson(s) written in the document but extracted by nothing: {lost}. A container trim or a "
+        f"boundary change has swallowed them — this is the exact loss R-130's fix had to avoid.")
+
+    ghosts = sorted(extracted - in_doc)
+    assert not ghosts, f"lesson record(s) with no marker left in the document: {ghosts}"
+
+
+def test_no_lesson_is_extracted_as_an_empty_or_title_only_record():
+    """The quiet version of the same loss: a lesson that survives as an id while its body is gone.
+    Checked by shape rather than by a pinned length — the corpus grows, and a pinned number breaks
+    on the next lesson written (L64b, which this project has already paid for once)."""
+    import pathlib
+    import re as _re
+    from src.rules_store.extractor import extract_rules
+
+    doc = pathlib.Path("docs/process/development-discipline.md").read_text(encoding="utf-8")
+    recs = [r for r in extract_rules(doc, "docs/process/development-discipline.md")
+            if _re.fullmatch(r"L\d+[ab]?", r.rule_id)]
+    assert recs, "extracted no lessons — this test examined NOTHING"
+    hollow = [r.rule_id for r in recs if len(r.statement.strip()) < 40]
+    assert not hollow, f"lesson(s) reduced to a stub: {hollow}"
