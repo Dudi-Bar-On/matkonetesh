@@ -42,7 +42,14 @@ export function tokenize(seg) {
 // /g+exec lastIndex hazard does not apply here).
 const HEREDOC_BODY = /<<-?\s*'?"?(\w+)'?"?\n[\s\S]*?\n\1/g;
 const SINGLE_QUOTED = /'[^']*'/g;
-const DOUBLE_QUOTED = /"[^"]*"/g;
+// Escape-aware, unlike the single-quote form above it — and that asymmetry is bash semantics, not an
+// oversight: inside single quotes a backslash is a literal character and there is no escape, while
+// inside double quotes \" is one. Found 2026-08-10 by Task 7's implementer:
+//     node -e "console.log(\"docker start\")"
+// stripped to `node -e  docker start\ `, exposing quoted TEXT as command shape. It does not occur in
+// the 6,479-command corpus, so no rule false-alarms on it today — but this helper is imported by ten
+// rules, and a gap here is one bug times its consumers (the R-129 shape).
+const DOUBLE_QUOTED = /"(?:\\.|[^"\\])*"/g;
 const HASH_COMMENT = /(^|\s)#[^\n]*/g; // no /m — matches the measurement script (^ = string start)
 
 // keepSingleQuoted / keepDoubleQuoted exist because "data region" is PER-RULE, not universal
@@ -63,8 +70,35 @@ export function stripDataRegions(command, { keepSingleQuoted = false, keepDouble
 // pipeline structure — correct for "what is the leading command word of each piece", wrong for
 // L32 ("did $? get read after a pipe into a filter?"). statements() keeps each pipeline whole.
 export const STATEMENT_SPLIT = /(?:&&|\|\||[;\n])/g;
+// A `;` inside a quoted string is not a statement boundary. Found 2026-08-10 while writing this
+// module's first test file: `echo "a; b" ; ls` split into THREE statements, not two. It matters
+// beyond tidiness — L32 reads `$?` from the RAW (unstripped) split, so a false boundary there could
+// invent a statement and warn about an exit-code read that never happened. L32's own
+// length-agreement guard would have degraded it safely, but a guard covering for a broken helper is
+// not the same as a helper that works.
+//
+// STATEMENT_SPLIT is kept exported and unchanged: it is still the honest description of the
+// boundaries, and callers that split flat text (not shell) rely on it.
 export function statements(command) {
-  return command.split(STATEMENT_SPLIT).map((s) => s.trim()).filter(Boolean);
+  const out = [];
+  let buf = '';
+  let sq = false;
+  let dq = false;
+  const BS = String.fromCharCode(92);
+  for (let i = 0; i < command.length; i += 1) {
+    const c = command[i];
+    if (c === BS && dq) { buf += c + (command[i + 1] || ''); i += 1; continue; }
+    if (c === "'" && !dq) { sq = !sq; buf += c; continue; }
+    if (c === '"' && !sq) { dq = !dq; buf += c; continue; }
+    if (!sq && !dq) {
+      if (c === '&' && command[i + 1] === '&') { out.push(buf); buf = ''; i += 1; continue; }
+      if (c === '|' && command[i + 1] === '|') { out.push(buf); buf = ''; i += 1; continue; }
+      if (c === ';' || c === '\n') { out.push(buf); buf = ''; continue; }
+    }
+    buf += c;
+  }
+  out.push(buf);
+  return out.map((s) => s.trim()).filter(Boolean);
 }
 export function pipelineStages(statement) {
   return statement.split(/\|(?!\|)/).map((s) => s.trim()).filter(Boolean);
