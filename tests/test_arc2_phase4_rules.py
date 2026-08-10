@@ -211,3 +211,34 @@ def test_summary_shape_corpus_replay(corpus_dump):
     # warn-severity: still zero fires on legitimate work. A fire on a REAL past task-close that
     # shipped without the shape is the rule working — classify every sampled fire.
     assert out["fireCount"] <= 150, f"trigger too loose: {out['fireCount']}"
+
+
+# ------------------------------------------------------- Task 4: L23a percentage↔artifact
+
+def test_l23a_warns_on_translation_pct_without_artifact(tmp_path):
+    out = eval_stop_rule("percentage-artifact.mjs",
+                         "כיסוי התרגום בצרפתית עומד על 97% וזה שיפור יפה.", tmp_path)
+    assert out["decision"] == "warn"
+    assert "L23a" in out["reason"]
+
+
+def test_l23a_allows_pct_with_named_artifact(tmp_path):
+    text = ("כיסוי התרגום בצרפתית: 97% — נמדד ב-rendered DOM, הקובץ "
+            "`mockups/fr-coverage-390x844.png` מצורף.")
+    assert eval_stop_rule("percentage-artifact.mjs", text, tmp_path)["decision"] == "allow"
+
+
+def test_l23a_silent_on_non_domain_percentage(tmp_path):
+    # A percentage OUTSIDE the lesson's domain (CPU, progress, humidity) never fires.
+    text = "המאוורר עומד על 40% והבשר בשעה השלישית."
+    assert eval_stop_rule("percentage-artifact.mjs", text, tmp_path)["decision"] == "allow"
+
+
+def test_l23a_silent_on_quoted_lesson_text(tmp_path):
+    text = 'הלקח אומר: "a translation percentage like 99% with no artifact is blocked".'
+    assert eval_stop_rule("percentage-artifact.mjs", text, tmp_path)["decision"] == "allow"
+
+
+def test_l23a_corpus_replay(corpus_dump):
+    out = replay("percentage-artifact.mjs", corpus_dump)
+    assert out["fireCount"] <= 60, f"domain narrowing failed: {out['fireCount']}"
