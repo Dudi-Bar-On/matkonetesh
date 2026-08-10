@@ -521,3 +521,105 @@ def test_L13_does_not_fire_on_real_recent_app_js_history(tmp_path):
         if "L13" in reason_of(out) and decision_of(out) != "allow":
             fired.append(line[:100])
     assert fired == [], f"L13 fires on real historical app.js additions: {fired[:5]}"
+
+
+# ---------------------------------------------------------------- Task 6: L21 + L52 + L78
+
+def test_L21_blocks_a_drive_by_workers_change(tmp_path):
+    out = run_pretooluse(payload(
+        "Edit", ROOT / "playwright.config.ts",
+        old="workers: process.env.CI ? 2 : 20,",
+        new="workers: process.env.CI ? 2 : 32,"),
+        env_extra={"DISCIPLINE": str(tmp_path / "empty-discipline.md")}, tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "Owner architecture decision" in reason_of(out)   # the reachable path, by name
+
+
+def test_L21_allows_the_change_with_a_fresh_owner_record(tmp_path):
+    import datetime
+    d = tmp_path / "discipline.md"
+    today = datetime.date.today().isoformat()
+    d.write_text(f"**Owner architecture decision ({today}):** playwright-workers — raise to 32\n",
+                 encoding="utf-8")
+    out = run_pretooluse(payload(
+        "Edit", ROOT / "playwright.config.ts",
+        old="workers: process.env.CI ? 2 : 20,",
+        new="workers: process.env.CI ? 2 : 32,"),
+        env_extra={"DISCIPLINE": str(d)}, tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_L21_does_not_fire_on_a_real_config_edit_elsewhere(tmp_path):
+    """False-alarm vs the real file: an edit to the config that does not touch workers/retries."""
+    out = run_pretooluse(payload(
+        "Edit", ROOT / "playwright.config.ts",
+        old="retries: 0,   // surface flakes as failures — never retry them away (a flake is a bug to fix)",
+        new="retries: 0,   // surface flakes as failures; never retry them away"),
+        tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_L52_blocks_a_floating_latest_pin(tmp_path):
+    out = run_pretooluse(payload("Write", ROOT / "compose.yml",
+                                 content="services:\n  db:\n    image: postgres:latest\n"),
+                         tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "version NUMBER" in reason_of(out) or "pin" in reason_of(out).lower()
+
+
+def test_L52_does_not_fire_on_real_tracked_configs(tmp_path):
+    """False-alarm vs the REAL tree (measured 0 `:latest` in tracked configs before this plan):
+    every tracked yml/yaml/json/Dockerfile replayed as a Write of its own content."""
+    tracked = subprocess.run(["git", "ls-files", "*.yml", "*.yaml", "package.json", "Dockerfile*"],
+                             capture_output=True, text=True, encoding="utf-8",
+                             cwd=str(ROOT)).stdout.splitlines()
+    assert tracked, "no tracked config files — the false-alarm test examined NOTHING"
+    for rel in tracked:
+        content = (ROOT / rel).read_text(encoding="utf-8", errors="replace")
+        out = run_pretooluse(payload("Write", ROOT / rel, content=content), tmp_path=tmp_path)
+        assert "version-pin-floating" not in reason_of(out) or decision_of(out) == "allow", \
+            f"L52 fires on real {rel}: {reason_of(out)}"
+
+
+def test_L78_warns_on_editing_the_locked_procedure(tmp_path):
+    out = run_pretooluse(payload(
+        "Edit", ROOT / "docs" / "process" / "rule-coverage" / "criterion" / "criterion.md",
+        old="a", new="b"), tmp_path=tmp_path)
+    assert decision_of(out) == "warn", out
+
+
+def test_L78_warns_on_editing_a_dispatch_packet(tmp_path):
+    out = run_pretooluse(payload(
+        "Edit", ROOT / "docs" / "process" / "rule-coverage" / "criterion" / "apply" / "chunk-3-packet.md",
+        old="a", new="b"), tmp_path=tmp_path)
+    assert decision_of(out) == "warn", out
+
+
+def test_L78_stays_quiet_on_run_outputs(tmp_path):
+    """Answers/batches are OUTPUTS of a run, written during normal work — not the procedure."""
+    out = run_pretooluse(payload(
+        "Write", ROOT / "docs" / "process" / "rule-coverage" / "criterion" / "apply" / "chunk-3-answers-alpha.json",
+        content="{}"), tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+    out2 = run_pretooluse(payload(
+        "Write", ROOT / "docs" / "process" / "rule-coverage" / "batch-06-group-b.md",
+        content="# batch\n"), tmp_path=tmp_path)
+    assert decision_of(out2) == "allow", out2
+
+
+def test_owner_decision_records_is_idempotent_across_two_calls():
+    """Regression net for the /g-flag lastIndex hazard: OWNER_DECISION_RE carries state across
+    calls to RegExp.exec when it is reused with the /g flag and not reset. Two consecutive calls
+    to the extracted ownerDecisionRecords() on the SAME discipline doc must return the SAME
+    records both times — a second call returning fewer (or zero) records is the exact silent,
+    order-dependent bug this extraction must not introduce."""
+    r = subprocess.run(
+        ["node", "--input-type=module", "-e",
+         "import('file://" + str(ROOT / 'scripts/hooks/lib/owner-decision-records.mjs').replace(os.sep, '/')
+         + "').then(m=>{const a=m.ownerDecisionRecords();const b=m.ownerDecisionRecords();"
+         + "console.log(JSON.stringify({a,b}));})"],
+        capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT),
+        env={**os.environ, "DISCIPLINE": str(ROOT / "docs" / "process" / "development-discipline.md")})
+    assert r.returncode == 0, r.stdout + r.stderr
+    out = json.loads(r.stdout.strip())
+    assert out["a"] == out["b"], f"second call diverged from the first: {out}"

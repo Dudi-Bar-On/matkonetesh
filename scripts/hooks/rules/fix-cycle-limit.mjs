@@ -97,12 +97,10 @@
 // and catch a rule that simply forgot to declare rather than mistaking it for an observer.
 export const RULE_IDS = ['5'];
 
-import { readFileSync } from 'node:fs';
-import { join, dirname } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
   openState, openTargets, noteVerificationPass, recordEvent, normalizeActorId,
 } from '../lib/enforcement-state.mjs';
+import { ownerDecisionRecords } from '../lib/owner-decision-records.mjs';
 
 // R-117 / Task 14: §5 fix cycles are PER-ACTOR (task-14-brief, quoting development-discipline.md:
 // "two agents debugging different things are not on each other's fourth attempt"). openTargets()
@@ -114,17 +112,6 @@ import {
 // EVERY actor's own counter for it independently as each actor's evaluate() call encounters it, not
 // as one shared reset consumed by whichever actor happens to hit the record first.
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const ROOT = join(HERE, '..', '..', '..');
-
-// Same env-var convention scripts/gate-lessons.mjs already uses for the same document (DISCIPLINE)
-// — reused deliberately rather than inventing a second name for the same override, so a test (or a
-// future caller) that already knows one knows both.
-const DEFAULT_DISCIPLINE_DOC = join(ROOT, 'docs', 'process', 'development-discipline.md');
-function disciplineDocPath() {
-  return process.env.DISCIPLINE || DEFAULT_DISCIPLINE_DOC;
-}
-
 // Exported (not just module-local) so §6.2's restored-after-compact announcer
 // (scripts/session-state.mjs's enforcementState()) can render "N of 3" from the SAME constant this
 // rule blocks on, rather than a second hardcoded "3" that could silently drift out of agreement with
@@ -133,34 +120,6 @@ function disciplineDocPath() {
 export const ATTEMPT_THRESHOLD = 3;
 const NEAR_MISS_MAX_DISTANCE_RATIO = 0.2; // see levenshtein()/isNearMiss() below
 const NEAR_MISS_MIN_DISTANCE_FLOOR = 2;
-
-// Matches both the mirrored date-only form and the finer date-time form, capturing the raw
-// parenthesized text (validated/parsed separately by parseCutoffMs) and the target text up to the
-// em-dash.
-const OWNER_DECISION_RE = /\*\*Owner architecture decision \(([^)]+)\):\*\*\s*(.+?)\s*—/g;
-
-// Parses a record's parenthesized date/date-time into a cutoff instant (ms since epoch), or null if
-// unparseable (an unparseable record clears nothing — never a way to bypass by writing garbage).
-// Both forms are read as UTC — the finer form's clock reading is NOT local time (see header
-// comment, fix round 2).
-//   - "YYYY-MM-DD"            -> end of that UTC day (start of the NEXT day), the permissive
-//                                whole-day reading documented in the header comment above.
-//   - "YYYY-MM-DD HH:MM[:SS]" or "YYYY-MM-DDTHH:MM[:SS]" -> that exact UTC instant, hard cutoff.
-function parseCutoffMs(raw) {
-  const s = String(raw).trim();
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const startOfDay = Date.parse(`${s}T00:00:00Z`);
-    if (Number.isNaN(startOfDay)) return null;
-    return startOfDay + 24 * 60 * 60 * 1000;
-  }
-  const fineMatch = s.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}(?::\d{2})?)$/);
-  if (fineMatch) {
-    const iso = `${fineMatch[1]}T${fineMatch[2]}${fineMatch[2].length === 5 ? ':00' : ''}Z`;
-    const ms = Date.parse(iso);
-    return Number.isNaN(ms) ? null : ms;
-  }
-  return null;
-}
 
 // Standard iterative Levenshtein edit distance (no dependency — the strings involved are short
 // target ids, so the O(n*m) table is trivially cheap here).
@@ -226,26 +185,6 @@ function isNearMiss(a, b) {
     Math.ceil(NEAR_MISS_MAX_DISTANCE_RATIO * Math.max(a.length, b.length)),
   );
   return dist <= threshold;
-}
-
-// Every Owner architecture decision record in the live discipline doc, parsed into
-// {target, cutoffMs, raw}. Records with an unparseable date are silently dropped (never thrown,
-// never treated as clearing anything). Any read failure degrades to an empty list.
-function ownerDecisionRecords() {
-  const out = [];
-  try {
-    const text = readFileSync(disciplineDocPath(), 'utf8');
-    let m;
-    // eslint-disable-next-line no-cond-assign
-    while ((m = OWNER_DECISION_RE.exec(text))) {
-      const cutoffMs = parseCutoffMs(m[1]);
-      if (cutoffMs === null) continue;
-      out.push({ target: m[2].trim(), cutoffMs, raw: m[1].trim() });
-    }
-  } catch {
-    // intentionally swallowed — see header comment.
-  }
-  return out;
 }
 
 export function evaluate(input) {
