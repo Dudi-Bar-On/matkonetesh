@@ -585,3 +585,55 @@ def test_real_document_no_title_he_is_absurdly_long():
         extract_h_rulings(text, "docs/process/development-discipline.md")
     offenders = {r.rule_id: len(r.title_he) for r in recs if len(r.title_he) > 250}
     assert not offenders, f"title_he too long (record swallowed another): {offenders}"
+
+
+# --- R-130: a section that CONTAINS other extracted rules is a container, not a rule ------------
+#
+# Found 2026-08-10 by sweeping the whole corpus for duplication at the owner's request. Two rules
+# were not rules at all: `11` (the Lessons log heading, 43,510 chars, 36 inner lesson entries) and
+# `H15` (72,830 chars, 43). The lessons under them are ALREADY extracted individually as L1..L83,
+# so each container duplicated dozens of rules AND inflated the enforceable denominator the owner
+# had just made a scope decision against ("finish all 85"). Worse, anyone assigned `H15` to
+# implement would have received 72KB of mixed content instead of a rule.
+#
+# The boundary logic itself was correct — heading to next heading — because the lessons are written
+# as bold `**L24 · …**` markers, not headings. What was missing is the question of whether a
+# section's body is its OWN statement or a collection of other people's.
+
+def test_a_section_whose_body_holds_several_lesson_entries_is_not_emitted_as_a_rule():
+    text = (
+        "## 11. Lessons log\n\n"
+        "**L1 · first lesson (2026-01-01).** body one.\n\n"
+        "**L2 · second lesson (2026-01-02).** body two.\n\n"
+        "**L3 · third lesson (2026-01-03).** body three.\n\n"
+        "### 12.1 A real rule\n\nThis one is its own statement.\n"
+    )
+    ids = [r.rule_id for r in extract_section_rules(text, "docs/process/development-discipline.md")]
+    assert "11" not in ids, (
+        f"the Lessons log heading was emitted as an enforceable rule containing its own lessons: {ids}")
+    assert "12.1" in ids, f"a real section must still be extracted: {ids}"
+
+
+def test_a_normal_section_that_merely_mentions_a_lesson_is_still_a_rule():
+    """The narrow promise: containment is about a body that HOLDS entries, not one that cites them.
+    Nearly every rule here references a lesson id in prose, and blanket-excluding those would empty
+    the corpus."""
+    text = (
+        "## 5. Debugging protocol\n\n"
+        "After three failed fixes, STOP. This is what **L14 ·** was written from, and L26 agrees.\n"
+    )
+    ids = [r.rule_id for r in extract_section_rules(text, "docs/process/development-discipline.md")]
+    assert "5" in ids, f"a section citing lessons in prose must remain a rule: {ids}"
+
+
+def test_the_real_document_no_longer_yields_container_rules():
+    """Against the real file, not a fixture: neither container may survive extraction."""
+    import pathlib
+    text = pathlib.Path("docs/process/development-discipline.md").read_text(encoding="utf-8")
+    recs = extract_section_rules(text, "docs/process/development-discipline.md")
+    ids = {r.rule_id for r in recs}
+    assert recs, "extracted nothing — this test examined NOTHING"
+    assert "11" not in ids, "section 11 (the Lessons log) is still emitted as a rule"
+    for r in recs:
+        assert len(r.statement) < 20000, (
+            f"rule {r.rule_id} carries {len(r.statement)} chars — that is a section, not a rule")

@@ -78,6 +78,11 @@ _TRAILING_RULE_RE = re.compile(r"\n[ \t]*\n-{3,}[ \t]*\n*\Z")
 
 _FENCE_RE = re.compile(r"^```", re.MULTILINE)
 
+# A markdown heading appearing INSIDE a section's captured body — see the container check in
+# extract_section_rules. Its presence is possible at all because the boundary scan matches only
+# NUMBERED headings, so an unnumbered one and everything under it falls into the section above.
+_INNER_HEADING_RE = re.compile(r"^#{2,4}[ \t]+\S", re.MULTILINE)
+
 
 def _fenced_spans(text: str) -> list[tuple[int, int]]:
     """(start, end) char offsets of every fenced ``` code block, paired open/close in order."""
@@ -101,6 +106,31 @@ def extract_section_rules(text: str, source_path: str) -> list[RuleRecord]:
         body_end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
         body = text[body_start:body_end]
         body = _TRAILING_RULE_RE.sub("", body)
+        # R-130 — a section whose body HOLDS other extracted rules is a container, not a rule.
+        #
+        # Found 2026-08-10 by sweeping all 159 corpus rules for duplication at the owner's request.
+        # `11` (the Lessons log) carried 43,510 chars and 36 lesson entries; `H15` carried 72,830
+        # and 43. Every one of those lessons is ALREADY extracted separately as L1..L83, so each
+        # container duplicated dozens of rules and inflated the enforceable denominator — the very
+        # number the owner had just set a scope decision against. And an implementer handed `H15`
+        # would have received 72KB of mixed content where a rule was promised.
+        #
+        # The boundary logic was never wrong: heading-to-next-heading is correct, and the lessons
+        # are written as bold `**L24 · …**` markers rather than headings, so they fall inside. What
+        # was missing is the different question — is this body the section's OWN statement, or a
+        # collection of other people's?
+        #
+        # Deliberately narrow: THREE OR MORE entry markers. Nearly every rule here cites a lesson in
+        # prose ("this is what L14 was written from"), and excluding those would empty the corpus —
+        # which is why a test pins exactly that case as still-a-rule. Three is the smallest count
+        # that cannot be reached by ordinary citation, and both real containers hold dozens.
+        # Two shapes of "holds other rules". Lesson markers are bold `**L24 · …**` entries. Inner
+        # HEADINGS get here for a different reason worth naming: the boundary scan only matches
+        # NUMBERED headings, so an unnumbered `## Where to find what` is invisible to it and its
+        # whole subtree lands inside the previous numbered section. That is how `H15` swallowed 43.
+        held = len(_LESSON_MARKER_RE.findall(body)) + len(_INNER_HEADING_RE.findall(body))
+        if held >= 3:
+            continue
         statement = body.strip()
         if not statement:
             statement = title
@@ -272,6 +302,20 @@ def extract_h_rulings(text: str, source_path: str) -> list[RuleRecord]:
         # a Critical finding once (extract_section_rules, Task 5); H8's own body here (a
         # blockquoted ruling that follows an intro sentence) reproduced it a second time until this
         # fix, so the whole body is now kept, matching extract_section_rules' own fix.
+        # R-130, second half. The same container question extract_section_rules now asks, asked
+        # here — because H15 needed it and the section path could not reach it. `## 18. H15 …` is
+        # the LAST heading in the document, so `_h_body_span`'s "bounded by the next heading of any
+        # kind" bound never fires and 975 heading-less lines below it — dozens of lessons written as
+        # bold markers — were captured as H15's own statement: 72,830 characters offered to an
+        # implementer as one rule. Trimming to the first paragraph would be wrong (that bug already
+        # cost this arc a Critical finding twice, see the comment above); what is wrong is claiming
+        # a body that belongs to other rules, and every one of those lessons is already extracted
+        # separately. So the heading keeps its OWN text and stops claiming theirs.
+        held = len(_LESSON_MARKER_RE.findall(body)) + len(_INNER_HEADING_RE.findall(body))
+        if held >= 3:
+            first_entry = _LESSON_MARKER_RE.search(body)
+            own = body[: first_entry.start()] if first_entry else body
+            body = own
         statement = body.strip()
         out.append(RuleRecord(
             rule_id=h_token,
