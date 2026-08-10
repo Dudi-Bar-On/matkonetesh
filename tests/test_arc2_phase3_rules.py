@@ -288,3 +288,84 @@ def test_L32_does_not_fire_when_the_exit_code_belongs_to_a_later_unpiped_command
          "tool_input": {"command": 'git status -sb | head -3; node scripts/check-meta.mjs; ec=$?'}},
         tmp_path=tmp_path)
     assert decision_of(out) == "allow", out
+
+
+# ---------------------------------------------------------------- Task 5: L51a + L55a + 10.12a
+
+def test_L51a_blocks_sudo_inside_noninteractive_wsl(tmp_path):
+    # Verbatim shape from the corpus context lines. Per the coordinator's correction prepended
+    # to the measurement file: the REAL violations sit INSIDE quotes (`bash -lc '...'`) — the
+    # blanket strip removed the SIGNAL, so this rule keeps quotes and unwraps per-token.
+    out = run_pretooluse(bash_payload(
+        "wsl -d Ubuntu-20.04 -e bash -lc 'sudo service docker start 2>&1 | tail -3'"),
+        tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "L51a" in reason_of(out) and "wsl -u root" in reason_of(out)
+
+
+def test_L51a_allows_root_user_and_prose(tmp_path):
+    for cmd in ["wsl -u root -e bash -lc 'service docker start'",
+                'echo "note: wsl -e bash -lc sudo has no TTY and fails silently"']:
+        out = run_pretooluse(bash_payload(cmd), tmp_path=tmp_path)
+        assert decision_of(out) == "allow", (cmd, out)
+
+
+def test_L51a_corpus_replay(corpus_dump):
+    """History holds a handful of GENUINE wsl+sudo calls (they are why L51a exists) — true
+    positives. Bar: every fire's command really does lead with wsl and carry sudo."""
+    out = replay("wsl-sudo-noninteractive.mjs", corpus_dump)
+    for f in out["fires"]:
+        assert "wsl" in f["command"] and "sudo" in f["command"], f
+    assert out["fireCount"] <= 10, out["fires"]
+    print(f"\nL51a corpus fires: {out['fireCount']} / {out['total']}")
+
+
+def test_L55a_blocks_an_undocumented_no_deps_pin(tmp_path):
+    out = run_pretooluse(bash_payload(
+        "python -m pip install --quiet --no-deps left-pad==1.0.0"), tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "requirements-overrides.txt" in reason_of(out)
+
+
+def test_L55a_allows_documented_pins_and_the_overrides_file_itself(tmp_path):
+    # neo4j==6.2.0 is a real documented pin in requirements-overrides.txt (read during planning).
+    for cmd in ["python -m pip install --quiet --disable-pip-version-check --no-deps neo4j==6.2.0",
+                "python -m pip install --no-deps -r requirements-overrides.txt",
+                "python -m pip install requests"]:
+        out = run_pretooluse(bash_payload(cmd), tmp_path=tmp_path)
+        assert decision_of(out) == "allow", (cmd, out)
+
+
+def test_L55a_corpus_replay(corpus_dump):
+    # NOTE (found replaying the real corpus, not invented): the replayer truncates `command` to
+    # 300 chars (secrets discipline, replay-bash-corpus.mjs header). One genuine fire is a
+    # `cat > drv_probe.py <<'PY' ... PY` heredoc followed by the real
+    # `pip install --no-deps neo4j==5.28.4` line — a true positive whose `--no-deps` sits past
+    # char 300 in the raw command, same truncation shape Task 3's report already found for L10.
+    # The rule's own `reason` always names `--no-deps` (it is in the block message), so check
+    # either field — same pattern as L10's corpus-replay test, which checks `reason`.
+    out = replay("pip-no-deps-pinned.mjs", corpus_dump)
+    for f in out["fires"]:
+        assert "--no-deps" in f["command"] or "--no-deps" in f["reason"], f
+    assert out["fireCount"] <= 10, out["fires"]
+    print(f"\nL55a corpus fires: {out['fireCount']} / {out['total']}")
+
+
+def test_1012a_blocks_a_nested_claude_p_from_repo_cwd(tmp_path):
+    out = run_pretooluse(bash_payload('claude -p "extract entities from doc.md"'), tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "10.12a" in reason_of(out) and "neutral" in reason_of(out).lower()
+
+
+def test_1012a_allows_neutral_cwd_and_prose(tmp_path):
+    for cmd in ["cd C:/Users/dudib/AppData/Local/Temp/extract && claude -p 'extract from C:/abs/doc.md'",
+                'echo "a nested claude -p inside this repo loads CLAUDE.md"']:
+        out = run_pretooluse(bash_payload(cmd), tmp_path=tmp_path)
+        assert decision_of(out) == "allow", (cmd, out)
+
+
+def test_1012a_corpus_replay(corpus_dump):
+    """The measurement found 3 raw hits, ALL prose (100% noise) — so the corpus expectation is
+    ZERO fires. A nonzero count here is exactly the spec-§6 stop-and-investigate trigger."""
+    out = replay("nested-claude-neutral-cwd.mjs", corpus_dump)
+    assert out["fireCount"] == 0, out["fires"]
