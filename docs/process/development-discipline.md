@@ -2389,3 +2389,12 @@ tree both ways. Recommend the owner classify the 11-plan finding for a possible 
 lesson-worthy at the programme level (e.g. "a completeness gate with no write-time enforcement quietly
 accumulates a large exempt population before anyone measures it").
 
+**No-lesson declaration (2026-08-10):** arc2 phase3 task 1 (`bash-segments.mjs` command-position
+helpers + `no-concurrent-suite-run.mjs` refactor) — no new numbered lesson. The one pytest failure
+recorded this session (`test_every_phase2_rule_is_declared_and_counted`) was investigated via
+`systematic-debugging` and is unrelated to this task: it traces to `R-118` in an untracked file
+(`scripts/check-rule-provenance.mjs`) having no matching row in the rules mirror — a pre-existing
+Phase 2 rule-coverage/provenance gap this task never touched (confirmed by `git status --porcelain`
+showing the file as `??`, and it is not among Task 1's three changed files). Not this task's failure
+mode to name a lesson for; flagged in task-1-report.md for whoever owns that gate instead.
+

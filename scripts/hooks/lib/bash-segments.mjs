@@ -29,3 +29,62 @@ export function tokenize(seg) {
     return t;
   });
 }
+
+// ------------------------------------------------------------------------------------------------
+// Arc 2 Phase 3 additions. The 2026-08-10 corpus measurement (docs/analysis/
+// 2026-08-10-phase3-bash-corpus-measurement.txt, 6,338 real Bash commands) proved the dominant
+// false-alarm source for EVERY Bash rule is prose that DESCRIBES a rule, quoted inside an echo or
+// a heredoc ("botulism kill-temps", "plain — no --retries"). So Bash rules match against COMMAND
+// POSITION ONLY: these helpers reduce a command to what a shell would actually execute. The three
+// data-region regexes are EXACT ports of scripts/tests/measure-bash-corpus.py's HEREDOC/SQ/DQ/
+// COMMENT — the measured noise-removal numbers are only valid for these shapes.
+// Only String.replace() is used with the /g regexes below (replace resets lastIndex; the Phase-2
+// /g+exec lastIndex hazard does not apply here).
+const HEREDOC_BODY = /<<-?\s*'?"?(\w+)'?"?\n[\s\S]*?\n\1/g;
+const SINGLE_QUOTED = /'[^']*'/g;
+const DOUBLE_QUOTED = /"[^"]*"/g;
+const HASH_COMMENT = /(^|\s)#[^\n]*/g; // no /m — matches the measurement script (^ = string start)
+
+// keepSingleQuoted / keepDoubleQuoted exist because "data region" is PER-RULE, not universal
+// (coordinator-confirmed 2026-08-10, incl. the correction prepended to the measurement file):
+//  - L39 must KEEP double-quoted content ($VAR expands inside "..." — `echo "$GEMINI_API_KEY"`
+//    prints the key) while still dropping single-quoted content (no expansion, `'$KEY'` is inert).
+//  - L51a must keep BOTH: `wsl -e bash -lc 'sudo …'` carries its real command inside quotes —
+//    the blanket strip REMOVED that signal, which is why the raw measurement showed 0 in-command.
+// Every other Phase-3 rule uses the default full strip, which is what the corpus was measured with.
+export function stripDataRegions(command, { keepSingleQuoted = false, keepDoubleQuoted = false } = {}) {
+  let s = command.replace(HEREDOC_BODY, ' ');
+  if (!keepSingleQuoted) s = s.replace(SINGLE_QUOTED, ' ');
+  if (!keepDoubleQuoted) s = s.replace(DOUBLE_QUOTED, ' ');
+  return s.replace(HASH_COMMENT, ' ');
+}
+
+// statements() vs segments(): segments() (above) also splits on single `|`, which destroys
+// pipeline structure — correct for "what is the leading command word of each piece", wrong for
+// L32 ("did $? get read after a pipe into a filter?"). statements() keeps each pipeline whole.
+export const STATEMENT_SPLIT = /(?:&&|\|\||[;\n])/g;
+export function statements(command) {
+  return command.split(STATEMENT_SPLIT).map((s) => s.trim()).filter(Boolean);
+}
+export function pipelineStages(statement) {
+  return statement.split(/\|(?!\|)/).map((s) => s.trim()).filter(Boolean);
+}
+
+// Moved here from no-concurrent-suite-run.mjs (which now imports it) so L10 does not become the
+// third drifting copy — the exact hazard R-116/this file's header names. Coordinator-approved.
+// Returns null when `tokens` is not a `playwright test` invocation; else the invocation's own
+// argument tokens, cut at the first pipe/redirect token (args after `| tail` belong to tail).
+const KNOWN_TEST_SCRIPTS = new Set(['test', 'test:full', 'test:visual', 'test:a11y']);
+function cutAtBoundary(args) {
+  const stop = args.findIndex((t) => t === '|' || t.startsWith('>') || t.startsWith('2>') || t === '<');
+  return stop === -1 ? args : args.slice(0, stop);
+}
+export function playwrightTestTokens(tokens) {
+  if (!Array.isArray(tokens) || tokens.length === 0) return null;
+  const [a, b, c] = tokens;
+  if (a === 'playwright' && b === 'test') return cutAtBoundary(tokens.slice(2));
+  if (a === 'npx' && b === 'playwright' && c === 'test') return cutAtBoundary(tokens.slice(3));
+  if (a === 'npm' && b === 'test') return [];
+  if (a === 'npm' && b === 'run' && KNOWN_TEST_SCRIPTS.has(c)) return [];
+  return null;
+}

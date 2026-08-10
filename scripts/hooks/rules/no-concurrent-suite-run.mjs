@@ -43,43 +43,9 @@ export const TOOLS = ['Bash'];
 export const RULE_IDS = ['11a'];
 
 import net from 'node:net';
+import { segments, tokenize, playwrightTestTokens } from '../lib/bash-segments.mjs';
 
 const DEFAULT_PORT = 8123;
-const SEGMENT_SPLIT = /(?:&&|\|\||[;\n]|\|(?!\|))/g;
-
-// package.json script names that resolve to a `playwright test` invocation. `test:smoke`,
-// `test:area`, `test:intel`, `test:live`, `coverage` do not run the Playwright suite directly and
-// are deliberately excluded — including them would widen this rule past what it can justify.
-const KNOWN_TEST_SCRIPTS = new Set(['test', 'test:full', 'test:visual', 'test:a11y']);
-
-function segments(command) {
-  return command.split(SEGMENT_SPLIT).map((s) => s.trim()).filter(Boolean);
-}
-
-// Same minimal tokenizer as main-only-no-worktrees.mjs: whitespace-separated, with a light
-// allowance for a whole token wrapped in matching quotes.
-function tokenize(seg) {
-  const matches = seg.match(/"[^"]*"|'[^']*'|\S+/g) || [];
-  return matches.map((t) => (
-    (t.startsWith('"') && t.endsWith('"')) || (t.startsWith("'") && t.endsWith("'"))
-      ? t.slice(1, -1)
-      : t
-  ));
-}
-
-// True only if THIS segment's own leading command actually launches the Playwright suite — same
-// discipline as main-only-no-worktrees.mjs: inspect the segment's leading word, never substring-
-// match the whole command text. `git commit -m "playwright test flaky again"` has a leading word
-// of `git`, not `playwright`/`npx`/`npm`, so it is untouched.
-function isPlaywrightTestInvocation(tokens) {
-  if (tokens.length === 0) return false;
-  const [a, b, c] = tokens;
-  if (a === 'playwright' && b === 'test') return true;
-  if (a === 'npx' && b === 'playwright' && c === 'test') return true;
-  if (a === 'npm' && b === 'test') return true;
-  if (a === 'npm' && b === 'run' && KNOWN_TEST_SCRIPTS.has(c)) return true;
-  return false;
-}
 
 // Resolves true/false — never rejects. A connect succeeding means something is listening; refused
 // or timed out means the port is free. 300ms is generous for a loopback probe and still fast
@@ -114,7 +80,7 @@ export async function evaluate(input) {
     return { decision: 'allow', reason: 'no command text to inspect' };
   }
 
-  const triggers = segments(command).some((seg) => isPlaywrightTestInvocation(tokenize(seg)));
+  const triggers = segments(command).some((seg) => playwrightTestTokens(tokenize(seg)) !== null);
   if (!triggers) {
     return { decision: 'allow', reason: 'no `playwright test` invocation in this command' };
   }
