@@ -88,7 +88,12 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+// A --root seam, added 2026-08-10 so this gate can be tested against a disposable tree. It had
+// none, and therefore no tests at all — which is how it reached a false RED unnoticed.
+const _argv = process.argv.slice(2);
+const _ri = _argv.indexOf('--root');
+const ROOT = _ri === -1 ? REPO : _argv[_ri + 1];
 
 const EXEC_EXTS = new Set(['.mjs', '.js', '.py', '.ps1', '.sh']);
 const EXCLUDE_DIRS = new Set([
@@ -129,6 +134,41 @@ const MESSAGE_SINKS = [
 function sinkPrecedesMatch(line, matchIndex) {
   const before = line.slice(0, matchIndex);
   return MESSAGE_SINKS.some((sink) => before.includes(sink));
+}
+
+// --- test-fixture exclusion (added 2026-08-10) -------------------------------------------------
+//
+// A rule's test feeds it command STRINGS. `L51a`'s fixtures necessarily contain
+// `wsl -e bash -lc 'service docker start'`, because that is the shape the rule exists to catch —
+// and this gate read them as live docker calls and blocked the commit. The implementer used the
+// documented META_SKIP_GATE escape rather than edit an unrelated gate, which was right; this is the
+// repair behind it.
+//
+// It is the fourth time in one day a gate here fired on text that DESCRIBES a pattern instead of
+// code that RUNS it (L57's prose, main-only's heredoc, L32's blind spot, now this). The gate's own
+// header already admitted the blindness in the other direction — "a comment marker hidden inside a
+// string literal" — without drawing the symmetric conclusion.
+//
+// NARROW, and the narrowing is stated in the header's does-NOT-detect list: a test file, AND the
+// match sitting inside a quoted string. A test that genuinely SHELLED OUT to docker would now pass
+// unseen — acceptable only because Docker is retired repo-wide (R-88) and a new live call would
+// have to be written inside a quoted string in a test file to escape.
+// Forward slashes only, and that is correct rather than lucky: `rel` is normalised with
+// `.replace(/\\/g, '/')` before it reaches here, so a Windows separator never arrives.
+const TEST_PATH_RE = /(^|\/)(tests?)\//;
+
+function insideStringLiteral(line, matchIndex) {
+  let single = 0;
+  let dbl = 0;
+  for (let i = 0; i < matchIndex; i += 1) {
+    const c = line[i];
+    if (c === String.fromCharCode(92)) { i += 1; continue; }   // backslash escape; written this
+    // way rather than as a literal because writing a backslash through a shell heredoc is L68, and
+    // it ate this exact character on the first attempt at this very line.
+    if (c === "'") single += 1;
+    else if (c === '"') dbl += 1;
+  }
+  return single % 2 === 1 || dbl % 2 === 1;
 }
 
 function commentPrefixIndex(line, ext) {
@@ -237,6 +277,9 @@ for (const abs of files) {
     // --- message-sink exclusion ---
     if (sinkPrecedesMatch(line, m.index)) continue;
 
+    // --- test-fixture exclusion ---
+    if (TEST_PATH_RE.test(rel) && insideStringLiteral(line, m.index)) continue;
+
     invocations.push({ file: rel, line: i + 1, text: raw.trim() });
   }
 }
@@ -245,7 +288,8 @@ console.log(`files scanned: ${filesScanned} (**/*.{mjs,js,py,ps1,sh}, excluding 
 console.log('  detects: a live (non-comment, non-message-sink) `docker <subcommand>` call in executable code');
 console.log('  does NOT detect: .md/.yaml/.json content (out of scope by design — infra/compose.yaml is');
 console.log('  a deliberate exception until Task 12 deletes it); a docker command assembled across');
-console.log('  multiple lines/string concatenation; a comment marker hidden inside a string literal; a');
+console.log('  multiple lines/string concatenation; a comment marker hidden inside a string literal; a')
+console.log('  docker call written INSIDE a quoted string in a tests/ file (treated as a rule fixture); a');
 console.log('  message sink not on the curated list (fails safe — that is a false RED, never a false GREEN)');
 
 if (invocations.length) {

@@ -424,3 +424,45 @@ def test_file_size_gate_scanned_zero_files_reaches_no_verdict(tmp_path):
     assert r.returncode == 0, r.stdout
     assert "no verdict" in r.stdout.lower(), r.stdout
     assert "no spec file exceeds" not in r.stdout, r.stdout
+
+
+# --- check-no-docker: a rule's own fixtures are not live calls (2026-08-10) --------------------
+#
+# Found when Task 5's L51a fixtures — which must contain `wsl -e bash -lc 'service docker start'`,
+# because that is the shape the rule exists to catch — were read as live docker invocations and
+# blocked the commit. The implementer used the documented META_SKIP_GATE escape rather than edit an
+# unrelated gate; this is the repair behind that escape.
+#
+# Fourth instance in one day of a gate firing on text that DESCRIBES a pattern rather than code
+# that RUNS it. This gate had no tests and no --root seam at all, which is how it got there.
+
+def test_docker_gate_ignores_a_command_string_inside_a_test_fixture(tmp_path):
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "test_rule.py").write_text(
+        'CASES = ["wsl -u root -e bash -lc \'service docker start\'"]\n', encoding="utf-8")
+    r = run_gate("check-no-docker.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+
+def test_docker_gate_still_catches_a_live_call_outside_tests(tmp_path):
+    """The narrowing must not become a hole: the same text in ordinary code still fails."""
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "boot.py").write_text(
+        'import subprocess\nsubprocess.run("docker start pg", shell=True)\n', encoding="utf-8")
+    r = run_gate("check-no-docker.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "boot.py" in r.stdout, r.stdout
+
+
+def test_docker_gate_still_catches_an_unquoted_call_in_a_test_file(tmp_path):
+    """The exclusion is for a docker call inside a STRING. A test file that actually shells out —
+    the command not wrapped in quotes on that line — must still be caught, or the exemption would
+    make tests/ a blind spot rather than a fixture allowance."""
+    t = tmp_path / "tests"; t.mkdir()
+    (t / "test_live.sh").write_text('#!/bin/sh\ndocker start pg\n', encoding="utf-8")
+    r = run_gate("check-no-docker.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "test_live.sh" in r.stdout, r.stdout
+
+
+def test_docker_gate_is_green_on_the_real_repo():
+    r = run_gate("check-no-docker.mjs")
+    assert r.returncode == 0, r.stdout
