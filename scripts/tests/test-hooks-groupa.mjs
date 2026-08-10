@@ -399,6 +399,41 @@ function decisionFor2(command, env) {
   check('§9 rule: `git worktree add` after `&&` is still DENIED (segment split, not naive substring)', stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
 }
 
+// --- FALSE ALARMS found by replaying the REAL corpus (2026-08-10, Phase 3 Task 2) --------------
+// The harness replayed 6,384 real Bash commands through this LIVE rule. It fired 4 times: two were
+// genuine (a real `git worktree add`, a real `git checkout -b`) and two were prose ABOUT the rule,
+// sitting inside a heredoc and inside a quoted test fixture. A rule that blocks you from writing a
+// progress note that mentions it is L70 — a gate that stops healthy work — and the remedy already
+// existed in the tree: Phase 3 Task 1's `stripDataRegions`, applied to a sibling rule and not to
+// this one. Same shape as R-119a earlier the same day: the lesson landed in one file, not in five.
+// These two are FAITHFUL to the real firing commands, not paraphrases of them. A first attempt at
+// reproducing them passed immediately and would have let me declare the finding closed: my prose
+// lines began with "-", while the real ones begin with the word "git", which is exactly what the
+// segment splitter keys on. Reproduce the SHAPE, not the idea.
+{
+  const heredoc = 'cd /repo\ncat >> progress.md << \'EOF\'\n\nTask 3: complete — §9 main, no worktrees.\n'
+    + 'git GLOBAL OPTION defeated it. `git -C . checkout -b x`, `git --no-pager checkout -b x` and\n'
+    + 'the plain form all had to be covered.\nEOF\ngit add -- progress.md';
+  const { stdoutJson } = decisionFor(heredoc);
+  check('§9 rule: prose inside a heredoc, including backticked command examples, is not an invocation',
+    stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny',
+    `a progress note that mentions the rule was blocked by it: ${JSON.stringify(stdoutJson)}`);
+}
+{
+  const fixtureLoop = 'for cmd in "git worktree add ../wt main" "git checkout -b feature/x" "npm test && git checkout -b y"; do\n'
+    + '  echo "$cmd"\ndone';
+  const { stdoutJson } = decisionFor(fixtureLoop);
+  check('§9 rule: quoted fixture strings in a loop are data, not commands',
+    stdoutJson?.hookSpecificOutput?.permissionDecision !== 'deny',
+    `quoted test fixtures were treated as real invocations: ${JSON.stringify(stdoutJson)}`);
+}
+{
+  // The catch side must survive the fix — stripping data regions must not strip real commands.
+  const { stdoutJson } = decisionFor('git worktree add ../mk-side feature-branch');
+  check('§9 rule: a REAL worktree add is still DENIED after data-region stripping',
+    stdoutJson?.hookSpecificOutput?.permissionDecision === 'deny', `stdout=${JSON.stringify(stdoutJson)}`);
+}
+
 // --- RED #2, the one that matters more: innocent lookalikes MUST pass ------------------------
 for (const innocent of [
   'git checkout -- file.txt',

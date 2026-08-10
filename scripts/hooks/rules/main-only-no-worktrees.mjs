@@ -57,7 +57,7 @@
 export const TOOLS = ['Bash'];
 export const RULE_IDS = ['9'];
 
-import { segments, tokenize } from '../lib/bash-segments.mjs';
+import { segments, tokenize, stripDataRegions } from '../lib/bash-segments.mjs';
 
 // Global options that take their value as a SEPARATE following token (not inline `--opt=value`,
 // which is already a single self-contained token and needs no extra skip).
@@ -88,7 +88,14 @@ export function evaluate(input) {
     return { decision: 'allow', reason: 'no command text to inspect' };
   }
 
-  for (const seg of segments(command)) {
+  // Data regions out before segmenting. Replaying 6,384 REAL Bash commands through this live rule
+  // (2026-08-10) fired 4 times: two genuine, and the rest text that merely MENTIONS the rule —
+  // quoted fixture strings in a `for cmd in "git checkout -b …"` loop, and prose whose sentence
+  // happens to begin with the word "git". Blocking someone from writing a note about the rule is
+  // L70, a gate that stops healthy work. `stripDataRegions` already existed for exactly this and
+  // had been applied to a sibling rule and not to this one — the same one-file-not-five shape as
+  // R-119a. The catch side is unchanged: a real invocation is not inside a quote or a heredoc.
+  for (const seg of segments(stripDataRegions(command))) {
     const tokens = tokenize(seg);
     if (tokens.length === 0 || tokens[0] !== 'git') continue;
 
