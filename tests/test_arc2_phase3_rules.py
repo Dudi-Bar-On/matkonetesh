@@ -97,3 +97,47 @@ def test_playwright_test_tokens():
     assert full == ["--reporter=line"]     # cut at the redirect/pipe boundary
     assert node_eval("L.playwrightTestTokens(L.tokenize('npm test'))") == []
     assert node_eval("L.playwrightTestTokens(L.tokenize('git commit -m x'))") is None
+
+
+# ---------------------------------------------------------------- Task 2: corpus replay harness
+
+@pytest.fixture(scope="module")
+def corpus_dump(tmp_path_factory):
+    """The REAL corpus (spec §3.1: false alarms measured against real history, never invented
+    input), dumped once per test module via the measurement script's own extractor."""
+    dump = tmp_path_factory.mktemp("corpus") / "commands.jsonl"
+    r = subprocess.run(["python", str(ROOT / "scripts" / "tests" / "measure-bash-corpus.py"),
+                        "--dump", str(dump)],
+                       capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert dump.exists() and dump.stat().st_size > 0, \
+        "corpus dump is EMPTY — every replay test would examine NOTHING"
+    return dump
+
+
+def corpus_commands(dump):
+    """Iterates the real commands in a dump file (for tests that scan the corpus directly)."""
+    with dump.open(encoding="utf-8") as fh:
+        for line in fh:
+            if line.strip():
+                yield json.loads(line)["command"]
+
+
+def replay(rule_file, dump, env_extra=None):
+    """Replays every corpus command through ONE rule module's evaluate() in a single node
+    process (6,338 CLI spawns would take ~8 minutes; one import + a loop takes seconds)."""
+    r = subprocess.run(["node", str(ROOT / "scripts" / "tests" / "replay-bash-corpus.mjs"),
+                        str(RULES / rule_file), str(dump)],
+                       capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT),
+                       env={**os.environ, **(env_extra or {})})
+    assert r.returncode == 0, r.stderr
+    out = json.loads(r.stdout)
+    assert out["total"] > 5000, f"replay saw only {out['total']} commands — corpus incomplete"
+    return out
+
+
+def test_replay_harness_runs_an_existing_rule(corpus_dump):
+    """Harness self-test against a rule that is already live and known-quiet on plain commands:
+    main-only-no-worktrees blocks only worktree/branch operations."""
+    out = replay("main-only-no-worktrees.mjs", corpus_dump)
+    assert out["total"] > 5000

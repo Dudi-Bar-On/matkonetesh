@@ -9,6 +9,7 @@ import io
 import json
 import pathlib
 import re
+import sys
 
 TRANSCRIPTS = pathlib.Path.home() / ".claude" / "projects" / "C--Users-dudib-source-repos-matconetesh"
 
@@ -62,6 +63,18 @@ def commands():
                         c = (b.get("input") or {}).get("command")
                         if isinstance(c, str):
                             yield c
+
+# --dump <out.jsonl>: write every real Bash command as one JSON line, for the Phase-3 replay
+# harness (scripts/tests/replay-bash-corpus.mjs). Same extractor, zero duplication.
+if len(sys.argv) == 3 and sys.argv[1] == "--dump":
+    out_path = pathlib.Path(sys.argv[2])
+    n = 0
+    with out_path.open("w", encoding="utf-8") as fh:
+        for cmd in commands():
+            fh.write(json.dumps({"command": cmd}) + "\n")
+            n += 1
+    print(f"dumped {n} commands to {out_path}")
+    sys.exit(0)
 
 total = 0
 raw = {k: 0 for k in PATTERNS}
