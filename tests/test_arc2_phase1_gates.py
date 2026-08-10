@@ -236,6 +236,50 @@ def test_utf8_gate_does_not_fire_on_the_real_scripts():
     assert r.returncode == 0, r.stdout
 
 
+def test_utf8_gate_catches_a_child_process_decoded_with_no_encoding(tmp_path):
+    """R-121, the reading direction. `text=True` with no `encoding=` decodes with the ambient
+    default, which -X utf8 flips to UTF-8 — so a Windows tool answering in cp1252 raises
+    UnicodeDecodeError. It hid in check-hnsw-health.py's failure-only diagnostic path and made a
+    SUCCESSFUL index repair report RESULT=fail three times."""
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "probe.py").write_text(
+        'import subprocess\n'
+        'out = subprocess.run(["tasklist"], capture_output=True, text=True).stdout\n',
+        encoding="utf-8")
+    r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "probe.py" in r.stdout, r.stdout
+
+
+def test_utf8_gate_sees_past_a_nested_paren_in_the_argument_list(tmp_path):
+    """The first version of this check used a lazy regex and stopped at the first `)`. The real
+    call it had to catch reads `subprocess.run([sys.executable, str(ROOT / "x.py")], text=True)` —
+    the inner `)` of str(...) ended the match before `text=True` was ever seen, so the gate passed
+    while the defect stood. Same shape as the rule regex that once could not match its own example.
+    A paren-balanced scan is why this passes; a regex is why it did not."""
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "nested.py").write_text(
+        'import subprocess, sys\n'
+        'from pathlib import Path\n'
+        'ROOT = Path(".")\n'
+        'r = subprocess.run([sys.executable, str(ROOT / "child.py")],\n'
+        '                   capture_output=True, text=True, timeout=10)\n',
+        encoding="utf-8")
+    r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1 and "nested.py" in r.stdout, (
+        "the gate cannot see a text=True that sits after a nested paren:\n" + r.stdout)
+
+
+def test_utf8_gate_accepts_a_child_process_read_with_an_explicit_encoding(tmp_path):
+    s = tmp_path / "scripts"; s.mkdir()
+    (s / "ok_probe.py").write_text(
+        'import subprocess\n'
+        'out = subprocess.run(["tasklist"], capture_output=True, text=True,\n'
+        '                     encoding="utf-8", errors="replace").stdout\n',
+        encoding="utf-8")
+    r = run_gate("check-python-utf8.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+
 def test_python_invocation_gate_ignores_prose_and_log_messages(tmp_path):
     """Pins the 2026-08-09 scoping fix: the gate matches command POSITIONS (webServer.command,
     non-Linux workflow run: steps, package.json scripts), not the word `python` appearing anywhere

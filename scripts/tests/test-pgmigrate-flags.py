@@ -11,7 +11,7 @@ ROOT = Path(__file__).resolve().parent.parent.parent
 def test_migrations_dir_flag_is_recognised():
     r = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "pgmigrate.py"), "--help"],
-        capture_output=True, text=True,
+        capture_output=True, text=True, encoding="utf-8", errors="replace",
     )
     assert "--migrations-dir" in r.stdout, f"--migrations-dir not in help output:\n{r.stdout}"
     assert "--env-file" in r.stdout, f"--env-file not in help output:\n{r.stdout}"

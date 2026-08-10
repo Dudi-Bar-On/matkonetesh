@@ -74,7 +74,7 @@ def _trigger_graph_backup(written_total: int) -> None:
         script = ROOT / "scripts" / "backup-stores.ps1"
         result = subprocess.run(
             ["powershell.exe", "-NoProfile", "-File", str(script), "-GraphOnly"],
-            capture_output=True, text=True, timeout=180,
+            capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=180,
         )
         tail = (result.stdout or result.stderr or "").strip().splitlines()[-1:] or ["(no output)"]
         if result.returncode == 0:

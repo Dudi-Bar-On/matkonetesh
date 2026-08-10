@@ -109,6 +109,57 @@ function callStream(kind, arg) {
   return /file\s*=\s*(sys\.)?stderr\b/.test(arg) ? 'stderr' : 'stdout'; // print(...) default: stdout
 }
 
+// L74, the READING direction — added 2026-08-10 after R-121.
+//
+// The gate above covers writing: a script that prints non-ASCII must declare its stdout encoding.
+// It said nothing about DECODING a child process's output, and that half cost us three false
+// alarms. `subprocess.run(..., text=True)` with no `encoding=` decodes using the ambient default,
+// which `-X utf8` (mandatory here, per L74 itself) flips to UTF-8 — so a Windows tool answering in
+// cp1252/cp437 raises UnicodeDecodeError. check-hnsw-health.py read `tasklist` that way, but ONLY
+// in its failure path, where it collects a diagnostic snapshot. So: index breaks -> health fails ->
+// snapshot -> crash -> non-zero exit -> repair-hnsw-index.py reports RESULT=fail on a repair that
+// actually SUCCEEDED, and recommends hours of re-ingestion. Three times, each time after the index
+// was already fixed. The instruction that protects us broke the tool that verifies us.
+// Paren-BALANCED, deliberately not a regex. The first version here was
+// /subprocess\.(?:run|...)\s*\(([\s\S]{0,400}?)\)/ and it silently missed the second of the two
+// real call sites, because that one contains `str(ROOT / "scripts" / "...")` and the lazy match
+// stopped at the inner `)` — before ever reaching `text=True`. That is the same defect this
+// project already paid for once (a rule regex that could not cross a `)` and so never matched its
+// own example). A scanner that counts parens cannot have it.
+const CALL_START_RE = /subprocess\.(?:run|check_output|Popen)\s*\(/g;
+function callArgs(text, openIdx) {
+  let depth = 0;
+  for (let i = openIdx; i < text.length; i += 1) {
+    const c = text[i];
+    if (c === '(') depth += 1;
+    else if (c === ')') {
+      depth -= 1;
+      if (depth === 0) return text.slice(openIdx + 1, i);
+    }
+  }
+  return text.slice(openIdx + 1);   // unbalanced source: scan what there is, never throw
+}
+function decodesWithoutEncoding(args) {
+  const textMode = /\btext\s*=\s*True\b/.test(args) || /\buniversal_newlines\s*=\s*True\b/.test(args);
+  return textMode && !/\bencoding\s*=/.test(args);
+}
+
+const decodeFindings = [];
+for (const f of files) {
+  let text;
+  try { text = readFileSync(f, 'utf8'); } catch { continue; }
+  CALL_START_RE.lastIndex = 0;
+  let m;
+  let n = 0;
+  while ((m = CALL_START_RE.exec(text)) !== null) {
+    const open = m.index + m[0].length - 1;   // index of the '(' itself
+    if (decodesWithoutEncoding(callArgs(text, open))) n += 1;
+  }
+  if (n > 0) {
+    decodeFindings.push(`${relative(ROOT, f).split(sep).join('/')} (${n} call(s))`);
+  }
+}
+
 const findings = [];
 for (const f of files) {
   let text;
@@ -126,8 +177,21 @@ for (const f of files) {
   findings.push(`${relative(ROOT, f).split(sep).join('/')} (${undeclared.join(', ')})`);
 }
 
+if (decodeFindings.length > 0) {
+  console.log(
+    `FAIL: ${decodeFindings.length} script(s) decode a child process without naming an encoding:\n` +
+    decodeFindings.map((f) => `  ${f}`).join('\n') +
+    `\n  \`text=True\` with no \`encoding=\` decodes with the ambient default, which -X utf8 flips to\n` +
+    `  UTF-8 — so any Windows tool answering in cp1252/cp437 raises UnicodeDecodeError. Pass:\n` +
+    `      encoding="utf-8", errors="replace"\n` +
+    `  This is R-121: it hid in a failure-only diagnostic path and made a successful index repair\n` +
+    `  report RESULT=fail three times, each recommending hours of re-ingestion nobody needed.`);
+  process.exit(1);
+}
+
 if (findings.length === 0) {
-  console.log('PYTHON UTF-8: every non-ASCII-printing script under scripts/ declares its encoding.');
+  console.log('PYTHON UTF-8: every non-ASCII-printing script under scripts/ declares its encoding, '
+    + 'and every child-process read names one.');
   process.exit(0);
 }
 console.log(

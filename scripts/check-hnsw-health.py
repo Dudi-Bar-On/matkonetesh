@@ -93,7 +93,7 @@ def _capture_forensics(failures: list[str]) -> None:
 
         try:
             out = subprocess.run(
-                ["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, timeout=15
+                ["tasklist", "/FO", "CSV", "/NH"], capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=15
             ).stdout
             names = [ln.split('","')[0].strip('"').lower() for ln in out.splitlines() if ln.startswith('"')]
             snapshot["node_processes"] = sum(1 for n in names if n.startswith("node"))

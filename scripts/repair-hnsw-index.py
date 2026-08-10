@@ -96,7 +96,7 @@ def main() -> int:
 
     probe = subprocess.run(
         [sys.executable, str(ROOT / "scripts" / "check-hnsw-health.py")],
-        capture_output=True, text=True, timeout=120,
+        capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=120,
     )
     healthy = probe.returncode == 0 and "RESULT=ok" in (probe.stdout or "")
     if not healthy:
