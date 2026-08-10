@@ -179,3 +179,58 @@ def test_L10_corpus_replay(corpus_dump):
         assert "--retries" in f["reason"] or "--workers" in f["reason"], f
     assert not any("no --retries, no --workers=1" in f["command"] for f in out["fires"])
     print(f"\nL10 corpus fires: {out['fireCount']} / {out['total']} (inspect samples in report)")
+
+
+# ---------------------------------------------------------------- Task 4: L32 + L39
+
+def test_L32_warns_on_exit_code_read_after_a_filter_pipe(tmp_path):
+    # Verbatim survivor shape from the corpus (wrangler deploy | tail; ec=$?).
+    out = run_pretooluse(bash_payload("npx wrangler deploy 2>&1 | tail -12; ec=$?; echo done"),
+                         tmp_path=tmp_path)
+    assert decision_of(out) == "warn", out
+    assert "L32" in reason_of(out) and "$?" in reason_of(out)
+
+
+def test_L32_stays_quiet_on_the_correct_pattern(tmp_path):
+    # The rule's own alternative: capture immediately, no pipe in between.
+    out = run_pretooluse(bash_payload(
+        "npx wrangler deploy > /tmp/deploy.log 2>&1; ec=$?; tail -12 /tmp/deploy.log; echo $ec"),
+        tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_L32_corpus_replay(corpus_dump):
+    """~15 in-command hits in history are the GENUINE mistake (made twice more after writing the
+    rule down). True positives. Bar: every fire names L32 and warns, never blocks."""
+    out = replay("pipe-exit-code-read.mjs", corpus_dump)
+    for f in out["fires"]:
+        assert "L32" in f["reason"], f
+        assert f["decision"] == "warn", f
+    print(f"\nL32 corpus fires: {out['fireCount']} / {out['total']}")
+
+
+def test_L39_blocks_echoing_a_key_variable(tmp_path):
+    out = run_pretooluse(bash_payload('echo "GEMINI_API_KEY=$GEMINI_API_KEY"'), tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "L39" in reason_of(out)
+    out2 = run_pretooluse(bash_payload("printenv GEMINI_API_KEY"), tmp_path=tmp_path)
+    assert decision_of(out2) == "block", out2
+
+
+def test_L39_allows_key_shaped_prose_and_inert_singles(tmp_path):
+    # Corpus noise shapes: the word "token"/"KEY" in prose, grep for TOKEN, single-quoted $ (inert).
+    for cmd in ['echo "=== residual scan: the 10 token names across ALL Hebrew-source .py"',
+                "grep -E 'API_KEY|TOKEN' app.js | head -3",
+                "echo 'the literal string $GEMINI_API_KEY is never expanded here'"]:
+        out = run_pretooluse(bash_payload(cmd), tmp_path=tmp_path)
+        assert decision_of(out) == "allow", (cmd, out)
+
+
+def test_L39_corpus_replay(corpus_dump):
+    out = replay("key-echo-guard.mjs", corpus_dump)
+    for f in out["fires"]:
+        assert "L39" in f["reason"], f
+    # The measurement found at most ONE surviving candidate; more than a handful of fires means
+    # the pattern grew past its measured surface — stop and inspect (spec §6).
+    assert out["fireCount"] <= 5, out["fires"]
+    print(f"\nL39 corpus fires: {out['fireCount']} / {out['total']}")
