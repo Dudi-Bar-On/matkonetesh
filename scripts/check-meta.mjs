@@ -147,6 +147,7 @@ run('check-rules-mirror', 'check-rules-mirror (rules.sqlite checksum matches mk_
 // document and reported by name, because the verdict is the owner's and §10.24 forbids a block whose
 // only way through is a decision the author may not make.
 run('check-rules-classified', 'check-rules-classified (no rule sits in the corpus without a group)', 'check-rules-classified.mjs');
+run('check-rule-provenance', 'check-rule-provenance (the rule corpus has exactly one source — never the content plane)', 'check-rule-provenance.mjs');
 // Arc 2 Phase 1 (2026-08-09): the eleven ci-gate rules (DoD-11, L15, L24, L30, L43a, L53, L58, L59,
 // L61, L66, L74) built in Tasks 1-5, unit-tested in isolation but never invoked from the real entry
 // point until now — the exact INERT shape this arc exists to end (a `stop` rule that once loaded only
