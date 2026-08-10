@@ -17,6 +17,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import skip_only_if_unavailable
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -308,7 +310,9 @@ def test_C4_semantic_and_lexical_halves_agree_on_the_same_document(clean):
     try:
         semantic = retrieval.semantic_search("curing salt for smoked meat", filters={"namespace": NS}, limit=5)
     except Exception as exc:
-        pytest.skip(f"the local embedding model is unavailable ({type(exc).__name__})")
+        # R-119a: semantic_search is the function under test here. A bug in it must FAIL, not be
+        # reported as an absent embedding model.
+        skip_only_if_unavailable(exc, "the local embedding model")
     assert semantic and semantic[0]["source_path"] == path
     assert 0.0 <= semantic[0]["similarity"] <= 1.0
 

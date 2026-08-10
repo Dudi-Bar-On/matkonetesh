@@ -15,6 +15,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import skip_only_if_unavailable
+
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
@@ -199,7 +201,9 @@ def test_find_impact_runs_against_the_live_graph():
     try:
         rows = retrieval.find_impact("repo:__no_such_entity__", depth=2, limit=5)
     except Exception as exc:
-        pytest.skip(f"Neo4j is not reachable ({type(exc).__name__}) — start it with: Start-Service neo4j")
+        # R-119a: a real bug inside find_impact must not exit as "Neo4j is down". Positive marker
+        # only; everything else fails. Start Neo4j with: Start-Service neo4j
+        skip_only_if_unavailable(exc, "Neo4j")
     assert rows == []
 
 
@@ -210,7 +214,7 @@ def test_every_graph_query_is_logged(caplog):
         try:
             retrieval.find_impact("repo:__no_such_entity__", depth=1, limit=1)
         except Exception as exc:
-            pytest.skip(f"Neo4j is not reachable ({type(exc).__name__})")
+            skip_only_if_unavailable(exc, "Neo4j")   # R-119a
     # getMessage() applies the lazy %-args the way logging itself does. Doing it by hand here
     # raised TypeError on the params dict — the test failed while the log it was checking was
     # perfectly correct, which is the same "wrong half" mistake as the ::uuid[] teardown.
@@ -239,5 +243,8 @@ def test_semantic_search_runs_against_the_live_stack():
     try:
         rows = retrieval.semantic_search("nitrite curing salt", limit=3)
     except Exception as exc:
-        pytest.skip(f"the local embedding model is not reachable ({type(exc).__name__})")
+        # R-119a: semantic_search is the function under test. A fourth product-call wrap, found by
+        # the controller when the bidirectional baseline stayed green after the first three were
+        # repaired — the report had counted three.
+        skip_only_if_unavailable(exc, "the local embedding model")
     assert isinstance(rows, list) and len(rows) <= 3

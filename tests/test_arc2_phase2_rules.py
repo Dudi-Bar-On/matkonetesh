@@ -461,6 +461,12 @@ def test_honesty_rules_do_not_fire_on_the_real_test_tree(tmp_path):
     learn to ignore -- which is the same disease (SKIPPED standing in for FAILED) one level up."""
     # Declared debt, R-119a (owner decision pending: repair these six, or accept). Adding a file
     # here requires the owner's agreement -- it is not a place to quiet a new violation.
+    # R-119a, owner decision 10.8.26: repair the wraps around PRODUCT CALLS, keep the
+    # setup-helper wraps as declared debt. Four product-call wraps were repaired (the register
+    # said three; the fourth surfaced only because this baseline stayed green after the first
+    # three, which is the whole reason it checks both directions). What remains here are
+    # _require_pg / _require_stack / _require_model style helpers and one config-construction
+    # wrap whose product assertion sits OUTSIDE the try.
     KNOWN_L57_DEBT = {
         "test_acceptance.py", "test_acceptance_infra.py", "test_extract.py",
         "test_graph_schema.py", "test_retrieval.py", "test_worker.py",
