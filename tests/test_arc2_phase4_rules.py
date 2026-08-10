@@ -168,3 +168,46 @@ def test_dod3_false_alarm_green_claim_with_pasted_output(tmp_path):
 # in verify-before-success-claim.mjs's own header. Left for an explicit owner decision rather than
 # silently forcing a red test green or silently reinterpreting the brief's threshold (Waiver Gate,
 # CLAUDE.md §4). See task-2-report.md for the full 20-fire table.
+
+# ------------------------------------------------------- Task 3: 10.6 + H9 summary shape
+
+CLOSE_NO_SHAPE = "משימה 3 הושלמה. עברתי על הקבצים ותיקנתי את הבדיקות."
+CLOSE_WITH_PARTS = (
+    "משימה 3 הושלמה.\n**DONE** תוקנו הבדיקות (commit abc123).\n"
+    "**NEXT** משימה 4.\n**LEFT UNTIL THE GRAND FINAL** 12 סגורים / 31.")
+CLOSE_WITH_TABLE = (
+    "משימה 3 הושלמה.\n| # | שורה | תוכן |\n|---|---|---|\n"
+    "| 1 | מה היה | הבדיקות אדומות |\n| 2 | מה נעשה | תוקן |\n"
+    "| 3 | מה נשאר | — |\n| 4 | איפה אנחנו | Phase 4, 3/9 |\n| 5 | הבא בתור | משימה 4 |")
+ORDINARY_REPLY = "אני קורא עכשיו את claim-scan.mjs כדי להבין את החוזה של lastAssistantText."
+
+
+def test_summary_shape_warns_on_bare_task_close(tmp_path):
+    out = eval_stop_rule("task-close-summary-shape.mjs", CLOSE_NO_SHAPE, tmp_path)
+    assert out["decision"] == "warn"
+    assert "10.6" in out["reason"] and "H9" in out["reason"]
+
+
+def test_summary_shape_silent_with_three_parts(tmp_path):
+    assert eval_stop_rule("task-close-summary-shape.mjs", CLOSE_WITH_PARTS, tmp_path)["decision"] == "allow"
+
+
+def test_summary_shape_silent_with_h9_table(tmp_path):
+    assert eval_stop_rule("task-close-summary-shape.mjs", CLOSE_WITH_TABLE, tmp_path)["decision"] == "allow"
+
+
+def test_summary_shape_silent_on_ordinary_reply(tmp_path):
+    assert eval_stop_rule("task-close-summary-shape.mjs", ORDINARY_REPLY, tmp_path)["decision"] == "allow"
+
+
+def test_summary_shape_silent_on_quoted_close(tmp_path):
+    # The rule must not fire on prose QUOTING a task-close (this arc's dominant noise class).
+    text = 'ה-plan אומר: "משימה 3 הושלמה" — אבל אני עדיין באמצע.'
+    assert eval_stop_rule("task-close-summary-shape.mjs", text, tmp_path)["decision"] == "allow"
+
+
+def test_summary_shape_corpus_replay(corpus_dump):
+    out = replay("task-close-summary-shape.mjs", corpus_dump)
+    # warn-severity: still zero fires on legitimate work. A fire on a REAL past task-close that
+    # shipped without the shape is the rule working — classify every sampled fire.
+    assert out["fireCount"] <= 150, f"trigger too loose: {out['fireCount']}"
