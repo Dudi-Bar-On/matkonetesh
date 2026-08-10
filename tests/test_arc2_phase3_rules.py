@@ -234,3 +234,57 @@ def test_L39_corpus_replay(corpus_dump):
     # the pattern grew past its measured surface — stop and inspect (spec §6).
     assert out["fireCount"] <= 5, out["fires"]
     print(f"\nL39 corpus fires: {out['fireCount']} / {out['total']}")
+
+
+# --- L32, coverage gap found by the controller after Task 4 landed ----------------------------
+#
+# The shipped rule caught `cmd | tail; ec=$?` but deliberately not `cmd | tail; echo "EXIT=$?"`,
+# and its own comment justified that with "the corpus's real mistakes all assign unquoted (ec=$?)".
+# Measured against the 6,448-command corpus, that claim is inverted: the quoted form appears 52
+# times and the unquoted form 7. The rule was catching 12% of the real defect.
+#
+# The cause is mechanical and is the same one the measurement doc's CORRECTION already recorded for
+# L39 and L51a: stripDataRegions removes quoted strings, so a `$?` inside `echo "…"` is gone before
+# the check ever runs. The remedy is the per-rule stripping profile, not a wider pattern.
+
+def test_L32_catches_the_quoted_echo_form_which_is_the_common_one(tmp_path):
+    """Verbatim shape from the corpus (52 occurrences), not an invented one."""
+    out = run_pretooluse(
+        {"session_id": "s-l32q", "hook_event_name": "PreToolUse", "tool_name": "Bash",
+         "cwd": str(ROOT),
+         "tool_input": {"command": 'python build.py 2>&1 | tail -3; echo "BUILD_EXIT=$?"'}},
+        tmp_path=tmp_path)
+    assert decision_of(out) == "warn", (
+        "the quoted form is 52 of the corpus's 59 real instances and must be caught: " + str(out))
+
+
+def test_L32_still_catches_the_unquoted_form(tmp_path):
+    out = run_pretooluse(
+        {"session_id": "s-l32u", "hook_event_name": "PreToolUse", "tool_name": "Bash",
+         "cwd": str(ROOT),
+         "tool_input": {"command": 'cd worker && npx wrangler deploy 2>&1 | tail -12; ec=$?'}},
+        tmp_path=tmp_path)
+    assert decision_of(out) == "warn", out
+
+
+def test_L32_does_not_fire_when_the_output_was_redirected_not_piped(tmp_path):
+    """The shape the rule's own advice recommends must never be warned about — otherwise the fix
+    the message names is itself flagged, which is the fastest way to get a rule disabled."""
+    out = run_pretooluse(
+        {"session_id": "s-l32r", "hook_event_name": "PreToolUse", "tool_name": "Bash",
+         "cwd": str(ROOT),
+         "tool_input": {"command": 'npx playwright test > /tmp/g8.log 2>&1; ec=$?; tail -5 /tmp/g8.log'}},
+        tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_L32_does_not_fire_when_the_exit_code_belongs_to_a_later_unpiped_command(tmp_path):
+    """12 of the 15 my own measurement flagged were THIS shape — a pipe earlier in the line and an
+    unrelated unpiped command right before the `$?`. The rule was right to reject them; pinning it
+    so a fix for the quoted form does not widen into them."""
+    out = run_pretooluse(
+        {"session_id": "s-l32l", "hook_event_name": "PreToolUse", "tool_name": "Bash",
+         "cwd": str(ROOT),
+         "tool_input": {"command": 'git status -sb | head -3; node scripts/check-meta.mjs; ec=$?'}},
+        tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
