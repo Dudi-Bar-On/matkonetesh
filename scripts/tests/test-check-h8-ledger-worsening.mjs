@@ -7,7 +7,7 @@ import { spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync, appendFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { tempDir, runNode, assertExit, summary } from './test-helpers.mjs';
+import { tempDir, runNode, assertExit, summary, gitEnv } from './test-helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCRIPT = join(ROOT, 'scripts', 'check-h8-ledger.mjs');
@@ -43,7 +43,9 @@ const BASELINE_5A = `
 `;
 
 function git(dir, args) {
-  const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8' });
+  // GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE leak from the parent process (e.g. a pre-commit hook) into
+  // this child, which would make an "isolated" tmp repo silently operate on the real one. Strip them.
+  const r = spawnSync('git', args, { cwd: dir, encoding: 'utf8', env: gitEnv() });
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
   return r.stdout;
 }

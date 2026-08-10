@@ -35,6 +35,13 @@ function tempDir(prefix) {
   return mkdtempSync(join(tmpdir(), prefix));
 }
 
+// git leaks GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE into child processes. Inside a pre-commit hook
+// that means an "isolated" tmp repo silently operates on the REAL one. Strip every GIT_* variable so
+// the child starts from nothing.
+function gitEnv() {
+  return Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+}
+
 function readJsonl(path) {
   if (!existsSync(path)) return [];
   return readFileSync(path, 'utf8')
@@ -1690,13 +1697,13 @@ export function observe(input) {
   // LESSONS_GATE_GIT_CWD so the real repo's own discipline.md is never touched.
   function makeTempRepo(discDocInitialText) {
     const repoDir = tempDir('hooks-groupb-lessons-repo-');
-    execFileSync('git', ['init', '-q'], { cwd: repoDir });
-    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoDir });
-    execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoDir });
+    execFileSync('git', ['init', '-q'], { cwd: repoDir, env: gitEnv() });
+    execFileSync('git', ['config', 'user.email', 'test@example.com'], { cwd: repoDir, env: gitEnv() });
+    execFileSync('git', ['config', 'user.name', 'Test'], { cwd: repoDir, env: gitEnv() });
     const docPath = join(repoDir, 'discipline.md');
     writeFileSync(docPath, discDocInitialText, 'utf8');
-    execFileSync('git', ['add', '.'], { cwd: repoDir });
-    execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: repoDir });
+    execFileSync('git', ['add', '.'], { cwd: repoDir, env: gitEnv() });
+    execFileSync('git', ['commit', '-q', '-m', 'init'], { cwd: repoDir, env: gitEnv() });
     return { repoDir, docPath };
   }
 
@@ -1704,6 +1711,15 @@ export function observe(input) {
     const prevState = process.env.ENFORCEMENT_STATE_PATH;
     const prevCwd = process.env.LESSONS_GATE_GIT_CWD;
     const prevDoc = process.env.DISCIPLINE;
+    // RULE6.evaluate() runs in-process and shells out to `git diff` with no env override of its own
+    // (scripts/hooks/rules/lessons-before-commit.mjs's readDisciplineDiff), so it inherits
+    // process.env directly — a subprocess `env:` option can't intercept that. Strip GIT_* here, on
+    // THIS process, for the duration of the call, so an inherited GIT_DIR can't make the tmp repo's
+    // diff silently read the real repo's history instead.
+    const savedGitVars = {};
+    for (const k of Object.keys(process.env)) {
+      if (k.startsWith('GIT_')) { savedGitVars[k] = process.env[k]; delete process.env[k]; }
+    }
     process.env.ENFORCEMENT_STATE_PATH = statePath;
     process.env.LESSONS_GATE_GIT_CWD = gitCwd;
     process.env.DISCIPLINE = disciplinePath;
@@ -1713,6 +1729,7 @@ export function observe(input) {
       if (prevState === undefined) delete process.env.ENFORCEMENT_STATE_PATH; else process.env.ENFORCEMENT_STATE_PATH = prevState;
       if (prevCwd === undefined) delete process.env.LESSONS_GATE_GIT_CWD; else process.env.LESSONS_GATE_GIT_CWD = prevCwd;
       if (prevDoc === undefined) delete process.env.DISCIPLINE; else process.env.DISCIPLINE = prevDoc;
+      for (const [k, v] of Object.entries(savedGitVars)) process.env[k] = v;
     }
   }
 

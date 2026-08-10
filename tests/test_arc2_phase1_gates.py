@@ -1,10 +1,18 @@
-import subprocess, sys
+import os, subprocess, sys
 from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 
+def git_env():
+    """git leaks GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE into child processes. Inside a
+    pre-commit hook that means an 'isolated' tmp repo silently operates on the REAL one —
+    measured: 908 tracked files where the test expected 0. Strip every GIT_* variable so the
+    child (git itself, or a node gate script that shells out to git) starts from nothing."""
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
 def run_gate(script, *args):
     return subprocess.run(["node", str(ROOT / "scripts" / script), *args],
-                          capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+                          capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT),
+                          env=git_env())
 
 def test_control_bytes_gate_catches_a_planted_byte(tmp_path):
     (tmp_path / "app.js").write_bytes(b"const x = /word\x08/;\n")
@@ -35,9 +43,9 @@ def test_control_bytes_gate_ignores_an_untracked_file(tmp_path):
     """The rule says "a tracked source file". Scratch files are not the gate's business, and a
     gate that fires on files git does not track will be routed around rather than obeyed."""
     # a real git repo so `git ls-files` is meaningful
-    subprocess.run(["git", "init", "-q"], cwd=str(tmp_path), check=True)
+    subprocess.run(["git", "init", "-q"], cwd=str(tmp_path), check=True, env=git_env())
     (tmp_path / "kept.js").write_text("const ok = 1;\n", encoding="utf-8")
-    subprocess.run(["git", "add", "kept.js"], cwd=str(tmp_path), check=True)
+    subprocess.run(["git", "add", "kept.js"], cwd=str(tmp_path), check=True, env=git_env())
     (tmp_path / "scratch.js").write_bytes(b"const bad = '\x00';\n")   # never added
     r = run_gate("check-control-bytes.mjs", "--root", str(tmp_path))
     assert r.returncode == 0, r.stdout
@@ -45,13 +53,31 @@ def test_control_bytes_gate_ignores_an_untracked_file(tmp_path):
 def test_control_bytes_gate_does_not_report_a_pass_when_it_scanned_nothing(tmp_path):
     """A gate that looked at zero files has not decided anything. Printing a clean verdict there is
     how an inert gate looks from the outside — green forever, for the wrong reason."""
-    subprocess.run(["git", "init", "-q"], cwd=str(tmp_path), check=True)
+    subprocess.run(["git", "init", "-q"], cwd=str(tmp_path), check=True, env=git_env())
     (tmp_path / "notes.rst").write_text("no scannable extension here\n", encoding="utf-8")
-    subprocess.run(["git", "add", "notes.rst"], cwd=str(tmp_path), check=True)
+    subprocess.run(["git", "add", "notes.rst"], cwd=str(tmp_path), check=True, env=git_env())
     r = run_gate("check-control-bytes.mjs", "--root", str(tmp_path))
     assert r.returncode == 0, r.stdout
     assert "no verdict" in r.stdout.lower(), r.stdout
     assert "none in" not in r.stdout, "it must not read as a clean verdict"
+
+
+def test_git_env_keeps_a_tmp_repo_isolated_even_when_GIT_DIR_points_at_the_real_repo(tmp_path, monkeypatch):
+    """Pins the protection itself. Simulates the pre-commit hook's environment by injecting GIT_DIR
+    pointed at this real repo's .git, then proves a tmp repo built entirely through git_env() still
+    sees only its own file — never the real repo's hundreds of tracked files. This is the test that
+    keeps the defect (measured: 908 files where 0 were expected) from coming back the next time
+    someone adds a temp-repo test without going through git_env()."""
+    monkeypatch.setenv("GIT_DIR", str(ROOT / ".git"))
+    env = git_env()
+    assert not any(k.startswith("GIT_") for k in env), "git_env() must strip every GIT_* variable"
+    subprocess.run(["git", "init", "-q"], cwd=str(tmp_path), check=True, env=env)
+    (tmp_path / "only.txt").write_text("x\n", encoding="utf-8")
+    subprocess.run(["git", "add", "only.txt"], cwd=str(tmp_path), check=True, env=env)
+    r = subprocess.run(["git", "ls-files"], cwd=str(tmp_path), capture_output=True, text=True,
+                       encoding="utf-8", check=True, env=env)
+    files = [f for f in r.stdout.splitlines() if f]
+    assert files == ["only.txt"], f"tmp repo leaked into the real repo: saw {len(files)} files, first: {files[:3]}"
 
 
 def test_wait_gate_catches_waitForTimeout(tmp_path):

@@ -2341,3 +2341,26 @@ claims to bring.
 
 **The judged half:** every deliberate exception carries all four parts — declared separately, tested to be in force, tested to be still needed, and its cost left visible. And "I tested it and nothing changed" is evidence only about the axis you tested: before concluding a version brings nothing, read what it claims to bring.
 
+**No-lesson declaration (2026-08-10):** git-env-leak test-infra fix (arc2 phase2, out-of-band task) —
+no new lesson recorded here as a numbered `L<n>`. The dispatching agent's own assessment is that this
+IS lesson-worthy (a test whose isolation silently evaporates is the same family as "a check that cannot
+fail" — L58/L61's pattern, one level down: not a gate with a dead condition, but a *fixture* with a dead
+guarantee), but a new numbered lesson needs an owner-approved classification rather than a subagent's
+own judgment mid-task. Filed as a no-lesson declaration per the escape hatch, with the recommendation
+surfaced explicitly in this task's report
+(`.superpowers/sdd/2026-08-10-arc2-phase2-edit-write/git-env-leak-fix-report.md`) for the owner to
+promote to `L<n>` if agreed. The defect itself: `git init`/`git add`/`git commit`/`git diff`/`git
+ls-files` inside a `tmp_path` "isolated" repo inherit `GIT_DIR`/`GIT_INDEX_FILE`/`GIT_WORK_TREE` from
+the parent process; under the pre-commit hook that makes the tmp repo silently operate on the REAL
+repo's index and history instead (measured twice: 908 files where 0 were expected in
+`test_control_bytes_gate_does_not_report_a_pass_when_it_scanned_nothing`, and a real commit — since
+reverted — landing in this repo's own history during this task's own red/green reproduction, the
+sharpest possible demonstration of the defect's severity). Fixed at the class level: a `git_env()` /
+`gitEnv()` helper stripping every `GIT_*` variable, added to and used by all five call sites that build
+a git repo in a temp directory across `tests/` and `scripts/tests/`, plus one in-process case
+(`scripts/tests/test-hooks-groupb.mjs`'s `withRuleEnv`, where the rule under test shells out to `git`
+with no `env:` override of its own, so the env must be stripped on the test process itself for the
+duration of the call). A new pinning test
+(`test_git_env_keeps_a_tmp_repo_isolated_even_when_GIT_DIR_points_at_the_real_repo`) proves the guard
+holds even with `GIT_DIR` deliberately pointed at this real repo.
+

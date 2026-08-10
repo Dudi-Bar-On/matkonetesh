@@ -25,10 +25,18 @@ export function assertExit(label, result, expectedCode) {
   return true;
 }
 
+// git leaks GIT_DIR / GIT_INDEX_FILE / GIT_WORK_TREE into child processes. Inside a pre-commit hook
+// that means an "isolated" tmp repo silently operates on the REAL one — measured: hundreds of real
+// files where a test expected 0 or 1. Strip every GIT_* variable so the child (git itself, or a node
+// gate script under test that shells out to git) starts from nothing.
+export function gitEnv() {
+  return Object.fromEntries(Object.entries(process.env).filter(([k]) => !k.startsWith('GIT_')));
+}
+
 export function runNode(scriptPath, args, env) {
   return spawnSync(process.execPath, [scriptPath, ...args], {
     encoding: 'utf8',
-    env: { ...process.env, ...env },
+    env: { ...gitEnv(), ...env },
   });
 }
 
@@ -49,7 +57,7 @@ export function setMtime(path, isoDate) {
 }
 
 function git(cwd, args) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8' });
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: gitEnv() });
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
   return r.stdout;
 }
@@ -75,7 +83,7 @@ export function makeGitRepo(commits) {
       GIT_COMMITTER_NAME: 'Gate Test',
       GIT_COMMITTER_EMAIL: 'test@example.com',
     };
-    const r = spawnSync('git', ['commit', '-q', '--no-gpg-sign', '-m', c.body ?? c.subject], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...env } });
+    const r = spawnSync('git', ['commit', '-q', '--no-gpg-sign', '-m', c.body ?? c.subject], { cwd: dir, encoding: 'utf8', env: { ...gitEnv(), ...env } });
     if (r.status !== 0) throw new Error(`git commit failed: ${r.stderr}`);
   }
   return dir;
@@ -96,7 +104,7 @@ export function gitCommit(dir, subject, body, date) {
     GIT_COMMITTER_NAME: 'Gate Test', GIT_COMMITTER_EMAIL: 'test@example.com',
   };
   const msg = body ? `${subject}\n\n${body}` : subject;
-  const r = spawnSync('git', ['commit', '-q', '--no-gpg-sign', '-m', msg], { cwd: dir, encoding: 'utf8', env: { ...process.env, ...env } });
+  const r = spawnSync('git', ['commit', '-q', '--no-gpg-sign', '-m', msg], { cwd: dir, encoding: 'utf8', env: { ...gitEnv(), ...env } });
   if (r.status !== 0) throw new Error(`git commit failed: ${r.stderr}`);
 }
 

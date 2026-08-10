@@ -4,13 +4,15 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 import { writeFileSync, mkdirSync } from 'node:fs';
-import { makeGitRepo, writeFile, gitCommit, runNode, assertExit, summary } from './test-helpers.mjs';
+import { makeGitRepo, writeFile, gitCommit, runNode, assertExit, summary, gitEnv } from './test-helpers.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const SCRIPT = join(ROOT, 'scripts', 'check-release.mjs');
 
 function git(cwd, args, env) {
-  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...process.env, ...env } });
+  // GIT_DIR/GIT_INDEX_FILE/GIT_WORK_TREE leak from the parent process (e.g. a pre-commit hook) into
+  // this child, which would make an "isolated" tmp repo silently operate on the real one. Strip them.
+  const r = spawnSync('git', args, { cwd, encoding: 'utf8', env: { ...gitEnv(), ...env } });
   if (r.status !== 0) throw new Error(`git ${args.join(' ')} failed: ${r.stderr}`);
   return r.stdout;
 }
