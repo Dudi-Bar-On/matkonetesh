@@ -2364,3 +2364,17 @@ duration of the call). A new pinning test
 (`test_git_env_keeps_a_tmp_repo_isolated_even_when_GIT_DIR_points_at_the_real_repo`) proves the guard
 holds even with `GIT_DIR` deliberately pointed at this real repo.
 
+**No-lesson declaration (2026-08-10):** arc2 phase2 task 4 (`one-pipeline.mjs` — rules `12.1` + `2`,
+and the `check-plan-complete.mjs` refactor) — no new numbered lesson. This task's own real-tree scan
+(the brief's third, unmeasured item) found that 11 of 34 tracked plans under `docs/superpowers/plans/`
+already fail the pre-existing `check-plan-complete.mjs` CLI gate (exit 1), unrelated to this task —
+they predate or otherwise bypass a gate that has existed since L27. That is a real, reportable finding
+(see task-4-report.md), but it is a coverage gap in an EXISTING gate, not a new failure mode this task
+discovered the shape of — the same family L27 already names, not a new one. Also found and fixed
+in-flight, before it shipped: the 12.1 `docs/vendor/**` exemption as literally specified in the brief
+used a substring test (`np.includes('/docs/vendor/')`) that silently mis-scopes on a bare relative
+path (no leading slash) — corrected to a segment-based check before commit, verified against the real
+tree both ways. Recommend the owner classify the 11-plan finding for a possible `L<n>` if it is judged
+lesson-worthy at the programme level (e.g. "a completeness gate with no write-time enforcement quietly
+accumulates a large exempt population before anyone measures it").
+

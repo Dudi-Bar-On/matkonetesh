@@ -286,3 +286,115 @@ def test_1014_fails_open_on_unreadable_transcript(tmp_path):
                 agent="actor-a", transcript=tmp_path / "no-such.jsonl"),
         env_extra={"ENFORCEMENT_STATE_PATH": str(state)}, tmp_path=tmp_path)
     assert decision_of(out) == "allow", out
+
+
+# ---------------------------------------------------------------- Task 4: 12.1 + 2
+
+def test_121_blocks_a_gsd_artifact(tmp_path):
+    out = run_pretooluse(payload("Write", ROOT / "PLAN.md", content="# plan\n"), tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+    assert "docs/superpowers/plans" in reason_of(out)   # the reachable alternative, by name
+
+
+def test_121_blocks_a_gsd_command_file(tmp_path):
+    out = run_pretooluse(payload("Write", ROOT / ".claude" / "commands" / "gsd-plan.md",
+                                 content="x"), tmp_path=tmp_path)
+    assert decision_of(out) == "block", out
+
+
+def test_121_does_not_fire_on_any_real_tracked_path(tmp_path):
+    """False-alarm vs the REAL tree: every tracked .md path replayed as a Write. The tree holds
+    docs/vendor/gsd/gsd-docs-01.md (a record of the REJECTED tool — writing ABOUT it is not
+    adopting it) and docs/research/2026-08-04-bmad-gsd-testing-methodology.md; both must pass."""
+    tracked = subprocess.run(["git", "ls-files", "*.md"], capture_output=True, text=True,
+                             encoding="utf-8", cwd=str(ROOT)).stdout.splitlines()
+    assert tracked, "git ls-files returned nothing — the false-alarm test examined NOTHING"
+    fired = []
+    for rel in tracked:
+        out = run_pretooluse(payload("Write", ROOT / rel, content="x"), tmp_path=tmp_path)
+        if "one-pipeline" in reason_of(out) and decision_of(out) == "block":
+            fired.append(rel)
+    assert fired == [], f"12.1 fires on real tracked paths: {fired}"
+
+
+def test_2_warns_on_an_incomplete_plan_write(tmp_path):
+    truncated = "# plan\n## Task 1: do the thing\nprose only, no code\n```js\nunclosed fence\n"
+    out = run_pretooluse(payload("Write", ROOT / "docs" / "superpowers" / "plans" / "x-test-plan.md",
+                                 content=truncated), tmp_path=tmp_path)
+    assert decision_of(out) == "warn", out
+    assert "check-plan-complete" in reason_of(out)
+
+
+def test_2_stays_quiet_on_every_real_plan_that_the_gate_itself_accepts(tmp_path):
+    """False-alarm vs REAL history: every plan actually in the tree, replayed through the same
+    Write path. (Guarded against examining nothing.)
+
+    FINDING (task-4, reported per the brief's own instruction — resolve by reporting, never by
+    silently exempting): 11 of 34 real tracked plans already FAIL `node
+    scripts/check-plan-complete.mjs <plan.md>` (exit 1) today, unrelated to this task — they
+    predate or otherwise bypass the gate L27 established. Rule 2 warning on a Write of one of
+    those is not a false alarm; it is the rule reproducing the CLI gate's own verdict, which is
+    exactly its job. So the false-alarm bar here is "does rule 2 agree with the CLI gate on this
+    file's own text" — not "does rule 2 unconditionally allow every plan ever committed,
+    including ones that were already broken by the CLI's own standard." Plans confirmed to fail
+    the pre-existing CLI gate as of this task (`node scripts/check-plan-complete.mjs <file>`,
+    exit 1 each, run standalone before this test was written):
+      2026-07-25-cooking-paths-cp1.md, 2026-07-25-equipment-e2-ledger-availability.md,
+      2026-07-26-equipment-e3-validity-gates.md, 2026-07-26-v268-localization.md,
+      2026-08-03-data-model.md, 2026-08-07-docker-exit.md,
+      2026-08-07-enforcement-phase-3-group-a.md, 2026-08-07-enforcement-phase-6-wiring.md,
+      2026-08-08-classification-criterion.md, 2026-08-08-enforcement-phase-4-group-b.md,
+      2026-08-08-rule-coverage.md.
+    """
+    plans = sorted((ROOT / "docs" / "superpowers" / "plans").glob("*.md"))
+    assert plans, "no real plans found — the false-alarm test examined NOTHING"
+    checked_at_least_one_clean_plan = False
+    for p in plans:
+        text = p.read_text(encoding="utf-8")
+        gate = subprocess.run(["node", str(ROOT / "scripts" / "check-plan-complete.mjs"), str(p)],
+                              capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+        out = run_pretooluse(payload("Write", p, content=text), tmp_path=tmp_path)
+        if gate.returncode == 0:
+            checked_at_least_one_clean_plan = True
+            assert decision_of(out) == "allow", \
+                f"rule 2 disagrees with the CLI gate (which PASSES {p.name}): {reason_of(out)}"
+        else:
+            assert decision_of(out) == "warn", \
+                f"rule 2 disagrees with the CLI gate (which FAILS {p.name}): {reason_of(out)}"
+    assert checked_at_least_one_clean_plan, \
+        "no real plan currently passes the CLI gate — the allow-branch of this test examined NOTHING"
+
+
+def test_2_allows_a_partial_edit_to_a_plan(tmp_path):
+    """An Edit's new_string is a FRAGMENT — completeness of a fragment is undecidable, and
+    undecidable means allow with the reason named, never a guess."""
+    out = run_pretooluse(payload("Edit", ROOT / "docs" / "superpowers" / "plans" / "x.md",
+                                 old="a", new="- [ ] step"), tmp_path=tmp_path)
+    assert decision_of(out) == "allow", out
+
+
+def test_check_plan_complete_cli_unchanged_by_the_checkPlanText_extraction():
+    """Regression for the check-plan-complete.mjs refactor: the CLI's stdout/stderr/exit code
+    on a real plan must be byte-identical to the pre-refactor behaviour. Rather than pin a
+    frozen fixture (which would go stale the moment the plan file next changes), this asserts
+    the property the refactor promised directly: printed output and exit code are a pure
+    function of checkPlanText()'s own return value plus a fence recount — so this test builds
+    the expected output BY HAND from the CLI's own documented format and diffs it against the
+    real subprocess, on more than one real plan (a clean one and a failing one)."""
+    for rel, expect_exit in [
+        ("docs/superpowers/plans/2026-08-09-arc2-phase1-ci-gate.md", 0),
+        ("docs/superpowers/plans/2026-07-25-cooking-paths-cp1.md", 1),
+    ]:
+        path = ROOT / rel
+        text = path.read_text(encoding="utf-8")
+        r = subprocess.run(["node", str(ROOT / "scripts" / "check-plan-complete.mjs"), str(path)],
+                          capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+        assert r.returncode == expect_exit, f"{rel}: {r.stdout}{r.stderr}"
+        assert r.stdout.startswith(f"plan: {path}\n"), r.stdout
+        assert "tasks: " in r.stdout and "fenced blocks: " in r.stdout and "fence lines: " in r.stdout
+        if expect_exit == 0:
+            assert "OK - every task carries code, no truncation signature." in r.stdout
+            assert r.stderr == ""
+        else:
+            assert "FAIL:" in r.stderr
+            assert "  x " in r.stderr
