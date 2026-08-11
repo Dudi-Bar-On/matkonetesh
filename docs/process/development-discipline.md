@@ -2489,3 +2489,12 @@ failures being timing/contention-sensitive tests reacting to momentary machine l
 category per §11a, not a new bug this task introduced. Flagged as a Concern in task-9-report.md for
 whoever owns that suite next, not chased to root cause here (out of this task's scope).
 
+**No-lesson declaration (2026-08-11):** arc4 task 6 (`tests/test_arc4_observers.py` — evidence-channel
+contract tests for `read-tracker.mjs` and `clock-tracker.mjs`) — no new numbered lesson. The 1
+recorded command failure this session was a one-off `python -c` mutation script (the L57 RED-witness
+protocol on `read-tracker.mjs`) that matched the wrong literal string and exited 1 on its own
+assertion before touching the file; corrected on the next call by reading the observer's actual
+guard clause first. No production code, gate, or observer was affected, and no new failure mode was
+discovered — a self-inflicted typo in disposable throwaway tooling, not a discovery worth a lesson
+line.
+
