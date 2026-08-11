@@ -7,11 +7,19 @@
 # the number the plan must be written against.
 import io
 import json
+import os
 import pathlib
 import re
 import sys
 
-TRANSCRIPTS = pathlib.Path.home() / ".claude" / "projects" / "C--Users-dudib-source-repos-matconetesh"
+# R-147(a) (2026-08-11): overridable via MK_CORPUS_TRANSCRIPTS_DIR so tests/conftest.py's
+# skip_without_transcripts() and this script always resolve the SAME directory, and so a test can
+# point this extractor at a directory that exists but holds no transcripts — the only way to
+# witness, for real (not simulated), that a present-but-broken extractor still fails loudly. Does
+# not change the marker logic itself: that lives solely in the test helper (see conftest.py).
+TRANSCRIPTS = pathlib.Path(os.environ.get(
+    "MK_CORPUS_TRANSCRIPTS_DIR",
+    str(pathlib.Path.home() / ".claude" / "projects" / "C--Users-dudib-source-repos-matconetesh")))
 
 PATTERNS = {
     "L10":    re.compile(r"playwright\s+test\b[^\n]*--(workers|retries)\b"),

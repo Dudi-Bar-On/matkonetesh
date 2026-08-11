@@ -101,18 +101,46 @@ def test_playwright_test_tokens():
 
 # ---------------------------------------------------------------- Task 2: corpus replay harness
 
+def _build_bash_corpus_dump(dest):
+    """Runs the real extractor and returns the populated dump path, or raises AssertionError.
+    Factored out of the `corpus_dump` fixture so R-147(a)'s regression test (below) can drive the
+    exact same path directly, without going through pytest fixture machinery, to witness the
+    present-but-broken-extractor FAIL for real."""
+    r = subprocess.run(["python", str(ROOT / "scripts" / "tests" / "measure-bash-corpus.py"),
+                        "--dump", str(dest)],
+                       capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert dest.exists() and dest.stat().st_size > 0, \
+        "corpus dump is EMPTY — every replay test would examine NOTHING"
+    return dest
+
+
 @pytest.fixture(scope="module")
 def corpus_dump(tmp_path_factory):
     """The REAL corpus (spec §3.1: false alarms measured against real history, never invented
-    input), dumped once per test module via the measurement script's own extractor."""
+    input), dumped once per test module via the measurement script's own extractor.
+
+    R-147(a) (2026-08-11): skips — does not fail — when this runner has no session-transcript
+    directory at all (every CI runner). See conftest.skip_without_transcripts for why the probe is
+    the directory's existence, never the emptiness of what gets extracted from it."""
+    from conftest import skip_without_transcripts
+    skip_without_transcripts()
     dump = tmp_path_factory.mktemp("corpus") / "commands.jsonl"
-    r = subprocess.run(["python", str(ROOT / "scripts" / "tests" / "measure-bash-corpus.py"),
-                        "--dump", str(dump)],
-                       capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
-    assert r.returncode == 0, r.stdout + r.stderr
-    assert dump.exists() and dump.stat().st_size > 0, \
-        "corpus dump is EMPTY — every replay test would examine NOTHING"
-    return dump
+    return _build_bash_corpus_dump(dump)
+
+
+def test_corpus_dump_fails_when_directory_exists_but_extractor_finds_nothing(tmp_path, monkeypatch):
+    """R-147(a)'s second, decisive RED: a transcript directory that EXISTS but holds no usable
+    transcripts is NOT an absent corpus — it must FAIL, loudly, exactly as before this task. This
+    is the case a symptom-only guard cannot tell apart from a genuinely absent corpus, and getting
+    it wrong is precisely the L86 shape (2026-08-11): a guard that turned a real-bug regression
+    test into a silent skip."""
+    empty_transcripts = tmp_path / "empty-transcripts-dir"
+    empty_transcripts.mkdir()
+    monkeypatch.setenv("MK_CORPUS_TRANSCRIPTS_DIR", str(empty_transcripts))
+    dest = tmp_path / "commands.jsonl"
+    with pytest.raises(AssertionError, match="EMPTY"):
+        _build_bash_corpus_dump(dest)
 
 
 def corpus_commands(dump):

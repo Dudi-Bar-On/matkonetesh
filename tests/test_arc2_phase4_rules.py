@@ -75,16 +75,44 @@ def seed_event(state_path, session, kind, file_path):
     assert r.returncode == 0, r.stderr
 
 
-@pytest.fixture(scope="session")
-def corpus_dump():
-    """Regenerates the dump once per pytest run via the ONE corpus reader (R-116)."""
-    CORPUS.parent.mkdir(parents=True, exist_ok=True)
+def _build_stop_corpus_dump(dest):
+    """Runs the real extractor and returns the populated dump path, or raises AssertionError.
+    Factored out of the `corpus_dump` fixture so R-147(a)'s regression test (below) can drive the
+    exact same path directly, without going through pytest fixture machinery, to witness the
+    present-but-broken-extractor FAIL for real."""
+    dest.parent.mkdir(parents=True, exist_ok=True)
     r = subprocess.run(["python", str(ROOT / "scripts" / "tests" / "measure-stop-corpus.py"),
-                        "--dump", str(CORPUS)],
+                        "--dump", str(dest)],
                        capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
     assert r.returncode == 0, r.stdout + r.stderr
-    assert CORPUS.exists() and CORPUS.stat().st_size > 0
-    return CORPUS
+    assert dest.exists() and dest.stat().st_size > 0
+    return dest
+
+
+@pytest.fixture(scope="session")
+def corpus_dump():
+    """Regenerates the dump once per pytest run via the ONE corpus reader (R-116).
+
+    R-147(a) (2026-08-11): skips — does not fail — when this runner has no session-transcript
+    directory at all (every CI runner). See conftest.skip_without_transcripts for why the probe is
+    the directory's existence, never the emptiness of what gets extracted from it."""
+    from conftest import skip_without_transcripts
+    skip_without_transcripts()
+    return _build_stop_corpus_dump(CORPUS)
+
+
+def test_corpus_dump_fails_when_directory_exists_but_extractor_finds_nothing(tmp_path, monkeypatch):
+    """R-147(a)'s second, decisive RED: a transcript directory that EXISTS but holds no usable
+    transcripts is NOT an absent corpus — it must FAIL, loudly, exactly as before this task. This
+    is the case a symptom-only guard cannot tell apart from a genuinely absent corpus, and getting
+    it wrong is precisely the L86 shape (2026-08-11): a guard that turned a real-bug regression
+    test into a silent skip."""
+    empty_transcripts = tmp_path / "empty-transcripts-dir"
+    empty_transcripts.mkdir()
+    monkeypatch.setenv("MK_CORPUS_TRANSCRIPTS_DIR", str(empty_transcripts))
+    dest = tmp_path / "stop-final-messages.jsonl"
+    with pytest.raises(AssertionError):
+        _build_stop_corpus_dump(dest)
 
 
 def replay(rule_file, corpus_path, state_path=None, session=None):

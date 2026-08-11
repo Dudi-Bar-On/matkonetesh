@@ -14,7 +14,30 @@
 #
 # The rule this encodes: an absence and a failure must never share an exit path. Skipping requires
 # a POSITIVE marker for the condition being excused. Everything else fails, loudly.
+import os
+import pathlib
+
 import pytest
+
+
+def _corpus_transcripts_dir():
+    """The directory the two corpus-replay test modules (test_arc2_phase3_rules.py,
+    test_arc2_phase4_rules.py) and their measure-*-corpus.py extractors all read: local Claude Code
+    session transcript history for this project. Reads the SAME MK_CORPUS_TRANSCRIPTS_DIR override
+    those two scripts read, so a test can point both the probe and the extractor at one directory —
+    needed to witness the present-but-empty-directory FAIL path for real, and so this function
+    re-reads a test's monkeypatched env var rather than freezing it at import time. The default
+    path is kept textually identical to the TRANSCRIPTS constant in
+    scripts/tests/measure-bash-corpus.py and scripts/tests/measure-stop-corpus.py (same duplication
+    tradeoff as UNAVAILABLE_MARKERS below — importing a test-support script from conftest is the
+    worse hazard).
+    """
+    return pathlib.Path(os.environ.get(
+        "MK_CORPUS_TRANSCRIPTS_DIR",
+        str(pathlib.Path.home() / ".claude" / "projects" / "C--Users-dudib-source-repos-matconetesh")))
+
+
+CORPUS_TRANSCRIPTS_DIR = _corpus_transcripts_dir()  # the default, for callers that just want the path
 
 # Kept textually identical to test_worker.py's UNAVAILABLE_MARKERS. Deliberately NOT imported from
 # there: importing a test module from conftest drags that module's own fixtures and import-time
@@ -75,6 +98,36 @@ def requires_database(kind="geniza"):
     except cfg.ConfigError as exc:
         _pytest.skip(f"{kind} is not configured — NOT VERIFIED here: whatever this test would have "
                      f"proven about {kind} ({exc})")
+
+
+def skip_without_transcripts():
+    """Skip -- do not fail -- when there is no session-transcript directory on this runner at all.
+
+    R-147(a) (2026-08-11): CI is a Linux runner that has never had a transcript directory and never
+    will (it is local session history on the dev machine, gitignored). 16 corpus-replay tests in
+    test_arc2_phase3_rules.py and test_arc2_phase4_rules.py were failing there with
+    `corpus dump is EMPTY` / `corpus: 0 assistant final messages` — an absent-input condition
+    reported as a defect.
+
+    The probe is deliberately the directory's EXISTENCE (`.is_dir()`), never the emptiness of what
+    the measure-*-corpus.py scripts extract from it. Emptiness is the L57 trap: an ABSENT corpus
+    and a PRESENT-but-BROKEN extractor produce the exact same empty-dump symptom, and only the
+    directory's existence tells them apart. If the directory exists and the extractor still returns
+    nothing, that is a real defect in the extractor and this helper must NOT be called after the
+    fact to excuse it — callers call this once, before invoking the extractor, and let a
+    present-but-broken extractor fail exactly as it did before this task (pinned by
+    test_corpus_dump_fails_when_directory_exists_but_extractor_finds_nothing in both
+    test_arc2_phase3_rules.py and test_arc2_phase4_rules.py).
+    """
+    directory = _corpus_transcripts_dir()
+    if not directory.is_dir():
+        pytest.skip(
+            f"no session-transcript directory on this runner ({directory}) — "
+            "NOT VERIFIED here: every corpus-replay assertion in this module (measured false-alarm "
+            "rates, true-positive catches on real historical commands/messages, and degraded-path "
+            "behavior) against real Claude Code session history — that corpus is local-machine-only "
+            "and is never present in CI."
+        )
 
 
 def skip_only_if_unavailable(exc, what):

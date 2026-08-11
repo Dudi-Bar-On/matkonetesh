@@ -15,13 +15,21 @@
 # Prints COUNTS and short excerpts only.
 import io
 import json
+import os
 import pathlib
 import re
 import sys
 
 sys.stdout.reconfigure(encoding="utf-8")
 
-TRANSCRIPTS = pathlib.Path.home() / ".claude" / "projects" / "C--Users-dudib-source-repos-matconetesh"
+# R-147(a) (2026-08-11): overridable via MK_CORPUS_TRANSCRIPTS_DIR so tests/conftest.py's
+# skip_without_transcripts() and this script always resolve the SAME directory, and so a test can
+# point this extractor at a directory that exists but holds no transcripts — the only way to
+# witness, for real (not simulated), that a present-but-broken extractor still fails loudly. Does
+# not change the marker logic itself: that lives solely in the test helper (see conftest.py).
+TRANSCRIPTS = pathlib.Path(os.environ.get(
+    "MK_CORPUS_TRANSCRIPTS_DIR",
+    str(pathlib.Path.home() / ".claude" / "projects" / "C--Users-dudib-source-repos-matconetesh")))
 
 CANDIDATES = {
     # DoD-3 / rule 1 — a success claim with no pasted evidence.
