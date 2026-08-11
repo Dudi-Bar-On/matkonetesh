@@ -371,3 +371,57 @@ def test_l14_corpus_replay_post_repair(corpus_dump):
     # of gap L64a's report named out of scope for its own verb-proximity residue). Threshold set
     # at the measured 100 + small headroom, same convention as L64a's own corpus-replay test.
     assert out["fireCount"] <= 110, f"live-claim detector still too loose: {out['fireCount']}"
+
+
+# ------------------------------------------------------- Task 7: L63a cited<->read
+
+CITE_TEXT = "Per scripts/hooks/lib/claim-scan.mjs the field determined is the contract, and that is the justification."
+
+
+def test_l63a_warns_on_cited_path_not_in_read_history(tmp_path):
+    state = tmp_path / "state.sqlite"
+    session = "s-l63a"
+    # Channel IS wired (one unrelated read exists) -- the cited path is simply absent.
+    seed_event(state, session, "file_read", str(ROOT / "docs" / "STATUS-BOARD.md"))
+    out = eval_stop_rule("cited-path-read.mjs", CITE_TEXT, tmp_path,
+                         state_path=state, session=session)
+    assert out["decision"] == "warn"
+    assert "claim-scan.mjs" in out["reason"]
+
+
+def test_l63a_allows_cited_path_that_was_read(tmp_path):
+    state = tmp_path / "state.sqlite"
+    session = "s-l63a"
+    seed_event(state, session, "file_read", str(ROOT / "scripts" / "hooks" / "lib" / "claim-scan.mjs"))
+    out = eval_stop_rule("cited-path-read.mjs", CITE_TEXT, tmp_path,
+                         state_path=state, session=session)
+    assert out["decision"] == "allow"
+
+
+def test_l63a_allows_cited_path_that_was_written(tmp_path):
+    state = tmp_path / "state.sqlite"
+    session = "s-l63a"
+    seed_event(state, session, "file_read", str(ROOT / "docs" / "STATUS-BOARD.md"))  # wired
+    seed_event(state, session, "edit", str(ROOT / "scripts" / "hooks" / "lib" / "claim-scan.mjs"))
+    out = eval_stop_rule("cited-path-read.mjs", CITE_TEXT, tmp_path,
+                         state_path=state, session=session)
+    assert out["decision"] == "allow"
+
+
+def test_l63a_degrades_to_allow_when_channel_has_zero_reads(tmp_path):
+    # The L57 trap: an unwired/empty channel must NEVER be mistaken for "did not read".
+    out = eval_stop_rule("cited-path-read.mjs", CITE_TEXT, tmp_path, session="s-l63a-empty")
+    assert out["decision"] == "allow"
+
+
+def test_l63a_silent_when_no_path_cited(tmp_path):
+    out = eval_stop_rule("cited-path-read.mjs", "Finished reading, will continue.", tmp_path)
+    assert out["decision"] == "allow"
+
+
+def test_l63a_corpus_replay_degraded_path_never_fires(corpus_dump):
+    # Historical messages carry no session state (the store did not exist for most of the
+    # corpus). Replay proves the DEGRADED path is safe: with an empty store, zero fires -- a
+    # broken/absent channel never fires at any severity.
+    out = replay("cited-path-read.mjs", corpus_dump)
+    assert out["fireCount"] == 0, out["fires"][:5]
