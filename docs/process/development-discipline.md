@@ -2439,3 +2439,15 @@ duplicate call, not a new failure mode. Root cause investigated via `systematic-
 retrying the blocked edit; already covered by the general "pass `timeout: 600000` for long
 commands" instruction, so no new lesson line — a repeat of a known tool-usage gap, not a discovery.
 
+**No-lesson declaration (2026-08-11):** arc2 phase4 task 9 (`tests/test_arc2_phase4_wiring.py` —
+coverage + no-override liveness + overhead + closure) — no new numbered lesson. The 1 recorded
+failure this session was `node scripts/tests/test-hooks-groupb.mjs` returning exit 1 on its first
+run (439/443: the 2 documented pre-existing date-boundary fixtures plus 2 unexpected failures — a
+concurrency test and a fix-cycle timing test). Investigated via `systematic-debugging`: this task's
+diff touches only a new, unrelated test file and a refreshed corpus dump — neither read by
+`test-hooks-groupb.mjs` — so nothing in this task could have caused it. An immediate rerun with zero
+further changes reproduced the documented baseline exactly (441/443), consistent with the two extra
+failures being timing/contention-sensitive tests reacting to momentary machine load, a known
+category per §11a, not a new bug this task introduced. Flagged as a Concern in task-9-report.md for
+whoever owns that suite next, not chased to root cause here (out of this task's scope).
+
