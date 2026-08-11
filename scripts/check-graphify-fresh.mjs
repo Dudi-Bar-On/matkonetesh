@@ -146,12 +146,17 @@ export function main() {
   const line = (upd.stdout || '').trim().split('\n').pop();
   if (line) console.log(`  ${line}`);
 
-  const after = graphJsonEpoch(GRAPH_JSON);
-  if (after === null || after < commit.epoch) {
-    console.log('FAIL: the refresh ran but graph.json is still behind the latest code-touching commit.');
-    return 1;
-  }
-  console.log('OK — refreshed; graphify-out/graph.json now matches the current source.');
+  // TRUST graphify's own exit code, not a second mtime re-check. Bug found live (2026-08-11): a
+  // commit CAN touch a non-prose file and still leave the extracted graph's actual content
+  // unchanged (e.g. a test-only edit that adds no new symbol) — graphify then correctly prints
+  // "No code-graph changes detected ...; outputs left untouched" and does NOT rewrite graph.json,
+  // so its mtime never advances past that commit's timestamp even though the tool itself already
+  // verified freshness. Re-checking mtime here treated that correct "nothing to write" outcome as
+  // a failed refresh — a false FAIL, forever, for that whole class of commit. graphify exiting 0
+  // IS the authoritative "the graph now reflects the current source" signal; a second,
+  // independently-computed check on top of it is exactly the shape this gate exists to avoid
+  // elsewhere (reusing isProseFile rather than re-deriving its criterion).
+  console.log('OK — refreshed; graphify update exited 0 (graphify-out/graph.json now matches the current source).');
   return 0;
 }
 

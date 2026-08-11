@@ -47,6 +47,13 @@ if (argv[0] === 'update') {
     console.error('stub: simulated refresh failure');
     process.exit(parseInt(process.env.STUB_UPDATE_EXIT, 10));
   }
+  if (process.env.STUB_NO_CHANGES === '1') {
+    // Mirrors real graphify (found live, 2026-08-11): a commit can touch a non-prose file and
+    // still leave the extracted graph's content unchanged - graphify then leaves graph.json's
+    // mtime untouched and exits 0 anyway.
+    console.log('[graphify watch] No code-graph changes detected (--no-cluster); outputs left untouched.');
+    process.exit(0);
+  }
   const out = process.env.CHECK_GRAPHIFY_GRAPH_JSON;
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, JSON.stringify({ nodes: [], links: [] }), 'utf8');
@@ -113,6 +120,30 @@ process.exit(2);
   check('stale graph, self-heal on: exit 0 (PASS after refresh)', r.status === 0, r.stdout + r.stderr);
   check('stale graph, self-heal on: reports STALE then refreshed', /STALE/.test(r.stdout) && /refreshing/.test(r.stdout), r.stdout);
   check('stale graph, self-heal on: ends OK — refreshed', /OK .+ refreshed/.test(r.stdout), r.stdout);
+}
+
+// ================================================================================================
+// STATE 3b (regression, found live 2026-08-11): graphify legitimately reports "no changes" and
+// does NOT touch graph.json's mtime, even though a commit landed after it. A refresh that succeeds
+// with nothing to write must still PASS — this is what broke the very first live commit attempt
+// against this gate (a test-only edit whose AST extraction added no new graph content).
+// ================================================================================================
+{
+  const repo = makeGitRepo([{ subject: 'init', date: '2026-08-01T00:00:00' }]);
+  gitAdd(repo, 'app.js', 'function f(){}\n');
+  gitCommit(repo, 'add app.js', null, '2026-08-05T00:00:00'); // AFTER the graph
+  const stub = makeStubGraphify(tempDir('graphify-stub-nochange-'));
+  const graphJson = writeGraphJson(repo);
+  setMtime(graphJson, '2026-08-01T00:05:00'); // BEFORE the code commit — stale by mtime
+
+  const r = runNode(SCRIPT, [], {
+    CHECK_GRAPHIFY_ROOT: repo,
+    CHECK_GRAPHIFY_BIN: stub,
+    CHECK_GRAPHIFY_GRAPH_JSON: graphJson,
+    STUB_NO_CHANGES: '1', // graphify exits 0 but never rewrites graph.json
+  });
+  check('stale graph, refresh reports no changes: exit 0 (PASS, not a false FAIL)', r.status === 0, r.stdout + r.stderr);
+  check('stale graph, refresh reports no changes: still ends OK', /OK .+ refreshed/.test(r.stdout), r.stdout);
 }
 
 // ================================================================================================

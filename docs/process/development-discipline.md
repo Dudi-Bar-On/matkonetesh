@@ -2706,18 +2706,23 @@ open decision for the owner, not as a behavioural lesson — it is a property of
 count meeting an existing wall-clock-threshold test, already covered by `§11a`'s standing language
 about worker counts assuming an idle machine.
 
-**No-lesson declaration (2026-08-11):** R-136 (supersede pass + graphify freshness gate) — no new
-numbered lesson. A read-only Neo4j probe (`python -c "config.neo4j_driver()..."`) failed with
-`ConfigError: the knowledge stack is not configured` because `infra/.env` is genuinely absent from
-this session's working tree (confirmed via `ls -la infra/`, `Test-Path` in PowerShell, and a scan
-for stray env-var fallbacks — none found; PostgreSQL and Neo4j Windows services are both `Running`,
-only the credential file is missing). Root-caused via `systematic-debugging` before continuing: this
-is environmental (this agent session was never handed the secret), not a bug in this task's own
-code, and not a repeat of `L88` (that incident's renamed file, dated 2026-08-11 15:52, was a
-different, already-repaired event — `infra/.env.hidden-for-test` on disk here is dated 2026-08-06,
-an unrelated stale leftover). No credential was fabricated or guessed to work around it; the live
-Half-1 supersede pass and the live `find_impact`/`find_dependency_path` re-check are reported as
-blocked in the R-136 report instead, for the owner to run once credentials are available.
+**No-lesson declaration (2026-08-11), corrected 2026-08-12:** R-136 (supersede pass + graphify
+freshness gate) — no new numbered lesson of its own. A read-only Neo4j probe
+(`python -c "config.neo4j_driver()..."`) failed with `ConfigError: the knowledge stack is not
+configured` because `infra/.env` was genuinely absent from this session's working tree (confirmed via
+`ls -la infra/`, `Test-Path` in PowerShell, and a scan for stray env-var fallbacks — none found;
+PostgreSQL and Neo4j Windows services were both `Running`, only the credential file was missing).
+Root-caused via `systematic-debugging` before continuing, and this task's own investigation correctly
+ruled out a fabricated credential and correctly ruled out this being a bug in R-136's own code — but
+its guess at "not a repeat of L88" was **wrong**: it was exactly L88, corrected in place above at
+20:50 as `R-156` (`tests/test_arc4_db_optional.py`'s fixture renames both live credential files aside
+and restores them in a `finally` that a killed/timed-out child process never reaches — this is the
+second occurrence, 20:38, twelve minutes after the first repair). No new lesson here because `L88`
+already carries the correction and `R-156` already carries the fix-forward item; this note exists
+only so a reader of R-136's own history sees the initial misdiagnosis corrected rather than left
+standing. The live Half-1 supersede pass and the live `find_impact`/`find_dependency_path` re-check,
+reported blocked in the first pass of the R-136 report, were completed once `infra/.env` was restored
+— see the report's final version for the counts.
 
 **No-lesson declaration (2026-08-11):** batch s10 (`L89` classification) — no new numbered lesson.
 The single recorded failure was `check-corpus-consistency` refusing the commit because `L89` had just
