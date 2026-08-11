@@ -182,3 +182,24 @@
 **המלצתי:** החלופה (`A`) — היא צרה, ניתנת למדידה, ותופסת בדיוק את הכשל שקרה שלוש פעמים.
 **אבל אני מעלה אותה ולא מחליט אותה**, כי הכיוון הנוח לי כאן הוא גם הכיוון שמשחרר את
 השער שחוסם אותי, וזה בדיוק המצב שבו החלטה עצמית אינה ראויה לאמון.
+
+---
+
+## `10.25` — no group yet (added 2026-08-11)
+
+The owner's own instruction from today ("the infrastructure is written in English; only the
+conversation is Hebrew"). It is in the corpus because writing it down adds a rule; its GROUP has not
+been decided, and the controller is not deciding it alone.
+
+| reading | group | the reason |
+|---|---|---|
+| proposal | `A` · `pretooluse:Edit\|Write` | Mechanically visible: Hebrew text written into a gate script, a rule pattern, a plan, a brief or a register row is a pattern in the artifact, decidable without reading intent. Target would be `scripts/**`, `docs/superpowers/**`, and new register rows — never the product's own strings or the safety data. |
+| alternative | `none` | Authoring guidance about which language to write in, with no artifact a gate can check without also deciding what counts as "infrastructure". |
+
+**Recommendation: `A`.** It is the narrow reading, it is measurable, and the rule was born from a
+defect a gate would have caught — `SUBORDINATOR_RE`'s Hebrew alternatives sat inside `\b...\b` and
+were inert from the day they were written (R-141).
+
+**Caveat the controller must state:** classifying it `A` creates work rather than removing it, so the
+usual "the comfortable answer is the suspicious one" test does not apply here — but the owner has not
+been asked, and an unasked decision is not a decision.

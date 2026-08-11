@@ -1226,6 +1226,36 @@ correct **order** and **safety** of handling food — a tool built to tell peopl
 not itself be built by an agent that treats sequence as an obstacle to route around. Building it out of
 order is not just a process risk here; it contradicts the product.
 
+### 10.25 The infrastructure is written in English; only the conversation is Hebrew (owner instruction, 2026-08-11)
+
+> **Owner instruction, verbatim in translation:** *inside the rules and the gates always work in English.
+> Only our conversation is Hebrew, so it does not disturb the infrastructure. Hebrew is fine for the
+> application; the infrastructure is better in English. Just translate it for me.*
+
+Scope, so this is a rule and not a mood. **English:** rule text, gate scripts and their comments,
+patterns and regexes, register rows, plans, briefs, reports, commit messages, test names. **Hebrew
+stays:** everything the product shows a user, the safety data and its citations, and this
+conversation. The controller translates in the reply rather than in the artifact.
+
+**Why it was given, and the evidence is a defect this document itself produced.** `SUBORDINATOR_RE`
+in `claim-scan.mjs` listed Hebrew alternatives — `כאשר`, `אם`, `לאחר ש` — inside `\b...\b`. A
+JavaScript word boundary is defined against `\w`, which does not include Hebrew letters, so every
+Hebrew alternative in that guard was **inert from the day it was written**: the English half fired,
+the Hebrew half never did. The guard exists to void a claim made inside a conditional ("I'll report
+**when** it is live"), and the controller writes to the owner in Hebrew — so the guard was absent
+exactly where it was needed. Registered R-141. The same class had already cost a rule-corpus sweep
+the day before, where `בקר` matched inside `הבקר` and `חזיר` inside `מחזיר`.
+
+The lesson generalises past regexes. A bilingual artifact carries a silent second failure mode:
+every pattern, sort, boundary and comparison has to be correct in both scripts, and the one nobody
+tests is the one that breaks. Keeping the machinery monolingual removes the failure mode rather than
+guarding against it — which is the difference between a fix and a patch.
+
+**Migration of what already exists is a separate decision, not implied by this rule.** The register,
+this document and `CLAUDE.md` are Hebrew today; converting them is its own scoped task with its own
+risk, and it has not been approved here. What this rule governs is everything written from
+2026-08-11 onward.
+
 ### 10.24 Fight for the stated goal, and never self-declare final (owner feedback)
 > **Owner feedback, two halves of one ruling.** (i) When a stated goal meets an obstacle, do not quietly
 > narrow it — invent and research until the goal is met, or raise the obstacle explicitly. Settling for
@@ -2397,4 +2427,15 @@ recorded this session (`test_every_phase2_rule_is_declared_and_counted`) was inv
 Phase 2 rule-coverage/provenance gap this task never touched (confirmed by `git status --porcelain`
 showing the file as `??`, and it is not among Task 1's three changed files). Not this task's failure
 mode to name a lesson for; flagged in task-1-report.md for whoever owns that gate instead.
+
+**No-lesson declaration (2026-08-10):** arc2 phase3 task 2 (`replay-bash-corpus.mjs` + `--dump` +
+corpus-replay pytest harness) — no new numbered lesson. The 2 recorded failures this session were
+both the same environmental non-bug: `node scripts/check-meta.mjs` legitimately runs longer than
+the Bash tool's 120s default timeout (`build-audit` alone parses 25k+ transcript entries). The
+first invocation auto-backgrounded and later reported exit 0 with findings unrelated to this task
+(4 pre-existing release-commit DoD gaps, none touching Task 2's files); the second invocation, run
+without an explicit `timeout:600000`, hit the same 120s default and was killed (exit 143) — a
+duplicate call, not a new failure mode. Root cause investigated via `systematic-debugging` before
+retrying the blocked edit; already covered by the general "pass `timeout: 600000` for long
+commands" instruction, so no new lesson line — a repeat of a known tool-usage gap, not a discovery.
 
