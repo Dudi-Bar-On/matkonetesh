@@ -2634,3 +2634,15 @@ correct and must stay; what is missing is that nothing compares "unreachable now
 "reachable an hour ago". A channel that goes dark mid-session is a different event from one that was
 never lit, and only a clock tells them apart.
 
+**No-lesson declaration (2026-08-11):** R-154 (`scripts/check-pytest.mjs` `-x --ff`, `tests/
+conftest.py` xdist pinning) — no new numbered lesson. Two foreground Bash commands hit the tool's
+600s timeout while measuring the Python suite's baseline duration (the suite's own passing run
+exceeds that cap); both were the expected, predicted consequence of a documented ~13–22 minute
+suite meeting a 10-minute tool ceiling, not a bug — root-caused via `systematic-debugging` before
+continuing, and confirmed via `tasklist` that neither timeout left an orphaned process. The task's
+one substantive finding (`-n auto` flaking under CPU contention on `test_pretooluse_overhead_
+stays_in_the_baseline_class`) is registered with its full evidence trail in the R-154 report as an
+open decision for the owner, not as a behavioural lesson — it is a property of this machine's core
+count meeting an existing wall-clock-threshold test, already covered by `§11a`'s standing language
+about worker counts assuming an idle machine.
+

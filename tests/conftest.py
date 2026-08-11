@@ -20,6 +20,104 @@ import pathlib
 import pytest
 
 
+# R-154 (2026-08-11): pytest-xdist parallelism (`-n auto`, added in scripts/check-pytest.mjs) is
+# safe ONLY once every test that touches a resource shared across the whole process tree is pinned
+# to run on a single worker. Two incidents already paid for the alternative: §11a's two concurrent
+# SUITE runs producing 12 then 127 phantom ERR_CONNECTION_REFUSED failures, and L87's dispatcher
+# re-entering itself and orphaning ~35 processes. Under xdist, files sharing a worker still run one
+# at a time (xdist schedules whole test ITEMS, never overlapping within one worker process), so
+# grouping every file below onto ONE named xdist_group makes them behave exactly as they do today —
+# serialized relative to each other — while every other file is free to run in a different worker.
+#
+# Enumerated here, not scattered as per-file markers, so the whole risk surface is auditable in one
+# place. A file is listed if ANY test in it does one of the three things the brief named:
+#
+#   spawns a gate      — a real subprocess of check-meta.mjs, check-pytest.mjs, or a CLI that
+#                         itself opens a database connection (build_rules_store's CLI)
+#   binds a port       — opens a real socket and/or spawns a real child server process
+#   writes to a database — a real connection to the geniza (PostgreSQL mk_reader/mk_app, Neo4j) or
+#                         the separate mk_rules database, INCLUDING a read-only connection or an
+#                         advisory-lock probe: contention and locking are exactly the failure mode
+#                         being guarded against, not only writes
+#
+# Verified by reading each file's imports and call sites (not by filename pattern) on 2026-08-11:
+#   test_pg_schema.py                 — psycopg2.connect against the live geniza Postgres
+#   test_pg_spec_coverage.py          — imports connect() from test_pg_schema.py, same live DB
+#   test_graph_schema.py              — neo4j.GraphDatabase.driver against the live Neo4j
+#   test_acceptance.py                — src.knowledge.{config,retrieval,worker}, incl. PGVectorStore
+#   test_acceptance_infra.py          — src.knowledge.config + a real `psql --version` subprocess
+#   test_retrieval.py                 — src.knowledge.{config,retrieval} against the live geniza
+#   test_service_guard.py             — src.knowledge.retrieval against the live geniza
+#   test_worker.py                    — src.knowledge.worker.SingleWriter: a real Postgres
+#                                        pg_advisory_lock — the definition of shared, contended state
+#   test_extract.py                   — a real HTTP call to the local Ollama endpoint (port 11434)
+#   test_arc4_gate_coverage.py        — test_geniza_fresh_live_smoke / test_rules_complete_live_smoke
+#                                        spawn the real check-geniza-fresh.mjs / check-rules-complete
+#                                        gates against the live geniza
+#   test_arc2_phase1_wiring.py        — spawns a real check-meta.mjs (which re-runs this whole
+#   test_arc4_wiring.py                 suite via check-pytest.mjs); both already self-skip under
+#                                        CHECK_PYTEST_NESTED=1, which check-pytest.mjs sets on every
+#                                        pytest invocation it makes — so under THIS gate they never
+#                                        spawn the real subprocess at all. Pinned anyway because a
+#                                        developer's plain `pytest tests/ -n auto` (no CHECK_PYTEST_
+#                                        NESTED) would let them fire for real, and a lesson already
+#                                        paid for the cost of that exact recursion (L87).
+#   test_current_requires_mirror.py   — requires_database("mk_rules"), live mk_rules Postgres
+#   test_build_rules_store_cli.py     — spawns the build-rules-store CLI, which opens mk_rules
+#   test_rules_classify.py            — requires_database("mk_rules")
+#   test_rules_builder.py             — requires_database("mk_rules")
+#   test_classify_from_agreement.py   — requires_database("mk_rules")
+#   test_rules_mechanism_columns.py   — requires_database("mk_rules")
+#   test_rules_store_reader_cannot_write.py — requires_database("mk_rules")
+#   test_arc2_phase4_rules.py         — one test opens a real socket (`socket.socket().bind(...)`,
+#                                        port 0) and spawns a real Node TCP server child process
+#
+# NOT pinned, and why: the many other subprocess.run(["node", ...]) call sites elsewhere in this
+# suite (git init in tmp_path, pretooluse.mjs/posttooluse.mjs, check-plan-complete.mjs, etc.) spawn
+# a real process but touch NO shared resource — each runs against a pytest `tmp_path` unique to
+# that test, or reads the checked-out repo tree read-only, so two workers running them at the same
+# moment cannot observe or corrupt each other. test_rules_classified_gate.py and
+# test_rule_provenance_gate.py read only their own tmp_path rules.sqlite mirror, never Postgres.
+SERIALIZED_TEST_FILES = frozenset({
+    "test_pg_schema.py",
+    "test_pg_spec_coverage.py",
+    "test_graph_schema.py",
+    "test_acceptance.py",
+    "test_acceptance_infra.py",
+    "test_retrieval.py",
+    "test_service_guard.py",
+    "test_worker.py",
+    "test_extract.py",
+    "test_arc4_gate_coverage.py",
+    "test_arc2_phase1_wiring.py",
+    "test_arc4_wiring.py",
+    "test_current_requires_mirror.py",
+    "test_build_rules_store_cli.py",
+    "test_rules_classify.py",
+    "test_rules_builder.py",
+    "test_classify_from_agreement.py",
+    "test_rules_mechanism_columns.py",
+    "test_rules_store_reader_cannot_write.py",
+    "test_arc2_phase4_rules.py",
+})
+
+
+def pytest_collection_modifyitems(config, items):
+    """Pin every item in SERIALIZED_TEST_FILES to one xdist worker (`--dist loadgroup` is required
+    for this marker to take effect — the default `load` distribution ignores xdist_group). A no-op
+    without xdist installed, and a no-op without `-n`/`--dist loadgroup` on the command line too:
+    the marker is simply unused, exactly like any other pytest.mark.* nobody reads.
+
+    NOT currently invoked by scripts/check-pytest.mjs (R-154, 2026-08-11): `-n auto` shipped there
+    only as far as this pinning, then was held back after it produced a real CPU-contention flake
+    in a wall-clock timing test on the 32-core dev machine (see check-pytest.mjs's own comment and
+    the R-154 report). This grouping is audited and ready for whichever resolution the owner picks.
+    """
+    for item in items:
+        if item.fspath.basename in SERIALIZED_TEST_FILES:
+            item.add_marker(pytest.mark.xdist_group(name="db-and-gates"))
+
+
 def _corpus_transcripts_dir():
     """The directory the two corpus-replay test modules (test_arc2_phase3_rules.py,
     test_arc2_phase4_rules.py) and their measure-*-corpus.py extractors all read: local Claude Code

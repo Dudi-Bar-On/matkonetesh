@@ -32,6 +32,13 @@ requests>=2.34.2
 # Test runner for the Python side. The Playwright/TypeScript suite is separate (package.json).
 pytest>=9.1.1
 
+# R-154 (2026-08-11): parallelizes scripts/check-pytest.mjs's own invocation (`-n auto --dist
+# loadgroup`) so the pre-commit gate stops costing ~13 minutes per attempt. tests/conftest.py pins
+# every test that touches a shared resource (a real Postgres/Neo4j connection, an advisory lock, a
+# bound socket, or a subprocess that can re-enter this suite) onto one xdist worker — see its
+# SERIALIZED_TEST_FILES comment for the full, verified list and why each entry is there.
+pytest-xdist>=3.8.0
+
 # Used by the corpus/documentation tooling (PDF and spreadsheet extraction).
 openpyxl>=3.1.5
 pymupdf>=1.28.0

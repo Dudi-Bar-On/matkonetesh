@@ -75,8 +75,36 @@ if (process.env.MATCONETESH_LOCAL_HOOK === '1') {
 // CANDIDATES/STORE_STUB pair copied (inconsistently) into nine other gate scripts, which is exactly
 // what put `spawnSync py ENOENT` into the CI log for five of them. The resolution logic now lives
 // once, in scripts/lib/python-interpreter.mjs, and every one of the ten points at it.
+// R-154 (2026-08-11, owner-approved): the suite grew from ~200s to ~13 minutes (553 tests), and
+// every commit attempt — including the ones that fail on a LATER gate and get retried — paid it
+// in full. Owner approved TWO changes; only one ships here.
+//
+//   -x --ff   SHIPPED. Stops at the first failure and runs last-failed-first, so a failing commit
+//             learns it failed in seconds instead of minutes. This narrows how fast FAILURE is
+//             reported, never what a PASSING run executes: -x only ever triggers on a failing
+//             test, so on a green run every collected item still runs — verified by construction
+//             (there is no code path from "-x present" to "fewer items collected") and confirmed
+//             empirically in the R-154 report's passing-run item counts, which match plain `-q`
+//             coverage. --ff (failed-first) only REORDERS execution; unlike --lf (last-failed-
+//             ONLY) it never drops items, so full coverage survives it too.
+//
+//   -n auto   NOT SHIPPED — found flaking on THIS machine during R-154's own measurement and
+//             stopped there per the task's own instruction ("if -n auto produces any failure or
+//             flake the serial run does not, stop and report"). tests/test_arc2_phase2_wiring.py
+//             ::test_pretooluse_overhead_stays_in_the_baseline_class asserts real subprocess
+//             wall-clock time against a fixed threshold (61ms baseline, 4x tripwire); it passed in
+//             0.90s alone but failed at 313ms under 32-way `-n auto` CPU contention on this
+//             32-core machine — a real flake the serial run does not produce, not a bug in the
+//             test's subject. Enabling -n auto here would trade a slow-but-honest gate for a fast
+//             one that occasionally reports a false failure, which is a worse trade than the
+//             13 minutes it was meant to fix. Left for an explicit owner decision (a bounded
+//             worker count, or excusing timing-threshold tests from wall-clock assertions under
+//             load) — see the R-154 report. tests/conftest.py's SERIALIZED_TEST_FILES pinning and
+//             the pytest-xdist dependency are kept: they are the audited, ready-to-activate prep
+//             for whichever resolution the owner picks, and pytest-xdist is independently useful
+//             for a developer running `pytest tests/ -n auto --dist loadgroup` by hand.
 const { found, result: r, usedLabel: used, tried } = runPython(
-  ['-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q'],
+  ['-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q', '-x', '--ff'],
   {
     cwd: ROOT,
     encoding: 'utf8',
