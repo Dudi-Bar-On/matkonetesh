@@ -62,3 +62,47 @@ def test_workflows_passes_a_healthy_workflow(tmp_path):
 def test_workflows_clean_on_the_real_repo():
     r = run_gate("check-workflows.mjs")
     assert r.returncode == 0, r.stdout
+
+
+def test_requirements_catches_an_undeclared_import(tmp_path):
+    _git_repo(tmp_path, {
+        "src/mod.py": "import tree_sitter\n",
+        "requirements.txt": "requests\n",
+    })
+    r = run_gate("check-requirements.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1, r.stdout + r.stderr
+    # The gate reports the PyPI distribution name (underscores normalized to hyphens per its own
+    # DIST-mapping comment), so the correct assertion here is "tree-sitter", not the import spelling.
+    assert "tree-sitter" in r.stdout
+
+def test_requirements_ignores_stdlib_imports(tmp_path):
+    _git_repo(tmp_path, {"src/mod.py": "import json, os, pathlib\n", "requirements.txt": "\n"})
+    r = run_gate("check-requirements.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_requirements_clean_on_the_real_repo():
+    r = run_gate("check-requirements.mjs")
+    assert r.returncode == 0, r.stdout
+
+def test_commands_exist_catches_a_dead_script_reference(tmp_path):
+    _git_repo(tmp_path, {"CLAUDE.md": "Run `python scripts/does-not-exist.py` before work.\n"})
+    r = run_gate("check-commands-exist.mjs", "--root", str(tmp_path))
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "does-not-exist.py" in r.stdout
+
+def test_commands_exist_passes_a_live_reference(tmp_path):
+    _git_repo(tmp_path, {
+        "CLAUDE.md": "Run `python scripts/ok.py`.\n",
+        "scripts/ok.py": "print('ok')\n",
+    })
+    r = run_gate("check-commands-exist.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_commands_exist_honors_the_historical_exemption(tmp_path):
+    _git_repo(tmp_path, {"CLAUDE.md": "`scripts/memsync.py` was deleted on 2026-08-05.\n"})
+    r = run_gate("check-commands-exist.mjs", "--root", str(tmp_path))
+    assert r.returncode == 0, r.stdout
+
+def test_commands_exist_clean_on_the_real_repo():
+    r = run_gate("check-commands-exist.mjs")
+    assert r.returncode == 0, r.stdout
