@@ -17,10 +17,10 @@
 //
 // reads the MIRROR (rules.sqlite, committed to git) and not Postgres, for two reasons: the gate must
 //   work on a machine with no database configured, and the mirror is what the enforcement hooks read.
-import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync, readFileSync } from 'node:fs';
+import { runPython } from './lib/python-interpreter.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -66,8 +66,11 @@ except sqlite3.Error as exc:
     print(json.dumps({"ok": False, "why": f"{type(exc).__name__}: {exc}"}))
 `;
 
-const res = spawnSync('py', ['-3', '-X', 'utf8', '-c', PY], { encoding: 'utf8' });
-if (res.error || res.status !== 0) {
+const { found, result: res, tried } = runPython(['-X', 'utf8', '-c', PY], { encoding: 'utf8' });
+if (!found) {
+  undecided(`no Python interpreter could be run (${tried.join('; ')})`);
+}
+if (res.status !== 0) {
   undecided(`the probe did not run (${res.error?.message ?? `exit ${res.status}`})`);
 }
 

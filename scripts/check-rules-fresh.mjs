@@ -15,6 +15,7 @@
 import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runPython } from './lib/python-interpreter.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DOC = 'docs/process/development-discipline.md';
@@ -41,22 +42,17 @@ missing = sorted(set(on_disk) - set(stored))
 print(json.dumps({"disk": len(on_disk), "stored": len(stored), "stale": stale, "missing": missing}))
 `;
 
-// L59: `python` on PATH may be the Microsoft Store alias — never tried here.
-const CANDIDATES = [['py', ['-3']], ['python3', []]];
-
-let out = null;
-let usedCmd = null;
-let usedPre = [];
-for (const [cmd, pre] of CANDIDATES) {
-  const r = spawnSync(cmd, [...pre, '-c', PY], { cwd: ROOT, encoding: 'utf8' });
-  if (r.error || r.status === null) continue;
-  out = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
-  usedCmd = cmd; usedPre = pre;
-  break;
-}
+// R-147: resolution runs through the ONE shared resolver (scripts/lib/python-interpreter.mjs)
+// instead of a local copy — L59 (the Microsoft Store alias stub) is handled there.
+const probe = runPython(['-c', PY], { cwd: ROOT, encoding: 'utf8' });
+const out = probe.found
+  ? { status: probe.result.status, stdout: probe.result.stdout ?? '', stderr: probe.result.stderr ?? '' }
+  : null;
+const usedCmd = probe.cmd;
+const usedPre = probe.pre;
 
 if (!out) {
-  console.log('SKIPPED — no Python interpreter could be run (tried py -3, python3).');
+  console.log(`SKIPPED — no Python interpreter could be run (${probe.tried.join('; ')}).`);
   console.log('  NOT VERIFIED here: whether mk_rules matches the document.');
   process.exit(0);
 }

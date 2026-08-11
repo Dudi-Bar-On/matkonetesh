@@ -2552,3 +2552,17 @@ actual pytest fixture uses, never bash `printf`) reproduced the correct, working
 The seam itself has no defect — this was a scratchpad authoring mistake caught before it reached the
 test file, exactly the kind of thing PREDICT->TEST->OBSERVE->CONCLUDE exists to catch cheaply.
 
+**No-lesson declaration (2026-08-11):** R-147(b)+(c) (`scripts/lib/python-interpreter.mjs` shared
+resolver across ten gate scripts + the `/tmp` stub executable-bit fix in `test_arc4_ci_gate.py`) — no
+new numbered lesson. Two recorded command failures during this task, both self-inflicted and neither
+a process gap: (1) an early `grep` referenced a guessed file path
+(`scripts/hooks/rules/ui-check-stale-build.mjs`) that did not exist — the real path
+(`scripts/hooks/stop-rules/ui-check-stale-build.mjs`) was found immediately after with `find` and used
+from then on; (2) the intended RED witness run of the new
+`scripts/tests/test-python-interpreter.mjs` against the pre-fix scripts exited 1 by design — that is
+the TDD protocol working, not a defect. A separate finding was registered rather than fixed:
+`scripts/session-state.mjs` carries an eleventh copy of the same `python`/`py`/`python3` candidate
+shape, outside the brief's ten named scripts and not wired into `check-meta.mjs` (not part of the
+`discipline` CI job), so it is not a cause of R-147's red run — left alone per the brief's explicit
+file list and the Circle of Control.
+

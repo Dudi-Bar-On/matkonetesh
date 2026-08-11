@@ -32,9 +32,9 @@
 //   decision belongs to build_rules_store.py's own sync_document, run deliberately by a human or
 //   check-rules-fresh's self-heal path against the CURRENT document, never inferred here from a
 //   possibly-transient disk state.
-import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runPython } from './lib/python-interpreter.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const DOC = 'docs/process/development-discipline.md';
@@ -61,25 +61,19 @@ extra = sorted(set(stored) - set(on_disk))
 print(json.dumps({"disk": len(on_disk), "stored": len(stored), "missing": missing, "extra": extra}))
 `;
 
-// L59: `python` on PATH may be the Microsoft Store alias — never tried here.
 // Test seam (Arc 4, Task 4): CHECK_RULES_PY substitutes a stub interpreter, mirroring
 // check-geniza-fresh.mjs's CHECK_GENIZA_PY — lets a test drive the "rule missing from the store"
 // verdict without a database. shell: true is required for the substitute (Windows cannot exec a
-// .cmd stub without a shell), a no-op for the real `py`/`python3` lookup.
+// .cmd stub without a shell), a no-op for the real interpreter lookup, which runs through the ONE
+// shared resolver (scripts/lib/python-interpreter.mjs, R-147) instead of a copy of it.
 const PYTHON_STUB = process.env.CHECK_RULES_PY;
-const CANDIDATES = PYTHON_STUB ? [[PYTHON_STUB, []]] : [['py', ['-3']], ['python3', []]];
-
-let out = null, usedCmd = null, usedPre = [];
-for (const [cmd, pre] of CANDIDATES) {
-  const r = spawnSync(cmd, [...pre, '-c', PY], { cwd: ROOT, encoding: 'utf8', shell: !!PYTHON_STUB });
-  if (r.error || r.status === null) continue;
-  out = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
-  usedCmd = cmd; usedPre = pre;
-  break;
-}
+const probe = runPython(['-c', PY], { cwd: ROOT, encoding: 'utf8' }, { stub: PYTHON_STUB });
+const out = probe.found
+  ? { status: probe.result.status, stdout: probe.result.stdout ?? '', stderr: probe.result.stderr ?? '' }
+  : null;
 
 if (!out) {
-  console.log('SKIPPED — no Python interpreter could be run (tried py -3, python3).');
+  console.log(`SKIPPED — no Python interpreter could be run (${probe.tried.join('; ')}).`);
   console.log('  NOT VERIFIED here: whether every on-disk rule has a row in mk_rules.');
   process.exit(0);
 }

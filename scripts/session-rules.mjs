@@ -45,7 +45,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 import { DatabaseSync } from 'node:sqlite';
-import { spawnSync } from 'node:child_process';
+import { runPython } from './lib/python-interpreter.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const NA = 'not established';
@@ -66,7 +66,8 @@ const DOC_SOURCE_PATH = 'docs/process/development-discipline.md'; // literal str
 // the source_path value stored in rules.sqlite/mk_rules (a POSIX-style string key, not an OS path).
 const SNAPSHOT_DIR = join(ROOT, '.superpowers', 'state');
 const SNAPSHOT_PATH = join(SNAPSHOT_DIR, 'rules-injector-snapshot.json');
-const PY_CANDIDATES = [['py', ['-3']], ['python3', []]]; // L59 — `python` bare may be the MS Store alias.
+// R-147: resolution runs through the ONE shared resolver (scripts/lib/python-interpreter.mjs)
+// instead of a local candidate list — L59 (the Microsoft Store alias stub) is handled there.
 
 function readMirrorCatalog() {
   let db;
@@ -97,18 +98,17 @@ text = Path(${JSON.stringify(discAbsPath)}).read_text(encoding="utf-8")
 recs = extract_rules(text, ${JSON.stringify(DOC_SOURCE_PATH)})
 print(json.dumps([{"rule_id": r.rule_id, "section": r.section, "title_he": r.title_he, "bucket": r.bucket, "hash": r.content_hash} for r in recs]))
 `;
-  for (const [cmd, pre] of PY_CANDIDATES) {
-    const r = spawnSync(cmd, [...pre, '-c', py], { cwd: ROOT, encoding: 'utf8' });
-    if (r.error || r.status === null) continue;
-    if (r.status !== 0) return { ok: false, error: (r.stderr ?? '').trim().split('\n').pop().slice(0, 200) || `exit ${r.status}` };
-    try {
-      const rules = JSON.parse(r.stdout.trim().split('\n').pop());
-      return { ok: true, rules };
-    } catch (e) {
-      return { ok: false, error: `could not parse extractor output (${e.message})` };
-    }
+  const { found, result: r, tried } = runPython(['-c', py], { cwd: ROOT, encoding: 'utf8' });
+  if (!found) {
+    return { ok: false, error: `no Python interpreter could be run (${tried.join('; ')})` };
   }
-  return { ok: false, error: 'no Python interpreter could be run (tried py -3, python3)' };
+  if (r.status !== 0) return { ok: false, error: (r.stderr ?? '').trim().split('\n').pop().slice(0, 200) || `exit ${r.status}` };
+  try {
+    const rules = JSON.parse(r.stdout.trim().split('\n').pop());
+    return { ok: true, rules };
+  } catch (e) {
+    return { ok: false, error: `could not parse extractor output (${e.message})` };
+  }
 }
 
 function buildRulesCatalog(discAbsPath) {

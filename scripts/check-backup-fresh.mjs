@@ -47,11 +47,10 @@
 // MAX_ARCHIVE_LAG_MINUTES=<n> (default 20 — 4x enable-wal-archiving.ps1's archive_timeout of 5min).
 import { existsSync, readdirSync, statSync } from 'node:fs';
 import { join, parse, dirname } from 'node:path';
-import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { runPython } from './lib/python-interpreter.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
-const PY = process.platform === 'win32' ? 'py' : 'python3';
 
 const PRIMARY_DEST = process.env.PRIMARY_DEST || 'G:\\matconetesh-backups';
 const ARCHIVE_DEST = process.env.ARCHIVE_DEST || 'G:\\pg-wal-archive';
@@ -126,7 +125,7 @@ function walPendingState() {
   // below. Format: "<currentSegment>|<lastArchivedWal>|<failedCount>|<lastFailedWal>".
   const injected = process.env.WAL_PENDING_OVERRIDE;
   if (injected) return parsePendingLine(injected);
-  const r = spawnSync(PY, ['-3', '-c', [
+  const { found, result: r } = runPython(['-c', [
     'import sys; sys.path.insert(0, r"' + ROOT.replace(/\\/g, '\\\\') + '")',
     'from src.knowledge import config',
     'c = config.connect_reader(); cur = c.cursor()',
@@ -136,7 +135,7 @@ function walPendingState() {
     'print("%s|%s|%s|%s" % (cur_seg, last or "", failed or 0, lastfail or ""))',
     'c.close()',
   ].join('\n')], { encoding: 'utf8', timeout: 20000 });
-  if (r.status !== 0 || !r.stdout) return null;
+  if (!found || r.status !== 0 || !r.stdout) return null;
   return parsePendingLine(r.stdout.trim().split(/\r?\n/).pop());
 }
 

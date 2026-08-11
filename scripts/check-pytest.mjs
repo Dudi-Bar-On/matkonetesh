@@ -8,10 +8,10 @@
 //
 // Fast by construction: the whole suite is ~2 s because every test runs against :memory:
 // with LlamaIndex's MockLLM and MockEmbedding. A gate may block when the fix is cheap.
-import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runPython } from './lib/python-interpreter.mjs';
 
 // --root <dir> (Arc 4, R-146): points the gate at a fixture tree instead of the real repo, so
 // scripts/tests/test-check-pytest.mjs can run a REAL, tiny pytest invocation (one fixture file,
@@ -41,16 +41,13 @@ if (!pyTests.length) {
 //
 // That is the worst shape a gate can have: not a false negative, a false ACCUSATION. It sends
 // someone to debug a suite that never ran. So the interpreter is now searched for, in order, and
-// the stub is recognised for what it is — an absence, not a failure.
-const CANDIDATES = [
-  ['python', []],
-  ['py', ['-3']],           // the Windows launcher, which ignores PATH and reads the registry
-  ['python3', []],
-];
-const STORE_STUB = /Python was not found;|Microsoft Store/i;
-
-function runPytest(cmd, pre) {
-  return spawnSync(cmd, [...pre, '-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q'], {
+// the stub is recognised for what it is — an absence, not a failure. R-147: this used to be a local
+// CANDIDATES/STORE_STUB pair copied (inconsistently) into nine other gate scripts, which is exactly
+// what put `spawnSync py ENOENT` into the CI log for five of them. The resolution logic now lives
+// once, in scripts/lib/python-interpreter.mjs, and every one of the ten points at it.
+const { found, result: r, usedLabel: used, tried } = runPython(
+  ['-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q'],
+  {
     cwd: ROOT,
     encoding: 'utf8',
     // CHECK_PYTEST_NESTED (Arc 2 Phase 1, 2026-08-09): tells the Python suite it is running INSIDE
@@ -67,22 +64,10 @@ function runPytest(cmd, pre) {
     // — proving check-meta.mjs's real, top-level, no-override entry point wires the nine gates — is
     // still exercised at depth 0 (a developer's or CI's own `pytest tests/`), which never sets this var.
     env: { ...process.env, PYTHONIOENCODING: 'utf-8', CHECK_PYTEST_NESTED: '1' },
-  });
-}
+  },
+);
 
-let r = null;
-let used = null;
-const tried = [];
-for (const [cmd, pre] of CANDIDATES) {
-  const attempt = runPytest(cmd, pre);
-  if (attempt.error || attempt.status === null) { tried.push(`${cmd}: ${attempt.error?.code ?? 'no exit status'}`); continue; }
-  if (STORE_STUB.test(`${attempt.stdout ?? ''}${attempt.stderr ?? ''}`)) { tried.push(`${cmd}: Windows Store alias stub, not an interpreter`); continue; }
-  r = attempt;
-  used = [cmd, ...pre].join(' ');
-  break;
-}
-
-if (!r) {
+if (!found) {
   console.log('SKIPPED — no Python interpreter could be run.');
   for (const t of tried) console.log(`  tried ${t}`);
   console.log('  This is reported, not silently passed: a gate that cannot run is not a gate that passed.');

@@ -19,17 +19,32 @@ GATE = str(Path(ROOT) / "scripts" / "check-ci.mjs")
 
 
 def _stub(tmp_path, name, stdout_text, exit_code=0):
-    """Write a Windows .cmd stub that always prints the same fixed output/exit code, regardless
-    of the arguments it is called with. Returns its absolute path. The gate calls `gh` twice
-    (once for `--version`, once or twice for `run list` / `run view`) — a stub that answers the
-    same way every time is sufficient because check-ci falls back to the run-level `conclusion`
-    field whenever the second call's JSON does not shape-match a `{jobs: [...]}` object (verified
-    by reading scripts/check-ci.mjs lines 86-90)."""
+    """Write a stub that always prints the same fixed output/exit code, regardless of the
+    arguments it is called with. Returns its absolute path. The gate calls `gh` twice (once for
+    `--version`, once or twice for `run list` / `run view`) — a stub that answers the same way
+    every time is sufficient because check-ci falls back to the run-level `conclusion` field
+    whenever the second call's JSON does not shape-match a `{jobs: [...]}` object (verified by
+    reading scripts/check-ci.mjs lines 86-90).
+
+    R-147: on Windows a `.cmd` is runnable the instant it exists — extension association is
+    enough. On Linux a file needs its executable bit SET, or `sp.run([path, ...])` raises
+    `PermissionError: [Errno 13]` before the stub's content is ever considered (this is exactly
+    what CI run 2ffcbd4 named for all five tests in this file). And even WITH the bit set, `.cmd`
+    content (`@echo off` / `type`) is not POSIX shell — Linux would trade the PermissionError for
+    an ENOEXEC/"command not found" one. So each platform gets its own real script: unchanged `.cmd`
+    batch on Windows (the dev machine this suite must stay green on), a `#!/bin/sh` script with its
+    executable bit set on everything else."""
     out = tmp_path / f"{name}.out"
     out.write_text(stdout_text, encoding="utf-8")
-    p = tmp_path / f"{name}.cmd"
-    body = f'@echo off\r\ntype "{out}"\r\nexit /b {exit_code}\r\n'
-    p.write_text(body, encoding="utf-8")
+    if os.name == "nt":
+        p = tmp_path / f"{name}.cmd"
+        body = f'@echo off\r\ntype "{out}"\r\nexit /b {exit_code}\r\n'
+        p.write_text(body, encoding="utf-8")
+    else:
+        p = tmp_path / f"{name}.sh"
+        body = f'#!/bin/sh\ncat "{out}"\nexit {exit_code}\n'
+        p.write_text(body, encoding="utf-8")
+        os.chmod(p, 0o755)
     return str(p)
 
 

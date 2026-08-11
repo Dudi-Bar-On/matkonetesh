@@ -26,10 +26,10 @@
 //
 // reads the MIRROR (rules.sqlite, in git) rather than Postgres — the gate must work on a machine
 //   with no database configured, and the mirror is what the enforcement hooks actually read.
-import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { existsSync } from 'node:fs';
+import { runPython } from './lib/python-interpreter.mjs';
 
 // Deliberately NO `RULE_IDS` export. The first draft declared `['R-118']` and the coverage gate
 // rejected it on the spot: R-118 is a REGISTER row, not a rule in the corpus, and — in its own
@@ -75,11 +75,14 @@ except Exception as exc:
     print(json.dumps({"error": f"{type(exc).__name__}: {exc}"}))
 `;
 
-const probe = spawnSync('py', ['-3', '-X', 'utf8', '-c', PY], {
+const { found, result: probe, tried } = runPython(['-X', 'utf8', '-c', PY], {
   encoding: 'utf8',
   timeout: 20000,
 });
-if (probe.error || probe.status !== 0) {
+if (!found) {
+  undecided(`could not query the mirror (no Python interpreter could be run: ${tried.join('; ')})`);
+}
+if (probe.status !== 0) {
   undecided(`could not query the mirror (${probe.error ? probe.error.message : `exit ${probe.status}`})`);
 }
 

@@ -18,6 +18,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { runPython } from './lib/python-interpreter.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -79,26 +80,18 @@ print(json.dumps({"disk": len(on_disk), "stored": len(stored),
 // every verdict branch (fresh / stale / cannot-connect) without a database. shell: true is
 // required for the substitute — Windows cannot exec a .cmd stub without a shell in the loop
 // (same finding as check-ci.mjs's CHECK_CI_GIT/CHECK_CI_GH seam, Task 3) — and is otherwise a
-// no-op for the real `python`/`py`/`python3` lookup.
+// no-op for the real `python`/`py`/`python3` lookup, which now runs through the ONE shared
+// resolver (scripts/lib/python-interpreter.mjs, R-147) instead of a copy of it.
 const PYTHON_STUB = process.env.CHECK_GENIZA_PY;
-const CANDIDATES = PYTHON_STUB ? [[PYTHON_STUB, []]] : [['python', []], ['py', ['-3']], ['python3', []]];
-const STORE_STUB = /Python was not found;|Microsoft Store/i;
-
-let out = null;
-let usedCmd = null;
-let usedPre = [];
-const tried = [];
-for (const [cmd, pre] of CANDIDATES) {
-  const r = spawnSync(cmd, [...pre, '-c', PY], {
-    cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, shell: !!PYTHON_STUB,
-  });
-  if (r.error || r.status === null) { tried.push(`${cmd}: ${r.error?.code ?? 'no exit status'}`); continue; }
-  const text = `${r.stdout ?? ''}${r.stderr ?? ''}`;
-  if (STORE_STUB.test(text)) { tried.push(`${cmd}: Windows Store alias stub, not an interpreter`); continue; }
-  out = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
-  usedCmd = cmd; usedPre = pre;
-  break;
-}
+const probe = runPython(['-c', PY], {
+  cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+}, { stub: PYTHON_STUB });
+const out = probe.found
+  ? { status: probe.result.status, stdout: probe.result.stdout ?? '', stderr: probe.result.stderr ?? '' }
+  : null;
+const usedCmd = probe.cmd;
+const usedPre = probe.pre;
+const tried = probe.tried;
 
 if (!out) {
   console.log('SKIPPED — no Python interpreter could be run.');

@@ -28,6 +28,7 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PYTHON_CANDIDATES, isStoreStub } from './lib/python-interpreter.mjs';
 
 const argv = process.argv.slice(2);
 const rootArg = (() => { const i = argv.indexOf('--root'); return i === -1 ? null : argv[i + 1]; })();
@@ -41,9 +42,14 @@ const DIR = join(ROOT, '.github', 'workflows');
 
 // L59: `python` on PATH is frequently the Microsoft Store app-execution alias — a shim that prints
 // "Python was not found" and exits 9009. It is not a broken Python, it is not Python, and treating
-// its output as a result is how a gate reports a false verdict. Probe, and reject the stub.
-const CANDIDATES = [['py', ['-3']], ['python3', []], ['python', []]];
-const STORE_STUB = /Python was not found;|Microsoft Store/i;
+// its output as a result is how a gate reports a false verdict. Probe, and reject the stub. R-147:
+// the candidate list and stub detection are the ONE shared resolver (scripts/lib/python-
+// interpreter.mjs) — this gate keeps its own loop (rather than the resolver's generic `runPython`)
+// because it needs a THIRD outcome per candidate beyond found/not-found: "a real interpreter ran but
+// PyYAML is not installed", which must stop the whole search rather than fall through to the next
+// candidate (falling through would turn "PyYAML is missing" into "no Python", the confusion L54 is
+// about).
+const CANDIDATES = PYTHON_CANDIDATES;
 
 const PY = `
 import sys, json, yaml, os
@@ -119,7 +125,7 @@ for (const [cmd, pre] of CANDIDATES) {
     cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
   });
   if (r.error) continue;                                       // not installed
-  if (STORE_STUB.test(`${r.stdout}${r.stderr}`)) continue;      // the alias: ABSENCE, not failure
+  if (isStoreStub(`${r.stdout}${r.stderr}`)) continue;          // the alias: ABSENCE, not failure
   if (r.status === 0 && r.stdout.trim().startsWith('{')) { out = r.stdout; used = pre.length ? `${cmd} ${pre.join(' ')}` : cmd; break; }
   // A real interpreter that failed for a real reason — report it rather than trying the next one,
   // which would turn "PyYAML is missing" into "no Python", the exact confusion L54 is about.
@@ -131,7 +137,7 @@ for (const [cmd, pre] of CANDIDATES) {
 }
 
 if (!out) {
-  console.log('SKIP - no usable Python interpreter (tried py -3, python3, python).');
+  console.log('SKIP - no usable Python interpreter (tried python, py -3, python3).');
   console.log('  `python` on PATH may be the Microsoft Store alias — see L59.');
   process.exit(0);
 }

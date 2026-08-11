@@ -22,6 +22,7 @@ import { spawnSync } from 'node:child_process';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { unlinkSync } from 'node:fs';
+import { runPython } from './lib/python-interpreter.mjs';
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 const MIRROR_PATH = join(ROOT, 'rules.sqlite');
@@ -71,19 +72,17 @@ else:
         }))
 `;
 
-// L59: `python` on PATH may be the Microsoft Store alias — never tried here.
-const CANDIDATES = [['py', ['-3']], ['python3', []]];
-let out = null, usedCmd = null, usedPre = [];
-for (const [cmd, pre] of CANDIDATES) {
-  const r = spawnSync(cmd, [...pre, '-c', PY], { cwd: ROOT, encoding: 'utf8' });
-  if (r.error || r.status === null) continue;
-  out = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
-  usedCmd = cmd; usedPre = pre;
-  break;
-}
+// R-147: resolution runs through the ONE shared resolver (scripts/lib/python-interpreter.mjs)
+// instead of a local copy — L59 (the Microsoft Store alias stub) is handled there.
+const probe = runPython(['-c', PY], { cwd: ROOT, encoding: 'utf8' });
+const out = probe.found
+  ? { status: probe.result.status, stdout: probe.result.stdout ?? '', stderr: probe.result.stderr ?? '' }
+  : null;
+const usedCmd = probe.cmd;
+const usedPre = probe.pre;
 
 if (!out) {
-  console.log('SKIPPED — no Python interpreter could be run (tried py -3, python3).');
+  console.log(`SKIPPED — no Python interpreter could be run (${probe.tried.join('; ')}).`);
   console.log('  NOT VERIFIED here: whether rules.sqlite matches mk_rules.');
   // Fix round 1 (Task 17 review): a machine-readable RESULT= line, additive only — human-facing
   // text above is free to be reworded without breaking a consumer (watchman.ps1) that matches on
