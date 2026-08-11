@@ -2212,6 +2212,25 @@ evidence of an unread clock (L57), the same discipline `cited-path-read.mjs` (L6
 to its own file-read channel, deliberately reused here rather than duplicated (R-116). Reachable
 alternative (§10.24): read the clock now, then report the real reading, or drop the timestamp.
 
+**L85 · Author through a file, not through a shell heredoc (2026-08-11).**
+Writing prose that contains code — a regex, a Python snippet, a JS pattern — through a bash
+heredoc has now failed FIFTEEN times in three days, and always the same way: the shell eats one
+escaping layer that the author never sees. `\\b` inside a non-raw Python string became a real
+BACKSPACE byte and put control characters into the register twice — while the very row being
+written described a word-boundary defect. A single quote inside an embedded test fixture ended the
+heredoc early and killed the command outright. Each individual instance looked like carelessness;
+fifteen of them is a property of the channel.
+
+**The rule: content that contains code is written with the file-writing tool, then moved or
+appended by a one-line command.** Never composed inside a heredoc. The controller wrote this
+lesson's own task specification to a scratch file and appended it with a three-line Python call,
+after the heredoc version failed — which is the shape being prescribed.
+
+It generalises past shells. A channel that silently transforms what passes through it cannot be
+made safe by being careful; it has to be taken out of the path. That is the same reasoning as
+§10.25 (monolingual infrastructure removes the bilingual-pattern failure mode rather than guarding
+against it) and the same as L18's fix (de-cluster serve.js rather than kill it more carefully).
+
 **L83 · הוראה שאינה נותנת את המנגנון היא הוראה שלא ניתנה (10.8.26).**
 שלושה מממשים בשלב 2 נעצרו באותה נקודה בדיוק: הריצו את סוויטת pytest המלאה, היא ארוכה מתקרת-הזמן
 המשתמעת של כלי ה-Bash, הם דחפו אותה לרקע — ואיבדו את החוט. כל אחד סיים את העבודה בפועל אך לא

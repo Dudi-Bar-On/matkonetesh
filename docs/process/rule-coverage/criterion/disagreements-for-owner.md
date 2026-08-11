@@ -228,3 +228,18 @@ messages) replayed through a fresh empty state store produces `fireCount = 0` at
 degraded/L57 path, proven — an unwired channel can never warn); firing precision on the WARN path
 itself was proven on real machinery (seeded `clock_read` events through the real
 `enforcement-state.mjs`, not invented input) — see `timestamp-gate-report.md`.
+
+---
+
+## `L85` — no group yet (added 2026-08-11)
+
+Written because §10.16 blocked a commit: fifteen failures in three days from composing code-bearing
+prose inside a bash heredoc, and no lesson had been drawn.
+
+| reading | group | the reason |
+|---|---|---|
+| proposal | `A` · `pretooluse:Bash` | A heredoc whose body contains a backslash-escape or a nested quote is a visible pattern in the command text, decidable without intent — the same shape as `L73`, which already inspects Bash calls for a forbidden combination. |
+| alternative | `none` | Authoring guidance about which tool to compose with; the failure is in what the shell does to the text, not in an artifact a gate can read. |
+
+**Recommendation: `A`.** The controller has now hit this fifteen times with full knowledge of the
+hazard, which is the strongest available evidence that awareness is not the fix and a mechanism is.

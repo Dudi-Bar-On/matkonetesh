@@ -689,3 +689,169 @@ git commit -m "feat(arc4, Task 9): wire check-corpus-consistency into check-meta
 - **Spec coverage:** brief item (a) — no work planned, per instruction (L84 excluded, Task 8 tolerates it). (b) seven gates → Tasks 1–4, grouped by inspection target (tree-scanning ×2 tasks, external-state ×2 tasks). (c) three lib helpers → Task 5; two observers → Task 6. (d) whole-corpus → Task 8 (all four cross-cutting questions mapped; the doc-drift question deliberately narrowed to decidable probes, stated as scope in the gate header). (e) R-140 + sibling audit → Task 7. Wiring/liveness/suites → Task 9.
 - **Placeholder scan:** one intentional open point remains — fixture strings marked `<the real ... shape>` in Tasks 3/4/7 are captured from live runs during the task's own Step 1, which is a TDD measurement step, not a deferral; the plan says exactly how to capture each.
 - **Type consistency:** `run_gate(script, *args)` / `git_env()` used identically throughout; the `--root`/`--mirror`/`--baseline` argv shape is the single `arg()` convention from `check-rules-classified.mjs`; baseline JSON keys in Task 8's schema match the test fixtures' `EMPTY` dict.
+
+---
+
+### Task 10: The status board tells the whole project, and a gate keeps it honest
+
+**Added 2026-08-11 by owner instruction**, after he asked for a status of the WHOLE project rather
+than only the infrastructure, and asked whether the `/status` command itself needed changing.
+
+**The measured problem, and it is not the command.** `/status` renders `docs/STATUS-BOARD.md`
+faithfully. The board is what is wrong:
+
+- Its task counter reads `60 / ~183-208`. All 60 completed BEFORE 2026-08-08. The 48 commits of the
+  last two days are absent from it — they are counted in a separate row (`48 of 84 rules`), so the
+  board carries **two counting systems that never add up to one number**.
+- It cannot answer "how far from a finished product": no target version, no capability list, nothing
+  that states what a user gets at the end.
+- Active arcs are added by hand. The board went **12 commits stale on 2026-08-10** and nobody knew.
+- `check-board-fresh.mjs` exists but checks exactly ONE field — that the declared version stamp
+  matches the newest release commit. It is silent about everything above. Same shape as R-140: a
+  gate that checks one narrow thing while reading as if it checked the board.
+
+**Files:**
+- Modify: `docs/STATUS-BOARD.md`
+- Modify: `scripts/check-board-fresh.mjs`
+- Modify: `scripts/check-meta.mjs`
+- Test: `tests/test_arc4_board_currency.py` (new)
+
+**Interfaces:**
+- Consumes: `node scripts/check-rule-coverage.mjs` (prints `RULE COVERAGE: N of M`), the directory
+  listing of `.superpowers/sdd/`, and `git log` for release commits.
+- Produces: `check-board-fresh.mjs` gains a `--currency` mode; the board gains three
+  machine-readable declarations a gate can verify.
+
+- [ ] **Step 1: Measure what the board claims versus what is true. Paste both.**
+
+```bash
+node scripts/check-rule-coverage.mjs | grep "RULE COVERAGE"
+grep -oE "COVERAGE-DECLARED: *[0-9]+ */ *[0-9]+" docs/STATUS-BOARD.md || echo "no declaration yet"
+git log --oneline "$(git log -1 --format=%H -- docs/STATUS-BOARD.md)"..HEAD | wc -l
+```
+
+- [ ] **Step 2: Write the failing tests.**
+
+```python
+# tests/test_arc4_board_currency.py
+#
+# The board is the artifact `/status` renders, and it drifted without anyone knowing: 12 commits
+# stale on 2026-08-10, while `check-board-fresh.mjs` reported OK because it only ever checked the
+# version stamp. These tests make the board answer to measurement.
+import re
+import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+BOARD = ROOT / "docs" / "STATUS-BOARD.md"
+
+
+def run_gate(*args):
+    return subprocess.run(["node", str(ROOT / "scripts" / "check-board-fresh.mjs"), *args],
+                          capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+
+
+def measured_coverage():
+    r = subprocess.run(["node", str(ROOT / "scripts" / "check-rule-coverage.mjs")],
+                       capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+    m = re.search(r"RULE COVERAGE: (\d+) of (\d+)", r.stdout)
+    assert m, "could not read the coverage gate's own output:\n" + r.stdout
+    return m.group(1), m.group(2)
+
+
+def test_board_coverage_declaration_matches_the_coverage_gate():
+    """The board carried two counting systems that never reconciled — a task counter frozen before
+    2026-08-08 and a separate rule-coverage row. A figure nobody cross-checks is one that drifts."""
+    live = measured_coverage()
+    m = re.search(r"COVERAGE-DECLARED:\s*(\d+)\s*/\s*(\d+)", BOARD.read_text(encoding="utf-8"))
+    assert m, "the board declares no machine-readable COVERAGE-DECLARED figure"
+    assert (m.group(1), m.group(2)) == live, (
+        "board says " + m.group(1) + "/" + m.group(2)
+        + ", the gate measures " + live[0] + "/" + live[1])
+
+
+def test_the_currency_check_can_actually_fail(tmp_path):
+    """Prove the check fails on a drifted board. A gate that cannot fail is L57/L58, and this
+    project has shipped one of those."""
+    fake = tmp_path / "board.md"
+    fake.write_text("COVERAGE-DECLARED: 1 / 999\nLIVE-VERSION: v291\nTARGET-VERSION: v320\n",
+                    encoding="utf-8")
+    r = run_gate("--board", str(fake), "--currency")
+    assert r.returncode == 1, r.stdout
+    assert "999" in r.stdout
+
+
+def test_board_names_every_active_arc():
+    """Arcs are added by hand today, which is why the board went 12 commits stale. A directory under
+    .superpowers/sdd/ is an arc that ran; the board must name it."""
+    sdd = ROOT / ".superpowers" / "sdd"
+    active = [p.name for p in sdd.iterdir() if p.is_dir()] if sdd.exists() else []
+    assert active, "found no SDD workspaces — this test examined NOTHING"
+    text = BOARD.read_text(encoding="utf-8").lower()
+    missing = [a for a in active if a.lower() not in text]
+    assert not missing, "active arc(s) absent from the board: " + str(missing)
+
+
+def test_board_declares_the_distance_to_a_finished_product():
+    """The owner's actual question: how far from start to finish. A board that counts tasks but
+    never states a target cannot answer it."""
+    text = BOARD.read_text(encoding="utf-8")
+    assert re.search(r"TARGET-VERSION:\s*v\d+", text), "no TARGET-VERSION declared"
+    assert re.search(r"LIVE-VERSION:\s*v\d+", text), "no LIVE-VERSION declared"
+```
+
+- [ ] **Step 3: Run them and watch all four fail.** The board carries none of the declarations yet
+and `--currency` does not exist. Paste the output.
+
+- [ ] **Step 4: Restructure the board's summary section.** This is an ADDITION — every existing
+history row stays exactly as it is. Replace only the single confused task counter:
+
+```markdown
+## סך הפרויקט
+
+<!-- machine-readable: check-board-fresh.mjs --currency verifies these against live measurement -->
+LIVE-VERSION: v291
+TARGET-VERSION: v000
+COVERAGE-DECLARED: 48 / 84
+
+| מסלול | מצב | הפער עד הסוף |
+|---|---|---|
+| **תשתית האכיפה** | 48 מתוך 84 כללים נאכפים · 3 קשתות בתור | ~36 כללים · Arc 4 · R-136 · R-143 |
+| **האפליקציה** | v291 חי · 7 שפות · 279 מתכונים מצוטטים | ~123-148 משימות · 120 מ-156 פערי בסיס פתוחים |
+| **מה המשתמש יקבל בסוף** | *(ממתין למילוי הבעלים)* | — |
+```
+
+`TARGET-VERSION: v000` is a deliberate placeholder the gate accepts and a human can see is unfilled.
+Do NOT invent a target version.
+
+- [ ] **Step 5: Add `--currency` to `check-board-fresh.mjs`.** Keep the existing version-stamp check
+byte-for-byte — it is correct and it has a documented reason. Behind the flag, add:
+1. `COVERAGE-DECLARED` equals `check-rule-coverage.mjs`'s measured output.
+2. Every directory under `.superpowers/sdd/` is named somewhere in the board.
+3. `LIVE-VERSION` and `TARGET-VERSION` both present and parsing as `vNNN`.
+
+Fail open with a stated reason if the coverage gate cannot be run: a gate that blocks on its own
+inability names no reachable alternative (§10.24).
+
+```javascript
+// --currency (2026-08-11): the version stamp was the only thing this gate ever checked, and the
+// board still went 12 commits stale under it. These three are the claims a reader takes from the
+// board without re-deriving them, so they are the three that must answer to measurement.
+const CURRENCY = argv.includes('--currency');
+```
+
+- [ ] **Step 6: Run the tests to GREEN.** Paste the output.
+
+- [ ] **Step 7: Wire `--currency` into `check-meta.mjs`** beside the existing board check, then prove
+it BLOCKS: drift `COVERAGE-DECLARED` on purpose, observe the failure, restore it, observe green.
+Paste both outputs.
+
+- [ ] **Step 8: Ledger line, then commit** — separate Bash calls (L73).
+
+```bash
+git commit -- docs/STATUS-BOARD.md scripts/check-board-fresh.mjs scripts/check-meta.mjs tests/test_arc4_board_currency.py
+```
+
+**What this task does NOT do, stated so nobody assumes otherwise:** it does not invent the target
+version or the capability list. Those are the owner's to fill; this task installs the structure and
+the gate, and leaves a placeholder the gate tolerates and a human can see is empty.
