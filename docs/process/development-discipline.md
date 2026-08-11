@@ -2537,3 +2537,18 @@ its one specific assertion failed for the exact reason the fix targets, and the 
 the evidence, not a defect. Nothing here was an unexpected failure mode; both are the debugging
 protocol and the RED/GREEN protocol working as designed.
 
+**No-lesson declaration (2026-08-11):** arc4 task 4 (`CHECK_GENIZA_PY`/`CHECK_RULES_PY` probe seams
++ branch tests for `check-geniza-fresh.mjs`/`check-rules-complete.mjs`) — no new numbered lesson.
+The one recorded command failure was `git stash push` refusing with `.git/index.lock: File exists`
+while a sibling agent's own commit (pre-commit hook running the full pytest suite, ~250s) held the
+lock — an expected, documented contention shape (the arc's own precedent in Task 3/5/6's ledger
+entry: "commits serialise at ~255s each"), not a defect. Polled for the lock to clear (it did, on
+the second poll) and proceeded; no code, gate, or test was affected. A second self-inflicted item
+worth naming without a lesson line: an early exploratory `.cmd` stub (built via a bash `printf`
+whose `\\t` sequence was consumed as a literal TAB inside the format string) produced a `type`
+command with a corrupted path and briefly looked like a real Windows shell/multiline-argument
+fragility in the seam design; re-building the same stub content with Python's f-strings (what the
+actual pytest fixture uses, never bash `printf`) reproduced the correct, working shape immediately.
+The seam itself has no defect — this was a scratchpad authoring mistake caught before it reached the
+test file, exactly the kind of thing PREDICT->TEST->OBSERVE->CONCLUDE exists to catch cheaply.
+

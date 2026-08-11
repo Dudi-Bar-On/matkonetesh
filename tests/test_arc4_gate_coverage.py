@@ -1,6 +1,7 @@
 # tests/test_arc4_gate_coverage.py — Arc 4: the enforcement machinery gets its own regression net.
 import subprocess
-from test_arc2_phase1_gates import run_gate, git_env
+from test_arc2_phase1_gates import ROOT, run_gate, git_env
+from conftest import requires_database
 
 
 def _git_repo(tmp_path, files):
@@ -106,3 +107,154 @@ def test_commands_exist_honors_the_historical_exemption(tmp_path):
 def test_commands_exist_clean_on_the_real_repo():
     r = run_gate("check-commands-exist.mjs")
     assert r.returncode == 0, r.stdout
+
+
+# --- Task 4: check-geniza-fresh.mjs / check-rules-complete.mjs — the two database-backed gates ---
+#
+# Both gates embed a Python probe run via a searched-for interpreter (`python`/`py`/`python3` for
+# geniza, `py -3`/`python3` for rules). CHECK_GENIZA_PY / CHECK_RULES_PY substitute a stub for that
+# interpreter, so every verdict branch (fresh / stale / cannot-connect / rule-missing) is driven
+# without touching PostgreSQL. The stub is a `.cmd` that ignores its argv and always prints the
+# same fixed text on the stream the gate reads (stdout for a clean probe result, stderr + a
+# non-zero exit for the shape an uncaught Python exception takes).
+#
+# Fixture strings below are REAL captured shapes, not invented text:
+#   - GENIZA_CANNOT_CONNECT: captured 2026-08-11 by connecting psycopg2 directly to a closed port
+#     (`psycopg2.connect(host="127.0.0.1", port=1, ...)`) — the same exception class
+#     check-geniza-fresh's own connect_reader() raises when the geniza's Postgres is not listening.
+#   - GENIZA_FRESH_JSON / RULES_CLEAN counts: captured 2026-08-11 from live
+#     `node scripts/check-geniza-fresh.mjs` / `check-rules-complete.mjs` runs against the real,
+#     currently-fresh store (964 on-disk docs / 969 stored / 0 stale / 0 missing / 5 orphaned;
+#     163 on-disk rules / 162 current in mk_rules — off by one only in the missing-rule fixture
+#     below, which fabricates one absent rule_id on top of that real count).
+#   - GENIZA_STALE_JSON / RULES_MISSING_JSON: the same real shapes with one path/rule_id moved into
+#     the failing bucket — the gates' verdict logic reads this field, not a live diff, so this is
+#     sufficient to drive the block branch without a database.
+
+GENIZA_CANNOT_CONNECT = (
+    'psycopg2.OperationalError: connection to server at "127.0.0.1", port 1 failed: '
+    'timeout expired\n'
+)
+
+GENIZA_FRESH_JSON = (
+    '{"disk": 964, "stored": 969, "missing": [], "stale": [], '
+    '"orphaned": [], "pending_extraction": 86}\n'
+)
+
+GENIZA_STALE_JSON = (
+    '{"disk": 964, "stored": 969, "missing": [], '
+    '"stale": ["docs/process/development-discipline.md"], '
+    '"orphaned": [], "pending_extraction": 86}\n'
+)
+
+RULES_MISSING_JSON = '{"disk": 163, "stored": 162, "missing": ["L999"], "extra": []}\n'
+
+
+def _stub(tmp_path, name, stdout_text, exit_code=0):
+    """.cmd stub that ignores its argv and always prints the same fixed STDOUT — the shape a
+    clean Python probe takes. Same idea as test_arc4_ci_gate.py's helper of the same name,
+    duplicated rather than imported (importing a sibling test module would drag its fixtures and
+    collection into this file for no benefit)."""
+    out = tmp_path / f"{name}.out"
+    out.write_text(stdout_text, encoding="utf-8")
+    p = tmp_path / f"{name}.cmd"
+    p.write_text(f'@echo off\r\ntype "{out}"\r\nexit /b {exit_code}\r\n', encoding="utf-8")
+    return str(p)
+
+
+def _stub_stderr(tmp_path, name, stderr_text, exit_code=1):
+    """.cmd stub that prints to STDERR and exits non-zero — the shape a real interpreter takes
+    when the embedded Python program raises an uncaught exception (traceback on stderr, non-zero
+    exit) instead of returning cleanly. Both gates classify on `stderr`, not `stdout`, for this
+    branch, so a stub answering on the wrong stream would test nothing."""
+    out = tmp_path / f"{name}.out"
+    out.write_text(stderr_text, encoding="utf-8")
+    p = tmp_path / f"{name}.cmd"
+    p.write_text(f'@echo off\r\ntype "{out}" 1>&2\r\nexit /b {exit_code}\r\n', encoding="utf-8")
+    return str(p)
+
+
+def _tee_stub(tmp_path, name, stdout_text, marker):
+    """.cmd stub that BOTH records its own argv to `marker` (`echo %*`) and returns canned
+    stdout — used to pin check-rules-complete's read-only guarantee: a mismatch must not trigger
+    a second, write-shaped call. (`%*` truncates at the embedded probe program's first newline —
+    harmless here, since the assertion only needs to prove no write-shaped token ever arrived.)"""
+    out = tmp_path / f"{name}.out"
+    out.write_text(stdout_text, encoding="utf-8")
+    p = tmp_path / f"{name}.cmd"
+    p.write_text(f'@echo off\r\necho %* >> "{marker}"\r\ntype "{out}"\r\nexit /b 0\r\n',
+                  encoding="utf-8")
+    return str(p)
+
+
+def _run_with_env(script, **env):
+    e = dict(git_env())
+    e.update(env)
+    return subprocess.run(["node", str(ROOT / "scripts" / script)], capture_output=True,
+                           text=True, encoding="utf-8", cwd=str(ROOT), env=e)
+
+
+def test_geniza_fresh_skips_loudly_when_the_stack_is_down(tmp_path):
+    r = _run_with_env("check-geniza-fresh.mjs",
+                       CHECK_GENIZA_PY=_stub_stderr(tmp_path, "py", GENIZA_CANNOT_CONNECT))
+    assert r.returncode == 0, r.stdout + r.stderr
+    assert "skip" in r.stdout.lower() or "not blocking" in r.stdout.lower()
+    assert "geniza" in r.stdout.lower()   # the skip names its subject — a silent skip is the graphify failure
+
+
+def test_geniza_fresh_blocks_on_a_stale_document(tmp_path):
+    # GENIZA_NO_HEAL=1 observes the FAIL verdict directly. Without it the gate would try to
+    # self-heal by re-invoking the (stub) interpreter to "repair" the drift — which the stub
+    # would answer with its same canned success text, masking the very verdict this test exists
+    # to pin. This also satisfies the brief's requirement that self-heal never fires against the
+    # real store: with the stub substituted for the interpreter, a self-heal attempt could only
+    # ever reach the stub, never Postgres — GENIZA_NO_HEAL=1 just makes that explicit rather than
+    # relying on it.
+    r = _run_with_env("check-geniza-fresh.mjs",
+                       CHECK_GENIZA_PY=_stub(tmp_path, "py", GENIZA_STALE_JSON),
+                       GENIZA_NO_HEAL="1")
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "development-discipline.md" in r.stdout
+
+
+def test_geniza_fresh_passes_when_probe_reports_clean(tmp_path):
+    """Proves the stale fixture above is what makes the gate fail, not the seam itself: the exact
+    same machinery, fed a clean probe result, must still pass."""
+    r = _run_with_env("check-geniza-fresh.mjs",
+                       CHECK_GENIZA_PY=_stub(tmp_path, "py", GENIZA_FRESH_JSON))
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_geniza_fresh_live_smoke():
+    """Against the real store — skipped, loudly, when the geniza is not configured here."""
+    requires_database("geniza")
+    r = run_gate("check-geniza-fresh.mjs")
+    assert r.returncode == 0, r.stdout + r.stderr   # real repo is fresh at commit time by definition
+
+
+def test_rules_complete_blocks_on_a_rule_missing_from_the_store(tmp_path):
+    r = _run_with_env("check-rules-complete.mjs",
+                       CHECK_RULES_PY=_stub(tmp_path, "py", RULES_MISSING_JSON))
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert "L999" in r.stdout
+
+
+def test_rules_complete_is_read_only_even_on_a_mismatch(tmp_path):
+    """The round-1 defect (see the gate's own header), pinned forever: checking must not repair.
+    The stub tees its own argv to `marker`; assert no write-shaped token (build_rules_store /
+    sync) ever reached it, even though the probe result fed in IS a mismatch."""
+    marker = tmp_path / "invoked.txt"
+    r = _run_with_env("check-rules-complete.mjs",
+                       CHECK_RULES_PY=_tee_stub(tmp_path, "py", RULES_MISSING_JSON, marker))
+    assert r.returncode == 1, r.stdout + r.stderr
+    assert marker.exists(), "the stub was never invoked — this test proves nothing"
+    marker_text = marker.read_text(encoding="utf-8")
+    assert "build_rules_store" not in marker_text
+    assert "sync" not in marker_text
+
+
+def test_rules_complete_live_smoke():
+    """Against the real store — skipped, loudly, when mk_rules is not configured here."""
+    requires_database("mk_rules")
+    r = run_gate("check-rules-complete.mjs")
+    assert r.returncode == 0, r.stdout + r.stderr

@@ -62,11 +62,16 @@ print(json.dumps({"disk": len(on_disk), "stored": len(stored), "missing": missin
 `;
 
 // L59: `python` on PATH may be the Microsoft Store alias — never tried here.
-const CANDIDATES = [['py', ['-3']], ['python3', []]];
+// Test seam (Arc 4, Task 4): CHECK_RULES_PY substitutes a stub interpreter, mirroring
+// check-geniza-fresh.mjs's CHECK_GENIZA_PY — lets a test drive the "rule missing from the store"
+// verdict without a database. shell: true is required for the substitute (Windows cannot exec a
+// .cmd stub without a shell), a no-op for the real `py`/`python3` lookup.
+const PYTHON_STUB = process.env.CHECK_RULES_PY;
+const CANDIDATES = PYTHON_STUB ? [[PYTHON_STUB, []]] : [['py', ['-3']], ['python3', []]];
 
 let out = null, usedCmd = null, usedPre = [];
 for (const [cmd, pre] of CANDIDATES) {
-  const r = spawnSync(cmd, [...pre, '-c', PY], { cwd: ROOT, encoding: 'utf8' });
+  const r = spawnSync(cmd, [...pre, '-c', PY], { cwd: ROOT, encoding: 'utf8', shell: !!PYTHON_STUB });
   if (r.error || r.status === null) continue;
   out = { status: r.status, stdout: r.stdout ?? '', stderr: r.stderr ?? '' };
   usedCmd = cmd; usedPre = pre;

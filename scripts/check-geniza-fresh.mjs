@@ -75,7 +75,13 @@ print(json.dumps({"disk": len(on_disk), "stored": len(stored),
                   "pending_extraction": pending}))
 `;
 
-const CANDIDATES = [['python', []], ['py', ['-3']], ['python3', []]];
+// Test seam (Arc 4, Task 4): CHECK_GENIZA_PY substitutes a stub interpreter, so a test can drive
+// every verdict branch (fresh / stale / cannot-connect) without a database. shell: true is
+// required for the substitute — Windows cannot exec a .cmd stub without a shell in the loop
+// (same finding as check-ci.mjs's CHECK_CI_GIT/CHECK_CI_GH seam, Task 3) — and is otherwise a
+// no-op for the real `python`/`py`/`python3` lookup.
+const PYTHON_STUB = process.env.CHECK_GENIZA_PY;
+const CANDIDATES = PYTHON_STUB ? [[PYTHON_STUB, []]] : [['python', []], ['py', ['-3']], ['python3', []]];
 const STORE_STUB = /Python was not found;|Microsoft Store/i;
 
 let out = null;
@@ -84,7 +90,7 @@ let usedPre = [];
 const tried = [];
 for (const [cmd, pre] of CANDIDATES) {
   const r = spawnSync(cmd, [...pre, '-c', PY], {
-    cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+    cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, shell: !!PYTHON_STUB,
   });
   if (r.error || r.status === null) { tried.push(`${cmd}: ${r.error?.code ?? 'no exit status'}`); continue; }
   const text = `${r.stdout ?? ''}${r.stderr ?? ''}`;
@@ -163,7 +169,7 @@ if (problems.length) {
   const paths = problems.map(([, p]) => p);
   console.log(`  repairing ${paths.length} document(s) ...`);
   const repair = spawnSync(usedCmd, [...usedPre, join(ROOT, 'scripts', 'ingest.py'), ...paths], {
-    cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' },
+    cwd: ROOT, encoding: 'utf8', env: { ...process.env, PYTHONIOENCODING: 'utf-8' }, shell: !!PYTHON_STUB,
   });
   const stdoutLines = (repair.stdout ?? '').trim().split('\n').filter(Boolean);
   const stderrLines = (repair.stderr ?? '').trim().split('\n').filter(Boolean);
