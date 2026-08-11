@@ -2602,6 +2602,17 @@ through the pre-commit hook regardless. The three REDs the brief named (integrat
 were each witnessed by deliberate, temporary sabotage of the just-written code, restored immediately
 after — that is the TDD/verification protocol working, not a defect.
 
+**No-lesson declaration (2026-08-11):** arc4 close / R-155 investigation — no new numbered lesson.
+The 3 recorded failures were: a `node -e` inspection probe that passed the wrong argument shape to
+`readLedger`/`pruneLive` (a throwaway typo in disposable tooling, corrected on the next call by
+reading the function signatures first), and two `PreToolUse` dispatch refusals from
+`agent-concurrency-ceiling` — which are a GATE DOING ITS JOB as written, not a command defect. The
+systemic finding behind those refusals is real but it is a defect to fix, not a behavioural lesson
+to learn: it is registered with its full evidence trail as `R-155`, including the two hypotheses
+that were tested and refuted, and the preserved state file at
+`docs/infra/evidence/agent-ceiling-2026-08-11T2031.json`. Writing it as an `L` line as well would
+duplicate a register row into the lesson log, which `R-116` is precisely about.
+
 **L88 · A test that hides a credential file must put it back, and only the clock proves it did (2026-08-11).**
 R-147(a) needed to reproduce a no-database run, so it renamed `infra/.env` and `infra/rules-db/.env`
 to `.env.hidden-for-test` at 15:52 — the documented way to simulate an unconfigured machine. It never
