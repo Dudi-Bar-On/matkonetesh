@@ -425,3 +425,79 @@ def test_l63a_corpus_replay_degraded_path_never_fires(corpus_dump):
     # broken/absent channel never fires at any severity.
     out = replay("cited-path-read.mjs", corpus_dump)
     assert out["fireCount"] == 0, out["fires"][:5]
+
+
+# ------------------------------------------------------- Task 8: L12 stale-build UI claim
+
+def _free_port():
+    s = socket.socket()
+    s.bind(("127.0.0.1", 0))
+    port = s.getsockname()[1]
+    s.close()
+    return port
+
+
+def _wait_listening(port, timeout=10):
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        try:
+            with socket.create_connection(("127.0.0.1", port), timeout=0.5):
+                return True
+        except OSError:
+            time.sleep(0.2)
+    return False
+
+
+UI_CLAIM = "בוצע — השינוי נבדק ב-UI בדפדפן ונראה תקין."
+
+
+def test_l12_warns_on_ui_claim_over_stale_server(tmp_path):
+    port = _free_port()
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    proc = subprocess.Popen(
+        ["node", "-e",
+         f"require('net').createServer(()=>{{}}).listen({port},'127.0.0.1');setInterval(()=>{{}},1e3)"])
+    try:
+        assert _wait_listening(port)
+        time.sleep(1.5)  # ensure the "rebuild" mtime lands measurably AFTER process start
+        (dist / "index.html").write_text("<html>rebuilt</html>", encoding="utf-8")
+        out = eval_stop_rule("ui-check-stale-build.mjs", UI_CLAIM, tmp_path,
+                             env_extra={"MK_TEST_PORT": str(port),
+                                        "PRETOOLUSE_DIST_DIR": str(dist)})
+        assert out["decision"] == "warn"
+        assert "L12" in out["reason"]
+    finally:
+        proc.kill()
+
+
+def test_l12_silent_when_no_server_listening(tmp_path):
+    port = _free_port()  # nothing listening on it
+    dist = tmp_path / "dist"
+    dist.mkdir()
+    (dist / "index.html").write_text("<html></html>", encoding="utf-8")
+    out = eval_stop_rule("ui-check-stale-build.mjs", UI_CLAIM, tmp_path,
+                         env_extra={"MK_TEST_PORT": str(port),
+                                    "PRETOOLUSE_DIST_DIR": str(dist)})
+    assert out["decision"] == "allow"
+
+
+def test_l12_silent_on_ui_claim_without_success_claim(tmp_path):
+    # Describing a plan to check the UI is not reporting a verification.
+    out = eval_stop_rule("ui-check-stale-build.mjs",
+                         "אבדוק עכשיו את המסך בדפדפן.", tmp_path,
+                         env_extra={"MK_TEST_PORT": str(_free_port())})
+    assert out["decision"] == "allow"
+
+
+def test_stale_dev_server_still_passes_after_refactor():
+    # The lib extraction must be behavior-identical: the sibling PreToolUse rule's own suite is
+    # the proof. (groupa covers stale-dev-server.mjs — run the file, expect exit 0.)
+    r = subprocess.run(["node", str(ROOT / "scripts" / "tests" / "test-hooks-groupa.mjs")],
+                       capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT))
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
+def test_l12_corpus_replay_never_fires_without_os_evidence(corpus_dump):
+    out = replay("ui-check-stale-build.mjs", corpus_dump)
+    assert out["fireCount"] == 0, out["fires"][:5]

@@ -34,50 +34,18 @@
 export const TOOLS = ['browser_navigate'];
 export const RULE_IDS = ['11a'];
 
-import { execFileSync } from 'node:child_process';
 import { existsSync, statSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { findListeningPid, processStartTimeMs } from '../lib/stale-server.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..', '..', '..');
 const DEFAULT_PORT = 8123;
 
-// Finds the PID of whatever is LISTENING on `port`, via `netstat -ano` (Windows). Returns null if
-// nothing is listening, or if netstat itself is unavailable/unparseable — both cases mean "no
-// evidence of a live server", not "assume stale".
-function findListeningPid(port) {
-  let out;
-  try {
-    out = execFileSync('netstat', ['-ano', '-p', 'tcp'], { encoding: 'utf8', timeout: 3000 });
-  } catch {
-    return null;
-  }
-  const needle = `:${port} `;
-  for (const line of out.split(/\r?\n/)) {
-    if (!line.includes('LISTENING') || !line.includes(needle)) continue;
-    const cols = line.trim().split(/\s+/);
-    const pid = cols[cols.length - 1];
-    if (/^\d+$/.test(pid)) return Number(pid);
-  }
-  return null;
-}
-
-// Asks the OS (via PowerShell's Get-Process, the same source Task Manager reads) when `pid` was
-// created. Returns epoch ms, or null if the process is gone or unqueryable by the time we ask —
-// a race that only means "cannot prove staleness", not "it is stale".
-function processStartTimeMs(pid) {
-  try {
-    const out = execFileSync('powershell', [
-      '-NoProfile', '-NonInteractive', '-Command',
-      `(Get-Process -Id ${pid}).StartTime.ToUniversalTime().ToString('o')`,
-    ], { encoding: 'utf8', timeout: 5000 }).trim();
-    const ms = Date.parse(out);
-    return Number.isFinite(ms) ? ms : null;
-  } catch {
-    return null;
-  }
-}
+// findListeningPid/processStartTimeMs moved to ../lib/stale-server.mjs (Arc 2 Phase 4, Task 8) so
+// the L12 Stop rule (stop-rules/ui-check-stale-build.mjs) consumes the SAME OS-truth reading —
+// R-116: a helper applied to one rule and not its sibling is a duplicate detector.
 
 export function evaluate(input) {
   if (!input || typeof input.tool_name !== 'string' || !input.tool_name.includes('browser_navigate')) {
