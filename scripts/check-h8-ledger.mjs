@@ -70,7 +70,13 @@ function analyze(text) {
 
   // 3) §5a recovery ledger: every "| R-N | ..." row must carry a non-empty landing (col 4) that is
   // either a named phase/thread/trigger, OR the row is closed (R-cancelled / 🟢 סגור / status "סגור").
+  // rRows carries the STRUCTURED per-row data (id, landing, status, closed), not just prose
+  // findings - R-140 needs it: the caller diffs rows BY ID between current and baseline, and any
+  // row whose id exists only in current (this commit's OWN row) is run through the stricter FULL
+  // rule below (answersFullRule), independent of whether this per-text loop emitted a finding for
+  // it at all - a row with a non-empty but MEANING-LESS landing cell produces NO finding here.
   const rRows = sec5a.split('\n').filter(l => /^\|\s*R-\d+\s*\|/.test(l));
+  const rRowData = [];
   for (const r of rRows) {
     const cols = r.split('|').map(c => c.trim());
     const label = cols[1] ?? '';
@@ -80,6 +86,7 @@ function analyze(text) {
     if (!landing) findings.push(`§5a row ${label} has no landing (col 4) and is not marked closed`);
     if (!status) findings.push(`§5a row ${label} has no status (col 5)`);
     if (!closed && !landing) findings.push(`§5a row ${label}: neither a named landing nor a closed status`);
+    rRowData.push({ id: label, landing, status, closed });
   }
 
   // 4) Forbidden states anywhere in EITHER ledger section.
@@ -91,7 +98,19 @@ function analyze(text) {
   // 5) The roadmap's own H8 assertion must still hold.
   if (!text.includes('0 פריטים ללא נחיתה')) findings.push('the roadmap no longer asserts "0 פריטים ללא נחיתה"');
 
-  return { structural, findings, rowsCount: rows.length, rRowsCount: rRows.length, bulletsCount: bullets.length };
+  return { structural, findings, rowsCount: rows.length, rRowsCount: rRows.length, bulletsCount: bullets.length, rRowData };
+}
+
+// R-140: the FULL rule a §5a row must answer, stricter than the historical per-text check above
+// (which only asks "is landing non-empty?"). A row is answered only if it is closed, or its
+// landing names something checkable - a phase/step, a thread, a wave/גל, an arc/קשת, or an
+// explicit trigger/anchor reference. Applied ONLY to rows born this commit (present in current,
+// absent from baseline by id) - historical debt keeps the lenient emptiness-only check, unchanged.
+const LANDING_NAMES_SOMETHING_RE = /Phase\s*\d|שלב\s*\d|Language Thread|Sync Thread|בסיס|גל\s*\d|קשת|טריגר|עוגן/;
+function answersFullRule(row) {
+  if (row.closed) return true;
+  if (!row.landing) return false;
+  return LANDING_NAMES_SOMETHING_RE.test(row.landing);
 }
 
 const current = analyze(road);
@@ -111,10 +130,20 @@ function loadBaseline() {
 const baselineText = loadBaseline();
 // SAFE DEFAULT: no baseline could be established -> every current finding counts as new (blocks).
 // This is deliberately the conservative direction - "can't tell if it's new" must never read as "not new".
-const baseline = baselineText != null ? analyze(baselineText) : { structural: [], findings: [] };
+const baseline = baselineText != null ? analyze(baselineText) : { structural: [], findings: [], rRowData: [] };
 const baselineFindings = new Set(baseline.findings);
 const newFindings = current.findings.filter(f => !baselineFindings.has(f));
 const standingFindings = current.findings.filter(f => baselineFindings.has(f));
+
+// R-140: rows present in CURRENT but absent from BASELINE by row identity (the "R-nn" id, not the
+// whole message) are THIS COMMIT'S OWN rows - evaluated against the FULL rule, always blocking,
+// regardless of whether the lenient per-text check above happened to produce a finding for them.
+// Historical-debt behavior is UNCHANGED: a row whose id exists on both sides still goes through
+// the message-text diff path only (findings/newFindings/standingFindings above).
+const baselineRowIds = new Set((baseline.rRowData || []).map(r => r.id));
+const newRows = (current.rRowData || []).filter(r => !baselineRowIds.has(r.id));
+const newRowWithoutLanding = newRows.filter(r => !answersFullRule(r));
+
 const blocking = [...current.structural, ...newFindings];
 
 console.log(`§5: ${current.rowsCount} row(s) scanned, ${current.bulletsCount} remainder bullet(s). §5a: ${current.rRowsCount} row(s) scanned.`);
@@ -127,11 +156,24 @@ if (standingFindings.length) {
   for (const f of standingFindings) console.log('  ~ ' + f);
 }
 
-if (blocking.length) {
-  console.error(`\nNEW OR STRUCTURAL (this change introduces or worsens these - blocking - ${blocking.length}):`);
-  for (const f of blocking) console.error('  x ' + f);
+// R-140: printed on stdout (not stderr, unlike NEW OR STRUCTURAL below) so a row born unlanded by
+// THIS commit is visible without needing to check a second stream - it is always the freshest,
+// most actionable finding a committer can see.
+if (newRowWithoutLanding.length) {
+  console.log(`\nNEW ROW WITHOUT LANDING (born in this change, does not answer the full H8 rule - blocking - ${newRowWithoutLanding.length}):`);
+  for (const r of newRowWithoutLanding) {
+    console.log(`  x §5a row ${r.id}: landing "${r.landing || '(empty)'}" names no phase/thread/wave/arc/trigger and the row is not closed`);
+  }
+}
+
+if (blocking.length || newRowWithoutLanding.length) {
+  if (blocking.length) {
+    console.error(`\nNEW OR STRUCTURAL (this change introduces or worsens these - blocking - ${blocking.length}):`);
+    for (const f of blocking) console.error('  x ' + f);
+  }
   console.error(`\nFAIL: no-unlanded-items (H8) - ${newFindings.length} new/worsened finding(s)` +
-    (current.structural.length ? ` + ${current.structural.length} structural error(s)` : '') + '.');
+    (current.structural.length ? ` + ${current.structural.length} structural error(s)` : '') +
+    (newRowWithoutLanding.length ? ` + ${newRowWithoutLanding.length} row(s) born without a landing` : '') + '.');
   process.exit(1);
 }
 console.log(`\nOK - no new or worsened H8 finding in this change (${standingFindings.length} standing-debt finding(s) reported above, not blocking).`);
