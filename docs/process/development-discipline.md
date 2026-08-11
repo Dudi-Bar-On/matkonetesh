@@ -2527,3 +2527,13 @@ the fields were filled in, and the batch applied on the next call — a validato
 job it exists for. Nothing about the corpus, the classification, or the tooling was wrong; a refusal
 that teaches its own contract is the mechanism working, not a failure worth a lesson line.
 
+**No-lesson declaration (2026-08-11):** R-146 (`check-pytest.mjs` prints `short test summary info`
+in full on a red run, instead of `out.split('\n').slice(-6)`, which discarded it — L77) — no new
+numbered lesson. The recorded command failures were: (1) two reconnaissance commands (`find`/`cat`
+probing for `pytest.ini`/`pyproject.toml`) that exited 1 because those files legitimately don't
+exist — the expected, sought-after finding, not a bug; and (2) the deliberate RED-witness run of
+`scripts/tests/test-check-pytest.mjs` against the pre-fix gate, which is SUPPOSED to fail (DoD-2) —
+its one specific assertion failed for the exact reason the fix targets, and the run's own exit 1 is
+the evidence, not a defect. Nothing here was an unexpected failure mode; both are the debugging
+protocol and the RED/GREEN protocol working as designed.
+

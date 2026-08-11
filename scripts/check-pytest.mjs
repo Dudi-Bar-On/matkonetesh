@@ -13,7 +13,14 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+// --root <dir> (Arc 4, R-146): points the gate at a fixture tree instead of the real repo, so
+// scripts/tests/test-check-pytest.mjs can run a REAL, tiny pytest invocation (one fixture file,
+// well under a second) instead of either mocking spawnSync or paying the ~200 s real-suite cost
+// the brief rules out.
+const REPO = join(dirname(fileURLToPath(import.meta.url)), '..');
+const argv = process.argv.slice(2);
+const rootIdx = argv.indexOf('--root');
+const ROOT = rootIdx === -1 ? REPO : argv[rootIdx + 1];
 const TESTS = join(ROOT, 'tests');
 
 const pyTests = existsSync(TESTS)
@@ -100,9 +107,29 @@ if (/ModuleNotFoundError|No module named|error: unrecognized arguments/.test(out
   process.exit(0);
 }
 console.log(`interpreter: ${used} · files scanned: ${pyTests.length} (${pyTests.join(', ')})`);
-console.log(out.split('\n').slice(-6).join('\n'));
 if (r.status !== 0) {
+  // R-146 / L77: a check that reports less than it measured. pytest already names every failing
+  // and erroring test in its own "short test summary info" section — this repo has no pytest.ini
+  // or pyproject.toml [tool.pytest.ini_options] overriding the default reporting, and that section
+  // is emitted by default (verified: a fixture run with one failing + one erroring test prints it
+  // under plain `-q`, no `-ra` needed). Printing only the last 6 lines discarded that section for
+  // any run with more than a handful of failures — CI run 31484775607 reported "17 failed... 16
+  // errors" and named not one of them. Print the section IN FULL, uncapped, whenever the run is red.
+  const marker = 'short test summary info';
+  const idx = out.indexOf(marker);
+  if (idx === -1) {
+    // Defensive only: every red run this gate has ever produced has carried this section. If a
+    // future pytest version or a collection-level crash ever omits it, say so plainly rather than
+    // silently falling back — an unlabelled fallback is the exact defect this gate now exists to
+    // avoid repeating.
+    console.log('  (no "short test summary info" section in pytest output — printing the tail instead)');
+    console.log(out.split('\n').slice(-20).join('\n'));
+  } else {
+    const sectionStart = out.lastIndexOf('\n', idx) + 1;
+    console.log(out.slice(sectionStart).trim());
+  }
   console.log('FAIL: the Python suite is red. Run: python -m pytest tests/ -v');
   process.exit(1);
 }
+console.log(out.split('\n').slice(-6).join('\n'));
 console.log('OK - Python suite green.');
