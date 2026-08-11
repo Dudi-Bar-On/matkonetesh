@@ -96,13 +96,13 @@ const SKIP_ALL = SKIP_IDS.includes('ALL');
 // advisory and look away.
 const ADVISORY = new Set([]);
 
-function run(id, displayName, file) {
+function run(id, displayName, file, args = []) {
   console.log(`\n=== ${displayName} ===`);
   if (SKIP_ALL || SKIP_IDS.includes(id)) {
     console.log(`SKIPPED — META_SKIP_GATE names "${id}" (recorded in .superpowers/gate-skip-log.jsonl by the calling hook).`);
     return;
   }
-  const r = spawnSync(process.execPath, [join(ROOT, 'scripts', file)], { stdio: 'inherit', env: process.env });
+  const r = spawnSync(process.execPath, [join(ROOT, 'scripts', file), ...args], { stdio: 'inherit', env: process.env });
   if (r.status !== 0) {
     if (ADVISORY.has(id)) {
       console.log('  (ADVISORY — reported, does not block. ADVISORY is currently empty by design; see the set above.)');
@@ -230,6 +230,16 @@ run('check-no-docker', 'check-no-docker (a live `docker <subcommand>` call in ex
 run('check-ci', 'check-ci', 'check-ci.mjs');
 run('gate-lessons', 'gate-lessons', 'gate-lessons.mjs');
 run('check-board-fresh', 'check-board-fresh', 'check-board-fresh.mjs');
+// Arc 4 Task 10 (2026-08-11): --currency cross-checks the board's COVERAGE-DECLARED, its named
+// active .superpowers/sdd/ arcs, and its LIVE-VERSION/TARGET-VERSION declarations against live
+// measurement — see check-board-fresh.mjs's own header. BLOCKING for the same reason the plain
+// version-stamp check above already blocks: every claim it verifies is fixable by a single, cheap,
+// immediate edit to docs/STATUS-BOARD.md reachable from the very commit that let it drift, and
+// R-140's own shape (a gate that checks one narrow thing while reading as if it checked the board)
+// is exactly the defect this flag exists to close. Fails OPEN, not blocking, when check-rule-
+// coverage.mjs itself cannot be run or parsed (see the gate's own header) — that is a fault in an
+// unrelated tool, not in the board.
+run('check-board-fresh --currency', 'check-board-fresh --currency (COVERAGE-DECLARED, active-arc naming, LIVE/TARGET-VERSION vs live measurement)', 'check-board-fresh.mjs', ['--currency']);
 // Task 1 item 7 (session-state arc, 2026-08-07, owner: "הקפדה לחומרה מקסימלית, קרובה לאכיפה ככל
 // שניתן"). Same family as check-board-fresh directly above — a self-report (there: the board; here:
 // the active SDD ledger) must stay current with git — but a narrower and more severe instance: the
