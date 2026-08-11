@@ -2566,3 +2566,16 @@ shape, outside the brief's ten named scripts and not wired into `check-meta.mjs`
 `discipline` CI job), so it is not a cause of R-147's red run — left alone per the brief's explicit
 file list and the Circle of Control.
 
+**No-lesson declaration (2026-08-11):** R-149 (`scripts/lib/change-scope.mjs` — prose-vs-code skip for
+the local pre-commit's `pytest` gate + the `infra.yml`/`product.yml` workflow split) — no new numbered
+lesson. One recorded command failure: a 3-file targeted `pytest` sanity check
+(`test_arc4_ci_gate.py test_arc4_db_optional.py test_acceptance_infra.py`) exceeded the Bash tool's
+120s foreground timeout and moved to background — a tool-timeout artifact of running more than the
+narrow scope the brief called for, not a code or gate defect; the two files run individually just
+before it (`test_arc2_phase1_gates.py`, `test_arc4_gate_coverage.py`, 73 passed/2 skipped in 9.45s)
+already gave sufficient targeted GREEN evidence, and the task's own commit exercises the full suite
+through the pre-commit hook regardless. The three REDs the brief named (integration block removed;
+`PROSE_ONLY_PATTERNS` widened to wrongly match `.mjs`; the undetermined branch flipped to fail closed)
+were each witnessed by deliberate, temporary sabotage of the just-written code, restored immediately
+after — that is the TDD/verification protocol working, not a defect.
+

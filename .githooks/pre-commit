@@ -53,6 +53,12 @@ if [ -n "${META_SKIP_GATE:-}" ]; then
     echo "[pre-commit] META_SKIP_GATE=$META_SKIP_GATE — recorded in .superpowers/gate-skip-log.jsonl. Only the named gate(s) are skipped; every other gate still runs below."
 fi
 
+# R-149 (2026-08-11): tells check-pytest.mjs it is running from THIS hook, not from CI's
+# `discipline` job (.github/workflows/infra.yml) — only here is `git diff --cached` a meaningful
+# question ("what is staged for commit"), and only here should a prose-only change be allowed to
+# skip the suite. CI stays unconditional; see check-pytest.mjs's own header for why.
+export MATCONETESH_LOCAL_HOOK=1
+
 echo "[pre-commit] running node scripts/check-meta.mjs ..."
 node scripts/check-meta.mjs
 status=$?

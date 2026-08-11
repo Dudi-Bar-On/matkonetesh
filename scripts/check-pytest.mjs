@@ -12,6 +12,7 @@ import { existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPython } from './lib/python-interpreter.mjs';
+import { getStagedFiles, shouldRunPytest } from './lib/change-scope.mjs';
 
 // --root <dir> (Arc 4, R-146): points the gate at a fixture tree instead of the real repo, so
 // scripts/tests/test-check-pytest.mjs can run a REAL, tiny pytest invocation (one fixture file,
@@ -30,6 +31,35 @@ const pyTests = existsSync(TESTS)
 if (!pyTests.length) {
   console.log('no Python test files (tests/test_*.py) — nothing to run.');
   process.exit(0);
+}
+
+// PROSE-ONLY SKIP (R-149) — LOCAL PRE-COMMIT ONLY. .githooks/pre-commit sets MATCONETESH_LOCAL_HOOK
+// before invoking check-meta.mjs; CI's `discipline` job (.github/workflows/infra.yml) does not, so
+// this suite still runs there UNCONDITIONALLY every time, as the owner specified: "discipline and
+// worker-tests keep running unconditionally. They are cheap and they are the authority." Restricting
+// the skip to the hook context is deliberate, not incidental — `git diff --cached` answers "what is
+// staged for commit", which is meaningless inside a CI checkout (nothing is ever staged there); an
+// unguarded skip there would silently turn CI's own authority off.
+//
+// CHECK_PYTEST_STAGED_FILES is the test seam (matches CHECK_GENIZA_PY/CHECK_RULES_PY's stub shape,
+// scripts/lib/python-interpreter.mjs): newline-separated staged paths, or the literal
+// __UNDETERMINED__ to simulate a changed-file list git could not produce. Real runs never set it.
+if (process.env.MATCONETESH_LOCAL_HOOK === '1') {
+  const stagedEnv = process.env.CHECK_PYTEST_STAGED_FILES;
+  const override =
+    stagedEnv === '__UNDETERMINED__'
+      ? { files: null, determined: false, reason: 'test seam: CHECK_PYTEST_STAGED_FILES=__UNDETERMINED__' }
+      : stagedEnv !== undefined
+        ? { files: stagedEnv.split(/\r?\n/).map((s) => s.trim()).filter(Boolean), determined: true, reason: null }
+        : undefined;
+  const staged = getStagedFiles({ cwd: REPO }, override);
+  const decision = shouldRunPytest(staged);
+  if (!decision.run) {
+    console.log(`SKIPPED — ${decision.reason}.`);
+    console.log('  NOT VERIFIED here: the Python suite (tests/test_*.py).');
+    process.exit(0);
+  }
+  console.log(`running — ${decision.reason}.`);
 }
 
 // FINDING THE INTERPRETER, which is not as simple as calling `python`.

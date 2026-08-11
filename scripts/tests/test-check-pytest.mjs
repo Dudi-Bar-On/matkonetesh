@@ -113,5 +113,99 @@ check(
   `green output was ${greenLineCount} lines:\n${greenOut}`,
 );
 
+// --- R-149: the change-scope skip, exercised end-to-end through the real script -----------------
+// LOCAL-HOOK-ONLY, both scenarios use the GREEN fixture (pytest must not be the thing under test
+// here) with MATCONETESH_LOCAL_HOOK=1 (matches .githooks/pre-commit) and CHECK_PYTEST_STAGED_FILES
+// as the test seam (scripts/lib/change-scope.mjs's getStagedFiles override), so none of this reads
+// or depends on this real repo's actual staged git state.
+
+// Scenario 1: a prose-only staged set → SKIPPED, suite never invoked at all (no "interpreter:" line
+// — proves the skip happens BEFORE runPython, not just that pytest itself was told to no-op).
+const proseOnly = runNode(SCRIPT, ['--root', greenRoot], {
+  MATCONETESH_LOCAL_HOOK: '1',
+  CHECK_PYTEST_STAGED_FILES: 'docs/process/development-discipline.md\n.superpowers/sdd/foo/notes.md',
+});
+const proseOut = `${proseOnly.stdout ?? ''}${proseOnly.stderr ?? ''}`;
+check(
+  'prose-only staged set: exits 0',
+  proseOnly.status === 0,
+  `expected exit 0, got ${proseOnly.status}\n${proseOut}`,
+);
+check(
+  'prose-only staged set: prints the SKIPPED declaration',
+  /^SKIPPED —.*prose-only change/m.test(proseOut),
+  `no SKIPPED/prose-only line found:\n${proseOut}`,
+);
+check(
+  'prose-only staged set: names what is NOT VERIFIED',
+  /NOT VERIFIED here: the Python suite/.test(proseOut),
+  `no NOT VERIFIED line found:\n${proseOut}`,
+);
+check(
+  'prose-only staged set: pytest itself was never invoked (no "interpreter:" line)',
+  !/interpreter:/.test(proseOut),
+  `pytest ran despite the prose-only skip:\n${proseOut}`,
+);
+
+// Scenario 2 — THE ONE THAT MATTERS: a .mjs (infrastructure, not prose) staged alongside prose
+// files → the suite RUNS, in full, not skipped. Proves the criterion cannot be talked into
+// skipping a code change just because most of the commit is prose.
+const codeChange = runNode(SCRIPT, ['--root', greenRoot], {
+  MATCONETESH_LOCAL_HOOK: '1',
+  CHECK_PYTEST_STAGED_FILES: 'docs/process/development-discipline.md\nscripts/check-meta.mjs',
+});
+const codeOut = `${codeChange.stdout ?? ''}${codeChange.stderr ?? ''}`;
+check(
+  'code (.mjs) change staged: exits 0 (green fixture)',
+  codeChange.status === 0,
+  `expected exit 0, got ${codeChange.status}\n${codeOut}`,
+);
+check(
+  'code (.mjs) change staged: NOT skipped',
+  !/^SKIPPED/m.test(codeOut),
+  `unexpected SKIPPED for a .mjs change:\n${codeOut}`,
+);
+check(
+  'code (.mjs) change staged: pytest actually ran (interpreter line + green verdict present)',
+  /interpreter:/.test(codeOut) && /OK - Python suite green\./.test(codeOut),
+  `pytest did not appear to run:\n${codeOut}`,
+);
+
+// Scenario 3: an undetermined changed-file list (git could not answer) → the suite RUNS. Fail open,
+// never fail closed into a silent skip.
+const undetermined = runNode(SCRIPT, ['--root', greenRoot], {
+  MATCONETESH_LOCAL_HOOK: '1',
+  CHECK_PYTEST_STAGED_FILES: '__UNDETERMINED__',
+});
+const undeterminedOut = `${undetermined.stdout ?? ''}${undetermined.stderr ?? ''}`;
+check(
+  'undetermined changed-file list: exits 0 (green fixture)',
+  undetermined.status === 0,
+  `expected exit 0, got ${undetermined.status}\n${undeterminedOut}`,
+);
+check(
+  'undetermined changed-file list: NOT skipped — fails open into running',
+  !/^SKIPPED/m.test(undeterminedOut),
+  `unexpected SKIPPED for an undetermined file list:\n${undeterminedOut}`,
+);
+check(
+  'undetermined changed-file list: pytest actually ran',
+  /interpreter:/.test(undeterminedOut) && /OK - Python suite green\./.test(undeterminedOut),
+  `pytest did not appear to run:\n${undeterminedOut}`,
+);
+
+// Scenario 4: WITHOUT MATCONETESH_LOCAL_HOOK set (the CI / discipline-job shape) — even a
+// prose-only-looking staged-files env var must be IGNORED and the suite must still run
+// unconditionally, because CI has nothing staged and must never be silently skippable.
+const ciShape = runNode(SCRIPT, ['--root', greenRoot], {
+  CHECK_PYTEST_STAGED_FILES: 'docs/process/development-discipline.md',
+});
+const ciOut = `${ciShape.stdout ?? ''}${ciShape.stderr ?? ''}`;
+check(
+  'no MATCONETESH_LOCAL_HOOK (CI shape): runs unconditionally, ignores the staged-files seam',
+  ciShape.status === 0 && !/^SKIPPED/m.test(ciOut) && /OK - Python suite green\./.test(ciOut),
+  `CI-shape invocation was skipped or failed:\n${ciOut}`,
+);
+
 console.log(`\ncheck-pytest: ${total - failures}/${total} assertions passed.`);
 if (failures) { console.error(`check-pytest: ${failures} FAILURE(S).`); process.exitCode = 1; }
