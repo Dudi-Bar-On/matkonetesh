@@ -113,6 +113,17 @@ function run(id, displayName, file, args = []) {
 }
 
 run('check-geniza-fresh', 'check-geniza-fresh', 'check-geniza-fresh.mjs');
+run('check-graphify-fresh', 'check-graphify-fresh (R-136 — deterministic code graph, ~22s self-heal)', 'check-graphify-fresh.mjs');
+// R-136 (2026-08-11): the deterministic AST code graph (graphify-out/graph.json) replaces the
+// 16,456-edge model-extracted graph, which is now `superseded` (scripts/supersede_proposed_edges.py)
+// rather than a promotion target. BLOCKING, on the exact reasoning check-geniza-fresh's own header
+// gives for its sibling: the OLD LLM-rebuilt graph's freshness gate failed 8 of 8 runs and was made
+// advisory because the rebuild was an out-of-process, 22 MB LLM pass sync-docs.sh never even
+// performed. graphify's refresh is ~22s warm, structural AST extraction, no LLM, no API key — cheap
+// enough to run from the very commit that makes the graph stale, which is this file's own bar for
+// when a gate is allowed to block. SKIPS (exit 0) when graphify itself is not installed — a
+// developer without it on PATH is not a developer with a stale graph, same reasoning as every other
+// dependency-gated check here.
 // Phase 6 Task 1 wiring (2026-08-07). Three gates over mk_rules, the process-rules store — built,
 // unit-tested, and NOT wired until now. Same "is the fix cheap and immediate from this commit?" test
 // this file's own header applies everywhere else, argued per gate rather than inherited as one answer:

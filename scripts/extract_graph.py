@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import os
 import subprocess
 import sys
 
@@ -342,6 +343,23 @@ def main() -> int:
 
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
                         format="%(levelname)s %(name)s: %(message)s")
+
+    # R-136 (owner decision, 2026-08-11): this pipeline's WRITE path is retired. Measurement
+    # (.superpowers/sdd/2026-08-11-arc4-testing-the-enforcement/r136-measurement.md) found 16,456
+    # `proposed` edges, 100% `extraction_method='structured_llm'`, 0% ever `manually_confirmed` —
+    # nothing was ever going to promote them — and a 20-edge sample of `app.js` found real
+    # high-confidence direction/attribution errors (`toast CALLS journal`,
+    # `b.addEventListener CALLS store.set`). graphify's deterministic AST extraction replaces the
+    # code side with no LLM and no key (scripts/check-graphify-fresh.mjs). `--estimate` is exempt:
+    # it writes nothing (see its own docstring above) and stays useful for future cost estimation.
+    # MK_ALLOW_PROPOSED_EXTRACTION=1 is a deliberate, reviewed exception — never a silent default.
+    if not args.estimate and os.environ.get("MK_ALLOW_PROPOSED_EXTRACTION") != "1":
+        print("RETIRED (R-136, 2026-08-11 owner decision): extract_graph.py no longer writes")
+        print("`proposed` facts. 16,456 proposed edges were 100% structured_llm, 0% ever promoted,")
+        print("and a sampled audit found real high-confidence direction errors. graphify's")
+        print("deterministic AST graph replaces the code side (scripts/check-graphify-fresh.mjs).")
+        print("Set MK_ALLOW_PROPOSED_EXTRACTION=1 to run anyway (a deliberate, reviewed exception).")
+        return 1
 
     chunks = fetch_chunks(args.paths, args.limit, args.namespace, args.min_chars, args.pending)
     if not chunks:
