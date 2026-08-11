@@ -2719,3 +2719,14 @@ an unrelated stale leftover). No credential was fabricated or guessed to work ar
 Half-1 supersede pass and the live `find_impact`/`find_dependency_path` re-check are reported as
 blocked in the R-136 report instead, for the owner to run once credentials are available.
 
+**No-lesson declaration (2026-08-11):** batch s10 (`L89` classification) — no new numbered lesson.
+The single recorded failure was `check-corpus-consistency` refusing the commit because `L89` had just
+been classified `A` with no detector built yet. That is the gate working exactly as designed, and it
+is the same collision the owner already ruled on today in `R-148`: a newly-added rule without an
+implemented detector must not block, because blocking stops a lesson being written at the moment it
+is learned (`L70`). Resolved the same way — banked in
+`docs/process/corpus-consistency-baseline.json` alongside the other 42, loud and non-blocking. The
+open question of whether question 1 should distinguish "no detector yet" from "the mechanism names a
+script that does not exist" is already registered as `R-153`; duplicating it as an `L` line would put
+a register row into the lesson log, which is what `R-116` is about.
+
