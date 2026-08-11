@@ -2193,6 +2193,25 @@ null => fall open"), ומדווח "לא נבדק" במקום פלט נקי מז�
 זאת, וזו הצורה השקטה של זחילת-היקף (§12, מעגל השליטה). מה שנמצא מחוץ לתחום **נרשם במרשם
 ונשאר שם** עד שהקשת האחראית עליו נפתחת. ‏R-118 הוא הפריט הראשון תחת הכלל.
 
+**L84 · A timestamp with no clock read behind it is an estimate wearing a fact's clothes (11.8.26).**
+The controller wrote a clock time into a status report as fact, twice: "16:40" when the system
+clock read 16:27, and the next morning "09:15" when it read 09:09. After the first slip the
+controller promised, in writing, that every timestamp from then on would be read from the system —
+the promise did not change the behavior, and the second slip landed the very next morning anyway.
+The owner caught both. Every other standing rule in this project has a mechanism behind it —
+`check-control-bytes` caught inserted control bytes, `L73` blocked a same-call content-edit+commit
+three times, `verify-before-success-claim` blocked an unevidenced success claim twice. The
+timestamp had no mechanism, which is exactly why the promise alone did not hold: a rule with no
+gate behind it is a rule that depends on memory, and memory is not a substitute for a mechanism any
+more than it is a substitute for re-reading a skill. **The gate:** `timestamp-without-clock-read.mjs`
+(`stop`, `warn`) fires when the assistant's final reply carries a clock-shaped digit timestamp
+(`HH:MM`, 24h) and no real clock read (`date` / PowerShell `Get-Date`, observed by
+`scripts/hooks/observers/clock-tracker.mjs`) was recorded in the session within a recent window.
+Fails open on a channel with zero recorded reads at all — an unwired/expired channel is not
+evidence of an unread clock (L57), the same discipline `cited-path-read.mjs` (L63a) already applies
+to its own file-read channel, deliberately reused here rather than duplicated (R-116). Reachable
+alternative (§10.24): read the clock now, then report the real reading, or drop the timestamp.
+
 **L83 · הוראה שאינה נותנת את המנגנון היא הוראה שלא ניתנה (10.8.26).**
 שלושה מממשים בשלב 2 נעצרו באותה נקודה בדיוק: הריצו את סוויטת pytest המלאה, היא ארוכה מתקרת-הזמן
 המשתמעת של כלי ה-Bash, הם דחפו אותה לרקע — ואיבדו את החוט. כל אחד סיים את העבודה בפועל אך לא

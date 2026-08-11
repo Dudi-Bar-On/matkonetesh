@@ -203,3 +203,28 @@ were inert from the day they were written (R-141).
 **Caveat the controller must state:** classifying it `A` creates work rather than removing it, so the
 usual "the comfortable answer is the suspicious one" test does not apply here — but the owner has not
 been asked, and an unasked decision is not a decision.
+
+---
+
+## `L84` — no group yet (added 2026-08-11)
+
+Owner instruction from today: "I do want timestamps on reports — if needed, build a gate for it."
+The rule (`timestamp-without-clock-read.mjs`, `stop`, shipped `warn` per owner ruling for the whole
+phase) fires when the assistant's final reply carries a clock-shaped `HH:MM` digit timestamp and no
+`clock_read` event (a real `date`/`Get-Date` invocation, observed by
+`scripts/hooks/observers/clock-tracker.mjs`) was recorded in the session recently. Not self-classified,
+per the controller's own instruction for this task — it is the exact same instruction `10.25` above
+is already sitting on this list to honor.
+
+| reading | group | the reason |
+|---|---|---|
+| proposal | `B` · `stop` | The decision is not decidable from the reply text alone — it requires knowing a PRIOR fact (did a `clock_read` event happen earlier in this session), observed from the enforcement-state store the same hook payload chain already writes to. This is the exact shape `L63a` (`cited-path-read.mjs`, already classified `B`) was given: same evidence-store pattern, same `stop` mechanism, reused deliberately (R-116) rather than duplicated. |
+| alternative | `A` · `stop` | A stricter reading of question 1 does not stop at "requires no prior fact" — it asks whether presence/absence of a pattern in AN ARTIFACT (the state-store row, itself an artifact a gate can grep) decides compliance without judging intent. Under that reading the state-store row is just another artifact to check, same class as a diff or a hook payload, and the rule never has to judge meaning — only whether a row with a given `kind` and a given `ts` range exists. |
+
+**Recommendation: `B`**, matching `L63a`'s own precedent exactly — same evidence shape, same
+mechanism, and the criterion's own question 2 exists specifically to route "needs a prior fact from
+the state store" here rather than to `A`. Measured precision: `stop-final-messages.jsonl` (9,188
+messages) replayed through a fresh empty state store produces `fireCount = 0` at every run (the
+degraded/L57 path, proven — an unwired channel can never warn); firing precision on the WARN path
+itself was proven on real machinery (seeded `clock_read` events through the real
+`enforcement-state.mjs`, not invented input) — see `timestamp-gate-report.md`.
