@@ -2212,6 +2212,26 @@ evidence of an unread clock (L57), the same discipline `cited-path-read.mjs` (L6
 to its own file-read channel, deliberately reused here rather than duplicated (R-116). Reachable
 alternative (§10.24): read the clock now, then report the real reading, or drop the timestamp.
 
+**L86 · A fix verified only by the test it targets is verified against the wrong scope (2026-08-11).**
+Arc 4 Task 11 added a pre-call `requires_database()` guard to the two Neo4j tests in
+`test_retrieval.py` that CI had crashed on with `ConfigError`. Run alone, both tests passed —
+correctly skipping when unconfigured. What that narrow run could not see: `test_service_guard.py`
+monkeypatches `retrieval.find_impact` to raise a real bug and calls `test_find_impact_runs_against_the_live_graph()`
+directly, asserting the R-119a guard still FAILS rather than skips — because a real defect must
+never exit through the absence path (L57). The pre-call guard ran BEFORE the monkeypatched call
+ever executed, so it skipped instead, silently defeating that regression test. This was caught
+only because the task's own DoD required running the FULL suite with no database configured, not
+just the new test file — the failure was `test_service_guard.py::test_find_impact_site_fails_on_a
+_real_bug_rather_than_skipping`, a file the fix's author had no reason to think about while
+writing the fix. **The rule: a fix to shared test infrastructure is verified by the full suite, not
+by the tests it was written for** — a pre-condition check added to a call site can defeat an
+existing regression guard elsewhere that depends on that call site actually executing. The
+resolved shape here generalises past this incident: prefer extending the POST-call classification
+(`skip_only_if_unavailable`'s marker list, matched on `type(exc).__name__` for `ConfigError` —
+still a positive marker, never a blanket catch) over a PRE-call guard wherever a test might already
+depend on the real call happening, and confirm by running the whole suite, not the file you
+changed.
+
 **L85 · Author through a file, not through a shell heredoc (2026-08-11).**
 Writing prose that contains code — a regex, a Python snippet, a JS pattern — through a bash
 heredoc has now failed FIFTEEN times in three days, and always the same way: the shell eats one

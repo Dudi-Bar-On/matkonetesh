@@ -19,6 +19,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import requires_database
+
 psycopg2 = pytest.importorskip("psycopg2", reason="psycopg2 is not installed")
 config = pytest.importorskip(
     "src.rules_store.config",
@@ -42,6 +44,11 @@ ENV_FILE = ROOT / "infra" / "rules-db" / ".env"
 
 
 def _writer_conn():
+    # Task 11 (2026-08-11): the single ConfigError gap in this file — every other caller here
+    # checked `ENV_FILE.exists()` before reaching this helper; test_resync_preserves_mechanism_
+    # classification did not, so it crashed on ConfigError in CI instead of skipping. Probing
+    # CONFIGURATION here, once, closes it for every caller rather than for that one sibling.
+    requires_database("mk_rules")
     try:
         return config.connect_writer()
     except psycopg2.OperationalError as exc:

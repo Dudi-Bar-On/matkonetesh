@@ -17,6 +17,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from conftest import requires_database
+
 ROOT = Path(__file__).resolve().parent.parent
 CLI = ROOT / "scripts" / "classify_rules.py"
 
@@ -43,7 +45,13 @@ def _mapping(tmp_path, pairs):
 def test_agreement_is_accepted_and_names_what_it_would_apply(tmp_path):
     """Uses a REAL rule id, because the CLI refuses to classify a rule that does not exist — and it is
     right to. A first draft of this test used a fictional `L99` and the refusal it produced was the
-    machinery working, not a bug. `--dry-run` means nothing is written either way."""
+    machinery working, not a bug. `--dry-run` means nothing is written either way.
+
+    Needs mk_rules, unlike its five siblings below: this is the ONLY case in this file where the two
+    classifiers agree with no refusal, so main() reaches config.connect_writer() to load the current
+    rule_group before printing what it would apply. Every sibling below is refused before that call
+    ever happens, which is why they run with no database at all."""
+    requires_database("mk_rules")
     entry = {"token": "X1", "group": "B", "mechanism": "commit-gate",
              "mechanism_target": "scripts/check-*.mjs", "reason": "r"}
     a = _answers(tmp_path, "a.json", [entry])

@@ -5,6 +5,8 @@ from __future__ import annotations
 from pathlib import Path
 import pytest
 
+from conftest import requires_database
+
 psycopg2 = pytest.importorskip("psycopg2", reason="psycopg2 is not installed")
 config = pytest.importorskip("src.rules_store.config")
 
@@ -12,8 +14,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ENV_FILE = ROOT / "infra" / "rules-db" / ".env"
 
 def _writer_conn():
-    if not ENV_FILE.exists():
-        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+    requires_database("mk_rules")
     try:
         return config.connect_writer()
     except psycopg2.OperationalError as exc:

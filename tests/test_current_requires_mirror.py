@@ -15,6 +15,8 @@ from pathlib import Path
 
 import pytest
 
+from conftest import requires_database
+
 psycopg2 = pytest.importorskip("psycopg2", reason="psycopg2 is not installed")
 config = pytest.importorskip(
     "src.rules_store.config",
@@ -26,6 +28,7 @@ ENV_FILE = ROOT / "infra" / "rules-db" / ".env"
 
 
 def _writer_conn():
+    requires_database("mk_rules")
     try:
         return config.connect_writer()
     except psycopg2.OperationalError as exc:
@@ -33,9 +36,6 @@ def _writer_conn():
 
 
 def test_current_true_without_mirrored_at_is_rejected():
-    if not ENV_FILE.exists():
-        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
-
     conn = _writer_conn()
     conn.autocommit = False
     try:

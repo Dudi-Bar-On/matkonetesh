@@ -8,6 +8,8 @@ import sys
 from pathlib import Path
 import pytest
 
+from conftest import requires_database
+
 classify = pytest.importorskip("src.rules_store.classify")
 
 def _batch(**over):
@@ -70,8 +72,7 @@ ENV_FILE = ROOT / "infra" / "rules-db" / ".env"
 
 
 def _writer_conn():
-    if not ENV_FILE.exists():
-        pytest.skip("infra/rules-db/.env not present — the rules store has not been configured here")
+    requires_database("mk_rules")
     try:
         return config.connect_writer()
     except psycopg2.OperationalError as exc:
@@ -141,7 +142,12 @@ def test_cli_demotion_refusal_prints_hebrew_intact_through_a_pipe(tmp_path):
     """Reproduces the reviewer's exact repro: a batch demoting a real current rule ('9') to
     'none' with no cost/importance. The demotion refusal is the only one of the three whose text
     quotes Hebrew (the owner's binding caveat) verbatim — that quote must arrive on stdout intact,
-    not a traceback in its place."""
+    not a traceback in its place.
+
+    Needs mk_rules: scripts/classify_rules.py's main() calls config.connect_writer() unconditionally
+    (line ~175) before running validate_batch, even for a --dry-run-shaped refusal that never
+    reaches a write — so this CLI cannot be probed at all without mk_rules configured."""
+    requires_database("mk_rules")
     batch_file = tmp_path / "batch-demotion-repro.md"
     batch_file.write_text(
         "```json\n"
@@ -174,7 +180,10 @@ def test_cli_demotion_refusal_prints_hebrew_intact_through_a_pipe(tmp_path):
 def test_cli_oversized_and_unapproved_refusals_are_pure_ascii_and_survive_a_pipe(tmp_path):
     """The other two structural refusals happen to be pure ASCII today — this pins that down as a
     tested fact, not a lucky accident, by running them through the SAME cp1252-pipe subprocess
-    path as the Hebrew case above."""
+    path as the Hebrew case above.
+
+    Needs mk_rules — same reason as the Hebrew case above: main() connects before it validates."""
+    requires_database("mk_rules")
     entries = ",".join(
         '{"rule_id": "TEST-C%d", "rule_group": "A", "mechanism": "pretooluse:Bash", '
         '"mechanism_target": "git commit", "reason": "r", "cost": null, "importance": null}' % i

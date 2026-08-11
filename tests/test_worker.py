@@ -49,6 +49,7 @@ UNAVAILABLE_MARKERS = (
     "could not connect", "connection refused", "Connection refused",
     "ServiceUnavailable", "ConnectionError", "Max retries exceeded",
     "ReadTimeout", "ConnectTimeout", "11434",          # the local embedding endpoint
+    "ConfigError",   # Task 11 (2026-08-11) — kept in sync with conftest.py's copy; see its comment.
 )
 
 
