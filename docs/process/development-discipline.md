@@ -2602,3 +2602,24 @@ through the pre-commit hook regardless. The three REDs the brief named (integrat
 were each witnessed by deliberate, temporary sabotage of the just-written code, restored immediately
 after — that is the TDD/verification protocol working, not a defect.
 
+**L88 · A test that hides a credential file must put it back, and only the clock proves it did (2026-08-11).**
+R-147(a) needed to reproduce a no-database run, so it renamed `infra/.env` and `infra/rules-db/.env`
+to `.env.hidden-for-test` at 15:52 — the documented way to simulate an unconfigured machine. It never
+renamed them back. For the next 2h46m the geniza and mk_rules were unreachable to **every** later
+agent and to the controller, and nothing said so in those words: each affected gate printed its
+correct, designed message — `SKIPPED - the geniza is not reachable`, `NOT VERIFIED here: whether the
+geniza matches the disk` - which is indistinguishable from a machine where the services are simply
+down. Task 9 reported it as "pre-existing, I have no credentials to fix it"; it was neither
+pre-existing nor unfixable, it was 90 minutes old and one `mv` away.
+
+The repair found real drift that had been accumulating unseen: `check-rules-fresh` immediately
+reported `updated: L55b`, and `ingest.py` had 3 documents to take in.
+
+Two separable failures. **(a)** SETUP without TEARDOWN — §11a already says every SETUP owns a
+matching TEARDOWN, and this is the credential-file case of it. A rename that survives the task is a
+machine-state change, not a test. **(b)** A degraded channel that has been degraded *since a
+timestamp* reads exactly like one that was never available. The gates' fail-open messages are
+correct and must stay; what is missing is that nothing compares "unreachable now" against
+"reachable an hour ago". A channel that goes dark mid-session is a different event from one that was
+never lit, and only a clock tells them apart.
+
