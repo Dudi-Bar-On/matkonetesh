@@ -99,3 +99,26 @@ def test_a_repaired_row_passes(tmp_path):
     )
     r = _run(repaired, debt, tmp_path)
     assert r.returncode == 0, r.stdout
+
+
+def test_an_english_landing_is_accepted(tmp_path):
+    # §10.25 (owner, 2026-08-10): the infrastructure is written in ENGLISH; only the conversation is
+    # Hebrew. The first English-named landing this gate ever saw was REJECTED minutes after Task 7
+    # shipped - "Arc 4 · comment fix now, policy call to the owner" matched nothing in the landing
+    # pattern, which recognised the Hebrew "קשת" but not "Arc". A gate that makes a standing owner
+    # instruction unfollowable is L70's shape (a gate that blocks healthy work), not enforcement.
+    english = BASE.replace(
+        R1_ROW,
+        R1_ROW + "| R-999 | brand new item added this commit | some-report.md | Arc 4 · after R-146 | 🟡 פתוח |\n",
+    )
+    r = _run(english, BASE, tmp_path)
+    assert r.returncode == 0, (
+        "an English landing must satisfy the same rule a Hebrew one does:\n" + r.stdout)
+
+
+def test_the_english_landing_did_not_widen_the_hole(tmp_path):
+    # The counter-case, and the one that matters: widening the pattern must not make a MEANINGLESS
+    # landing pass. "open" is still a status word naming nothing checkable, in either language.
+    r = _run(CURR, BASE, tmp_path)
+    assert r.returncode == 1, "widening the landing pattern defeated R-140:\n" + r.stdout
+    assert "R-999" in r.stdout

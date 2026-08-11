@@ -106,7 +106,12 @@ function analyze(text) {
 // landing names something checkable - a phase/step, a thread, a wave/גל, an arc/קשת, or an
 // explicit trigger/anchor reference. Applied ONLY to rows born this commit (present in current,
 // absent from baseline by id) - historical debt keeps the lenient emptiness-only check, unchanged.
-const LANDING_NAMES_SOMETHING_RE = /Phase\s*\d|שלב\s*\d|Language Thread|Sync Thread|בסיס|גל\s*\d|קשת|טריגר|עוגן/;
+// `Arc\s*\d` and `trigger` are here because §10.25 (owner, 2026-08-10) says the infrastructure is
+// written in ENGLISH — only the conversation is Hebrew. The first English-named landing this gate
+// ever saw was rejected minutes after it shipped ("Arc 4 · comment fix now, policy call to the
+// owner"), which would have forced register rows back into Hebrew to satisfy a gate. A gate that
+// makes a standing instruction unfollowable is L70's shape, not enforcement.
+const LANDING_NAMES_SOMETHING_RE = /Phase\s*\d|שלב\s*\d|Arc\s*\d|Language Thread|Sync Thread|בסיס|גל\s*\d|קשת|טריגר|עוגן|trigger|anchor/i;
 function answersFullRule(row) {
   if (row.closed) return true;
   if (!row.landing) return false;
