@@ -51,15 +51,21 @@ export function processStartTimeMs(pid) {
 
 // null = cannot determine (no build on disk / no listener / start time unreadable) — callers
 // must treat null as "no evidence", NEVER as "stale". Env seams identical to the sibling rule.
+// `findPid`/`getStartTime` are an injectable-clock/process-list seam (Task 5, arc4-testing-the-
+// enforcement): the real process table and OS clock cannot be driven from a test, so tests supply
+// fakes here instead of mocking `child_process` globally. Defaults are the real OS-reading
+// functions above — production behaviour is unchanged.
 export function staleServeReport({
   port = Number(process.env.MK_TEST_PORT) || 8123,
   distDir = process.env.PRETOOLUSE_DIST_DIR || join(ROOT, 'dist'),
+  findPid = findListeningPid,
+  getStartTime = processStartTimeMs,
 } = {}) {
   const distIndex = join(distDir, 'index.html');
   if (!existsSync(distIndex)) return null;
-  const pid = findListeningPid(port);
+  const pid = findPid(port);
   if (pid === null) return null;
-  const startedMs = processStartTimeMs(pid);
+  const startedMs = getStartTime(pid);
   if (startedMs === null) return null;
   const distMtimeMs = statSync(distIndex).mtimeMs;
   return { stale: distMtimeMs > startedMs, pid, port, startedMs, distMtimeMs };
