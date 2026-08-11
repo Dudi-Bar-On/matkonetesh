@@ -2212,6 +2212,29 @@ evidence of an unread clock (L57), the same discipline `cited-path-read.mjs` (L6
 to its own file-read channel, deliberately reused here rather than duplicated (R-116). Reachable
 alternative (§10.24): read the clock now, then report the real reading, or drop the timestamp.
 
+**L87 · A liveness test that spawns the dispatcher it is testing must guard against the dispatcher spawning it back (2026-08-11).**
+Arc 4 Task 9's own liveness test (`tests/test_arc4_wiring.py`) spawns a real `node scripts/check-meta.mjs`
+with no env overrides — the correct shape (L-shape already established by `test_arc2_phase1_wiring.py`
+for the same reason). The first draft omitted that file's `CHECK_PYTEST_NESTED` recursion guard. The
+result: `check-meta.mjs`'s own `check-pytest` step re-runs every `tests/test_*.py` file, INCLUDING the
+liveness test itself — so the child `check-meta.mjs` ran `check-pytest`, which ran the liveness test
+again, which spawned another `check-meta.mjs`, unbounded. Caught live as roughly three dozen orphaned
+`node`/`python` processes (`tasklist` showed 16 `node.exe` + 3 `python.exe` on first look, more after
+a second unguarded run), degrading every subsequent command on the machine until killed by hand
+(`taskkill //PID <pid> //T //F` per process — never `taskkill /IM node.exe`, which the repo's own
+`suite-kill-protocol.mjs` hook correctly refuses, because an indiscriminate image-name kill has
+already caused a stuck port-8123 zombie once before, L18).
+
+**The rule: before writing a test that spawns a project's own top-level dispatcher (`check-meta.mjs`,
+any `run-all`-shaped entry point), search for an existing test that already spawns the same
+dispatcher and copy its recursion guard rather than re-deriving the shape from scratch.** The guard
+here already existed, named, with its own docstring explaining exactly this failure
+(`test_arc2_phase1_wiring.py`'s `check_meta_run` fixture) — the fifteen minutes lost were entirely a
+skipped-precedent cost, not a novel problem. Generalises past this repo: any test harness that can
+recursively invoke the very runner that invokes it needs an explicit depth marker (here,
+`CHECK_PYTEST_NESTED=1`, set by the runner on every nested spawn) BEFORE the first version of such a
+test is written, not discovered by running it and watching the process table fill up.
+
 **L86 · A fix verified only by the test it targets is verified against the wrong scope (2026-08-11).**
 Arc 4 Task 11 added a pre-call `requires_database()` guard to the two Neo4j tests in
 `test_retrieval.py` that CI had crashed on with `ConfigError`. Run alone, both tests passed —

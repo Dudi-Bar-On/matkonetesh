@@ -147,6 +147,14 @@ run('check-rules-mirror', 'check-rules-mirror (rules.sqlite checksum matches mk_
 // document and reported by name, because the verdict is the owner's and §10.24 forbids a block whose
 // only way through is a decision the author may not make.
 run('check-rules-classified', 'check-rules-classified (no rule sits in the corpus without a group)', 'check-rules-classified.mjs');
+// Arc 4 Task 9 (2026-08-11), wiring Task 8's gate. BLOCKING from day one (owner ruling) — the L70
+// hazard ("a gate that blocks every commit until all findings are fixed is switched off within a
+// day") is handled by design, not by advisory status: the gate's own bidirectional baseline
+// (docs/process/corpus-consistency-baseline.json) already absorbs every standing finding measured
+// at the moment it was built, so this commit's own run has nothing new to fix unless it itself
+// introduces or worsens a finding. See scripts/check-corpus-consistency.mjs's own header for the
+// four questions it asks and the baseline mechanism's full argument.
+run('check-corpus-consistency', 'check-corpus-consistency (the corpus answers for itself — enforcement resolution, grouping, reachability, drift)', 'check-corpus-consistency.mjs');
 run('check-rule-provenance', 'check-rule-provenance (the rule corpus has exactly one source — never the content plane)', 'check-rule-provenance.mjs');
 // Arc 2 Phase 1 (2026-08-09): the eleven ci-gate rules (DoD-11, L15, L24, L30, L43a, L53, L58, L59,
 // L61, L66, L74) built in Tasks 1-5, unit-tested in isolation but never invoked from the real entry
