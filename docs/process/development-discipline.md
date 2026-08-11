@@ -2623,6 +2623,29 @@ geniza matches the disk` - which is indistinguishable from a machine where the s
 down. Task 9 reported it as "pre-existing, I have no credentials to fix it"; it was neither
 pre-existing nor unfixable, it was 90 minutes old and one `mv` away.
 
+**L88 — correction, same day, 20:50.** The attribution above is wrong and the mechanism is worse than
+described. This is not something an agent did by hand: `tests/test_arc4_db_optional.py` renames
+`infra/.env` and `infra/rules-db/.env` aside inside a pytest fixture, and its author wrote, in the
+docstring, *"ALWAYS restore them — even on failure — because this is a real developer machine whose
+infra/.env is the live, working credential file"*. The restore is a `finally` block, and it is
+correct for every case the author had in mind.
+
+**`finally` catches a failure. `finally` does not survive the process being killed.** That test
+spawns a full `pytest tests/` child and waits ~200s; when the run is cut short — a tool timeout, an
+interrupted suite, a worker dying under xdist — the interpreter never reaches `finally` and the live
+credential files stay renamed. It happened **twice on 2026-08-11**: at 15:52 (2h46m of dark) and
+again at 20:38, twelve minutes after the first repair.
+
+**The real lesson is not "restore harder".** A test must not mutate global machine state it does not
+own. The right shape is to point `load_config()` at a temporary directory through the environment,
+so the no-credentials condition is *constructed* rather than produced by moving the real file out of
+the way. §11a's "every SETUP owns a matching TEARDOWN" holds right up to the moment the process
+dies — and a credential file is exactly the thing that must not depend on that.
+
+This also strengthens `R-152`: nothing compares "unreachable now" against "reachable twelve minutes
+ago", so both incidents were found by chance rather than by a mechanism.
+
+
 The repair found real drift that had been accumulating unseen: `check-rules-fresh` immediately
 reported `updated: L55b`, and `ingest.py` had 3 documents to take in.
 
