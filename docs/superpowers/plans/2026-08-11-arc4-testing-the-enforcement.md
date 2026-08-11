@@ -855,3 +855,159 @@ git commit -- docs/STATUS-BOARD.md scripts/check-board-fresh.mjs scripts/check-m
 **What this task does NOT do, stated so nobody assumes otherwise:** it does not invent the target
 version or the capability list. Those are the owner's to fill; this task installs the structure and
 the gate, and leaves a placeholder the gate tolerates and a human can see is empty.
+
+---
+
+### Task 11: Tests that need a database say so, instead of failing
+
+**Added 2026-08-11 by owner decision**, after the first push in four days put 149 commits through CI
+and the `discipline` job went red.
+
+**What CI actually reported, measured from run 31474916890:**
+
+```
+discipline    failure    23 failed · 412 passed · 90 skipped · 16 errors in 106s
+worker-tests  success
+playwright    success
+```
+
+The failure is NOT a Windows-ism, which is what R-144 predicted. The gates themselves behaved
+exactly as designed — they skipped and said so:
+
+```
+=== check-geniza-fresh ===
+SKIPPED — the geniza is not reachable (start it: Start-Service postgresql-x64-18).
+  NOT VERIFIED here: whether the geniza matches the disk.
+=== check-rules-fresh ===
+SKIPPED — mk_rules is not reachable
+```
+
+What failed is **23 pytest tests that require PostgreSQL and do not know how to skip**. They raise
+`src.knowledge.config.ConfigError` / `src.rules_store.config.ConfigError` on a runner with no
+databases and no `infra/.env`.
+
+**Why this is the right fix and not a workaround.** This project already decided that an evidence
+channel which cannot be reached is not evidence of failure — it is absence of evidence. Every gate
+here fails open and names its degradation; `L57` is the rule that an absence and a failure must
+never share an exit path, and a test that CRASHES where a gate SKIPS is that same defect on the
+other side of the wall. It is also the first live instance of R-143 (portability): a project
+installing this infrastructure without PostgreSQL and Neo4j must get a suite that reports
+"not verified here", not one that collapses.
+
+**What this task does NOT do:** it does not make a database-backed test pass without a database.
+A skipped test is not a passing test, and the skip must say which coverage was lost.
+
+**Files:**
+- Modify: `tests/conftest.py` (shared skip helper; the file already exists and carries
+  `skip_only_if_unavailable`)
+- Modify: the test modules CI names as failing
+- Test: `tests/test_arc4_db_optional.py` (new)
+
+**Interfaces:**
+- Consumes: `src.knowledge.config` / `src.rules_store.config` — both raise `ConfigError` when
+  unconfigured. READ BOTH before writing anything; do not infer the exception type from its name.
+- Produces: a `requires_database` marker/helper in `conftest.py` that every database-backed test
+  uses, so the decision lives in ONE place (R-116 — this project has paid twice for a helper applied
+  to one sibling and not the others).
+
+- [ ] **Step 1: Reproduce the CI failure locally, without a database.** Do not trust the CI log
+alone — prove the instrument.
+
+```bash
+py -3 -X utf8 -m pytest tests/ -q -p no:cacheprovider 2>&1 | tail -5
+```
+Then run the same suite with the database configuration hidden, which is what the runner sees:
+```bash
+MK_HIDE_INFRA_ENV=1 py -3 -X utf8 -m pytest tests/ -q 2>&1 | tail -5
+```
+If that env var does not exist yet, reproduce by temporarily renaming `infra/.env` — and restore it
+in the same task. Paste both counts. The local failure count must match CI's 23 before you fix
+anything; if it does not, find out why before proceeding.
+
+- [ ] **Step 2: Write the failing test.**
+
+```python
+# tests/test_arc4_db_optional.py
+#
+# CI run 31474916890: the discipline job went red with 23 failures and 16 errors, all of them
+# `ConfigError` from tests that need PostgreSQL on a runner that has none. The GATES beside them
+# skipped and declared the degradation. A test that crashes where a gate skips is L57 on the other
+# side of the wall: an absence and a failure sharing one exit path.
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+
+
+def test_the_suite_does_not_error_when_no_database_is_configured(tmp_path):
+    """The whole point: with no infra/.env, the suite reports skips, never ConfigError."""
+    env = {k: v for k, v in __import__("os").environ.items()
+           if not k.startswith(("POSTGRES", "MK_", "RULES_", "NEO4J"))}
+    env["MK_NO_INFRA_ENV"] = "1"
+    r = subprocess.run([sys.executable, "-X", "utf8", "-m", "pytest", "tests/", "-q",
+                        "-p", "no:cacheprovider"],
+                       capture_output=True, text=True, encoding="utf-8", cwd=str(ROOT), env=env,
+                       timeout=900)
+    assert "ConfigError" not in r.stdout, (
+        "a database-backed test raised ConfigError instead of skipping:\n" + r.stdout[-3000:])
+    assert " error" not in r.stdout.split("\n")[-2].lower(), r.stdout[-1500:]
+
+
+def test_a_skip_names_the_coverage_that_was_lost():
+    """A silent skip is how 39 tests once passed without running anything. Each skip must say what
+    it did not verify, in the same shape the gates already use ('NOT VERIFIED here: ...')."""
+    text = (ROOT / "tests" / "conftest.py").read_text(encoding="utf-8")
+    assert "requires_database" in text, "no single shared helper — the decision must live in one place"
+    assert "NOT VERIFIED" in text or "not verified" in text, (
+        "the skip reason must name the coverage lost, as the gates do")
+```
+
+- [ ] **Step 3: Run them and watch both fail.** Paste the output.
+
+- [ ] **Step 4: Add ONE shared helper to `tests/conftest.py`.**
+
+```python
+def requires_database(kind="geniza"):
+    """Skip — do not fail — when the stack this test needs is not configured.
+
+    The gates beside these tests already do exactly this: check-geniza-fresh prints
+    'SKIPPED — the geniza is not reachable' and 'NOT VERIFIED here: whether the geniza matches the
+    disk'. A test that raises ConfigError in the same situation reports a defect where there is only
+    an absent dependency, which is the L57 shape — an absence and a failure sharing an exit path.
+
+    Deliberately NOT a blanket try/except around the test body: that would swallow a real
+    ConfigError raised by a bug. This probes the CONFIGURATION only, before the test runs.
+    """
+    import pytest
+    if kind == "geniza":
+        from src.knowledge import config as cfg
+    else:
+        from src.rules_store import config as cfg
+    try:
+        cfg.require_config() if hasattr(cfg, "require_config") else cfg.connect_reader(timeout=3).close()
+    except Exception as exc:
+        pytest.skip(f"{kind} is not configured — NOT VERIFIED here: "
+                    f"whatever this test would have proven about {kind} ({type(exc).__name__})")
+```
+
+Read `src/knowledge/config.py` and `src/rules_store/config.py` FIRST and use their real API. The
+`hasattr` fallback above is a guess and must be replaced with what those modules actually expose —
+a brief-supplied helper name that did not exist would have shipped a dead rule three times in this
+programme, and each catch came from an implementer who read the source.
+
+- [ ] **Step 5: Apply it to every database-backed test CI named.** One call at the top of each test
+or a module-level fixture — whichever the module already uses. Do not restructure the tests.
+
+- [ ] **Step 6: Run the suite both ways and paste both.** With the database: the same counts as
+before this task, no test newly skipped. Without it: zero errors, skips that name what was lost.
+
+- [ ] **Step 7: Push and confirm CI goes green.** This task is not done because the local suite
+passes — it exists because CI failed. Watch the run, paste its conclusion. §10.10's reasoning
+applies: a push is not a result until the remote says so.
+
+- [ ] **Step 8: Ledger line, then commit** — separate Bash calls (L73).
+
+```bash
+git commit -- tests/conftest.py tests/test_arc4_db_optional.py <the modules you touched>
+```
