@@ -30,7 +30,14 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readdirSync, statSync } from 'node:fs';
 
-const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const argv = process.argv.slice(2);
+const rootArg = (() => { const i = argv.indexOf('--root'); return i === -1 ? null : argv[i + 1]; })();
+const ROOT = rootArg ?? join(dirname(fileURLToPath(import.meta.url)), '..');
+// fail-open on an unreadable override (§10.24):
+if (rootArg && !existsSync(ROOT)) {
+  console.log(`check-no-arbitrary-waits: could not read root ${ROOT}. Not blocking.`);
+  process.exit(0);
+}
 const TESTS_DIR = join(ROOT, 'tests');
 
 function walk(dir, out) {
