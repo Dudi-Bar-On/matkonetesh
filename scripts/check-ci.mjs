@@ -14,25 +14,41 @@
 //
 // WHAT IT CANNOT DO, said plainly rather than implied: it cannot tell you about code you have not
 // pushed. A local commit has no CI run, and this reports NOT VERIFIED — which is information, and
-// is the honest state. It blocks on a run that FAILED, never on the absence of one.
+// is the honest state. It blocks on a run that FAILED — with exit 1 — only when CHECK_CI_STRICT=1
+// (release time); by default (commit time) a failed run is reported loudly but does not block,
+// never on the absence of one.
+//
+// TEST SEAM: CHECK_CI_GIT / CHECK_CI_GH — absolute paths to stub executables substituted for
+// `git` / `gh` (see tests/test_arc4_ci_gate.py). Unset, the real binaries are used; behaviour is
+// otherwise unchanged.
 
 import { execFileSync } from 'node:child_process';
 
+// CHECK_CI_GIT / CHECK_CI_GH — injection seam for tests (tests/test_arc4_ci_gate.py). This gate
+// reads EXTERNAL state (git, gh), so the repo-relative --root seam the other Arc 4 gates use does
+// not apply; a test instead points these at stub executables. Default: the real binaries.
+const GIT = process.env.CHECK_CI_GIT || 'git';
+const GH = process.env.CHECK_CI_GH || 'gh';
+
 function sh(cmd, args) {
   try {
-    return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+    // shell: true — required so a stub .cmd/.bat substituted via the env seam above can run at
+    // all on Windows (execFileSync without it throws EINVAL on .cmd/.bat, verified by direct
+    // probe). Args here are always static, gate-authored strings, never user input, so the
+    // shell-quoting caveat that comes with `shell: true` does not apply.
+    return execFileSync(cmd, args, { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'], shell: true }).trim();
   } catch {
     return null;
   }
 }
 
-const head = sh('git', ['rev-parse', 'HEAD']);
+const head = sh(GIT, ['rev-parse', 'HEAD']);
 if (!head) {
   console.log('SKIPPED — not a git repository.');
   process.exit(0);
 }
 
-if (!sh('gh', ['--version'])) {
+if (!sh(GH, ['--version'])) {
   console.log('SKIPPED — the gh CLI is not available, so CI state cannot be read here.');
   console.log('  NOT VERIFIED: whether CI is green. Check manually: gh run list --limit 3');
   process.exit(0);
@@ -40,7 +56,7 @@ if (!sh('gh', ['--version'])) {
 
 // The most recent run for THIS commit. Not "the latest run" — that could belong to someone else's
 // push and would report a state that has nothing to do with what is in front of you.
-const raw = sh('gh', ['run', 'list', '--limit', '20', '--json',
+const raw = sh(GH, ['run', 'list', '--limit', '20', '--json',
   'headSha,status,conclusion,databaseId,workflowName,createdAt']);
 if (!raw) {
   console.log('SKIPPED — could not reach GitHub (offline, or not authenticated).');
@@ -83,7 +99,7 @@ if (inFlight) {
   process.exit(0);
 }
 
-const jobsRaw = sh('gh', ['run', 'view', String(run.databaseId), '--json', 'jobs']);
+const jobsRaw = sh(GH, ['run', 'view', String(run.databaseId), '--json', 'jobs']);
 let jobs = [];
 try {
   jobs = JSON.parse(jobsRaw ?? '{}').jobs ?? [];
