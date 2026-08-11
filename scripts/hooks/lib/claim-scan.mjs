@@ -247,16 +247,84 @@ export function extractClaimSnippet(text) {
   return text.slice(start, end).replace(/\s+/g, ' ').trim();
 }
 
-// Live/shipped claims (§10.10, Tasks 10-11's own trigger — defined here now, per the brief, "also
-// claim-shaped and reuse this entry", so the pattern is written once rather than re-derived twice).
-// NOT consumed by verify-before-success-claim.mjs (Task 9) — kept unused-but-exported deliberately,
-// exactly like fix-cycle-limit.mjs exports WINDOW_MS for a future consumer per that file's own
-// stated reasoning.
-export const LIVE_CLAIM_RE = /(גרסה חיה|עלה לאוויר|באוויר|מהדורה \d+ (?:חיה|עלתה|באוויר)|is live|deployed and live)/i;
+// Live/shipped claims (§10.10 + L14 — v255 is the paid incident). NARROWED in Arc 2 Phase 4:
+// the original pattern matched bare "באוויר", which fires on the H8 standing phrase
+// "אין פריט באוויר" and on every H8 discussion of items "באוויר" — a measured driver of the
+// ~75% false-alarm rate that got the 10.10 rule deferred. Now the live-word must sit in a
+// version/release context, and a sentence-level negation guard (a negator BEFORE the match in
+// the same sentence) voids it — same position discipline as SUBORDINATOR_RE above.
+//
+// SECOND REPAIR ROUND (this task's own corpus replay, not invented): the FIRST narrowing attempt
+// kept the OLD regex's unguarded standalone alternatives (`\bis (?:now )?live\b`, `\bnow live\b`,
+// `deployed and live`, bare `עלה/עלתה לאוויר`) verbatim — they require NO version/release word
+// anywhere nearby, so they fired on "the sources block is live", "grill is live", "your status
+// line is live", "the private repo is live", "Nothing is live yet", "Structure is live on
+// GitHub" and more (126→174 fires, i.e. WORSE than the pre-repair baseline). Every genuine
+// version-live claim found in the replay (`v266 is live`, `מהדורה 291 באוויר`, `**v256 is live
+// and verified**`, etc.) was ALREADY covered by the version-context-required first branch, so
+// the standalone alternatives were pure noise, not a needed catch — folded into the single
+// version-anchored group below instead of dropped silently (see report for the classified list).
+//
+// FOURTH REPAIR PASS, same replay: bare `live\b` also matches an ATTRIBUTIVE use — "live" as a
+// modifier of a following noun ("the live-deploy poll", "live verification", "Live-verifying
+// v272", "the live dict") — describing an ONGOING PROCESS or a piece of INFRASTRUCTURE, not
+// asserting the version itself is live. Same shape as claim-scan's own RESTRICTED_CLAIM_PATTERNS
+// distinction for done/fixed/works (see this file's header, item A): a bare word match cannot
+// tell predicate ("v267 is live") from attributive ("the live-deploy poll") apart, so a negative
+// lookahead excludes the specific noun collisions the replay actually found. Not exhaustive —
+// see report for the residual Hebrew "גרסה חיה" (a standing STATUS-BOARD phrase used generically,
+// not about today's release) left un-excluded, same accepted-false-negative posture as
+// maskQuotedProse's own gershayim note above: the phase's bar is zero false ALARMS that BLOCK,
+// and a small residual is reported honestly rather than chased into a full grammar parser.
+export const LIVE_CLAIM_RE = /(?:גרסה|מהדורה|version|\bv\d{2,4}\b)[^\n.!?]{0,40}?(?<live>חיה|על(?:ה|תה)(?:\s+לאוויר)?|באוויר|is (?:now )?live|now live|deployed and live|live\b(?!-|\s+(?:verif\w*|deploy\w*|preflight|dict\w*|url|site|check\w*|poller|test\w*|dock\w*|cook\w*)))/id;
+
+// NOTE: \b is an ASCII word-boundary in JS regex — it does not fire around Hebrew letters (neither
+// side of a Hebrew-letter/space transition is a \w char), so the Hebrew alternatives below rely on
+// whitespace/punctuation/string-boundary lookaround instead of \b, while the English alternatives
+// keep \b as normal. `never`/`nothing` added in the second repair round (corpus replay found
+// "Nothing is live yet" and "Never report a version live until Playwright confirms it" — a
+// negated claim and a paraphrase of §10.10 itself, both firing under round 1's negator list).
+const LIVE_NEGATION_RE = /(?:^|[\s,;:—-])(?:אין|לא|טרם|עוד\s+לא|עדיין\s+לא)(?=[\s,;:—-]|$)|\b(?:not|isn'?t|won'?t|before|until|never|nothing)\b/i;
+
+// THIRD REPAIR PASS, same replay: a cluster of remaining fires were FUTURE-tense plans, not
+// present claims — "I'll confirm v276+v277 live as soon as the browser is back", "will notify me
+// the moment v267 goes live", "Say the word and I'll ... push it live". None of these are voided
+// by LIVE_NEGATION_RE (no negator) or SUBORDINATOR_RE (that list is once/when/if/after/before/
+// until/how — "I'll"/"the moment"/"as soon as" are a different construction, first-person future
+// intent rather than a subordinate clause). Scoped to THIS detector only, not added to the shared
+// SUBORDINATOR_RE, per R-116 discipline (don't widen a sibling detector's behaviour as a side
+// effect of this rule's own repair).
+const LIVE_FUTURE_RE = /\bi'?ll\b|\bi will\b|\bwe'?ll\b|\bwe will\b|\bwill\b|the moment|as soon as/i;
 
 export function detectsLiveClaim(text) {
   if (typeof text !== 'string' || !text) return false;
-  return LIVE_CLAIM_RE.test(maskQuotedProse(text));
+  const masked = maskQuotedProse(text);
+  for (const sentence of masked.split(/[.!\n]/)) {
+    if (sentence.includes('?')) continue; // a question is never a claim (same rule as findClaimMatch)
+    const m = LIVE_CLAIM_RE.exec(sentence);
+    if (!m) continue;
+    // The live-word's own start (not the whole match's, which also swallows the version prefix
+    // and anything in between it and the live word, including a negator like "עוד לא" sitting
+    // between "מהדורה 291" and "באוויר") — needed so the negation guard below compares against
+    // where the LIVE assertion itself begins, not where the version mention begins.
+    const liveGroupIndices = m.indices && m.indices.groups.live;
+    const liveStart = liveGroupIndices ? liveGroupIndices[0] : m.index;
+    const neg = LIVE_NEGATION_RE.exec(sentence);
+    if (neg && neg.index < liveStart) continue; // negation governs the claim — void
+    // SECOND REPAIR ROUND, gap named explicitly in the task hand-off: unlike detectsSuccessClaim,
+    // this detector originally had no subordinator guard, so a future/hypothetical framing —
+    // "I'll report when v266 is live", "NEXT: when the poller confirms v268 live, ..." — still
+    // fired as if it were a present-tense claim. Reuses SUBORDINATOR_RE (same module, same
+    // position discipline as findClaimMatch: only a subordinator appearing BEFORE the live word
+    // in the same sentence voids it).
+    const subMatch = SUBORDINATOR_RE.exec(sentence);
+    if (subMatch && subMatch.index < liveStart) continue; // subordinate clause governs — void
+    // THIRD REPAIR ROUND (see LIVE_FUTURE_RE comment above) — void first-person future intent.
+    const futMatch = LIVE_FUTURE_RE.exec(sentence);
+    if (futMatch && futMatch.index < liveStart) continue; // future intent governs — void
+    return true;
+  }
+  return false;
 }
 
 // "Evidence" = pasted command output, the DoD's own currency (development-discipline.md §3: every

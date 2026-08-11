@@ -64,7 +64,19 @@
 // field — claiming to enforce something that does not exist is false coverage.
 // An observer declares [] EXPLICITLY, so the gate can require the export on every scanned file
 // and catch a rule that simply forgot to declare rather than mistaking it for an observer.
-export const RULE_IDS = ['10.10'];
+export const RULE_IDS = ['10.10', 'L14'];
+
+// L14 (Arc 2 Phase 4 decision, made explicitly): L14's own text DERIVES §10.10 from the v255
+// incident, and its registered mechanism target is "responses claiming a version is live /
+// released" — exactly this rule's trigger and evidence channel. A second detector for the same
+// claim shape is R-116. L14's clause (b) ("when the owner reports 'I don't see it', check the
+// simplest external explanation first") is judgment-shaped with no mechanical trigger; the
+// registered enforceable half is clause (a), which this rule IS. The ~75% false-alarm rate that
+// deferred this rule was repaired in the same phase: claim detection now runs on masked prose
+// (maskQuotedProse — quoted §10.10 text no longer fires) and LIVE_CLAIM_RE requires a
+// version/release context with a sentence-level negation guard (bare "באוויר" — the H8 phrase
+// "אין פריט באוויר" — no longer fires). Measured before/after on the real corpus: numbers in
+// the Task 6 report, docs/superpowers/plans/2026-08-11-arc2-phase4-stop.md.
 
 import { lastAssistantText, detectsLiveClaim } from '../lib/claim-scan.mjs';
 import { openState, lastEvent } from '../lib/enforcement-state.mjs';
