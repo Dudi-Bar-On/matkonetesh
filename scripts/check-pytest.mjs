@@ -88,23 +88,25 @@ if (process.env.MATCONETESH_LOCAL_HOOK === '1') {
 //             coverage. --ff (failed-first) only REORDERS execution; unlike --lf (last-failed-
 //             ONLY) it never drops items, so full coverage survives it too.
 //
-//   -n auto   NOT SHIPPED — found flaking on THIS machine during R-154's own measurement and
-//             stopped there per the task's own instruction ("if -n auto produces any failure or
-//             flake the serial run does not, stop and report"). tests/test_arc2_phase2_wiring.py
-//             ::test_pretooluse_overhead_stays_in_the_baseline_class asserts real subprocess
-//             wall-clock time against a fixed threshold (61ms baseline, 4x tripwire); it passed in
-//             0.90s alone but failed at 313ms under 32-way `-n auto` CPU contention on this
-//             32-core machine — a real flake the serial run does not produce, not a bug in the
-//             test's subject. Enabling -n auto here would trade a slow-but-honest gate for a fast
-//             one that occasionally reports a false failure, which is a worse trade than the
-//             13 minutes it was meant to fix. Left for an explicit owner decision (a bounded
-//             worker count, or excusing timing-threshold tests from wall-clock assertions under
-//             load) — see the R-154 report. tests/conftest.py's SERIALIZED_TEST_FILES pinning and
-//             the pytest-xdist dependency are kept: they are the audited, ready-to-activate prep
-//             for whichever resolution the owner picks, and pytest-xdist is independently useful
-//             for a developer running `pytest tests/ -n auto --dist loadgroup` by hand.
+//   -n 8      SHIPPED (R-154(b), 2026-08-11, owner-approved). `-n auto` on this 32-core machine
+//             meant 32 workers, and under that load
+//             tests/test_arc2_phase2_wiring.py::test_pretooluse_overhead_stays_in_the_baseline_class
+//             (a real subprocess wall-clock measurement, 61ms baseline / 244ms tripwire) failed
+//             once at 313ms and passed on a second attempt — a genuine CPU-contention flake, not a
+//             bug in the test's subject, and exactly the class of thing §11a already names ("the
+//             local worker count assumes an idle machine"). R-154(b) changed exactly one variable
+//             — the worker count, capped at 8 instead of left unbounded — and did NOT touch the
+//             tripwire itself: loosening that number would make it pass on a genuinely slow hook
+//             too, which is the one thing it exists to catch. Three full `-n 8` runs (see the
+//             R-154(b) report) were clean with no sign of that flake, so the timing test was left
+//             in the normal (unpinned) pool rather than added to SERIALIZED_TEST_FILES.
+//             `--dist loadgroup` is required alongside `-n` for tests/conftest.py's
+//             SERIALIZED_TEST_FILES xdist_group marker to take effect — the default `load`
+//             distribution ignores xdist_group markers entirely, which would silently let two
+//             pinned files (e.g. two files both touching the live Postgres advisory lock) land on
+//             different workers and run concurrently.
 const { found, result: r, usedLabel: used, tried } = runPython(
-  ['-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q', '-x', '--ff'],
+  ['-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q', '-x', '--ff', '-n', '8', '--dist', 'loadgroup'],
   {
     cwd: ROOT,
     encoding: 'utf8',

@@ -20,7 +20,8 @@ import pathlib
 import pytest
 
 
-# R-154 (2026-08-11): pytest-xdist parallelism (`-n auto`, added in scripts/check-pytest.mjs) is
+# R-154 (2026-08-11): pytest-xdist parallelism (`-n 8`, added in scripts/check-pytest.mjs — capped
+# below `os.cpu_count()` by R-154(b) after `-n auto` flaked under 32-way contention) is
 # safe ONLY once every test that touches a resource shared across the whole process tree is pinned
 # to run on a single worker. Two incidents already paid for the alternative: §11a's two concurrent
 # SUITE runs producing 12 then 127 phantom ERR_CONNECTION_REFUSED failures, and L87's dispatcher
@@ -102,16 +103,31 @@ SERIALIZED_TEST_FILES = frozenset({
 })
 
 
+@pytest.hookimpl(tryfirst=True)
 def pytest_collection_modifyitems(config, items):
     """Pin every item in SERIALIZED_TEST_FILES to one xdist worker (`--dist loadgroup` is required
     for this marker to take effect — the default `load` distribution ignores xdist_group). A no-op
     without xdist installed, and a no-op without `-n`/`--dist loadgroup` on the command line too:
     the marker is simply unused, exactly like any other pytest.mark.* nobody reads.
 
-    NOT currently invoked by scripts/check-pytest.mjs (R-154, 2026-08-11): `-n auto` shipped there
-    only as far as this pinning, then was held back after it produced a real CPU-contention flake
-    in a wall-clock timing test on the 32-core dev machine (see check-pytest.mjs's own comment and
-    the R-154 report). This grouping is audited and ready for whichever resolution the owner picks.
+    ACTIVE as of R-154(b) (2026-08-11): scripts/check-pytest.mjs now invokes
+    `-n 8 --dist loadgroup`, so this marker takes effect on every gate run. `-n auto` (32 workers on
+    this dev machine) produced a real CPU-contention flake in a wall-clock timing test; R-154(b)
+    capped the worker count at 8 instead — the fix changed the worker count, not this pinning, and
+    not the flaking test's own tripwire (see check-pytest.mjs's own comment and the R-154(b) report).
+
+    `tryfirst=True` is not decoration, it is load-bearing: xdist's own worker-side
+    `pytest_collection_modifyitems` (xdist/remote.py) reads each item's `xdist_group` marker and
+    appends `@group_name` to its nodeid — that suffix, not the marker object itself, is what the
+    controller's `LoadGroupScheduling._split_scope` groups items by. Discovered empirically here:
+    without `tryfirst`, pytest's default (unspecified, effectively LIFO-by-registration) hook order
+    ran xdist's marker-reading hook BEFORE this one added the marker, so every item in
+    SERIALIZED_TEST_FILES scattered across all `-n 8` workers exactly as if unpinned — confirmed
+    with `-v` showing test_acceptance.py items on gw0 through gw7 simultaneously, producing real
+    ForeignKeyViolation errors and WorkerBusy exceptions against the live Postgres advisory lock.
+    `tryfirst=True` guarantees this hook runs before xdist's (which registers without it), so the
+    marker exists by the time xdist inspects items — verified after the fix: an 8-file grep of a
+    `-v` run's `[gwN]` lines shows every SERIALIZED_TEST_FILES item on the SAME worker.
     """
     for item in items:
         if item.fspath.basename in SERIALIZED_TEST_FILES:

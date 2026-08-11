@@ -2657,6 +2657,43 @@ correct and must stay; what is missing is that nothing compares "unreachable now
 "reachable an hour ago". A channel that goes dark mid-session is a different event from one that was
 never lit, and only a clock tells them apart.
 
+**L89 · `pytest_collection_modifyitems` needs `tryfirst=True` when another plugin reads the marker
+it adds, in the SAME hook, at collection time (2026-08-11).**
+R-154(b) activated `tests/conftest.py`'s `SERIALIZED_TEST_FILES` xdist pinning (`-n 8 --dist
+loadgroup`) and it silently did nothing: `-v` showed every item from a pinned file (e.g.
+`test_acceptance.py`) scattered across all 8 workers — `gw0` through `gw7` — running concurrently,
+which is exactly the failure mode the pinning exists to prevent. It produced real damage, not a
+theoretical gap: a `psycopg2.errors.ForeignKeyViolation` on `document_chunks_revision_id_fkey` and a
+`WorkerBusy` on the shared Postgres advisory lock, both from two pinned tests genuinely executing at
+the same instant against the live database.
+
+**Root cause, traced into `pytest-xdist==3.8.0`'s own source, not guessed:** `--dist loadgroup`
+does not group items by inspecting the `xdist_group` marker at schedule time. It groups by a string
+suffix — `@group_name` — that a *different* `pytest_collection_modifyitems` hook, registered by
+xdist itself (`xdist/remote.py`, `WorkerInteractor.pytest_collection_modifyitems`), appends to each
+marked item's `nodeid` during collection. `tests/conftest.py`'s own hook *adds* the marker but
+pytest's hookimpl ordering for two implementations of the same hook, both with no `tryfirst`/
+`trylast`, is unspecified in program terms — and on this run, xdist's marker-reading hook executed
+BEFORE conftest's marker-adding hook. The suffix was computed off an item that did not have the
+mark yet, so no suffix was ever added, and `LoadGroupScheduling._split_scope` (which keys purely off
+that suffix) saw 581 individually-unscoped items and load-balanced them exactly like `--dist load`
+would have. The marker existed on the item object after collection finished; it was simply too late
+for the one consumer that needed to see it during collection.
+
+**Fix:** `@pytest.hookimpl(tryfirst=True)` on `tests/conftest.py`'s `pytest_collection_modifyitems`.
+Verified both ways — a `-v` run before the fix printed pinned-file items under `[gw0]` through
+`[gw7]` simultaneously; the same run after the fix printed every one of them under `[gw0]` only,
+with `@db-and-gates` visible in each nodeid, and the ForeignKeyViolation/WorkerBusy failures did not
+recur across three subsequent full-suite runs.
+
+**The general lesson, not scoped to this one plugin:** when a fixture/hook adds a marker and a
+*different* hook implementation of the *same pytest hook* needs to read that marker, the two are in
+an ordering race unless one side pins its position with `tryfirst`/`trylast` — "the plugin declares
+a marker" is not, on its own, evidence the marker is visible to every other hook of the same name
+that runs in the same phase. Where this matters again: any future `pytest_collection_modifyitems`,
+`pytest_runtest_setup`, or similar hook this project adds that is meant to be READ by a third-party
+plugin's own same-named hook.
+
 **No-lesson declaration (2026-08-11):** R-154 (`scripts/check-pytest.mjs` `-x --ff`, `tests/
 conftest.py` xdist pinning) — no new numbered lesson. Two foreground Bash commands hit the tool's
 600s timeout while measuring the Python suite's baseline duration (the suite's own passing run
