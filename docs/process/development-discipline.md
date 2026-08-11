@@ -2518,3 +2518,12 @@ guard clause first. No production code, gate, or observer was affected, and no n
 discovered — a self-inflicted typo in disposable throwaway tooling, not a discovery worth a lesson
 line.
 
+**No-lesson declaration (2026-08-11):** arc4 batch s08 (`L86` classified `none`) — no new numbered
+lesson. The 1 recorded failure was `classify_rules.py` REFUSING the batch: a demotion to `none`
+must carry `cost` and `importance`, per the owner's own caveat that an expensive gate can still be
+worth it if the rule matters. The batch was authored from the s07 template, which contains no
+demotion and therefore no example of those fields. The gate named exactly what was missing and why,
+the fields were filled in, and the batch applied on the next call — a validator doing precisely the
+job it exists for. Nothing about the corpus, the classification, or the tooling was wrong; a refusal
+that teaches its own contract is the mechanism working, not a failure worth a lesson line.
+
