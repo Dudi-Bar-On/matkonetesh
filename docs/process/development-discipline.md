@@ -2730,3 +2730,12 @@ open question of whether question 1 should distinguish "no detector yet" from "t
 script that does not exist" is already registered as `R-153`; duplicating it as an `L` line would put
 a register row into the lesson log, which is what `R-116` is about.
 
+**No-lesson declaration (2026-08-11):** R-158 (`tests/test_acceptance.py::test_F4_...` namespace
+isolation) — no new numbered lesson. The single recorded failure this task caused was a self-inflicted
+tooling mistake: the first `node scripts/check-pytest.mjs` call during REDs #1 reproduction was run
+with the Bash tool's default 120s foreground timeout instead of the required 600000ms, so it was
+killed mid-run (exit 143) with no suite output at all — not a defect in the gate, the fix, or the
+test suite. Re-run immediately with the correct timeout and it completed normally. Nothing about the
+gate's behavior, this project's code, or the test suite needed to change to make that go away; the
+fix was remembering the instruction already given in this task's own brief.
+

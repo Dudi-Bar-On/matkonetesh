@@ -621,20 +621,52 @@ def test_F3_deleting_a_document_takes_its_vectors_with_it():
         conn.close()
 
 
-def test_F4_the_llamaindex_retriever_can_query_the_projection():
-    """The capability the prompt asked to be installed, exercised through LlamaIndex itself."""
-    _require_stack().close()
-    from llama_index.core.vector_stores.types import VectorStoreQuery
+def test_F4_the_llamaindex_retriever_can_query_the_projection(clean):
+    """The capability the prompt asked to be installed, exercised through LlamaIndex itself.
+
+    R-158: this used to query `config.vector_store()` with NO filter — i.e. every row in the
+    single, un-namespaced `data_chunk_vectors` table, shared with `check-geniza-fresh`'s own
+    self-heal (which ingests into namespace `repo` in the SAME pre-commit invocation). The gate
+    writes, the test read globally, and the two collided deterministically (R-154b, confirmed by
+    `git stash` against unmodified HEAD).
+
+    Route (a) from the R-158 brief: give the test its own namespace instead of pinning around the
+    collision. It ingests its own document into `NS` ("acceptance", already the dedicated,
+    clean()-purged namespace every other test in this file uses) and queries the SAME production
+    `config.vector_store()` — no separate table, no separate config — filtered down to that
+    namespace via a LlamaIndex `MetadataFilters` clause. `worker.ingest_one` has always written
+    `"namespace": namespace` into `data_chunk_vectors.metadata_` (see worker.py); this is the
+    first reader to ask for it. Nothing the gate does to `repo` can produce or remove a row this
+    query would see, so the test is independent of the gate's self-heal in either direction —
+    proven in the R-158 report by breaking each side in isolation.
+    """
+    from llama_index.core.vector_stores.types import (
+        ExactMatchFilter,
+        MetadataFilters,
+        VectorStoreQuery,
+    )
+
+    path = _write("f4.md", f"# Curing\n\n{KNOWN_FACT} at 2.5 g/kg.\n")
+    with SingleWriter() as conn:
+        result = worker.ingest_one(conn, path, namespace=NS)
+    assert result.outcome == "ingested", result.detail
 
     try:
         store = config.vector_store()
         embedding = config.embed_model().get_query_embedding("nitrite curing salt")
     except Exception as exc:
-        pytest.skip(f"the vector store or embedding model is unavailable ({type(exc).__name__})")
+        skip_only_if_unavailable(exc, "the vector store or embedding model")
 
-    result = store.query(VectorStoreQuery(query_embedding=embedding, similarity_top_k=5))
-    assert result.nodes, "PGVectorStore returned nothing from a populated table"
-    assert len(result.nodes) <= 5
-    meta = result.nodes[0].metadata
+    query = VectorStoreQuery(
+        query_embedding=embedding,
+        similarity_top_k=5,
+        filters=MetadataFilters(filters=[ExactMatchFilter(key="namespace", value=NS)]),
+    )
+    retrieved = store.query(query)
+    assert retrieved.nodes, "PGVectorStore returned nothing for this test's own namespace"
+    assert len(retrieved.nodes) <= 5
+    meta = retrieved.nodes[0].metadata
     assert meta.get("revision_id") and meta.get("source_path"), \
         "a retrieved node cannot be traced back to its authoritative revision"
+    assert all(n.metadata.get("namespace") == NS for n in retrieved.nodes), \
+        "the namespace filter leaked a row from outside this test's own data"
