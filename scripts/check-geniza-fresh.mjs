@@ -20,6 +20,11 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPython } from './lib/python-interpreter.mjs';
 
+// Arc 3 Phase 1, Task 2: §10.12 "Keep the geniza current ... check-geniza-fresh.mjs is the gate
+// and it blocks." This IS that gate — content-hash diff between disk and document_revisions,
+// self-heal + fail-if-repair-fails, wired BLOCKING into check-meta.mjs:115.
+export const RULE_IDS = ['10.12'];
+
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 const PY = `
