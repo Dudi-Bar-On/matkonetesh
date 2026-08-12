@@ -2765,3 +2765,13 @@ a `/proc`-based Linux port/pid probe added to `scripts/hooks/lib/stale-server.mj
 does not need to skip on Linux CI at all) already carries its own detailed inline comments; nothing
 about it generalizes into a project-wide process lesson beyond what L57 already states.
 
+**No-lesson declaration (2026-08-12):** Arc 3 ranking re-measurement task — no new numbered lesson.
+The single recorded failure this session was a self-inflicted shell-quoting error in a scratchpad-only
+`bash -c "node -e '...'"` inline command (a regex literal containing `\\` got mangled passing through
+two layers of shell escaping), which tripped `debugging-before-fix-edit.mjs` before the next Write. Root
+cause was already known and already has a named gate/lesson (`L85` — heredoc/inline shell escaping
+eating a backslash layer, "fifteen times in three days"); this was the same failure family, not a new
+one, and the fix was the one L85 already prescribes: write the script to a file instead of passing it
+inline through shell quoting. Nothing about this project's tooling, gates, or conventions needed to
+change.
+
