@@ -30,7 +30,15 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-ENV_FILE = ROOT / "infra" / ".env"
+
+# CONFIG_ENV_FILE_KNOWLEDGE lets a caller point load_config() at a different (or absent) file —
+# the seam a test needs to construct "no credentials configured" WITHOUT touching the real,
+# live infra/.env (R-156, 2026-08-12: a test fixture that renamed infra/.env aside left the
+# geniza and mk_rules unreachable for 2h46m when the process was killed before its `finally`
+# could restore it). Deliberately NOT one of the DB_ENV_PREFIXES stripped by
+# tests/test_arc4_db_optional.py (POSTGRES/MK_/RULES_/NEO4J) so it survives that stripping and
+# reaches the child process. Unset in every normal run, so production behaviour is unchanged.
+ENV_FILE = Path(os.environ.get("CONFIG_ENV_FILE_KNOWLEDGE", str(ROOT / "infra" / ".env")))
 
 EMBED_MODEL = "bge-m3"
 EMBED_DIM = 1024

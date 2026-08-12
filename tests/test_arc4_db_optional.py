@@ -21,31 +21,38 @@ from pathlib import Path
 import pytest
 
 ROOT = Path(__file__).resolve().parent.parent
-ENV_FILES = (ROOT / "infra" / ".env", ROOT / "infra" / "rules-db" / ".env")
 
 # Kept textually identical to what load_config() reads from the environment in both
 # src/knowledge/config.py and src/rules_store/config.py (POSTGRES_*, MK_*, NEO4J_*, RULES_*) —
-# stripping anything under these prefixes plus the file rename below reproduces a runner with
-# neither credential source, which is what CI actually has.
+# stripping anything under these prefixes plus the no_database_configured fixture below (which
+# points load_config() at nonexistent files, R-156) reproduces a runner with neither credential
+# source, which is what CI actually has. CONFIG_ENV_FILE_KNOWLEDGE / CONFIG_ENV_FILE_RULES
+# (the fixture's own seam) deliberately do NOT start with any of these prefixes, so they survive
+# this stripping and reach the child subprocess below.
 DB_ENV_PREFIXES = ("POSTGRES", "MK_", "RULES_", "NEO4J")
 
 
 @pytest.fixture
-def no_database_configured():
-    """Rename infra/.env and infra/rules-db/.env aside for the duration of the test, and ALWAYS
-    restore them — even on failure — because this is a real developer machine whose infra/.env is
-    the live, working credential file, not a fixture to throw away."""
-    hidden = []
-    for f in ENV_FILES:
-        if f.exists():
-            tmp = f.with_name(f.name + ".hidden-for-test")
-            f.rename(tmp)
-            hidden.append((f, tmp))
-    try:
-        yield
-    finally:
-        for original, tmp in hidden:
-            tmp.rename(original)
+def no_database_configured(monkeypatch, tmp_path):
+    """Construct 'no credentials configured' WITHOUT touching the real, live infra/.env or
+    infra/rules-db/.env (R-156, 2026-08-12).
+
+    A prior version of this fixture renamed those two files aside and relied on a `finally` to
+    rename them back. `finally` cannot run if the process is killed mid-test — and it was: the
+    files stayed renamed for 2h46m on 2026-08-11, leaving the geniza and mk_rules unreachable to
+    every agent. `finally` is correct for every case it can see; a killed process is not one of
+    them.
+
+    Instead this points both config modules' load_config() at nonexistent files inside pytest's
+    own tmp_path via CONFIG_ENV_FILE_KNOWLEDGE / CONFIG_ENV_FILE_RULES (the seam added in
+    src/knowledge/config.py and src/rules_store/config.py for exactly this). The only state this
+    fixture mutates is two environment variables in THIS process — never a file on disk — so if
+    this process is killed mid-test, there is nothing to restore: the real credential files were
+    never touched in the first place.
+    """
+    monkeypatch.setenv("CONFIG_ENV_FILE_KNOWLEDGE", str(tmp_path / "no-such-knowledge.env"))
+    monkeypatch.setenv("CONFIG_ENV_FILE_RULES", str(tmp_path / "no-such-rules.env"))
+    yield
 
 
 def test_the_suite_does_not_error_when_no_database_is_configured(no_database_configured):

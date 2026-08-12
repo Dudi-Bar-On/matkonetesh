@@ -15,7 +15,14 @@ from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-ENV_FILE = ROOT / "infra" / "rules-db" / ".env"
+
+# CONFIG_ENV_FILE_RULES lets a caller point load_config() at a different (or absent) file — the
+# seam a test needs to construct "no credentials configured" WITHOUT touching the real, live
+# infra/rules-db/.env (R-156, 2026-08-12: see src/knowledge/config.py's CONFIG_ENV_FILE_KNOWLEDGE
+# for the incident this fixes). Deliberately NOT one of the DB_ENV_PREFIXES stripped by
+# tests/test_arc4_db_optional.py (POSTGRES/MK_/RULES_/NEO4J) so it survives that stripping and
+# reaches the child process. Unset in every normal run, so production behaviour is unchanged.
+ENV_FILE = Path(os.environ.get("CONFIG_ENV_FILE_RULES", str(ROOT / "infra" / "rules-db" / ".env")))
 
 
 class ConfigError(RuntimeError):
