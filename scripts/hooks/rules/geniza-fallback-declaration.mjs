@@ -40,7 +40,7 @@
 // not listed here, evaluate() must return allow. tests/test_hook_tool_scope.py proves that
 // for every rule and every tool, so a wrong list fails loudly instead of silencing a rule.
 export const TOOLS = ['Bash', 'Grep', 'WebSearch'];
-export const RULE_IDS = ['10.13'];
+export const RULE_IDS = ['10.13', '10.11'];
 
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';

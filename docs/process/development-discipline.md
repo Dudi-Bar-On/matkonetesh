@@ -2794,3 +2794,19 @@ the index. Root cause confirmed by reading the error output directly (git's own 
 inside the command string. Same failure family as the prior entry, not a new one; no gate or
 convention change needed.
 
+**No-lesson declaration (2026-08-12):** Arc 3 Phase 1 Task 1 (declare `10.11` on
+`geniza-fallback-declaration.mjs`) — no new numbered lesson. `node scripts/check-pytest.mjs` reports
+one failure, `test_arc4_board_currency.py::test_board_coverage_declaration_matches_the_coverage_gate`,
+because this task's declaration moves the live measurement from 49/91 to 50/91 while
+`docs/STATUS-BOARD.md`'s `COVERAGE-DECLARED` line still reads 49/91. Root cause confirmed by reading
+the test's own assertion (`tests/test_arc4_board_currency.py:29-37`, cross-checking the board's
+declared figure against `measured_coverage()`) and the governing plan
+(`docs/superpowers/plans/2026-08-12-arc3-remaining-ab-rules.md:756-758`), whose own Task 7 states in
+writing that "the coverage-line update is out of scope here and left to whoever lands this plan under
+H10's own discipline." This task's brief separately forbids editing `docs/STATUS-BOARD.md`
+(controller-owned, gate-checked figures). Not a defect in this task's change: the new-test evidence
+(`scripts/tests/test-geniza-fallback-declaration-10-11.mjs`, catch + false-alarm, both green) and the
+pre-existing real-entry-point liveness suite (`scripts/tests/test-hooks-groupa.mjs`, 182/182) are
+unaffected. This is the anticipated board-lag failure, closed when the controller updates the board at
+arc-close/end of Phase 1.
+
