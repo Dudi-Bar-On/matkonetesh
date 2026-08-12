@@ -207,5 +207,64 @@ check(
   `CI-shape invocation was skipped or failed:\n${ciOut}`,
 );
 
+// --- R-160: CI reports the complete failure list, and the output states which mode produced it ---
+// More failing tests than -n 8 has workers, so a single wave of parallel workers cannot all fail
+// before -x's interrupt propagates (a 2-test fixture proved unreliable here: both landed on
+// different workers and both failed before -x could stop anything). Local mode must miss the LAST
+// padding failure and say the list is a prefix; CI mode must name every one of them and say the
+// list is complete. This is the exact shape L77 keeps recurring in: a check that reports less than
+// it measured, with nothing saying so.
+const manyFailRoot = tempDir('check-pytest-r160-');
+const manyFailLines = [
+  'def test_r160_first_failure():',
+  '    assert False, "R-160 fixture: first failure"',
+  '',
+];
+for (let i = 0; i < 15; i++) {
+  manyFailLines.push(`def test_r160_padding_failure_${i}():`);
+  manyFailLines.push(`    assert False, "R-160 fixture: padding failure ${i}"`);
+  manyFailLines.push('');
+}
+manyFailLines.push('def test_r160_last_failure():');
+manyFailLines.push('    assert False, "R-160 fixture: last failure -- must be MISSING in local mode"');
+manyFailLines.push('');
+writeFile(join(manyFailRoot, 'tests'), 'test_fixture_r160.py', manyFailLines.join('\n'));
+
+const localMode = runNode(SCRIPT, ['--root', manyFailRoot], { GITHUB_ACTIONS: '' });
+const localOut = `${localMode.stdout ?? ''}${localMode.stderr ?? ''}`;
+check(
+  'local mode: names the first failure',
+  /FAILED .*test_r160_first_failure/.test(localOut),
+  `local-mode output missing the first failure:\n${localOut}`,
+);
+check(
+  'local mode: does NOT name the last failure (-x stopped the run before it)',
+  !/FAILED .*test_r160_last_failure/.test(localOut),
+  `local-mode output unexpectedly named the last failure -- -x did not stop the run:\n${localOut}`,
+);
+check(
+  'local mode: says the list is a PREFIX, not the complete set',
+  /mode: local.*PREFIX/s.test(localOut),
+  `local-mode output did not state it produced a prefix:\n${localOut}`,
+);
+
+const ciMode = runNode(SCRIPT, ['--root', manyFailRoot], { GITHUB_ACTIONS: 'true' });
+const ciModeOut = `${ciMode.stdout ?? ''}${ciMode.stderr ?? ''}`;
+check(
+  'CI mode: names the first failure',
+  /FAILED .*test_r160_first_failure/.test(ciModeOut),
+  `CI-mode output missing the first failure:\n${ciModeOut}`,
+);
+check(
+  'CI mode: ALSO names the last failure (-x is dropped on GITHUB_ACTIONS=true)',
+  /FAILED .*test_r160_last_failure/.test(ciModeOut),
+  `CI-mode output did not name the last failure -- -x was not dropped on GITHUB_ACTIONS=true:\n${ciModeOut}`,
+);
+check(
+  'CI mode: says the list is COMPLETE',
+  /mode: CI.*COMPLETE/s.test(ciModeOut),
+  `CI-mode output did not state it produced the complete list:\n${ciModeOut}`,
+);
+
 console.log(`\ncheck-pytest: ${total - failures}/${total} assertions passed.`);
 if (failures) { console.error(`check-pytest: ${failures} FAILURE(S).`); process.exitCode = 1; }

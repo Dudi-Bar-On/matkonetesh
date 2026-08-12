@@ -88,6 +88,19 @@ if (process.env.MATCONETESH_LOCAL_HOOK === '1') {
 //             coverage. --ff (failed-first) only REORDERS execution; unlike --lf (last-failed-
 //             ONLY) it never drops items, so full coverage survives it too.
 //
+//   R-160 (2026-08-12, L77 third instance this week): `-x` is right LOCALLY — a failing pre-commit
+//             run went 199s -> 1.2s and nobody wants to wait for the rest once it is already red.
+//             But it was applied UNCONDITIONALLY, so every CI run has been stopping at the first
+//             failure too, and CI has no one waiting: it silently turned "the complete failure
+//             list" into "the first failure", and the controller repeated that prefix to the owner
+//             as a total ("CI: 33 -> 7 -> 2" -- the 2 was a prefix, not a count). `-x` is now
+//             CONDITIONAL on GITHUB_ACTIONS=true (GitHub Actions' own unconditional positive
+//             marker, already used this way in tests/test_arc2_phase2_wiring.py as of bb66c50 --
+//             matched here rather than inventing a second CI-detection convention, R-116): CI drops
+//             -x and gets every failing/erroring test named; local keeps -x and stays fast. Either
+//             way the FAIL output now states which mode produced the list, so a reader never has to
+//             infer completeness from a flag they cannot see.
+//
 //   -n 8      SHIPPED (R-154(b), 2026-08-11, owner-approved). `-n auto` on this 32-core machine
 //             meant 32 workers, and under that load
 //             tests/test_arc2_phase2_wiring.py::test_pretooluse_overhead_stays_in_the_baseline_class
@@ -105,8 +118,17 @@ if (process.env.MATCONETESH_LOCAL_HOOK === '1') {
 //             distribution ignores xdist_group markers entirely, which would silently let two
 //             pinned files (e.g. two files both touching the live Postgres advisory lock) land on
 //             different workers and run concurrently.
+// GITHUB_ACTIONS=true is GitHub's own unconditional positive marker for "this is a GitHub Actions
+// runner" -- never a heuristic, never inferred from anything this script measures itself (R-160,
+// matching tests/test_arc2_phase2_wiring.py as of bb66c50; R-116 rules out a second convention).
+const isCI = process.env.GITHUB_ACTIONS === 'true';
+const pytestArgs = [
+  '-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q',
+  ...(isCI ? [] : ['-x']),
+  '--ff', '-n', '8', '--dist', 'loadgroup',
+];
 const { found, result: r, usedLabel: used, tried } = runPython(
-  ['-m', 'pytest', ...pyTests.map((f) => join('tests', f)), '-q', '-x', '--ff', '-n', '8', '--dist', 'loadgroup'],
+  pytestArgs,
   {
     cwd: ROOT,
     encoding: 'utf8',
@@ -173,6 +195,15 @@ if (r.status !== 0) {
     const sectionStart = out.lastIndexOf('\n', idx) + 1;
     console.log(out.slice(sectionStart).trim());
   }
+  // R-160: state which mode produced the list above, so a reader never has to infer completeness
+  // from a flag (-x) they cannot see. This is the actual defect this task exists to fix — not that
+  // a list was ever short, but that nothing said so.
+  console.log(
+    isCI
+      ? 'mode: CI (GITHUB_ACTIONS=true) — full run, no -x: every failing/erroring test above is the COMPLETE list.'
+      : 'mode: local (-x --ff) — stopped at the FIRST failure. The list above is a PREFIX, not the ' +
+        'complete set; CI runs the full suite and names everything.',
+  );
   console.log('FAIL: the Python suite is red. Run: python -m pytest tests/ -v');
   process.exit(1);
 }

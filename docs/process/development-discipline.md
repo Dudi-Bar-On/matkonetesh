@@ -2765,6 +2765,16 @@ a `/proc`-based Linux port/pid probe added to `scripts/hooks/lib/stale-server.mj
 does not need to skip on Linux CI at all) already carries its own detailed inline comments; nothing
 about it generalizes into a project-wide process lesson beyond what L57 already states.
 
+**No-lesson declaration (2026-08-12):** R-160 (`scripts/check-pytest.mjs` — CI reports the complete
+failure list instead of a `-x` prefix, and states which mode produced it) — no new numbered lesson.
+The single recorded failure this session was a self-inflicted typo in throwaway tooling: `git commit`
+was invoked with a `--timeout` flag that belongs to the Bash *tool's* parameter, not to `git commit`
+itself, and git rejected it with a usage error (exit 129) before touching the index. No content or
+gate was affected; the retry with the timeout passed as the tool parameter (not the command string)
+committed cleanly. This is not a new failure class — it is exactly the "code-bearing content through
+the wrong channel" shape L85 already names, one layer up (tool-argument channel vs. shell-escaping
+channel).
+
 **No-lesson declaration (2026-08-12):** Arc 3 ranking re-measurement task — no new numbered lesson.
 The single recorded failure this session was a self-inflicted shell-quoting error in a scratchpad-only
 `bash -c "node -e '...'"` inline command (a regex literal containing `\\` got mangled passing through
