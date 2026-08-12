@@ -916,6 +916,76 @@ function decisionForAgent({ seedLedger, env } = {}) {
     Array.isArray(after) && after.length === 0, `after=${JSON.stringify(after)}`);
 }
 
+// ---------------------------------------------------------------------------------------------
+// R-155 — CONCURRENT SubagentStop releases must not lose updates (the real root cause).
+//
+// Measured live against the real repo ledger, 2026-08-12 (see task-r155-report.md): instrumenting
+// subagentstop.mjs proved it DOES fire for real background dispatches — the "NOT wired" header was
+// stale, not a live defect. The actual bug is a classic read-modify-write race: releaseOldest()
+// does readLedger -> compute -> writeLedger with no mutual exclusion, so when several agents finish
+// close together (a normal pattern for background dispatches, not a contrived edge case), two
+// SubagentStop processes can both read the SAME "before" state and both write a result computed
+// from it — the loser's release is silently discarded. Reproduced by hand before this test existed:
+// 10 concurrent subagentstop.mjs processes against 10 live entries left 1 stuck entry in 4 of 5
+// trials. Because nothing else ever removes an entry owned by a still-alive hostPid (the crash-path
+// pid check correctly leaves it alone — it IS alive, that's the whole point), a lost release is
+// PERMANENT until the 60-minute TTL backstop, and repeated small losses accumulate exactly the way
+// the incident describes: eleven dispatches that day -> 5 permanently stuck entries -> every
+// dispatch blocked, silently, for hours.
+// ---------------------------------------------------------------------------------------------
+{
+  const TRIALS = 5;
+  const N = 8;
+  let totalLeftover = 0;
+  const perTrial = [];
+  for (let t = 0; t < TRIALS; t++) {
+    const work = tempDir(`hooks-groupa-subagentstop-race-${t}-`);
+    const ledgerPath = join(work, 'ledger.json');
+    const seed = Array.from({ length: N }, (_, i) => ({ dispatchedAt: Date.now() - i, hostPid: process.pid }));
+    writeFileSync(ledgerPath, JSON.stringify(seed), 'utf8');
+
+    // Fire N real subagentstop.mjs processes at once — simulating N agents finishing close
+    // together, exactly the pattern a background-dispatch-heavy session produces. Using spawn()
+    // (not spawnSync) so all N are genuinely in flight concurrently, not serialized by this test.
+    // eslint-disable-next-line no-await-in-loop
+    await Promise.all(Array.from({ length: N }, () => new Promise((resolve) => {
+      const child = spawn(process.execPath, [SUBAGENTSTOP_CLI], {
+        stdio: ['pipe', 'ignore', 'ignore'],
+        env: { ...process.env, PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath },
+        cwd: ROOT,
+      });
+      child.stdin.end(JSON.stringify({ hook_event_name: 'SubagentStop', agent_id: 'race-test' }));
+      child.once('exit', resolve);
+    })));
+
+    let after;
+    try { after = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch { after = null; }
+    const leftover = Array.isArray(after) ? after.length : -1;
+    perTrial.push(leftover);
+    totalLeftover += leftover;
+  }
+  check(`R-155: ${N} concurrent SubagentStop releases against ${N} live entries, x${TRIALS} trials, leave ZERO entries behind every time (0 lost updates)`,
+    totalLeftover === 0, `per-trial leftover counts=${JSON.stringify(perTrial)} (any non-zero value is a lost release)`);
+}
+
+// --- counter-proof: the SAME N entries released SEQUENTIALLY (never concurrently) always reach
+// zero — proves the race test above is meaningfully red on concurrency, not on N or on the release
+// logic itself being broken outright. ------------------------------------------------------------
+{
+  const N = 8;
+  const work = tempDir('hooks-groupa-subagentstop-race-counterproof-');
+  const ledgerPath = join(work, 'ledger.json');
+  const seed = Array.from({ length: N }, (_, i) => ({ dispatchedAt: Date.now() - i, hostPid: process.pid }));
+  writeFileSync(ledgerPath, JSON.stringify(seed), 'utf8');
+  for (let i = 0; i < N; i++) {
+    runSubagentStop({ env: { PRETOOLUSE_AGENT_LEDGER_PATH: ledgerPath } });
+  }
+  let after;
+  try { after = JSON.parse(readFileSync(ledgerPath, 'utf8')); } catch { after = null; }
+  check('R-155 (counter-proof): the SAME 8 entries released ONE AT A TIME (sequential, no concurrency) reach zero cleanly — the release logic itself is sound, only concurrent access was racy',
+    Array.isArray(after) && after.length === 0, `after=${JSON.stringify(after)}`);
+}
+
 // --- THE REGRESSION ITSELF: N STRICTLY SEQUENTIAL dispatches (each one's SubagentStop fires
 // before the next dispatch begins) must ALL be a plain allow — no warning, no block, no matter how
 // many. N is chosen deliberately larger than the hard ceiling (5) to prove sequential work is

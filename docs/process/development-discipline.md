@@ -2744,3 +2744,12 @@ test suite. Re-run immediately with the correct timeout and it completed normall
 gate's behavior, this project's code, or the test suite needed to change to make that go away; the
 fix was remembering the instruction already given in this task's own brief.
 
+**No-lesson declaration (2026-08-12):** R-155 (agent-concurrency-ceiling lost-update race) — no new
+numbered lesson. The single recorded failure this task caused was a self-inflicted CLI syntax typo:
+`git commit -- <files> -m "<message>"` put `-m` and the message AFTER the `--` pathspec separator, so
+git read them as pathspecs ("pathspec '-m' did not match any files"). Root cause was legible directly
+from the error text with no investigation needed; fix was reordering to
+`git commit -m "<message>" -- <files>`, git's own documented argument order. Nothing about this
+project's tooling, gates, or conventions needed to change — this is throwaway command-line usage, not
+infrastructure.
+

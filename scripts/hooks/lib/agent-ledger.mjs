@@ -28,7 +28,9 @@
 // (which is all the ceiling needs) correct under 1:1 dispatch/stop pairing regardless of order,
 // without pretending an identity match this project cannot prove.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import {
+  existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, statSync,
+} from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -110,6 +112,78 @@ export function readLedger(path) {
   } catch {
     // A corrupt ledger is not evidence of live agents — start clean rather than block on it.
     return [];
+  }
+}
+
+// FIX ROUND 2 (R-155, 2026-08-12): the retirement SIGNAL is not the problem — instrumenting
+// subagentstop.mjs live and dispatching real background agents through it proved SubagentStop DOES
+// fire (its own "NOT wired" header claim was stale, not a live defect; see task-r155-report.md for
+// the captured hook payloads). The real defect is a classic read-modify-write race: both the
+// append path (agent-concurrency-ceiling.mjs) and the release path (releaseOldest below) do
+// readLedger -> compute -> writeLedger with NO mutual exclusion. When two or more of these fire
+// close together — a normal pattern, not an edge case, whenever several background agents dispatch
+// or finish near-simultaneously — two processes can read the same "before" state and each write a
+// result computed from it; the loser's write is silently discarded. Measured directly: 8 concurrent
+// `subagentstop.mjs` releases against 8 live entries lost at least one release in 4 of 5 trials
+// (scripts/tests/test-hooks-groupa.mjs, the "R-155" section). Because nothing else ever removes an
+// entry owned by a still-alive hostPid (that check is deliberately correct — the owner really is
+// alive), a lost release is PERMANENT short of the 60-minute TTL backstop, and small losses
+// accumulate exactly the way the incident read: eleven dispatches -> 5 stuck entries -> every
+// dispatch blocked for hours.
+//
+// withLedgerLock wraps the read-modify-write critical section in a real cross-process mutex (an
+// exclusive-create lock FILE, not an in-memory flag — the race is BETWEEN OS processes, an
+// in-process guard cannot see it). FAILS OPEN on lock trouble: if the lock cannot be acquired
+// within LOCK_MAX_WAIT_MS (a crashed holder, or a filesystem hiccup), fn() still runs WITHOUT the
+// lock rather than blocking a dispatch or a release forever — an occasional unlocked race is the
+// PRE-EXISTING risk, not a new, worse one; the direction stays the same fail-open bias documented
+// on isPidAlive above (an internal failure must never look like grounds to block).
+const LOCK_STALE_MS = 10_000; // a lock file older than this is presumed abandoned by a dead holder.
+const LOCK_MAX_WAIT_MS = 2_000; // long enough to ride out real contention, short enough to never
+// meaningfully add to a PreToolUse/SubagentStop hook's own timeout budget (5s in .claude/settings.json).
+const LOCK_POLL_MS = 10;
+
+// A synchronous blocking wait that does NOT spin the CPU (Atomics.wait genuinely blocks the
+// thread). Falls back to a bounded busy-wait only if Atomics.wait itself is unavailable — reached
+// solely under real lock contention, never on the common uncontended path.
+function sleepSync(ms) {
+  try {
+    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, ms);
+  } catch {
+    const until = Date.now() + ms;
+    while (Date.now() < until) { /* bounded spin, contention-only fallback */ }
+  }
+}
+
+// Runs fn() with exclusive access to path's ledger, so a concurrent append and release — or two of
+// either — can never lose one write to the other. See the header above for the measured defect
+// this closes.
+export function withLedgerLock(path, fn) {
+  const lockPath = `${path}.lock`;
+  const start = Date.now();
+  let acquired = false;
+  while (Date.now() - start < LOCK_MAX_WAIT_MS) {
+    try {
+      writeFileSync(lockPath, String(process.pid), { flag: 'wx' });
+      acquired = true;
+      break;
+    } catch (err) {
+      if (!err || err.code !== 'EEXIST') break; // unexpected error creating the lock — proceed without it.
+      try {
+        if (Date.now() - statSync(lockPath).mtimeMs > LOCK_STALE_MS) {
+          try { unlinkSync(lockPath); } catch { /* raced with the holder's own cleanup — fine, retry */ }
+          continue;
+        }
+      } catch { continue; } // lock vanished between the EEXIST and the stat — retry immediately.
+      sleepSync(LOCK_POLL_MS);
+    }
+  }
+  try {
+    return fn();
+  } finally {
+    if (acquired) {
+      try { unlinkSync(lockPath); } catch { /* already gone — fine */ }
+    }
   }
 }
 

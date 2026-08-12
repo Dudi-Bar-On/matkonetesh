@@ -1,6 +1,10 @@
 #!/usr/bin/env node
-// scripts/hooks/subagentstop.mjs — SubagentStop CLI entry point (Task 5, Fix Round 1). NOT wired
-// into .claude/settings.json yet — same status as pretooluse.mjs, Task 8's job.
+// scripts/hooks/subagentstop.mjs — SubagentStop CLI entry point (Task 5, Fix Round 1). WIRED into
+// .claude/settings.json's SubagentStop hook since Task 8 (2026-08-07); a stale "NOT wired" claim
+// that used to live on this line was flagged by Arc 4 Task 8's corpus scan and re-confirmed live
+// by R-155 (2026-08-12): instrumented this file, dispatched a real background agent, and captured
+// its own genuine hook payload (agent_id, agent_transcript_path, background_tasks) on this file's
+// stdin — see task-r155-report.md. It runs. Do not re-litigate this line without new evidence.
 //
 // PURPOSE: the completion half of §10.5a's agent-concurrency ceiling. agent-concurrency-ceiling.mjs
 // (a PreToolUse:Agent rule) records a ledger entry on every dispatch; this script is the ONLY
@@ -18,7 +22,7 @@
 // side effect (release one ledger slot), so on ANY failure it simply does nothing and exits 0;
 // there is no decision for Claude Code to act on either way, unlike PreToolUse.
 import {
-  ledgerPath, ttlMs, readLedger, writeLedger, releaseOldest,
+  ledgerPath, ttlMs, readLedger, writeLedger, releaseOldest, withLedgerLock,
 } from './lib/agent-ledger.mjs';
 
 function readStdin() {
@@ -61,9 +65,13 @@ async function main() {
     const path = ledgerPath();
     const now = Date.now();
     const ttl = ttlMs();
-    const before = readLedger(path);
-    const { entries } = releaseOldest(before, now, ttl);
-    writeLedger(path, entries);
+    // R-155 Fix Round 2: the read-modify-write below is the whole race — wrapped under a
+    // cross-process lock so a concurrent append or release can never silently lose this one.
+    withLedgerLock(path, () => {
+      const before = readLedger(path);
+      const { entries } = releaseOldest(before, now, ttl);
+      writeLedger(path, entries);
+    });
   } catch {
     // A failed release must never surface as anything — worst case, one stale entry lingers
     // until the TTL backstop or a future pid-liveness check clears it. Never throw here.

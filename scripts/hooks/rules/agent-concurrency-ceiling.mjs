@@ -39,7 +39,7 @@ export const RULE_IDS = ['10.5a'];
 
 import { evaluate as suitePortProbe } from './no-concurrent-suite-run.mjs';
 import {
-  ledgerPath, ttlMs, currentHostPid, readLedger, writeLedger, pruneLive,
+  ledgerPath, ttlMs, currentHostPid, readLedger, writeLedger, pruneLive, withLedgerLock,
 } from '../lib/agent-ledger.mjs';
 
 const SOFT_CEILING = 3; // §10.5a: "≤3 קלים" — the 4th concurrently-live dispatch warns.
@@ -78,10 +78,6 @@ export async function evaluate(input) {
   const ttl = ttlMs();
   const hostPid = currentHostPid();
 
-  const before = readLedger(path);
-  const live = pruneLive(before, now, ttl);
-  const wouldBeLive = live.length + 1; // this dispatch, if allowed/warned through
-
   const busy = await suiteIsBusy();
   const hardCeiling = busy ? SUITE_BUSY_CEILING : HARD_CEILING;
   const softCeiling = busy ? SUITE_BUSY_CEILING : SOFT_CEILING;
@@ -92,33 +88,44 @@ export async function evaluate(input) {
     : null;
   const label = desc ? ` (dispatch: "${desc}")` : '';
 
-  if (wouldBeLive > hardCeiling) {
-    // Blocked: the dispatch never happens, so the ledger is NOT appended — only pruned (opportunistic
-    // cleanup of expired/dead entries still gets written back, keeping the file from growing unbounded).
+  // R-155 Fix Round 2: read-prune-decide-write wrapped under a cross-process lock. Before this,
+  // a concurrent dispatch and a concurrent SubagentStop release (or two of either) could each read
+  // the same "before" ledger state and overwrite each other's result — measured live, see
+  // agent-ledger.mjs's withLedgerLock header and scripts/tests/test-hooks-groupa.mjs's "R-155"
+  // section for the reproduction.
+  return withLedgerLock(path, () => {
+    const before = readLedger(path);
+    const live = pruneLive(before, now, ttl);
+    const wouldBeLive = live.length + 1; // this dispatch, if allowed/warned through
+
+    if (wouldBeLive > hardCeiling) {
+      // Blocked: the dispatch never happens, so the ledger is NOT appended — only pruned (opportunistic
+      // cleanup of expired/dead entries still gets written back, keeping the file from growing unbounded).
+      writeLedger(path, live);
+      return {
+        decision: 'block',
+        reason: `§10.5a (settled): ${live.length} agent(s) already live — dispatching another would `
+          + `make ${wouldBeLive}, over the hard ceiling of ${hardCeiling}${busyNote}${label}. "סדרתי `
+          + 'ובטוח זה ליבת החכמה" (§10.23) — let one of the live dispatches finish before starting '
+          + 'another, or raise the ceiling with the owner if this genuinely needs more concurrency.',
+      };
+    }
+
+    live.push({ dispatchedAt: now, hostPid });
     writeLedger(path, live);
+
+    if (wouldBeLive > softCeiling) {
+      return {
+        decision: 'warn',
+        reason: `§10.5a (settled): ${wouldBeLive} agent(s) now live, over the soft ceiling of `
+          + `${softCeiling}${busyNote}${label} — still under the hard ceiling of ${hardCeiling}, `
+          + 'allowed, but consider letting one finish before dispatching more.',
+      };
+    }
+
     return {
-      decision: 'block',
-      reason: `§10.5a (settled): ${live.length} agent(s) already live — dispatching another would `
-        + `make ${wouldBeLive}, over the hard ceiling of ${hardCeiling}${busyNote}${label}. "סדרתי `
-        + 'ובטוח זה ליבת החכמה" (§10.23) — let one of the live dispatches finish before starting '
-        + 'another, or raise the ceiling with the owner if this genuinely needs more concurrency.',
+      decision: 'allow',
+      reason: `${wouldBeLive} agent(s) live${label} — within the §10.5a soft ceiling of ${softCeiling}`,
     };
-  }
-
-  live.push({ dispatchedAt: now, hostPid });
-  writeLedger(path, live);
-
-  if (wouldBeLive > softCeiling) {
-    return {
-      decision: 'warn',
-      reason: `§10.5a (settled): ${wouldBeLive} agent(s) now live, over the soft ceiling of `
-        + `${softCeiling}${busyNote}${label} — still under the hard ceiling of ${hardCeiling}, `
-        + 'allowed, but consider letting one finish before dispatching more.',
-    };
-  }
-
-  return {
-    decision: 'allow',
-    reason: `${wouldBeLive} agent(s) live${label} — within the §10.5a soft ceiling of ${softCeiling}`,
-  };
+  });
 }
