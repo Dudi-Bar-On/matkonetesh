@@ -2785,3 +2785,12 @@ one, and the fix was the one L85 already prescribes: write the script to a file 
 inline through shell quoting. Nothing about this project's tooling, gates, or conventions needed to
 change.
 
+**No-lesson declaration (2026-08-12):** task-register-lost (R-162..R-171 registration) — no new
+numbered lesson. The single recorded failure this session was the same self-inflicted typo already
+named at the 2026-08-12 entry above: `git commit` invoked with `--timeout 600000` inside the command
+string, which is the Bash *tool's* own parameter, not a `git commit` flag — exit 129 before touching
+the index. Root cause confirmed by reading the error output directly (git's own usage text lists no
+`--timeout`). Fix: retried with the timeout passed as the Bash tool's `timeout` parameter instead of
+inside the command string. Same failure family as the prior entry, not a new one; no gate or
+convention change needed.
+
