@@ -7,6 +7,8 @@ import re
 import subprocess
 from pathlib import Path
 
+import pytest
+
 ROOT = Path(__file__).resolve().parent.parent
 BOARD = ROOT / "docs" / "STATUS-BOARD.md"
 
@@ -48,9 +50,19 @@ def test_the_currency_check_can_actually_fail(tmp_path):
 
 def test_board_names_every_active_arc():
     """Arcs are added by hand today, which is why the board went 12 commits stale. A directory under
-    .superpowers/sdd/ is an arc that ran; the board must name it."""
+    .superpowers/sdd/ is an arc that ran; the board must name it.
+
+    .superpowers/sdd/ is git-ignored local scratch — a fresh CI checkout never has it, which is a
+    positive marker of absence, not a failure of this test's assertion. Skip loudly (NOT VERIFIED
+    here) rather than let the anti-vacuity guard below fire on a runner that was never going to have
+    any SDD workspace to examine; the guard itself stays — it is still correct for a dev machine
+    that DOES have the directory but somehow finds nothing under it."""
     sdd = ROOT / ".superpowers" / "sdd"
-    active = [p.name for p in sdd.iterdir() if p.is_dir()] if sdd.exists() else []
+    if not sdd.exists():
+        pytest.skip(
+            ".superpowers/sdd/ does not exist on this checkout (git-ignored local scratch, absent "
+            "on a fresh CI clone) — NOT VERIFIED here: whether the board names every active arc.")
+    active = [p.name for p in sdd.iterdir() if p.is_dir()]
     assert active, "found no SDD workspaces — this test examined NOTHING"
     text = BOARD.read_text(encoding="utf-8").lower()
     missing = [a for a in active if a.lower() not in text]

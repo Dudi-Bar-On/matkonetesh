@@ -1,4 +1,5 @@
 # tests/test_arc4_gate_coverage.py — Arc 4: the enforcement machinery gets its own regression net.
+import os
 import subprocess
 from test_arc2_phase1_gates import ROOT, run_gate, git_env
 from conftest import requires_database
@@ -150,40 +151,64 @@ GENIZA_STALE_JSON = (
 RULES_MISSING_JSON = '{"disk": 163, "stored": 162, "missing": ["L999"], "extra": []}\n'
 
 
+# R-151/R-161: on Windows a `.cmd` batch stub is runnable and interpretable as-is. On Linux, the
+# gates spawn the substitute interpreter with `shell: true` (required so Windows can exec a .cmd
+# without a shell in the loop), which means the *substitute* is executed as an argument to
+# `/bin/sh -c`, and `.cmd` content (`@echo off` / `type` / `%*`) is not POSIX shell — sh's own
+# parser rejects the leading `@` with exactly the "Syntax error: word unexpected" CI showed. Same
+# platform split as test_arc4_ci_gate.py's `_stub()` (R-147c): one real script per platform.
+
+
 def _stub(tmp_path, name, stdout_text, exit_code=0):
-    """.cmd stub that ignores its argv and always prints the same fixed STDOUT — the shape a
-    clean Python probe takes. Same idea as test_arc4_ci_gate.py's helper of the same name,
-    duplicated rather than imported (importing a sibling test module would drag its fixtures and
-    collection into this file for no benefit)."""
+    """Stub that ignores its argv and always prints the same fixed STDOUT — the shape a clean
+    Python probe takes. Same idea as test_arc4_ci_gate.py's helper of the same name, duplicated
+    rather than imported (importing a sibling test module would drag its fixtures and collection
+    into this file for no benefit)."""
     out = tmp_path / f"{name}.out"
     out.write_text(stdout_text, encoding="utf-8")
-    p = tmp_path / f"{name}.cmd"
-    p.write_text(f'@echo off\r\ntype "{out}"\r\nexit /b {exit_code}\r\n', encoding="utf-8")
+    if os.name == "nt":
+        p = tmp_path / f"{name}.cmd"
+        p.write_text(f'@echo off\r\ntype "{out}"\r\nexit /b {exit_code}\r\n', encoding="utf-8")
+    else:
+        p = tmp_path / f"{name}.sh"
+        p.write_text(f'#!/bin/sh\ncat "{out}"\nexit {exit_code}\n', encoding="utf-8")
+        os.chmod(p, 0o755)
     return str(p)
 
 
 def _stub_stderr(tmp_path, name, stderr_text, exit_code=1):
-    """.cmd stub that prints to STDERR and exits non-zero — the shape a real interpreter takes
-    when the embedded Python program raises an uncaught exception (traceback on stderr, non-zero
-    exit) instead of returning cleanly. Both gates classify on `stderr`, not `stdout`, for this
-    branch, so a stub answering on the wrong stream would test nothing."""
+    """Stub that prints to STDERR and exits non-zero — the shape a real interpreter takes when
+    the embedded Python program raises an uncaught exception (traceback on stderr, non-zero exit)
+    instead of returning cleanly. Both gates classify on `stderr`, not `stdout`, for this branch,
+    so a stub answering on the wrong stream would test nothing."""
     out = tmp_path / f"{name}.out"
     out.write_text(stderr_text, encoding="utf-8")
-    p = tmp_path / f"{name}.cmd"
-    p.write_text(f'@echo off\r\ntype "{out}" 1>&2\r\nexit /b {exit_code}\r\n', encoding="utf-8")
+    if os.name == "nt":
+        p = tmp_path / f"{name}.cmd"
+        p.write_text(f'@echo off\r\ntype "{out}" 1>&2\r\nexit /b {exit_code}\r\n', encoding="utf-8")
+    else:
+        p = tmp_path / f"{name}.sh"
+        p.write_text(f'#!/bin/sh\ncat "{out}" 1>&2\nexit {exit_code}\n', encoding="utf-8")
+        os.chmod(p, 0o755)
     return str(p)
 
 
 def _tee_stub(tmp_path, name, stdout_text, marker):
-    """.cmd stub that BOTH records its own argv to `marker` (`echo %*`) and returns canned
-    stdout — used to pin check-rules-complete's read-only guarantee: a mismatch must not trigger
-    a second, write-shaped call. (`%*` truncates at the embedded probe program's first newline —
-    harmless here, since the assertion only needs to prove no write-shaped token ever arrived.)"""
+    """Stub that BOTH records its own argv to `marker` and returns canned stdout — used to pin
+    check-rules-complete's read-only guarantee: a mismatch must not trigger a second, write-shaped
+    call. On Windows `%*` truncates at the embedded probe program's first newline; on POSIX `$*`
+    has the same property — harmless here, since the assertion only needs to prove no write-shaped
+    token ever arrived."""
     out = tmp_path / f"{name}.out"
     out.write_text(stdout_text, encoding="utf-8")
-    p = tmp_path / f"{name}.cmd"
-    p.write_text(f'@echo off\r\necho %* >> "{marker}"\r\ntype "{out}"\r\nexit /b 0\r\n',
-                  encoding="utf-8")
+    if os.name == "nt":
+        p = tmp_path / f"{name}.cmd"
+        p.write_text(f'@echo off\r\necho %* >> "{marker}"\r\ntype "{out}"\r\nexit /b 0\r\n',
+                      encoding="utf-8")
+    else:
+        p = tmp_path / f"{name}.sh"
+        p.write_text(f'#!/bin/sh\necho "$*" >> "{marker}"\ncat "{out}"\nexit 0\n', encoding="utf-8")
+        os.chmod(p, 0o755)
     return str(p)
 
 
