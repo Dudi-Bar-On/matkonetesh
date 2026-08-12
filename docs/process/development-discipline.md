@@ -2753,3 +2753,15 @@ from the error text with no investigation needed; fix was reordering to
 project's tooling, gates, or conventions needed to change — this is throwaway command-line usage, not
 infrastructure.
 
+**No-lesson declaration (2026-08-12):** R-150/R-151 (the last two `infra` CI failures — PreToolUse
+wall-clock overhead and the L12 stale-server probe) — no new numbered lesson. The recorded failures
+this task caused were DELIBERATE, throwaway command-line experiments proving both tests still catch a
+genuine regression (the RED witness the brief required): the overhead assertion was temporarily
+tightened to `< 0.001` and `findListeningPid` was temporarily stubbed to always return `null`, both
+run once to confirm FAILED, then reverted before the real fix was committed. Neither run reflects a
+defect in this project's tooling, gates, or conventions — they were the intended outcome of the
+experiment, not surprises. The actual fix (a `GITHUB_ACTIONS`-keyed skip for the wall-clock test, and
+a `/proc`-based Linux port/pid probe added to `scripts/hooks/lib/stale-server.mjs` so the L12 rule
+does not need to skip on Linux CI at all) already carries its own detailed inline comments; nothing
+about it generalizes into a project-wide process lesson beyond what L57 already states.
+
