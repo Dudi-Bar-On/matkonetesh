@@ -48,10 +48,21 @@ export function candidatesFor(stub) {
 export function runPython(trailingArgs, spawnOpts = {}, { stub } = {}) {
   const candidates = candidatesFor(stub);
   const tried = [];
+  // R-161: `shell: true` for a stub is only REQUIRED on Windows, to let a `.cmd` run via its
+  // extension association. On POSIX the stub is a real executable script with a shebang (R-147c/
+  // R-161's own fix to the test fixtures), which spawnSync can exec directly — and unconditional
+  // `shell: true` was actively harmful there: Node's shell mode concatenates argv into ONE string
+  // with no escaping (its own DEP0190 warning says so), and `trailingArgs` here routinely carries
+  // a multi-line embedded Python program full of quotes and parentheses. `/bin/sh` then tries to
+  // parse THAT as shell syntax before the stub is ever reached, producing exactly the
+  // "Syntax error: word unexpected (expecting ")")" CI showed — a shell parse failure, not
+  // anything the stub's own content controls. Scoping `shell: true` to Windows removes the shell
+  // from the loop entirely on POSIX, so trailingArgs reaches the stub as real argv, unparsed.
+  const needsShell = stub && process.platform === 'win32';
   for (const [cmd, pre] of candidates) {
     const r = spawnSync(cmd, [...pre, ...trailingArgs], {
       ...spawnOpts,
-      shell: stub ? true : spawnOpts.shell,
+      shell: needsShell ? true : spawnOpts.shell,
     });
     if (r.error || r.status === null) {
       tried.push(`${cmd}: ${r.error?.code ?? 'no exit status'}`);
